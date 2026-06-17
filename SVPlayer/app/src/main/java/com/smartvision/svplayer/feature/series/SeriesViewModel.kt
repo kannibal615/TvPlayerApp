@@ -37,22 +37,22 @@ class SeriesViewModel(
     private val episodes = MutableStateFlow<List<Episode>>(emptyList())
     private val loadingEpisodes = MutableStateFlow(false)
 
-    val uiState = combine(
+    private val baseState = combine(
         repository.observeSeriesCategories(),
         selectedCategoryId.flatMapLatest { repository.observeSeries(it) },
         selectedCategoryId,
         selectedSeriesId,
-        episodes,
-        loadingEpisodes,
-    ) { categories, series, categoryId, seriesId, episodeList, loading ->
+    ) { categories, series, categoryId, seriesId ->
         SeriesUiState(
             categories = categories,
             selectedCategoryId = categoryId ?: categories.firstOrNull()?.id,
             series = series,
             selectedSeriesId = seriesId ?: series.firstOrNull()?.seriesId,
-            episodes = episodeList,
-            loadingEpisodes = loading,
         )
+    }
+
+    val uiState = combine(baseState, episodes, loadingEpisodes) { state, episodeList, loading ->
+        state.copy(episodes = episodeList, loadingEpisodes = loading)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SeriesUiState())
 
     init {

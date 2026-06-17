@@ -26,7 +26,6 @@ fun buildConfigString(value: String): String {
 android {
     namespace = "com.smartvision.svplayer"
     compileSdk = 36
-    compileSdkExtension = 20
 
     defaultConfig {
         applicationId = "com.smartvision.svplayer"
