@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -125,14 +126,17 @@ fun FocusableButton(
     icon: ImageVector? = null,
     selected: Boolean = false,
     accent: Color = SVColors.Cyan,
+    minHeight: Dp = 48.dp,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
+    shape: Shape = RoundedCornerShape(10.dp),
 ) {
     FocusableCard(
         onClick = onClick,
-        modifier = modifier.defaultMinSize(minHeight = 48.dp),
+        modifier = modifier.defaultMinSize(minHeight = minHeight),
         selected = selected,
         accent = accent,
-        shape = RoundedCornerShape(10.dp),
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
+        shape = shape,
+        contentPadding = contentPadding,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) {
@@ -142,14 +146,18 @@ fun FocusableButton(
                     tint = if (selected || it) accent else SVColors.TextPrimary,
                     modifier = Modifier.size(22.dp),
                 )
-                Spacer(Modifier.width(10.dp))
+                if (text.isNotBlank()) {
+                    Spacer(Modifier.width(10.dp))
+                }
             }
-            Text(
-                text = text,
-                color = SVColors.TextPrimary,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-            )
+            if (text.isNotBlank()) {
+                Text(
+                    text = text,
+                    color = SVColors.TextPrimary,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
     }
 }

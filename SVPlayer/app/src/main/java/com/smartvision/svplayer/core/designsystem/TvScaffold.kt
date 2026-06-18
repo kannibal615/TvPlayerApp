@@ -46,19 +46,19 @@ fun TvScaffold(
         SideNavBar(
             currentRoute = currentRoute,
             items = listOf(
-                NavItem(SVRoute.Home, Icons.Default.Home, "Home"),
+                NavItem(SVRoute.Home, Icons.Default.Home, "Accueil"),
                 NavItem(SVRoute.Live, Icons.Default.Tv, "Live TV"),
                 NavItem(SVRoute.Movies, Icons.Default.Movie, "Films"),
-                NavItem(SVRoute.Series, Icons.Default.VideoLibrary, "Series"),
-                NavItem(SVRoute.Account, Icons.Default.Person, "Compte"),
-                NavItem(SVRoute.Settings, Icons.Default.Settings, "Parametres"),
+                NavItem(SVRoute.Series, Icons.Default.VideoLibrary, "Séries"),
+                NavItem(SVRoute.Account, Icons.Default.Person, "Mon compte"),
+                NavItem(SVRoute.Settings, Icons.Default.Settings, "Paramètres"),
             ),
             onNavigate = onNavigate,
         )
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 48.dp, end = 48.dp, top = 34.dp, bottom = 34.dp),
+                .padding(start = 24.dp, end = 30.dp, top = 18.dp, bottom = 22.dp),
         ) {
             TopHeader(
                 modifier = Modifier.fillMaxWidth(),
@@ -71,7 +71,7 @@ fun TvScaffold(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 24.dp),
+                    .padding(top = 20.dp),
             ) {
                 content()
             }

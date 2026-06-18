@@ -1,5 +1,6 @@
 package com.smartvision.svplayer.core.designsystem
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +27,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.smartvision.svplayer.domain.model.SyncStatus
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -61,19 +63,19 @@ fun TopHeader(
                     }
                 },
                 color = SVColors.TextPrimary,
-                style = MaterialTheme.typography.headlineLarge,
+                style = MaterialTheme.typography.headlineLarge.copy(fontSize = 28.sp, lineHeight = 34.sp),
                 fontWeight = FontWeight.Black,
             )
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(1.dp))
             Text(
                 text = "IPTV PLAYER | ANDROID TV",
                 color = SVColors.TextSecondary,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelLarge.copy(fontSize = 11.sp, lineHeight = 14.sp),
             )
         }
 
         Row(
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             FocusableButton(
@@ -82,14 +84,20 @@ fun TopHeader(
                 onClick = onSync,
                 selected = syncStatus is SyncStatus.Running,
                 accent = if (syncStatus is SyncStatus.Error) SVColors.Danger else SVColors.Cyan,
-                modifier = Modifier.width(214.dp),
+                modifier = Modifier
+                    .width(146.dp)
+                    .height(40.dp),
+                minHeight = 40.dp,
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
             )
             FocusableButton(
                 text = "",
                 icon = settingsIcon,
                 onClick = onSettings,
                 accent = SVColors.TextPrimary,
-                modifier = Modifier.size(width = 64.dp, height = 54.dp),
+                modifier = Modifier.size(width = 42.dp, height = 40.dp),
+                minHeight = 40.dp,
+                contentPadding = PaddingValues(0.dp),
             )
             ClockPanel()
         }
@@ -105,12 +113,12 @@ private fun ClockPanel() {
             delay(30_000)
         }
     }
-    GlassPanel(modifier = Modifier.size(width = 104.dp, height = 54.dp)) {
+    GlassPanel(modifier = Modifier.size(width = 76.dp, height = 40.dp)) {
         BoxCenter {
             Text(
                 text = now,
                 color = Color.White,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp, lineHeight = 20.sp),
                 fontWeight = FontWeight.Bold,
             )
         }
