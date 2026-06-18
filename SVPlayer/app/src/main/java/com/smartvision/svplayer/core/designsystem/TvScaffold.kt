@@ -24,6 +24,14 @@ import androidx.compose.ui.unit.dp
 import com.smartvision.svplayer.core.navigation.SVRoute
 import com.smartvision.svplayer.domain.model.SyncStatus
 
+import androidx.compose.ui.graphics.vector.ImageVector
+
+data class NavItem(
+    val route: SVRoute,
+    val icon: ImageVector,
+    val label: String,
+)
+
 @Composable
 fun TvScaffold(
     currentRoute: SVRoute,
@@ -33,48 +41,41 @@ fun TvScaffold(
     onSettings: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    Row(
+    val navItems = listOf(
+        NavItem(SVRoute.Home, Icons.Default.Home, "Accueil"),
+        NavItem(SVRoute.Live, Icons.Default.Tv, "Live TV"),
+        NavItem(SVRoute.Movies, Icons.Default.Movie, "Films"),
+        NavItem(SVRoute.Series, Icons.Default.VideoLibrary, "Séries"),
+        NavItem(SVRoute.Account, Icons.Default.Person, "Mon compte"),
+        NavItem(SVRoute.Settings, Icons.Default.Settings, "Paramètres"),
+    )
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.radialGradient(
                     colors = listOf(Color(0xFF0B2844), SVColors.Background, SVColors.BackgroundDeep),
-                    radius = 1400f,
+                    radius = 1600f,
                 ),
-            ),
+            )
+            .padding(horizontal = 48.dp, vertical = 24.dp),
     ) {
-        SideNavBar(
+        TopHeader(
             currentRoute = currentRoute,
-            items = listOf(
-                NavItem(SVRoute.Home, Icons.Default.Home, "Accueil"),
-                NavItem(SVRoute.Live, Icons.Default.Tv, "Live TV"),
-                NavItem(SVRoute.Movies, Icons.Default.Movie, "Films"),
-                NavItem(SVRoute.Series, Icons.Default.VideoLibrary, "Séries"),
-                NavItem(SVRoute.Account, Icons.Default.Person, "Mon compte"),
-                NavItem(SVRoute.Settings, Icons.Default.Settings, "Paramètres"),
-            ),
+            items = navItems,
             onNavigate = onNavigate,
+            syncStatus = syncStatus,
+            onSync = onSync,
+            onSettings = onSettings,
+            modifier = Modifier.fillMaxWidth(),
         )
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 24.dp, end = 30.dp, top = 18.dp, bottom = 22.dp),
+                .padding(top = 24.dp),
         ) {
-            TopHeader(
-                modifier = Modifier.fillMaxWidth(),
-                syncStatus = syncStatus,
-                syncIcon = Icons.Default.Sync,
-                settingsIcon = Icons.Default.Settings,
-                onSync = onSync,
-                onSettings = onSettings,
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 20.dp),
-            ) {
-                content()
-            }
+            content()
         }
     }
 }
