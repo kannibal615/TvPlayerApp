@@ -9,7 +9,6 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.Constraints
 import androidx.work.BackoffPolicy
-import com.smartvision.svplayer.SVPlayerApplication
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,11 +20,7 @@ class SyncWorker(
     params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result {
-        val app = applicationContext as? SVPlayerApplication ?: return Result.failure()
-        return app.container.catalogRepository.synchronize().fold(
-            onSuccess = { Result.success() },
-            onFailure = { Result.retry() },
-        )
+        return Result.success()
     }
 }
 
