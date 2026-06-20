@@ -24,8 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -176,25 +174,6 @@ fun DetailHeader(
             }
         }
         DetailIconButton(icon = Icons.Default.Search, onClick = {}, modifier = Modifier.size(34.dp))
-        Spacer(Modifier.width(10.dp))
-        DetailActionButton(
-            text = "Synchroniser",
-            icon = Icons.Default.Sync,
-            onClick = onSync,
-            primary = true,
-            modifier = Modifier
-                .width(132.dp)
-                .height(34.dp),
-        )
-        Spacer(Modifier.width(10.dp))
-        DetailActionButton(
-            text = "Parametres",
-            icon = Icons.Default.Settings,
-            onClick = onSettings,
-            modifier = Modifier
-                .width(116.dp)
-                .height(34.dp),
-        )
     }
 }
 

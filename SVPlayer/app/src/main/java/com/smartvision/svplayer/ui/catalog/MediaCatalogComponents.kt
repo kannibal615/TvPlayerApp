@@ -25,8 +25,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -125,28 +123,6 @@ fun MediaCatalogHeader(
             }
         }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            CatalogActionButton(
-                text = "Synchroniser",
-                icon = Icons.Default.Sync,
-                onClick = onSync,
-                primary = true,
-                modifier = Modifier
-                    .width(120.dp)
-                    .height(36.dp),
-            )
-            CatalogActionButton(
-                text = "Parametres",
-                icon = Icons.Default.Settings,
-                onClick = onSettings,
-                modifier = Modifier
-                    .width(108.dp)
-                    .height(36.dp),
-            )
-        }
     }
 }
 

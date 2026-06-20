@@ -1,7 +1,9 @@
 package com.smartvision.svplayer.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -13,6 +15,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.smartvision.svplayer.R
 import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import kotlin.math.min
@@ -23,6 +28,44 @@ fun HomeVisualBackground(
     modifier: Modifier = Modifier,
 ) {
     val colors = style.visualColors()
+    val imageRes = style.homeCardImageRes()
+
+    if (imageRes != null) {
+        Box(
+            modifier = modifier.background(Brush.linearGradient(colors)),
+        ) {
+            Image(
+                painter = painterResource(imageRes),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color(0xFF020712).copy(alpha = 0.48f),
+                                Color(0xFF020712).copy(alpha = 0.10f),
+                                Color.Transparent,
+                            ),
+                        ),
+                    ),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color(0xFF020712).copy(alpha = 0.58f)),
+                        ),
+                    ),
+            )
+        }
+        return
+    }
+
     Box(
         modifier = modifier
             .background(Brush.linearGradient(colors))
@@ -300,4 +343,12 @@ fun HomeVisualStyle.visualColors(): List<Color> =
         HomeVisualStyle.City -> listOf(Color(0xFF04101F), Color(0xFF263C66), Color(0xFF05070E))
         HomeVisualStyle.Fire -> listOf(Color(0xFF100806), Color(0xFF5A1E10), Color(0xFF070507))
         HomeVisualStyle.Mystery -> listOf(Color(0xFF0A0F1D), Color(0xFF2B214B), Color(0xFF05060B))
+    }
+
+private fun HomeVisualStyle.homeCardImageRes(): Int? =
+    when (this) {
+        HomeVisualStyle.Signal -> R.drawable.live_tv_bg
+        HomeVisualStyle.Cinema -> R.drawable.films_bg
+        HomeVisualStyle.Series -> R.drawable.series_bg
+        else -> null
     }

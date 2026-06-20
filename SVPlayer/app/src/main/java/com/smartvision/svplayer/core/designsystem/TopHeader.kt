@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -85,34 +83,6 @@ fun TopHeader(
                 }
             }
 
-            Spacer(Modifier.width(16.dp))
-
-            // Action buttons reduced in size
-            FocusableButton(
-                text = "Synchroniser",
-                icon = Icons.Default.Sync,
-                onClick = onSync,
-                selected = syncStatus is SyncStatus.Running,
-                accent = SVColors.Blue,
-                modifier = Modifier
-                    .width(136.dp)
-                    .height(36.dp),
-                minHeight = 36.dp,
-                shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp)
-            )
-            FocusableButton(
-                text = "Paramètres",
-                icon = Icons.Default.Settings,
-                onClick = onSettings,
-                accent = SVColors.SurfaceLight,
-                modifier = Modifier
-                    .width(124.dp)
-                    .height(36.dp),
-                minHeight = 36.dp,
-                shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp)
-            )
         }
     }
 }

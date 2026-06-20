@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,31 +64,16 @@ fun TvHeader(
                 )
             }
         }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TvButton(
-                text = "Synchroniser",
-                onClick = onSync,
-                leadingIcon = Icons.Default.Sync,
-                variant = TvButtonVariant.Primary,
-                contentPadding = PaddingValues(horizontal = 14.dp),
-                modifier = Modifier
-                    .width(146.dp)
-                    .height(40.dp),
-            )
-            TvButton(
-                text = "Paramètres",
-                onClick = onSettings,
-                leadingIcon = Icons.Default.Settings,
-                variant = TvButtonVariant.Secondary,
-                contentPadding = PaddingValues(horizontal = 12.dp),
-                modifier = Modifier
-                    .width(136.dp)
-                    .height(40.dp),
-            )
-        }
+        TvButton(
+            text = "Parametres",
+            onClick = onSettings,
+            leadingIcon = Icons.Default.Settings,
+            variant = TvButtonVariant.Secondary,
+            contentPadding = PaddingValues(horizontal = 12.dp),
+            modifier = Modifier
+                .width(136.dp)
+                .height(40.dp),
+        )
     }
 }
 
@@ -102,8 +86,7 @@ private fun SmartVisionLogo() {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier
-                .size(34.dp),
+            modifier = Modifier.size(34.dp),
             contentAlignment = Alignment.Center,
         ) {
             Icon(

@@ -36,8 +36,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RadioButtonChecked
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.CircularProgressIndicator
@@ -285,28 +283,6 @@ private fun LiveTvHeader(
             }
         }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            PreviewActionButton(
-                text = "Synchroniser",
-                onClick = onSync,
-                icon = Icons.Default.Sync,
-                primary = true,
-                modifier = Modifier
-                    .width(120.dp)
-                    .height(36.dp),
-            )
-            PreviewActionButton(
-                text = "Parametres",
-                onClick = onSettings,
-                icon = Icons.Default.Settings,
-                modifier = Modifier
-                    .width(108.dp)
-                    .height(36.dp),
-            )
-        }
     }
 }
 
