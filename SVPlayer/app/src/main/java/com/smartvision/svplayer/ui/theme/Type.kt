@@ -49,6 +49,13 @@ object SmartVisionType {
         letterSpacing = 0.sp,
     )
 
+    val HomeSectionTitle = TextStyle(
+        fontSize = 18.sp,
+        lineHeight = 24.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.sp,
+    )
+
     val Body = TextStyle(
         fontSize = 16.sp,
         lineHeight = 24.sp,

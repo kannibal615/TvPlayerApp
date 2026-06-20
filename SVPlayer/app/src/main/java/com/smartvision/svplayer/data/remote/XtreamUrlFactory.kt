@@ -10,6 +10,11 @@ class XtreamUrlFactory(
         return "${credentials.normalizedHost}/live/${credentials.username}/${credentials.password}/$streamId.ts"
     }
 
+    fun liveHls(streamId: Int): String {
+        val credentials = credentialsProvider.current()
+        return "${credentials.normalizedHost}/live/${credentials.username}/${credentials.password}/$streamId.m3u8"
+    }
+
     fun movie(streamId: Int, extension: String): String {
         val credentials = credentialsProvider.current()
         return "${credentials.normalizedHost}/movie/${credentials.username}/${credentials.password}/$streamId.${extension.ifBlank { "mp4" }}"

@@ -51,7 +51,7 @@ fun ContentProgressCard(
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(SmartVisionDimensions.HomeContentRadius)
     val border by animateColorAsState(
         targetValue = if (focusState.isFocused) SmartVisionColors.FocusWhite else SmartVisionColors.Border.copy(alpha = 0.78f),
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
@@ -66,7 +66,7 @@ fun ContentProgressCard(
                 pressed = pressed,
                 focusedScale = 1.045f,
                 glowColor = SmartVisionColors.Primary,
-                cornerRadius = 14.dp,
+                cornerRadius = SmartVisionDimensions.HomeContentRadius,
             )
             .clip(shape)
             .background(SmartVisionColors.Surface)

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -19,17 +20,29 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.HomeScreen
+import com.smartvision.svplayer.ui.live.LiveTvScreen
+import com.smartvision.svplayer.ui.player.FullScreenPlayerRoute
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import kotlinx.coroutines.launch
 
 @Composable
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
 ) {
+    val container = LocalAppContainer.current
+    val scope = rememberCoroutineScope()
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route ?: AppRoute.Home.route
+    val syncCatalog = {
+        scope.launch {
+            container.synchronizeCatalog()
+        }
+        Unit
+    }
 
     NavHost(
         navController = navController,
@@ -41,25 +54,43 @@ fun AppNavigation(
                 currentRoute = currentRoute,
                 tabs = headerTabs,
                 onNavigate = { route -> navController.navigateSingleTop(route) },
-                onSync = { navController.navigateSingleTop(AppRoute.SyncSettings.route) },
+                onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 onContentClick = {},
             )
         }
         composable(AppRoute.Live.route) {
-            PlaceholderRouteScreen("Live TV", "Route live_tv prête. L'écran Live TV complet reste hors scope.")
+            LiveTvScreen(
+                currentRoute = currentRoute,
+                tabs = headerTabs,
+                onNavigate = { route -> navController.navigateSingleTop(route) },
+                onSync = syncCatalog,
+                onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                onWatch = { channelId -> navController.navigate("player/$channelId") },
+            )
         }
         composable(AppRoute.Movies.route) {
-            PlaceholderRouteScreen("Films", "Route movies prête. Aucun catalogue API n'est branché.")
+            PlaceholderRouteScreen("Films", "Route movies prete. Aucun catalogue API n'est branche.")
         }
         composable(AppRoute.Series.route) {
-            PlaceholderRouteScreen("Séries", "Route series prête. Les détails séries viendront plus tard.")
+            PlaceholderRouteScreen("Series", "Route series prete. Les details series viendront plus tard.")
         }
         composable(AppRoute.Settings.route) {
-            PlaceholderRouteScreen("Paramètres", "Route settings prête. Aucun stockage ou compte n'est branché.")
+            PlaceholderRouteScreen("Parametres", "Route settings prete. Aucun stockage ou compte n'est branche.")
         }
         composable(AppRoute.SyncSettings.route) {
-            PlaceholderRouteScreen("Synchronisation", "Action mock. Pas d'appel API Xtream dans cette tâche.")
+            PlaceholderRouteScreen("Synchronisation", "Action mock. Pas d'appel API Xtream dans cette tache.")
+        }
+        composable("player/{channelId}") { entry ->
+            val channelId = entry.arguments?.getString("channelId")?.toIntOrNull()
+            if (channelId == null) {
+                PlaceholderRouteScreen("Lecture live", "Chaine introuvable.")
+            } else {
+                FullScreenPlayerRoute(
+                    streamId = channelId,
+                    onBack = { navController.popBackStack() },
+                )
+            }
         }
     }
 }
@@ -124,5 +155,5 @@ private val headerTabs = listOf(
     HomeHeaderTab("Accueil", AppRoute.Home.route),
     HomeHeaderTab("Live TV", AppRoute.Live.route),
     HomeHeaderTab("Films", AppRoute.Movies.route),
-    HomeHeaderTab("Séries", AppRoute.Series.route),
+    HomeHeaderTab("Series", AppRoute.Series.route),
 )

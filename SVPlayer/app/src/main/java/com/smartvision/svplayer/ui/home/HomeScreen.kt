@@ -56,7 +56,7 @@ fun HomeScreen(
                 ),
             )
             .padding(horizontal = SmartVisionDimensions.HomeScreenPadding)
-            .padding(top = 14.dp),
+            .padding(top = SmartVisionDimensions.HomeHeaderTopPadding),
     ) {
         TvHeader(
             currentRoute = currentRoute,
@@ -67,7 +67,7 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(SmartVisionDimensions.HomeHeaderToHeroSpacing))
 
         Column(
             modifier = Modifier

@@ -393,7 +393,7 @@ private fun ViewAllButton() {
             .size(width = 60.dp, height = 110.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White.copy(alpha = 0.05f))
-            .border(BorderStroke(if (focused) SVColors.Cyan else Color.White.copy(alpha = 0.1f)), RoundedCornerShape(12.dp))
+            .border(BorderStroke(1.dp, if (focused) SVColors.Cyan else Color.White.copy(alpha = 0.1f)), RoundedCornerShape(12.dp))
             .onFocusChanged { focused = it.isFocused }
             .clickable { }
             .focusable(),

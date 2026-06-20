@@ -4,10 +4,12 @@ import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
 import com.smartvision.svplayer.core.config.BuildConfigXtreamCredentialsProvider
 import com.smartvision.svplayer.data.local.SVDatabase
+import com.smartvision.svplayer.data.remote.XtreamApiClient
 import com.smartvision.svplayer.data.remote.XtreamApiService
 import com.smartvision.svplayer.data.remote.XtreamUrlFactory
 import com.smartvision.svplayer.data.repository.DefaultCatalogRepository
 import com.smartvision.svplayer.data.repository.DefaultSettingsRepository
+import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.domain.usecase.BuildPlaybackRequestUseCase
@@ -40,6 +42,12 @@ class AppContainer(context: Context) {
         .build()
 
     private val api = retrofit.create(XtreamApiService::class.java)
+    private val xtreamApiClient = XtreamApiClient(api, credentialsProvider)
+
+    val xtreamRepository: XtreamRepository = XtreamRepository(
+        apiClient = xtreamApiClient,
+        urlFactory = urlFactory,
+    )
 
     val catalogRepository: CatalogRepository = DefaultCatalogRepository(
         api = api,

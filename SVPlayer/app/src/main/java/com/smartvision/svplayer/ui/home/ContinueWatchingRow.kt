@@ -54,7 +54,7 @@ fun ContinueWatchingRow(
         Text(
             text = title,
             color = SmartVisionColors.TextPrimary,
-            style = SmartVisionType.TitleS,
+            style = SmartVisionType.HomeSectionTitle,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
         )
@@ -99,7 +99,7 @@ private fun RowChevronButton(
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(SmartVisionDimensions.HomeContentRadius)
 
     Box(
         modifier = modifier
@@ -109,7 +109,7 @@ private fun RowChevronButton(
                 pressed = pressed,
                 focusedScale = 1.045f,
                 glowColor = SmartVisionColors.Primary,
-                cornerRadius = 12.dp,
+                cornerRadius = SmartVisionDimensions.HomeContentRadius,
             )
             .clip(shape)
             .background(SmartVisionColors.SurfaceElevated.copy(alpha = 0.8f))
@@ -142,7 +142,7 @@ private fun ViewAllButton(
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(SmartVisionDimensions.HomeContentRadius)
 
     Column(
         modifier = modifier
@@ -152,7 +152,7 @@ private fun ViewAllButton(
                 pressed = pressed,
                 focusedScale = 1.045f,
                 glowColor = SmartVisionColors.Primary,
-                cornerRadius = 16.dp,
+                cornerRadius = SmartVisionDimensions.HomeContentRadius,
             )
             .clip(shape)
             .background(SmartVisionColors.SurfaceElevated.copy(alpha = 0.82f))

@@ -25,15 +25,21 @@ data class ServerInfoDto(
 data class XtreamCategoryDto(
     @SerializedName("category_id") val id: String?,
     @SerializedName("category_name") val name: String?,
+    @SerializedName("parent_id") val parentId: Int?,
 )
 
 data class XtreamLiveStreamDto(
     @SerializedName("num") val number: Int?,
     @SerializedName("name") val name: String?,
+    @SerializedName("stream_type") val streamType: String?,
     @SerializedName("stream_id") val streamId: Int?,
     @SerializedName("stream_icon") val icon: String?,
-    @SerializedName("category_id") val categoryId: String?,
     @SerializedName("epg_channel_id") val epgChannelId: String?,
+    @SerializedName("added") val added: String?,
+    @SerializedName("category_id") val categoryId: String?,
+    @SerializedName("custom_sid") val customSid: String?,
+    @SerializedName("tv_archive") val tvArchive: Int?,
+    @SerializedName("direct_source") val directSource: String?,
 )
 
 data class XtreamMovieDto(

@@ -57,7 +57,7 @@ fun HomeCategoryCard(
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val shape = RoundedCornerShape(22.dp)
+    val shape = RoundedCornerShape(SmartVisionDimensions.HomeCardRadius)
     val accent = category.type.accent
 
     val border by animateColorAsState(
@@ -75,7 +75,7 @@ fun HomeCategoryCard(
                 pressed = pressed,
                 focusedScale = 1.055f,
                 glowColor = accent,
-                cornerRadius = 22.dp,
+                cornerRadius = SmartVisionDimensions.HomeCardRadius,
             )
             .clip(shape)
             .background(SmartVisionColors.Surface)
@@ -151,9 +151,9 @@ private fun CategoryBadge(
 ) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(SmartVisionDimensions.HomeContentRadius))
             .background(accent.copy(alpha = 0.26f))
-            .border(BorderStroke(1.dp, accent.copy(alpha = 0.78f)), RoundedCornerShape(8.dp))
+            .border(BorderStroke(1.dp, accent.copy(alpha = 0.78f)), RoundedCornerShape(SmartVisionDimensions.HomeContentRadius))
             .padding(horizontal = 8.dp, vertical = 3.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -174,9 +174,9 @@ private fun CategoryCta(
 ) {
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(SmartVisionDimensions.HomeContentRadius))
             .background(Color.Black.copy(alpha = 0.28f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(10.dp))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(SmartVisionDimensions.HomeContentRadius))
             .padding(horizontal = 12.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),

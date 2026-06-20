@@ -10,7 +10,7 @@ object SmartVisionDimensions {
 
     val PanelRadius = 20.dp
     val CardRadius = 16.dp
-    val ButtonRadius = 12.dp
+    val ButtonRadius = 10.dp
     val BadgeRadius = 8.dp
 
     val PanelBorder = 1.dp
@@ -26,10 +26,15 @@ object SmartVisionDimensions {
     const val FocusAnimationMillis = 150
 
     val HomeScreenPadding = 32.dp
+    val HomeHeaderTopPadding = 4.dp
     val HomeHeaderHeight = 44.dp
+    val HomeHeaderToHeroSpacing = 8.dp
     val HomeHeroHeight = 132.dp
     val HomeCategoryHeight = 170.dp
     val HomeContentCardWidth = 150.dp
     val HomeContentCardHeight = 82.dp
     val HomeTrendFoldOffset = 72.dp
+    val HomePanelRadius = 8.dp
+    val HomeCardRadius = 8.dp
+    val HomeContentRadius = 6.dp
 }

@@ -1,0 +1,1436 @@
+package com.smartvision.svplayer.ui.live
+
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.RadioButtonChecked
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
+import coil.compose.AsyncImage
+import com.smartvision.svplayer.R
+import com.smartvision.svplayer.core.data.LocalAppContainer
+import com.smartvision.svplayer.core.ui.viewModelFactory
+import com.smartvision.svplayer.ui.components.TvButton
+import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.focus.rememberTvFocusState
+import com.smartvision.svplayer.ui.focus.tvFocusTarget
+import com.smartvision.svplayer.ui.home.HomeHeaderTab
+import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
+import com.smartvision.svplayer.ui.theme.SmartVisionType
+import kotlinx.coroutines.delay
+
+private val LiveTvPanelTitleStyle = TextStyle(
+    fontSize = 16.sp,
+    lineHeight = 22.sp,
+    fontWeight = FontWeight.Bold,
+    letterSpacing = 0.sp,
+)
+
+private val LiveTvItemTitleStyle = TextStyle(
+    fontSize = 13.sp,
+    lineHeight = 18.sp,
+    fontWeight = FontWeight.SemiBold,
+    letterSpacing = 0.sp,
+)
+
+private val LiveTvItemMetaStyle = TextStyle(
+    fontSize = 10.sp,
+    lineHeight = 14.sp,
+    fontWeight = FontWeight.Normal,
+    letterSpacing = 0.sp,
+)
+
+private val LiveTvPreviewTitleStyle = TextStyle(
+    fontSize = 18.sp,
+    lineHeight = 24.sp,
+    fontWeight = FontWeight.Bold,
+    letterSpacing = 0.sp,
+)
+
+private val LiveTvButtonTextStyle = TextStyle(
+    fontSize = 11.sp,
+    lineHeight = 14.sp,
+    fontWeight = FontWeight.SemiBold,
+    letterSpacing = 0.sp,
+)
+
+@Composable
+fun LiveTvScreen(
+    currentRoute: String,
+    tabs: List<HomeHeaderTab>,
+    onNavigate: (String) -> Unit,
+    onSync: () -> Unit,
+    onSettings: () -> Unit,
+    onWatch: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val container = LocalAppContainer.current
+    val viewModel: LiveTvViewModel = viewModel(
+        factory = viewModelFactory {
+            LiveTvViewModel(container.xtreamRepository)
+        },
+    )
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val selectedCategoryFocusRequester = remember { FocusRequester() }
+    var inputReady by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(260)
+        inputReady = true
+    }
+
+    LaunchedEffect(state.selectedCategoryId, state.categoriesLoading) {
+        if (!state.categoriesLoading) {
+            withFrameNanos { }
+            delay(120)
+            selectedCategoryFocusRequester.requestFocus()
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        SmartVisionColors.PrimaryDark.copy(alpha = 0.36f),
+                        SmartVisionColors.Background,
+                        Color(0xFF01040C),
+                    ),
+                    center = Offset(980f, 120f),
+                    radius = 1500f,
+                ),
+            )
+            .padding(horizontal = LiveTvDimens.ScreenPadding)
+            .padding(top = LiveTvDimens.TopPadding, bottom = LiveTvDimens.BottomPadding),
+    ) {
+        LiveTvHeader(
+            currentRoute = currentRoute,
+            tabs = tabs,
+            onNavigate = onNavigate,
+            onSync = onSync,
+            onSettings = onSettings,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Spacer(Modifier.height(LiveTvDimens.HeaderGap))
+
+        if (state.categoriesLoading) {
+            LoadingState(
+                title = "Chargement des categories",
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(LiveTvDimens.PanelGap),
+            ) {
+                CategoryList(
+                    state = state,
+                    selectedCategoryFocusRequester = selectedCategoryFocusRequester,
+                    onCategory = { category ->
+                        if (inputReady) {
+                            viewModel.selectCategory(category)
+                        }
+                    },
+                    modifier = Modifier
+                        .weight(0.24f)
+                        .fillMaxHeight(),
+                )
+                ChannelList(
+                    state = state,
+                    onChannelFocused = viewModel::focusChannel,
+                    onChannelClick = { channel ->
+                        if (inputReady) {
+                            val openFullPlayer = viewModel.activateChannel(channel)
+                            if (openFullPlayer) {
+                                onWatch(channel.streamId)
+                            }
+                        }
+                    },
+                    onRetry = viewModel::retryCurrentCategory,
+                    modifier = Modifier
+                        .weight(0.42f)
+                        .fillMaxHeight(),
+                )
+                PreviewPanel(
+                    channel = state.selectedChannel,
+                    onWatch = {
+                        if (inputReady) {
+                            state.selectedChannel?.streamId?.let(onWatch)
+                        }
+                    },
+                    onFavorite = { state.selectedChannel?.let(viewModel::toggleFavorite) },
+                    modifier = Modifier
+                        .weight(0.34f)
+                        .fillMaxHeight(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LiveTvHeader(
+    currentRoute: String,
+    tabs: List<HomeHeaderTab>,
+    onNavigate: (String) -> Unit,
+    onSync: () -> Unit,
+    onSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.height(LiveTvDimens.HeaderHeight),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LiveTvLogo()
+
+        Spacer(Modifier.width(86.dp))
+
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            tabs.forEach { tab ->
+                TvButton(
+                    text = tab.label,
+                    onClick = { onNavigate(tab.route) },
+                    selected = tab.route == currentRoute,
+                    variant = if (tab.route == currentRoute) TvButtonVariant.Primary else TvButtonVariant.Text,
+                    contentPadding = PaddingValues(horizontal = 13.dp),
+                    modifier = Modifier.height(36.dp),
+                )
+            }
+        }
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PreviewActionButton(
+                text = "Synchroniser",
+                onClick = onSync,
+                icon = Icons.Default.Sync,
+                primary = true,
+                modifier = Modifier
+                    .width(120.dp)
+                    .height(36.dp),
+            )
+            PreviewActionButton(
+                text = "Parametres",
+                onClick = onSettings,
+                icon = Icons.Default.Settings,
+                modifier = Modifier
+                    .width(108.dp)
+                    .height(36.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LiveTvLogo() {
+    Row(
+        modifier = Modifier
+            .width(184.dp)
+            .fillMaxHeight(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(34.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = null,
+                tint = SmartVisionColors.Primary,
+                modifier = Modifier.size(34.dp),
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text = buildAnnotatedString {
+                append("Smart")
+                withStyle(SpanStyle(color = SmartVisionColors.Primary)) {
+                    append("Vision")
+                }
+            },
+            color = SmartVisionColors.TextPrimary,
+            style = SmartVisionType.TitleS,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun CategoryList(
+    state: LiveTvUiState,
+    selectedCategoryFocusRequester: FocusRequester,
+    onCategory: (LiveTvCategory) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LiveTvPanel(
+        title = "Categories",
+        modifier = modifier,
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(LiveTvDimens.ListGap),
+            contentPadding = PaddingValues(bottom = LiveTvDimens.ListGap),
+        ) {
+            items(state.categories, key = { it.id }) { category ->
+                CategoryRow(
+                    category = category,
+                    selected = category.id == state.selectedCategoryId,
+                    focusRequester = if (category.id == state.selectedCategoryId) {
+                        selectedCategoryFocusRequester
+                    } else {
+                        null
+                    },
+                    onClick = { onCategory(category) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChannelList(
+    state: LiveTvUiState,
+    onChannelFocused: (LiveTvChannel) -> Unit,
+    onChannelClick: (LiveTvChannel) -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LiveTvPanel(
+        title = "Chaines",
+        modifier = modifier,
+        trailing = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val channelCount = state.selectedCategory?.count ?: state.channels.size
+                Text(
+                    text = if (channelCount > 0) "$channelCount chaines" else "chaines",
+                    color = SmartVisionColors.TextSecondary,
+                    style = LiveTvItemMetaStyle,
+                    maxLines = 1,
+                )
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.Default.FilterList,
+                    contentDescription = null,
+                    tint = SmartVisionColors.TextSecondary,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        },
+    ) {
+        when {
+            state.channelsLoading -> LoadingState(
+                title = "Chargement des chaines",
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            state.errorMessage != null -> ErrorState(
+                message = state.errorMessage,
+                onRetry = onRetry,
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            state.channels.isEmpty() -> EmptyState(
+                title = "Aucune chaine",
+                subtitle = "Selectionnez une autre categorie.",
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(LiveTvDimens.ListGap),
+                contentPadding = PaddingValues(bottom = LiveTvDimens.ListGap),
+            ) {
+                items(state.channels, key = { it.streamId }) { channel ->
+                    ChannelRow(
+                        channel = channel,
+                        selected = channel.streamId == state.selectedChannel?.streamId,
+                        onFocused = { onChannelFocused(channel) },
+                        onClick = { onChannelClick(channel) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreviewPanel(
+    channel: LiveTvChannel?,
+    onWatch: () -> Unit,
+    onFavorite: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LiveTvPanel(
+        title = "Apercu",
+        modifier = modifier,
+    ) {
+        if (channel == null) {
+            EmptyState(
+                title = "Selectionnez une chaine",
+                subtitle = "Appuyez sur OK pour lancer l'apercu.",
+                modifier = Modifier.fillMaxSize(),
+            )
+            return@LiveTvPanel
+        }
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            VideoPreviewFrame(
+                channel = channel,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1.88f),
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            ProgramInfoCard(
+                channel = channel,
+                modifier = Modifier.weight(1f),
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                PreviewActionButton(
+                    text = "Regarder",
+                    onClick = onWatch,
+                    icon = Icons.Default.PlayArrow,
+                    primary = true,
+                    modifier = Modifier
+                        .weight(1.25f)
+                        .height(32.dp),
+                )
+                PreviewActionButton(
+                    text = "Enregistrer",
+                    onClick = {},
+                    icon = Icons.Default.RadioButtonChecked,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(32.dp),
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                PreviewActionButton(
+                    text = "Favori",
+                    onClick = onFavorite,
+                    selected = channel.isFavorite,
+                    icon = Icons.Default.Favorite,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(32.dp),
+                )
+                PreviewActionButton(
+                    text = "Infos chaine",
+                    onClick = {},
+                    icon = Icons.Default.Info,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(32.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreviewActionButton(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    primary: Boolean = false,
+    selected: Boolean = false,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val shape = RoundedCornerShape(LiveTvDimens.ItemRadius)
+    val active = focusState.isFocused || selected
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            primary -> SmartVisionColors.Primary
+            active -> SmartVisionColors.SurfaceElevated
+            else -> SmartVisionColors.Surface.copy(alpha = 0.70f)
+        },
+        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        label = "previewActionBackground",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            focusState.isFocused -> SmartVisionColors.FocusWhite
+            selected -> SmartVisionColors.Primary
+            else -> SmartVisionColors.Border
+        },
+        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        label = "previewActionBorder",
+    )
+    val contentColor = if (primary || active) {
+        SmartVisionColors.TextPrimary
+    } else {
+        SmartVisionColors.TextSecondary
+    }
+
+    Row(
+        modifier = modifier
+            .tvFocusTarget(
+                state = focusState,
+                pressed = pressed,
+                focusedScale = 1.04f,
+                glowColor = SmartVisionColors.Primary,
+                cornerRadius = LiveTvDimens.ItemRadius,
+            )
+            .zIndex(if (focusState.isFocused) 2f else 0f)
+            .clip(shape)
+            .background(backgroundColor)
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                    borderColor,
+                ),
+                shape,
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .focusable(interactionSource = interactionSource)
+            .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(14.dp),
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = text,
+            color = contentColor,
+            style = LiveTvButtonTextStyle,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun CategoryRow(
+    category: LiveTvCategory,
+    selected: Boolean,
+    focusRequester: FocusRequester?,
+    onClick: () -> Unit,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val active = selected || focusState.isFocused
+    val shape = RoundedCornerShape(LiveTvDimens.ItemRadius)
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            focusState.isFocused -> SmartVisionColors.FocusWhite
+            selected -> SmartVisionColors.Primary
+            else -> SmartVisionColors.Border
+        },
+        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        label = "categoryBorder",
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(LiveTvDimens.CategoryRowHeight)
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                pressed = pressed,
+                focusedScale = 1.04f,
+                glowColor = SmartVisionColors.Primary,
+                cornerRadius = LiveTvDimens.ItemRadius,
+            )
+            .zIndex(if (focusState.isFocused) 2f else 0f)
+            .clip(shape)
+            .background(
+                if (active) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            SmartVisionColors.Primary.copy(alpha = 0.82f),
+                            SmartVisionColors.PrimaryDark.copy(alpha = 0.72f),
+                        ),
+                    )
+                } else {
+                    Brush.horizontalGradient(
+                        listOf(
+                            SmartVisionColors.Surface.copy(alpha = 0.36f),
+                            SmartVisionColors.Surface.copy(alpha = 0.20f),
+                        ),
+                    )
+                },
+            )
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                    borderColor,
+                ),
+                shape,
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .focusable(interactionSource = interactionSource)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CategoryIcon(category = category, active = active)
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = category.label,
+            color = SmartVisionColors.TextPrimary,
+            style = LiveTvItemTitleStyle,
+            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = category.count?.toString().orEmpty(),
+            color = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+            style = LiveTvItemMetaStyle,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun ChannelRow(
+    channel: LiveTvChannel,
+    selected: Boolean,
+    onFocused: () -> Unit,
+    onClick: () -> Unit,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val active = selected || focusState.isFocused
+    val shape = RoundedCornerShape(LiveTvDimens.ItemRadius)
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            focusState.isFocused -> SmartVisionColors.FocusWhite
+            selected -> SmartVisionColors.Primary
+            else -> SmartVisionColors.Border
+        },
+        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        label = "channelBorder",
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(LiveTvDimens.ChannelRowHeight)
+            .tvFocusTarget(
+                state = focusState,
+                pressed = pressed,
+                focusedScale = 1.035f,
+                glowColor = SmartVisionColors.Primary,
+                cornerRadius = LiveTvDimens.ItemRadius,
+            )
+            .onFocusChanged { focus ->
+                if (focus.isFocused) {
+                    onFocused()
+                }
+            }
+            .zIndex(if (focusState.isFocused) 2f else 0f)
+            .clip(shape)
+            .background(
+                if (active) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            SmartVisionColors.PrimaryDark.copy(alpha = 0.58f),
+                            SmartVisionColors.SurfaceElevated.copy(alpha = 0.94f),
+                        ),
+                    )
+                } else {
+                    Brush.verticalGradient(
+                        listOf(
+                            SmartVisionColors.SurfaceElevated.copy(alpha = 0.70f),
+                            SmartVisionColors.Surface.copy(alpha = 0.52f),
+                        ),
+                    )
+                },
+            )
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                    borderColor,
+                ),
+                shape,
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .focusable(interactionSource = interactionSource)
+            .padding(horizontal = 10.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = channel.number,
+            color = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+            style = LiveTvItemMetaStyle,
+            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+            maxLines = 1,
+            modifier = Modifier.width(30.dp),
+        )
+
+        ChannelLogo(
+            channel = channel,
+            active = active,
+            modifier = Modifier.size(width = 50.dp, height = 26.dp),
+        )
+
+        Spacer(Modifier.width(10.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = channel.name,
+                color = SmartVisionColors.TextPrimary,
+                style = LiveTvItemTitleStyle,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = channel.program,
+                color = SmartVisionColors.TextSecondary,
+                style = LiveTvItemMetaStyle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+
+        Spacer(Modifier.width(8.dp))
+
+        Column(
+            modifier = Modifier.width(86.dp),
+            horizontalAlignment = Alignment.End,
+        ) {
+            Text(
+                text = channel.timeRange,
+                color = SmartVisionColors.TextSecondary,
+                style = LiveTvItemMetaStyle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(7.dp))
+            ProgressLine(
+                progress = channel.progress,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun VideoPreviewFrame(
+    channel: LiveTvChannel,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(LiveTvDimens.ItemRadius)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(Color.Black)
+            .border(BorderStroke(1.dp, SmartVisionColors.Border), shape),
+    ) {
+        MiniPreviewPlayer(
+            streamUrl = channel.streamUrl,
+            fallbackStreamUrl = channel.fallbackStreamUrl,
+            modifier = Modifier.matchParentSize(),
+        )
+
+        LiveBadge(
+            text = "LIVE",
+            color = SmartVisionColors.Error,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(8.dp),
+        )
+
+        ChannelLogo(
+            channel = channel,
+            active = true,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp)
+                .size(width = 44.dp, height = 24.dp),
+        )
+    }
+}
+
+@Composable
+private fun MiniPreviewPlayer(
+    streamUrl: String,
+    fallbackStreamUrl: String,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val latestStreamUrl by rememberUpdatedState(streamUrl)
+    val latestFallbackStreamUrl by rememberUpdatedState(fallbackStreamUrl)
+    var buffering by remember { mutableStateOf(true) }
+    var errorText by remember { mutableStateOf<String?>(null) }
+    var fallbackTried by remember(streamUrl) { mutableStateOf(false) }
+
+    val player = remember {
+        ExoPlayer.Builder(context).build().apply {
+            volume = 0f
+            playWhenReady = true
+        }
+    }
+
+    LaunchedEffect(streamUrl) {
+        fallbackTried = false
+        errorText = null
+        buffering = true
+        player.stop()
+        player.clearMediaItems()
+        player.setMediaItem(MediaItem.fromUri(streamUrl))
+        player.prepare()
+        player.playWhenReady = true
+        player.volume = 0f
+    }
+
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                buffering = playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE
+                if (playbackState == Player.STATE_READY) {
+                    errorText = null
+                }
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                val fallback = latestFallbackStreamUrl
+                if (!fallbackTried && fallback.isNotBlank() && fallback != latestStreamUrl) {
+                    fallbackTried = true
+                    errorText = null
+                    buffering = true
+                    player.stop()
+                    player.clearMediaItems()
+                    player.setMediaItem(MediaItem.fromUri(fallback))
+                    player.prepare()
+                    player.playWhenReady = true
+                    return
+                }
+
+                buffering = false
+                errorText = "Flux indisponible"
+            }
+        }
+        player.addListener(listener)
+        onDispose {
+            player.removeListener(listener)
+            player.release()
+        }
+    }
+
+    Box(modifier = modifier.background(Color.Black), contentAlignment = Alignment.Center) {
+        AndroidView(
+            factory = {
+                PlayerView(it).apply {
+                    useController = false
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    this.player = player
+                }
+            },
+            update = {
+                it.player = player
+                it.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            },
+            modifier = Modifier.matchParentSize(),
+        )
+
+        if (buffering) {
+            CircularProgressIndicator(
+                color = SmartVisionColors.Primary,
+                strokeWidth = 3.dp,
+                modifier = Modifier.size(30.dp),
+            )
+        }
+
+        errorText?.let { message ->
+            Text(
+                text = message,
+                color = SmartVisionColors.TextPrimary,
+                style = LiveTvItemMetaStyle,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(Color.Black.copy(alpha = 0.62f))
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProgramInfoCard(
+    channel: LiveTvChannel,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            LiveBadge(text = "EN COURS", color = SmartVisionColors.Primary)
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = channel.timeRange,
+                color = SmartVisionColors.TextSecondary,
+                style = LiveTvItemMetaStyle,
+                maxLines = 1,
+            )
+        }
+
+        Spacer(Modifier.height(6.dp))
+
+        Text(
+            text = if (channel.program == "Direct") channel.name else channel.program,
+            color = SmartVisionColors.TextPrimary,
+            style = LiveTvPreviewTitleStyle,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        Spacer(Modifier.height(4.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = channel.genre,
+                color = SmartVisionColors.TextSecondary,
+                style = LiveTvItemMetaStyle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            LiveBadge(text = channel.quality, color = SmartVisionColors.PrimaryDark)
+        }
+
+        Spacer(Modifier.height(7.dp))
+
+        Text(
+            text = channel.description,
+            color = SmartVisionColors.TextSecondary,
+            style = LiveTvItemMetaStyle,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        Spacer(Modifier.height(10.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(SmartVisionColors.Border.copy(alpha = 0.72f)),
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(verticalAlignment = Alignment.Top) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "A suivre",
+                    color = SmartVisionColors.TextPrimary,
+                    style = LiveTvItemMetaStyle,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = channel.nextProgram,
+                    color = SmartVisionColors.TextPrimary,
+                    style = LiveTvItemMetaStyle,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = channel.genre,
+                    color = SmartVisionColors.TextSecondary,
+                    style = LiveTvItemMetaStyle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Text(
+                text = channel.nextTimeRange,
+                color = SmartVisionColors.TextSecondary,
+                style = LiveTvItemMetaStyle,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryIcon(
+    category: LiveTvCategory,
+    active: Boolean,
+) {
+    if (category.kind == LiveTvCategoryKind.France) {
+        FranceFlagIcon(active = active)
+        return
+    }
+
+    val icon = when (category.kind) {
+        LiveTvCategoryKind.Sport -> Icons.Default.EmojiEvents
+        LiveTvCategoryKind.Info -> Icons.Default.Info
+        LiveTvCategoryKind.Cinema -> Icons.Default.Movie
+        LiveTvCategoryKind.Kids -> Icons.Default.Tv
+        LiveTvCategoryKind.Documentary -> Icons.Default.VideoLibrary
+        LiveTvCategoryKind.France -> Icons.Default.Tv
+        LiveTvCategoryKind.Generic -> Icons.Default.Tv
+    }
+
+    Icon(
+        imageVector = icon,
+        contentDescription = null,
+        tint = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+        modifier = Modifier.size(20.dp),
+    )
+}
+
+@Composable
+private fun FranceFlagIcon(active: Boolean) {
+    val shape = RoundedCornerShape(3.dp)
+    Row(
+        modifier = Modifier
+            .size(width = 22.dp, height = 16.dp)
+            .clip(shape)
+            .border(
+                BorderStroke(1.dp, if (active) Color.White.copy(alpha = 0.72f) else SmartVisionColors.Border),
+                shape,
+            ),
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .background(Color(0xFF1B4BFF)),
+        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .background(Color.White),
+        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .background(Color(0xFFFF3048)),
+        )
+    }
+}
+
+@Composable
+private fun ChannelLogo(
+    channel: LiveTvChannel,
+    active: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(4.dp)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(
+                when (channel.logoText) {
+                    "2" -> Color.Transparent
+                    "3" -> Color.Transparent
+                    "arte" -> Color.Transparent
+                    "W9" -> Color.Transparent
+                    else -> Color.White.copy(alpha = if (active) 0.18f else 0.12f)
+                },
+            )
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), shape),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (!channel.logoUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = channel.logoUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(3.dp),
+            )
+            return@Box
+        }
+
+        when (channel.logoText) {
+            "TF1" -> Tf1Logo()
+            else -> {
+                if (channel.logoText == "2" || channel.logoText == "3") {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(start = 5.dp)
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(if (channel.logoText == "2") SmartVisionColors.Error else SmartVisionColors.Primary),
+                    )
+                }
+
+                Text(
+                    text = channel.logoText,
+                    color = when (channel.logoText) {
+                        "arte" -> Color(0xFFFF6B2D)
+                        "W9" -> Color(0xFFA855F7)
+                        else -> SmartVisionColors.TextPrimary
+                    },
+                    style = when {
+                        channel.logoText.length <= 2 -> TextStyle(
+                            fontSize = 20.sp,
+                            lineHeight = 24.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 0.sp,
+                        )
+                        else -> LiveTvItemTitleStyle
+                    },
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun Tf1Logo() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 5.dp),
+        horizontalArrangement = Arrangement.spacedBy(1.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Tf1LogoBlock(text = "T", color = Color(0xFF254BCA), modifier = Modifier.weight(1f))
+        Tf1LogoBlock(text = "F", color = Color.White, textColor = Color(0xFF254BCA), modifier = Modifier.weight(1f))
+        Tf1LogoBlock(text = "1", color = Color(0xFFE3263E), modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun Tf1LogoBlock(
+    text: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    textColor: Color = Color.White,
+) {
+    Box(
+        modifier = modifier
+            .height(14.dp)
+            .clip(RoundedCornerShape(1.dp))
+            .background(color),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = textColor,
+            style = LiveTvItemMetaStyle,
+            fontWeight = FontWeight.Black,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun LiveBadge(
+    text: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(5.dp))
+            .background(color)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = Color.White,
+            style = LiveTvItemMetaStyle,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun ProgressLine(
+    progress: Float,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .height(3.dp)
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = 0.14f)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(progress.coerceIn(0f, 1f))
+                .fillMaxHeight()
+                .background(SmartVisionColors.Primary),
+        )
+    }
+}
+
+@Composable
+private fun LoadingState(
+    title: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .border(BorderStroke(3.dp, SmartVisionColors.Primary), CircleShape),
+            )
+            Spacer(Modifier.height(14.dp))
+            Text(
+                text = title,
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.Body,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Default.Tv,
+                contentDescription = null,
+                tint = SmartVisionColors.TextSecondary,
+                modifier = Modifier.size(46.dp),
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = title,
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.TitleS,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = subtitle,
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Label,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ErrorState(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = message,
+                color = SmartVisionColors.Error,
+                style = SmartVisionType.Body,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(14.dp))
+            TvButton(
+                text = "Reessayer",
+                onClick = onRetry,
+                variant = TvButtonVariant.Secondary,
+                modifier = Modifier.height(42.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LiveTvPanel(
+    title: String,
+    modifier: Modifier = Modifier,
+    trailing: @Composable (() -> Unit)? = null,
+    shape: Shape = RoundedCornerShape(LiveTvDimens.PanelRadius),
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xE80A1323),
+                        Color(0xEE07101E),
+                    ),
+                ),
+            )
+            .border(BorderStroke(1.dp, SmartVisionColors.Border), shape)
+            .padding(LiveTvDimens.PanelPadding),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = title,
+                color = SmartVisionColors.TextPrimary,
+                style = LiveTvPanelTitleStyle,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+            Spacer(Modifier.weight(1f))
+            trailing?.invoke()
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        content()
+    }
+}
+
+private object LiveTvDimens {
+    val ScreenPadding = 14.dp
+    val TopPadding = 4.dp
+    val BottomPadding = 16.dp
+    val HeaderHeight = 44.dp
+    val HeaderGap = 16.dp
+    val PanelGap = 8.dp
+    val PanelPadding = 14.dp
+    val PanelRadius = 8.dp
+    val ItemRadius = 7.dp
+    val ListGap = 5.dp
+    val CategoryRowHeight = 42.dp
+    val ChannelRowHeight = 46.dp
+}

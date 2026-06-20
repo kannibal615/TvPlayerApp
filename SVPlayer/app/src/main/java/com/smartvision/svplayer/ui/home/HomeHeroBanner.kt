@@ -3,14 +3,13 @@ package com.smartvision.svplayer.ui.home
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,9 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.smartvision.svplayer.data.mock.HomeVisualStyle
+import com.smartvision.svplayer.R
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -34,7 +35,7 @@ import com.smartvision.svplayer.ui.theme.SmartVisionType
 fun HomeHeroBanner(
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(SmartVisionDimensions.PanelRadius)
+    val shape = RoundedCornerShape(SmartVisionDimensions.HomePanelRadius)
     Box(
         modifier = modifier
             .height(SmartVisionDimensions.HomeHeroHeight)
@@ -42,8 +43,10 @@ fun HomeHeroBanner(
             .background(SmartVisionColors.Surface)
             .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.82f)), shape),
     ) {
-        HomeVisualBackground(
-            style = HomeVisualStyle.Signal,
+        Image(
+            painter = painterResource(R.drawable.home_hero_background),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
         )
         Box(
@@ -59,12 +62,17 @@ fun HomeHeroBanner(
                     ),
                 ),
         )
-        HeroMosaic(
+        Box(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .width(392.dp)
-                .padding(end = 8.dp, top = 8.dp, bottom = 8.dp),
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Black.copy(alpha = 0.08f),
+                            Color.Black.copy(alpha = 0.18f),
+                        ),
+                    ),
+                ),
         )
         Column(
             modifier = Modifier
@@ -92,44 +100,6 @@ fun HomeHeroBanner(
                 HeroBadge("✓", "Sécurisé & privé")
             }
         }
-    }
-}
-
-@Composable
-private fun HeroMosaic(modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        HeroTile(HomeVisualStyle.People, Modifier.weight(1f).fillMaxHeight())
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            HeroTile(HomeVisualStyle.Sport, Modifier.weight(1f).fillMaxWidth())
-            HeroTile(HomeVisualStyle.Mystery, Modifier.weight(1f).fillMaxWidth())
-        }
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            HeroTile(HomeVisualStyle.Nature, Modifier.weight(1f).fillMaxWidth())
-            HeroTile(HomeVisualStyle.Series, Modifier.weight(1f).fillMaxWidth())
-        }
-    }
-}
-
-@Composable
-private fun HeroTile(
-    style: HomeVisualStyle,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)), RoundedCornerShape(12.dp)),
-    ) {
-        HomeVisualBackground(style = style, modifier = Modifier.fillMaxSize())
     }
 }
 

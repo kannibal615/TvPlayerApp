@@ -24,14 +24,6 @@ import androidx.compose.ui.unit.dp
 import com.smartvision.svplayer.core.navigation.SVRoute
 import com.smartvision.svplayer.domain.model.SyncStatus
 
-import androidx.compose.ui.graphics.vector.ImageVector
-
-data class NavItem(
-    val route: SVRoute,
-    val icon: ImageVector,
-    val label: String,
-)
-
 @Composable
 fun TvScaffold(
     currentRoute: SVRoute,
