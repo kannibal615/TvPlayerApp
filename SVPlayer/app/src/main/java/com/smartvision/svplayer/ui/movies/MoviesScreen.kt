@@ -72,13 +72,17 @@ fun MoviesScreen(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
+    onOpenMovieDetails: (Int) -> Unit,
     onWatchMovie: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
     val viewModel: MoviesViewModel = viewModel(
         factory = viewModelFactory {
-            MoviesViewModel(container.xtreamRepository)
+            MoviesViewModel(
+                xtreamRepository = container.xtreamRepository,
+                userContentRepository = container.userContentRepository,
+            )
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -153,10 +157,8 @@ fun MoviesScreen(
                     onMovieFocused = viewModel::focusMovie,
                     onMovieClick = { movie ->
                         if (inputReady) {
-                            val openFullPlayer = viewModel.activateMovie(movie)
-                            if (openFullPlayer) {
-                                onWatchMovie(movie.streamId)
-                            }
+                            viewModel.activateMovie(movie)
+                            onOpenMovieDetails(movie.streamId)
                         }
                     },
                     onRetry = viewModel::retryCurrentCategory,
@@ -445,6 +447,7 @@ private fun MovieInfoCard(
 private fun movieCategoryIcon(label: String): ImageVector {
     val normalized = label.lowercase()
     return when {
+        "favoris" in normalized -> Icons.Default.Favorite
         "action" in normalized || "thriller" in normalized -> Icons.Default.LocalMovies
         "classic" in normalized || "cinema" in normalized -> Icons.Default.Movie
         "top" in normalized || "new" in normalized || "nouveau" in normalized -> Icons.Default.Star

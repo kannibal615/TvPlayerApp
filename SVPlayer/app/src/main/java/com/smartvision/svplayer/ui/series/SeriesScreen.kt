@@ -73,13 +73,17 @@ fun SeriesScreen(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
+    onOpenSeriesDetails: (Int) -> Unit,
     onWatchEpisode: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
     val viewModel: SeriesViewModel = viewModel(
         factory = viewModelFactory {
-            SeriesViewModel(container.xtreamRepository)
+            SeriesViewModel(
+                xtreamRepository = container.xtreamRepository,
+                userContentRepository = container.userContentRepository,
+            )
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -154,7 +158,8 @@ fun SeriesScreen(
                     onSeriesFocused = viewModel::focusSeries,
                     onSeriesClick = { series ->
                         if (inputReady) {
-                            viewModel.activateSeries(series)?.let(onWatchEpisode)
+                            viewModel.selectSeries(series)
+                            onOpenSeriesDetails(series.seriesId)
                         }
                     },
                     onRetry = viewModel::retryCurrentCategory,
@@ -506,6 +511,7 @@ private fun SeriesInfoCard(
 private fun seriesCategoryIcon(label: String): ImageVector {
     val normalized = label.lowercase()
     return when {
+        "favoris" in normalized -> Icons.Default.Favorite
         "kids" in normalized || "jeunesse" in normalized -> Icons.Default.Tv
         "anime" in normalized || "animation" in normalized -> Icons.Default.Slideshow
         "top" in normalized || "new" in normalized || "nouveau" in normalized -> Icons.Default.Star

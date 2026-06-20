@@ -4,11 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smartvision.svplayer.data.models.XtreamLiveCategory
 import com.smartvision.svplayer.data.models.XtreamLiveStream
+import com.smartvision.svplayer.data.repository.UserContentRepository
+import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -70,13 +73,16 @@ data class LiveTvUiState(
 
 class LiveTvViewModel(
     private val xtreamRepository: XtreamRepository,
+    private val userContentRepository: UserContentRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(LiveTvUiState())
     val uiState: StateFlow<LiveTvUiState> = _uiState.asStateFlow()
 
     private var channelsJob: Job? = null
+    private var favoriteIds: Set<Int> = emptySet()
 
     init {
+        observeFavorites()
         loadCategories()
     }
 
@@ -96,14 +102,24 @@ class LiveTvViewModel(
                 }
 
                 _uiState.update {
+                    val visibleCategories = categories.withFavorites(favoriteIds.size)
+                    val initialCategoryId = if (favoriteIds.isNotEmpty()) {
+                        FavoriteLiveCategoryId
+                    } else {
+                        categories.first().id
+                    }
                     it.copy(
                         categoriesLoading = false,
                         errorMessage = null,
-                        categories = categories,
-                        selectedCategoryId = categories.first().id,
+                        categories = visibleCategories,
+                        selectedCategoryId = initialCategoryId,
                     )
                 }
-                loadChannels(categories.first().id)
+                if (favoriteIds.isNotEmpty()) {
+                    loadFavoriteChannels()
+                } else {
+                    loadChannels(categories.first().id)
+                }
             }.onFailure { error ->
                 _uiState.value = LiveTvUiState(
                     categoriesLoading = false,
@@ -115,6 +131,10 @@ class LiveTvViewModel(
 
     fun selectCategory(category: LiveTvCategory) {
         if (_uiState.value.selectedCategoryId == category.id && _uiState.value.channels.isNotEmpty()) {
+            return
+        }
+        if (category.id == FavoriteLiveCategoryId) {
+            loadFavoriteChannels()
             return
         }
         loadChannels(category.id)
@@ -143,11 +163,8 @@ class LiveTvViewModel(
     }
 
     fun toggleFavorite(channel: LiveTvChannel) {
-        _uiState.update { state ->
-            val updatedChannels = state.channels.map {
-                if (it.streamId == channel.streamId) it.copy(isFavorite = !it.isFavorite) else it
-            }
-            state.copy(channels = updatedChannels)
+        viewModelScope.launch {
+            userContentRepository.toggleFavorite(UserContentType.Live, channel.streamId)
         }
     }
 
@@ -155,10 +172,69 @@ class LiveTvViewModel(
         val categoryId = _uiState.value.selectedCategoryId
         if (categoryId == null) {
             loadCategories()
+        } else if (categoryId == FavoriteLiveCategoryId) {
+            loadFavoriteChannels()
         } else {
             loadChannels(categoryId)
         }
     }
+
+    private fun observeFavorites() {
+        viewModelScope.launch {
+            userContentRepository.observeFavoriteIds(UserContentType.Live).collect { ids ->
+                favoriteIds = ids
+                _uiState.update { state ->
+                    val refreshedChannels = if (state.selectedCategoryId == FavoriteLiveCategoryId) {
+                        favoriteChannels()
+                    } else {
+                        state.channels.map { it.copy(isFavorite = it.streamId in ids) }
+                    }
+                    state.copy(
+                        categories = state.categories.withFavorites(ids.size),
+                        channels = refreshedChannels,
+                        focusedChannelId = state.focusedChannelId
+                            ?.takeIf { focusedId -> refreshedChannels.any { it.streamId == focusedId } }
+                            ?: refreshedChannels.firstOrNull()?.streamId,
+                        selectedChannelId = state.selectedChannelId
+                            ?.takeIf { selectedId -> refreshedChannels.any { it.streamId == selectedId } },
+                    )
+                }
+            }
+        }
+    }
+
+    private fun loadFavoriteChannels() {
+        channelsJob?.cancel()
+        val channels = favoriteChannels()
+        _uiState.update { state ->
+            state.copy(
+                channelsLoading = false,
+                errorMessage = null,
+                selectedCategoryId = FavoriteLiveCategoryId,
+                categories = state.categories.withFavorites(favoriteIds.size),
+                channels = channels,
+                focusedChannelId = channels.firstOrNull()?.streamId,
+                selectedChannelId = null,
+            )
+        }
+    }
+
+    private fun favoriteChannels(): List<LiveTvChannel> =
+        xtreamRepository.getCachedLiveStreams()
+            .filter { it.streamId in favoriteIds }
+            .sortedBy { it.name }
+            .mapIndexed { index, stream ->
+                val categoryLabel = xtreamRepository.getCachedCategories()
+                    .firstOrNull { it.id == stream.categoryId }
+                    ?.name
+                    ?: "Favoris"
+                stream.toUiChannel(
+                    index = index,
+                    categoryLabel = categoryLabel,
+                    xtreamRepository = xtreamRepository,
+                    favoriteIds = favoriteIds,
+                )
+            }
 
     private fun loadChannels(categoryId: String) {
         channelsJob?.cancel()
@@ -177,13 +253,18 @@ class LiveTvViewModel(
 
             runCatching {
                 xtreamRepository.getLiveStreams(categoryId).mapIndexed { index, stream ->
-                    stream.toUiChannel(index = index, categoryLabel = categoryLabel, xtreamRepository = xtreamRepository)
+                    stream.toUiChannel(
+                        index = index,
+                        categoryLabel = categoryLabel,
+                        xtreamRepository = xtreamRepository,
+                        favoriteIds = favoriteIds,
+                    )
                 }
             }.onSuccess { channels ->
                 _uiState.update { state ->
                     val refreshedCategories = state.categories.map { category ->
                         if (category.id == categoryId) category.copy(count = channels.size) else category
-                    }
+                    }.withFavorites(favoriteIds.size)
                     state.copy(
                         channelsLoading = false,
                         categories = refreshedCategories,
@@ -207,6 +288,18 @@ class LiveTvViewModel(
     }
 }
 
+private const val FavoriteLiveCategoryId = "__favorites_live__"
+
+private fun List<LiveTvCategory>.withFavorites(count: Int): List<LiveTvCategory> =
+    listOf(
+        LiveTvCategory(
+            id = FavoriteLiveCategoryId,
+            label = "Favoris",
+            count = count,
+            kind = LiveTvCategoryKind.Generic,
+        ),
+    ) + filterNot { it.id == FavoriteLiveCategoryId }
+
 private fun XtreamLiveCategory.toUiCategory(): LiveTvCategory =
     LiveTvCategory(
         id = id,
@@ -219,6 +312,7 @@ private fun XtreamLiveStream.toUiChannel(
     index: Int,
     categoryLabel: String,
     xtreamRepository: XtreamRepository,
+    favoriteIds: Set<Int>,
 ): LiveTvChannel {
     val displayName = name.cleanedChannelName()
     return LiveTvChannel(
@@ -236,6 +330,7 @@ private fun XtreamLiveStream.toUiChannel(
         nextTimeRange = "A suivre",
         streamUrl = xtreamRepository.buildLiveStreamUrl(this),
         fallbackStreamUrl = xtreamRepository.buildLiveStreamFallbackUrl(streamId),
+        isFavorite = streamId in favoriteIds,
     )
 }
 

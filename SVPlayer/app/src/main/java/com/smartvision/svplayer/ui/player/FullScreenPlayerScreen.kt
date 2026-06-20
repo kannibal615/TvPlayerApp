@@ -13,6 +13,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -46,6 +48,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -72,7 +75,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -82,18 +87,18 @@ import androidx.media3.ui.PlayerView
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.models.XtreamSeriesEpisode
+import com.smartvision.svplayer.data.repository.UserContentRepository
+import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 enum class FullScreenContentKind {
     Live,
@@ -103,6 +108,7 @@ enum class FullScreenContentKind {
 
 data class FullScreenPlayback(
     val streamId: Int,
+    val contentType: String,
     val title: String,
     val subtitle: String,
     val url: String,
@@ -110,15 +116,40 @@ data class FullScreenPlayback(
     val badge: String,
     val status: String,
     val infoPills: List<String>,
+    val resumePositionMs: Long = 0L,
 )
 
 class FullScreenPlayerViewModel(
-    contentId: Int,
-    kind: FullScreenContentKind,
-    xtreamRepository: XtreamRepository,
+    private val contentId: Int,
+    private val kind: FullScreenContentKind,
+    private val xtreamRepository: XtreamRepository,
+    private val userContentRepository: UserContentRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(resolvePlayback(contentId, kind, xtreamRepository))
     val uiState: StateFlow<FullScreenPlayback> = _uiState
+
+    init {
+        viewModelScope.launch {
+            val stored = userContentRepository.getProgress(kind.storageType(), contentId)
+            if (stored != null && stored.positionMs > 0L) {
+                _uiState.value = _uiState.value.copy(resumePositionMs = stored.positionMs)
+            }
+        }
+    }
+
+    fun saveProgress(positionMs: Long, durationMs: Long) {
+        if (kind != FullScreenContentKind.Live && (positionMs <= 1_000L || durationMs <= 0L)) {
+            return
+        }
+        viewModelScope.launch {
+            userContentRepository.savePlaybackProgress(
+                contentType = kind.storageType(),
+                contentId = contentId,
+                positionMs = if (kind == FullScreenContentKind.Live) 0L else positionMs,
+                durationMs = durationMs,
+            )
+        }
+    }
 
     private fun resolvePlayback(
         contentId: Int,
@@ -142,6 +173,7 @@ class FullScreenPlayerViewModel(
                 ?: "Live TV"
             FullScreenPlayback(
                 streamId = stream.streamId,
+                contentType = UserContentType.Live,
                 title = stream.name.cleanTitle(),
                 subtitle = categoryName,
                 url = xtreamRepository.buildLiveStreamUrl(stream),
@@ -152,6 +184,7 @@ class FullScreenPlayerViewModel(
             )
         } ?: FullScreenPlayback(
             streamId = streamId,
+            contentType = UserContentType.Live,
             title = "Chaine $streamId",
             subtitle = "Live TV",
             url = xtreamRepository.buildLiveStreamUrl(streamId),
@@ -172,6 +205,7 @@ class FullScreenPlayerViewModel(
                 ?: "Films"
             FullScreenPlayback(
                 streamId = movie.streamId,
+                contentType = UserContentType.Movie,
                 title = movie.title.cleanTitle(),
                 subtitle = categoryName,
                 url = xtreamRepository.buildMovieStreamUrl(movie),
@@ -182,6 +216,7 @@ class FullScreenPlayerViewModel(
             )
         } ?: FullScreenPlayback(
             streamId = movieId,
+            contentType = UserContentType.Movie,
             title = "Film $movieId",
             subtitle = "Films",
             url = xtreamRepository.buildMovieStreamUrl(movieId),
@@ -199,6 +234,7 @@ class FullScreenPlayerViewModel(
             val seriesName = xtreamRepository.getCachedSeries(episode.seriesId)?.title?.cleanTitle() ?: "Series"
             FullScreenPlayback(
                 streamId = episode.episodeId,
+                contentType = UserContentType.Episode,
                 title = seriesName,
                 subtitle = "${episode.seasonEpisodeLabel()} - ${episode.title.cleanTitle()}",
                 url = xtreamRepository.buildEpisodeStreamUrl(episode),
@@ -209,6 +245,7 @@ class FullScreenPlayerViewModel(
             )
         } ?: FullScreenPlayback(
             streamId = episodeId,
+            contentType = UserContentType.Episode,
             title = "Episode $episodeId",
             subtitle = "Series",
             url = xtreamRepository.buildEpisodeStreamUrl(episodeId),
@@ -233,17 +270,23 @@ fun FullScreenPlayerRoute(
                 contentId = streamId,
                 kind = kind,
                 xtreamRepository = container.xtreamRepository,
+                userContentRepository = container.userContentRepository,
             )
         },
     )
     val playback by viewModel.uiState.collectAsStateWithLifecycle()
-    FullScreenPlayerScreen(playback = playback, onBack = onBack)
+    FullScreenPlayerScreen(
+        playback = playback,
+        onBack = onBack,
+        onProgressSnapshot = viewModel::saveProgress,
+    )
 }
 
 @Composable
 private fun FullScreenPlayerScreen(
     playback: FullScreenPlayback,
     onBack: () -> Unit,
+    onProgressSnapshot: (positionMs: Long, durationMs: Long) -> Unit,
 ) {
     val context = LocalContext.current
     val latestUrl by rememberUpdatedState(playback.url)
@@ -251,10 +294,14 @@ private fun FullScreenPlayerScreen(
     val playFocusRequester = remember { FocusRequester() }
     var overlayVisible by remember { mutableStateOf(true) }
     var overlayTick by remember { mutableIntStateOf(0) }
+    var focusPlayWhenOverlayShows by remember { mutableStateOf(true) }
     var isPlaying by remember { mutableStateOf(true) }
     var buffering by remember { mutableStateOf(true) }
     var errorText by remember { mutableStateOf<String?>(null) }
     var fallbackTried by remember(playback.url) { mutableStateOf(false) }
+    var positionMs by remember { mutableLongStateOf(0L) }
+    var durationMs by remember { mutableLongStateOf(0L) }
+    var bufferedPositionMs by remember { mutableLongStateOf(0L) }
 
     val player = remember {
         ExoPlayer.Builder(context).build().apply {
@@ -262,9 +309,13 @@ private fun FullScreenPlayerScreen(
         }
     }
 
-    fun showOverlay() {
+    fun showOverlay(requestPlayFocus: Boolean = false) {
+        val wasVisible = overlayVisible
         overlayVisible = true
         overlayTick += 1
+        if (!wasVisible || requestPlayFocus) {
+            focusPlayWhenOverlayShows = true
+        }
     }
 
     BackHandler {
@@ -275,7 +326,7 @@ private fun FullScreenPlayerScreen(
         }
     }
 
-    LaunchedEffect(playback.url) {
+    LaunchedEffect(playback.url, playback.resumePositionMs) {
         fallbackTried = false
         errorText = null
         buffering = true
@@ -283,15 +334,35 @@ private fun FullScreenPlayerScreen(
         player.clearMediaItems()
         player.setMediaItem(MediaItem.fromUri(playback.url))
         player.prepare()
+        if (playback.resumePositionMs > 0L) {
+            player.seekTo(playback.resumePositionMs)
+        }
         player.playWhenReady = true
     }
 
     LaunchedEffect(overlayVisible, overlayTick) {
         if (overlayVisible) {
-            delay(120)
-            playFocusRequester.requestFocus()
+            if (focusPlayWhenOverlayShows) {
+                delay(120)
+                playFocusRequester.requestFocus()
+                focusPlayWhenOverlayShows = false
+            }
             delay(4_800)
             overlayVisible = false
+        }
+    }
+
+    LaunchedEffect(player, playback.url) {
+        var tick = 0
+        while (true) {
+            positionMs = player.currentPosition.coerceAtLeast(0L)
+            durationMs = player.duration.validDurationMs()
+            bufferedPositionMs = player.bufferedPosition.coerceAtLeast(0L)
+            if (tick % 10 == 0) {
+                onProgressSnapshot(positionMs, durationMs)
+            }
+            tick += 1
+            delay(500)
         }
     }
 
@@ -324,11 +395,12 @@ private fun FullScreenPlayerScreen(
 
                 buffering = false
                 errorText = "Flux indisponible"
-                showOverlay()
+                showOverlay(requestPlayFocus = true)
             }
         }
         player.addListener(listener)
         onDispose {
+            onProgressSnapshot(player.currentPosition.coerceAtLeast(0L), player.duration.validDurationMs())
             player.removeListener(listener)
             player.release()
         }
@@ -419,6 +491,9 @@ private fun FullScreenPlayerScreen(
                 playback = playback,
                 isPlaying = isPlaying,
                 errorText = errorText,
+                positionMs = positionMs,
+                durationMs = durationMs,
+                bufferedPositionMs = bufferedPositionMs,
                 playFocusRequester = playFocusRequester,
                 onPlayPause = {
                     if (player.isPlaying) {
@@ -455,6 +530,9 @@ private fun FullPlayerOverlay(
     playback: FullScreenPlayback,
     isPlaying: Boolean,
     errorText: String?,
+    positionMs: Long,
+    durationMs: Long,
+    bufferedPositionMs: Long,
     playFocusRequester: FocusRequester,
     onPlayPause: () -> Unit,
     onReplay: () -> Unit,
@@ -505,6 +583,10 @@ private fun FullPlayerOverlay(
         }
 
         PlayerProgressBar(
+            playback = playback,
+            positionMs = positionMs,
+            durationMs = durationMs,
+            bufferedPositionMs = bufferedPositionMs,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(start = 42.dp, end = 42.dp, bottom = 118.dp),
@@ -654,43 +736,70 @@ private fun InfoPill(text: String) {
 }
 
 @Composable
-private fun PlayerProgressBar(modifier: Modifier = Modifier) {
-    val now = remember {
-        val start = Date()
-        val end = Date(start.time + 60 * 60 * 1000L)
-        val format = SimpleDateFormat("HH:mm", Locale.getDefault())
-        format.format(start) to format.format(end)
+private fun PlayerProgressBar(
+    playback: FullScreenPlayback,
+    positionMs: Long,
+    durationMs: Long,
+    bufferedPositionMs: Long,
+    modifier: Modifier = Modifier,
+) {
+    val hasDuration = durationMs > 0L
+    val progress = if (hasDuration) {
+        (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+    } else {
+        1f
     }
+    val bufferedProgress = if (hasDuration) {
+        (bufferedPositionMs.toFloat() / durationMs.toFloat()).coerceIn(progress, 1f)
+    } else {
+        1f
+    }
+    val startText = if (hasDuration) positionMs.formatPlaybackTime() else playback.status
+    val endText = if (hasDuration) durationMs.formatPlaybackTime() else "Direct"
+
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(now.first, color = Color.White, style = PlayerMetaStyle)
+        Text(startText, color = Color.White, style = PlayerMetaStyle)
         Spacer(Modifier.width(10.dp))
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
-                .height(3.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Color.White.copy(alpha = 0.22f)),
+                .height(10.dp),
         ) {
+            val thumbOffset = (maxWidth - 10.dp) * progress
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.76f)
-                    .fillMaxHeight()
-                    .background(SmartVisionColors.Primary),
-            )
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .align(Alignment.Center)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.White.copy(alpha = 0.22f)),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(bufferedProgress)
+                        .fillMaxHeight()
+                        .background(Color.White.copy(alpha = 0.18f)),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progress)
+                        .fillMaxHeight()
+                        .background(SmartVisionColors.Primary),
+                )
+            }
             Box(
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 140.dp)
+                    .offset(x = thumbOffset)
                     .size(10.dp)
                     .clip(CircleShape)
                     .background(SmartVisionColors.Primary),
             )
         }
         Spacer(Modifier.width(10.dp))
-        Text(now.second, color = Color.White, style = PlayerMetaStyle)
+        Text(endText, color = Color.White, style = PlayerMetaStyle)
     }
 }
 
@@ -819,3 +928,25 @@ private fun String.cleanTitle(): String =
 
 private fun XtreamSeriesEpisode.seasonEpisodeLabel(): String =
     "S${seasonNumber.toString().padStart(2, '0')}E${episodeNumber.toString().padStart(2, '0')}"
+
+private fun FullScreenContentKind.storageType(): String =
+    when (this) {
+        FullScreenContentKind.Live -> UserContentType.Live
+        FullScreenContentKind.Movie -> UserContentType.Movie
+        FullScreenContentKind.Episode -> UserContentType.Episode
+    }
+
+private fun Long.validDurationMs(): Long =
+    takeIf { it > 0L && it != C.TIME_UNSET } ?: 0L
+
+private fun Long.formatPlaybackTime(): String {
+    val totalSeconds = (this / 1_000L).coerceAtLeast(0L)
+    val hours = totalSeconds / 3_600L
+    val minutes = (totalSeconds % 3_600L) / 60L
+    val seconds = totalSeconds % 60L
+    return if (hours > 0L) {
+        "%d:%02d:%02d".format(hours, minutes, seconds)
+    } else {
+        "%02d:%02d".format(minutes, seconds)
+    }
+}

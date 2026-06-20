@@ -177,17 +177,26 @@ class XtreamRepository(
     fun getCachedLiveStream(streamId: Int): XtreamLiveStream? =
         streamsById[streamId]
 
+    fun getCachedLiveStreams(): List<XtreamLiveStream> =
+        streamsById.values.toList()
+
     fun getCachedCategories(): List<XtreamLiveCategory> =
         liveCategoriesCache
 
     fun getCachedMovie(movieId: Int): XtreamMovieStream? =
         moviesById[movieId]
 
+    fun getCachedMovies(): List<XtreamMovieStream> =
+        moviesById.values.toList()
+
     fun getCachedMovieCategories(): List<XtreamMovieCategory> =
         movieCategoriesCache
 
     fun getCachedSeries(seriesId: Int): XtreamSeriesStream? =
         seriesById[seriesId]
+
+    fun getCachedSeriesList(): List<XtreamSeriesStream> =
+        seriesById.values.toList()
 
     fun getCachedSeriesCategories(): List<XtreamSeriesCategory> =
         seriesCategoriesCache

@@ -145,7 +145,10 @@ fun LiveTvScreen(
     val container = LocalAppContainer.current
     val viewModel: LiveTvViewModel = viewModel(
         factory = viewModelFactory {
-            LiveTvViewModel(container.xtreamRepository)
+            LiveTvViewModel(
+                xtreamRepository = container.xtreamRepository,
+                userContentRepository = container.userContentRepository,
+            )
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -1078,6 +1081,16 @@ private fun CategoryIcon(
     category: LiveTvCategory,
     active: Boolean,
 ) {
+    if (category.label.equals("Favoris", ignoreCase = true)) {
+        Icon(
+            imageVector = Icons.Default.Favorite,
+            contentDescription = null,
+            tint = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+            modifier = Modifier.size(20.dp),
+        )
+        return
+    }
+
     if (category.kind == LiveTvCategoryKind.France) {
         FranceFlagIcon(active = active)
         return

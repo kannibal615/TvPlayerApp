@@ -4,11 +4,15 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
 import com.smartvision.svplayer.data.local.entity.FavoriteEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface FavoriteDao {
     @Query("SELECT * FROM favorites WHERE contentType = :contentType AND contentId = :contentId")
     suspend fun get(contentType: String, contentId: String): FavoriteEntity?
+
+    @Query("SELECT * FROM favorites WHERE contentType = :contentType ORDER BY createdAt DESC")
+    fun observeByType(contentType: String): Flow<List<FavoriteEntity>>
 
     @Upsert
     suspend fun upsert(favorite: FavoriteEntity)

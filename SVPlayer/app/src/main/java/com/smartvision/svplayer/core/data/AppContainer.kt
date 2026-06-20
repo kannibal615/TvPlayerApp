@@ -9,6 +9,7 @@ import com.smartvision.svplayer.data.remote.XtreamApiService
 import com.smartvision.svplayer.data.remote.XtreamUrlFactory
 import com.smartvision.svplayer.data.repository.DefaultCatalogRepository
 import com.smartvision.svplayer.data.repository.DefaultSettingsRepository
+import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.SettingsRepository
@@ -47,6 +48,11 @@ class AppContainer(context: Context) {
     val xtreamRepository: XtreamRepository = XtreamRepository(
         apiClient = xtreamApiClient,
         urlFactory = urlFactory,
+    )
+
+    val userContentRepository: UserContentRepository = UserContentRepository(
+        favoriteDao = database.favoriteDao(),
+        progressDao = database.progressDao(),
     )
 
     val catalogRepository: CatalogRepository = DefaultCatalogRepository(

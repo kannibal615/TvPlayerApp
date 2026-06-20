@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -20,6 +21,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.smartvision.svplayer.core.data.LocalAppContainer
+import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.mock.MockHomeData
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -35,6 +40,17 @@ fun HomeScreen(
     onContentClick: (ContinueItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val container = LocalAppContainer.current
+    val viewModel: HomeViewModel = viewModel(
+        factory = viewModelFactory {
+            HomeViewModel(
+                userContentRepository = container.userContentRepository,
+                xtreamRepository = container.xtreamRepository,
+            )
+        },
+    )
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val continueItems = state.continueWatching.ifEmpty { MockHomeData.continueWatching }
     val liveFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -99,7 +115,7 @@ fun HomeScreen(
 
             ContinueWatchingRow(
                 title = "Reprendre la lecture",
-                items = MockHomeData.continueWatching,
+                items = continueItems,
                 showViewAll = true,
                 onViewAll = {},
                 onItemClick = onContentClick,

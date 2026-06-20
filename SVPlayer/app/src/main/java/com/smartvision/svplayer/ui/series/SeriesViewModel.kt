@@ -5,11 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.smartvision.svplayer.data.models.XtreamSeriesCategory
 import com.smartvision.svplayer.data.models.XtreamSeriesEpisode
 import com.smartvision.svplayer.data.models.XtreamSeriesStream
+import com.smartvision.svplayer.data.repository.UserContentRepository
+import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -73,14 +76,17 @@ data class SeriesScreenState(
 
 class SeriesViewModel(
     private val xtreamRepository: XtreamRepository,
+    private val userContentRepository: UserContentRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SeriesScreenState())
     val uiState: StateFlow<SeriesScreenState> = _uiState.asStateFlow()
 
     private var seriesJob: Job? = null
     private var episodesJob: Job? = null
+    private var favoriteIds: Set<Int> = emptySet()
 
     init {
+        observeFavorites()
         loadCategories()
     }
 
@@ -100,14 +106,24 @@ class SeriesViewModel(
                     return@onSuccess
                 }
                 _uiState.update {
+                    val visibleCategories = categories.withFavorites(favoriteIds.size)
+                    val initialCategoryId = if (favoriteIds.isNotEmpty()) {
+                        FavoriteSeriesCategoryId
+                    } else {
+                        categories.first().id
+                    }
                     it.copy(
                         categoriesLoading = false,
-                        categories = categories,
-                        selectedCategoryId = categories.first().id,
+                        categories = visibleCategories,
+                        selectedCategoryId = initialCategoryId,
                         errorMessage = null,
                     )
                 }
-                loadSeries(categories.first().id)
+                if (favoriteIds.isNotEmpty()) {
+                    loadFavoriteSeries()
+                } else {
+                    loadSeries(categories.first().id)
+                }
             }.onFailure { error ->
                 _uiState.value = SeriesScreenState(
                     categoriesLoading = false,
@@ -119,6 +135,10 @@ class SeriesViewModel(
 
     fun selectCategory(category: SeriesCategoryUi) {
         if (_uiState.value.selectedCategoryId == category.id && _uiState.value.series.isNotEmpty()) {
+            return
+        }
+        if (category.id == FavoriteSeriesCategoryId) {
+            loadFavoriteSeries()
             return
         }
         loadSeries(category.id)
@@ -155,12 +175,8 @@ class SeriesViewModel(
     }
 
     fun toggleFavorite(series: SeriesItemUi) {
-        _uiState.update { state ->
-            state.copy(
-                series = state.series.map {
-                    if (it.seriesId == series.seriesId) it.copy(isFavorite = !it.isFavorite) else it
-                },
-            )
+        viewModelScope.launch {
+            userContentRepository.toggleFavorite(UserContentType.Series, series.seriesId)
         }
     }
 
@@ -168,10 +184,69 @@ class SeriesViewModel(
         val categoryId = _uiState.value.selectedCategoryId
         if (categoryId == null) {
             loadCategories()
+        } else if (categoryId == FavoriteSeriesCategoryId) {
+            loadFavoriteSeries()
         } else {
             loadSeries(categoryId)
         }
     }
+
+    private fun observeFavorites() {
+        viewModelScope.launch {
+            userContentRepository.observeFavoriteIds(UserContentType.Series).collect { ids ->
+                favoriteIds = ids
+                _uiState.update { state ->
+                    val refreshedSeries = if (state.selectedCategoryId == FavoriteSeriesCategoryId) {
+                        favoriteSeries()
+                    } else {
+                        state.series.map { it.copy(isFavorite = it.seriesId in ids) }
+                    }
+                    state.copy(
+                        categories = state.categories.withFavorites(ids.size),
+                        series = refreshedSeries,
+                        focusedSeriesId = state.focusedSeriesId
+                            ?.takeIf { focusedId -> refreshedSeries.any { it.seriesId == focusedId } }
+                            ?: refreshedSeries.firstOrNull()?.seriesId,
+                        selectedSeriesId = state.selectedSeriesId
+                            ?.takeIf { selectedId -> refreshedSeries.any { it.seriesId == selectedId } },
+                        episodes = state.episodes.takeIf { state.selectedSeriesId != null && refreshedSeries.any { series -> series.seriesId == state.selectedSeriesId } }
+                            ?: emptyList(),
+                    )
+                }
+            }
+        }
+    }
+
+    private fun loadFavoriteSeries() {
+        seriesJob?.cancel()
+        episodesJob?.cancel()
+        val series = favoriteSeries()
+        _uiState.update { state ->
+            state.copy(
+                seriesLoading = false,
+                episodesLoading = false,
+                errorMessage = null,
+                selectedCategoryId = FavoriteSeriesCategoryId,
+                categories = state.categories.withFavorites(favoriteIds.size),
+                series = series,
+                focusedSeriesId = series.firstOrNull()?.seriesId,
+                selectedSeriesId = null,
+                episodes = emptyList(),
+            )
+        }
+    }
+
+    private fun favoriteSeries(): List<SeriesItemUi> =
+        xtreamRepository.getCachedSeriesList()
+            .filter { it.seriesId in favoriteIds }
+            .sortedBy { it.title }
+            .mapIndexed { index, series ->
+                val categoryLabel = xtreamRepository.getCachedSeriesCategories()
+                    .firstOrNull { it.id == series.categoryId }
+                    ?.name
+                    ?: "Favoris"
+                series.toUiSeries(index, categoryLabel, favoriteIds)
+            }
 
     private fun loadSeries(categoryId: String) {
         seriesJob?.cancel()
@@ -192,7 +267,7 @@ class SeriesViewModel(
             }
             runCatching {
                 xtreamRepository.getSeries(categoryId).mapIndexed { index, series ->
-                    series.toUiSeries(index, categoryLabel)
+                    series.toUiSeries(index, categoryLabel, favoriteIds)
                 }
             }.onSuccess { series ->
                 _uiState.update { state ->
@@ -200,7 +275,7 @@ class SeriesViewModel(
                         seriesLoading = false,
                         categories = state.categories.map {
                             if (it.id == categoryId) it.copy(count = series.size) else it
-                        },
+                        }.withFavorites(favoriteIds.size),
                         series = series,
                         focusedSeriesId = series.firstOrNull()?.seriesId,
                         errorMessage = null,
@@ -249,6 +324,17 @@ class SeriesViewModel(
     }
 }
 
+private const val FavoriteSeriesCategoryId = "__favorites_series__"
+
+private fun List<SeriesCategoryUi>.withFavorites(count: Int): List<SeriesCategoryUi> =
+    listOf(
+        SeriesCategoryUi(
+            id = FavoriteSeriesCategoryId,
+            label = "Favoris",
+            count = count,
+        ),
+    ) + filterNot { it.id == FavoriteSeriesCategoryId }
+
 private fun XtreamSeriesCategory.toUiCategory(): SeriesCategoryUi =
     SeriesCategoryUi(
         id = id,
@@ -256,7 +342,11 @@ private fun XtreamSeriesCategory.toUiCategory(): SeriesCategoryUi =
         count = count,
     )
 
-private fun XtreamSeriesStream.toUiSeries(index: Int, categoryLabel: String): SeriesItemUi =
+private fun XtreamSeriesStream.toUiSeries(
+    index: Int,
+    categoryLabel: String,
+    favoriteIds: Set<Int>,
+): SeriesItemUi =
     SeriesItemUi(
         seriesId = seriesId,
         number = (number.takeIf { it > 0 } ?: (index + 1)).toString().padStart(3, '0'),
@@ -268,6 +358,7 @@ private fun XtreamSeriesStream.toUiSeries(index: Int, categoryLabel: String): Se
         releaseDate = releaseDate,
         rating = rating,
         episodeRunTime = episodeRunTime,
+        isFavorite = seriesId in favoriteIds,
     )
 
 private fun XtreamSeriesEpisode.toUiEpisode(xtreamRepository: XtreamRepository): SeriesEpisodeUi =

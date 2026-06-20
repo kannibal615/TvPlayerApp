@@ -21,6 +21,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.smartvision.svplayer.core.data.LocalAppContainer
+import com.smartvision.svplayer.data.mock.ContinueItem
+import com.smartvision.svplayer.ui.detail.MovieDetailRoute
+import com.smartvision.svplayer.ui.detail.SeriesDetailRoute
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.HomeScreen
 import com.smartvision.svplayer.ui.live.LiveTvScreen
@@ -59,7 +62,7 @@ fun AppNavigation(
                 onNavigate = { route -> navController.navigateSingleTop(route) },
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
-                onContentClick = {},
+                onContentClick = { item -> navController.navigateFromContinueItem(item) },
             )
         }
         composable(AppRoute.Live.route) {
@@ -79,6 +82,7 @@ fun AppNavigation(
                 onNavigate = { route -> navController.navigateSingleTop(route) },
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                onOpenMovieDetails = { movieId -> navController.navigate("movie_detail/$movieId") },
                 onWatchMovie = { movieId -> navController.navigate("movie_player/$movieId") },
             )
         }
@@ -89,6 +93,7 @@ fun AppNavigation(
                 onNavigate = { route -> navController.navigateSingleTop(route) },
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                onOpenSeriesDetails = { seriesId -> navController.navigate("series_detail/$seriesId") },
                 onWatchEpisode = { episodeId -> navController.navigate("episode_player/$episodeId") },
             )
         }
@@ -122,6 +127,22 @@ fun AppNavigation(
                 )
             }
         }
+        composable("movie_detail/{movieId}") { entry ->
+            val movieId = entry.arguments?.getString("movieId")?.toIntOrNull()
+            if (movieId == null) {
+                PlaceholderRouteScreen("Detail film", "Film introuvable.")
+            } else {
+                MovieDetailRoute(
+                    movieId = movieId,
+                    currentRoute = AppRoute.Movies.route,
+                    tabs = headerTabs,
+                    onNavigate = { route -> navController.navigateSingleTop(route) },
+                    onSync = syncCatalog,
+                    onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                    onWatchMovie = { id -> navController.navigate("movie_player/$id") },
+                )
+            }
+        }
         composable("episode_player/{episodeId}") { entry ->
             val episodeId = entry.arguments?.getString("episodeId")?.toIntOrNull()
             if (episodeId == null) {
@@ -131,6 +152,22 @@ fun AppNavigation(
                     streamId = episodeId,
                     kind = FullScreenContentKind.Episode,
                     onBack = { navController.popBackStack() },
+                )
+            }
+        }
+        composable("series_detail/{seriesId}") { entry ->
+            val seriesId = entry.arguments?.getString("seriesId")?.toIntOrNull()
+            if (seriesId == null) {
+                PlaceholderRouteScreen("Detail serie", "Serie introuvable.")
+            } else {
+                SeriesDetailRoute(
+                    seriesId = seriesId,
+                    currentRoute = AppRoute.Series.route,
+                    tabs = headerTabs,
+                    onNavigate = { route -> navController.navigateSingleTop(route) },
+                    onSync = syncCatalog,
+                    onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                    onWatchEpisode = { episodeId -> navController.navigate("episode_player/$episodeId") },
                 )
             }
         }
@@ -181,6 +218,18 @@ private fun NavHostController.navigateSingleTop(route: String) {
         popUpTo(AppRoute.Home.route) {
             saveState = true
         }
+    }
+}
+
+private fun NavHostController.navigateFromContinueItem(item: ContinueItem) {
+    val parts = item.id.split(":", limit = 2)
+    if (parts.size != 2) return
+    val id = parts[1].toIntOrNull() ?: return
+    when (parts[0]) {
+        "live" -> navigate("player/$id")
+        "movie" -> navigate("movie_player/$id")
+        "episode" -> navigate("episode_player/$id")
+        "series" -> navigate("series_detail/$id")
     }
 }
 

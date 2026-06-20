@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -46,12 +47,15 @@ import coil.compose.AsyncImage
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.models.XtreamMovieDetails
+import com.smartvision.svplayer.data.repository.UserContentRepository
+import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -69,6 +73,7 @@ data class MovieDetailUiState(
     val director: String? = null,
     val cast: String? = null,
     val extension: String = "mp4",
+    val isFavorite: Boolean = false,
     val loading: Boolean = true,
     val errorMessage: String? = null,
 ) {
@@ -80,8 +85,9 @@ data class MovieDetailUiState(
 }
 
 class MovieDetailViewModel(
-    movieId: Int,
+    private val movieId: Int,
     private val xtreamRepository: XtreamRepository,
+    private val userContentRepository: UserContentRepository,
 ) : ViewModel() {
     private val initialMovie = xtreamRepository.getCachedMovie(movieId)
     private val initialCategory = initialMovie?.categoryId?.let { categoryId ->
@@ -101,7 +107,14 @@ class MovieDetailViewModel(
     val uiState: StateFlow<MovieDetailUiState> = _uiState.asStateFlow()
 
     init {
+        observeFavorite()
         loadDetails()
+    }
+
+    fun toggleFavorite() {
+        viewModelScope.launch {
+            userContentRepository.toggleFavorite(UserContentType.Movie, movieId)
+        }
     }
 
     fun loadDetails() {
@@ -113,6 +126,7 @@ class MovieDetailViewModel(
                         categoryLabel = details.categoryId?.let { categoryId ->
                             xtreamRepository.getCachedMovieCategories().firstOrNull { it.id == categoryId }?.name
                         } ?: initialCategory,
+                        isFavorite = _uiState.value.isFavorite,
                     )
                 }
                 .onFailure { error ->
@@ -123,6 +137,14 @@ class MovieDetailViewModel(
                         )
                     }
                 }
+        }
+    }
+
+    private fun observeFavorite() {
+        viewModelScope.launch {
+            userContentRepository.observeFavoriteIds(UserContentType.Movie).collect { ids ->
+                _uiState.update { it.copy(isFavorite = movieId in ids) }
+            }
         }
     }
 }
@@ -142,7 +164,11 @@ fun MovieDetailRoute(
     val viewModel: MovieDetailViewModel = viewModel(
         key = "movie-detail-$movieId",
         factory = viewModelFactory {
-            MovieDetailViewModel(movieId, container.xtreamRepository)
+            MovieDetailViewModel(
+                movieId = movieId,
+                xtreamRepository = container.xtreamRepository,
+                userContentRepository = container.userContentRepository,
+            )
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -155,6 +181,7 @@ fun MovieDetailRoute(
         onSettings = onSettings,
         onRetry = viewModel::loadDetails,
         onWatchMovie = { onWatchMovie(state.movieId) },
+        onFavorite = viewModel::toggleFavorite,
         modifier = modifier,
     )
 }
@@ -169,6 +196,7 @@ private fun MovieDetailScreen(
     onSettings: () -> Unit,
     onRetry: () -> Unit,
     onWatchMovie: () -> Unit,
+    onFavorite: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val playFocusRequester = androidx.compose.runtime.remember { FocusRequester() }
@@ -203,6 +231,7 @@ private fun MovieDetailScreen(
                 state = state,
                 onWatchMovie = onWatchMovie,
                 onRetry = onRetry,
+                onFavorite = onFavorite,
                 playFocusRequester = playFocusRequester,
                 modifier = Modifier
                     .width(650.dp)
@@ -224,6 +253,7 @@ private fun MovieDetailInfo(
     state: MovieDetailUiState,
     onWatchMovie: () -> Unit,
     onRetry: () -> Unit,
+    onFavorite: () -> Unit,
     playFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
@@ -275,9 +305,9 @@ private fun MovieDetailInfo(
                     .height(DetailDimens.ActionHeight),
             )
             DetailActionButton(
-                text = "Ajouter aux favoris",
+                text = if (state.isFavorite) "Retirer des favoris" else "Ajouter aux favoris",
                 icon = Icons.Default.FavoriteBorder,
-                onClick = {},
+                onClick = onFavorite,
                 modifier = Modifier
                     .width(184.dp)
                     .height(DetailDimens.ActionHeight),
@@ -401,7 +431,10 @@ private fun MovieMetaPanel(
     }
 }
 
-private fun XtreamMovieDetails.toUiState(categoryLabel: String): MovieDetailUiState =
+private fun XtreamMovieDetails.toUiState(
+    categoryLabel: String,
+    isFavorite: Boolean,
+): MovieDetailUiState =
     MovieDetailUiState(
         movieId = movieId,
         title = title.cleanDetailTitle(),
@@ -416,6 +449,7 @@ private fun XtreamMovieDetails.toUiState(categoryLabel: String): MovieDetailUiSt
         director = director,
         cast = cast,
         extension = containerExtension,
+        isFavorite = isFavorite,
         loading = false,
     )
 
