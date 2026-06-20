@@ -2,7 +2,10 @@ package com.smartvision.svplayer.core.data
 
 import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
+import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.config.XtreamAccountManager
+import com.smartvision.svplayer.data.activation.ActivationApiService
+import com.smartvision.svplayer.data.activation.ActivationRepository
 import com.smartvision.svplayer.data.local.SVDatabase
 import com.smartvision.svplayer.data.remote.XtreamApiClient
 import com.smartvision.svplayer.data.remote.XtreamApiService
@@ -24,6 +27,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 private val Context.settingsDataStore by preferencesDataStore(name = "svplayer_settings")
+private val Context.activationDataStore by preferencesDataStore(name = "smartvision_activation")
 
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
@@ -61,6 +65,25 @@ class AppContainer(context: Context) {
     private val api = retrofit.create(XtreamApiService::class.java)
     private val xtreamApiClient = XtreamApiClient(api, credentialsProvider)
 
+    private val activationOkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(15, TimeUnit.SECONDS)
+        .build()
+
+    private val activationRetrofit = Retrofit.Builder()
+        .baseUrl(activationBaseUrl())
+        .client(activationOkHttpClient)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+
+    private val activationApi = activationRetrofit.create(ActivationApiService::class.java)
+
+    val activationRepository: ActivationRepository = ActivationRepository(
+        api = activationApi,
+        dataStore = appContext.activationDataStore,
+    )
+
     val xtreamRepository: XtreamRepository = XtreamRepository(
         apiClient = xtreamApiClient,
         urlFactory = urlFactory,
@@ -91,4 +114,7 @@ class AppContainer(context: Context) {
     val toggleFavorite = ToggleFavoriteUseCase(catalogRepository)
     val buildPlaybackRequest = BuildPlaybackRequestUseCase(catalogRepository)
     val savePlaybackProgress = SavePlaybackProgressUseCase(catalogRepository)
+
+    private fun activationBaseUrl(): String =
+        BuildConfig.ACTIVATION_BASE_URL.ifBlank { "https://app.smartvisions.net/" }
 }

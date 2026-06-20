@@ -32,13 +32,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.smartvision.svplayer.core.data.LocalAppContainer
+import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
+import com.smartvision.svplayer.ui.activation.ActivationScreen
+import com.smartvision.svplayer.ui.activation.ActivationViewModel
 import com.smartvision.svplayer.ui.detail.MovieDetailRoute
 import com.smartvision.svplayer.ui.detail.SeriesDetailRoute
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
@@ -63,6 +68,12 @@ fun AppNavigation(
 ) {
     val container = LocalAppContainer.current
     val scope = rememberCoroutineScope()
+    val activationViewModel: ActivationViewModel = viewModel(
+        factory = viewModelFactory {
+            ActivationViewModel(container.activationRepository)
+        },
+    )
+    val activationState by activationViewModel.uiState.collectAsStateWithLifecycle()
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route ?: AppRoute.Home.route
     var showExitConfirmation by remember { mutableStateOf(false) }
@@ -72,6 +83,16 @@ fun AppNavigation(
             container.synchronizeCatalog()
         }
         Unit
+    }
+
+    if (!activationState.activated) {
+        ActivationScreen(
+            state = activationState,
+            onRetry = activationViewModel::retry,
+            onRefreshSession = activationViewModel::refreshSession,
+            onCheckNow = activationViewModel::checkNow,
+        )
+        return
     }
 
     NavHost(

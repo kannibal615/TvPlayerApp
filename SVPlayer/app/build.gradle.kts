@@ -23,6 +23,17 @@ fun buildConfigString(value: String): String {
     return "\"$escaped\""
 }
 
+fun activationBaseUrl(): String {
+    val configured = localString("DOMAINE_SERVER").ifBlank { "app.smartvisions.net" }
+    val normalized = configured.trim().trimEnd('/')
+    val withScheme = if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
+        normalized
+    } else {
+        "https://$normalized"
+    }
+    return "$withScheme/"
+}
+
 android {
     namespace = "com.smartvision.svplayer"
     compileSdk = 36
@@ -37,6 +48,7 @@ android {
         buildConfigField("String", "XTREAM_HOST", buildConfigString(localString("XTREAM_HOST")))
         buildConfigField("String", "XTREAM_USERNAME", buildConfigString(localString("XTREAM_USERNAME")))
         buildConfigField("String", "XTREAM_PASSWORD", buildConfigString(localString("XTREAM_PASSWORD")))
+        buildConfigField("String", "ACTIVATION_BASE_URL", buildConfigString(activationBaseUrl()))
     }
 
     buildFeatures {
@@ -95,6 +107,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.google.zxing:core:3.5.3")
 
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
