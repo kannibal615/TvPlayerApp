@@ -26,6 +26,21 @@ class XtreamRepository(
     private val apiClient: XtreamApiClient,
     private val urlFactory: XtreamUrlFactory,
 ) {
+    fun clearCaches() {
+        liveCategoriesCache = emptyList()
+        streamsByCategory.clear()
+        streamsById.clear()
+        movieCategoriesCache = emptyList()
+        moviesByCategory.clear()
+        moviesById.clear()
+        movieDetailsById.clear()
+        seriesCategoriesCache = emptyList()
+        seriesByCategory.clear()
+        seriesById.clear()
+        seriesDetailsById.clear()
+        episodesBySeriesId.clear()
+        episodesById.clear()
+    }
     private var liveCategoriesCache: List<XtreamLiveCategory> = emptyList()
     private val streamsByCategory = mutableMapOf<String, List<XtreamLiveStream>>()
     private val streamsById = mutableMapOf<Int, XtreamLiveStream>()

@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowRight
@@ -59,20 +61,12 @@ fun ContinueWatchingRow(
             maxLines = 1,
         )
         Spacer(Modifier.height(6.dp))
-        Row(
+        LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (showViewAll) {
-                ViewAllButton(
-                    onClick = onViewAll,
-                    modifier = Modifier
-                        .width(44.dp)
-                        .height(SmartVisionDimensions.HomeContentCardHeight),
-                )
-            }
-            items.forEach { item ->
+            items(items, key = { it.id }) { item ->
                 ContentProgressCard(
                     item = item,
                     onClick = { onItemClick(item) },
@@ -81,12 +75,16 @@ fun ContinueWatchingRow(
                         .height(SmartVisionDimensions.HomeContentCardHeight),
                 )
             }
-            RowChevronButton(
-                onClick = onViewAll,
-                modifier = Modifier
-                    .width(28.dp)
-                    .height(SmartVisionDimensions.HomeContentCardHeight),
-            )
+            if (showViewAll) {
+                item(key = "view_all_$title") {
+                    ViewAllButton(
+                        onClick = onViewAll,
+                        modifier = Modifier
+                            .width(78.dp)
+                            .height(SmartVisionDimensions.HomeContentCardHeight),
+                    )
+                }
+            }
         }
     }
 }
@@ -178,7 +176,7 @@ private fun ViewAllButton(
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "Tout voir",
+            text = "Voir tout",
             color = SmartVisionColors.TextSecondary,
             style = SmartVisionType.Caption,
             fontWeight = FontWeight.SemiBold,

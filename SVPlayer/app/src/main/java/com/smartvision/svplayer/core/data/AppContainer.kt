@@ -2,7 +2,7 @@ package com.smartvision.svplayer.core.data
 
 import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
-import com.smartvision.svplayer.core.config.BuildConfigXtreamCredentialsProvider
+import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.data.local.SVDatabase
 import com.smartvision.svplayer.data.remote.XtreamApiClient
 import com.smartvision.svplayer.data.remote.XtreamApiService
@@ -19,6 +19,7 @@ import com.smartvision.svplayer.domain.usecase.SynchronizeCatalogUseCase
 import com.smartvision.svplayer.domain.usecase.ToggleFavoriteUseCase
 import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
@@ -26,18 +27,33 @@ private val Context.settingsDataStore by preferencesDataStore(name = "svplayer_s
 
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
-    private val credentialsProvider = BuildConfigXtreamCredentialsProvider()
+    val accountManager = XtreamAccountManager(appContext)
+    private val credentialsProvider = accountManager
     private val database = SVDatabase.build(appContext)
     private val urlFactory = XtreamUrlFactory(credentialsProvider)
 
     private val okHttpClient = OkHttpClient.Builder()
+        .addInterceptor { chain ->
+            val request = chain.request()
+            val target = credentialsProvider.current().normalizedHost.toHttpUrlOrNull()
+            if (target == null) {
+                chain.proceed(request)
+            } else {
+                val redirected = request.url.newBuilder()
+                    .scheme(target.scheme)
+                    .host(target.host)
+                    .port(target.port)
+                    .build()
+                chain.proceed(request.newBuilder().url(redirected).build())
+            }
+        }
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(40, TimeUnit.SECONDS)
         .writeTimeout(20, TimeUnit.SECONDS)
         .build()
 
     private val retrofit = Retrofit.Builder()
-        .baseUrl(credentialsProvider.current().retrofitBaseUrl)
+        .baseUrl("http://127.0.0.1/")
         .client(okHttpClient)
         .addConverterFactory(GsonConverterFactory.create())
         .build()

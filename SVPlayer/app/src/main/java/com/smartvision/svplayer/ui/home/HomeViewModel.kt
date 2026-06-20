@@ -29,9 +29,14 @@ class HomeViewModel(
     private val xtreamRepository: XtreamRepository,
 ) : ViewModel() {
     private val trending = MutableStateFlow<List<ContinueItem>>(emptyList())
-    private val continueWatching = userContentRepository.observeRecentProgress(limit = 8)
+    private val continueWatching = userContentRepository.observeRecentProgress(limit = 60)
         .map { progress ->
-            progress.map { userContentRepository.enrichProgress(it) }.mapNotNull(::toContinueItem)
+            progress
+                .filter { it.positionMs > 5_000L }
+                .map { userContentRepository.enrichProgress(it) }
+                .distinctBy(::historyGroupingKey)
+                .take(20)
+                .mapNotNull(::toContinueItem)
         }
 
     val uiState: StateFlow<HomeUiState> = combine(
@@ -163,6 +168,13 @@ class HomeViewModel(
         )
     }
 }
+
+private fun historyGroupingKey(progress: PlaybackProgressEntity): String =
+    if (progress.contentType == UserContentType.Episode) {
+        "series:${progress.parentContentId ?: progress.title.orEmpty().lowercase()}"
+    } else {
+        "${progress.contentType}:${progress.contentId}"
+    }
 
 private data class ScoredTrend(val score: Float, val item: ContinueItem)
 

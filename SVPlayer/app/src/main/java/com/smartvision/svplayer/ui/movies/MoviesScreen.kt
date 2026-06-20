@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocalMovies
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Star
@@ -313,6 +314,7 @@ private fun movieCategoryIcon(label: String): ImageVector {
     val normalized = label.lowercase()
     return when {
         "favoris" in normalized -> Icons.Default.Favorite
+        "histor" in normalized -> Icons.Default.History
         "action" in normalized || "thriller" in normalized -> Icons.Default.LocalMovies
         "classic" in normalized || "cinema" in normalized -> Icons.Default.Movie
         "top" in normalized || "new" in normalized || "nouveau" in normalized -> Icons.Default.Star

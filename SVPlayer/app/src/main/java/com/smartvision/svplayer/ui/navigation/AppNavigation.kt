@@ -43,11 +43,14 @@ import com.smartvision.svplayer.ui.detail.MovieDetailRoute
 import com.smartvision.svplayer.ui.detail.SeriesDetailRoute
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.HomeScreen
+import com.smartvision.svplayer.ui.home.HomeCollectionsScreen
+import com.smartvision.svplayer.ui.home.HomeCollectionKind
 import com.smartvision.svplayer.ui.live.LiveTvScreen
 import com.smartvision.svplayer.ui.movies.MoviesScreen
 import com.smartvision.svplayer.ui.player.FullScreenContentKind
 import com.smartvision.svplayer.ui.player.FullScreenPlayerRoute
 import com.smartvision.svplayer.ui.series.SeriesScreen
+import com.smartvision.svplayer.ui.settings.SettingsScreen
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -84,6 +87,22 @@ fun AppNavigation(
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 onContentClick = { item -> navController.navigateFromContinueItem(item) },
+                onContinueViewAll = { navController.navigate(AppRoute.ContinueWatching.route) },
+                onTrendingViewAll = { navController.navigate(AppRoute.Trending.route) },
+            )
+        }
+        composable(AppRoute.ContinueWatching.route) {
+            HomeCollectionsScreen(
+                kind = HomeCollectionKind.ContinueWatching,
+                onBack = { navController.popBackStack() },
+                onItemClick = { item -> navController.navigateFromContinueItem(item) },
+            )
+        }
+        composable(AppRoute.Trending.route) {
+            HomeCollectionsScreen(
+                kind = HomeCollectionKind.Trending,
+                onBack = { navController.popBackStack() },
+                onItemClick = { item -> navController.navigateFromContinueItem(item) },
             )
         }
         composable(AppRoute.Live.route) {
@@ -119,7 +138,7 @@ fun AppNavigation(
             )
         }
         composable(AppRoute.Settings.route) {
-            PlaceholderRouteScreen("Parametres", "Route settings prete. Aucun stockage ou compte n'est branche.")
+            SettingsScreen(onBack = { navController.popBackStack() })
         }
         composable(AppRoute.SyncSettings.route) {
             PlaceholderRouteScreen("Synchronisation", "Action mock. Pas d'appel API Xtream dans cette tache.")
@@ -336,6 +355,8 @@ private enum class AppRoute(val route: String) {
     Series("series"),
     Settings("settings"),
     SyncSettings("sync/settings"),
+    ContinueWatching("continue_watching"),
+    Trending("trending"),
 }
 
 private val headerTabs = listOf(

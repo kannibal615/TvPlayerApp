@@ -38,6 +38,8 @@ fun HomeScreen(
     onSync: () -> Unit,
     onSettings: () -> Unit,
     onContentClick: (ContinueItem) -> Unit,
+    onContinueViewAll: () -> Unit,
+    onTrendingViewAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
@@ -115,7 +117,8 @@ fun HomeScreen(
             ContinueWatchingRow(
                 title = "Reprendre la lecture",
                 items = state.continueWatching,
-                onViewAll = {},
+                showViewAll = true,
+                onViewAll = onContinueViewAll,
                 onItemClick = onContentClick,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -126,6 +129,8 @@ fun HomeScreen(
                 title = "Tendances",
                 items = state.trending,
                 onItemClick = onContentClick,
+                showViewAll = true,
+                onViewAll = onTrendingViewAll,
                 modifier = Modifier.fillMaxWidth(),
             )
 

@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Movie
@@ -1072,6 +1073,16 @@ private fun CategoryIcon(
     if (category.label.equals("Favoris", ignoreCase = true)) {
         Icon(
             imageVector = Icons.Default.Favorite,
+            contentDescription = null,
+            tint = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+            modifier = Modifier.size(20.dp),
+        )
+        return
+    }
+
+    if (category.label.equals("Historiques", ignoreCase = true)) {
+        Icon(
+            imageVector = Icons.Default.History,
             contentDescription = null,
             tint = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
             modifier = Modifier.size(20.dp),
