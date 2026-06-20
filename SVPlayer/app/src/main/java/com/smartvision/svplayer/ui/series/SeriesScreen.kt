@@ -2,30 +2,27 @@ package com.smartvision.svplayer.ui.series
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,31 +31,23 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
-import com.smartvision.svplayer.ui.catalog.CatalogActionButton
-import com.smartvision.svplayer.ui.catalog.CatalogBadge
 import com.smartvision.svplayer.ui.catalog.CatalogCategoryRow
-import com.smartvision.svplayer.ui.catalog.CatalogContentRow
 import com.smartvision.svplayer.ui.catalog.CatalogEmpty
 import com.smartvision.svplayer.ui.catalog.CatalogError
 import com.smartvision.svplayer.ui.catalog.CatalogLoading
+import com.smartvision.svplayer.ui.catalog.CatalogMediaCard
 import com.smartvision.svplayer.ui.catalog.CatalogMetaStyle
-import com.smartvision.svplayer.ui.catalog.CatalogPosterFrame
-import com.smartvision.svplayer.ui.catalog.CatalogPreviewTitleStyle
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
@@ -66,6 +55,7 @@ import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import kotlinx.coroutines.delay
 
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun SeriesScreen(
     currentRoute: String,
@@ -88,6 +78,7 @@ fun SeriesScreen(
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedCategoryFocusRequester = remember { FocusRequester() }
+    val firstSeriesFocusRequester = remember { FocusRequester() }
     var inputReady by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -144,39 +135,28 @@ fun SeriesScreen(
                 SeriesCategoryList(
                     state = state,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
+                    firstSeriesFocusRequester = firstSeriesFocusRequester,
                     onCategory = { category ->
-                        if (inputReady) {
-                            viewModel.selectCategory(category)
-                        }
+                        if (inputReady) viewModel.selectCategory(category)
                     },
                     modifier = Modifier
-                        .weight(0.24f)
+                        .weight(0.22f)
                         .fillMaxHeight(),
                 )
-                SeriesList(
+                SeriesGrid(
                     state = state,
+                    firstSeriesFocusRequester = firstSeriesFocusRequester,
+                    selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     onSeriesFocused = viewModel::focusSeries,
                     onSeriesClick = { series ->
                         if (inputReady) {
-                            viewModel.selectSeries(series)
+                            viewModel.focusSeries(series)
                             onOpenSeriesDetails(series.seriesId)
                         }
                     },
                     onRetry = viewModel::retryCurrentCategory,
                     modifier = Modifier
-                        .weight(0.42f)
-                        .fillMaxHeight(),
-                )
-                SeriesPreviewPanel(
-                    state = state,
-                    onWatch = {
-                        if (inputReady) {
-                            state.firstEpisode?.episodeId?.let(onWatchEpisode)
-                        }
-                    },
-                    onFavorite = { state.selectedSeries?.let(viewModel::toggleFavorite) },
-                    modifier = Modifier
-                        .weight(0.34f)
+                        .weight(0.78f)
                         .fillMaxHeight(),
                 )
             }
@@ -188,13 +168,11 @@ fun SeriesScreen(
 private fun SeriesCategoryList(
     state: SeriesScreenState,
     selectedCategoryFocusRequester: FocusRequester,
+    firstSeriesFocusRequester: FocusRequester,
     onCategory: (SeriesCategoryUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    MediaCatalogPanel(
-        title = "Categories",
-        modifier = modifier,
-    ) {
+    MediaCatalogPanel(title = "Categories", modifier = modifier) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
@@ -211,6 +189,9 @@ private fun SeriesCategoryList(
                     } else {
                         null
                     },
+                    rightFocusRequester = firstSeriesFocusRequester.takeIf {
+                        !state.seriesLoading && state.series.isNotEmpty()
+                    },
                     onClick = { onCategory(category) },
                 )
             }
@@ -219,33 +200,33 @@ private fun SeriesCategoryList(
 }
 
 @Composable
-private fun SeriesList(
+private fun SeriesGrid(
     state: SeriesScreenState,
+    firstSeriesFocusRequester: FocusRequester,
+    selectedCategoryFocusRequester: FocusRequester,
     onSeriesFocused: (SeriesItemUi) -> Unit,
     onSeriesClick: (SeriesItemUi) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val gridState = rememberLazyGridState()
+
+    LaunchedEffect(state.selectedCategoryId) {
+        if (gridState.layoutInfo.totalItemsCount > 0) gridState.scrollToItem(0)
+    }
+
     MediaCatalogPanel(
-        title = "Series",
+        title = state.selectedCategory?.label ?: "Series",
         modifier = modifier,
         trailing = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val seriesCount = state.selectedCategory?.count ?: state.series.size
-                Text(
-                    text = if (seriesCount > 0) "$seriesCount series" else "series",
-                    color = SmartVisionColors.TextSecondary,
-                    style = CatalogMetaStyle,
-                    maxLines = 1,
-                )
-                Spacer(Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.Default.FilterList,
-                    contentDescription = null,
-                    tint = SmartVisionColors.TextSecondary,
-                    modifier = Modifier.width(16.dp),
-                )
-            }
+            val seriesCount = state.selectedCategory?.count ?: state.series.size
+            Text(
+                text = if (seriesCount > 0) "$seriesCount series" else "Series",
+                color = SmartVisionColors.TextSecondary,
+                style = CatalogMetaStyle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         },
     ) {
         when {
@@ -266,20 +247,29 @@ private fun SeriesList(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            else -> LazyColumn(
+            else -> LazyVerticalGrid(
+                columns = GridCells.Fixed(MediaCatalogDimens.MediaGridColumns),
+                state = gridState,
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
-                contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
+                horizontalArrangement = Arrangement.spacedBy(MediaCatalogDimens.MediaGridGap),
+                verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.MediaGridGap),
+                contentPadding = PaddingValues(bottom = MediaCatalogDimens.MediaGridGap),
             ) {
-                items(state.series, key = { it.seriesId }) { series ->
-                    CatalogContentRow(
-                        number = series.number,
+                itemsIndexed(
+                    items = state.series,
+                    key = { _, series -> series.seriesId },
+                ) { index, series ->
+                    CatalogMediaCard(
                         title = series.title,
-                        subtitle = series.subtitle,
-                        meta = series.rating?.let { "$it/10" } ?: series.episodeRunTime ?: "Serie",
+                        meta = seriesCardMeta(series),
                         imageUrl = series.coverUrl,
                         fallbackText = series.title.take(2).uppercase(),
                         selected = series.seriesId == state.selectedSeriesId,
+                        favorite = series.isFavorite,
+                        focusRequester = firstSeriesFocusRequester.takeIf { index == 0 },
+                        leftFocusRequester = selectedCategoryFocusRequester.takeIf {
+                            index % MediaCatalogDimens.MediaGridColumns == 0
+                        },
                         onFocused = { onSeriesFocused(series) },
                         onClick = { onSeriesClick(series) },
                     )
@@ -289,224 +279,12 @@ private fun SeriesList(
     }
 }
 
-@Composable
-private fun SeriesPreviewPanel(
-    state: SeriesScreenState,
-    onWatch: () -> Unit,
-    onFavorite: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val series = state.selectedSeries
-    MediaCatalogPanel(
-        title = "Apercu",
-        modifier = modifier,
-    ) {
-        if (series == null) {
-            CatalogEmpty(
-                title = "Selectionnez une serie",
-                subtitle = "Aucun apercu actif.",
-                modifier = Modifier.fillMaxSize(),
-            )
-            return@MediaCatalogPanel
-        }
-
-        Column(modifier = Modifier.fillMaxSize()) {
-            CatalogPosterFrame(
-                imageUrl = series.coverUrl,
-                title = series.title,
-                badge = "SERIE",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1.88f),
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            SeriesInfoCard(
-                series = series,
-                episodes = state.episodes,
-                episodesLoading = state.episodesLoading,
-                errorMessage = state.errorMessage,
-                modifier = Modifier.weight(1f),
-            )
-
-            Spacer(Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                CatalogActionButton(
-                    text = "Regarder",
-                    onClick = onWatch,
-                    icon = Icons.Default.PlayArrow,
-                    primary = true,
-                    modifier = Modifier
-                        .weight(1.25f)
-                        .height(32.dp),
-                )
-                CatalogActionButton(
-                    text = "Favori",
-                    onClick = onFavorite,
-                    icon = Icons.Default.Favorite,
-                    selected = series.isFavorite,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(32.dp),
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            CatalogActionButton(
-                text = "Infos serie",
-                onClick = {},
-                icon = Icons.Default.Info,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(32.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun SeriesInfoCard(
-    series: SeriesItemUi,
-    episodes: List<SeriesEpisodeUi>,
-    episodesLoading: Boolean,
-    errorMessage: String?,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clipToBounds(),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            CatalogBadge(text = "EN COURS", color = SmartVisionColors.Primary)
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = series.releaseDate?.take(4) ?: series.categoryLabel,
-                color = SmartVisionColors.TextSecondary,
-                style = CatalogMetaStyle,
-                maxLines = 1,
-            )
-        }
-
-        Spacer(Modifier.height(6.dp))
-
-        Text(
-            text = series.title,
-            color = SmartVisionColors.TextPrimary,
-            style = CatalogPreviewTitleStyle,
-            fontWeight = FontWeight.Bold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-
-        Spacer(Modifier.height(5.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = series.genre ?: series.categoryLabel,
-                color = SmartVisionColors.TextSecondary,
-                style = CatalogMetaStyle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            series.rating?.let {
-                CatalogBadge(text = "$it/10", color = SmartVisionColors.PrimaryDark)
-            }
-        }
-
-        Spacer(Modifier.height(7.dp))
-
-        Text(
-            text = series.plot ?: "Episodes disponibles depuis le catalogue Xtream.",
-            color = SmartVisionColors.TextSecondary,
-            style = CatalogMetaStyle,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-
-        Spacer(Modifier.height(10.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(SmartVisionColors.Border.copy(alpha = 0.72f)),
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        Text(
-            text = "Episodes",
-            color = SmartVisionColors.TextPrimary,
-            style = CatalogMetaStyle,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
-        Spacer(Modifier.height(5.dp))
-
-        when {
-            episodesLoading -> Text(
-                text = "Chargement...",
-                color = SmartVisionColors.TextSecondary,
-                style = CatalogMetaStyle,
-                maxLines = 1,
-            )
-
-            errorMessage != null && episodes.isEmpty() -> Text(
-                text = "Episodes indisponibles",
-                color = SmartVisionColors.Error,
-                style = CatalogMetaStyle,
-                maxLines = 1,
-            )
-
-            episodes.isEmpty() -> Text(
-                text = "Aucun episode",
-                color = SmartVisionColors.TextSecondary,
-                style = CatalogMetaStyle,
-                maxLines = 1,
-            )
-
-            else -> episodes.take(2).forEach { episode ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = episode.number,
-                        color = SmartVisionColors.Primary,
-                        style = CatalogMetaStyle,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        modifier = Modifier.width(52.dp),
-                    )
-                    Text(
-                        text = episode.title,
-                        color = SmartVisionColors.TextPrimary,
-                        style = CatalogMetaStyle,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        text = episode.duration.orEmpty(),
-                        color = SmartVisionColors.TextSecondary,
-                        style = CatalogMetaStyle,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
-    }
-}
+private fun seriesCardMeta(series: SeriesItemUi): String =
+    listOfNotNull(
+        series.releaseDate?.take(4),
+        series.rating?.let { "$it/10" },
+        series.episodeRunTime,
+    ).joinToString("  |  ").ifBlank { series.categoryLabel }
 
 private fun seriesCategoryIcon(label: String): ImageVector {
     val normalized = label.lowercase()

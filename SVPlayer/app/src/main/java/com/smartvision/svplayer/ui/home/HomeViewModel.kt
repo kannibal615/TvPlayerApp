@@ -57,6 +57,14 @@ class HomeViewModel(
             }
             else -> return null
         }
+        val imageUrl = when (progress.contentType) {
+            UserContentType.Movie -> xtreamRepository.getCachedMovie(id)?.posterUrl
+            UserContentType.Episode -> {
+                val episode = xtreamRepository.getCachedEpisode(id)
+                episode?.seriesId?.let { xtreamRepository.getCachedSeries(it)?.coverUrl }
+            }
+            else -> null
+        }?.takeIf { it.isNotBlank() }
         val meta = when (progress.contentType) {
             UserContentType.Live -> "Live TV"
             UserContentType.Movie -> "Film"
@@ -77,6 +85,7 @@ class HomeViewModel(
             remaining = if (duration > position) (duration - position).formatRemaining() else "Direct",
             progress = ratio.coerceIn(0f, 1f),
             visualStyle = visualStyle,
+            imageUrl = imageUrl,
         )
     }
 }

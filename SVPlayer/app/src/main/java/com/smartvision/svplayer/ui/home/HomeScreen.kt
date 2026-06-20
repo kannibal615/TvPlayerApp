@@ -116,7 +116,6 @@ fun HomeScreen(
             ContinueWatchingRow(
                 title = "Reprendre la lecture",
                 items = continueItems,
-                showViewAll = true,
                 onViewAll = {},
                 onItemClick = onContentClick,
                 modifier = Modifier.fillMaxWidth(),

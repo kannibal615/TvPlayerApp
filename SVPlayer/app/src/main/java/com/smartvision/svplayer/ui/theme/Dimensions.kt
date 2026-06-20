@@ -31,9 +31,9 @@ object SmartVisionDimensions {
     val HomeHeaderToHeroSpacing = 8.dp
     val HomeHeroHeight = 132.dp
     val HomeCategoryHeight = 170.dp
-    val HomeContentCardWidth = 150.dp
-    val HomeContentCardHeight = 82.dp
-    val HomeTrendFoldOffset = 72.dp
+    val HomeContentCardWidth = 162.dp
+    val HomeContentCardHeight = 92.dp
+    val HomeTrendFoldOffset = 42.dp
     val HomePanelRadius = 8.dp
     val HomeCardRadius = 8.dp
     val HomeContentRadius = 6.dp

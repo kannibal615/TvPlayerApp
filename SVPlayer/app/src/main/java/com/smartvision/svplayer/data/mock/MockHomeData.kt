@@ -36,6 +36,7 @@ data class ContinueItem(
     val remaining: String,
     val progress: Float,
     val visualStyle: HomeVisualStyle,
+    val imageUrl: String? = null,
 )
 
 object MockHomeData {

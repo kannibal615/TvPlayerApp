@@ -10,6 +10,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -211,6 +214,7 @@ fun CatalogCategoryRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
+    rightFocusRequester: FocusRequester? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -231,6 +235,13 @@ fun CatalogCategoryRow(
         modifier = modifier
             .fillMaxWidth()
             .height(MediaCatalogDimens.CategoryRowHeight)
+            .then(
+                if (rightFocusRequester != null) {
+                    Modifier.focusProperties { right = rightFocusRequester }
+                } else {
+                    Modifier
+                },
+            )
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -296,6 +307,159 @@ fun CatalogCategoryRow(
             style = CatalogMetaStyle,
             maxLines = 1,
         )
+    }
+}
+
+@Composable
+fun CatalogMediaCard(
+    title: String,
+    meta: String,
+    imageUrl: String?,
+    fallbackText: String,
+    selected: Boolean,
+    favorite: Boolean,
+    onFocused: () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
+    leftFocusRequester: FocusRequester? = null,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val active = selected || focusState.isFocused
+    val shape = RoundedCornerShape(MediaCatalogDimens.ItemRadius)
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            focusState.isFocused -> SmartVisionColors.FocusWhite
+            selected -> SmartVisionColors.Primary
+            else -> SmartVisionColors.Border.copy(alpha = 0.72f)
+        },
+        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        label = "catalogMediaCardBorder",
+    )
+
+    Box(
+        modifier = modifier
+            .aspectRatio(MediaCatalogDimens.MediaCardAspectRatio)
+            .then(
+                if (leftFocusRequester != null) {
+                    Modifier.focusProperties { left = leftFocusRequester }
+                } else {
+                    Modifier
+                },
+            )
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                pressed = pressed,
+                focusedScale = 1.045f,
+                glowColor = SmartVisionColors.Primary,
+                cornerRadius = MediaCatalogDimens.ItemRadius,
+            )
+            .onFocusChanged { focus ->
+                if (focus.isFocused) onFocused()
+            }
+            .zIndex(if (focusState.isFocused) 3f else 0f)
+            .clip(shape)
+            .background(SmartVisionColors.SurfaceElevated)
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                    borderColor,
+                ),
+                shape,
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .focusable(interactionSource = interactionSource),
+    ) {
+        if (!imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                SmartVisionColors.Primary.copy(alpha = 0.38f),
+                                SmartVisionColors.SurfaceElevated,
+                                SmartVisionColors.Background,
+                            ),
+                            radius = 420f,
+                        ),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = fallbackText,
+                    color = SmartVisionColors.TextPrimary.copy(alpha = 0.82f),
+                    style = CatalogPanelTitleStyle,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Black.copy(alpha = 0.04f),
+                            Color.Black.copy(alpha = 0.16f),
+                            Color.Black.copy(alpha = 0.94f),
+                        ),
+                    ),
+                ),
+        )
+
+        if (favorite) {
+            Icon(
+                imageVector = Icons.Default.Favorite,
+                contentDescription = null,
+                tint = Color(0xFFFF5D78),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(7.dp)
+                    .size(15.dp),
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+        ) {
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 11.sp,
+                lineHeight = 13.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = meta,
+                color = Color.White.copy(alpha = 0.72f),
+                fontSize = 8.sp,
+                lineHeight = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -744,4 +908,7 @@ object MediaCatalogDimens {
     val ListGap = 5.dp
     val CategoryRowHeight = 42.dp
     val ContentRowHeight = 66.dp
+    val MediaGridGap = 8.dp
+    const val MediaGridColumns = 5
+    const val MediaCardAspectRatio = 1.42f
 }

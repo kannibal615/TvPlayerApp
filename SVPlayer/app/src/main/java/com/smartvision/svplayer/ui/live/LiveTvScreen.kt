@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -54,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -151,6 +153,7 @@ fun LiveTvScreen(
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedCategoryFocusRequester = remember { FocusRequester() }
+    val firstChannelFocusRequester = remember { FocusRequester() }
     var inputReady by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -207,6 +210,7 @@ fun LiveTvScreen(
                 CategoryList(
                     state = state,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
+                    firstChannelFocusRequester = firstChannelFocusRequester,
                     onCategory = { category ->
                         if (inputReady) {
                             viewModel.selectCategory(category)
@@ -218,6 +222,8 @@ fun LiveTvScreen(
                 )
                 ChannelList(
                     state = state,
+                    firstChannelFocusRequester = firstChannelFocusRequester,
+                    selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     onChannelFocused = viewModel::focusChannel,
                     onChannelClick = { channel ->
                         if (inputReady) {
@@ -325,6 +331,7 @@ private fun LiveTvLogo() {
 private fun CategoryList(
     state: LiveTvUiState,
     selectedCategoryFocusRequester: FocusRequester,
+    firstChannelFocusRequester: FocusRequester,
     onCategory: (LiveTvCategory) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -346,6 +353,9 @@ private fun CategoryList(
                     } else {
                         null
                     },
+                    rightFocusRequester = firstChannelFocusRequester.takeIf {
+                        !state.channelsLoading && state.channels.isNotEmpty()
+                    },
                     onClick = { onCategory(category) },
                 )
             }
@@ -356,6 +366,8 @@ private fun CategoryList(
 @Composable
 private fun ChannelList(
     state: LiveTvUiState,
+    firstChannelFocusRequester: FocusRequester,
+    selectedCategoryFocusRequester: FocusRequester,
     onChannelFocused: (LiveTvChannel) -> Unit,
     onChannelClick: (LiveTvChannel) -> Unit,
     onRetry: () -> Unit,
@@ -406,10 +418,12 @@ private fun ChannelList(
                 verticalArrangement = Arrangement.spacedBy(LiveTvDimens.ListGap),
                 contentPadding = PaddingValues(bottom = LiveTvDimens.ListGap),
             ) {
-                items(state.channels, key = { it.streamId }) { channel ->
+                itemsIndexed(state.channels, key = { _, channel -> channel.streamId }) { index, channel ->
                     ChannelRow(
                         channel = channel,
                         selected = channel.streamId == state.selectedChannel?.streamId,
+                        focusRequester = firstChannelFocusRequester.takeIf { index == 0 },
+                        leftFocusRequester = selectedCategoryFocusRequester,
                         onFocused = { onChannelFocused(channel) },
                         onClick = { onChannelClick(channel) },
                     )
@@ -597,6 +611,7 @@ private fun CategoryRow(
     category: LiveTvCategory,
     selected: Boolean,
     focusRequester: FocusRequester?,
+    rightFocusRequester: FocusRequester?,
     onClick: () -> Unit,
 ) {
     val focusState = rememberTvFocusState()
@@ -618,6 +633,13 @@ private fun CategoryRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(LiveTvDimens.CategoryRowHeight)
+            .then(
+                if (rightFocusRequester != null) {
+                    Modifier.focusProperties { right = rightFocusRequester }
+                } else {
+                    Modifier
+                },
+            )
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -685,6 +707,8 @@ private fun CategoryRow(
 private fun ChannelRow(
     channel: LiveTvChannel,
     selected: Boolean,
+    focusRequester: FocusRequester?,
+    leftFocusRequester: FocusRequester,
     onFocused: () -> Unit,
     onClick: () -> Unit,
 ) {
@@ -707,8 +731,10 @@ private fun ChannelRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(LiveTvDimens.ChannelRowHeight)
+            .focusProperties { left = leftFocusRequester }
             .tvFocusTarget(
                 state = focusState,
+                focusRequester = focusRequester,
                 pressed = pressed,
                 focusedScale = 1.035f,
                 glowColor = SmartVisionColors.Primary,
