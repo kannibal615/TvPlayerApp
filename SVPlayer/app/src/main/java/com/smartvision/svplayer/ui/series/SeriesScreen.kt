@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -372,7 +373,11 @@ private fun SeriesInfoCard(
     errorMessage: String?,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clipToBounds(),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             CatalogBadge(text = "EN COURS", color = SmartVisionColors.Primary)
             Spacer(Modifier.weight(1f))
@@ -417,7 +422,7 @@ private fun SeriesInfoCard(
             text = series.plot ?: "Episodes disponibles depuis le catalogue Xtream.",
             color = SmartVisionColors.TextSecondary,
             style = CatalogMetaStyle,
-            maxLines = 3,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
 
@@ -463,7 +468,7 @@ private fun SeriesInfoCard(
                 maxLines = 1,
             )
 
-            else -> episodes.take(3).forEach { episode ->
+            else -> episodes.take(2).forEach { episode ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
