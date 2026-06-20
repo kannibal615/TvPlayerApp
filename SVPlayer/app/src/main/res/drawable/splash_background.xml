@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <gradient
-        android:angle="315"
-        android:startColor="#01040C"
-        android:centerColor="#061B42"
-        android:endColor="#020817"
-        android:type="linear" />
-</shape>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape>
+            <solid android:color="@color/splash_background_color" />
+        </shape>
+    </item>
+    <item>
+        <bitmap
+            android:gravity="fill"
+            android:src="@drawable/smartvision_splash_bg" />
+    </item>
+</layer-list>
