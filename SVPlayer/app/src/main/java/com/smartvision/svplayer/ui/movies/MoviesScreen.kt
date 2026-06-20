@@ -82,6 +82,7 @@ fun MoviesScreen(
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstMovieFocusRequester = remember { FocusRequester() }
     var inputReady by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         delay(260)
@@ -119,6 +120,8 @@ fun MoviesScreen(
             onNavigate = onNavigate,
             onSync = onSync,
             onSettings = onSettings,
+            searchQuery = searchQuery,
+            onSearchQueryChange = { searchQuery = it },
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -138,6 +141,7 @@ fun MoviesScreen(
                     state = state,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     firstMovieFocusRequester = firstMovieFocusRequester,
+                    searchQuery = searchQuery,
                     onCategory = { category ->
                         if (inputReady) viewModel.selectCategory(category)
                     },
@@ -149,6 +153,7 @@ fun MoviesScreen(
                     state = state,
                     firstMovieFocusRequester = firstMovieFocusRequester,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
+                    searchQuery = searchQuery,
                     onMovieFocused = viewModel::focusMovie,
                     onMovieClick = { movie ->
                         if (inputReady) {
@@ -171,6 +176,7 @@ private fun MovieCategoryList(
     state: MoviesScreenState,
     selectedCategoryFocusRequester: FocusRequester,
     firstMovieFocusRequester: FocusRequester,
+    searchQuery: String,
     onCategory: (MovieCategoryUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -180,7 +186,10 @@ private fun MovieCategoryList(
             verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
             contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
         ) {
-            items(state.categories, key = { it.id }) { category ->
+            items(
+                state.categories.filter { searchQuery.isBlank() || it.label.contains(searchQuery, ignoreCase = true) },
+                key = { it.id },
+            ) { category ->
                 CatalogCategoryRow(
                     label = category.label,
                     count = category.count,
@@ -192,7 +201,9 @@ private fun MovieCategoryList(
                         null
                     },
                     rightFocusRequester = firstMovieFocusRequester.takeIf {
-                        !state.moviesLoading && state.movies.isNotEmpty()
+                        !state.moviesLoading && state.movies.any {
+                            searchQuery.isBlank() || it.title.contains(searchQuery, ignoreCase = true)
+                        }
                     },
                     onClick = { onCategory(category) },
                 )
@@ -206,12 +217,18 @@ private fun MovieGrid(
     state: MoviesScreenState,
     firstMovieFocusRequester: FocusRequester,
     selectedCategoryFocusRequester: FocusRequester,
+    searchQuery: String,
     onMovieFocused: (MovieItemUi) -> Unit,
     onMovieClick: (MovieItemUi) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val gridState = rememberLazyGridState()
+    val visibleMovies = state.movies.filter { movie ->
+        searchQuery.isBlank() ||
+            movie.title.contains(searchQuery, ignoreCase = true) ||
+            movie.categoryLabel.contains(searchQuery, ignoreCase = true)
+    }
 
     LaunchedEffect(state.selectedCategoryId) {
         if (gridState.layoutInfo.totalItemsCount > 0) gridState.scrollToItem(0)
@@ -221,7 +238,11 @@ private fun MovieGrid(
         title = state.selectedCategory?.label ?: "Films",
         modifier = modifier,
         trailing = {
-            val movieCount = state.selectedCategory?.count ?: state.movies.size
+            val movieCount = if (searchQuery.isBlank()) {
+                state.selectedCategory?.count ?: state.movies.size
+            } else {
+                visibleMovies.size
+            }
             Text(
                 text = if (movieCount > 0) "$movieCount films" else "Films",
                 color = SmartVisionColors.TextSecondary,
@@ -243,9 +264,9 @@ private fun MovieGrid(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            state.movies.isEmpty() -> CatalogEmpty(
-                title = "Aucun film",
-                subtitle = "Selectionnez une autre categorie.",
+            visibleMovies.isEmpty() -> CatalogEmpty(
+                title = if (searchQuery.isBlank()) "Aucun film" else "Aucun resultat",
+                subtitle = if (searchQuery.isBlank()) "Selectionnez une autre categorie." else "Modifiez votre recherche.",
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -258,7 +279,7 @@ private fun MovieGrid(
                 contentPadding = PaddingValues(bottom = MediaCatalogDimens.MediaGridGap),
             ) {
                 itemsIndexed(
-                    items = state.movies,
+                    items = visibleMovies,
                     key = { _, movie -> movie.streamId },
                 ) { index, movie ->
                     CatalogMediaCard(

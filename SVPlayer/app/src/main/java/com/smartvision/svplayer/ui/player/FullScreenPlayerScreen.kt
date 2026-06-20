@@ -30,11 +30,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
@@ -81,6 +78,8 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -92,6 +91,8 @@ import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
+import com.smartvision.svplayer.ui.components.TvButton
+import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -116,7 +117,29 @@ data class FullScreenPlayback(
     val badge: String,
     val status: String,
     val infoPills: List<String>,
+    val imageUrl: String? = null,
+    val parentContentId: Int? = null,
+    val nextEpisode: NextEpisodePlayback? = null,
     val resumePositionMs: Long = 0L,
+)
+
+data class NextEpisodePlayback(
+    val episodeId: Int,
+    val title: String,
+    val label: String,
+)
+
+private enum class PlayerOverlayMenu {
+    None,
+    Subtitles,
+    Settings,
+}
+
+private data class SubtitleTrackOption(
+    val id: String,
+    val label: String,
+    val group: Tracks.Group,
+    val trackIndex: Int,
 )
 
 class FullScreenPlayerViewModel(
@@ -131,7 +154,7 @@ class FullScreenPlayerViewModel(
     init {
         viewModelScope.launch {
             val stored = userContentRepository.getProgress(kind.storageType(), contentId)
-            if (stored != null && stored.positionMs > 0L) {
+            if (kind != FullScreenContentKind.Live && stored != null && stored.positionMs > 0L) {
                 _uiState.value = _uiState.value.copy(resumePositionMs = stored.positionMs)
             }
         }
@@ -145,8 +168,12 @@ class FullScreenPlayerViewModel(
             userContentRepository.savePlaybackProgress(
                 contentType = kind.storageType(),
                 contentId = contentId,
-                positionMs = if (kind == FullScreenContentKind.Live) 0L else positionMs,
+                positionMs = positionMs,
                 durationMs = durationMs,
+                title = _uiState.value.title,
+                subtitle = _uiState.value.subtitle,
+                imageUrl = _uiState.value.imageUrl,
+                parentContentId = _uiState.value.parentContentId,
             )
         }
     }
@@ -181,6 +208,7 @@ class FullScreenPlayerViewModel(
                 badge = "LIVE",
                 status = "Direct",
                 infoPills = listOf("16+", "HD", "5.1"),
+                imageUrl = stream.streamIcon,
             )
         } ?: FullScreenPlayback(
             streamId = streamId,
@@ -213,6 +241,7 @@ class FullScreenPlayerViewModel(
                 badge = "VOD",
                 status = "Film",
                 infoPills = listOf("HD", movie.containerExtension.uppercase()).distinct(),
+                imageUrl = movie.posterUrl,
             )
         } ?: FullScreenPlayback(
             streamId = movieId,
@@ -232,6 +261,8 @@ class FullScreenPlayerViewModel(
     ): FullScreenPlayback =
         xtreamRepository.getCachedEpisode(episodeId)?.let { episode ->
             val seriesName = xtreamRepository.getCachedSeries(episode.seriesId)?.title?.cleanTitle() ?: "Series"
+            val seriesCover = xtreamRepository.getCachedSeries(episode.seriesId)?.coverUrl
+            val nextEpisode = xtreamRepository.getCachedNextEpisode(episodeId)
             FullScreenPlayback(
                 streamId = episode.episodeId,
                 contentType = UserContentType.Episode,
@@ -242,6 +273,15 @@ class FullScreenPlayerViewModel(
                 badge = "SERIE",
                 status = episode.duration ?: "Episode",
                 infoPills = listOf("HD", episode.containerExtension.uppercase()).distinct(),
+                imageUrl = seriesCover,
+                parentContentId = episode.seriesId,
+                nextEpisode = nextEpisode?.let {
+                    NextEpisodePlayback(
+                        episodeId = it.episodeId,
+                        title = it.title.cleanTitle(),
+                        label = it.seasonEpisodeLabel(),
+                    )
+                },
             )
         } ?: FullScreenPlayback(
             streamId = episodeId,
@@ -261,6 +301,7 @@ fun FullScreenPlayerRoute(
     streamId: Int,
     kind: FullScreenContentKind = FullScreenContentKind.Live,
     onBack: () -> Unit,
+    onPlayEpisode: (Int) -> Unit = {},
 ) {
     val container = LocalAppContainer.current
     val viewModel: FullScreenPlayerViewModel = viewModel(
@@ -278,6 +319,7 @@ fun FullScreenPlayerRoute(
     FullScreenPlayerScreen(
         playback = playback,
         onBack = onBack,
+        onPlayEpisode = onPlayEpisode,
         onProgressSnapshot = viewModel::saveProgress,
     )
 }
@@ -286,6 +328,7 @@ fun FullScreenPlayerRoute(
 private fun FullScreenPlayerScreen(
     playback: FullScreenPlayback,
     onBack: () -> Unit,
+    onPlayEpisode: (Int) -> Unit,
     onProgressSnapshot: (positionMs: Long, durationMs: Long) -> Unit,
 ) {
     val context = LocalContext.current
@@ -302,6 +345,12 @@ private fun FullScreenPlayerScreen(
     var positionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(0L) }
     var bufferedPositionMs by remember { mutableLongStateOf(0L) }
+    var activeMenu by remember { mutableStateOf(PlayerOverlayMenu.None) }
+    var playbackSpeed by remember { mutableStateOf(1f) }
+    var subtitleTracks by remember { mutableStateOf<List<SubtitleTrackOption>>(emptyList()) }
+    var selectedSubtitleId by remember { mutableStateOf<String?>(null) }
+    var nextEpisodeCountdown by remember { mutableStateOf<Int?>(null) }
+    var nextEpisodeDismissed by remember(playback.streamId) { mutableStateOf(false) }
 
     val player = remember {
         ExoPlayer.Builder(context).build().apply {
@@ -319,7 +368,12 @@ private fun FullScreenPlayerScreen(
     }
 
     BackHandler {
-        if (overlayVisible) {
+        if (activeMenu != PlayerOverlayMenu.None) {
+            activeMenu = PlayerOverlayMenu.None
+        } else if (nextEpisodeCountdown != null) {
+            nextEpisodeCountdown = null
+            nextEpisodeDismissed = true
+        } else if (overlayVisible) {
             overlayVisible = false
         } else {
             onBack()
@@ -338,10 +392,12 @@ private fun FullScreenPlayerScreen(
             player.seekTo(playback.resumePositionMs)
         }
         player.playWhenReady = true
+        nextEpisodeCountdown = null
+        nextEpisodeDismissed = false
     }
 
     LaunchedEffect(overlayVisible, overlayTick) {
-        if (overlayVisible) {
+        if (overlayVisible && activeMenu == PlayerOverlayMenu.None && nextEpisodeCountdown == null) {
             if (focusPlayWhenOverlayShows) {
                 delay(120)
                 playFocusRequester.requestFocus()
@@ -349,6 +405,16 @@ private fun FullScreenPlayerScreen(
             }
             delay(4_800)
             overlayVisible = false
+        }
+    }
+
+    LaunchedEffect(nextEpisodeCountdown) {
+        val countdown = nextEpisodeCountdown ?: return@LaunchedEffect
+        if (countdown > 0) {
+            delay(1_000)
+            if (nextEpisodeCountdown == countdown) nextEpisodeCountdown = countdown - 1
+        } else {
+            playback.nextEpisode?.episodeId?.let(onPlayEpisode)
         }
     }
 
@@ -377,6 +443,33 @@ private fun FullScreenPlayerScreen(
                 if (playbackState == Player.STATE_READY) {
                     errorText = null
                 }
+                if (playbackState == Player.STATE_ENDED && playback.nextEpisode != null && !nextEpisodeDismissed) {
+                    nextEpisodeCountdown = 3
+                    overlayVisible = true
+                    activeMenu = PlayerOverlayMenu.None
+                }
+            }
+
+            override fun onTracksChanged(tracks: Tracks) {
+                subtitleTracks = tracks.groups
+                    .filter { it.type == C.TRACK_TYPE_TEXT }
+                    .flatMapIndexed { groupIndex, group ->
+                        (0 until group.length).mapNotNull { trackIndex ->
+                            if (!group.isTrackSupported(trackIndex)) return@mapNotNull null
+                            val format = group.getTrackFormat(trackIndex)
+                            SubtitleTrackOption(
+                                id = "$groupIndex:$trackIndex",
+                                label = format.label
+                                    ?: format.language?.uppercase()
+                                    ?: "Sous-titres ${trackIndex + 1}",
+                                group = group,
+                                trackIndex = trackIndex,
+                            )
+                        }
+                    }
+                selectedSubtitleId = subtitleTracks.firstOrNull { option ->
+                    option.group.isTrackSelected(option.trackIndex)
+                }?.id
             }
 
             override fun onPlayerError(error: PlaybackException) {
@@ -503,10 +596,6 @@ private fun FullScreenPlayerScreen(
                     }
                     showOverlay()
                 },
-                onReplay = {
-                    player.play()
-                    showOverlay()
-                },
                 onSeekBack = {
                     if (player.isCurrentMediaItemSeekable) {
                         player.seekTo((player.currentPosition - 10_000L).coerceAtLeast(0L))
@@ -519,8 +608,82 @@ private fun FullScreenPlayerScreen(
                     }
                     showOverlay()
                 },
-                onNoOp = ::showOverlay,
+                onSeekBy = { deltaMs ->
+                    if (player.isCurrentMediaItemSeekable) {
+                        player.seekTo((player.currentPosition + deltaMs).coerceIn(0L, durationMs.coerceAtLeast(0L)))
+                    }
+                    showOverlay()
+                },
+                onOpenSubtitles = {
+                    activeMenu = PlayerOverlayMenu.Subtitles
+                    showOverlay()
+                },
+                onOpenSettings = {
+                    activeMenu = PlayerOverlayMenu.Settings
+                    showOverlay()
+                },
             )
+        }
+
+        if (activeMenu == PlayerOverlayMenu.Subtitles) {
+            PlayerOptionMenu(
+                title = "Sous-titres",
+                options = listOf("Desactives") + subtitleTracks.map { it.label },
+                selectedIndex = selectedSubtitleId?.let { id -> subtitleTracks.indexOfFirst { it.id == id } + 1 } ?: 0,
+                onSelect = { index ->
+                    val builder = player.trackSelectionParameters.buildUpon()
+                        .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                    if (index == 0) {
+                        builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                        selectedSubtitleId = null
+                    } else {
+                        val option = subtitleTracks[index - 1]
+                        builder
+                            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                            .setOverrideForType(
+                                TrackSelectionOverride(option.group.mediaTrackGroup, listOf(option.trackIndex)),
+                            )
+                        selectedSubtitleId = option.id
+                    }
+                    player.trackSelectionParameters = builder.build()
+                    activeMenu = PlayerOverlayMenu.None
+                    showOverlay()
+                },
+                onClose = { activeMenu = PlayerOverlayMenu.None },
+            )
+        }
+
+        if (activeMenu == PlayerOverlayMenu.Settings) {
+            val speeds = listOf(0.75f, 1f, 1.25f, 1.5f)
+            PlayerOptionMenu(
+                title = "Vitesse de lecture",
+                options = speeds.map { "${it}x" },
+                selectedIndex = speeds.indexOf(playbackSpeed).coerceAtLeast(1),
+                onSelect = { index ->
+                    playbackSpeed = speeds[index]
+                    player.setPlaybackSpeed(playbackSpeed)
+                    activeMenu = PlayerOverlayMenu.None
+                    showOverlay()
+                },
+                onClose = { activeMenu = PlayerOverlayMenu.None },
+            )
+        }
+
+        nextEpisodeCountdown?.let { countdown ->
+            playback.nextEpisode?.let { next ->
+                NextEpisodeCard(
+                    nextEpisode = next,
+                    countdown = countdown,
+                    onPlayNow = { onPlayEpisode(next.episodeId) },
+                    onCancel = {
+                        nextEpisodeCountdown = null
+                        nextEpisodeDismissed = true
+                    },
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 42.dp),
+                )
+            }
         }
     }
 }
@@ -535,10 +698,11 @@ private fun FullPlayerOverlay(
     bufferedPositionMs: Long,
     playFocusRequester: FocusRequester,
     onPlayPause: () -> Unit,
-    onReplay: () -> Unit,
     onSeekBack: () -> Unit,
     onSeekForward: () -> Unit,
-    onNoOp: () -> Unit,
+    onSeekBy: (Long) -> Unit,
+    onOpenSubtitles: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -563,7 +727,7 @@ private fun FullPlayerOverlay(
             playback = playback,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 30.dp, bottom = 176.dp)
+                .padding(start = 30.dp, bottom = 194.dp)
                 .width(348.dp),
         )
 
@@ -589,39 +753,43 @@ private fun FullPlayerOverlay(
             bufferedPositionMs = bufferedPositionMs,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(start = 42.dp, end = 42.dp, bottom = 118.dp),
+                .padding(start = 42.dp, end = 42.dp, bottom = 130.dp),
+            onSeekBy = onSeekBy,
         )
 
-        Row(
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(start = 30.dp, end = 30.dp, bottom = 31.dp)
+                .padding(start = 30.dp, end = 30.dp, bottom = 24.dp)
                 .fillMaxWidth()
-                .height(72.dp)
+                .height(76.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color(0xD6071123))
                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)), RoundedCornerShape(8.dp))
-                .padding(horizontal = 18.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+                .padding(horizontal = 22.dp, vertical = 8.dp),
         ) {
-            PlayerControlButton("Guide TV", Icons.Default.Menu, onNoOp)
-            PlayerControlButton("Reprendre", Icons.Default.Replay, onReplay)
-            PlayerControlButton("- 10 sec", Icons.Default.Replay10, onSeekBack)
-            PlayerControlButton(
-                label = if (isPlaying) "Pause" else "Lecture",
-                icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                onClick = onPlayPause,
-                focusRequester = playFocusRequester,
-                primary = true,
-                width = 92.dp,
-                height = 64.dp,
-                iconSize = 28.dp,
-            )
-            PlayerControlButton("+ 10 sec", Icons.Default.Forward10, onSeekForward)
-            PlayerControlButton("Audio", Icons.Default.VolumeUp, onNoOp)
-            PlayerControlButton("Sous-titres", Icons.Default.Subtitles, onNoOp)
-            PlayerControlButton("Parametres", Icons.Default.Settings, onNoOp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PlayerControlButton("Sous-titres", Icons.Default.Subtitles, onOpenSubtitles)
+                PlayerControlButton("- 10 sec", Icons.Default.Replay10, onSeekBack)
+                PlayerControlButton(
+                    label = if (isPlaying) "Pause" else "Lecture",
+                    icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    onClick = onPlayPause,
+                    focusRequester = playFocusRequester,
+                    primary = true,
+                    width = 92.dp,
+                    height = 60.dp,
+                    iconSize = 28.dp,
+                )
+                PlayerControlButton("+ 10 sec", Icons.Default.Forward10, onSeekForward)
+                PlayerControlButton("Parametres", Icons.Default.Settings, onOpenSettings)
+            }
         }
     }
 }
@@ -742,7 +910,11 @@ private fun PlayerProgressBar(
     durationMs: Long,
     bufferedPositionMs: Long,
     modifier: Modifier = Modifier,
+    onSeekBy: (Long) -> Unit,
 ) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
     val hasDuration = durationMs > 0L
     val progress = if (hasDuration) {
         (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
@@ -758,7 +930,45 @@ private fun PlayerProgressBar(
     val endText = if (hasDuration) durationMs.formatPlaybackTime() else "Direct"
 
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(30.dp)
+            .tvFocusTarget(
+                state = focusState,
+                enabled = hasDuration,
+                pressed = pressed,
+                focusedScale = 1.01f,
+                glowColor = SmartVisionColors.Primary,
+                cornerRadius = 6.dp,
+            )
+            .clip(RoundedCornerShape(6.dp))
+            .background(if (focusState.isFocused) Color(0xA6111F36) else Color.Transparent)
+            .border(
+                BorderStroke(if (focusState.isFocused) 2.dp else 1.dp, if (focusState.isFocused) SmartVisionColors.FocusWhite else Color.Transparent),
+                RoundedCornerShape(6.dp),
+            )
+            .onPreviewKeyEvent { event ->
+                if (event.nativeKeyEvent.action != AndroidKeyEvent.ACTION_DOWN) return@onPreviewKeyEvent false
+                when (event.nativeKeyEvent.keyCode) {
+                    AndroidKeyEvent.KEYCODE_DPAD_LEFT -> {
+                        onSeekBy(-10_000L)
+                        true
+                    }
+                    AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> {
+                        onSeekBy(10_000L)
+                        true
+                    }
+                    else -> false
+                }
+            }
+            .clickable(
+                enabled = hasDuration,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = {},
+            )
+            .focusable(enabled = hasDuration, interactionSource = interactionSource)
+            .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(startText, color = Color.White, style = PlayerMetaStyle)
@@ -800,6 +1010,128 @@ private fun PlayerProgressBar(
         }
         Spacer(Modifier.width(10.dp))
         Text(endText, color = Color.White, style = PlayerMetaStyle)
+    }
+}
+
+@Composable
+private fun PlayerOptionMenu(
+    title: String,
+    options: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    onClose: () -> Unit,
+) {
+    val firstFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(title) {
+        delay(100)
+        firstFocusRequester.requestFocus()
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.36f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 42.dp)
+                .width(280.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xF20A1425))
+                .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
+                .padding(18.dp),
+        ) {
+            Text(
+                text = title,
+                color = Color.White,
+                style = PlayerTitleStyle,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(14.dp))
+            options.forEachIndexed { index, label ->
+                TvButton(
+                    text = label,
+                    onClick = { onSelect(index) },
+                    selected = index == selectedIndex,
+                    focusRequester = firstFocusRequester.takeIf { index == selectedIndex.coerceIn(options.indices) },
+                    variant = if (index == selectedIndex) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(38.dp),
+                )
+                Spacer(Modifier.height(7.dp))
+            }
+            TvButton(
+                text = "Fermer",
+                onClick = onClose,
+                variant = TvButtonVariant.Text,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun NextEpisodeCard(
+    nextEpisode: NextEpisodePlayback,
+    countdown: Int,
+    onPlayNow: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val playNowFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(nextEpisode.episodeId) {
+        delay(100)
+        playNowFocusRequester.requestFocus()
+    }
+
+    Column(
+        modifier = modifier
+            .width(340.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xF20A1425))
+            .border(BorderStroke(1.dp, SmartVisionColors.Primary), RoundedCornerShape(8.dp))
+            .padding(18.dp),
+    ) {
+        Text(
+            text = "Episode suivant dans ${countdown.coerceAtLeast(0)}",
+            color = SmartVisionColors.CyanAccent,
+            style = PlayerMetaStyle,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(7.dp))
+        Text(
+            text = "${nextEpisode.label}  ${nextEpisode.title}",
+            color = Color.White,
+            style = PlayerTitleStyle,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(16.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            TvButton(
+                text = "Lire maintenant",
+                onClick = onPlayNow,
+                leadingIcon = Icons.Default.SkipNext,
+                focusRequester = playNowFocusRequester,
+                modifier = Modifier
+                    .weight(1.3f)
+                    .height(42.dp),
+            )
+            TvButton(
+                text = "Annuler",
+                onClick = onCancel,
+                variant = TvButtonVariant.Secondary,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(42.dp),
+            )
+        }
     }
 }
 

@@ -36,7 +36,6 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.CircularProgressIndicator
@@ -89,6 +88,7 @@ import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
@@ -155,6 +155,7 @@ fun LiveTvScreen(
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstChannelFocusRequester = remember { FocusRequester() }
     var inputReady by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         delay(260)
@@ -192,6 +193,8 @@ fun LiveTvScreen(
             onNavigate = onNavigate,
             onSync = onSync,
             onSettings = onSettings,
+            searchQuery = searchQuery,
+            onSearchQueryChange = { searchQuery = it },
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -211,6 +214,7 @@ fun LiveTvScreen(
                     state = state,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     firstChannelFocusRequester = firstChannelFocusRequester,
+                    searchQuery = searchQuery,
                     onCategory = { category ->
                         if (inputReady) {
                             viewModel.selectCategory(category)
@@ -224,6 +228,7 @@ fun LiveTvScreen(
                     state = state,
                     firstChannelFocusRequester = firstChannelFocusRequester,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
+                    searchQuery = searchQuery,
                     onChannelFocused = viewModel::focusChannel,
                     onChannelClick = { channel ->
                         if (inputReady) {
@@ -262,6 +267,8 @@ private fun LiveTvHeader(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -288,6 +295,12 @@ private fun LiveTvHeader(
                 )
             }
         }
+
+        CatalogSearchField(
+            query = searchQuery,
+            onQueryChange = onSearchQueryChange,
+            modifier = Modifier.width(190.dp),
+        )
 
     }
 }
@@ -332,6 +345,7 @@ private fun CategoryList(
     state: LiveTvUiState,
     selectedCategoryFocusRequester: FocusRequester,
     firstChannelFocusRequester: FocusRequester,
+    searchQuery: String,
     onCategory: (LiveTvCategory) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -344,7 +358,10 @@ private fun CategoryList(
             verticalArrangement = Arrangement.spacedBy(LiveTvDimens.ListGap),
             contentPadding = PaddingValues(bottom = LiveTvDimens.ListGap),
         ) {
-            items(state.categories, key = { it.id }) { category ->
+            items(
+                state.categories.filter { searchQuery.isBlank() || it.label.contains(searchQuery, ignoreCase = true) },
+                key = { it.id },
+            ) { category ->
                 CategoryRow(
                     category = category,
                     selected = category.id == state.selectedCategoryId,
@@ -354,7 +371,9 @@ private fun CategoryList(
                         null
                     },
                     rightFocusRequester = firstChannelFocusRequester.takeIf {
-                        !state.channelsLoading && state.channels.isNotEmpty()
+                        !state.channelsLoading && state.channels.any {
+                            searchQuery.isBlank() || it.name.contains(searchQuery, ignoreCase = true)
+                        }
                     },
                     onClick = { onCategory(category) },
                 )
@@ -368,17 +387,27 @@ private fun ChannelList(
     state: LiveTvUiState,
     firstChannelFocusRequester: FocusRequester,
     selectedCategoryFocusRequester: FocusRequester,
+    searchQuery: String,
     onChannelFocused: (LiveTvChannel) -> Unit,
     onChannelClick: (LiveTvChannel) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val visibleChannels = state.channels.filter { channel ->
+        searchQuery.isBlank() ||
+            channel.name.contains(searchQuery, ignoreCase = true) ||
+            channel.program.contains(searchQuery, ignoreCase = true)
+    }
     LiveTvPanel(
         title = "Chaines",
         modifier = modifier,
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val channelCount = state.selectedCategory?.count ?: state.channels.size
+                val channelCount = if (searchQuery.isBlank()) {
+                    state.selectedCategory?.count ?: state.channels.size
+                } else {
+                    visibleChannels.size
+                }
                 Text(
                     text = if (channelCount > 0) "$channelCount chaines" else "chaines",
                     color = SmartVisionColors.TextSecondary,
@@ -407,9 +436,9 @@ private fun ChannelList(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            state.channels.isEmpty() -> EmptyState(
-                title = "Aucune chaine",
-                subtitle = "Selectionnez une autre categorie.",
+            visibleChannels.isEmpty() -> EmptyState(
+                title = if (searchQuery.isBlank()) "Aucune chaine" else "Aucun resultat",
+                subtitle = if (searchQuery.isBlank()) "Selectionnez une autre categorie." else "Modifiez votre recherche.",
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -418,7 +447,7 @@ private fun ChannelList(
                 verticalArrangement = Arrangement.spacedBy(LiveTvDimens.ListGap),
                 contentPadding = PaddingValues(bottom = LiveTvDimens.ListGap),
             ) {
-                itemsIndexed(state.channels, key = { _, channel -> channel.streamId }) { index, channel ->
+                itemsIndexed(visibleChannels, key = { _, channel -> channel.streamId }) { index, channel ->
                     ChannelRow(
                         channel = channel,
                         selected = channel.streamId == state.selectedChannel?.streamId,
@@ -484,34 +513,10 @@ private fun PreviewPanel(
                         .height(32.dp),
                 )
                 PreviewActionButton(
-                    text = "Enregistrer",
-                    onClick = {},
-                    icon = Icons.Default.RadioButtonChecked,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(32.dp),
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                PreviewActionButton(
                     text = "Favori",
                     onClick = onFavorite,
                     selected = channel.isFavorite,
                     icon = Icons.Default.Favorite,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(32.dp),
-                )
-                PreviewActionButton(
-                    text = "Infos chaine",
-                    onClick = {},
-                    icon = Icons.Default.Info,
                     modifier = Modifier
                         .weight(1f)
                         .height(32.dp),
@@ -792,7 +797,7 @@ private fun ChannelRow(
         ChannelLogo(
             channel = channel,
             active = active,
-            modifier = Modifier.size(width = 50.dp, height = 26.dp),
+            modifier = Modifier.size(width = 68.dp, height = 40.dp),
         )
 
         Spacer(Modifier.width(10.dp))
@@ -815,25 +820,6 @@ private fun ChannelRow(
             )
         }
 
-        Spacer(Modifier.width(8.dp))
-
-        Column(
-            modifier = Modifier.width(86.dp),
-            horizontalAlignment = Alignment.End,
-        ) {
-            Text(
-                text = channel.timeRange,
-                color = SmartVisionColors.TextSecondary,
-                style = LiveTvItemMetaStyle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(7.dp))
-            ProgressLine(
-                progress = channel.progress,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
     }
 }
 
@@ -1178,7 +1164,7 @@ private fun ChannelLogo(
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(3.dp),
+                    .padding(1.dp),
             )
             return@Box
         }

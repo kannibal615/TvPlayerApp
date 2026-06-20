@@ -204,6 +204,14 @@ class XtreamRepository(
     fun getCachedEpisode(episodeId: Int): XtreamSeriesEpisode? =
         episodesById[episodeId]
 
+    fun getCachedNextEpisode(episodeId: Int): XtreamSeriesEpisode? {
+        val current = episodesById[episodeId] ?: return null
+        val ordered = episodesBySeriesId[current.seriesId].orEmpty()
+            .sortedWith(compareBy<XtreamSeriesEpisode> { it.seasonNumber }.thenBy { it.episodeNumber })
+        val currentIndex = ordered.indexOfFirst { it.episodeId == episodeId }
+        return ordered.getOrNull(currentIndex + 1)
+    }
+
     fun buildLiveStreamUrl(stream: XtreamLiveStream): String =
         stream.directSource
             ?.trim()

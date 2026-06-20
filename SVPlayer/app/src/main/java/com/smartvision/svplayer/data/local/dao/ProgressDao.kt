@@ -14,6 +14,9 @@ interface ProgressDao {
     @Query("SELECT * FROM playback_progress ORDER BY updatedAt DESC LIMIT :limit")
     fun observeRecent(limit: Int): Flow<List<PlaybackProgressEntity>>
 
+    @Query("SELECT * FROM playback_progress WHERE contentType = :contentType AND positionMs > :minimumPositionMs ORDER BY updatedAt DESC LIMIT :limit")
+    fun observeHistory(contentType: String, minimumPositionMs: Long, limit: Int): Flow<List<PlaybackProgressEntity>>
+
     @Upsert
     suspend fun upsert(progress: PlaybackProgressEntity)
 }

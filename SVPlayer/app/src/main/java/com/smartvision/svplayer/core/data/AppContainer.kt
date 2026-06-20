@@ -53,6 +53,7 @@ class AppContainer(context: Context) {
     val userContentRepository: UserContentRepository = UserContentRepository(
         favoriteDao = database.favoriteDao(),
         progressDao = database.progressDao(),
+        mediaDao = database.mediaDao(),
     )
 
     val catalogRepository: CatalogRepository = DefaultCatalogRepository(

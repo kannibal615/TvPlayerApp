@@ -80,6 +80,7 @@ fun SeriesScreen(
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstSeriesFocusRequester = remember { FocusRequester() }
     var inputReady by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         delay(260)
@@ -117,6 +118,8 @@ fun SeriesScreen(
             onNavigate = onNavigate,
             onSync = onSync,
             onSettings = onSettings,
+            searchQuery = searchQuery,
+            onSearchQueryChange = { searchQuery = it },
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -136,6 +139,7 @@ fun SeriesScreen(
                     state = state,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     firstSeriesFocusRequester = firstSeriesFocusRequester,
+                    searchQuery = searchQuery,
                     onCategory = { category ->
                         if (inputReady) viewModel.selectCategory(category)
                     },
@@ -147,6 +151,7 @@ fun SeriesScreen(
                     state = state,
                     firstSeriesFocusRequester = firstSeriesFocusRequester,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
+                    searchQuery = searchQuery,
                     onSeriesFocused = viewModel::focusSeries,
                     onSeriesClick = { series ->
                         if (inputReady) {
@@ -169,6 +174,7 @@ private fun SeriesCategoryList(
     state: SeriesScreenState,
     selectedCategoryFocusRequester: FocusRequester,
     firstSeriesFocusRequester: FocusRequester,
+    searchQuery: String,
     onCategory: (SeriesCategoryUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -178,7 +184,10 @@ private fun SeriesCategoryList(
             verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
             contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
         ) {
-            items(state.categories, key = { it.id }) { category ->
+            items(
+                state.categories.filter { searchQuery.isBlank() || it.label.contains(searchQuery, ignoreCase = true) },
+                key = { it.id },
+            ) { category ->
                 CatalogCategoryRow(
                     label = category.label,
                     count = category.count,
@@ -190,7 +199,9 @@ private fun SeriesCategoryList(
                         null
                     },
                     rightFocusRequester = firstSeriesFocusRequester.takeIf {
-                        !state.seriesLoading && state.series.isNotEmpty()
+                        !state.seriesLoading && state.series.any {
+                            searchQuery.isBlank() || it.title.contains(searchQuery, ignoreCase = true)
+                        }
                     },
                     onClick = { onCategory(category) },
                 )
@@ -204,12 +215,18 @@ private fun SeriesGrid(
     state: SeriesScreenState,
     firstSeriesFocusRequester: FocusRequester,
     selectedCategoryFocusRequester: FocusRequester,
+    searchQuery: String,
     onSeriesFocused: (SeriesItemUi) -> Unit,
     onSeriesClick: (SeriesItemUi) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val gridState = rememberLazyGridState()
+    val visibleSeries = state.series.filter { series ->
+        searchQuery.isBlank() ||
+            series.title.contains(searchQuery, ignoreCase = true) ||
+            series.categoryLabel.contains(searchQuery, ignoreCase = true)
+    }
 
     LaunchedEffect(state.selectedCategoryId) {
         if (gridState.layoutInfo.totalItemsCount > 0) gridState.scrollToItem(0)
@@ -219,7 +236,11 @@ private fun SeriesGrid(
         title = state.selectedCategory?.label ?: "Series",
         modifier = modifier,
         trailing = {
-            val seriesCount = state.selectedCategory?.count ?: state.series.size
+            val seriesCount = if (searchQuery.isBlank()) {
+                state.selectedCategory?.count ?: state.series.size
+            } else {
+                visibleSeries.size
+            }
             Text(
                 text = if (seriesCount > 0) "$seriesCount series" else "Series",
                 color = SmartVisionColors.TextSecondary,
@@ -241,9 +262,9 @@ private fun SeriesGrid(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            state.series.isEmpty() -> CatalogEmpty(
-                title = "Aucune serie",
-                subtitle = "Selectionnez une autre categorie.",
+            visibleSeries.isEmpty() -> CatalogEmpty(
+                title = if (searchQuery.isBlank()) "Aucune serie" else "Aucun resultat",
+                subtitle = if (searchQuery.isBlank()) "Selectionnez une autre categorie." else "Modifiez votre recherche.",
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -256,7 +277,7 @@ private fun SeriesGrid(
                 contentPadding = PaddingValues(bottom = MediaCatalogDimens.MediaGridGap),
             ) {
                 itemsIndexed(
-                    items = state.series,
+                    items = visibleSeries,
                     key = { _, series -> series.seriesId },
                 ) { index, series ->
                     CatalogMediaCard(
@@ -283,7 +304,8 @@ private fun seriesCardMeta(series: SeriesItemUi): String =
     listOfNotNull(
         series.releaseDate?.take(4),
         series.rating?.let { "$it/10" },
-        series.episodeRunTime,
+        series.seasonsCount?.let { "$it S" },
+        series.episodesCount?.let { "$it ep" },
     ).joinToString("  |  ").ifBlank { series.categoryLabel }
 
 private fun seriesCategoryIcon(label: String): ImageVector {

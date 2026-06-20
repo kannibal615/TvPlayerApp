@@ -32,20 +32,26 @@ class SplashActivity : Activity() {
                 View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
                 View.SYSTEM_UI_FLAG_LAYOUT_STABLE
 
-        val density = resources.displayMetrics.density
-        val logoSize = (680 * density).toInt()
         val root = FrameLayout(this).apply {
-            setBackgroundResource(R.drawable.splash_background)
+            setBackgroundColor(getColor(R.color.splash_background_color))
         }
         val logo = ImageView(this).apply {
             setImageResource(R.drawable.splash)
             scaleType = ImageView.ScaleType.FIT_CENTER
-            adjustViewBounds = true
+            contentDescription = getString(R.string.app_name)
         }
 
         root.addView(
             logo,
-            FrameLayout.LayoutParams(logoSize, logoSize, Gravity.CENTER),
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                Gravity.CENTER,
+            ).apply {
+                val horizontalInset = (resources.displayMetrics.widthPixels * 0.22f).toInt()
+                val verticalInset = (resources.displayMetrics.heightPixels * 0.06f).toInt()
+                setMargins(horizontalInset, verticalInset, horizontalInset, verticalInset)
+            },
         )
         setContentView(root)
 
@@ -58,6 +64,6 @@ class SplashActivity : Activity() {
     }
 
     private companion object {
-        const val SplashDurationMillis = 1_150L
+        const val SplashDurationMillis = 1_000L
     }
 }

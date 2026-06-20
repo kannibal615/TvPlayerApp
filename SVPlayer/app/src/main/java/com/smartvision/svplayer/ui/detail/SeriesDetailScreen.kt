@@ -27,7 +27,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tv
@@ -278,7 +277,6 @@ private fun SeriesDetailScreen(
                 state = state,
                 onWatchEpisode = { state.firstEpisode?.episodeId?.let(onWatchEpisode) },
                 onRetry = onRetry,
-                onSeeEpisodes = { firstEpisodeFocusRequester.requestFocus() },
                 onFavorite = onFavorite,
                 modifier = Modifier.width(660.dp),
             )
@@ -316,7 +314,6 @@ private fun SeriesHeroInfo(
     state: SeriesDetailUiState,
     onWatchEpisode: () -> Unit,
     onRetry: () -> Unit,
-    onSeeEpisodes: () -> Unit,
     onFavorite: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -364,14 +361,6 @@ private fun SeriesHeroInfo(
                 primary = true,
                 modifier = Modifier
                     .width(162.dp)
-                    .height(DetailDimens.ActionHeight),
-            )
-            DetailActionButton(
-                text = "Voir les episodes",
-                icon = Icons.Default.List,
-                onClick = onSeeEpisodes,
-                modifier = Modifier
-                    .width(182.dp)
                     .height(DetailDimens.ActionHeight),
             )
             DetailActionButton(

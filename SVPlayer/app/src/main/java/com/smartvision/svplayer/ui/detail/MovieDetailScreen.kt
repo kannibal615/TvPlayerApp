@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Theaters
@@ -310,14 +309,6 @@ private fun MovieDetailInfo(
                 onClick = onFavorite,
                 modifier = Modifier
                     .width(184.dp)
-                    .height(DetailDimens.ActionHeight),
-            )
-            DetailActionButton(
-                text = "Infos",
-                icon = Icons.Default.Info,
-                onClick = {},
-                modifier = Modifier
-                    .width(118.dp)
                     .height(DetailDimens.ActionHeight),
             )
         }

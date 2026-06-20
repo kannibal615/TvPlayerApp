@@ -24,16 +24,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +47,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.SpanStyle
@@ -99,6 +104,8 @@ fun MediaCatalogHeader(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
+    searchQuery: String = "",
+    onSearchQueryChange: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -126,7 +133,71 @@ fun MediaCatalogHeader(
             }
         }
 
+        CatalogSearchField(
+            query = searchQuery,
+            onQueryChange = onSearchQueryChange,
+            modifier = Modifier.width(190.dp),
+        )
+
     }
+}
+
+@Composable
+fun CatalogSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var focused by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(7.dp)
+    val borderColor by animateColorAsState(
+        targetValue = if (focused) SmartVisionColors.CyanAccent else SmartVisionColors.Border,
+        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        label = "catalogSearchBorder",
+    )
+
+    BasicTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        singleLine = true,
+        cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
+        textStyle = CatalogMetaStyle.copy(color = SmartVisionColors.TextPrimary),
+        modifier = modifier
+            .height(34.dp)
+            .onFocusChanged { focused = it.isFocused }
+            .clip(shape)
+            .background(SmartVisionColors.Surface.copy(alpha = 0.86f))
+            .border(
+                BorderStroke(if (focused) 2.dp else 1.dp, borderColor),
+                shape,
+            )
+            .padding(horizontal = 10.dp),
+        decorationBox = { innerTextField ->
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null,
+                    tint = if (focused) SmartVisionColors.CyanAccent else SmartVisionColors.TextSecondary,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(7.dp))
+                Box(modifier = Modifier.weight(1f)) {
+                    if (query.isBlank()) {
+                        Text(
+                            text = "Rechercher",
+                            color = SmartVisionColors.TextSecondary,
+                            style = CatalogMetaStyle,
+                            maxLines = 1,
+                        )
+                    }
+                    innerTextField()
+                }
+            }
+        },
+    )
 }
 
 @Composable

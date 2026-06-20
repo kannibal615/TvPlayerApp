@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.smartvision.svplayer.data.local.dao.CategoryDao
 import com.smartvision.svplayer.data.local.dao.FavoriteDao
 import com.smartvision.svplayer.data.local.dao.MediaDao
@@ -32,7 +34,7 @@ import com.smartvision.svplayer.data.local.entity.SyncStateEntity
         PlaybackProgressEntity::class,
         SyncStateEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class SVDatabase : RoomDatabase() {
@@ -46,7 +48,16 @@ abstract class SVDatabase : RoomDatabase() {
     companion object {
         fun build(context: Context): SVDatabase =
             Room.databaseBuilder(context, SVDatabase::class.java, "svplayer.db")
-                .fallbackToDestructiveMigration(false)
+                .addMigrations(Migration1To2)
                 .build()
+
+        private val Migration1To2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE playback_progress ADD COLUMN title TEXT")
+                db.execSQL("ALTER TABLE playback_progress ADD COLUMN subtitle TEXT")
+                db.execSQL("ALTER TABLE playback_progress ADD COLUMN imageUrl TEXT")
+                db.execSQL("ALTER TABLE playback_progress ADD COLUMN parentContentId TEXT")
+            }
+        }
     }
 }

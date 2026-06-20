@@ -50,7 +50,6 @@ fun HomeScreen(
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val continueItems = state.continueWatching.ifEmpty { MockHomeData.continueWatching }
     val liveFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -115,7 +114,7 @@ fun HomeScreen(
 
             ContinueWatchingRow(
                 title = "Reprendre la lecture",
-                items = continueItems,
+                items = state.continueWatching,
                 onViewAll = {},
                 onItemClick = onContentClick,
                 modifier = Modifier.fillMaxWidth(),
@@ -125,7 +124,7 @@ fun HomeScreen(
 
             ContinueWatchingRow(
                 title = "Tendances",
-                items = MockHomeData.trending,
+                items = state.trending,
                 onItemClick = onContentClick,
                 modifier = Modifier.fillMaxWidth(),
             )

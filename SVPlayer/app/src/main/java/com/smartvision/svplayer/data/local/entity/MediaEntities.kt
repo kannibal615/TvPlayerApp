@@ -68,6 +68,10 @@ data class PlaybackProgressEntity(
     val positionMs: Long,
     val durationMs: Long,
     val updatedAt: Long,
+    val title: String? = null,
+    val subtitle: String? = null,
+    val imageUrl: String? = null,
+    val parentContentId: String? = null,
 )
 
 @Entity(tableName = "sync_state")
