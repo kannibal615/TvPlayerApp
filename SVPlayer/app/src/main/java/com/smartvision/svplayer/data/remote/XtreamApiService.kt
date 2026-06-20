@@ -4,6 +4,7 @@ import com.smartvision.svplayer.data.remote.dto.XtreamAccountDto
 import com.smartvision.svplayer.data.remote.dto.XtreamCategoryDto
 import com.smartvision.svplayer.data.remote.dto.XtreamLiveStreamDto
 import com.smartvision.svplayer.data.remote.dto.XtreamMovieDto
+import com.smartvision.svplayer.data.remote.dto.XtreamMovieInfoDto
 import com.smartvision.svplayer.data.remote.dto.XtreamSeriesDto
 import com.smartvision.svplayer.data.remote.dto.XtreamSeriesInfoDto
 import retrofit2.http.GET
@@ -38,6 +39,14 @@ interface XtreamApiService {
         @Query("action") action: String = "get_vod_streams",
         @Query("category_id") categoryId: String? = null,
     ): List<XtreamMovieDto>
+
+    @GET("player_api.php")
+    suspend fun getMovieInfo(
+        @Query("username") username: String,
+        @Query("password") password: String,
+        @Query("action") action: String = "get_vod_info",
+        @Query("vod_id") movieId: Int,
+    ): XtreamMovieInfoDto
 
     @GET("player_api.php")
     suspend fun getSeries(

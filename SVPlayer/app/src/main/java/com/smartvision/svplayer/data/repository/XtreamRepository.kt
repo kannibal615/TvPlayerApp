@@ -1,10 +1,14 @@
 package com.smartvision.svplayer.data.repository
 
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
 import com.smartvision.svplayer.data.models.XtreamLiveCategory
 import com.smartvision.svplayer.data.models.XtreamLiveStream
 import com.smartvision.svplayer.data.models.XtreamMovieCategory
+import com.smartvision.svplayer.data.models.XtreamMovieDetails
 import com.smartvision.svplayer.data.models.XtreamMovieStream
 import com.smartvision.svplayer.data.models.XtreamSeriesCategory
+import com.smartvision.svplayer.data.models.XtreamSeriesDetails
 import com.smartvision.svplayer.data.models.XtreamSeriesEpisode
 import com.smartvision.svplayer.data.models.XtreamSeriesStream
 import com.smartvision.svplayer.data.remote.XtreamApiClient
@@ -14,6 +18,7 @@ import com.smartvision.svplayer.data.remote.dto.XtreamEpisodeDto
 import com.smartvision.svplayer.data.remote.dto.XtreamLiveStreamDto
 import com.smartvision.svplayer.data.remote.dto.XtreamMovieDto
 import com.smartvision.svplayer.data.remote.dto.XtreamSeriesDto
+import com.smartvision.svplayer.data.remote.dto.XtreamSeriesInfoDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -27,9 +32,11 @@ class XtreamRepository(
     private var movieCategoriesCache: List<XtreamMovieCategory> = emptyList()
     private val moviesByCategory = mutableMapOf<String, List<XtreamMovieStream>>()
     private val moviesById = mutableMapOf<Int, XtreamMovieStream>()
+    private val movieDetailsById = mutableMapOf<Int, XtreamMovieDetails>()
     private var seriesCategoriesCache: List<XtreamSeriesCategory> = emptyList()
     private val seriesByCategory = mutableMapOf<String, List<XtreamSeriesStream>>()
     private val seriesById = mutableMapOf<Int, XtreamSeriesStream>()
+    private val seriesDetailsById = mutableMapOf<Int, XtreamSeriesDetails>()
     private val episodesBySeriesId = mutableMapOf<Int, List<XtreamSeriesEpisode>>()
     private val episodesById = mutableMapOf<Int, XtreamSeriesEpisode>()
 
@@ -75,6 +82,38 @@ class XtreamRepository(
         movies
     }
 
+    suspend fun getMovieDetails(movieId: Int): XtreamMovieDetails = withContext(Dispatchers.IO) {
+        movieDetailsById[movieId]?.let { return@withContext it }
+        val cachedMovie = moviesById[movieId]
+        val response = apiClient.getMovieInfo(movieId)
+        val info = response.info.asObjectOrNull()
+        val movieData = response.movieData.asObjectOrNull()
+        val details = XtreamMovieDetails(
+            movieId = movieId,
+            title = info.string("name", "title")
+                ?: movieData.string("name", "title")
+                ?: cachedMovie?.title
+                ?: "Film $movieId",
+            posterUrl = info.string("movie_image", "cover", "poster_path", "image")
+                ?: cachedMovie?.posterUrl,
+            backdropUrl = info.string("backdrop_path", "backdrop", "background_image", "cover_big")
+                ?: info.firstStringFromArray("backdrop_path"),
+            plot = info.string("plot", "description", "overview"),
+            genre = info.string("genre"),
+            releaseDate = info.string("releasedate", "releaseDate", "release_date", "year"),
+            rating = info.string("rating", "rating_5based") ?: cachedMovie?.rating,
+            duration = info.string("duration", "duration_secs"),
+            director = info.string("director"),
+            cast = info.string("cast", "actors"),
+            containerExtension = movieData.string("container_extension")
+                ?: cachedMovie?.containerExtension
+                ?: "mp4",
+            categoryId = movieData.string("category_id") ?: cachedMovie?.categoryId,
+        )
+        movieDetailsById[movieId] = details
+        details
+    }
+
     suspend fun getSeriesCategories(): List<XtreamSeriesCategory> = withContext(Dispatchers.IO) {
         val categories = apiClient.getSeriesCategories()
             .mapNotNull { it.toSeriesCategory() }
@@ -96,16 +135,40 @@ class XtreamRepository(
         series
     }
 
+    suspend fun getSeriesDetails(seriesId: Int): XtreamSeriesDetails = withContext(Dispatchers.IO) {
+        seriesDetailsById[seriesId]?.let { return@withContext it }
+        val cachedSeries = seriesById[seriesId]
+        val response = apiClient.getSeriesInfo(seriesId)
+        val info = response.info.asObjectOrNull()
+        val episodes = response.toSeriesEpisodes(seriesId)
+        episodesBySeriesId[seriesId] = episodes
+        episodes.forEach { episode -> episodesById[episode.episodeId] = episode }
+        val details = XtreamSeriesDetails(
+            seriesId = seriesId,
+            title = info.string("name", "title")
+                ?: cachedSeries?.title
+                ?: "Serie $seriesId",
+            coverUrl = info.string("cover", "movie_image", "poster_path", "image")
+                ?: cachedSeries?.coverUrl,
+            backdropUrl = info.string("backdrop_path", "backdrop", "background_image", "cover_big")
+                ?: info.firstStringFromArray("backdrop_path"),
+            plot = info.string("plot", "description", "overview") ?: cachedSeries?.plot,
+            genre = info.string("genre") ?: cachedSeries?.genre,
+            releaseDate = info.string("releaseDate", "releasedate", "release_date", "year")
+                ?: cachedSeries?.releaseDate,
+            rating = info.string("rating", "rating_5based") ?: cachedSeries?.rating,
+            episodeRunTime = info.string("episode_run_time", "duration") ?: cachedSeries?.episodeRunTime,
+            director = info.string("director"),
+            cast = info.string("cast", "actors"),
+            categoryId = info.string("category_id") ?: cachedSeries?.categoryId,
+        )
+        seriesDetailsById[seriesId] = details
+        details
+    }
+
     suspend fun getSeriesEpisodes(seriesId: Int): List<XtreamSeriesEpisode> = withContext(Dispatchers.IO) {
         episodesBySeriesId[seriesId]?.let { return@withContext it }
-        val episodes = apiClient.getSeriesInfo(seriesId)
-            .episodes
-            .orEmpty()
-            .flatMap { (season, remoteEpisodes) ->
-                val seasonNumber = season.toIntOrNull() ?: 0
-                remoteEpisodes.mapNotNull { it.toSeriesEpisode(seriesId, seasonNumber) }
-            }
-            .sortedWith(compareBy<XtreamSeriesEpisode> { it.seasonNumber }.thenBy { it.episodeNumber })
+        val episodes = apiClient.getSeriesInfo(seriesId).toSeriesEpisodes(seriesId)
         episodesBySeriesId[seriesId] = episodes
         episodes.forEach { episode -> episodesById[episode.episodeId] = episode }
         episodes
@@ -243,4 +306,43 @@ private fun XtreamEpisodeDto.toSeriesEpisode(seriesId: Int, seasonNumber: Int): 
         duration = info?.duration?.takeIf { it.isNotBlank() },
         plot = info?.plot?.takeIf { it.isNotBlank() },
     )
+}
+
+private fun XtreamSeriesInfoDto.toSeriesEpisodes(seriesId: Int): List<XtreamSeriesEpisode> =
+    episodes
+        .orEmpty()
+        .flatMap { (season, remoteEpisodes) ->
+            val seasonNumber = season.toIntOrNull() ?: 0
+            remoteEpisodes.mapNotNull { it.toSeriesEpisode(seriesId, seasonNumber) }
+        }
+        .sortedWith(compareBy<XtreamSeriesEpisode> { it.seasonNumber }.thenBy { it.episodeNumber })
+
+private fun JsonElement?.asObjectOrNull(): JsonObject? =
+    this
+        ?.takeIf { !it.isJsonNull && it.isJsonObject }
+        ?.asJsonObject
+
+private fun JsonObject?.string(vararg names: String): String? {
+    if (this == null) return null
+    return names.asSequence()
+        .mapNotNull { name -> get(name).asCleanString() }
+        .firstOrNull()
+}
+
+private fun JsonObject?.firstStringFromArray(name: String): String? {
+    val element = this?.get(name)?.takeIf { !it.isJsonNull && it.isJsonArray } ?: return null
+    return element.asJsonArray.asSequence()
+        .mapNotNull { it.asCleanString() }
+        .firstOrNull()
+}
+
+private fun JsonElement?.asCleanString(): String? {
+    val element = this?.takeIf { !it.isJsonNull } ?: return null
+    return when {
+        element.isJsonPrimitive -> element.asString
+        element.isJsonArray -> element.asJsonArray.asSequence()
+            .mapNotNull { it.asCleanString() }
+            .firstOrNull()
+        else -> null
+    }?.trim()?.takeIf { it.isNotBlank() && it != "null" }
 }

@@ -54,6 +54,11 @@ data class XtreamMovieDto(
     @SerializedName("added") val added: String?,
 )
 
+data class XtreamMovieInfoDto(
+    @SerializedName("info") val info: JsonElement? = null,
+    @SerializedName("movie_data") val movieData: JsonElement? = null,
+)
+
 data class XtreamSeriesDto(
     @SerializedName("num") val number: Int?,
     @SerializedName("name") val name: String?,

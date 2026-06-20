@@ -39,6 +39,22 @@ data class XtreamMovieStream(
     val added: String?,
 )
 
+data class XtreamMovieDetails(
+    val movieId: Int,
+    val title: String,
+    val posterUrl: String?,
+    val backdropUrl: String?,
+    val plot: String?,
+    val genre: String?,
+    val releaseDate: String?,
+    val rating: String?,
+    val duration: String?,
+    val director: String?,
+    val cast: String?,
+    val containerExtension: String,
+    val categoryId: String?,
+)
+
 data class XtreamSeriesCategory(
     val id: String,
     val name: String,
@@ -56,6 +72,21 @@ data class XtreamSeriesStream(
     val releaseDate: String?,
     val rating: String?,
     val episodeRunTime: String?,
+    val categoryId: String?,
+)
+
+data class XtreamSeriesDetails(
+    val seriesId: Int,
+    val title: String,
+    val coverUrl: String?,
+    val backdropUrl: String?,
+    val plot: String?,
+    val genre: String?,
+    val releaseDate: String?,
+    val rating: String?,
+    val episodeRunTime: String?,
+    val director: String?,
+    val cast: String?,
     val categoryId: String?,
 )
 
