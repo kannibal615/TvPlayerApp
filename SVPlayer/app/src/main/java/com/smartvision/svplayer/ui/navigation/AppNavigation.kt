@@ -24,7 +24,10 @@ import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.HomeScreen
 import com.smartvision.svplayer.ui.live.LiveTvScreen
+import com.smartvision.svplayer.ui.movies.MoviesScreen
+import com.smartvision.svplayer.ui.player.FullScreenContentKind
 import com.smartvision.svplayer.ui.player.FullScreenPlayerRoute
+import com.smartvision.svplayer.ui.series.SeriesScreen
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.launch
@@ -70,10 +73,24 @@ fun AppNavigation(
             )
         }
         composable(AppRoute.Movies.route) {
-            PlaceholderRouteScreen("Films", "Route movies prete. Aucun catalogue API n'est branche.")
+            MoviesScreen(
+                currentRoute = currentRoute,
+                tabs = headerTabs,
+                onNavigate = { route -> navController.navigateSingleTop(route) },
+                onSync = syncCatalog,
+                onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                onWatchMovie = { movieId -> navController.navigate("movie_player/$movieId") },
+            )
         }
         composable(AppRoute.Series.route) {
-            PlaceholderRouteScreen("Series", "Route series prete. Les details series viendront plus tard.")
+            SeriesScreen(
+                currentRoute = currentRoute,
+                tabs = headerTabs,
+                onNavigate = { route -> navController.navigateSingleTop(route) },
+                onSync = syncCatalog,
+                onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                onWatchEpisode = { episodeId -> navController.navigate("episode_player/$episodeId") },
+            )
         }
         composable(AppRoute.Settings.route) {
             PlaceholderRouteScreen("Parametres", "Route settings prete. Aucun stockage ou compte n'est branche.")
@@ -88,6 +105,31 @@ fun AppNavigation(
             } else {
                 FullScreenPlayerRoute(
                     streamId = channelId,
+                    kind = FullScreenContentKind.Live,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+        }
+        composable("movie_player/{movieId}") { entry ->
+            val movieId = entry.arguments?.getString("movieId")?.toIntOrNull()
+            if (movieId == null) {
+                PlaceholderRouteScreen("Lecture film", "Film introuvable.")
+            } else {
+                FullScreenPlayerRoute(
+                    streamId = movieId,
+                    kind = FullScreenContentKind.Movie,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+        }
+        composable("episode_player/{episodeId}") { entry ->
+            val episodeId = entry.arguments?.getString("episodeId")?.toIntOrNull()
+            if (episodeId == null) {
+                PlaceholderRouteScreen("Lecture serie", "Episode introuvable.")
+            } else {
+                FullScreenPlayerRoute(
+                    streamId = episodeId,
+                    kind = FullScreenContentKind.Episode,
                     onBack = { navController.popBackStack() },
                 )
             }

@@ -81,6 +81,7 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
+import com.smartvision.svplayer.data.models.XtreamSeriesEpisode
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
@@ -94,19 +95,46 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
+enum class FullScreenContentKind {
+    Live,
+    Movie,
+    Episode,
+}
+
 data class FullScreenPlayback(
     val streamId: Int,
     val title: String,
     val subtitle: String,
     val url: String,
     val fallbackUrl: String,
+    val badge: String,
+    val status: String,
+    val infoPills: List<String>,
 )
 
 class FullScreenPlayerViewModel(
-    streamId: Int,
+    contentId: Int,
+    kind: FullScreenContentKind,
     xtreamRepository: XtreamRepository,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(
+    private val _uiState = MutableStateFlow(resolvePlayback(contentId, kind, xtreamRepository))
+    val uiState: StateFlow<FullScreenPlayback> = _uiState
+
+    private fun resolvePlayback(
+        contentId: Int,
+        kind: FullScreenContentKind,
+        xtreamRepository: XtreamRepository,
+    ): FullScreenPlayback =
+        when (kind) {
+            FullScreenContentKind.Live -> resolveLive(contentId, xtreamRepository)
+            FullScreenContentKind.Movie -> resolveMovie(contentId, xtreamRepository)
+            FullScreenContentKind.Episode -> resolveEpisode(contentId, xtreamRepository)
+        }
+
+    private fun resolveLive(
+        streamId: Int,
+        xtreamRepository: XtreamRepository,
+    ): FullScreenPlayback =
         xtreamRepository.getCachedLiveStream(streamId)?.let { stream ->
             val categoryName = xtreamRepository.getCachedCategories()
                 .firstOrNull { it.id == stream.categoryId }
@@ -118,6 +146,9 @@ class FullScreenPlayerViewModel(
                 subtitle = categoryName,
                 url = xtreamRepository.buildLiveStreamUrl(stream),
                 fallbackUrl = xtreamRepository.buildLiveStreamFallbackUrl(stream.streamId),
+                badge = "LIVE",
+                status = "Direct",
+                infoPills = listOf("16+", "HD", "5.1"),
             )
         } ?: FullScreenPlayback(
             streamId = streamId,
@@ -125,22 +156,82 @@ class FullScreenPlayerViewModel(
             subtitle = "Live TV",
             url = xtreamRepository.buildLiveStreamUrl(streamId),
             fallbackUrl = xtreamRepository.buildLiveStreamFallbackUrl(streamId),
-        ),
-    )
-    val uiState: StateFlow<FullScreenPlayback> = _uiState
+            badge = "LIVE",
+            status = "Direct",
+            infoPills = listOf("16+", "HD", "5.1"),
+        )
+
+    private fun resolveMovie(
+        movieId: Int,
+        xtreamRepository: XtreamRepository,
+    ): FullScreenPlayback =
+        xtreamRepository.getCachedMovie(movieId)?.let { movie ->
+            val categoryName = xtreamRepository.getCachedMovieCategories()
+                .firstOrNull { it.id == movie.categoryId }
+                ?.name
+                ?: "Films"
+            FullScreenPlayback(
+                streamId = movie.streamId,
+                title = movie.title.cleanTitle(),
+                subtitle = categoryName,
+                url = xtreamRepository.buildMovieStreamUrl(movie),
+                fallbackUrl = xtreamRepository.buildMovieStreamUrl(movie.streamId),
+                badge = "VOD",
+                status = "Film",
+                infoPills = listOf("HD", movie.containerExtension.uppercase()).distinct(),
+            )
+        } ?: FullScreenPlayback(
+            streamId = movieId,
+            title = "Film $movieId",
+            subtitle = "Films",
+            url = xtreamRepository.buildMovieStreamUrl(movieId),
+            fallbackUrl = xtreamRepository.buildMovieStreamUrl(movieId),
+            badge = "VOD",
+            status = "Film",
+            infoPills = listOf("HD", "VOD"),
+        )
+
+    private fun resolveEpisode(
+        episodeId: Int,
+        xtreamRepository: XtreamRepository,
+    ): FullScreenPlayback =
+        xtreamRepository.getCachedEpisode(episodeId)?.let { episode ->
+            val seriesName = xtreamRepository.getCachedSeries(episode.seriesId)?.title?.cleanTitle() ?: "Series"
+            FullScreenPlayback(
+                streamId = episode.episodeId,
+                title = seriesName,
+                subtitle = "${episode.seasonEpisodeLabel()} - ${episode.title.cleanTitle()}",
+                url = xtreamRepository.buildEpisodeStreamUrl(episode),
+                fallbackUrl = xtreamRepository.buildEpisodeStreamUrl(episode.episodeId),
+                badge = "SERIE",
+                status = episode.duration ?: "Episode",
+                infoPills = listOf("HD", episode.containerExtension.uppercase()).distinct(),
+            )
+        } ?: FullScreenPlayback(
+            streamId = episodeId,
+            title = "Episode $episodeId",
+            subtitle = "Series",
+            url = xtreamRepository.buildEpisodeStreamUrl(episodeId),
+            fallbackUrl = xtreamRepository.buildEpisodeStreamUrl(episodeId),
+            badge = "SERIE",
+            status = "Episode",
+            infoPills = listOf("HD", "SERIE"),
+        )
 }
 
 @Composable
 fun FullScreenPlayerRoute(
     streamId: Int,
+    kind: FullScreenContentKind = FullScreenContentKind.Live,
     onBack: () -> Unit,
 ) {
     val container = LocalAppContainer.current
     val viewModel: FullScreenPlayerViewModel = viewModel(
-        key = "fullscreen-live-$streamId",
+        key = "fullscreen-${kind.name.lowercase()}-$streamId",
         factory = viewModelFactory {
             FullScreenPlayerViewModel(
-                streamId = streamId,
+                contentId = streamId,
+                kind = kind,
                 xtreamRepository = container.xtreamRepository,
             )
         },
@@ -163,7 +254,7 @@ private fun FullScreenPlayerScreen(
     var isPlaying by remember { mutableStateOf(true) }
     var buffering by remember { mutableStateOf(true) }
     var errorText by remember { mutableStateOf<String?>(null) }
-    var fallbackTried by remember(playback.streamId) { mutableStateOf(false) }
+    var fallbackTried by remember(playback.url) { mutableStateOf(false) }
 
     val player = remember {
         ExoPlayer.Builder(context).build().apply {
@@ -491,7 +582,7 @@ private fun PlayerInfoCard(
             .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            LivePill()
+            PlaybackPill(playback.badge)
             Spacer(Modifier.width(10.dp))
             Text(
                 text = playback.title,
@@ -513,7 +604,7 @@ private fun PlayerInfoCard(
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = "Direct",
+                text = playback.status,
                 color = SmartVisionColors.TextSecondary,
                 style = PlayerMetaStyle,
                 maxLines = 1,
@@ -521,30 +612,30 @@ private fun PlayerInfoCard(
         }
         Spacer(Modifier.height(7.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            InfoPill("16+")
-            InfoPill("HD")
-            InfoPill("5.1")
+            playback.infoPills.take(3).forEach { pill ->
+                InfoPill(pill)
+            }
         }
     }
 }
 
 @Composable
-private fun LivePill() {
+private fun PlaybackPill(text: String) {
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(3.dp))
-            .background(SmartVisionColors.Primary)
+            .background(if (text == "LIVE") SmartVisionColors.Primary else SmartVisionColors.PrimaryDark)
             .padding(horizontal = 6.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = Icons.Default.VolumeUp,
+            imageVector = if (text == "LIVE") Icons.Default.VolumeUp else Icons.Default.PlayArrow,
             contentDescription = null,
             tint = Color.White,
             modifier = Modifier.size(10.dp),
         )
         Spacer(Modifier.width(3.dp))
-        Text("LIVE", color = Color.White, style = PlayerTinyStyle, fontWeight = FontWeight.Black)
+        Text(text, color = Color.White, style = PlayerTinyStyle, fontWeight = FontWeight.Black)
     }
 }
 
@@ -725,3 +816,6 @@ private fun String.cleanTitle(): String =
         .replace(" SD", "", ignoreCase = true)
         .trim()
         .ifBlank { "Live TV" }
+
+private fun XtreamSeriesEpisode.seasonEpisodeLabel(): String =
+    "S${seasonNumber.toString().padStart(2, '0')}E${episodeNumber.toString().padStart(2, '0')}"
