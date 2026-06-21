@@ -167,7 +167,7 @@ class SplashActivity : Activity() {
         const val WordmarkAspectRatio = 340f / 1400f
         const val LogoRevealMillis = 560L
         const val HaloRevealMillis = 720L
-        const val SplashDurationMillis = 1_180L
-        const val FadeOutMillis = 220L
+        const val SplashDurationMillis = 2_150L
+        const val FadeOutMillis = 320L
     }
 }

@@ -26,7 +26,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
-import com.smartvision.svplayer.data.mock.MockHomeData
+import com.smartvision.svplayer.data.mock.HomeNavigationData
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 
@@ -102,7 +102,7 @@ fun HomeScreen(
                     .height(SmartVisionDimensions.HomeCategoryHeight),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                MockHomeData.categories.forEach { category ->
+                HomeNavigationData.categories.forEach { category ->
                     HomeCategoryCard(
                         category = category,
                         onClick = { onNavigate(category.routeName) },

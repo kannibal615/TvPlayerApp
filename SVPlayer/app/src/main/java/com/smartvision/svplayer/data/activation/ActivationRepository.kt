@@ -7,6 +7,8 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.smartvision.svplayer.BuildConfig
+import com.smartvision.svplayer.core.config.XtreamAccount
+import com.smartvision.svplayer.core.config.XtreamAccountManager
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.map
 class ActivationRepository(
     private val api: ActivationApiService,
     private val dataStore: DataStore<Preferences>,
+    private val accountManager: XtreamAccountManager,
 ) {
     val localState: Flow<StoredActivationState> =
         dataStore.data.map { preferences ->
@@ -68,6 +71,7 @@ class ActivationRepository(
             preferences[ACTIVATED] = false
             preferences[EXPIRES_AT] = expiresAt
             preferences.remove(ACTIVATION_TYPE)
+            response.deviceToken?.takeIf { it.isNotBlank() }?.let { preferences[DEVICE_TOKEN] = it }
         }
 
         return ActivationSession(
@@ -81,7 +85,8 @@ class ActivationRepository(
 
     suspend fun checkStatus(): RemoteActivationStatus {
         val deviceId = getOrCreateDeviceId()
-        val response = api.getDeviceStatus(deviceId)
+        val deviceToken = dataStore.data.first()[DEVICE_TOKEN]
+        val response = api.getDeviceStatus(deviceId, deviceToken)
 
         if (!response.success) {
             throw ActivationException(response.error ?: "Statut activation indisponible.")
@@ -102,6 +107,11 @@ class ActivationRepository(
             } else {
                 preferences[ACTIVATION_TYPE] = response.activationType
             }
+        }
+
+        response.playlistConfig?.toAccount()?.let { account ->
+            val id = accountManager.upsert(account)
+            accountManager.select(id)
         }
 
         return RemoteActivationStatus(
@@ -128,7 +138,22 @@ class ActivationRepository(
         val ACTIVATED = booleanPreferencesKey("activation_activated")
         val EXPIRES_AT = stringPreferencesKey("activation_expires_at")
         val ACTIVATION_TYPE = stringPreferencesKey("activation_type")
+        val DEVICE_TOKEN = stringPreferencesKey("activation_device_token")
     }
+}
+
+private fun PlaylistConfigResponse.toAccount(): XtreamAccount? {
+    val normalizedHost = host?.trim()?.trimEnd('/').orEmpty()
+    val normalizedUsername = username?.trim().orEmpty()
+    val normalizedPassword = password.orEmpty()
+    if (normalizedHost.isBlank() || normalizedUsername.isBlank() || normalizedPassword.isBlank()) return null
+    return XtreamAccount(
+        id = "activation_portal",
+        name = "Compte SmartVision",
+        host = normalizedHost,
+        username = normalizedUsername,
+        password = normalizedPassword,
+    )
 }
 
 data class StoredActivationState(

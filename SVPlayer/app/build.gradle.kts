@@ -45,10 +45,26 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
-        buildConfigField("String", "XTREAM_HOST", buildConfigString(localString("XTREAM_HOST")))
-        buildConfigField("String", "XTREAM_USERNAME", buildConfigString(localString("XTREAM_USERNAME")))
-        buildConfigField("String", "XTREAM_PASSWORD", buildConfigString(localString("XTREAM_PASSWORD")))
         buildConfigField("String", "ACTIVATION_BASE_URL", buildConfigString(activationBaseUrl()))
+    }
+
+    signingConfigs {
+        create("release") {
+            val storePath = localString("RELEASE_STORE_FILE")
+            if (storePath.isNotBlank()) {
+                storeFile = rootProject.file(storePath)
+                storePassword = localString("RELEASE_STORE_PASSWORD")
+                keyAlias = localString("RELEASE_KEY_ALIAS")
+                keyPassword = localString("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+        }
     }
 
     buildFeatures {

@@ -14,6 +14,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
 }
 
 $deviceId = clean_device_id($_GET['device_id'] ?? null);
+$deviceToken = trim((string) ($_GET['device_token'] ?? ''));
 
 if ($deviceId === '') {
     json_response([
@@ -116,14 +117,34 @@ try {
         'expires_at' => $expiresAt,
     ]);
 
-    json_response([
+    $playlistQuery = $pdo->prepare(
+        'SELECT encrypted_payload FROM device_playlist_configs WHERE device_id = :device_id LIMIT 1'
+    );
+    $playlistQuery->execute(['device_id' => $deviceId]);
+    $encryptedPlaylist = $playlistQuery->fetchColumn();
+    $playlistConfigured = is_string($encryptedPlaylist) && $encryptedPlaylist !== '';
+
+    $response = [
         'success' => true,
         'status' => 'active',
         'activated' => true,
         'expires_at' => $expiresAt,
         'activation_type' => $activation['activation_type'],
-        'playlist_configured' => false,
-    ]);
+        'playlist_configured' => $playlistConfigured,
+    ];
+
+    if ($playlistConfigured && has_valid_device_token($pdo, $deviceId, $deviceToken)) {
+        $playlist = decrypt_playlist_config((string) $encryptedPlaylist);
+        if ($playlist !== null) {
+            $response['playlist_config'] = $playlist;
+            $delivered = $pdo->prepare(
+                'UPDATE device_playlist_configs SET delivered_at = NOW() WHERE device_id = :device_id'
+            );
+            $delivered->execute(['device_id' => $deviceId]);
+        }
+    }
+
+    json_response($response);
 } catch (Throwable $exception) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();

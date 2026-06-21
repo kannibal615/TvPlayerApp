@@ -1,7 +1,5 @@
 package com.smartvision.svplayer.core.config
 
-import com.smartvision.svplayer.BuildConfig
-
 data class XtreamCredentials(
     val host: String,
     val username: String,
@@ -25,13 +23,4 @@ data class XtreamCredentials(
 
 interface XtreamCredentialsProvider {
     fun current(): XtreamCredentials
-}
-
-class BuildConfigXtreamCredentialsProvider : XtreamCredentialsProvider {
-    override fun current(): XtreamCredentials =
-        XtreamCredentials(
-            host = BuildConfig.XTREAM_HOST,
-            username = BuildConfig.XTREAM_USERNAME,
-            password = BuildConfig.XTREAM_PASSWORD,
-        )
 }

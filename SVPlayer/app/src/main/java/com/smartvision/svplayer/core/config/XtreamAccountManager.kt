@@ -1,7 +1,6 @@
 package com.smartvision.svplayer.core.config
 
 import android.content.Context
-import com.smartvision.svplayer.BuildConfig
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +18,7 @@ data class XtreamAccount(
 
 class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
     private val preferences = context.getSharedPreferences("xtream_accounts", Context.MODE_PRIVATE)
-    private val _accounts = MutableStateFlow(loadAccounts().ifEmpty { buildConfigAccount() })
+    private val _accounts = MutableStateFlow(loadAccounts())
     val accounts: StateFlow<List<XtreamAccount>> = _accounts.asStateFlow()
 
     private val _activeAccountId = MutableStateFlow(
@@ -109,26 +108,15 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
                 username = item.optString("username"),
                 password = item.optString("password"),
             )
-        }.filter { it.host.isNotBlank() && it.username.isNotBlank() && it.password.isNotBlank() }
-    }.getOrDefault(emptyList())
-
-    private fun buildConfigAccount(): List<XtreamAccount> {
-        if (BuildConfig.XTREAM_HOST.isBlank() || BuildConfig.XTREAM_USERNAME.isBlank() || BuildConfig.XTREAM_PASSWORD.isBlank()) {
-            return emptyList()
+        }.filter {
+            it.id != LEGACY_BUILD_CONFIG_ACCOUNT &&
+                it.host.isNotBlank() && it.username.isNotBlank() && it.password.isNotBlank()
         }
-        return listOf(
-            XtreamAccount(
-                id = "build_config",
-                name = "Compte principal",
-                host = BuildConfig.XTREAM_HOST,
-                username = BuildConfig.XTREAM_USERNAME,
-                password = BuildConfig.XTREAM_PASSWORD,
-            ),
-        )
-    }
+    }.getOrDefault(emptyList())
 
     private companion object {
         const val KEY_ACCOUNTS = "accounts_json"
         const val KEY_ACTIVE = "active_account_id"
+        const val LEGACY_BUILD_CONFIG_ACCOUNT = "build_config"
     }
 }

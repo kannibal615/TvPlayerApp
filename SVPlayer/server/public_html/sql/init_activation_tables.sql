@@ -25,6 +25,17 @@ CREATE TABLE IF NOT EXISTS activation_sessions (
     INDEX (short_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS activation_session_tokens (
+    session_id INT NOT NULL PRIMARY KEY,
+    device_id VARCHAR(100) NOT NULL,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX (device_id),
+    CONSTRAINT fk_activation_session_tokens_session
+        FOREIGN KEY (session_id) REFERENCES activation_sessions(id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS activation_codes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     code_hash CHAR(64) NOT NULL UNIQUE,
@@ -71,6 +82,14 @@ CREATE TABLE IF NOT EXISTS device_activations (
     expires_at DATETIME NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX (device_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS device_playlist_configs (
+    device_id VARCHAR(100) NOT NULL PRIMARY KEY,
+    encrypted_payload LONGTEXT NOT NULL,
+    delivered_at DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS app_settings (

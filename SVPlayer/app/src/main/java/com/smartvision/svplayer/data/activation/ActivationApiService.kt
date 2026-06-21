@@ -15,6 +15,7 @@ interface ActivationApiService {
     @GET("api/device_status.php")
     suspend fun getDeviceStatus(
         @Query("device_id") deviceId: String,
+        @Query("device_token") deviceToken: String?,
     ): DeviceStatusResponse
 }
 
@@ -31,6 +32,7 @@ data class CreateActivationSessionResponse(
     @SerializedName("qr_url") val qrUrl: String? = null,
     @SerializedName("expires_at") val expiresAt: String? = null,
     @SerializedName("polling_interval") val pollingInterval: Int? = null,
+    @SerializedName("device_token") val deviceToken: String? = null,
     @SerializedName("error") val error: String? = null,
 )
 
@@ -41,5 +43,12 @@ data class DeviceStatusResponse(
     @SerializedName("expires_at") val expiresAt: String? = null,
     @SerializedName("activation_type") val activationType: String? = null,
     @SerializedName("playlist_configured") val playlistConfigured: Boolean = false,
+    @SerializedName("playlist_config") val playlistConfig: PlaylistConfigResponse? = null,
     @SerializedName("error") val error: String? = null,
+)
+
+data class PlaylistConfigResponse(
+    @SerializedName("host") val host: String? = null,
+    @SerializedName("username") val username: String? = null,
+    @SerializedName("password") val password: String? = null,
 )

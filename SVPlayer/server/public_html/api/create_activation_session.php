@@ -88,6 +88,18 @@ try {
         throw new RuntimeException('Unable to generate a unique activation code.');
     }
 
+    $sessionId = (int) $pdo->lastInsertId();
+    $deviceToken = generate_device_token();
+    $insertToken = $pdo->prepare(
+        "INSERT INTO activation_session_tokens (session_id, device_id, token_hash, created_at)
+         VALUES (:session_id, :device_id, :token_hash, NOW())"
+    );
+    $insertToken->execute([
+        'session_id' => $sessionId,
+        'device_id' => $deviceId,
+        'token_hash' => device_token_hash($deviceToken),
+    ]);
+
     $pdo->commit();
 
     $qrUrl = SMARTVISION_PUBLIC_BASE_URL
@@ -101,6 +113,7 @@ try {
         'qr_url' => $qrUrl,
         'expires_at' => $expiresAt,
         'polling_interval' => $pollingInterval,
+        'device_token' => $deviceToken,
     ]);
 } catch (Throwable $exception) {
     if ($pdo->inTransaction()) {

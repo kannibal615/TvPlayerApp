@@ -106,3 +106,96 @@ function is_duplicate_key(Throwable $exception): bool
 {
     return $exception instanceof PDOException && $exception->getCode() === '23000';
 }
+
+function generate_device_token(): string
+{
+    return rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+}
+
+function device_token_hash(string $token): string
+{
+    return hash('sha256', trim($token));
+}
+
+function has_valid_device_token(PDO $pdo, string $deviceId, string $token): bool
+{
+    if ($token === '' || strlen($token) > 128) {
+        return false;
+    }
+
+    $statement = $pdo->prepare(
+        "SELECT 1
+         FROM activation_session_tokens tokens
+         INNER JOIN activation_sessions sessions ON sessions.id = tokens.session_id
+         WHERE tokens.device_id = :device_id
+           AND tokens.token_hash = :token_hash
+           AND sessions.status IN ('pending', 'validated')
+         LIMIT 1"
+    );
+    $statement->execute([
+        'device_id' => $deviceId,
+        'token_hash' => device_token_hash($token),
+    ]);
+
+    return $statement->fetchColumn() !== false;
+}
+
+function normalize_xtream_host(mixed $value): string
+{
+    $host = rtrim(trim((string) $value), '/');
+    if ($host === '' || strlen($host) > 255) {
+        return '';
+    }
+    if (!preg_match('#^https?://#i', $host)) {
+        $host = 'https://' . $host;
+    }
+    $parts = parse_url($host);
+    if (!is_array($parts) || empty($parts['host']) || !in_array(strtolower((string) ($parts['scheme'] ?? '')), ['http', 'https'], true)) {
+        return '';
+    }
+
+    return $host;
+}
+
+function credentials_key(): string
+{
+    $config = load_database_config();
+    $encoded = trim((string) ($config['credentials_encryption_key'] ?? ''));
+    $decoded = base64_decode($encoded, true);
+    if ($decoded === false || strlen($decoded) < 32) {
+        throw new RuntimeException('Credentials encryption key unavailable.');
+    }
+
+    return substr($decoded, 0, 32);
+}
+
+function encrypt_playlist_config(array $config): string
+{
+    $iv = random_bytes(12);
+    $tag = '';
+    $plainText = json_encode($config, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    $cipherText = openssl_encrypt($plainText, 'aes-256-gcm', credentials_key(), OPENSSL_RAW_DATA, $iv, $tag);
+    if ($cipherText === false) {
+        throw new RuntimeException('Unable to encrypt playlist configuration.');
+    }
+
+    return base64_encode($iv . $tag . $cipherText);
+}
+
+function decrypt_playlist_config(string $payload): ?array
+{
+    $raw = base64_decode($payload, true);
+    if ($raw === false || strlen($raw) <= 28) {
+        return null;
+    }
+    $iv = substr($raw, 0, 12);
+    $tag = substr($raw, 12, 16);
+    $cipherText = substr($raw, 28);
+    $plainText = openssl_decrypt($cipherText, 'aes-256-gcm', credentials_key(), OPENSSL_RAW_DATA, $iv, $tag);
+    if ($plainText === false) {
+        return null;
+    }
+    $decoded = json_decode($plainText, true);
+
+    return is_array($decoded) ? $decoded : null;
+}

@@ -68,6 +68,16 @@ function Ensure-AdminLocalProperties {
     if (-not $properties.ContainsKey("SMARTVISION_ADMIN_PASSWORD") -or [string]::IsNullOrWhiteSpace($properties["SMARTVISION_ADMIN_PASSWORD"])) {
         $lines.Add("SMARTVISION_ADMIN_PASSWORD=$(New-SecureAdminPassword)")
     }
+    if (-not $properties.ContainsKey("SMARTVISION_CREDENTIALS_ENCRYPTION_KEY") -or [string]::IsNullOrWhiteSpace($properties["SMARTVISION_CREDENTIALS_ENCRYPTION_KEY"])) {
+        $bytes = New-Object byte[] 32
+        $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+        try {
+            $rng.GetBytes($bytes)
+        } finally {
+            $rng.Dispose()
+        }
+        $lines.Add("SMARTVISION_CREDENTIALS_ENCRYPTION_KEY=$([Convert]::ToBase64String($bytes))")
+    }
 
     if ($lines.Count -eq 0) {
         return
@@ -388,6 +398,7 @@ function New-PrivateConfigFile {
     $mysqlDatabase = [string]$Properties["MYSQL_DATABASE"]
     $adminUsername = [string]$Properties["SMARTVISION_ADMIN_USERNAME"]
     $adminPasswordHash = Get-PhpPasswordHash -Password ([string]$Properties["SMARTVISION_ADMIN_PASSWORD"])
+    $credentialsEncryptionKey = [string]$Properties["SMARTVISION_CREDENTIALS_ENCRYPTION_KEY"]
 
     $content = @"
 <?php
@@ -400,6 +411,7 @@ return [
     'mysql_database' => '$(Escape-PhpString $mysqlDatabase)',
     'admin_username' => '$(Escape-PhpString $adminUsername)',
     'admin_password_hash' => '$(Escape-PhpString $adminPasswordHash)',
+    'credentials_encryption_key' => '$(Escape-PhpString $credentialsEncryptionKey)',
 ];
 "@
 
@@ -563,6 +575,7 @@ $pdo = db();
 try {
     $pdo->beginTransaction();
     foreach ([
+        'DELETE FROM device_playlist_configs WHERE device_id = :device_id',
         'DELETE FROM device_activations WHERE device_id = :device_id',
         'DELETE FROM activation_sessions WHERE device_id = :device_id',
         'DELETE FROM devices WHERE device_id = :device_id',
@@ -709,7 +722,7 @@ Add-Type -AssemblyName System.Web
 
 Ensure-AdminLocalProperties -Path $localPropertiesPath
 $properties = Read-LocalProperties -Path $localPropertiesPath
-foreach ($name in @("CPANEL_API_KEY", "CPANEL_HOST", "DOMAINE_SERVER", "MYSQL_HOST", "MYSQL_USERNAME", "MYSQL_PASSWORD", "MYSQL_DATABASE", "SMARTVISION_ADMIN_USERNAME", "SMARTVISION_ADMIN_PASSWORD")) {
+foreach ($name in @("CPANEL_API_KEY", "CPANEL_HOST", "DOMAINE_SERVER", "MYSQL_HOST", "MYSQL_USERNAME", "MYSQL_PASSWORD", "MYSQL_DATABASE", "SMARTVISION_ADMIN_USERNAME", "SMARTVISION_ADMIN_PASSWORD", "SMARTVISION_CREDENTIALS_ENCRYPTION_KEY")) {
     Require-Property -Properties $properties -Name $name | Out-Null
 }
 
@@ -732,6 +745,9 @@ try {
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "activate"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "admin"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "sql"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "assets"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "$remoteRoot/assets" -Name "images"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "downloads"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "." -Name $remotePrivate
 
     $privateConfigPath = Join-Path $tempRoot "config.php"
@@ -741,16 +757,30 @@ try {
     New-InstallFile -OutputPath $installPath -Token $installToken
 
     Write-Host "Upload des fichiers PHP/SQL..."
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath (Join-Path $publicHtmlPath "index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/config.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/helpers.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/create_activation_session.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/device_status.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/validate_activation.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/start_trial.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/save_playlist_config.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/activate" -FilePath (Join-Path $publicHtmlPath "activate/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/bootstrap.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/logout.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/sql" -FilePath (Join-Path $publicHtmlPath "sql/init_activation_tables.sql")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/site.css")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/activation.js")
+    foreach ($imageName in @("smartvision-mark.png", "smartvision-wordmark.png", "app-live-tv.png", "app-movies.png")) {
+        Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets/images" -FilePath (Join-Path $publicHtmlPath "assets/images/$imageName")
+    }
+    $releaseApk = Join-Path $projectRoot "app/build/outputs/apk/release/app-release.apk"
+    if (Test-Path -LiteralPath $releaseApk) {
+        $downloadApk = Join-Path $tempRoot "smartvision-tv.apk"
+        Copy-Item -LiteralPath $releaseApk -Destination $downloadApk
+        Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/downloads" -FilePath $downloadApk
+    }
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remotePrivate -FilePath $privateConfigPath
 
     if (-not $SkipInstall) {
@@ -762,9 +792,13 @@ try {
     }
 
     if (-not $SkipTests) {
-        Write-Host "Tests publics phase 2..."
+        Write-Host "Tests publics site et activation..."
+        $homeHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/"
+        if ($homeHtml.Content -notmatch "SmartVision IPTV Player" -or $homeHtml.Content -notmatch "12 mois") {
+            throw "La page d accueil ne retourne pas le contenu attendu."
+        }
         $activateHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/activate/"
-        if ($activateHtml.Content -notmatch "Lien invalide") {
+        if ($activateHtml.Content -notmatch "Saisissez le code de votre TV") {
             throw "La page /activate/ ne retourne pas le contenu attendu."
         }
 
@@ -796,6 +830,9 @@ try {
                 if ([string]::IsNullOrWhiteSpace([string]$session.short_code) -or [string]::IsNullOrWhiteSpace([string]$session.qr_url)) {
                     throw "Session d activation incomplete."
                 }
+                if ([string]::IsNullOrWhiteSpace([string]$session.device_token)) {
+                    throw "Token appareil absent de la session."
+                }
             }
 
             $portal = Invoke-WebRequest -UseBasicParsing -Method Get -Uri $session.qr_url
@@ -818,17 +855,31 @@ try {
                 throw "Validation SmartVision inattendue."
             }
 
-            $status = Invoke-RestMethod -Method Get -Uri "https://$domain/api/device_status.php?device_id=$qaDeviceId"
+            $playlistBody = @{
+                device_id = $qaDeviceId
+                short_code = [string]$session.short_code
+                host = "https://demo.invalid"
+                username = "qa-user"
+                password = "qa-password"
+            } | ConvertTo-Json
+            $playlist = Invoke-RestMethod -Method Post -Uri "https://$domain/api/save_playlist_config.php" -ContentType "application/json" -Body $playlistBody
+            Assert-ApiResult -Result $playlist -Label "save_playlist_config"
+
+            $statusUrl = "https://$domain/api/device_status.php?device_id=$([Uri]::EscapeDataString($qaDeviceId))&device_token=$([Uri]::EscapeDataString([string]$session.device_token))"
+            $status = Invoke-RestMethod -Method Get -Uri $statusUrl
             Assert-ApiResult -Result $status -Label "device_status active"
             if ($status.status -ne "active" -or $status.activated -ne $true) {
                 throw "Statut appareil actif inattendu."
+            }
+            if ($status.playlist_configured -ne $true -or $status.playlist_config.username -ne "qa-user") {
+                throw "Configuration Xtream securisee non restituee."
             }
 
             if ($useExistingQaSession -and $QaActiveHoldSeconds -gt 0) {
                 Start-Sleep -Seconds $QaActiveHoldSeconds
             }
 
-            Write-Host "Tests OK: portail QR, validation SmartVision et statut active."
+            Write-Host "Tests OK: site public, portail, validation et configuration Xtream chiffree."
         } finally {
             Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath $qaCleanupPath
             $cleanup = Invoke-RestMethod -Method Get -Uri "https://$domain/qa_cleanup.php?token=$qaToken"

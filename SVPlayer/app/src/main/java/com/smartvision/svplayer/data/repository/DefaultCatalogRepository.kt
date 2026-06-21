@@ -50,7 +50,7 @@ class DefaultCatalogRepository(
             categoryDao.observeByType(MediaSection.Live.storageName),
             mediaDao.observeLiveStreams(),
         ) { categories, streams ->
-            if (categories.isEmpty() && streams.isEmpty()) return@combine MockCatalogData.liveCategories
+            if (!credentialsProvider.current().isConfigured) return@combine emptyList()
             val counts = streams.groupingBy { it.categoryId }.eachCount()
             categories.map { it.toDomain(MediaSection.Live, counts[it.id] ?: 0) }
         }
@@ -60,9 +60,7 @@ class DefaultCatalogRepository(
             categoryDao.observeByType(MediaSection.Live.storageName),
             mediaDao.observeLiveStreamsByCategory(categoryId),
         ) { categories, streams ->
-            if (streams.isEmpty()) {
-                return@combine MockCatalogData.liveChannels.filter { categoryId == null || it.categoryId == categoryId }
-            }
+            if (!credentialsProvider.current().isConfigured) return@combine emptyList()
             val names = categories.associate { it.id to it.name }
             streams.map { it.toDomain(names[it.categoryId] ?: "Live TV") }
         }
@@ -72,7 +70,7 @@ class DefaultCatalogRepository(
             categoryDao.observeByType(MediaSection.Movies.storageName),
             mediaDao.observeMovies(),
         ) { categories, movies ->
-            if (categories.isEmpty() && movies.isEmpty()) return@combine MockCatalogData.movieCategories
+            if (!credentialsProvider.current().isConfigured) return@combine emptyList()
             val counts = movies.groupingBy { it.categoryId }.eachCount()
             categories.map { it.toDomain(MediaSection.Movies, counts[it.id] ?: 0) }
         }
@@ -82,11 +80,7 @@ class DefaultCatalogRepository(
             categoryDao.observeByType(MediaSection.Movies.storageName),
             mediaDao.observeMoviesByCategory(categoryId?.takeUnless { it == "all" || it == "new" || it == "favorites" }),
         ) { categories, movies ->
-            if (movies.isEmpty()) {
-                return@combine MockCatalogData.movies.filter {
-                    categoryId == null || categoryId == "all" || it.categoryId == categoryId
-                }
-            }
+            if (!credentialsProvider.current().isConfigured) return@combine emptyList()
             val names = categories.associate { it.id to it.name }
             movies.map { it.toDomain(names[it.categoryId] ?: "Films") }
         }
@@ -96,7 +90,7 @@ class DefaultCatalogRepository(
             categoryDao.observeByType(MediaSection.Series.storageName),
             mediaDao.observeSeries(),
         ) { categories, series ->
-            if (categories.isEmpty() && series.isEmpty()) return@combine MockCatalogData.seriesCategories
+            if (!credentialsProvider.current().isConfigured) return@combine emptyList()
             val counts = series.groupingBy { it.categoryId }.eachCount()
             categories.map { it.toDomain(MediaSection.Series, counts[it.id] ?: 0) }
         }
@@ -106,11 +100,7 @@ class DefaultCatalogRepository(
             categoryDao.observeByType(MediaSection.Series.storageName),
             mediaDao.observeSeriesByCategory(categoryId?.takeUnless { it == "all" || it == "new" || it == "favorites" }),
         ) { categories, series ->
-            if (series.isEmpty()) {
-                return@combine MockCatalogData.series.filter {
-                    categoryId == null || categoryId == "all" || it.categoryId == categoryId
-                }
-            }
+            if (!credentialsProvider.current().isConfigured) return@combine emptyList()
             val names = categories.associate { it.id to it.name }
             series.map { it.toDomain(names[it.categoryId] ?: "Series") }
         }
@@ -126,13 +116,13 @@ class DefaultCatalogRepository(
                 liveCount = live.size,
                 movieCount = movies.size,
                 seriesCount = series.size,
-            ) ?: MockCatalogData.account
+            ) ?: emptyAccountProfile()
         }
 
     override suspend fun synchronize(): Result<Unit> = withContext(Dispatchers.IO) {
         val credentials = credentialsProvider.current()
         if (!credentials.isConfigured) {
-            val message = "Identifiants debug absents"
+            val message = "Aucun compte Xtream configure"
             _syncStatus.value = SyncStatus.Error(message)
             return@withContext Result.failure(IllegalStateException(message))
         }
@@ -218,11 +208,9 @@ class DefaultCatalogRepository(
                     mediaDao.upsertEpisodes(entities)
                 }
                 entities.map { it.toDomain() }
-            }.getOrElse {
-                MockCatalogData.episodes.filter { it.seriesId == seriesId }
-            }
+            }.getOrDefault(emptyList())
         } else {
-            MockCatalogData.episodes.filter { it.seriesId == seriesId }
+            emptyList()
         }
     }
 
@@ -232,28 +220,25 @@ class DefaultCatalogRepository(
                 PlaybackKind.Live -> {
                     val streamId = id.toIntOrNull() ?: return@withContext null
                     val local = mediaDao.getLiveStream(streamId)
-                    val fallback = MockCatalogData.liveChannels.firstOrNull { it.streamId == streamId }
-                    val title = local?.name ?: fallback?.name ?: return@withContext null
-                    val subtitle = local?.categoryId ?: fallback?.categoryName ?: "Live TV"
+                    val title = local?.name ?: return@withContext null
+                    val subtitle = local.categoryId ?: "Live TV"
                     PlaybackRequest(kind, id, title, subtitle, urlFactory.live(streamId))
                 }
 
                 PlaybackKind.Movie -> {
                     val streamId = id.toIntOrNull() ?: return@withContext null
                     val local = mediaDao.getMovie(streamId)
-                    val fallback = MockCatalogData.movies.firstOrNull { it.streamId == streamId }
-                    val title = local?.title ?: fallback?.title ?: return@withContext null
-                    val extension = local?.containerExtension ?: fallback?.containerExtension ?: "mp4"
+                    val title = local?.title ?: return@withContext null
+                    val extension = local.containerExtension ?: "mp4"
                     val progress = progressDao.get(kind.routeName, id)
-                    PlaybackRequest(kind, id, title, local?.categoryId ?: fallback?.categoryName ?: "Film", urlFactory.movie(streamId, extension), progress?.positionMs ?: 0L)
+                    PlaybackRequest(kind, id, title, local.categoryId ?: "Film", urlFactory.movie(streamId, extension), progress?.positionMs ?: 0L)
                 }
 
                 PlaybackKind.Episode -> {
                     val episodeId = id.toIntOrNull() ?: return@withContext null
                     val local = mediaDao.getEpisode(episodeId)
-                    val fallback = MockCatalogData.episodes.firstOrNull { it.episodeId == episodeId }
-                    val title = local?.title ?: fallback?.title ?: return@withContext null
-                    val extension = local?.containerExtension ?: fallback?.containerExtension ?: "mp4"
+                    val title = local?.title ?: return@withContext null
+                    val extension = local.containerExtension ?: "mp4"
                     val progress = progressDao.get(kind.routeName, id)
                     PlaybackRequest(kind, id, title, "Episode", urlFactory.episode(episodeId, extension), progress?.positionMs ?: 0L)
                 }
@@ -278,3 +263,18 @@ class DefaultCatalogRepository(
         )
     }
 }
+
+internal fun emptyAccountProfile() = AccountProfile(
+    id = "primary",
+    name = "Aucun compte",
+    host = "",
+    usernameMasked = "",
+    status = "Non configure",
+    expirationDate = null,
+    activeConnections = null,
+    maxConnections = null,
+    lastSync = null,
+    liveCount = 0,
+    movieCount = 0,
+    seriesCount = 0,
+)

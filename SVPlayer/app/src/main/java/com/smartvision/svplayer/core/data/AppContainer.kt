@@ -82,6 +82,7 @@ class AppContainer(context: Context) {
     val activationRepository: ActivationRepository = ActivationRepository(
         api = activationApi,
         dataStore = appContext.activationDataStore,
+        accountManager = accountManager,
     )
 
     val xtreamRepository: XtreamRepository = XtreamRepository(

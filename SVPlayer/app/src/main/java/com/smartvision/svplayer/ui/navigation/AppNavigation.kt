@@ -44,6 +44,7 @@ import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.ui.activation.ActivationScreen
 import com.smartvision.svplayer.ui.activation.ActivationViewModel
+import com.smartvision.svplayer.ui.activation.XtreamSetupDialog
 import com.smartvision.svplayer.ui.detail.MovieDetailRoute
 import com.smartvision.svplayer.ui.detail.SeriesDetailRoute
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
@@ -74,9 +75,11 @@ fun AppNavigation(
         },
     )
     val activationState by activationViewModel.uiState.collectAsStateWithLifecycle()
+    val xtreamAccounts by container.accountManager.accounts.collectAsStateWithLifecycle()
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route ?: AppRoute.Home.route
     var showExitConfirmation by remember { mutableStateOf(false) }
+    var showXtreamSetup by remember { mutableStateOf(false) }
     val activity = LocalContext.current as? Activity
     val syncCatalog = {
         scope.launch {
@@ -93,6 +96,18 @@ fun AppNavigation(
             onCheckNow = activationViewModel::checkNow,
         )
         return
+    }
+
+    LaunchedEffect(activationState.activated, xtreamAccounts.isEmpty()) {
+        if (activationState.activated && xtreamAccounts.isEmpty()) {
+            showXtreamSetup = true
+        }
+    }
+
+    LaunchedEffect(activationState.activated, xtreamAccounts) {
+        if (activationState.activated && xtreamAccounts.isNotEmpty()) {
+            container.synchronizeCatalog()
+        }
     }
 
     NavHost(
@@ -247,6 +262,18 @@ fun AppNavigation(
         ExitConfirmationDialog(
             onDismiss = { showExitConfirmation = false },
             onExit = { activity?.finishAffinity() },
+        )
+    }
+
+    if (showXtreamSetup && xtreamAccounts.isEmpty()) {
+        XtreamSetupDialog(
+            onSave = { account ->
+                val accountId = container.accountManager.upsert(account)
+                container.accountManager.select(accountId)
+                container.xtreamRepository.clearCaches()
+                showXtreamSetup = false
+            },
+            onLater = { showXtreamSetup = false },
         )
     }
 }
