@@ -1,0 +1,13 @@
+body {
+    overflow-x: hidden;
+}
+
+@media (max-width: 640px) {
+    .site-header {
+        grid-template-columns: 1fr;
+    }
+
+    .site-header .header-cta {
+        display: none;
+    }
+}

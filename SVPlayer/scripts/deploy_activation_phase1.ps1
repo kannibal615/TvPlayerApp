@@ -771,6 +771,7 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/logout.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/sql" -FilePath (Join-Path $publicHtmlPath "sql/init_activation_tables.sql")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/site.css")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/mobile.css")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/activation.js")
     foreach ($imageName in @("smartvision-mark.png", "smartvision-wordmark.png", "app-live-tv.png", "app-movies.png")) {
         Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets/images" -FilePath (Join-Path $publicHtmlPath "assets/images/$imageName")
@@ -836,7 +837,7 @@ try {
             }
 
             $portal = Invoke-WebRequest -UseBasicParsing -Method Get -Uri $session.qr_url
-            if ($portal.Content -notmatch "Activer votre TV" -or $portal.Content -notmatch [Regex]::Escape([string]$session.short_code)) {
+            if ($portal.Content -notmatch "Activez votre TV" -or $portal.Content -notmatch [Regex]::Escape([string]$session.short_code)) {
                 throw "Le portail ne reconnait pas la session QR."
             }
 

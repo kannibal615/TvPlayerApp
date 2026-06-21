@@ -14,6 +14,7 @@ header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-sr
     <meta name="description" content="SmartVision est un lecteur IPTV premium pour Android TV. Activez votre appareil, ajoutez vos identifiants Xtream et profitez de votre propre abonnement.">
     <title>SmartVision IPTV Player</title>
     <link rel="stylesheet" href="/assets/site.css?v=1">
+    <link rel="stylesheet" href="/assets/mobile.css?v=1">
 </head>
 <body>
 <header class="site-header">
