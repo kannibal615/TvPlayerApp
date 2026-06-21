@@ -74,7 +74,7 @@ class SplashActivity : Activity() {
         val logoGroup = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            alpha = 1f
+            alpha = LogoPulseMinAlpha
             scaleX = 1f
             scaleY = 1f
             translationY = 0f
@@ -125,7 +125,7 @@ class SplashActivity : Activity() {
         if (animationStarted || launched || isFinishing) return
         animationStarted = true
         logoGroup.startAnimation(
-            AlphaAnimation(1f, 0.9f).apply {
+            AlphaAnimation(LogoPulseMinAlpha, LogoPulseMaxAlpha).apply {
                 duration = LogoPulseMillis
                 repeatMode = Animation.REVERSE
                 repeatCount = Animation.INFINITE
@@ -167,6 +167,8 @@ class SplashActivity : Activity() {
 
     private companion object {
         const val WordmarkAspectRatio = 340f / 1400f
+        const val LogoPulseMinAlpha = 0.08f
+        const val LogoPulseMaxAlpha = 0.26f
         const val LogoPulseMillis = 760L
         const val HaloRevealMillis = 720L
         const val SplashDurationMillis = 3_400L
