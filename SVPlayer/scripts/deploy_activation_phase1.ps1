@@ -767,6 +767,7 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/start_trial.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/save_playlist_config.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/create_playlist_setup_session.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/app_update.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/activate" -FilePath (Join-Path $publicHtmlPath "activate/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/account" -FilePath (Join-Path $publicHtmlPath "account/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/bootstrap.php")
@@ -781,9 +782,32 @@ try {
     }
     $releaseApk = Join-Path $projectRoot "app/build/outputs/apk/release/app-release.apk"
     if (Test-Path -LiteralPath $releaseApk) {
+        $buildGradlePath = Join-Path $projectRoot "app/build.gradle.kts"
+        $buildGradle = Get-Content -LiteralPath $buildGradlePath -Raw
+        if ($buildGradle -notmatch "versionCode\s*=\s*(\d+)") {
+            throw "versionCode introuvable dans app/build.gradle.kts."
+        }
+        $apkVersionCode = [int]$Matches[1]
+        if ($buildGradle -notmatch 'versionName\s*=\s*"([^"]+)"') {
+            throw "versionName introuvable dans app/build.gradle.kts."
+        }
+        $apkVersionName = $Matches[1]
+        $apkInfo = Get-Item -LiteralPath $releaseApk
+        $apkHash = (Get-FileHash -LiteralPath $releaseApk -Algorithm SHA256).Hash.ToLowerInvariant()
         $downloadApk = Join-Path $tempRoot "smartvision-tv.apk"
+        $versionManifest = Join-Path $tempRoot "smartvision-tv.version.json"
         Copy-Item -LiteralPath $releaseApk -Destination $downloadApk
+        [ordered]@{
+            version_code = $apkVersionCode
+            version_name = $apkVersionName
+            apk_sha256 = $apkHash
+            apk_size = $apkInfo.Length
+            mandatory = $false
+            release_notes = "Nouvelle version SmartVision avec correctifs et ameliorations."
+            generated_at = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        } | ConvertTo-Json | Set-Content -LiteralPath $versionManifest -Encoding UTF8
         Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/downloads" -FilePath $downloadApk
+        Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/downloads" -FilePath $versionManifest
     }
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remotePrivate -FilePath $privateConfigPath
 
@@ -808,6 +832,11 @@ try {
         $activateHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/activate/"
         if ($activateHtml.Content -notmatch "Saisissez le code de votre TV") {
             throw "La page /activate/ ne retourne pas le contenu attendu."
+        }
+        $updateStatus = Invoke-RestMethod -Method Get -Uri "https://$domain/api/app_update.php?version_code=0&version_name=qa"
+        Assert-ApiResult -Result $updateStatus -Label "app_update"
+        if ([int]$updateStatus.latest_version_code -lt 0) {
+            throw "Le manifest de mise a jour est invalide."
         }
 
         $useExistingQaSession = -not [string]::IsNullOrWhiteSpace($QaDeviceId) -and -not [string]::IsNullOrWhiteSpace($QaShortCode)

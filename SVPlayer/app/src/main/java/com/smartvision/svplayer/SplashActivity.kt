@@ -37,7 +37,11 @@ class SplashActivity : Activity() {
                 View.SYSTEM_UI_FLAG_LAYOUT_STABLE
 
         root = FrameLayout(this).apply {
-            setBackgroundResource(R.drawable.splash_background)
+            setBackgroundColor(Color.rgb(2, 8, 23))
+        }
+        val backdrop = ImageView(this).apply {
+            setImageResource(R.drawable.smartvision_splash_full)
+            scaleType = ImageView.ScaleType.FIT_XY
         }
         val displayHeight = resources.displayMetrics.heightPixels
         val markSize = (displayHeight * 0.38f).toInt()
@@ -90,6 +94,13 @@ class SplashActivity : Activity() {
             )
         }
 
+        root.addView(
+            backdrop,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
         root.addView(
             halo,
             FrameLayout.LayoutParams(
@@ -145,19 +156,13 @@ class SplashActivity : Activity() {
     private fun launchHome() {
         if (launched || isFinishing) return
         launched = true
+        handler.removeCallbacks(openHome)
         root.clearAnimation()
-        root.animate()
-            .alpha(0f)
-            .setDuration(FadeOutMillis)
-            .setInterpolator(AccelerateDecelerateInterpolator())
-            .withEndAction {
-                if (!isFinishing) {
-                    startActivity(Intent(this, MainActivity::class.java))
-                    overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
-                    finish()
-                }
-            }
-            .start()
+        root.animate().cancel()
+        root.alpha = 1f
+        startActivity(Intent(this, MainActivity::class.java))
+        overridePendingTransition(0, 0)
+        finish()
     }
 
     override fun onDestroy() {
@@ -172,6 +177,5 @@ class SplashActivity : Activity() {
         const val LogoPulseMillis = 760L
         const val HaloRevealMillis = 720L
         const val SplashDurationMillis = 3_400L
-        const val FadeOutMillis = 320L
     }
 }

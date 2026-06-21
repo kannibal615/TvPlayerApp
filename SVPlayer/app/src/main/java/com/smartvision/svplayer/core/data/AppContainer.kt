@@ -14,6 +14,8 @@ import com.smartvision.svplayer.data.repository.DefaultCatalogRepository
 import com.smartvision.svplayer.data.repository.DefaultSettingsRepository
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.data.update.AppUpdateApiService
+import com.smartvision.svplayer.data.update.AppUpdateRepository
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.domain.usecase.BuildPlaybackRequestUseCase
@@ -78,11 +80,18 @@ class AppContainer(context: Context) {
         .build()
 
     private val activationApi = activationRetrofit.create(ActivationApiService::class.java)
+    private val appUpdateApi = activationRetrofit.create(AppUpdateApiService::class.java)
 
     val activationRepository: ActivationRepository = ActivationRepository(
         api = activationApi,
         dataStore = appContext.activationDataStore,
         accountManager = accountManager,
+    )
+
+    val appUpdateRepository: AppUpdateRepository = AppUpdateRepository(
+        appContext = appContext,
+        api = appUpdateApi,
+        okHttpClient = activationOkHttpClient,
     )
 
     val xtreamRepository: XtreamRepository = XtreamRepository(

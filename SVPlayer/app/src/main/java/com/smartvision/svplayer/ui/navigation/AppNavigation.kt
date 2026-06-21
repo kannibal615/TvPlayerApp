@@ -60,6 +60,8 @@ import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import com.smartvision.svplayer.ui.update.AppUpdateDialog
+import com.smartvision.svplayer.ui.update.AppUpdateViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -73,11 +75,18 @@ fun AppNavigation(
             ActivationViewModel(container.activationRepository)
         },
     )
+    val appUpdateViewModel: AppUpdateViewModel = viewModel(
+        factory = viewModelFactory {
+            AppUpdateViewModel(container.appUpdateRepository)
+        },
+    )
     val activationState by activationViewModel.uiState.collectAsStateWithLifecycle()
+    val appUpdateState by appUpdateViewModel.uiState.collectAsStateWithLifecycle()
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route ?: AppRoute.Home.route
     var showExitConfirmation by remember { mutableStateOf(false) }
-    val activity = LocalContext.current as? Activity
+    val context = LocalContext.current
+    val activity = context as? Activity
     val syncCatalog = {
         scope.launch {
             container.synchronizeCatalog()
@@ -99,6 +108,11 @@ fun AppNavigation(
     LaunchedEffect(activationState.activated, xtreamAccounts.size) {
         if (activationState.activated && xtreamAccounts.isNotEmpty()) {
             container.synchronizeCatalog()
+        }
+    }
+    LaunchedEffect(activationState.activated) {
+        if (activationState.activated) {
+            appUpdateViewModel.checkForUpdate()
         }
     }
 
@@ -254,6 +268,17 @@ fun AppNavigation(
         ExitConfirmationDialog(
             onDismiss = { showExitConfirmation = false },
             onExit = { activity?.finishAffinity() },
+        )
+    }
+
+    val update = appUpdateState.update
+    if (update != null && appUpdateState.shouldShowDialog) {
+        AppUpdateDialog(
+            update = update,
+            installing = appUpdateState.installing,
+            errorMessage = appUpdateState.errorMessage,
+            onInstall = { appUpdateViewModel.installUpdate(context) },
+            onDismiss = appUpdateViewModel::dismiss,
         )
     }
 
