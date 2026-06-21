@@ -47,7 +47,7 @@ function h(string $value): string { return htmlspecialchars($value, ENT_QUOTES |
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Activation SmartVision</title>
-    <link rel="stylesheet" href="/assets/site.css?v=1">
+    <link rel="stylesheet" href="/assets/site.css?v=2">
 </head>
 <body class="activation-page">
 <main class="activation-shell">
@@ -69,7 +69,8 @@ function h(string $value): string { return htmlspecialchars($value, ENT_QUOTES |
                 <button class="button button-primary" type="submit">Continuer</button>
                 <?php if ($sessionError !== ''): ?><p class="message" role="alert"><?= h($sessionError) ?></p><?php endif; ?>
             </form>
-            <p class="manual-help">Vous n’avez pas encore l’application ? <a class="text-link" href="/downloads/smartvision-tv.apk">Téléchargez SmartVision pour Android TV.</a></p>
+            <p class="manual-help">Vous n’avez pas encore l’application ? <a class="text-link" href="/download.php">Téléchargez SmartVision pour Android TV.</a></p>
+            <p class="manual-help">Vous avez besoin d’une licence ? <a class="text-link" href="/account/">Acheter ou retrouver un code SmartVision.</a></p>
         <?php else: ?>
             <div id="activation-step"<?= $sessionStatus === 'validated' ? ' hidden' : '' ?>>
                 <p class="eyebrow">Activation de l’appareil</p>
@@ -114,6 +115,6 @@ function h(string $value): string { return htmlspecialchars($value, ENT_QUOTES |
         <?php endif; ?>
     </section>
 </main>
-<?php if ($hasSession): ?><script src="/assets/activation.js?v=1" defer></script><?php endif; ?>
+<?php if ($hasSession): ?><script src="/assets/activation.js?v=2" defer></script><?php endif; ?>
 </body>
 </html>

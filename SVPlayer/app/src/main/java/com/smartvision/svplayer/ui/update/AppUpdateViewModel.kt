@@ -29,6 +29,7 @@ class AppUpdateViewModel(
                             checking = false,
                             update = update,
                             dismissedVersionCode = null,
+                            checkedOnce = true,
                         )
                     }
                 }
@@ -36,6 +37,7 @@ class AppUpdateViewModel(
                     _uiState.update {
                         it.copy(
                             checking = false,
+                            checkedOnce = true,
                             errorMessage = error.toUserMessage("Verification de mise a jour impossible."),
                         )
                     }
@@ -81,6 +83,7 @@ data class AppUpdateUiState(
     val update: AppUpdateInfo? = null,
     val dismissedVersionCode: Int? = null,
     val errorMessage: String? = null,
+    val checkedOnce: Boolean = false,
 ) {
     val shouldShowDialog: Boolean
         get() = update != null && dismissedVersionCode != update.versionCode
@@ -91,4 +94,3 @@ private fun Throwable.toUserMessage(default: String): String =
         is AppUpdateException -> message ?: default
         else -> default
     }
-

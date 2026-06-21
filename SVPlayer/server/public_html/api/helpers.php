@@ -187,6 +187,41 @@ function encrypt_playlist_config(array $config): string
     return base64_encode($iv . $tag . $cipherText);
 }
 
+function encrypt_private_value(string $value): string
+{
+    $iv = random_bytes(12);
+    $tag = '';
+    $cipherText = openssl_encrypt($value, 'aes-256-gcm', credentials_key(), OPENSSL_RAW_DATA, $iv, $tag);
+    if ($cipherText === false) {
+        throw new RuntimeException('Unable to encrypt private value.');
+    }
+
+    return base64_encode($iv . $tag . $cipherText);
+}
+
+function decrypt_private_value(?string $payload): ?string
+{
+    if ($payload === null || trim($payload) === '') {
+        return null;
+    }
+
+    $raw = base64_decode($payload, true);
+    if ($raw === false || strlen($raw) <= 28) {
+        return null;
+    }
+
+    $plainText = openssl_decrypt(
+        substr($raw, 28),
+        'aes-256-gcm',
+        credentials_key(),
+        OPENSSL_RAW_DATA,
+        substr($raw, 0, 12),
+        substr($raw, 12, 16),
+    );
+
+    return $plainText === false ? null : $plainText;
+}
+
 function decrypt_playlist_config(string $payload): ?array
 {
     $raw = base64_decode($payload, true);

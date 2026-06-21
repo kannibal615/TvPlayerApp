@@ -13,8 +13,8 @@ header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-sr
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="SmartVision est un lecteur IPTV premium pour Android TV. Activez votre appareil, ajoutez vos identifiants Xtream et profitez de votre propre abonnement.">
     <title>SmartVision IPTV Player</title>
-    <link rel="stylesheet" href="/assets/site.css?v=1">
-    <link rel="stylesheet" href="/assets/mobile.css?v=1">
+    <link rel="stylesheet" href="/assets/site.css?v=2">
+    <link rel="stylesheet" href="/assets/mobile.css?v=2">
 </head>
 <body>
 <header class="site-header">
@@ -26,9 +26,10 @@ header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-sr
         <a href="#fonctionnalites">Fonctionnalités</a>
         <a href="#tarifs">Tarifs</a>
         <a href="#activation">Activation</a>
+        <a href="/account/">Mon compte</a>
         <a href="#revendeurs">Revendeurs</a>
     </nav>
-    <a class="button button-outline header-cta" href="/activate/">Activer ma TV</a>
+    <a class="button button-primary header-cta" href="/account/?plan=year_1">Acheter une licence</a>
 </header>
 
 <main id="top">
@@ -38,8 +39,9 @@ header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-sr
             <h1>SmartVision<br><span>IPTV Player</span></h1>
             <p class="hero-lead">Votre lecteur IPTV, simplement. Une interface pensée pour la télévision, rapide à utiliser et lisible à distance.</p>
             <div class="hero-actions">
-                <a class="button button-primary" href="/downloads/smartvision-tv.apk">Télécharger l’application</a>
-                <a class="button button-outline" href="/activate/">Activer ma TV</a>
+                <a class="button button-primary" href="/account/?plan=year_1">Acheter une licence</a>
+                <a class="button button-outline" href="/download.php">Télécharger l’application</a>
+                <a class="button button-outline" href="/activate/">J'ai déjà un code</a>
             </div>
             <ul class="hero-facts" aria-label="Points clés">
                 <li>Android TV</li>
@@ -108,7 +110,7 @@ header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-sr
         </ol>
         <div class="activation-actions">
             <a class="button button-primary" href="/activate/">Ouvrir la page d’activation</a>
-            <a class="button button-outline" href="https://smartvisions.net">Obtenir un abonnement IPTV</a>
+            <a class="button button-outline" href="/account/">Acheter ou retrouver une licence</a>
         </div>
         <p class="legal-note">SmartVision est uniquement un lecteur multimédia. Nous ne fournissons, n’hébergeons et ne distribuons aucun contenu.</p>
     </section>
@@ -119,7 +121,7 @@ header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-sr
             <p class="eyebrow">Pensé pour le grand écran</p>
             <h2>Une interface nette, même à trois mètres.</h2>
             <p>Live TV, films et séries restent rapides à parcourir grâce à une grille stable, des focus visibles et des lecteurs vidéo natifs.</p>
-            <a class="text-link" href="/downloads/smartvision-tv.apk">Télécharger SmartVision pour Android TV</a>
+            <a class="text-link" href="/download.php">Télécharger SmartVision pour Android TV</a>
         </div>
     </section>
 
@@ -139,7 +141,7 @@ header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-sr
         <img class="brand-wordmark" src="/assets/images/smartvision-wordmark.png" alt="SmartVision IPTV Player">
     </a>
     <p>© <?= date('Y') ?> SmartVision. Lecteur IPTV pour Android TV.</p>
-    <div><a href="/activate/">Activation</a><a href="https://smartvisions.net">Support</a><a href="/admin/">Administration</a></div>
+    <div><a href="/account/">Mon compte</a><a href="/activate/">Activation</a><a href="https://smartvisions.net">Support</a><a href="/admin/">Administration</a></div>
 </footer>
 </body>
 </html>

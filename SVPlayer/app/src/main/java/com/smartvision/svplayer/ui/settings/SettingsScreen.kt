@@ -186,6 +186,15 @@ fun SettingsScreen(
                         maxLines = 2,
                     )
                 }
+                if (updateState.checkedOnce && updateState.update == null && updateState.errorMessage == null && !updateState.checking) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "Application a jour.",
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Caption,
+                        maxLines = 1,
+                    )
+                }
                 Spacer(Modifier.weight(1f))
                 TvButton(
                     text = "Vider les donnees locales",

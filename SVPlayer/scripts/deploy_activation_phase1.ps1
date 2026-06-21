@@ -1,6 +1,7 @@
 param(
     [switch]$SkipInstall,
     [switch]$SkipTests,
+    [switch]$CommerceTestOnly,
     [string]$QaDeviceId = "",
     [string]$QaShortCode = "",
     [int]$QaActiveHoldSeconds = 0
@@ -624,6 +625,127 @@ function Get-CsrfTokenFromHtml {
     return $match.Groups[1].Value
 }
 
+function Get-HiddenValueFromHtml {
+    param(
+        [string]$Html,
+        [string]$Name
+    )
+
+    $pattern = 'name="' + [Regex]::Escape($Name) + '"\s+value="([^"]+)"'
+    $match = [Regex]::Match($Html, $pattern)
+    if (-not $match.Success) {
+        throw "Champ cache $Name introuvable."
+    }
+    return [System.Net.WebUtility]::HtmlDecode($match.Groups[1].Value)
+}
+
+function New-CommerceCleanupFile {
+    param(
+        [string]$OutputPath,
+        [string]$Token,
+        [string]$Email
+    )
+
+    $content = @'
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/api/config.php';
+
+header('Content-Type: application/json; charset=utf-8');
+if (!hash_equals('__TOKEN__', (string) ($_GET['token'] ?? ''))) {
+    http_response_code(404);
+    echo json_encode(['success' => false]);
+    exit;
+}
+
+register_shutdown_function(static function (): void { @unlink(__FILE__); });
+
+try {
+    $pdo = db();
+    $pdo->beginTransaction();
+    $user = $pdo->prepare('SELECT id FROM site_users WHERE email = :email LIMIT 1 FOR UPDATE');
+    $user->execute(['email' => '__EMAIL__']);
+    $userId = $user->fetchColumn();
+    $codeIds = [];
+    if ($userId !== false) {
+        $codes = $pdo->prepare('SELECT activation_code_id FROM activation_orders WHERE user_id = :user_id AND activation_code_id IS NOT NULL');
+        $codes->execute(['user_id' => $userId]);
+        $codeIds = array_map('intval', $codes->fetchAll(PDO::FETCH_COLUMN));
+        $pdo->prepare('DELETE FROM site_users WHERE id = :id')->execute(['id' => $userId]);
+        if ($codeIds !== []) {
+            $placeholders = implode(',', array_fill(0, count($codeIds), '?'));
+            $pdo->prepare("DELETE FROM activation_codes WHERE id IN ($placeholders)")->execute($codeIds);
+        }
+    }
+    $pdo->commit();
+    echo json_encode(['success' => true], JSON_UNESCAPED_SLASHES);
+} catch (Throwable $exception) {
+    if (isset($pdo) && $pdo->inTransaction()) { $pdo->rollBack(); }
+    error_log('Commerce QA cleanup failed.');
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Cleanup failed.']);
+}
+'@
+    $content = $content.Replace('__TOKEN__', (Escape-PhpString $Token))
+    $content = $content.Replace('__EMAIL__', (Escape-PhpString $Email))
+    Write-Utf8NoBomFile -Path $OutputPath -Content $content
+}
+
+function Test-CustomerCommerce {
+    param(
+        [string]$Domain,
+        [string]$CpanelBaseUrl,
+        [hashtable]$Headers,
+        [string]$RemoteRoot,
+        [string]$TempRoot
+    )
+
+    $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+    $email = "qa-commerce-$([Guid]::NewGuid().ToString('N').Substring(0, 12))@smartvisions.net"
+    $password = "Qa!$([Guid]::NewGuid().ToString('N'))"
+    $cleanupToken = [Guid]::NewGuid().ToString('N')
+    $cleanupPath = Join-Path $TempRoot 'commerce_qa_cleanup.php'
+    New-CommerceCleanupFile -OutputPath $cleanupPath -Token $cleanupToken -Email $email
+
+    try {
+        $accountUrl = "https://$Domain/account/?plan=year_1"
+        $registerPage = Invoke-WebRequest -UseBasicParsing -WebSession $session -Uri $accountUrl
+        $csrf = Get-CsrfTokenFromHtml -Html $registerPage.Content
+        $dashboard = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Post -Uri $accountUrl -Body @{
+            action = 'register'
+            csrf_token = $csrf
+            plan = 'year_1'
+            display_name = 'Client QA'
+            email = $email
+            password = $password
+        }
+        if ($dashboard.Content -notmatch 'Choisissez votre licence' -or $dashboard.Content -notmatch 'Deconnexion') {
+            throw 'Creation du compte client QA echouee.'
+        }
+
+        $csrf = Get-CsrfTokenFromHtml -Html $dashboard.Content
+        $checkoutToken = Get-HiddenValueFromHtml -Html $dashboard.Content -Name 'checkout_token'
+        $paid = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Post -Uri "https://$Domain/account/" -Body @{
+            action = 'test_payment'
+            csrf_token = $csrf
+            checkout_token = $checkoutToken
+            plan = 'year_1'
+            accept_terms = '1'
+        }
+        if ($paid.Content -notmatch 'Paiement test accepte' -or $paid.Content -notmatch 'SV-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}') {
+            $flashMatch = [Regex]::Match($paid.Content, '<div class="form-notice[^>]*>(.*?)</div>', [Text.RegularExpressions.RegexOptions]::Singleline)
+            $flashText = if ($flashMatch.Success) { [Regex]::Replace($flashMatch.Groups[1].Value, '<[^>]+>', '').Trim() } else { 'aucun message' }
+            $hasCode = $paid.Content -match 'SV-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}'
+            throw "Commande client QA non confirmee: $flashText; code=$hasCode."
+        }
+    } finally {
+        Upload-File -BaseUrl $CpanelBaseUrl -Headers $Headers -Directory $RemoteRoot -FilePath $cleanupPath
+        $cleanup = Invoke-RestMethod -Method Get -Uri "https://$Domain/commerce_qa_cleanup.php?token=$cleanupToken"
+        Assert-ApiResult -Result $cleanup -Label 'commerce_qa_cleanup'
+    }
+}
+
 function Test-AdminPanel {
     param(
         [string]$Domain,
@@ -681,7 +803,7 @@ function Test-AdminPanel {
             code_id = $codeId
             status = "disabled"
         }
-        $disabledPattern = 'data-code-id="' + [Regex]::Escape($codeId) + '"[\s\S]*?<span class="status disabled">disabled</span>'
+        $disabledPattern = 'data-code-id="' + [Regex]::Escape($codeId) + '"[\s\S]*?<span class="admin-state disabled">disabled</span>'
         if ($disabled.Content -notmatch $disabledPattern) {
             throw "Desactivation admin QA non confirmee."
         }
@@ -740,11 +862,22 @@ try {
     $remoteRoot = Convert-ToRemoteRelativePath -Path $docRoot -Username $cpanelUsername
     $remotePrivate = "smartvision_private"
 
+    if ($CommerceTestOnly) {
+        Test-CustomerCommerce `
+            -Domain $domain `
+            -CpanelBaseUrl $cpanelBaseUrl `
+            -Headers $headers `
+            -RemoteRoot $remoteRoot `
+            -TempRoot $tempRoot
+        Write-Host "Test commerce isole OK."
+        return
+    }
+
     Write-Host "Preparation des dossiers distants..."
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "api"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "activate"
-    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "admin"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "account"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "admin"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "sql"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "assets"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "$remoteRoot/assets" -Name "images"
@@ -759,8 +892,10 @@ try {
 
     Write-Host "Upload des fichiers PHP/SQL..."
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath (Join-Path $publicHtmlPath "index.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath (Join-Path $publicHtmlPath "download.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/config.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/helpers.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/commerce.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/create_activation_session.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/device_status.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/validate_activation.php")
@@ -775,8 +910,12 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/logout.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/sql" -FilePath (Join-Path $publicHtmlPath "sql/init_activation_tables.sql")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/site.css")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/account.css")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/admin.css")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/mobile.css")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/activation.js")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/account.js")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/admin.js")
     foreach ($imageName in @("smartvision-mark.png", "smartvision-wordmark.png", "app-live-tv.png", "app-movies.png")) {
         Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets/images" -FilePath (Join-Path $publicHtmlPath "assets/images/$imageName")
     }
@@ -794,7 +933,8 @@ try {
         $apkVersionName = $Matches[1]
         $apkInfo = Get-Item -LiteralPath $releaseApk
         $apkHash = (Get-FileHash -LiteralPath $releaseApk -Algorithm SHA256).Hash.ToLowerInvariant()
-        $versionedApkName = "smartvision-tv-v$apkVersionCode.apk"
+        $apkHashShort = $apkHash.Substring(0, 8)
+        $versionedApkName = "smartvision-tv-v$apkVersionCode-$apkHashShort.apk"
         $downloadApk = Join-Path $tempRoot "smartvision-tv.apk"
         $versionedApk = Join-Path $tempRoot $versionedApkName
         $versionManifest = Join-Path $tempRoot "smartvision-tv.version.json"
@@ -810,9 +950,13 @@ try {
             release_notes = "Nouvelle version SmartVision avec correctifs et ameliorations."
             generated_at = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
         } | ConvertTo-Json | Set-Content -LiteralPath $versionManifest -Encoding UTF8
-        Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/downloads" -FilePath $downloadApk
         Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/downloads" -FilePath $versionedApk
         Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/downloads" -FilePath $versionManifest
+        try {
+            Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/downloads" -FilePath $downloadApk
+        } catch {
+            Write-Warning "Upload optionnel de smartvision-tv.apk echoue. L APK versionnee reste disponible pour la mise a jour in-app."
+        }
     }
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remotePrivate -FilePath $privateConfigPath
 
@@ -831,7 +975,7 @@ try {
             throw "La page d accueil ne retourne pas le contenu attendu."
         }
         $accountHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/account/?plan=year_1"
-        if ($accountHtml.Content -notmatch "Commander une activation" -or $accountHtml.Content -notmatch "Connexion") {
+        if ($accountHtml.Content -notmatch "Choisissez votre licence" -or $accountHtml.Content -notmatch "Se connecter") {
             throw "La page compte/commande ne retourne pas le contenu attendu."
         }
         $activateHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/activate/"
@@ -843,6 +987,15 @@ try {
         if ([int]$updateStatus.latest_version_code -lt 0) {
             throw "Le manifest de mise a jour est invalide."
         }
+
+        Write-Host "Test du parcours compte et commande..."
+        Test-CustomerCommerce `
+            -Domain $domain `
+            -CpanelBaseUrl $cpanelBaseUrl `
+            -Headers $headers `
+            -RemoteRoot $remoteRoot `
+            -TempRoot $tempRoot
+        Write-Host "Test commerce OK: compte, paiement test, licence et nettoyage."
 
         $useExistingQaSession = -not [string]::IsNullOrWhiteSpace($QaDeviceId) -and -not [string]::IsNullOrWhiteSpace($QaShortCode)
         $qaDeviceId = if ($useExistingQaSession) { $QaDeviceId } else { "qa-phase2-" + [Guid]::NewGuid().ToString("N") }
