@@ -90,7 +90,7 @@ fun SeriesScreen(
         inputReady = true
     }
 
-    LaunchedEffect(state.selectedCategoryId, state.categoriesLoading, accounts.isNotEmpty()) {
+    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty()) {
         if (accounts.isNotEmpty() && !state.categoriesLoading) {
             withFrameNanos { }
             delay(120)

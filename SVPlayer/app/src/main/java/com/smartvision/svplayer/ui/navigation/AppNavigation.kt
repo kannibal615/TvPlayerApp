@@ -89,7 +89,10 @@ fun AppNavigation(
     val activity = context as? Activity
     val syncCatalog = {
         scope.launch {
-            container.synchronizeCatalog()
+            runCatching {
+                container.xtreamRepository.clearCaches()
+                container.synchronizeCatalog()
+            }
         }
         Unit
     }
@@ -105,9 +108,17 @@ fun AppNavigation(
     }
 
     val xtreamAccounts by container.accountManager.accounts.collectAsStateWithLifecycle()
-    LaunchedEffect(activationState.activated, xtreamAccounts.size) {
+    val xtreamAccountSignature = remember(xtreamAccounts) {
+        xtreamAccounts.joinToString("|") { account ->
+            "${account.id}:${account.host}:${account.username}:${account.password.hashCode()}"
+        }
+    }
+    LaunchedEffect(activationState.activated, xtreamAccountSignature) {
         if (activationState.activated && xtreamAccounts.isNotEmpty()) {
-            container.synchronizeCatalog()
+            runCatching {
+                container.xtreamRepository.clearCaches()
+                container.synchronizeCatalog()
+            }
         }
     }
     LaunchedEffect(activationState.activated) {
@@ -180,7 +191,12 @@ fun AppNavigation(
             )
         }
         composable(AppRoute.Settings.route) {
-            SettingsScreen(onBack = { navController.popBackStack() })
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                updateState = appUpdateState,
+                onCheckForUpdate = appUpdateViewModel::checkForUpdate,
+                onSyncCatalog = syncCatalog,
+            )
         }
         composable(AppRoute.SyncSettings.route) {
             PlaceholderRouteScreen("Synchronisation", "Action mock. Pas d'appel API Xtream dans cette tache.")
@@ -194,6 +210,11 @@ fun AppNavigation(
                     streamId = channelId,
                     kind = FullScreenContentKind.Live,
                     onBack = { navController.popBackStack() },
+                    onPlayLive = { nextChannelId ->
+                        navController.navigate("player/$nextChannelId") {
+                            popUpTo("player/{channelId}") { inclusive = true }
+                        }
+                    },
                 )
             }
         }
@@ -206,6 +227,11 @@ fun AppNavigation(
                     streamId = movieId,
                     kind = FullScreenContentKind.Movie,
                     onBack = { navController.popBackStack() },
+                    onPlayMovie = { nextMovieId ->
+                        navController.navigate("movie_player/$nextMovieId") {
+                            popUpTo("movie_player/{movieId}") { inclusive = true }
+                        }
+                    },
                 )
             }
         }

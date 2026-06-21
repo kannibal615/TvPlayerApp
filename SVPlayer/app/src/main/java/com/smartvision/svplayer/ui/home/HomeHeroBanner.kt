@@ -1,9 +1,9 @@
 package com.smartvision.svplayer.ui.home
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,10 +13,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,15 +31,28 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.smartvision.svplayer.R
+import com.smartvision.svplayer.ui.components.TvButton
+import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import kotlinx.coroutines.delay
 
 @Composable
 fun HomeHeroBanner(
+    onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val slides = remember { HomeHeroSlides }
+    var slideIndex by remember { mutableIntStateOf(0) }
+    val slide = slides[slideIndex]
     val shape = RoundedCornerShape(SmartVisionDimensions.HomePanelRadius)
+
+    LaunchedEffect(slideIndex) {
+        delay(5_500)
+        slideIndex = (slideIndex + 1) % slides.size
+    }
+
     Box(
         modifier = modifier
             .height(SmartVisionDimensions.HomeHeroHeight)
@@ -44,7 +61,7 @@ fun HomeHeroBanner(
             .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.82f)), shape),
     ) {
         Image(
-            painter = painterResource(R.drawable.home_hero_background),
+            painter = painterResource(slide.imageRes),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
@@ -55,8 +72,8 @@ fun HomeHeroBanner(
                 .background(
                     Brush.horizontalGradient(
                         listOf(
-                            Color(0xFF051020).copy(alpha = 0.96f),
-                            Color(0xFF051020).copy(alpha = 0.58f),
+                            Color(0xFF051020).copy(alpha = 0.98f),
+                            Color(0xFF051020).copy(alpha = 0.64f),
                             Color.Transparent,
                         ),
                     ),
@@ -80,7 +97,7 @@ fun HomeHeroBanner(
                 .padding(start = 24.dp, end = 430.dp),
         ) {
             Text(
-                text = "Bienvenue sur SmartVision",
+                text = slide.title,
                 color = SmartVisionColors.TextPrimary,
                 style = SmartVisionType.HomeHeroTitle,
                 fontWeight = FontWeight.Bold,
@@ -88,48 +105,68 @@ fun HomeHeroBanner(
             )
             Spacer(Modifier.height(7.dp))
             Text(
-                text = "Profitez du meilleur du divertissement avec une qualité de streaming exceptionnelle.",
+                text = slide.subtitle,
                 color = SmartVisionColors.TextSecondary,
                 style = SmartVisionType.Label,
                 maxLines = 2,
             )
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                HeroBadge("HD", "Haute qualité")
-                HeroBadge("○", "Streaming stable")
-                HeroBadge("✓", "Sécurisé & privé")
+            Spacer(Modifier.height(13.dp))
+            TvButton(
+                text = "En savoir plus",
+                onClick = { onNavigate(slide.route) },
+                variant = TvButtonVariant.Primary,
+                modifier = Modifier.height(38.dp),
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 18.dp, bottom = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            slides.forEachIndexed { index, _ ->
+                Box(
+                    modifier = Modifier
+                        .size(width = if (index == slideIndex) 24.dp else 8.dp, height = 5.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(
+                            if (index == slideIndex) {
+                                SmartVisionColors.Primary
+                            } else {
+                                Color.White.copy(alpha = 0.34f)
+                            },
+                        ),
+                )
             }
         }
     }
 }
 
-@Composable
-private fun HeroBadge(
-    prefix: String,
-    label: String,
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(18.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .border(BorderStroke(1.dp, SmartVisionColors.Primary), RoundedCornerShape(4.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = prefix,
-                color = SmartVisionColors.CyanAccent,
-                style = SmartVisionType.Caption,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-            )
-        }
-        Spacer(Modifier.width(6.dp))
-        Text(
-            text = label,
-            color = SmartVisionColors.TextSecondary,
-            style = SmartVisionType.Caption,
-            maxLines = 1,
-        )
-    }
-}
+private data class HomeHeroSlide(
+    val imageRes: Int,
+    val title: String,
+    val subtitle: String,
+    val route: String,
+)
+
+private val HomeHeroSlides = listOf(
+    HomeHeroSlide(
+        imageRes = R.drawable.home_hero_slide_1,
+        title = "Bienvenue sur SmartVision",
+        subtitle = "Une experience IPTV fluide, premium et pensee pour Android TV.",
+        route = "live_tv",
+    ),
+    HomeHeroSlide(
+        imageRes = R.drawable.home_hero_slide_2,
+        title = "Live TV instantanee",
+        subtitle = "Retrouvez vos chaines en direct avec une navigation simple a la telecommande.",
+        route = "live_tv",
+    ),
+    HomeHeroSlide(
+        imageRes = R.drawable.home_hero_slide_3,
+        title = "Films et series",
+        subtitle = "Explorez vos catalogues Xtream avec affiches, details et reprise de lecture.",
+        route = "movies",
+    ),
+)

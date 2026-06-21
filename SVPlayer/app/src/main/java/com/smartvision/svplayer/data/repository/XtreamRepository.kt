@@ -227,6 +227,26 @@ class XtreamRepository(
         return ordered.getOrNull(currentIndex + 1)
     }
 
+    fun getCachedPreviousEpisode(episodeId: Int): XtreamSeriesEpisode? {
+        val current = episodesById[episodeId] ?: return null
+        val ordered = episodesBySeriesId[current.seriesId].orEmpty()
+            .sortedWith(compareBy<XtreamSeriesEpisode> { it.seasonNumber }.thenBy { it.episodeNumber })
+        val currentIndex = ordered.indexOfFirst { it.episodeId == episodeId }
+        return ordered.getOrNull(currentIndex - 1)
+    }
+
+    fun getCachedNextLiveStream(streamId: Int): XtreamLiveStream? =
+        adjacentLiveStream(streamId, offset = 1)
+
+    fun getCachedPreviousLiveStream(streamId: Int): XtreamLiveStream? =
+        adjacentLiveStream(streamId, offset = -1)
+
+    fun getCachedNextMovie(movieId: Int): XtreamMovieStream? =
+        adjacentMovie(movieId, offset = 1)
+
+    fun getCachedPreviousMovie(movieId: Int): XtreamMovieStream? =
+        adjacentMovie(movieId, offset = -1)
+
     fun buildLiveStreamUrl(stream: XtreamLiveStream): String =
         stream.directSource
             ?.trim()
@@ -250,6 +270,24 @@ class XtreamRepository(
 
     fun buildEpisodeStreamUrl(episodeId: Int): String =
         episodesById[episodeId]?.let(::buildEpisodeStreamUrl) ?: urlFactory.episode(episodeId, "mp4")
+
+    private fun adjacentLiveStream(streamId: Int, offset: Int): XtreamLiveStream? {
+        val current = streamsById[streamId] ?: return null
+        val ordered = current.categoryId?.let { streamsByCategory[it] }.orEmpty()
+            .ifEmpty { streamsById.values.toList() }
+            .sortedWith(compareBy<XtreamLiveStream> { it.number }.thenBy { it.name })
+        val currentIndex = ordered.indexOfFirst { it.streamId == streamId }
+        return ordered.getOrNull(currentIndex + offset)
+    }
+
+    private fun adjacentMovie(movieId: Int, offset: Int): XtreamMovieStream? {
+        val current = moviesById[movieId] ?: return null
+        val ordered = current.categoryId?.let { moviesByCategory[it] }.orEmpty()
+            .ifEmpty { moviesById.values.toList() }
+            .sortedWith(compareBy<XtreamMovieStream> { it.number }.thenBy { it.title })
+        val currentIndex = ordered.indexOfFirst { it.streamId == movieId }
+        return ordered.getOrNull(currentIndex + offset)
+    }
 }
 
 private fun XtreamCategoryDto.toLiveCategory(): XtreamLiveCategory? {

@@ -1,6 +1,5 @@
 package com.smartvision.svplayer.ui.settings
 
-import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -51,25 +50,29 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.config.XtreamAccount
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import com.smartvision.svplayer.ui.update.AppUpdateUiState
 import java.util.UUID
 import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    updateState: AppUpdateUiState,
+    onCheckForUpdate: () -> Unit,
+    onSyncCatalog: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
@@ -79,13 +82,12 @@ fun SettingsScreen(
         initialValue = com.smartvision.svplayer.domain.model.PlayerSettings(),
     )
     val scope = rememberCoroutineScope()
-    val activity = LocalContext.current as? Activity
     var editedAccount by remember { mutableStateOf<XtreamAccount?>(null) }
 
     fun applyAccountChange(action: () -> Unit) {
         action()
         container.xtreamRepository.clearCaches()
-        activity?.recreate()
+        onSyncCatalog()
     }
 
     BackHandler(onBack = onBack)
@@ -152,6 +154,38 @@ fun SettingsScreen(
                     selected = if (settings.retryEnabled) "Activee" else "Desactivee",
                     onSelected = { value -> scope.launch { container.settingsRepository.setRetryEnabled(value == "Activee") } },
                 )
+                SettingsInfoRow("Version", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                SettingsInfoRow("Compte actif", accounts.firstOrNull { it.id == activeAccountId }?.name ?: "Aucun")
+                Spacer(Modifier.height(12.dp))
+                TvButton(
+                    text = if (updateState.checking) "Recherche..." else "Chercher une mise a jour",
+                    leadingIcon = Icons.Default.Refresh,
+                    onClick = onCheckForUpdate,
+                    enabled = !updateState.checking && !updateState.installing,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                )
+                Spacer(Modifier.height(10.dp))
+                TvButton(
+                    text = "Synchroniser le catalogue",
+                    leadingIcon = Icons.Default.Refresh,
+                    onClick = onSyncCatalog,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                )
+                updateState.errorMessage?.let { message ->
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = message,
+                        color = SmartVisionColors.Error,
+                        style = SmartVisionType.Caption,
+                        maxLines = 2,
+                    )
+                }
                 Spacer(Modifier.weight(1f))
                 TvButton(
                     text = "Vider les donnees locales",
@@ -284,6 +318,23 @@ private fun SettingsChoice(
         }
     }
     Spacer(Modifier.height(18.dp))
+}
+
+@Composable
+private fun SettingsInfoRow(
+    label: String,
+    value: String,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(32.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
+        Spacer(Modifier.weight(1f))
+        Text(value, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Caption, fontWeight = FontWeight.SemiBold)
+    }
 }
 
 @Composable

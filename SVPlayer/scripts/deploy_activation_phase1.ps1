@@ -794,12 +794,16 @@ try {
         $apkVersionName = $Matches[1]
         $apkInfo = Get-Item -LiteralPath $releaseApk
         $apkHash = (Get-FileHash -LiteralPath $releaseApk -Algorithm SHA256).Hash.ToLowerInvariant()
+        $versionedApkName = "smartvision-tv-v$apkVersionCode.apk"
         $downloadApk = Join-Path $tempRoot "smartvision-tv.apk"
+        $versionedApk = Join-Path $tempRoot $versionedApkName
         $versionManifest = Join-Path $tempRoot "smartvision-tv.version.json"
         Copy-Item -LiteralPath $releaseApk -Destination $downloadApk
+        Copy-Item -LiteralPath $releaseApk -Destination $versionedApk
         [ordered]@{
             version_code = $apkVersionCode
             version_name = $apkVersionName
+            apk_file = $versionedApkName
             apk_sha256 = $apkHash
             apk_size = $apkInfo.Length
             mandatory = $false
@@ -807,6 +811,7 @@ try {
             generated_at = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
         } | ConvertTo-Json | Set-Content -LiteralPath $versionManifest -Encoding UTF8
         Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/downloads" -FilePath $downloadApk
+        Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/downloads" -FilePath $versionedApk
         Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/downloads" -FilePath $versionManifest
     }
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remotePrivate -FilePath $privateConfigPath

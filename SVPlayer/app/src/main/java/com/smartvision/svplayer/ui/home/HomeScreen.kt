@@ -92,7 +92,10 @@ fun HomeScreen(
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
         ) {
-            HomeHeroBanner(modifier = Modifier.fillMaxWidth())
+            HomeHeroBanner(
+                onNavigate = onNavigate,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             Spacer(Modifier.height(16.dp))
 

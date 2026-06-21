@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.CircularProgressIndicator
@@ -119,8 +120,16 @@ data class FullScreenPlayback(
     val infoPills: List<String>,
     val imageUrl: String? = null,
     val parentContentId: Int? = null,
+    val previousItem: AdjacentPlayback? = null,
+    val nextItem: AdjacentPlayback? = null,
     val nextEpisode: NextEpisodePlayback? = null,
     val resumePositionMs: Long = 0L,
+)
+
+data class AdjacentPlayback(
+    val streamId: Int,
+    val title: String,
+    val label: String,
 )
 
 data class NextEpisodePlayback(
@@ -198,6 +207,8 @@ class FullScreenPlayerViewModel(
                 .firstOrNull { it.id == stream.categoryId }
                 ?.name
                 ?: "Live TV"
+            val previous = xtreamRepository.getCachedPreviousLiveStream(streamId)
+            val next = xtreamRepository.getCachedNextLiveStream(streamId)
             FullScreenPlayback(
                 streamId = stream.streamId,
                 contentType = UserContentType.Live,
@@ -209,6 +220,20 @@ class FullScreenPlayerViewModel(
                 status = "Direct",
                 infoPills = listOf("16+", "HD", "5.1"),
                 imageUrl = stream.streamIcon,
+                previousItem = previous?.let {
+                    AdjacentPlayback(
+                        streamId = it.streamId,
+                        title = it.name.cleanTitle(),
+                        label = it.number.toString().padStart(3, '0'),
+                    )
+                },
+                nextItem = next?.let {
+                    AdjacentPlayback(
+                        streamId = it.streamId,
+                        title = it.name.cleanTitle(),
+                        label = it.number.toString().padStart(3, '0'),
+                    )
+                },
             )
         } ?: FullScreenPlayback(
             streamId = streamId,
@@ -231,6 +256,8 @@ class FullScreenPlayerViewModel(
                 .firstOrNull { it.id == movie.categoryId }
                 ?.name
                 ?: "Films"
+            val previous = xtreamRepository.getCachedPreviousMovie(movieId)
+            val next = xtreamRepository.getCachedNextMovie(movieId)
             FullScreenPlayback(
                 streamId = movie.streamId,
                 contentType = UserContentType.Movie,
@@ -242,6 +269,20 @@ class FullScreenPlayerViewModel(
                 status = "Film",
                 infoPills = listOf("HD", movie.containerExtension.uppercase()).distinct(),
                 imageUrl = movie.posterUrl,
+                previousItem = previous?.let {
+                    AdjacentPlayback(
+                        streamId = it.streamId,
+                        title = it.title.cleanTitle(),
+                        label = "Film precedent",
+                    )
+                },
+                nextItem = next?.let {
+                    AdjacentPlayback(
+                        streamId = it.streamId,
+                        title = it.title.cleanTitle(),
+                        label = "Film suivant",
+                    )
+                },
             )
         } ?: FullScreenPlayback(
             streamId = movieId,
@@ -262,6 +303,7 @@ class FullScreenPlayerViewModel(
         xtreamRepository.getCachedEpisode(episodeId)?.let { episode ->
             val seriesName = xtreamRepository.getCachedSeries(episode.seriesId)?.title?.cleanTitle() ?: "Series"
             val seriesCover = xtreamRepository.getCachedSeries(episode.seriesId)?.coverUrl
+            val previousEpisode = xtreamRepository.getCachedPreviousEpisode(episodeId)
             val nextEpisode = xtreamRepository.getCachedNextEpisode(episodeId)
             FullScreenPlayback(
                 streamId = episode.episodeId,
@@ -275,6 +317,20 @@ class FullScreenPlayerViewModel(
                 infoPills = listOf("HD", episode.containerExtension.uppercase()).distinct(),
                 imageUrl = seriesCover,
                 parentContentId = episode.seriesId,
+                previousItem = previousEpisode?.let {
+                    AdjacentPlayback(
+                        streamId = it.episodeId,
+                        title = it.title.cleanTitle(),
+                        label = it.seasonEpisodeLabel(),
+                    )
+                },
+                nextItem = nextEpisode?.let {
+                    AdjacentPlayback(
+                        streamId = it.episodeId,
+                        title = it.title.cleanTitle(),
+                        label = it.seasonEpisodeLabel(),
+                    )
+                },
                 nextEpisode = nextEpisode?.let {
                     NextEpisodePlayback(
                         episodeId = it.episodeId,
@@ -301,6 +357,8 @@ fun FullScreenPlayerRoute(
     streamId: Int,
     kind: FullScreenContentKind = FullScreenContentKind.Live,
     onBack: () -> Unit,
+    onPlayLive: (Int) -> Unit = {},
+    onPlayMovie: (Int) -> Unit = {},
     onPlayEpisode: (Int) -> Unit = {},
 ) {
     val container = LocalAppContainer.current
@@ -319,6 +377,8 @@ fun FullScreenPlayerRoute(
     FullScreenPlayerScreen(
         playback = playback,
         onBack = onBack,
+        onPlayLive = onPlayLive,
+        onPlayMovie = onPlayMovie,
         onPlayEpisode = onPlayEpisode,
         onProgressSnapshot = viewModel::saveProgress,
     )
@@ -328,6 +388,8 @@ fun FullScreenPlayerRoute(
 private fun FullScreenPlayerScreen(
     playback: FullScreenPlayback,
     onBack: () -> Unit,
+    onPlayLive: (Int) -> Unit,
+    onPlayMovie: (Int) -> Unit,
     onPlayEpisode: (Int) -> Unit,
     onProgressSnapshot: (positionMs: Long, durationMs: Long) -> Unit,
 ) {
@@ -365,6 +427,33 @@ private fun FullScreenPlayerScreen(
         if (!wasVisible || requestPlayFocus) {
             focusPlayWhenOverlayShows = true
         }
+    }
+
+    fun playAdjacent(item: AdjacentPlayback?) {
+        val target = item ?: return
+        when (playback.contentType) {
+            UserContentType.Live -> onPlayLive(target.streamId)
+            UserContentType.Movie -> onPlayMovie(target.streamId)
+            UserContentType.Episode -> onPlayEpisode(target.streamId)
+            else -> Unit
+        }
+    }
+
+    fun handleLiveChannelKey(keyCode: Int): Boolean {
+        if (playback.contentType != UserContentType.Live) return false
+        if (keyCode != AndroidKeyEvent.KEYCODE_DPAD_UP && keyCode != AndroidKeyEvent.KEYCODE_DPAD_DOWN) return false
+        if (!overlayVisible) {
+            showOverlay(requestPlayFocus = true)
+            return true
+        }
+        val target = if (keyCode == AndroidKeyEvent.KEYCODE_DPAD_UP) {
+            playback.previousItem
+        } else {
+            playback.nextItem
+        }
+        playAdjacent(target)
+        showOverlay()
+        return true
     }
 
     BackHandler {
@@ -505,9 +594,11 @@ private fun FullScreenPlayerScreen(
             .background(Color.Black)
             .focusable()
             .onPreviewKeyEvent { event ->
-                if (event.nativeKeyEvent.action == AndroidKeyEvent.ACTION_DOWN &&
-                    event.nativeKeyEvent.keyCode in overlayKeyCodes
-                ) {
+                val keyCode = event.nativeKeyEvent.keyCode
+                if (event.nativeKeyEvent.action == AndroidKeyEvent.ACTION_DOWN && handleLiveChannelKey(keyCode)) {
+                    return@onPreviewKeyEvent true
+                }
+                if (event.nativeKeyEvent.action == AndroidKeyEvent.ACTION_DOWN && keyCode in overlayKeyCodes) {
                     showOverlay()
                 }
                 false
@@ -529,6 +620,10 @@ private fun FullScreenPlayerScreen(
                                 } else {
                                     onBack()
                                 }
+                                true
+                            }
+
+                            event.action == AndroidKeyEvent.ACTION_DOWN && handleLiveChannelKey(keyCode) -> {
                                 true
                             }
 
@@ -554,6 +649,10 @@ private fun FullScreenPlayerScreen(
                             } else {
                                 onBack()
                             }
+                            true
+                        }
+
+                        event.action == AndroidKeyEvent.ACTION_DOWN && handleLiveChannelKey(keyCode) -> {
                             true
                         }
 
@@ -613,6 +712,12 @@ private fun FullScreenPlayerScreen(
                         player.seekTo((player.currentPosition + deltaMs).coerceIn(0L, durationMs.coerceAtLeast(0L)))
                     }
                     showOverlay()
+                },
+                onPlayPrevious = {
+                    playAdjacent(playback.previousItem)
+                },
+                onPlayNext = {
+                    playAdjacent(playback.nextItem)
                 },
                 onOpenSubtitles = {
                     activeMenu = PlayerOverlayMenu.Subtitles
@@ -701,6 +806,8 @@ private fun FullPlayerOverlay(
     onSeekBack: () -> Unit,
     onSeekForward: () -> Unit,
     onSeekBy: (Long) -> Unit,
+    onPlayPrevious: () -> Unit,
+    onPlayNext: () -> Unit,
     onOpenSubtitles: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -775,8 +882,12 @@ private fun FullPlayerOverlay(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val showAdjacentControls = playback.contentType != UserContentType.Live
                 PlayerControlButton("Sous-titres", Icons.Default.Subtitles, onOpenSubtitles)
                 PlayerControlButton("- 10 sec", Icons.Default.Replay10, onSeekBack)
+                if (showAdjacentControls) {
+                    PlayerControlButton("Precedent", Icons.Default.SkipPrevious, onPlayPrevious)
+                }
                 PlayerControlButton(
                     label = if (isPlaying) "Pause" else "Lecture",
                     icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
@@ -787,6 +898,9 @@ private fun FullPlayerOverlay(
                     height = 60.dp,
                     iconSize = 28.dp,
                 )
+                if (showAdjacentControls) {
+                    PlayerControlButton("Suivant", Icons.Default.SkipNext, onPlayNext)
+                }
                 PlayerControlButton("+ 10 sec", Icons.Default.Forward10, onSeekForward)
                 PlayerControlButton("Parametres", Icons.Default.Settings, onOpenSettings)
             }
