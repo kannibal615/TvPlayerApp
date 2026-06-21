@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -57,6 +58,9 @@ fun TvHeader(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
+    onProfile: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -90,10 +94,18 @@ fun TvHeader(
                 contentDescription = "Notifications",
                 onClick = {},
             )
+            if (showLicenseKey) {
+                HeaderIconButton(
+                    icon = Icons.Default.Key,
+                    contentDescription = "Acheter une licence",
+                    onClick = onLicenseKey,
+                    accent = SmartVisionColors.Warning,
+                )
+            }
             HeaderIconButton(
                 icon = Icons.Default.Person,
                 contentDescription = "Profil",
-                onClick = {},
+                onClick = onProfile,
             )
             HeaderIconButton(
                 icon = Icons.Default.Settings,
@@ -109,6 +121,7 @@ private fun HeaderIconButton(
     icon: ImageVector,
     contentDescription: String,
     onClick: () -> Unit,
+    accent: Color = SmartVisionColors.Primary,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -121,7 +134,7 @@ private fun HeaderIconButton(
             .tvFocusTarget(
                 state = focusState,
                 pressed = pressed,
-                glowColor = SmartVisionColors.Primary,
+                glowColor = accent,
                 cornerRadius = 10.dp,
             )
             .clip(shape)
@@ -129,7 +142,11 @@ private fun HeaderIconButton(
             .border(
                 BorderStroke(
                     if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
-                    if (focusState.isFocused) SmartVisionColors.FocusWhite else SmartVisionColors.Border,
+                    when {
+                        focusState.isFocused -> SmartVisionColors.FocusWhite
+                        accent != SmartVisionColors.Primary -> accent.copy(alpha = 0.58f)
+                        else -> SmartVisionColors.Border
+                    },
                 ),
                 shape,
             )
@@ -144,7 +161,11 @@ private fun HeaderIconButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = if (focusState.isFocused) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+            tint = when {
+                focusState.isFocused -> SmartVisionColors.TextPrimary
+                accent != SmartVisionColors.Primary -> accent
+                else -> SmartVisionColors.TextSecondary
+            },
             modifier = Modifier.size(21.dp),
         )
     }

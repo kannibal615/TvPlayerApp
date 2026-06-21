@@ -39,6 +39,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
@@ -54,6 +55,8 @@ import com.smartvision.svplayer.ui.live.LiveTvScreen
 import com.smartvision.svplayer.ui.movies.MoviesScreen
 import com.smartvision.svplayer.ui.player.FullScreenContentKind
 import com.smartvision.svplayer.ui.player.FullScreenPlayerRoute
+import com.smartvision.svplayer.ui.profile.ProfileRoute
+import com.smartvision.svplayer.ui.profile.SmartVisionQrDialog
 import com.smartvision.svplayer.ui.series.SeriesScreen
 import com.smartvision.svplayer.ui.settings.SettingsScreen
 import com.smartvision.svplayer.ui.components.TvButton
@@ -85,6 +88,7 @@ fun AppNavigation(
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route ?: AppRoute.Home.route
     var showExitConfirmation by remember { mutableStateOf(false) }
+    var showLicensePurchaseQr by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val activity = context as? Activity
     val syncCatalog = {
@@ -139,9 +143,19 @@ fun AppNavigation(
                 onNavigate = { route -> navController.navigateSingleTop(route) },
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                onLicenseKey = { showLicensePurchaseQr = true },
+                showLicenseKey = activationState.shouldShowLicenseKey,
                 onContentClick = { item -> navController.navigateFromContinueItem(item) },
                 onContinueViewAll = { navController.navigate(AppRoute.ContinueWatching.route) },
                 onTrendingViewAll = { navController.navigate(AppRoute.Trending.route) },
+            )
+        }
+        composable(AppRoute.Profile.route) {
+            ProfileRoute(
+                onBack = { navController.popBackStack() },
+                onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                onSyncCatalog = syncCatalog,
             )
         }
         composable(AppRoute.ContinueWatching.route) {
@@ -297,6 +311,20 @@ fun AppNavigation(
         )
     }
 
+    if (showLicensePurchaseQr) {
+        val deviceId = activationState.deviceId
+        val purchaseUrl = activationPortalBaseUrl()
+            .plus("account/?source=tv&intent=license&device_id=")
+            .plus(deviceId)
+            .plus("&plan=year_1")
+        SmartVisionQrDialog(
+            title = "Passer a SmartVision Premium",
+            subtitle = "Scannez ce QR code pour acheter une licence. Premium supprime les publicites et conserve l'acces pendant la duree choisie.",
+            qrUrl = purchaseUrl,
+            onDismiss = { showLicensePurchaseQr = false },
+        )
+    }
+
     val update = appUpdateState.update
     if (update != null && appUpdateState.shouldShowDialog) {
         AppUpdateDialog(
@@ -434,6 +462,7 @@ private enum class AppRoute(val route: String) {
     Movies("movies"),
     Series("series"),
     Settings("settings"),
+    Profile("profile"),
     SyncSettings("sync/settings"),
     ContinueWatching("continue_watching"),
     Trending("trending"),
@@ -445,3 +474,8 @@ private val headerTabs = listOf(
     HomeHeaderTab("Films", AppRoute.Movies.route),
     HomeHeaderTab("Series", AppRoute.Series.route),
 )
+
+private fun activationPortalBaseUrl(): String =
+    BuildConfig.ACTIVATION_BASE_URL.ifBlank { "https://app.smartvisions.net/" }
+        .trim()
+        .trimEnd('/') + "/"
