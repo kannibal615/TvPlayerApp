@@ -33,6 +33,8 @@ function load_database_config(): array
         'mysql_username' => getenv('SMARTVISION_MYSQL_USERNAME') ?: '',
         'mysql_password' => getenv('SMARTVISION_MYSQL_PASSWORD') ?: '',
         'mysql_database' => getenv('SMARTVISION_MYSQL_DATABASE') ?: '',
+        'admin_username' => getenv('SMARTVISION_ADMIN_USERNAME') ?: '',
+        'admin_password_hash' => getenv('SMARTVISION_ADMIN_PASSWORD_HASH') ?: '',
     ];
 }
 

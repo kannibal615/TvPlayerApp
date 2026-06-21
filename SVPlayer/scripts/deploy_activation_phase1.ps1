@@ -1,6 +1,9 @@
 param(
     [switch]$SkipInstall,
-    [switch]$SkipTests
+    [switch]$SkipTests,
+    [string]$QaDeviceId = "",
+    [string]$QaShortCode = "",
+    [int]$QaActiveHoldSeconds = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,6 +36,50 @@ function Read-LocalProperties {
     }
 
     return $properties
+}
+
+function New-SecureAdminPassword {
+    param([int]$Length = 24)
+
+    $alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@%_-"
+    $bytes = New-Object byte[] $Length
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $rng.GetBytes($bytes)
+    } finally {
+        $rng.Dispose()
+    }
+
+    $builder = New-Object System.Text.StringBuilder
+    foreach ($value in $bytes) {
+        [void]$builder.Append($alphabet[$value % $alphabet.Length])
+    }
+    return $builder.ToString()
+}
+
+function Ensure-AdminLocalProperties {
+    param([string]$Path)
+
+    $properties = Read-LocalProperties -Path $Path
+    $lines = New-Object System.Collections.Generic.List[string]
+    if (-not $properties.ContainsKey("SMARTVISION_ADMIN_USERNAME") -or [string]::IsNullOrWhiteSpace($properties["SMARTVISION_ADMIN_USERNAME"])) {
+        $lines.Add("SMARTVISION_ADMIN_USERNAME=smartvision_admin")
+    }
+    if (-not $properties.ContainsKey("SMARTVISION_ADMIN_PASSWORD") -or [string]::IsNullOrWhiteSpace($properties["SMARTVISION_ADMIN_PASSWORD"])) {
+        $lines.Add("SMARTVISION_ADMIN_PASSWORD=$(New-SecureAdminPassword)")
+    }
+
+    if ($lines.Count -eq 0) {
+        return
+    }
+
+    $content = [System.IO.File]::ReadAllText($Path)
+    if ($content.Length -gt 0 -and -not $content.EndsWith("`n")) {
+        $content += [Environment]::NewLine
+    }
+    $content += ($lines -join [Environment]::NewLine) + [Environment]::NewLine
+    Write-Utf8NoBomFile -Path $Path -Content $content
+    Write-Host "Identifiants admin generes dans local.properties."
 }
 
 function Require-Property {
@@ -206,6 +253,7 @@ function Upload-File {
         "-sS",
         "-H", "Authorization: $auth",
         "-F", "dir=$Directory",
+        "-F", "overwrite=1",
         "-F", "file-1=@$FilePath;filename=$(Split-Path -Leaf $FilePath)",
         "$BaseUrl/execute/Fileman/upload_files"
     )
@@ -316,6 +364,18 @@ function Write-Utf8NoBomFile {
     [System.IO.File]::WriteAllText($Path, $Content, $encoding)
 }
 
+function Get-PhpPasswordHash {
+    param([string]$Password)
+
+    $php = Get-Command php -ErrorAction Stop
+    $hash = $Password | & $php.Source -r 'echo password_hash(trim(stream_get_contents(STDIN)), PASSWORD_DEFAULT);'
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace([string]$hash)) {
+        throw "Impossible de generer le hash du mot de passe admin."
+    }
+
+    return ([string]$hash).Trim()
+}
+
 function New-PrivateConfigFile {
     param(
         [hashtable]$Properties,
@@ -326,6 +386,8 @@ function New-PrivateConfigFile {
     $mysqlUsername = [string]$Properties["MYSQL_USERNAME"]
     $mysqlPassword = [string]$Properties["MYSQL_PASSWORD"]
     $mysqlDatabase = [string]$Properties["MYSQL_DATABASE"]
+    $adminUsername = [string]$Properties["SMARTVISION_ADMIN_USERNAME"]
+    $adminPasswordHash = Get-PhpPasswordHash -Password ([string]$Properties["SMARTVISION_ADMIN_PASSWORD"])
 
     $content = @"
 <?php
@@ -336,6 +398,8 @@ return [
     'mysql_username' => '$(Escape-PhpString $mysqlUsername)',
     'mysql_password' => '$(Escape-PhpString $mysqlPassword)',
     'mysql_database' => '$(Escape-PhpString $mysqlDatabase)',
+    'admin_username' => '$(Escape-PhpString $adminUsername)',
+    'admin_password_hash' => '$(Escape-PhpString $adminPasswordHash)',
 ];
 "@
 
@@ -403,6 +467,129 @@ try {
     Write-Utf8NoBomFile -Path $OutputPath -Content $content
 }
 
+function Get-Sha256Hex {
+    param([string]$Value)
+
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($Value)
+        return -join ($sha.ComputeHash($bytes) | ForEach-Object { $_.ToString("x2") })
+    } finally {
+        $sha.Dispose()
+    }
+}
+
+function New-QaSeedFile {
+    param(
+        [string]$OutputPath,
+        [string]$Token,
+        [string]$CodeHash
+    )
+
+    $content = @'
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/api/config.php';
+
+header('Content-Type: application/json; charset=utf-8');
+$token = '__TOKEN__';
+
+if (!hash_equals($token, (string) ($_GET['token'] ?? ''))) {
+    http_response_code(404);
+    echo json_encode(['success' => false, 'error' => 'Not found.']);
+    exit;
+}
+
+register_shutdown_function(static function (): void {
+    @unlink(__FILE__);
+});
+
+try {
+    $statement = db()->prepare(
+        "INSERT INTO activation_codes
+            (code_hash, label, duration_days, max_devices, used_devices, status, valid_until)
+         VALUES
+            (:code_hash, 'Automated deployment QA', 1, 1, 0, 'active', DATE_ADD(NOW(), INTERVAL 1 DAY))
+         ON DUPLICATE KEY UPDATE
+            label = VALUES(label),
+            duration_days = 1,
+            max_devices = 1,
+            used_devices = 0,
+            status = 'active',
+            valid_until = DATE_ADD(NOW(), INTERVAL 1 DAY)"
+    );
+    $statement->execute(['code_hash' => '__CODE_HASH__']);
+    echo json_encode(['success' => true]);
+} catch (Throwable $exception) {
+    error_log('SmartVision QA seed failed.');
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'QA seed failed.']);
+}
+'@
+    $content = $content.Replace("__TOKEN__", (Escape-PhpString $Token))
+    $content = $content.Replace("__CODE_HASH__", (Escape-PhpString $CodeHash))
+    Write-Utf8NoBomFile -Path $OutputPath -Content $content
+}
+
+function New-QaCleanupFile {
+    param(
+        [string]$OutputPath,
+        [string]$Token,
+        [string]$CodeHash,
+        [string]$DeviceId
+    )
+
+    $content = @'
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/api/config.php';
+
+header('Content-Type: application/json; charset=utf-8');
+$token = '__TOKEN__';
+
+if (!hash_equals($token, (string) ($_GET['token'] ?? ''))) {
+    http_response_code(404);
+    echo json_encode(['success' => false, 'error' => 'Not found.']);
+    exit;
+}
+
+register_shutdown_function(static function (): void {
+    @unlink(__FILE__);
+});
+
+$pdo = db();
+try {
+    $pdo->beginTransaction();
+    foreach ([
+        'DELETE FROM device_activations WHERE device_id = :device_id',
+        'DELETE FROM activation_sessions WHERE device_id = :device_id',
+        'DELETE FROM devices WHERE device_id = :device_id',
+    ] as $sql) {
+        $statement = $pdo->prepare($sql);
+        $statement->execute(['device_id' => '__DEVICE_ID__']);
+    }
+
+    $deleteCode = $pdo->prepare('DELETE FROM activation_codes WHERE code_hash = :code_hash');
+    $deleteCode->execute(['code_hash' => '__CODE_HASH__']);
+    $pdo->commit();
+    echo json_encode(['success' => true]);
+} catch (Throwable $exception) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    error_log('SmartVision QA cleanup failed.');
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'QA cleanup failed.']);
+}
+'@
+    $content = $content.Replace("__TOKEN__", (Escape-PhpString $Token))
+    $content = $content.Replace("__CODE_HASH__", (Escape-PhpString $CodeHash))
+    $content = $content.Replace("__DEVICE_ID__", (Escape-PhpString $DeviceId))
+    Write-Utf8NoBomFile -Path $OutputPath -Content $content
+}
+
 function Assert-ApiResult {
     param(
         [object]$Result,
@@ -414,10 +601,115 @@ function Assert-ApiResult {
     }
 }
 
+function Get-CsrfTokenFromHtml {
+    param([string]$Html)
+
+    $match = [Regex]::Match($Html, 'name="csrf_token"\s+value="([^"]+)"')
+    if (-not $match.Success) {
+        throw "Token CSRF admin introuvable."
+    }
+    return $match.Groups[1].Value
+}
+
+function Test-AdminPanel {
+    param(
+        [string]$Domain,
+        [string]$Username,
+        [string]$Password
+    )
+
+    $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+    $baseUrl = "https://$Domain/admin/"
+    $codeId = $null
+    $csrf = $null
+
+    try {
+        $loginPage = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Get -Uri $baseUrl
+        if ($loginPage.Content -notmatch "Administration") {
+            throw "Page login admin inattendue."
+        }
+        $csrf = Get-CsrfTokenFromHtml -Html $loginPage.Content
+
+        $dashboard = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Post -Uri $baseUrl -Body @{
+            action = "login"
+            csrf_token = $csrf
+            username = $Username
+            password = $Password
+        }
+        if ($dashboard.Content -notmatch "Generer un code" -or $dashboard.Content -notmatch "Journal admin") {
+            throw "Connexion admin echouee."
+        }
+        $csrf = Get-CsrfTokenFromHtml -Html $dashboard.Content
+
+        $label = "Automated Admin QA " + [Guid]::NewGuid().ToString("N").Substring(0, 8)
+        $generated = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Post -Uri $baseUrl -Body @{
+            action = "generate_code"
+            csrf_token = $csrf
+            label = $label
+            duration_days = "1"
+            max_devices = "1"
+            valid_until = ""
+        }
+        if ($generated.Content -notmatch 'SV-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}') {
+            throw "Code admin QA non affiche."
+        }
+
+        $rowPattern = 'data-code-id="(\d+)"\s+data-label="' + [Regex]::Escape($label) + '"'
+        $rowMatch = [Regex]::Match($generated.Content, $rowPattern)
+        if (-not $rowMatch.Success) {
+            throw "Code admin QA introuvable dans la liste."
+        }
+        $codeId = $rowMatch.Groups[1].Value
+        $csrf = Get-CsrfTokenFromHtml -Html $generated.Content
+
+        $disabled = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Post -Uri $baseUrl -Body @{
+            action = "set_code_status"
+            csrf_token = $csrf
+            code_id = $codeId
+            status = "disabled"
+        }
+        $disabledPattern = 'data-code-id="' + [Regex]::Escape($codeId) + '"[\s\S]*?<span class="status disabled">disabled</span>'
+        if ($disabled.Content -notmatch $disabledPattern) {
+            throw "Desactivation admin QA non confirmee."
+        }
+        $csrf = Get-CsrfTokenFromHtml -Html $disabled.Content
+
+        $deleted = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Post -Uri $baseUrl -Body @{
+            action = "delete_code"
+            csrf_token = $csrf
+            code_id = $codeId
+        }
+        if ($deleted.Content -match ('data-code-id="' + [Regex]::Escape($codeId) + '"')) {
+            throw "Suppression admin QA non confirmee."
+        }
+        $codeId = $null
+        $csrf = Get-CsrfTokenFromHtml -Html $deleted.Content
+
+        $logout = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Post -Uri "https://$Domain/admin/logout.php" -Body @{
+            csrf_token = $csrf
+        }
+        if ($logout.Content -notmatch "Se connecter") {
+            throw "Deconnexion admin non confirmee."
+        }
+    } finally {
+        if ($null -ne $codeId -and $null -ne $csrf) {
+            try {
+                Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Post -Uri $baseUrl -Body @{
+                    action = "delete_code"
+                    csrf_token = $csrf
+                    code_id = $codeId
+                } | Out-Null
+            } catch {
+            }
+        }
+    }
+}
+
 Add-Type -AssemblyName System.Web
 
+Ensure-AdminLocalProperties -Path $localPropertiesPath
 $properties = Read-LocalProperties -Path $localPropertiesPath
-foreach ($name in @("CPANEL_API_KEY", "CPANEL_HOST", "DOMAINE_SERVER", "MYSQL_HOST", "MYSQL_USERNAME", "MYSQL_PASSWORD", "MYSQL_DATABASE")) {
+foreach ($name in @("CPANEL_API_KEY", "CPANEL_HOST", "DOMAINE_SERVER", "MYSQL_HOST", "MYSQL_USERNAME", "MYSQL_PASSWORD", "MYSQL_DATABASE", "SMARTVISION_ADMIN_USERNAME", "SMARTVISION_ADMIN_PASSWORD")) {
     Require-Property -Properties $properties -Name $name | Out-Null
 }
 
@@ -438,6 +730,7 @@ try {
     Write-Host "Preparation des dossiers distants..."
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "api"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "activate"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "admin"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "sql"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "." -Name $remotePrivate
 
@@ -452,7 +745,11 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/helpers.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/create_activation_session.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/device_status.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/validate_activation.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/activate" -FilePath (Join-Path $publicHtmlPath "activate/index.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/bootstrap.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/index.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/logout.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/sql" -FilePath (Join-Path $publicHtmlPath "sql/init_activation_tables.sql")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remotePrivate -FilePath $privateConfigPath
 
@@ -465,33 +762,88 @@ try {
     }
 
     if (-not $SkipTests) {
-        Write-Host "Tests publics..."
+        Write-Host "Tests publics phase 2..."
         $activateHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/activate/"
-        if ($activateHtml.Content -notmatch "SmartVision Activation" -or $activateHtml.Content -notmatch "Backend") {
+        if ($activateHtml.Content -notmatch "Lien invalide") {
             throw "La page /activate/ ne retourne pas le contenu attendu."
         }
 
-        $sessionBody = @{
-            device_id = "test-device-001"
-            device_name = "Test Android TV"
-            app_version = "1.0.0"
-        } | ConvertTo-Json
-        $session = Invoke-RestMethod -Method Post -Uri "https://$domain/api/create_activation_session.php" -ContentType "application/json" -Body $sessionBody
-        Assert-ApiResult -Result $session -Label "create_activation_session"
-        if ([string]::IsNullOrWhiteSpace([string]$session.short_code) -or [string]::IsNullOrWhiteSpace([string]$session.qr_url)) {
-            throw "Session d activation incomplete."
+        $useExistingQaSession = -not [string]::IsNullOrWhiteSpace($QaDeviceId) -and -not [string]::IsNullOrWhiteSpace($QaShortCode)
+        $qaDeviceId = if ($useExistingQaSession) { $QaDeviceId } else { "qa-phase2-" + [Guid]::NewGuid().ToString("N") }
+        $qaActivationCode = [Guid]::NewGuid().ToString("N").Substring(0, 16).ToUpperInvariant()
+        $qaCodeHash = Get-Sha256Hex -Value $qaActivationCode
+        $qaToken = [Guid]::NewGuid().ToString("N")
+        $qaSeedPath = Join-Path $tempRoot "qa_seed.php"
+        $qaCleanupPath = Join-Path $tempRoot "qa_cleanup.php"
+        New-QaSeedFile -OutputPath $qaSeedPath -Token $qaToken -CodeHash $qaCodeHash
+        New-QaCleanupFile -OutputPath $qaCleanupPath -Token $qaToken -CodeHash $qaCodeHash -DeviceId $qaDeviceId
+
+        try {
+            if ($useExistingQaSession) {
+                $session = [PSCustomObject]@{
+                    success = $true
+                    short_code = $QaShortCode.Replace(" ", "").ToUpperInvariant()
+                    qr_url = "https://$domain/activate/?device_id=$([Uri]::EscapeDataString($qaDeviceId))&code=$([Uri]::EscapeDataString($QaShortCode.Replace(' ', '').ToUpperInvariant()))"
+                }
+            } else {
+                $sessionBody = @{
+                    device_id = $qaDeviceId
+                    device_name = "Automated Android TV QA"
+                    app_version = "phase-2"
+                } | ConvertTo-Json
+                $session = Invoke-RestMethod -Method Post -Uri "https://$domain/api/create_activation_session.php" -ContentType "application/json" -Body $sessionBody
+                Assert-ApiResult -Result $session -Label "create_activation_session"
+                if ([string]::IsNullOrWhiteSpace([string]$session.short_code) -or [string]::IsNullOrWhiteSpace([string]$session.qr_url)) {
+                    throw "Session d activation incomplete."
+                }
+            }
+
+            $portal = Invoke-WebRequest -UseBasicParsing -Method Get -Uri $session.qr_url
+            if ($portal.Content -notmatch "Activer votre TV" -or $portal.Content -notmatch [Regex]::Escape([string]$session.short_code)) {
+                throw "Le portail ne reconnait pas la session QR."
+            }
+
+            Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath $qaSeedPath
+            $seed = Invoke-RestMethod -Method Get -Uri "https://$domain/qa_seed.php?token=$qaToken"
+            Assert-ApiResult -Result $seed -Label "qa_seed"
+
+            $validationBody = @{
+                device_id = $qaDeviceId
+                short_code = [string]$session.short_code
+                activation_code = $qaActivationCode
+            } | ConvertTo-Json
+            $validation = Invoke-RestMethod -Method Post -Uri "https://$domain/api/validate_activation.php" -ContentType "application/json" -Body $validationBody
+            Assert-ApiResult -Result $validation -Label "validate_activation"
+            if ($validation.status -ne "active" -or $validation.activated -ne $true) {
+                throw "Validation SmartVision inattendue."
+            }
+
+            $status = Invoke-RestMethod -Method Get -Uri "https://$domain/api/device_status.php?device_id=$qaDeviceId"
+            Assert-ApiResult -Result $status -Label "device_status active"
+            if ($status.status -ne "active" -or $status.activated -ne $true) {
+                throw "Statut appareil actif inattendu."
+            }
+
+            if ($useExistingQaSession -and $QaActiveHoldSeconds -gt 0) {
+                Start-Sleep -Seconds $QaActiveHoldSeconds
+            }
+
+            Write-Host "Tests OK: portail QR, validation SmartVision et statut active."
+        } finally {
+            Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath $qaCleanupPath
+            $cleanup = Invoke-RestMethod -Method Get -Uri "https://$domain/qa_cleanup.php?token=$qaToken"
+            Assert-ApiResult -Result $cleanup -Label "qa_cleanup"
         }
 
-        $status = Invoke-RestMethod -Method Get -Uri "https://$domain/api/device_status.php?device_id=test-device-001"
-        Assert-ApiResult -Result $status -Label "device_status"
-        if ($status.status -ne "pending" -or $status.activated -ne $false) {
-            throw "Statut appareil inattendu."
-        }
-
-        Write-Host "Tests OK: /activate/, create_activation_session, device_status."
+        Write-Host "Tests administration..."
+        Test-AdminPanel `
+            -Domain $domain `
+            -Username ([string]$properties["SMARTVISION_ADMIN_USERNAME"]) `
+            -Password ([string]$properties["SMARTVISION_ADMIN_PASSWORD"])
+        Write-Host "Tests admin OK: login, generation, desactivation, suppression et logout."
     }
 
-    Write-Host "Deploiement phase 1 termine."
+    Write-Host "Deploiement activation phase 3 termine."
 } finally {
     if (Test-Path -LiteralPath $tempRoot) {
         Remove-Item -LiteralPath $tempRoot -Recurse -Force

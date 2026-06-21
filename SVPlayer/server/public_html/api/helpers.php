@@ -79,6 +79,18 @@ function clean_device_id(?string $deviceId): string
     return substr((string) $clean, 0, 100);
 }
 
+function normalize_activation_code(?string $code): string
+{
+    $normalized = preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $code)));
+
+    return substr((string) $normalized, 0, 64);
+}
+
+function activation_code_hash(string $normalizedCode): string
+{
+    return hash('sha256', $normalizedCode);
+}
+
 function clean_optional_text(mixed $value, int $maxLength): ?string
 {
     $text = trim((string) $value);

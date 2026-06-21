@@ -25,6 +25,42 @@ CREATE TABLE IF NOT EXISTS activation_sessions (
     INDEX (short_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS activation_codes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code_hash CHAR(64) NOT NULL UNIQUE,
+    label VARCHAR(100) NULL,
+    duration_days INT UNSIGNED NOT NULL DEFAULT 365,
+    max_devices INT UNSIGNED NOT NULL DEFAULT 1,
+    used_devices INT UNSIGNED NOT NULL DEFAULT 0,
+    status ENUM('active', 'disabled', 'expired') DEFAULT 'active',
+    valid_until DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS activation_code_metadata (
+    code_id INT NOT NULL PRIMARY KEY,
+    code_hint VARCHAR(32) NULL,
+    created_by VARCHAR(100) NULL,
+    last_used_at DATETIME NULL,
+    CONSTRAINT fk_activation_code_metadata_code
+        FOREIGN KEY (code_id) REFERENCES activation_codes(id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS admin_audit_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    admin_username VARCHAR(100) NOT NULL,
+    action VARCHAR(80) NOT NULL,
+    target_type VARCHAR(50) NULL,
+    target_id VARCHAR(100) NULL,
+    details_json TEXT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX (created_at),
+    INDEX (action)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS device_activations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     device_id VARCHAR(100) NOT NULL,
@@ -47,5 +83,6 @@ CREATE TABLE IF NOT EXISTS app_settings (
 INSERT INTO app_settings (setting_key, setting_value) VALUES
 ('trial_duration_days', '7'),
 ('activation_session_minutes', '15'),
-('polling_interval_seconds', '5')
+('polling_interval_seconds', '5'),
+('activation_duration_days', '365')
 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
