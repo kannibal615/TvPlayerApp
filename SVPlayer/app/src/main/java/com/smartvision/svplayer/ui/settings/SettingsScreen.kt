@@ -38,6 +38,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -45,6 +46,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -328,9 +334,17 @@ private fun AccountEditorDialog(
     var username by remember(initial.id) { mutableStateOf(initial.username) }
     var password by remember(initial.id) { mutableStateOf(initial.password) }
     var error by remember { mutableStateOf<String?>(null) }
-    val firstFocusRequester = remember { FocusRequester() }
+    val nameFocusRequester = remember { FocusRequester() }
+    val hostFocusRequester = remember { FocusRequester() }
+    val usernameFocusRequester = remember { FocusRequester() }
+    val passwordFocusRequester = remember { FocusRequester() }
+    val cancelFocusRequester = remember { FocusRequester() }
+    val saveFocusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(Unit) { firstFocusRequester.requestFocus() }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        nameFocusRequester.requestFocus()
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -342,10 +356,38 @@ private fun AccountEditorDialog(
         ) {
             Text("Compte Xtream", color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(16.dp))
-            SettingsTextField("Nom du compte", name, { name = it }, Modifier.focusRequester(firstFocusRequester))
-            SettingsTextField("Hote", host, { host = it })
-            SettingsTextField("Utilisateur", username, { username = it })
-            SettingsTextField("Mot de passe", password, { password = it }, password = true)
+            SettingsTextField(
+                label = "Nom du compte",
+                value = name,
+                onValueChange = { name = it },
+                focusRequester = nameFocusRequester,
+                nextFocusRequester = hostFocusRequester,
+            )
+            SettingsTextField(
+                label = "Hote",
+                value = host,
+                onValueChange = { host = it },
+                focusRequester = hostFocusRequester,
+                previousFocusRequester = nameFocusRequester,
+                nextFocusRequester = usernameFocusRequester,
+            )
+            SettingsTextField(
+                label = "Utilisateur",
+                value = username,
+                onValueChange = { username = it },
+                focusRequester = usernameFocusRequester,
+                previousFocusRequester = hostFocusRequester,
+                nextFocusRequester = passwordFocusRequester,
+            )
+            SettingsTextField(
+                label = "Mot de passe",
+                value = password,
+                onValueChange = { password = it },
+                focusRequester = passwordFocusRequester,
+                previousFocusRequester = usernameFocusRequester,
+                nextFocusRequester = saveFocusRequester,
+                password = true,
+            )
             error?.let {
                 Text(it, color = SmartVisionColors.Error, style = SmartVisionType.Caption)
                 Spacer(Modifier.height(8.dp))
@@ -354,10 +396,17 @@ private fun AccountEditorDialog(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
             ) {
-                TvButton("Annuler", onClick = onDismiss, variant = TvButtonVariant.Secondary, modifier = Modifier.height(42.dp))
+                TvButton(
+                    text = "Annuler",
+                    onClick = onDismiss,
+                    focusRequester = cancelFocusRequester,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier.height(42.dp),
+                )
                 Spacer(Modifier.width(10.dp))
                 TvButton(
                     text = "Enregistrer et connecter",
+                    focusRequester = saveFocusRequester,
                     onClick = {
                         if (host.isBlank() || username.isBlank() || password.isBlank()) {
                             error = "Hote, utilisateur et mot de passe sont obligatoires."
@@ -377,7 +426,9 @@ private fun SettingsTextField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
+    focusRequester: FocusRequester,
+    previousFocusRequester: FocusRequester? = null,
+    nextFocusRequester: FocusRequester? = null,
     password: Boolean = false,
 ) {
     Text(label, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
@@ -389,7 +440,22 @@ private fun SettingsTextField(
         textStyle = SmartVisionType.Body.copy(color = SmartVisionColors.TextPrimary),
         cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
         visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
-        modifier = modifier
+        modifier = Modifier
+            .focusRequester(focusRequester)
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.DirectionDown -> {
+                        nextFocusRequester?.requestFocus()
+                        nextFocusRequester != null
+                    }
+                    Key.DirectionUp -> {
+                        previousFocusRequester?.requestFocus()
+                        previousFocusRequester != null
+                    }
+                    else -> false
+                }
+            }
             .fillMaxWidth()
             .height(44.dp)
             .background(SmartVisionColors.Surface, RoundedCornerShape(6.dp))

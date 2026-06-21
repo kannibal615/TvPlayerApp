@@ -87,6 +87,7 @@ import coil.compose.AsyncImage
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
+import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
@@ -153,6 +154,7 @@ fun LiveTvScreen(
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val accounts by container.accountManager.accounts.collectAsStateWithLifecycle()
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstChannelFocusRequester = remember { FocusRequester() }
     var inputReady by remember { mutableStateOf(false) }
@@ -163,8 +165,8 @@ fun LiveTvScreen(
         inputReady = true
     }
 
-    LaunchedEffect(state.selectedCategoryId, state.categoriesLoading) {
-        if (!state.categoriesLoading) {
+    LaunchedEffect(state.selectedCategoryId, state.categoriesLoading, accounts.isNotEmpty()) {
+        if (accounts.isNotEmpty() && !state.categoriesLoading) {
             withFrameNanos { }
             delay(120)
             selectedCategoryFocusRequester.requestFocus()
@@ -200,6 +202,15 @@ fun LiveTvScreen(
         )
 
         Spacer(Modifier.height(LiveTvDimens.HeaderGap))
+
+        if (accounts.isEmpty()) {
+            XtreamQrSetupPanel(
+                activationRepository = container.activationRepository,
+                title = "Configurer vos chaînes Live TV",
+                modifier = Modifier.fillMaxSize(),
+            )
+            return@Column
+        }
 
         if (state.categoriesLoading) {
             LoadingState(

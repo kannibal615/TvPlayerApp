@@ -43,6 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
+import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
 import com.smartvision.svplayer.ui.catalog.CatalogCategoryRow
 import com.smartvision.svplayer.ui.catalog.CatalogEmpty
 import com.smartvision.svplayer.ui.catalog.CatalogError
@@ -78,6 +79,7 @@ fun SeriesScreen(
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val accounts by container.accountManager.accounts.collectAsStateWithLifecycle()
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstSeriesFocusRequester = remember { FocusRequester() }
     var inputReady by remember { mutableStateOf(false) }
@@ -88,8 +90,8 @@ fun SeriesScreen(
         inputReady = true
     }
 
-    LaunchedEffect(state.selectedCategoryId, state.categoriesLoading) {
-        if (!state.categoriesLoading) {
+    LaunchedEffect(state.selectedCategoryId, state.categoriesLoading, accounts.isNotEmpty()) {
+        if (accounts.isNotEmpty() && !state.categoriesLoading) {
             withFrameNanos { }
             delay(120)
             selectedCategoryFocusRequester.requestFocus()
@@ -125,6 +127,15 @@ fun SeriesScreen(
         )
 
         Spacer(Modifier.height(MediaCatalogDimens.HeaderGap))
+
+        if (accounts.isEmpty()) {
+            XtreamQrSetupPanel(
+                activationRepository = container.activationRepository,
+                title = "Configurer votre catalogue de séries",
+                modifier = Modifier.fillMaxSize(),
+            )
+            return@Column
+        }
 
         if (state.categoriesLoading) {
             CatalogLoading(

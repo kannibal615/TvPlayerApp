@@ -83,6 +83,40 @@ class ActivationRepository(
         )
     }
 
+    suspend fun createPlaylistSetupSession(): ActivationSession {
+        val deviceId = getOrCreateDeviceId()
+        val deviceToken = dataStore.data.first()[DEVICE_TOKEN].orEmpty()
+        if (deviceToken.isBlank()) {
+            throw ActivationException("Lien de configuration indisponible. Generez une nouvelle activation.")
+        }
+
+        val response = api.createPlaylistSetupSession(
+            PlaylistSetupSessionRequest(
+                deviceId = deviceId,
+                deviceToken = deviceToken,
+            ),
+        )
+
+        if (!response.success) {
+            throw ActivationException(response.error ?: "Lien de configuration refuse.")
+        }
+
+        val shortCode = response.shortCode.orEmpty()
+        val qrUrl = response.qrUrl.orEmpty()
+        val expiresAt = response.expiresAt.orEmpty()
+        if (shortCode.isBlank() || qrUrl.isBlank() || expiresAt.isBlank()) {
+            throw ActivationException("Reponse configuration incomplete.")
+        }
+
+        return ActivationSession(
+            deviceId = response.deviceId ?: deviceId,
+            shortCode = shortCode,
+            qrUrl = qrUrl,
+            expiresAt = expiresAt,
+            pollingIntervalSeconds = response.pollingInterval?.coerceAtLeast(1) ?: 5,
+        )
+    }
+
     suspend fun checkStatus(): RemoteActivationStatus {
         val deviceId = getOrCreateDeviceId()
         val deviceToken = dataStore.data.first()[DEVICE_TOKEN]

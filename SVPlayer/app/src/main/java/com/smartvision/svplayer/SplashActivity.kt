@@ -12,7 +12,8 @@ import android.view.View
 import android.view.ViewTreeObserver
 import android.view.WindowManager
 import android.view.animation.AccelerateDecelerateInterpolator
-import android.view.animation.DecelerateInterpolator
+import android.view.animation.AlphaAnimation
+import android.view.animation.Animation
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -45,9 +46,9 @@ class SplashActivity : Activity() {
         val haloSize = (markSize * 1.72f).toInt()
 
         val halo = View(this).apply {
-            alpha = 0f
-            scaleX = 0.82f
-            scaleY = 0.82f
+            alpha = 0.46f
+            scaleX = 1f
+            scaleY = 1f
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 gradientType = GradientDrawable.RADIAL_GRADIENT
@@ -73,10 +74,10 @@ class SplashActivity : Activity() {
         val logoGroup = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            alpha = 0f
-            scaleX = 0.94f
-            scaleY = 0.94f
-            translationY = displayHeight * 0.025f
+            alpha = 1f
+            scaleX = 1f
+            scaleY = 1f
+            translationY = 0f
             addView(
                 mark,
                 LinearLayout.LayoutParams(markSize, markSize),
@@ -123,14 +124,14 @@ class SplashActivity : Activity() {
     private fun startSplashAnimation(logoGroup: View, halo: View) {
         if (animationStarted || launched || isFinishing) return
         animationStarted = true
-        logoGroup.animate()
-            .alpha(1f)
-            .scaleX(1f)
-            .scaleY(1f)
-            .translationY(0f)
-            .setDuration(LogoRevealMillis)
-            .setInterpolator(DecelerateInterpolator())
-            .start()
+        logoGroup.startAnimation(
+            AlphaAnimation(1f, 0.9f).apply {
+                duration = LogoPulseMillis
+                repeatMode = Animation.REVERSE
+                repeatCount = Animation.INFINITE
+                interpolator = AccelerateDecelerateInterpolator()
+            },
+        )
         halo.animate()
             .alpha(0.72f)
             .scaleX(1.04f)
@@ -144,6 +145,7 @@ class SplashActivity : Activity() {
     private fun launchHome() {
         if (launched || isFinishing) return
         launched = true
+        root.clearAnimation()
         root.animate()
             .alpha(0f)
             .setDuration(FadeOutMillis)
@@ -165,9 +167,9 @@ class SplashActivity : Activity() {
 
     private companion object {
         const val WordmarkAspectRatio = 340f / 1400f
-        const val LogoRevealMillis = 560L
+        const val LogoPulseMillis = 760L
         const val HaloRevealMillis = 720L
-        const val SplashDurationMillis = 2_150L
+        const val SplashDurationMillis = 3_400L
         const val FadeOutMillis = 320L
     }
 }

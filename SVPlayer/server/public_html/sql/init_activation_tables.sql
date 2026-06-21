@@ -72,6 +72,15 @@ CREATE TABLE IF NOT EXISTS admin_audit_logs (
     INDEX (action)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS site_users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(190) NOT NULL UNIQUE,
+    display_name VARCHAR(120) NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_login_at DATETIME NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS device_activations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     device_id VARCHAR(100) NOT NULL,
@@ -82,6 +91,26 @@ CREATE TABLE IF NOT EXISTS device_activations (
     expires_at DATETIME NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX (device_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS activation_orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    plan_key VARCHAR(40) NOT NULL,
+    plan_label VARCHAR(80) NOT NULL,
+    amount_cents INT UNSIGNED NOT NULL,
+    status ENUM('pending', 'paid', 'cancelled') DEFAULT 'pending',
+    activation_code_id INT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    paid_at DATETIME NULL,
+    INDEX (user_id),
+    INDEX (status),
+    CONSTRAINT fk_activation_orders_user
+        FOREIGN KEY (user_id) REFERENCES site_users(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_activation_orders_code
+        FOREIGN KEY (activation_code_id) REFERENCES activation_codes(id)
+        ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS device_playlist_configs (

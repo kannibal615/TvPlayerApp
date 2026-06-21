@@ -744,6 +744,7 @@ try {
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "api"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "activate"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "admin"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "account"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "sql"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "assets"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "$remoteRoot/assets" -Name "images"
@@ -765,7 +766,9 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/validate_activation.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/start_trial.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/save_playlist_config.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/create_playlist_setup_session.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/activate" -FilePath (Join-Path $publicHtmlPath "activate/index.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/account" -FilePath (Join-Path $publicHtmlPath "account/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/bootstrap.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/logout.php")
@@ -797,6 +800,10 @@ try {
         $homeHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/"
         if ($homeHtml.Content -notmatch "SmartVision IPTV Player" -or $homeHtml.Content -notmatch "12 mois") {
             throw "La page d accueil ne retourne pas le contenu attendu."
+        }
+        $accountHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/account/?plan=year_1"
+        if ($accountHtml.Content -notmatch "Commander une activation" -or $accountHtml.Content -notmatch "Connexion") {
+            throw "La page compte/commande ne retourne pas le contenu attendu."
         }
         $activateHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/activate/"
         if ($activateHtml.Content -notmatch "Saisissez le code de votre TV") {
@@ -856,9 +863,19 @@ try {
                 throw "Validation SmartVision inattendue."
             }
 
+            $setupBody = @{
+                device_id = $qaDeviceId
+                device_token = [string]$session.device_token
+            } | ConvertTo-Json
+            $setupSession = Invoke-RestMethod -Method Post -Uri "https://$domain/api/create_playlist_setup_session.php" -ContentType "application/json" -Body $setupBody
+            Assert-ApiResult -Result $setupSession -Label "create_playlist_setup_session"
+            if ([string]::IsNullOrWhiteSpace([string]$setupSession.qr_url) -or $setupSession.qr_url -notmatch "mode=xtream") {
+                throw "Lien QR Xtream inattendu."
+            }
+
             $playlistBody = @{
                 device_id = $qaDeviceId
-                short_code = [string]$session.short_code
+                short_code = [string]$setupSession.short_code
                 host = "https://demo.invalid"
                 username = "qa-user"
                 password = "qa-password"

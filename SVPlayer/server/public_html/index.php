@@ -74,20 +74,20 @@ header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-sr
                 <p class="plan-name">1 mois</p>
                 <p class="price"><strong>2</strong><span>€</span></p>
                 <p>Pour découvrir SmartVision sans engagement.</p>
-                <a class="button button-outline" href="https://smartvisions.net/?smartvision_plan=1-month">Choisir 1 mois</a>
+                <a class="button button-outline" href="/account/?plan=month_1">Choisir 1 mois</a>
             </article>
             <article class="price-card featured">
                 <span class="popular">Le plus choisi</span>
                 <p class="plan-name">12 mois</p>
                 <p class="price"><strong>15</strong><span>€</span></p>
                 <p>Le meilleur équilibre pour un usage quotidien.</p>
-                <a class="button button-primary" href="https://smartvisions.net/?smartvision_plan=12-months">Choisir 12 mois</a>
+                <a class="button button-primary" href="/account/?plan=year_1">Choisir 12 mois</a>
             </article>
             <article class="price-card">
                 <p class="plan-name">À vie</p>
                 <p class="price"><strong>20</strong><span>€</span></p>
                 <p>Une activation définitive pour cet appareil.</p>
-                <a class="button button-outline" href="https://smartvisions.net/?smartvision_plan=lifetime">Choisir à vie</a>
+                <a class="button button-outline" href="/account/?plan=lifetime">Choisir à vie</a>
             </article>
         </div>
         <div class="trial-callout">

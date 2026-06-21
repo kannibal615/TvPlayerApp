@@ -63,6 +63,11 @@ function generate_short_code(int $length = 6): string
     return $code;
 }
 
+function generate_public_activation_code(): string
+{
+    return 'SV-' . generate_short_code(4) . '-' . generate_short_code(4) . '-' . generate_short_code(4);
+}
+
 function get_setting(PDO $pdo, string $key, mixed $default = null): mixed
 {
     $statement = $pdo->prepare('SELECT setting_value FROM app_settings WHERE setting_key = :setting_key LIMIT 1');

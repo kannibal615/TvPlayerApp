@@ -17,12 +17,22 @@ interface ActivationApiService {
         @Query("device_id") deviceId: String,
         @Query("device_token") deviceToken: String?,
     ): DeviceStatusResponse
+
+    @POST("api/create_playlist_setup_session.php")
+    suspend fun createPlaylistSetupSession(
+        @Body request: PlaylistSetupSessionRequest,
+    ): CreateActivationSessionResponse
 }
 
 data class CreateActivationSessionRequest(
     @SerializedName("device_id") val deviceId: String,
     @SerializedName("device_name") val deviceName: String,
     @SerializedName("app_version") val appVersion: String,
+)
+
+data class PlaylistSetupSessionRequest(
+    @SerializedName("device_id") val deviceId: String,
+    @SerializedName("device_token") val deviceToken: String,
 )
 
 data class CreateActivationSessionResponse(

@@ -10,4 +10,44 @@ body {
     .site-header .header-cta {
         display: none;
     }
+
+    .hero {
+        display: block;
+        overflow: hidden;
+    }
+
+    .hero-copy {
+        width: 100%;
+        min-width: 0;
+        text-align: center;
+    }
+
+    .hero .eyebrow {
+        max-width: 320px;
+        margin-left: auto;
+        margin-right: auto;
+        font-size: 11px;
+        line-height: 1.35;
+        white-space: normal;
+    }
+
+    .hero h1 {
+        font-size: 43px;
+        line-height: 1.05;
+    }
+
+    .hero-lead {
+        max-width: 330px;
+        margin-left: auto;
+        margin-right: auto;
+        font-size: 16px;
+    }
+
+    .product-stage {
+        margin-top: 34px;
+    }
+
+    .tv-frame {
+        transform: none;
+    }
 }
