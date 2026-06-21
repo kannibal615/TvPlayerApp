@@ -30,11 +30,13 @@ data class ActivationUiState(
     val qrUrl: String = "",
     val expiresAt: String = "",
     val pollingIntervalSeconds: Int = 5,
+    val activationType: String? = null,
     val statusLabel: String = "Verification de l activation...",
     val errorMessage: String? = null,
     val backendUrl: String = BuildConfig.ACTIVATION_BASE_URL,
 ) {
     val hasSession: Boolean = shortCode.isNotBlank() && qrUrl.isNotBlank()
+    val shouldShowLicenseKey: Boolean = activationType == "trial_demo" || activationType == "free_ads"
 }
 
 class ActivationViewModel(
@@ -75,6 +77,8 @@ class ActivationViewModel(
                     checking = true,
                     activated = cached.activated && cached.status == ActivationStatus.Active.value,
                     deviceId = deviceId,
+                    expiresAt = cached.expiresAt.orEmpty(),
+                    activationType = cached.activationType,
                     errorMessage = null,
                 )
             }
@@ -86,6 +90,8 @@ class ActivationViewModel(
                         checking = false,
                         activated = true,
                         polling = false,
+                        expiresAt = status.expiresAt.orEmpty(),
+                        activationType = status.activationType,
                         statusLabel = "Activation validee",
                         errorMessage = null,
                     )
@@ -100,6 +106,7 @@ class ActivationViewModel(
                         activated = false,
                         blocked = true,
                         polling = false,
+                        activationType = null,
                         statusLabel = "Appareil bloque",
                         errorMessage = "Cet appareil est bloque. Contactez le support SmartVision.",
                     )
@@ -119,6 +126,7 @@ class ActivationViewModel(
                 creatingSession = true,
                 polling = false,
                 blocked = false,
+                activationType = null,
                 errorMessage = null,
                 statusLabel = "Generation du code d activation...",
             )
@@ -175,6 +183,8 @@ class ActivationViewModel(
                                 polling = false,
                                 activated = true,
                                 blocked = false,
+                                expiresAt = status.expiresAt.orEmpty(),
+                                activationType = status.activationType,
                                 errorMessage = null,
                                 statusLabel = "Activation validee",
                             )
@@ -189,6 +199,7 @@ class ActivationViewModel(
                                 polling = false,
                                 activated = false,
                                 blocked = true,
+                                activationType = null,
                                 statusLabel = "Appareil bloque",
                                 errorMessage = "Cet appareil est bloque. Contactez le support SmartVision.",
                             )
@@ -203,6 +214,7 @@ class ActivationViewModel(
                                 polling = false,
                                 activated = false,
                                 blocked = false,
+                                activationType = null,
                                 statusLabel = "Activation expiree",
                                 errorMessage = "L activation de cet appareil a expire. Generez un nouveau code.",
                             )
@@ -216,6 +228,7 @@ class ActivationViewModel(
                                 polling = true,
                                 activated = false,
                                 blocked = false,
+                                activationType = null,
                                 statusLabel = "En attente de validation",
                                 errorMessage = null,
                             )
@@ -254,6 +267,7 @@ private fun ActivationUiState.withSession(session: ActivationSession): Activatio
         qrUrl = session.qrUrl,
         expiresAt = session.expiresAt,
         pollingIntervalSeconds = session.pollingIntervalSeconds,
+        activationType = null,
         statusLabel = "En attente de validation",
         errorMessage = null,
     )

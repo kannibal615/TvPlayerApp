@@ -37,6 +37,9 @@ fun HomeScreen(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
+    onProfile: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
     onContentClick: (ContinueItem) -> Unit,
     onContinueViewAll: () -> Unit,
     onTrendingViewAll: () -> Unit,
@@ -81,6 +84,9 @@ fun HomeScreen(
             onNavigate = onNavigate,
             onSync = onSync,
             onSettings = onSettings,
+            onProfile = onProfile,
+            onLicenseKey = onLicenseKey,
+            showLicenseKey = showLicenseKey,
             modifier = Modifier.fillMaxWidth(),
         )
 
