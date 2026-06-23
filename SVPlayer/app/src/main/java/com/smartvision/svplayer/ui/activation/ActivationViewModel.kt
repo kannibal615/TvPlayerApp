@@ -129,7 +129,7 @@ class ActivationViewModel(
                         it.copy(
                             activationBusy = false,
                             checking = false,
-                            showFreeWithAdsChoice = true,
+                            showFreeWithAdsChoice = false,
                             errorMessage = error.userMessage("L essai gratuit n est pas disponible."),
                             statusLabel = "Essai gratuit indisponible",
                         )

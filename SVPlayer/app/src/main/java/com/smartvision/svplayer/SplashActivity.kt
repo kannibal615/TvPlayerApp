@@ -40,30 +40,14 @@ class SplashActivity : Activity() {
             setBackgroundColor(Color.rgb(2, 8, 23))
         }
         val backdrop = ImageView(this).apply {
-            setImageResource(R.drawable.smartvision_splash_full)
+            setImageResource(R.drawable.smartvision_splash_bg)
             scaleType = ImageView.ScaleType.FIT_XY
         }
+        val displayWidth = resources.displayMetrics.widthPixels
         val displayHeight = resources.displayMetrics.heightPixels
-        val logoWidth = (displayHeight * 0.82f).toInt()
+        val logoWidth = (displayWidth * 0.34f).toInt()
         val logoHeight = (logoWidth * LogoAspectRatio).toInt()
-        val progressWidth = (displayHeight * 0.38f).toInt()
-        val haloSize = (logoWidth * 0.72f).toInt()
-
-        val halo = View(this).apply {
-            alpha = 0.46f
-            scaleX = 1f
-            scaleY = 1f
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                gradientType = GradientDrawable.RADIAL_GRADIENT
-                gradientRadius = haloSize * 0.48f
-                colors = intArrayOf(
-                    Color.argb(112, 0, 210, 255),
-                    Color.argb(34, 0, 116, 255),
-                    Color.TRANSPARENT,
-                )
-            }
-        }
+        val progressWidth = (displayWidth * 0.18f).toInt()
 
         val logo = ImageView(this).apply {
             setImageResource(R.drawable.smartvision_logo_wide)
@@ -122,14 +106,6 @@ class SplashActivity : Activity() {
             ),
         )
         root.addView(
-            halo,
-            FrameLayout.LayoutParams(
-                haloSize,
-                haloSize,
-                Gravity.CENTER,
-            ),
-        )
-        root.addView(
             logoGroup,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -145,14 +121,14 @@ class SplashActivity : Activity() {
                     if (root.viewTreeObserver.isAlive) {
                         root.viewTreeObserver.removeOnPreDrawListener(this)
                     }
-                    root.post { startSplashAnimation(logoGroup, halo, progressTrack, progressFill) }
+                    root.post { startSplashAnimation(logoGroup, progressTrack, progressFill) }
                     return true
                 }
             },
         )
     }
 
-    private fun startSplashAnimation(logoGroup: View, halo: View, progressTrack: View, progressFill: View) {
+    private fun startSplashAnimation(logoGroup: View, progressTrack: View, progressFill: View) {
         if (animationStarted || launched || isFinishing) return
         animationStarted = true
         logoGroup.startAnimation(
@@ -163,13 +139,6 @@ class SplashActivity : Activity() {
                 interpolator = AccelerateDecelerateInterpolator()
             },
         )
-        halo.animate()
-            .alpha(0.72f)
-            .scaleX(1.04f)
-            .scaleY(1.04f)
-            .setDuration(HaloRevealMillis)
-            .setInterpolator(AccelerateDecelerateInterpolator())
-            .start()
         handler.postDelayed(
             {
                 if (launched || isFinishing) return@postDelayed
@@ -211,7 +180,6 @@ class SplashActivity : Activity() {
         const val LogoPulseMinAlpha = 0.86f
         const val LogoPulseMaxAlpha = 1.0f
         const val LogoPulseMillis = 760L
-        const val HaloRevealMillis = 720L
         const val LoadingRevealDelayMillis = 820L
         const val LoadingFadeMillis = 260L
         const val SplashDurationMillis = 3_400L

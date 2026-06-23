@@ -127,7 +127,16 @@ function clean_optional_text(mixed $value, int $maxLength): ?string
         return null;
     }
 
-    return mb_substr($text, 0, $maxLength, 'UTF-8');
+    return smartvision_text_substr($text, 0, $maxLength);
+}
+
+function smartvision_text_substr(string $text, int $start, int $length): string
+{
+    if (function_exists('mb_substr')) {
+        return mb_substr($text, $start, $length, 'UTF-8');
+    }
+
+    return substr($text, $start, $length);
 }
 
 function is_duplicate_key(Throwable $exception): bool

@@ -47,7 +47,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     exit;
 }
 
-$query = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 80, 'UTF-8');
+$query = smartvision_text_substr(trim((string) ($_GET['q'] ?? '')), 0, 80);
 $stats = admin_load_stats($pdo);
 $orders = admin_load_orders($pdo, $query);
 $users = admin_load_users($pdo, $query);
@@ -113,7 +113,7 @@ function admin_positive_int(mixed $value, int $max = PHP_INT_MAX): int
 
 function admin_generate_code(PDO $pdo): void
 {
-    $label = mb_substr(trim((string) ($_POST['label'] ?? '')), 0, 100, 'UTF-8');
+    $label = smartvision_text_substr(trim((string) ($_POST['label'] ?? '')), 0, 100);
     $durationDays = admin_positive_int($_POST['duration_days'] ?? null, 36500);
     $maxDevices = admin_positive_int($_POST['max_devices'] ?? null, 1000);
     $validUntil = null;
@@ -467,9 +467,9 @@ function render_admin_login(?string $error): void
     $credentials = admin_credentials();
     $configured = $credentials['username'] !== '' && $credentials['password_hash'] !== '';
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=2"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=2"><link rel="stylesheet" href="/assets/admin-overrides.css?v=2"></head>
 <body class="admin-login-body"><main class="admin-login-panel">
-    <a class="admin-brand" href="/"><img src="/assets/images/smartvision-mark.png" alt=""><span>Smart<strong>Vision</strong></span></a>
+    <a class="admin-brand" href="/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png" alt="SmartVision IPTV Player"></a>
     <h1>Administration</h1><p>Commandes, licences et appareils SmartVision.</p>
     <?php if (!$configured): ?><div class="admin-notice error">Administration non configuree sur le serveur.</div><?php else: ?>
     <?php if ($error): ?><div class="admin-notice error"><?= admin_escape($error) ?></div><?php endif; ?>
@@ -503,10 +503,10 @@ function render_admin_dashboard(
     ];
     $heading = $pages[$page] ?? $pages['overview'];
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=2"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=2"><link rel="stylesheet" href="/assets/admin-overrides.css?v=2"></head>
 <body class="admin-body">
 <aside class="admin-sidebar">
-    <a class="admin-brand" href="/admin/"><img src="/assets/images/smartvision-mark.png" alt=""><span>Smart<strong>Vision</strong></span></a>
+    <a class="admin-brand" href="/admin/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png" alt="SmartVision IPTV Player"></a>
     <nav><?php foreach ($pages as $pageKey => $pageMeta): ?><a class="<?= $page === $pageKey ? 'active' : '' ?>" href="/admin/?page=<?= admin_escape($pageKey) ?>"><?= admin_escape($pageMeta[0]) ?></a><?php endforeach; ?></nav>
     <div class="sidebar-footer"><a href="/" target="_blank" rel="noopener">Voir le site</a><form method="post" action="/admin/logout.php"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><button type="submit">Deconnexion</button></form></div>
 </aside>

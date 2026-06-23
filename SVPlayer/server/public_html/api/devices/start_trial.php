@@ -52,8 +52,12 @@ try {
             'error' => 'L essai gratuit a deja ete utilise sur cet appareil.',
             'status' => 'expired',
             'activated' => false,
+            'serverDeviceId' => $deviceId,
+            'device_id' => $deviceId,
+            'publicDeviceCode' => $publicCode,
+            'activation_type' => 'trial_demo',
             'trialStatus' => 'expired',
-        ], 409);
+        ]);
     }
 
     $durationDays = max(1, (int) get_setting($pdo, 'trial_duration_days', '7'));

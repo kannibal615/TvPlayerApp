@@ -291,9 +291,20 @@ class ActivationRepository(
         defaultError: String,
     ): RemoteActivationStatus {
         if (!response.success) {
+            val businessStatus = ActivationStatus.fromValue(response.status)
+            if (businessStatus == ActivationStatus.Expired && response.trialStatus == "expired") {
+                return persistResolvedStatus(response, businessStatus)
+            }
             throw ActivationException(response.error ?: defaultError)
         }
         val status = ActivationStatus.fromValue(response.status)
+        return persistResolvedStatus(response, status)
+    }
+
+    private suspend fun persistResolvedStatus(
+        response: DeviceStatusResponse,
+        status: ActivationStatus,
+    ): RemoteActivationStatus {
         val deviceId = response.serverDeviceId ?: response.legacyDeviceId ?: ensureRegisteredDeviceId()
         val publicDeviceCode = response.publicDeviceCode ?: dataStore.data.first()[PUBLIC_DEVICE_CODE].orEmpty()
         dataStore.edit { preferences ->

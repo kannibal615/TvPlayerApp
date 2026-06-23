@@ -137,7 +137,7 @@ private fun StartupVerificationPanel(
         contentAlignment = Alignment.Center,
     ) {
         Image(
-            painter = painterResource(R.drawable.smartvision_splash_full),
+            painter = painterResource(R.drawable.smartvision_splash_bg),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
@@ -156,20 +156,20 @@ private fun StartupVerificationPanel(
                 ),
         )
         Column(
-            modifier = Modifier.width(360.dp),
+            modifier = Modifier.width(560.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             SmartVisionLogo(
                 modifier = Modifier
-                    .width(326.dp)
-                    .height(82.dp),
+                    .width(520.dp)
+                    .height(132.dp),
             )
             Spacer(Modifier.height(18.dp))
             LinearProgressIndicator(
                 color = SmartVisionColors.CyanAccent,
                 trackColor = Color(0xFF11233D).copy(alpha = 0.88f),
                 modifier = Modifier
-                    .width(260.dp)
+                    .width(320.dp)
                     .height(6.dp)
                     .clip(RoundedCornerShape(99.dp)),
             )
@@ -281,7 +281,11 @@ private fun ActivationMainPanel(
                 )
                 Spacer(Modifier.height(7.dp))
                 TvButton(
-                    text = "Essai gratuit 7 jours",
+                    text = if (state.activationBusy && state.statusLabel.contains("essai", ignoreCase = true)) {
+                        "Demarrage de l essai..."
+                    } else {
+                        "Essai gratuit 7 jours"
+                    },
                     onClick = onStartTrial,
                     enabled = !state.activationBusy,
                     leadingIcon = Icons.Default.CardGiftcard,
@@ -361,32 +365,34 @@ private fun TrialExpiredPanel(
     val continueFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { continueFocus.requestFocus() }
 
-    GlassShell(width = 1120.dp) {
+    GlassShell(width = 1100.dp) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(28.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            verticalAlignment = Alignment.Top,
         ) {
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 18.dp),
+                    .padding(end = 6.dp),
             ) {
                 SmartVisionLogo()
-                Spacer(Modifier.height(34.dp))
+                Spacer(Modifier.height(16.dp))
                 Text(
                     text = "Votre essai gratuit est termine",
                     color = SmartVisionColors.TextPrimary,
-                    style = SmartVisionType.TitleXL,
+                    style = ActivationTitleStyle,
                     fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Clip,
                 )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
                 Text(
                     text = "Vous pouvez continuer gratuitement avec des publicites ou activer une licence SmartVision.",
                     color = SmartVisionColors.TextSecondary,
-                    style = SmartVisionType.Body,
+                    style = SmartVisionType.Label,
                 )
-                Spacer(Modifier.height(54.dp))
+                Spacer(Modifier.height(26.dp))
                 ChoiceButton(
                     text = "Mode gratuit avec pubs",
                     subtitle = "Acces maintenu avec publicites",
@@ -411,10 +417,10 @@ private fun TrialExpiredPanel(
                     onClick = onEnterLicense,
                 )
                 state.errorMessage?.let {
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(12.dp))
                     Text(it, color = SmartVisionColors.Error, style = SmartVisionType.Label)
                 }
-                Spacer(Modifier.height(60.dp))
+                Spacer(Modifier.height(24.dp))
                 Text(
                     text = "Vous pourrez acheter une licence a tout moment pour supprimer les publicites.",
                     color = SmartVisionColors.TextSecondary.copy(alpha = 0.82f),
@@ -425,7 +431,7 @@ private fun TrialExpiredPanel(
             VerticalDivider()
 
             Column(
-                modifier = Modifier.width(390.dp),
+                modifier = Modifier.width(326.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
@@ -444,12 +450,12 @@ private fun TrialExpiredPanel(
                         append(" une licence\net supprimer les publicites.")
                     },
                     color = SmartVisionColors.TextSecondary,
-                    style = SmartVisionType.Body,
+                    style = SmartVisionType.Label,
                     textAlign = TextAlign.Center,
                 )
+                Spacer(Modifier.height(16.dp))
+                QrCard(content = state.purchaseUrl, size = 236)
                 Spacer(Modifier.height(22.dp))
-                QrCard(content = state.purchaseUrl, size = 260)
-                Spacer(Modifier.height(30.dp))
                 StepsCard(
                     steps = listOf(
                         ActivationStep("1", "Scanner", "ce QR code", Icons.Default.QrCode2),
@@ -484,7 +490,7 @@ private fun ChoiceButton(
         contentPadding = PaddingValues(horizontal = 28.dp),
         modifier = modifier
             .fillMaxWidth()
-            .height(58.dp),
+            .height(50.dp),
     )
 }
 

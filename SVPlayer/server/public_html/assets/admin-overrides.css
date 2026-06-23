@@ -1,0 +1,11 @@
+.admin-brand .admin-logo-wide {
+    width: 168px;
+    height: auto;
+    max-height: 48px;
+    object-fit: contain;
+}
+
+.admin-login-panel .admin-brand .admin-logo-wide {
+    width: 210px;
+    max-height: 58px;
+}

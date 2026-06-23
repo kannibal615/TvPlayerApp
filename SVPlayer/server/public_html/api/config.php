@@ -19,12 +19,17 @@ function config_json_error(string $message, int $statusCode = 500): never
 
 function load_database_config(): array
 {
-    $privateConfig = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . SMARTVISION_PRIVATE_CONFIG;
+    $privateConfigCandidates = [
+        dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . SMARTVISION_PRIVATE_CONFIG,
+        dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . SMARTVISION_PRIVATE_CONFIG,
+    ];
 
-    if (is_file($privateConfig)) {
-        $config = require $privateConfig;
-        if (is_array($config)) {
-            return $config;
+    foreach (array_unique($privateConfigCandidates) as $privateConfig) {
+        if (is_file($privateConfig)) {
+            $config = require $privateConfig;
+            if (is_array($config)) {
+                return $config;
+            }
         }
     }
 

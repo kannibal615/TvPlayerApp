@@ -214,8 +214,7 @@ $selectedPlan = commerce_plan($planKey);
 <body class="account-page">
 <header class="site-header account-header">
     <a class="brand" href="/" aria-label="SmartVision, accueil">
-        <img class="brand-mark" src="/assets/images/smartvision-mark.png" alt="">
-        <img class="brand-wordmark" src="/assets/images/smartvision-wordmark.png" alt="SmartVision IPTV Player">
+        <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png" alt="SmartVision IPTV Player">
     </a>
     <nav aria-label="Navigation compte">
         <a href="/">Accueil</a>

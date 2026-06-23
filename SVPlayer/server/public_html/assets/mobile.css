@@ -9,6 +9,19 @@ body {
     object-fit: contain;
 }
 
+.site-header .brand-logo-wide {
+    width: 245px;
+    max-width: min(56vw, 245px);
+}
+
+.footer-brand .brand-logo-wide {
+    width: 190px;
+}
+
+.activation-brand .brand-logo-wide {
+    width: 310px;
+}
+
 @media (max-width: 640px) {
     .site-header {
         grid-template-columns: 1fr;

@@ -105,6 +105,9 @@ fun AppNavigation(
     val xtreamAccounts by container.accountManager.accounts.collectAsStateWithLifecycle()
 
     if (!activationState.activated) {
+        BackHandler {
+            showExitConfirmation = true
+        }
         ActivationScreen(
             state = activationState,
             onRetry = activationViewModel::retry,
@@ -115,10 +118,19 @@ fun AppNavigation(
             onContinueFreeWithAds = activationViewModel::continueFreeWithAds,
             onShowActivationForm = activationViewModel::showActivationForm,
         )
+        if (showExitConfirmation) {
+            ExitConfirmationDialog(
+                onDismiss = { showExitConfirmation = false },
+                onExit = { activity?.finishAffinity() },
+            )
+        }
         return
     }
 
     if (xtreamAccounts.isEmpty()) {
+        BackHandler {
+            showExitConfirmation = true
+        }
         XtreamQrSetupPanel(
             activationRepository = container.activationRepository,
             title = "Configurer les identifiants Xtream",
@@ -131,6 +143,12 @@ fun AppNavigation(
             },
             modifier = Modifier.fillMaxSize(),
         )
+        if (showExitConfirmation) {
+            ExitConfirmationDialog(
+                onDismiss = { showExitConfirmation = false },
+                onExit = { activity?.finishAffinity() },
+            )
+        }
         return
     }
 
@@ -322,8 +340,18 @@ fun AppNavigation(
         }
     }
 
-    BackHandler(enabled = currentRoute == AppRoute.Home.route) {
-        showExitConfirmation = true
+    val playerRouteActive = currentRoute.startsWith("player/") ||
+        currentRoute.startsWith("movie_player/") ||
+        currentRoute.startsWith("episode_player/")
+    BackHandler(enabled = !playerRouteActive) {
+        val popped = if (currentRoute != AppRoute.Home.route) {
+            navController.popBackStack()
+        } else {
+            false
+        }
+        if (!popped) {
+            showExitConfirmation = true
+        }
     }
 
     if (showExitConfirmation) {
