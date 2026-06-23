@@ -207,6 +207,13 @@ fun LiveTvScreen(
             XtreamQrSetupPanel(
                 activationRepository = container.activationRepository,
                 title = "Configurer vos chaînes Live TV",
+                onManualAccount = { account ->
+                    val accountId = container.accountManager.upsert(account)
+                    container.accountManager.select(accountId)
+                    container.xtreamRepository.clearCaches()
+                    container.xtreamRepository.getLiveCategories()
+                    container.synchronizeCatalog()
+                },
                 modifier = Modifier.fillMaxSize(),
             )
             return@Column

@@ -65,7 +65,30 @@ function generate_short_code(int $length = 6): string
 
 function generate_public_activation_code(): string
 {
-    return 'SV-' . generate_short_code(4) . '-' . generate_short_code(4) . '-' . generate_short_code(4);
+    return generate_short_code(10);
+}
+
+function generate_uuid_v4(): string
+{
+    $bytes = random_bytes(16);
+    $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+    $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+
+    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
+}
+
+function clean_public_device_code(?string $code): string
+{
+    $normalized = preg_replace('/[^A-Z0-9]/', '', strtoupper(trim((string) $code)));
+
+    return substr((string) $normalized, 0, 6);
+}
+
+function clean_hash(?string $value): string
+{
+    $hash = preg_replace('/[^a-fA-F0-9]/', '', trim((string) $value));
+
+    return substr(strtolower((string) $hash), 0, 128);
 }
 
 function get_setting(PDO $pdo, string $key, mixed $default = null): mixed

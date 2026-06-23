@@ -149,7 +149,7 @@ function commerce_create_test_order(
             throw new RuntimeException('Generation de licence impossible.');
         }
 
-        $hint = 'SV-****-****-' . substr(normalize_activation_code($plainCode), -4);
+        $hint = '******' . substr(normalize_activation_code($plainCode), -4);
         $insertMetadata = $pdo->prepare(
             "INSERT INTO activation_code_metadata (code_id, code_hint, created_by, last_used_at)
              VALUES (:code_id, :code_hint, :created_by, NULL)"

@@ -152,7 +152,7 @@ function admin_generate_code(PDO $pdo): void
     );
     $metadata->execute([
         'code_id' => $codeId,
-        'code_hint' => 'SV-****-****-' . substr(normalize_activation_code($plainCode), -4),
+        'code_hint' => '******' . substr(normalize_activation_code($plainCode), -4),
         'created_by' => current_admin_username(),
     ]);
     audit_admin_action($pdo, 'activation_code_created', 'activation_code', (string) $codeId, [

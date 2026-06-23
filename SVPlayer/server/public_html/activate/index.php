@@ -82,7 +82,7 @@ function h(string $value): string { return htmlspecialchars($value, ENT_QUOTES |
                     <input type="hidden" id="short-code" value="<?= h($shortCode) ?>">
                     <div class="field">
                         <label for="activation-code">Code SmartVision</label>
-                        <input id="activation-code" type="text" minlength="6" maxlength="64" autocomplete="one-time-code" placeholder="SV-XXXX-XXXX-XXXX">
+                        <input id="activation-code" type="text" minlength="10" maxlength="10" autocomplete="one-time-code" placeholder="AB12CD34EF">
                     </div>
                     <button class="button button-primary" id="license-button" type="submit">Activer avec mon code</button>
                 </form>

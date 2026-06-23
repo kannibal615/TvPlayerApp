@@ -134,6 +134,13 @@ fun MoviesScreen(
             XtreamQrSetupPanel(
                 activationRepository = container.activationRepository,
                 title = "Configurer votre catalogue de films",
+                onManualAccount = { account ->
+                    val accountId = container.accountManager.upsert(account)
+                    container.accountManager.select(accountId)
+                    container.xtreamRepository.clearCaches()
+                    container.xtreamRepository.getLiveCategories()
+                    container.synchronizeCatalog()
+                },
                 modifier = Modifier.fillMaxSize(),
             )
             return@Column

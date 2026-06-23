@@ -45,6 +45,7 @@ import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.ui.activation.ActivationScreen
 import com.smartvision.svplayer.ui.activation.ActivationViewModel
+import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
 import com.smartvision.svplayer.ui.detail.MovieDetailRoute
 import com.smartvision.svplayer.ui.detail.SeriesDetailRoute
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
@@ -101,17 +102,38 @@ fun AppNavigation(
         Unit
     }
 
+    val xtreamAccounts by container.accountManager.accounts.collectAsStateWithLifecycle()
+
     if (!activationState.activated) {
         ActivationScreen(
             state = activationState,
             onRetry = activationViewModel::retry,
             onRefreshSession = activationViewModel::refreshSession,
             onCheckNow = activationViewModel::checkNow,
+            onActivateLicense = activationViewModel::activateLicense,
+            onStartTrial = activationViewModel::startTrial,
+            onContinueFreeWithAds = activationViewModel::continueFreeWithAds,
+            onShowActivationForm = activationViewModel::showActivationForm,
         )
         return
     }
 
-    val xtreamAccounts by container.accountManager.accounts.collectAsStateWithLifecycle()
+    if (xtreamAccounts.isEmpty()) {
+        XtreamQrSetupPanel(
+            activationRepository = container.activationRepository,
+            title = "Configurer les identifiants Xtream",
+            onManualAccount = { account ->
+                val accountId = container.accountManager.upsert(account)
+                container.accountManager.select(accountId)
+                container.xtreamRepository.clearCaches()
+                container.xtreamRepository.getLiveCategories()
+                container.synchronizeCatalog()
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
+        return
+    }
+
     val xtreamAccountSignature = remember(xtreamAccounts) {
         xtreamAccounts.joinToString("|") { account ->
             "${account.id}:${account.host}:${account.username}:${account.password.hashCode()}"

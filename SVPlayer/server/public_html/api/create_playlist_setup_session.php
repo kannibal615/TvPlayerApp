@@ -35,6 +35,13 @@ try {
         json_response(['success' => false, 'error' => 'Appareil non active.'], 403);
     }
 
+    $deviceQuery = $pdo->prepare('SELECT public_device_code FROM devices WHERE device_id = :device_id LIMIT 1');
+    $deviceQuery->execute(['device_id' => $deviceId]);
+    $publicDeviceCode = clean_public_device_code($deviceQuery->fetchColumn() ?: null);
+    if ($publicDeviceCode === '') {
+        $publicDeviceCode = $deviceId;
+    }
+
     $sessionMinutes = max(1, (int) get_setting($pdo, 'activation_session_minutes', '15'));
     $expiresAt = (new DateTimeImmutable('now', new DateTimeZone('UTC')))
         ->modify('+' . $sessionMinutes . ' minutes')
@@ -68,8 +75,8 @@ try {
     }
 
     $qrUrl = SMARTVISION_PUBLIC_BASE_URL
-        . '/activate/?mode=xtream&device_id=' . rawurlencode($deviceId)
-        . '&code=' . rawurlencode($shortCode);
+        . '/xtream/?device=' . rawurlencode($publicDeviceCode)
+        . '&session=' . rawurlencode($shortCode);
 
     json_response([
         'success' => true,

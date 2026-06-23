@@ -13,17 +13,28 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 
 $input = read_json_input();
 $deviceId = clean_device_id($input['device_id'] ?? null);
+$publicDeviceCode = clean_public_device_code($input['publicDeviceCode'] ?? $input['device'] ?? null);
 $shortCode = normalize_activation_code($input['short_code'] ?? null);
 $host = normalize_xtream_host($input['host'] ?? null);
 $username = clean_optional_text($input['username'] ?? null, 180);
 $password = clean_optional_text($input['password'] ?? null, 255);
 
-if ($deviceId === '' || $shortCode === '' || $host === '' || $username === null || $password === null) {
+if (($deviceId === '' && $publicDeviceCode === '') || $shortCode === '' || $host === '' || $username === null || $password === null) {
     json_response(['success' => false, 'error' => 'Identifiants Xtream incomplets ou invalides.'], 400);
 }
 
 $pdo = db();
 try {
+    if ($deviceId === '' && $publicDeviceCode !== '') {
+        $deviceLookup = $pdo->prepare('SELECT device_id FROM devices WHERE public_device_code = :public_code LIMIT 1');
+        $deviceLookup->execute(['public_code' => $publicDeviceCode]);
+        $deviceId = clean_device_id($deviceLookup->fetchColumn() ?: null);
+    }
+
+    if ($deviceId === '') {
+        json_response(['success' => false, 'error' => 'Appareil introuvable.'], 404);
+    }
+
     $sessionQuery = $pdo->prepare(
         "SELECT id FROM activation_sessions
          WHERE device_id = :device_id AND short_code = :short_code AND status = 'validated'

@@ -83,6 +83,7 @@ class AppContainer(context: Context) {
     private val appUpdateApi = activationRetrofit.create(AppUpdateApiService::class.java)
 
     val activationRepository: ActivationRepository = ActivationRepository(
+        appContext = appContext,
         api = activationApi,
         dataStore = appContext.activationDataStore,
         accountManager = accountManager,

@@ -26,17 +26,26 @@ data class ActivationUiState(
     val activated: Boolean = false,
     val blocked: Boolean = false,
     val deviceId: String = "",
+    val publicDeviceCode: String = "",
     val shortCode: String = "",
     val qrUrl: String = "",
     val expiresAt: String = "",
     val pollingIntervalSeconds: Int = 5,
     val activationType: String? = null,
+    val freeWithAdsStatus: String? = null,
+    val playlistConfigured: Boolean = false,
+    val showFreeWithAdsChoice: Boolean = false,
+    val activationBusy: Boolean = false,
     val statusLabel: String = "Verification de l activation...",
     val errorMessage: String? = null,
     val backendUrl: String = BuildConfig.ACTIVATION_BASE_URL,
 ) {
     val hasSession: Boolean = shortCode.isNotBlank() && qrUrl.isNotBlank()
-    val shouldShowLicenseKey: Boolean = activationType == "trial_demo" || activationType == "free_ads"
+    val shouldShowLicenseKey: Boolean = activationType == "trial_demo" || activationType == "free_ads" || freeWithAdsStatus == "active"
+    val purchaseUrl: String =
+        backendUrl.trimEnd('/') + "/activation?device=" + publicDeviceCode.ifBlank { deviceId }
+    val xtreamSetupUrl: String =
+        backendUrl.trimEnd('/') + "/xtream?device=" + publicDeviceCode.ifBlank { deviceId }
 }
 
 class ActivationViewModel(
@@ -67,54 +76,144 @@ class ActivationViewModel(
         }
     }
 
+    fun activateLicense(rawLicenseCode: String) {
+        val normalized = rawLicenseCode.replace(Regex("[\\s-]+"), "").uppercase()
+        if (!Regex("^[A-Z0-9]{10}$").matches(normalized)) {
+            _uiState.update {
+                it.copy(
+                    errorMessage = "Le code doit contenir exactement 10 caracteres alphanumeriques.",
+                    statusLabel = "Code licence invalide",
+                )
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    activationBusy = true,
+                    checking = false,
+                    errorMessage = null,
+                    statusLabel = "Activation de la licence...",
+                )
+            }
+            runCatching { repository.activateLicense(normalized) }
+                .onSuccess { status -> applyAccessStatus(status, requireFreeAdsConfirmation = false) }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            activationBusy = false,
+                            checking = false,
+                            errorMessage = error.userMessage("Impossible d activer ce code licence."),
+                            statusLabel = "Activation refusee",
+                        )
+                    }
+                }
+        }
+    }
+
+    fun startTrial() {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    activationBusy = true,
+                    checking = false,
+                    errorMessage = null,
+                    statusLabel = "Demarrage de l essai gratuit...",
+                )
+            }
+            runCatching { repository.startTrial() }
+                .onSuccess { status -> applyAccessStatus(status, requireFreeAdsConfirmation = false) }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            activationBusy = false,
+                            checking = false,
+                            showFreeWithAdsChoice = true,
+                            errorMessage = error.userMessage("L essai gratuit n est pas disponible."),
+                            statusLabel = "Essai gratuit indisponible",
+                        )
+                    }
+                }
+        }
+    }
+
+    fun continueFreeWithAds() {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    activationBusy = true,
+                    checking = false,
+                    errorMessage = null,
+                    statusLabel = "Activation du mode gratuit...",
+                )
+            }
+            runCatching { repository.enableFreeWithAds() }
+                .onSuccess { status -> applyAccessStatus(status, requireFreeAdsConfirmation = false) }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            activationBusy = false,
+                            errorMessage = error.userMessage("Mode gratuit indisponible."),
+                            statusLabel = "Mode gratuit indisponible",
+                        )
+                    }
+                }
+        }
+    }
+
+    fun showActivationForm() {
+        _uiState.update {
+            it.copy(
+                showFreeWithAdsChoice = false,
+                activated = false,
+                errorMessage = null,
+                statusLabel = "Saisissez une licence ou scannez le QR code",
+            )
+        }
+    }
+
     private fun start() {
         pollingJob?.cancel()
         viewModelScope.launch {
-            val deviceId = repository.getOrCreateDeviceId()
             val cached = repository.localState.first()
             _uiState.update {
                 it.copy(
                     checking = true,
-                    activated = cached.activated && cached.status == ActivationStatus.Active.value,
-                    deviceId = deviceId,
+                    activated = false,
+                    deviceId = cached.deviceId,
+                    publicDeviceCode = cached.publicDeviceCode,
                     expiresAt = cached.expiresAt.orEmpty(),
                     activationType = cached.activationType,
+                    freeWithAdsStatus = cached.freeWithAdsStatus,
+                    playlistConfigured = cached.playlistConfigured,
+                    showFreeWithAdsChoice = false,
                     errorMessage = null,
+                    statusLabel = "Initialisation de l appareil...",
                 )
             }
 
-            val status = runCatching { repository.checkStatus() }.getOrNull()
-            if (status?.activated == true && status.status == ActivationStatus.Active) {
-                _uiState.update {
-                    it.copy(
-                        checking = false,
-                        activated = true,
-                        polling = false,
-                        expiresAt = status.expiresAt.orEmpty(),
-                        activationType = status.activationType,
-                        statusLabel = "Activation validee",
-                        errorMessage = null,
-                    )
+            val registration = runCatching { repository.registerDevice() }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            checking = false,
+                            activated = false,
+                            errorMessage = error.userMessage("Connexion impossible. Verifiez votre reseau."),
+                            statusLabel = "Connexion impossible",
+                        )
+                    }
                 }
+                .getOrNull()
+                ?: return@launch
+
+            val status = runCatching { repository.checkStatus() }.getOrElse { registration }
+            val handled = applyAccessStatus(status, requireFreeAdsConfirmation = true)
+            if (handled) {
                 return@launch
             }
 
-            if (status?.status == ActivationStatus.Blocked) {
-                _uiState.update {
-                    it.copy(
-                        checking = false,
-                        activated = false,
-                        blocked = true,
-                        polling = false,
-                        activationType = null,
-                        statusLabel = "Appareil bloque",
-                        errorMessage = "Cet appareil est bloque. Contactez le support SmartVision.",
-                    )
-                }
-                return@launch
-            }
-
-            createSessionAndStartPolling()
+            startPassivePolling()
         }
     }
 
@@ -160,6 +259,16 @@ class ActivationViewModel(
         }
     }
 
+    private fun startPassivePolling() {
+        pollingJob?.cancel()
+        pollingJob = viewModelScope.launch {
+            while (isActive && !_uiState.value.activated && !_uiState.value.showFreeWithAdsChoice) {
+                delay(_uiState.value.pollingIntervalSeconds.coerceAtLeast(1) * 1000L)
+                checkRemoteStatus(updateLoading = false)
+            }
+        }
+    }
+
     private suspend fun checkRemoteStatus(updateLoading: Boolean) {
         if (updateLoading) {
             _uiState.update {
@@ -173,68 +282,7 @@ class ActivationViewModel(
 
         runCatching { repository.checkStatus() }
             .onSuccess { status ->
-                when {
-                    status.activated && status.status == ActivationStatus.Active -> {
-                        pollingJob?.cancel()
-                        _uiState.update {
-                            it.copy(
-                                checking = false,
-                                creatingSession = false,
-                                polling = false,
-                                activated = true,
-                                blocked = false,
-                                expiresAt = status.expiresAt.orEmpty(),
-                                activationType = status.activationType,
-                                errorMessage = null,
-                                statusLabel = "Activation validee",
-                            )
-                        }
-                    }
-                    status.status == ActivationStatus.Blocked -> {
-                        pollingJob?.cancel()
-                        _uiState.update {
-                            it.copy(
-                                checking = false,
-                                creatingSession = false,
-                                polling = false,
-                                activated = false,
-                                blocked = true,
-                                activationType = null,
-                                statusLabel = "Appareil bloque",
-                                errorMessage = "Cet appareil est bloque. Contactez le support SmartVision.",
-                            )
-                        }
-                    }
-                    status.status == ActivationStatus.Expired -> {
-                        pollingJob?.cancel()
-                        _uiState.update {
-                            it.copy(
-                                checking = false,
-                                creatingSession = false,
-                                polling = false,
-                                activated = false,
-                                blocked = false,
-                                activationType = null,
-                                statusLabel = "Activation expiree",
-                                errorMessage = "L activation de cet appareil a expire. Generez un nouveau code.",
-                            )
-                        }
-                    }
-                    else -> {
-                        _uiState.update {
-                            it.copy(
-                                checking = false,
-                                creatingSession = false,
-                                polling = true,
-                                activated = false,
-                                blocked = false,
-                                activationType = null,
-                                statusLabel = "En attente de validation",
-                                errorMessage = null,
-                            )
-                        }
-                    }
-                }
+                applyAccessStatus(status, requireFreeAdsConfirmation = true)
             }
             .onFailure { error ->
                 _uiState.update {
@@ -247,6 +295,132 @@ class ActivationViewModel(
                     )
                 }
             }
+    }
+
+    private fun applyAccessStatus(
+        status: com.smartvision.svplayer.data.activation.RemoteActivationStatus,
+        requireFreeAdsConfirmation: Boolean,
+    ): Boolean {
+        val isFreeAds = status.activationType == "free_ads" || status.freeWithAdsStatus == "active"
+        when {
+            status.status == ActivationStatus.Blocked -> {
+                pollingJob?.cancel()
+                _uiState.update {
+                    it.copy(
+                        checking = false,
+                        creatingSession = false,
+                        polling = false,
+                        activationBusy = false,
+                        activated = false,
+                        blocked = true,
+                        deviceId = status.deviceId.ifBlank { it.deviceId },
+                        publicDeviceCode = status.publicDeviceCode.ifBlank { it.publicDeviceCode },
+                        activationType = null,
+                        freeWithAdsStatus = status.freeWithAdsStatus,
+                        playlistConfigured = status.playlistConfigured,
+                        showFreeWithAdsChoice = false,
+                        statusLabel = "Appareil bloque",
+                        errorMessage = "Cet appareil est bloque. Contactez le support SmartVision.",
+                    )
+                }
+                return true
+            }
+
+            status.status == ActivationStatus.Expired -> {
+                pollingJob?.cancel()
+                _uiState.update {
+                    it.copy(
+                        checking = false,
+                        creatingSession = false,
+                        polling = false,
+                        activationBusy = false,
+                        activated = false,
+                        blocked = false,
+                        deviceId = status.deviceId.ifBlank { it.deviceId },
+                        publicDeviceCode = status.publicDeviceCode.ifBlank { it.publicDeviceCode },
+                        expiresAt = status.expiresAt.orEmpty(),
+                        activationType = status.activationType,
+                        freeWithAdsStatus = status.freeWithAdsStatus,
+                        playlistConfigured = status.playlistConfigured,
+                        showFreeWithAdsChoice = true,
+                        statusLabel = "Essai gratuit termine",
+                        errorMessage = null,
+                    )
+                }
+                return true
+            }
+
+            status.activated && status.status == ActivationStatus.Active && isFreeAds && requireFreeAdsConfirmation -> {
+                pollingJob?.cancel()
+                _uiState.update {
+                    it.copy(
+                        checking = false,
+                        creatingSession = false,
+                        polling = false,
+                        activationBusy = false,
+                        activated = false,
+                        blocked = false,
+                        deviceId = status.deviceId.ifBlank { it.deviceId },
+                        publicDeviceCode = status.publicDeviceCode.ifBlank { it.publicDeviceCode },
+                        expiresAt = status.expiresAt.orEmpty(),
+                        activationType = status.activationType,
+                        freeWithAdsStatus = status.freeWithAdsStatus,
+                        playlistConfigured = status.playlistConfigured,
+                        showFreeWithAdsChoice = true,
+                        statusLabel = "Mode gratuit avec pubs",
+                        errorMessage = null,
+                    )
+                }
+                return true
+            }
+
+            status.activated && status.status == ActivationStatus.Active -> {
+                pollingJob?.cancel()
+                _uiState.update {
+                    it.copy(
+                        checking = false,
+                        creatingSession = false,
+                        polling = false,
+                        activationBusy = false,
+                        activated = true,
+                        blocked = false,
+                        deviceId = status.deviceId.ifBlank { it.deviceId },
+                        publicDeviceCode = status.publicDeviceCode.ifBlank { it.publicDeviceCode },
+                        expiresAt = status.expiresAt.orEmpty(),
+                        activationType = status.activationType,
+                        freeWithAdsStatus = status.freeWithAdsStatus,
+                        playlistConfigured = status.playlistConfigured,
+                        showFreeWithAdsChoice = false,
+                        errorMessage = null,
+                        statusLabel = "Activation validee",
+                    )
+                }
+                return true
+            }
+
+            else -> {
+                _uiState.update {
+                    it.copy(
+                        checking = false,
+                        creatingSession = false,
+                        polling = true,
+                        activationBusy = false,
+                        activated = false,
+                        blocked = false,
+                        deviceId = status.deviceId.ifBlank { it.deviceId },
+                        publicDeviceCode = status.publicDeviceCode.ifBlank { it.publicDeviceCode },
+                        expiresAt = status.expiresAt.orEmpty(),
+                        activationType = status.activationType,
+                        freeWithAdsStatus = status.freeWithAdsStatus,
+                        playlistConfigured = status.playlistConfigured,
+                        showFreeWithAdsChoice = false,
+                        statusLabel = "En attente de licence",
+                        errorMessage = null,
+                    )
+                }
+                return false
+            }
+        }
     }
 
     override fun onCleared() {
@@ -263,6 +437,7 @@ private fun ActivationUiState.withSession(session: ActivationSession): Activatio
         activated = false,
         blocked = false,
         deviceId = session.deviceId,
+        publicDeviceCode = publicDeviceCode,
         shortCode = session.shortCode,
         qrUrl = session.qrUrl,
         expiresAt = session.expiresAt,

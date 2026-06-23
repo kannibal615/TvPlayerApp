@@ -1,10 +1,16 @@
 CREATE TABLE IF NOT EXISTS devices (
     id INT AUTO_INCREMENT PRIMARY KEY,
     device_id VARCHAR(100) NOT NULL UNIQUE,
+    device_fingerprint_hash CHAR(64) NULL UNIQUE,
+    public_device_code VARCHAR(6) NULL UNIQUE,
     device_name VARCHAR(100) NULL,
     platform VARCHAR(50) DEFAULT 'android_tv',
     app_version VARCHAR(50) NULL,
     status ENUM('pending', 'active', 'expired', 'blocked') DEFAULT 'pending',
+    license_status ENUM('inactive', 'active', 'expired', 'blocked') DEFAULT 'inactive',
+    trial_status ENUM('available', 'active', 'expired', 'used') DEFAULT 'available',
+    free_with_ads_status ENUM('inactive', 'active') DEFAULT 'inactive',
+    xtream_status ENUM('missing', 'configured', 'invalid') DEFAULT 'missing',
     first_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_seen_at DATETIME NULL,
     activated_at DATETIME NULL,
@@ -12,6 +18,13 @@ CREATE TABLE IF NOT EXISTS devices (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS device_fingerprint_hash CHAR(64) NULL UNIQUE AFTER device_id;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS public_device_code VARCHAR(6) NULL UNIQUE AFTER device_fingerprint_hash;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS license_status ENUM('inactive', 'active', 'expired', 'blocked') DEFAULT 'inactive' AFTER status;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS trial_status ENUM('available', 'active', 'expired', 'used') DEFAULT 'available' AFTER license_status;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS free_with_ads_status ENUM('inactive', 'active') DEFAULT 'inactive' AFTER trial_status;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS xtream_status ENUM('missing', 'configured', 'invalid') DEFAULT 'missing' AFTER free_with_ads_status;
 
 CREATE TABLE IF NOT EXISTS activation_sessions (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -87,13 +100,16 @@ CREATE TABLE IF NOT EXISTS device_activations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     device_id VARCHAR(100) NOT NULL,
     activation_code_id INT NULL,
-    activation_type ENUM('smartvision_code', 'own_xtream', 'trial_demo') NOT NULL,
+    activation_type ENUM('smartvision_code', 'own_xtream', 'trial_demo', 'free_ads') NOT NULL,
     status ENUM('active', 'expired', 'blocked') DEFAULT 'active',
     starts_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     expires_at DATETIME NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX (device_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE device_activations
+    MODIFY activation_type ENUM('smartvision_code', 'own_xtream', 'trial_demo', 'free_ads') NOT NULL;
 
 CREATE TABLE IF NOT EXISTS activation_orders (
     id INT AUTO_INCREMENT PRIMARY KEY,
