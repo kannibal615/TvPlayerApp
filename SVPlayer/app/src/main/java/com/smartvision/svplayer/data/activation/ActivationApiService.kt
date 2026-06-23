@@ -48,6 +48,7 @@ data class RegisterDeviceRequest(
     @SerializedName("platform") val platform: String,
     @SerializedName("androidIdHash") val androidIdHash: String,
     @SerializedName("deviceFingerprintHash") val deviceFingerprintHash: String,
+    @SerializedName("localPublicDeviceCode") val localPublicDeviceCode: String,
     @SerializedName("appPackage") val appPackage: String,
     @SerializedName("appVersion") val appVersion: String,
     @SerializedName("deviceManufacturer") val deviceManufacturer: String,

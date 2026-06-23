@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,11 +46,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -86,25 +94,33 @@ fun ActivationScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(SmartVisionActivationBackground())
-            .padding(horizontal = 58.dp, vertical = 34.dp),
-        contentAlignment = Alignment.Center,
+            .background(SmartVisionActivationBackground()),
     ) {
         when {
             state.checking -> StartupVerificationPanel(state = state, onRetry = onRetry)
-            state.showFreeWithAdsChoice -> TrialExpiredPanel(
-                state = state,
-                onContinueFreeWithAds = onContinueFreeWithAds,
-                onBuyLicense = onShowActivationForm,
-                onEnterLicense = onShowActivationForm,
-            )
-            else -> ActivationMainPanel(
-                state = state,
-                onActivateLicense = onActivateLicense,
-                onStartTrial = onStartTrial,
-                onCheckNow = onCheckNow,
-                onRetry = onRetry,
-            )
+            else -> Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 48.dp, vertical = 24.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (state.showFreeWithAdsChoice) {
+                    TrialExpiredPanel(
+                        state = state,
+                        onContinueFreeWithAds = onContinueFreeWithAds,
+                        onBuyLicense = onShowActivationForm,
+                        onEnterLicense = onShowActivationForm,
+                    )
+                } else {
+                    ActivationMainPanel(
+                        state = state,
+                        onActivateLicense = onActivateLicense,
+                        onStartTrial = onStartTrial,
+                        onCheckNow = onCheckNow,
+                        onRetry = onRetry,
+                    )
+                }
+            }
         }
     }
 }
@@ -116,55 +132,70 @@ private fun StartupVerificationPanel(
 ) {
     val retryFocus = remember { FocusRequester() }
 
-    Column(
-        modifier = Modifier
-            .width(620.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(GlassPanelBrush())
-            .border(BorderStroke(1.dp, Color(0xFF263A58)), RoundedCornerShape(18.dp))
-            .padding(horizontal = 44.dp, vertical = 38.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        SmartVisionLogo()
-        Spacer(Modifier.height(28.dp))
-        Text(
-            text = "Initialisation SmartVision",
-            color = SmartVisionColors.TextPrimary,
-            style = SmartVisionType.TitleS,
-            fontWeight = FontWeight.Bold,
+        Image(
+            painter = painterResource(R.drawable.smartvision_splash_full),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
         )
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = state.statusLabel,
-            color = SmartVisionColors.TextSecondary,
-            style = SmartVisionType.Body,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(24.dp))
-        LinearProgressIndicator(
-            color = SmartVisionColors.Primary,
-            trackColor = Color(0xFF16243A),
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(RoundedCornerShape(99.dp)),
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color(0xAA020814),
+                        ),
+                        radius = 980f,
+                    ),
+                ),
         )
-        state.errorMessage?.let {
+        Column(
+            modifier = Modifier.width(360.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            SmartVisionLogo(
+                modifier = Modifier
+                    .width(326.dp)
+                    .height(82.dp),
+            )
             Spacer(Modifier.height(18.dp))
+            LinearProgressIndicator(
+                color = SmartVisionColors.CyanAccent,
+                trackColor = Color(0xFF11233D).copy(alpha = 0.88f),
+                modifier = Modifier
+                    .width(260.dp)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(99.dp)),
+            )
+            Spacer(Modifier.height(12.dp))
             Text(
-                text = it,
-                color = SmartVisionColors.Error,
-                style = SmartVisionType.Body,
+                text = state.errorMessage ?: state.statusLabel,
+                color = if (state.errorMessage == null) {
+                    SmartVisionColors.TextSecondary
+                } else {
+                    SmartVisionColors.Error
+                },
+                style = SmartVisionType.Caption,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(18.dp))
-            TvButton(
-                text = "Reessayer",
-                onClick = onRetry,
-                focusRequester = retryFocus,
-                modifier = Modifier.height(48.dp),
-            )
-            LaunchedEffect(Unit) { retryFocus.requestFocus() }
+            state.errorMessage?.let {
+                Spacer(Modifier.height(16.dp))
+                TvButton(
+                    text = "Reessayer",
+                    onClick = onRetry,
+                    focusRequester = retryFocus,
+                    modifier = Modifier
+                        .width(210.dp)
+                        .height(46.dp),
+                )
+                LaunchedEffect(Unit) { retryFocus.requestFocus() }
+            }
         }
     }
 }
@@ -182,19 +213,19 @@ private fun ActivationMainPanel(
 
     LaunchedEffect(Unit) { licenseFocus.requestFocus() }
 
-    GlassShell(width = 1120.dp) {
+    GlassShell(width = 1100.dp) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(28.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
             verticalAlignment = Alignment.Top,
         ) {
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 8.dp),
+                    .padding(end = 6.dp),
             ) {
                 SmartVisionLogo()
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(16.dp))
                 Text(
                     text = "Activer SmartVision",
                     color = SmartVisionColors.TextPrimary,
@@ -207,14 +238,14 @@ private fun ActivationMainPanel(
                 Text(
                     text = "Activez votre appareil ou demarrez un essai gratuit.",
                     color = SmartVisionColors.TextSecondary,
-                    style = SmartVisionType.Body,
+                    style = SmartVisionType.Label,
                 )
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(20.dp))
                 DeviceCodeCard(
                     label = "Identifiant appareil",
-                    code = state.publicDeviceCode.ifBlank { "------" },
+                    code = state.publicDeviceCode.ifBlank { state.shortCode.ifBlank { "------" } },
                 )
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(20.dp))
                 Text(
                     text = "Saisir votre code de licence",
                     color = SmartVisionColors.TextPrimary,
@@ -234,12 +265,12 @@ private fun ActivationMainPanel(
                     onClick = { onActivateLicense(licenseCode) },
                     enabled = !state.activationBusy,
                     leadingIcon = Icons.Default.Key,
-                    contentPadding = PaddingValues(horizontal = 30.dp),
+                    contentPadding = PaddingValues(horizontal = 26.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp),
+                        .height(46.dp),
                 )
-                Spacer(Modifier.height(9.dp))
+                Spacer(Modifier.height(7.dp))
                 Text(
                     text = "ou",
                     color = SmartVisionColors.TextSecondary,
@@ -248,17 +279,17 @@ private fun ActivationMainPanel(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.height(9.dp))
+                Spacer(Modifier.height(7.dp))
                 TvButton(
                     text = "Essai gratuit 7 jours",
                     onClick = onStartTrial,
                     enabled = !state.activationBusy,
                     leadingIcon = Icons.Default.CardGiftcard,
                     variant = TvButtonVariant.Secondary,
-                    contentPadding = PaddingValues(horizontal = 30.dp),
+                    contentPadding = PaddingValues(horizontal = 26.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
+                        .height(44.dp),
                 )
                 if (state.errorMessage != null) {
                     Spacer(Modifier.height(14.dp))
@@ -269,9 +300,9 @@ private fun ActivationMainPanel(
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "Besoin d'aide ? Rendez-vous sur app.smartvisions.net/support",
+                    text = "Besoin d'aide ? Rendez-vous sur smartvision.tv/support",
                     color = SmartVisionColors.TextSecondary.copy(alpha = 0.82f),
                     style = SmartVisionType.Caption,
                 )
@@ -292,7 +323,7 @@ private fun ActivationQrColumn(
     state: ActivationUiState,
 ) {
     Column(
-        modifier = Modifier.width(340.dp),
+        modifier = Modifier.width(326.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -304,12 +335,12 @@ private fun ActivationQrColumn(
                 append(" une licence")
             },
             color = SmartVisionColors.TextSecondary,
-            style = SmartVisionType.Body,
+            style = SmartVisionType.Label,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(20.dp))
-        QrCard(content = state.purchaseUrl, size = 260)
-        Spacer(Modifier.height(26.dp))
+        Spacer(Modifier.height(16.dp))
+        QrCard(content = state.purchaseUrl, size = 236)
+        Spacer(Modifier.height(22.dp))
         StepsCard(
             steps = listOf(
                 ActivationStep("1", "Scanner", "ce QR code", Icons.Default.QrCode2),
@@ -464,14 +495,48 @@ private fun LicenseInput(
     focusRequester: FocusRequester,
     enabled: Boolean,
 ) {
+    val fieldFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var editing by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(7.dp)
+    val borderColor = if (editing) {
+        SmartVisionColors.CyanAccent
+    } else {
+        SmartVisionColors.Primary.copy(alpha = 0.72f)
+    }
+
+    LaunchedEffect(editing) {
+        if (editing) {
+            fieldFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .height(44.dp)
+            .focusRequester(focusRequester)
+            .onPreviewKeyEvent { event ->
+                if (!enabled) return@onPreviewKeyEvent false
+                when {
+                    event.type == KeyEventType.KeyDown &&
+                        (event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter) -> {
+                        editing = true
+                        true
+                    }
+                    event.type == KeyEventType.KeyDown && event.key == Key.Back && editing -> {
+                        editing = false
+                        keyboardController?.hide()
+                        true
+                    }
+                    else -> false
+                }
+            }
+            .focusable(enabled = enabled && !editing)
             .clip(shape)
             .background(Color(0xFF050D1A).copy(alpha = 0.82f))
-            .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.72f)), shape)
+            .border(BorderStroke(1.dp, borderColor), shape)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -480,7 +545,7 @@ private fun LicenseInput(
             onValueChange = { next ->
                 onValueChange(next.replace(Regex("[\\s-]+"), "").uppercase().take(10))
             },
-            enabled = enabled,
+            enabled = enabled && editing,
             singleLine = true,
             visualTransformation = VisualTransformation.None,
             textStyle = SmartVisionType.Body.copy(
@@ -490,13 +555,18 @@ private fun LicenseInput(
             cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
             modifier = Modifier
                 .weight(1f)
-                .focusRequester(focusRequester),
+                .focusRequester(fieldFocusRequester)
+                .onFocusChanged { focusState ->
+                    if (!focusState.isFocused && editing) {
+                        editing = false
+                    }
+                },
             decorationBox = { inner ->
                 if (value.isBlank()) {
                     Text(
                         text = "Entrez le code de licence achete",
                         color = SmartVisionColors.TextSecondary.copy(alpha = 0.72f),
-                        style = SmartVisionType.Body,
+                        style = SmartVisionType.Label,
                     )
                 }
                 inner()
@@ -506,7 +576,7 @@ private fun LicenseInput(
             imageVector = Icons.Default.Keyboard,
             contentDescription = null,
             tint = SmartVisionColors.TextSecondary,
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(20.dp),
         )
     }
 }
@@ -519,34 +589,34 @@ private fun DeviceCodeCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(78.dp)
+            .height(70.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(Color(0xFF0A182B).copy(alpha = 0.82f))
             .border(BorderStroke(1.dp, Color(0xFF29476E)), RoundedCornerShape(10.dp))
-            .padding(horizontal = 22.dp),
+            .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
                 .size(54.dp)
-                .clip(RoundedCornerShape(18.dp))
+                .clip(RoundedCornerShape(16.dp))
                 .background(SmartVisionColors.Primary.copy(alpha = 0.16f))
-                .border(BorderStroke(2.dp, SmartVisionColors.Primary), RoundedCornerShape(18.dp)),
+                .border(BorderStroke(2.dp, SmartVisionColors.Primary), RoundedCornerShape(16.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Default.Security, contentDescription = null, tint = SmartVisionColors.Primary, modifier = Modifier.size(32.dp))
+            Icon(Icons.Default.Security, contentDescription = null, tint = SmartVisionColors.Primary, modifier = Modifier.size(30.dp))
         }
-        Spacer(Modifier.width(22.dp))
+        Spacer(Modifier.width(20.dp))
         Text(
             text = label,
             color = SmartVisionColors.TextPrimary,
-            style = SmartVisionType.Body,
+            style = SmartVisionType.Label,
             modifier = Modifier.weight(1f),
         )
         Text(
             text = code.chunked(3).joinToString(""),
             color = SmartVisionColors.TextPrimary,
-            style = SmartVisionType.TitleL,
+            style = SmartVisionType.TitleM,
             fontWeight = FontWeight.Bold,
         )
     }
@@ -560,7 +630,7 @@ private fun StepsCard(steps: List<ActivationStep>) {
             .clip(RoundedCornerShape(14.dp))
             .background(Color(0xFF071629).copy(alpha = 0.78f))
             .border(BorderStroke(1.dp, Color(0xFF2B4364)), RoundedCornerShape(14.dp))
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         steps.forEach { step ->
@@ -575,8 +645,8 @@ private fun StepsCard(steps: List<ActivationStep>) {
                 ) {
                     Text(step.number, color = Color.White, style = SmartVisionType.Caption, fontWeight = FontWeight.Bold)
                 }
-                Spacer(Modifier.height(7.dp))
-                Icon(step.icon, contentDescription = null, tint = SmartVisionColors.TextPrimary, modifier = Modifier.size(23.dp))
+                Spacer(Modifier.height(6.dp))
+                Icon(step.icon, contentDescription = null, tint = SmartVisionColors.TextPrimary, modifier = Modifier.size(21.dp))
                 Spacer(Modifier.height(4.dp))
                 Text(step.label, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Caption, fontWeight = FontWeight.SemiBold)
                 if (step.subtitle.isNotBlank()) {
@@ -598,33 +668,23 @@ private fun GlassShell(
             .clip(RoundedCornerShape(20.dp))
             .background(GlassPanelBrush())
             .border(BorderStroke(1.dp, Color(0xFF2A3B58)), RoundedCornerShape(20.dp))
-            .padding(horizontal = 36.dp, vertical = 26.dp),
+            .padding(horizontal = 34.dp, vertical = 22.dp),
         content = content,
     )
 }
 
 @Composable
-private fun SmartVisionLogo() {
-    Row(
-        modifier = Modifier.height(52.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Image(
-            painter = painterResource(R.drawable.smartvision_mark),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier.size(50.dp),
-        )
-        Spacer(Modifier.width(12.dp))
-        Image(
-            painter = painterResource(R.drawable.smartvision_wordmark),
-            contentDescription = "SmartVision",
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .width(190.dp)
-                .height(44.dp),
-        )
-    }
+private fun SmartVisionLogo(
+    modifier: Modifier = Modifier
+        .width(220.dp)
+        .height(56.dp),
+) {
+    Image(
+        painter = painterResource(R.drawable.smartvision_logo_wide),
+        contentDescription = "SmartVision IPTV Player",
+        contentScale = ContentScale.Fit,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -638,7 +698,7 @@ private fun QrCard(
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
             .border(BorderStroke(1.dp, Color(0xFFDDE8FF)), RoundedCornerShape(16.dp))
-            .padding(20.dp),
+            .padding(18.dp),
         contentAlignment = Alignment.Center,
     ) {
         if (content.isBlank()) {
@@ -659,14 +719,14 @@ private fun VerticalDivider() {
     Box(
         modifier = Modifier
             .width(1.dp)
-            .height(540.dp)
+            .height(480.dp)
             .background(Color(0xFF2D4263).copy(alpha = 0.82f)),
     )
 }
 
 @Composable
 private fun SecureFooter() {
-    Spacer(Modifier.height(18.dp))
+    Spacer(Modifier.height(14.dp))
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
@@ -683,8 +743,8 @@ private fun SecureFooter() {
 }
 
 private val ActivationTitleStyle = TextStyle(
-    fontSize = 42.sp,
-    lineHeight = 50.sp,
+    fontSize = 36.sp,
+    lineHeight = 42.sp,
     fontWeight = FontWeight.Bold,
     letterSpacing = 0.sp,
 )

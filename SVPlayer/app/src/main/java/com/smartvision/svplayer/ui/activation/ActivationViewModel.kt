@@ -176,13 +176,14 @@ class ActivationViewModel(
     private fun start() {
         pollingJob?.cancel()
         viewModelScope.launch {
+            val localPublicCode = repository.getOrCreateLocalPublicCode()
             val cached = repository.localState.first()
             _uiState.update {
                 it.copy(
                     checking = true,
                     activated = false,
                     deviceId = cached.deviceId,
-                    publicDeviceCode = cached.publicDeviceCode,
+                    publicDeviceCode = cached.publicDeviceCode.ifBlank { localPublicCode },
                     expiresAt = cached.expiresAt.orEmpty(),
                     activationType = cached.activationType,
                     freeWithAdsStatus = cached.freeWithAdsStatus,

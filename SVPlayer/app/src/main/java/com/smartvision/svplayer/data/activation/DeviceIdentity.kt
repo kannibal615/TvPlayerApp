@@ -9,6 +9,7 @@ import java.util.Locale
 data class DeviceIdentity(
     val androidIdHash: String,
     val fingerprintHash: String,
+    val localPublicCode: String,
     val appPackage: String,
     val appVersion: String,
     val manufacturer: String,
@@ -37,6 +38,7 @@ object DeviceIdentityProvider {
         return DeviceIdentity(
             androidIdHash = sha256(androidId.ifBlank { fingerprintSource }),
             fingerprintHash = sha256(fingerprintSource),
+            localPublicCode = publicCodeFromHash(sha256(fingerprintSource)),
             appPackage = packageName,
             appVersion = appVersion,
             manufacturer = manufacturer,
@@ -47,5 +49,16 @@ object DeviceIdentityProvider {
     private fun sha256(value: String): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
         return digest.joinToString("") { byte -> "%02x".format(byte) }
+    }
+
+    private fun publicCodeFromHash(hash: String): String {
+        val alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        return hash
+            .chunked(2)
+            .take(6)
+            .joinToString("") { chunk ->
+                val index = chunk.toIntOrNull(16)?.rem(alphabet.length) ?: 0
+                alphabet[index].toString()
+            }
     }
 }

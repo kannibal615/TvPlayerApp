@@ -2,6 +2,13 @@ body {
     overflow-x: hidden;
 }
 
+.brand-logo-wide {
+    width: 310px;
+    max-width: min(72vw, 310px);
+    height: auto;
+    object-fit: contain;
+}
+
 @media (max-width: 640px) {
     .site-header {
         grid-template-columns: 1fr;

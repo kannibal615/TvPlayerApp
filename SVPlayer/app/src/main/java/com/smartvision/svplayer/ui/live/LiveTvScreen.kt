@@ -65,12 +65,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -326,37 +323,14 @@ private fun LiveTvHeader(
 
 @Composable
 private fun LiveTvLogo() {
-    Row(
+    Image(
+        painter = painterResource(R.drawable.smartvision_logo_wide),
+        contentDescription = "SmartVision IPTV Player",
+        contentScale = ContentScale.Fit,
         modifier = Modifier
-            .width(184.dp)
+            .width(190.dp)
             .fillMaxHeight(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier.size(34.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = null,
-                tint = SmartVisionColors.Primary,
-                modifier = Modifier.size(34.dp),
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Text(
-            text = buildAnnotatedString {
-                append("Smart")
-                withStyle(SpanStyle(color = SmartVisionColors.Primary)) {
-                    append("Vision")
-                }
-            },
-            color = SmartVisionColors.TextPrimary,
-            style = SmartVisionType.TitleS,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-        )
-    }
+    )
 }
 
 @Composable

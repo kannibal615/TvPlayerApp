@@ -19,6 +19,7 @@ $appPackage = clean_optional_text($input['appPackage'] ?? null, 120);
 $appVersion = clean_optional_text($input['appVersion'] ?? null, 50);
 $manufacturer = clean_optional_text($input['deviceManufacturer'] ?? null, 50);
 $model = clean_optional_text($input['deviceModel'] ?? null, 80);
+$requestedPublicCode = clean_public_device_code($input['localPublicDeviceCode'] ?? $input['publicDeviceCode'] ?? null);
 $deviceName = trim(implode(' ', array_filter([$manufacturer, $model]))) ?: 'Android TV';
 
 if ($fingerprintHash === '') {
@@ -48,7 +49,7 @@ try {
         $deviceId = generate_uuid_v4();
         $publicCode = null;
         for ($attempt = 0; $attempt < 12; $attempt++) {
-            $candidate = generate_short_code(6);
+            $candidate = ($attempt === 0 && $requestedPublicCode !== '') ? $requestedPublicCode : generate_short_code(6);
             try {
                 $insert = $pdo->prepare(
                     "INSERT INTO devices
@@ -82,7 +83,7 @@ try {
         $publicCode = clean_public_device_code($device['public_device_code'] ?? null);
         if ($publicCode === '') {
             for ($attempt = 0; $attempt < 12; $attempt++) {
-                $candidate = generate_short_code(6);
+                $candidate = ($attempt === 0 && $requestedPublicCode !== '') ? $requestedPublicCode : generate_short_code(6);
                 try {
                     $updateCode = $pdo->prepare(
                         'UPDATE devices SET public_device_code = :public_code WHERE device_id = :device_id'

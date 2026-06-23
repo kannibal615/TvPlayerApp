@@ -52,8 +52,7 @@ function h(string $value): string { return htmlspecialchars($value, ENT_QUOTES |
 <body class="activation-page">
 <main class="activation-shell">
     <a class="brand activation-brand" href="/">
-        <img class="brand-mark" src="/assets/images/smartvision-mark.png" alt="">
-        <img class="brand-wordmark" src="/assets/images/smartvision-wordmark.png" alt="SmartVision IPTV Player">
+        <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png" alt="SmartVision IPTV Player">
     </a>
 
     <section class="activation-card">

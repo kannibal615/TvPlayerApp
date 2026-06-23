@@ -927,7 +927,7 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/activation.js")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/account.js")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/admin.js")
-    foreach ($imageName in @("smartvision-mark.png", "smartvision-wordmark.png", "app-live-tv.png", "app-movies.png")) {
+    foreach ($imageName in @("smartvision-mark.png", "smartvision-wordmark.png", "smartvision-logo-wide.png", "app-live-tv.png", "app-movies.png")) {
         Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets/images" -FilePath (Join-Path $publicHtmlPath "assets/images/$imageName")
     }
     $releaseApk = Join-Path $projectRoot "app/build/outputs/apk/release/app-release.apk"

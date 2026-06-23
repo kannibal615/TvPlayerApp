@@ -48,13 +48,33 @@ class ActivationRepository(
         return generated
     }
 
+    suspend fun getOrCreateLocalPublicCode(): String {
+        val existing = dataStore.data.first()[PUBLIC_DEVICE_CODE]
+        if (!existing.isNullOrBlank()) {
+            return existing
+        }
+        val code = DeviceIdentityProvider.create(appContext, BuildConfig.VERSION_NAME).localPublicCode
+        dataStore.edit { preferences ->
+            if (preferences[PUBLIC_DEVICE_CODE].isNullOrBlank()) {
+                preferences[PUBLIC_DEVICE_CODE] = code
+            }
+        }
+        return code
+    }
+
     suspend fun registerDevice(): RemoteActivationStatus {
         val identity = DeviceIdentityProvider.create(appContext, BuildConfig.VERSION_NAME)
+        dataStore.edit { preferences ->
+            if (preferences[PUBLIC_DEVICE_CODE].isNullOrBlank()) {
+                preferences[PUBLIC_DEVICE_CODE] = identity.localPublicCode
+            }
+        }
         val response = api.registerDevice(
             RegisterDeviceRequest(
                 platform = "android_tv",
                 androidIdHash = identity.androidIdHash,
                 deviceFingerprintHash = identity.fingerprintHash,
+                localPublicDeviceCode = identity.localPublicCode,
                 appPackage = identity.appPackage,
                 appVersion = identity.appVersion,
                 deviceManufacturer = identity.manufacturer,
@@ -67,8 +87,8 @@ class ActivationRepository(
         }
 
         val serverDeviceId = response.serverDeviceId ?: response.legacyDeviceId
-        val publicDeviceCode = response.publicDeviceCode
-        if (serverDeviceId.isNullOrBlank() || publicDeviceCode.isNullOrBlank()) {
+        val publicDeviceCode = response.publicDeviceCode?.takeIf { it.isNotBlank() } ?: identity.localPublicCode
+        if (serverDeviceId.isNullOrBlank()) {
             throw ActivationException("Reponse appareil incomplete.")
         }
 
