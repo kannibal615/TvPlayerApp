@@ -68,7 +68,7 @@ fun TvHeader(
         Spacer(Modifier.width(24.dp))
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             tabs.forEach { tab ->
@@ -82,34 +82,53 @@ fun TvHeader(
                 )
             }
         }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        HeaderControls(
+            onNotifications = {},
+            onLicenseKey = onLicenseKey,
+            onProfile = onProfile,
+            onSettings = onSettings,
+            showLicenseKey = showLicenseKey,
+        )
+    }
+}
+
+@Composable
+fun HeaderControls(
+    onNotifications: () -> Unit,
+    onLicenseKey: () -> Unit,
+    onProfile: () -> Unit,
+    onSettings: () -> Unit,
+    showLicenseKey: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HeaderIconButton(
+            icon = Icons.Default.Notifications,
+            contentDescription = "Notifications",
+            onClick = onNotifications,
+        )
+        if (showLicenseKey) {
             HeaderIconButton(
-                icon = Icons.Default.Notifications,
-                contentDescription = "Notifications",
-                onClick = {},
-            )
-            if (showLicenseKey) {
-                HeaderIconButton(
-                    icon = Icons.Default.Key,
-                    contentDescription = "Acheter une licence",
-                    onClick = onLicenseKey,
-                    accent = SmartVisionColors.Warning,
-                )
-            }
-            HeaderIconButton(
-                icon = Icons.Default.Person,
-                contentDescription = "Profil",
-                onClick = onProfile,
-            )
-            HeaderIconButton(
-                icon = Icons.Default.Settings,
-                contentDescription = "Parametres",
-                onClick = onSettings,
+                icon = Icons.Default.Key,
+                contentDescription = "Acheter une licence",
+                onClick = onLicenseKey,
+                accent = SmartVisionColors.Warning,
             )
         }
+        HeaderIconButton(
+            icon = Icons.Default.Person,
+            contentDescription = "Profil",
+            onClick = onProfile,
+        )
+        HeaderIconButton(
+            icon = Icons.Default.Settings,
+            contentDescription = "Parametres",
+            onClick = onSettings,
+        )
     }
 }
 

@@ -3,6 +3,7 @@ package com.smartvision.svplayer.ui.catalog
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,7 +28,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material3.CircularProgressIndicator
@@ -50,21 +50,21 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
+import com.smartvision.svplayer.R
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
+import com.smartvision.svplayer.ui.home.HeaderControls
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -104,8 +104,9 @@ fun MediaCatalogHeader(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
-    searchQuery: String = "",
-    onSearchQueryChange: (String) -> Unit = {},
+    onProfile: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -118,7 +119,7 @@ fun MediaCatalogHeader(
 
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             tabs.forEach { tab ->
@@ -133,12 +134,13 @@ fun MediaCatalogHeader(
             }
         }
 
-        CatalogSearchField(
-            query = searchQuery,
-            onQueryChange = onSearchQueryChange,
-            modifier = Modifier.width(190.dp),
+        HeaderControls(
+            onNotifications = {},
+            onLicenseKey = onLicenseKey,
+            onProfile = onProfile,
+            onSettings = onSettings,
+            showLicenseKey = showLicenseKey,
         )
-
     }
 }
 
@@ -147,6 +149,7 @@ fun CatalogSearchField(
     query: String,
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    placeholder: String = "Rechercher",
 ) {
     var focused by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(7.dp)
@@ -187,7 +190,7 @@ fun CatalogSearchField(
                 Box(modifier = Modifier.weight(1f)) {
                     if (query.isBlank()) {
                         Text(
-                            text = "Rechercher",
+                            text = placeholder,
                             color = SmartVisionColors.TextSecondary,
                             style = CatalogMetaStyle,
                             maxLines = 1,
@@ -202,32 +205,14 @@ fun CatalogSearchField(
 
 @Composable
 private fun MediaCatalogLogo() {
-    Row(
+    Image(
+        painter = painterResource(R.drawable.smartvision_logo_wide),
+        contentDescription = "SmartVision IPTV Player",
+        contentScale = ContentScale.Fit,
         modifier = Modifier
-            .width(184.dp)
+            .width(190.dp)
             .fillMaxHeight(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = Icons.Default.PlayArrow,
-            contentDescription = null,
-            tint = SmartVisionColors.Primary,
-            modifier = Modifier.size(34.dp),
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(
-            text = buildAnnotatedString {
-                append("Smart")
-                withStyle(SpanStyle(color = SmartVisionColors.Primary)) {
-                    append("Vision")
-                }
-            },
-            color = SmartVisionColors.TextPrimary,
-            style = SmartVisionType.TitleS,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-        )
-    }
+    )
 }
 
 @Composable
@@ -255,7 +240,7 @@ fun MediaCatalogPanel(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(24.dp),
+                .height(34.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(

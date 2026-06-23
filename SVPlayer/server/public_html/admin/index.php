@@ -61,6 +61,7 @@ $auditLogs = admin_load_audit($pdo);
 $slides = admin_load_slides($pdo);
 $revenueSeries = admin_revenue_series($pdo);
 $alerts = admin_build_alerts($stats);
+$serverStats = admin_load_server_stats($pdo, $stats);
 $flash = consume_admin_flash();
 $generatedCode = $_SESSION['generated_activation_code'] ?? null;
 if (is_string($generatedCode)) {
@@ -83,6 +84,7 @@ render_admin_dashboard(
     $devicesResult['pagination'],
     $codesResult['pagination'],
     $slides,
+    $serverStats,
     $flash,
     $generatedCode,
     $query,
@@ -92,7 +94,7 @@ render_admin_dashboard(
 function admin_current_page(mixed $page): string
 {
     $page = is_string($page) ? $page : 'overview';
-    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'devices', 'slides', 'audit'], true)
+    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'devices', 'slides', 'server', 'audit'], true)
         ? $page
         : 'overview';
 }
@@ -409,6 +411,174 @@ function admin_load_stats(PDO $pdo): array
     ];
 }
 
+function admin_load_server_stats(PDO $pdo, array $appStats): array
+{
+    $databaseVersion = 'Non disponible';
+    $databaseSize = 0;
+    try {
+        $databaseVersion = (string) $pdo->query('SELECT VERSION()')->fetchColumn();
+        $sizeQuery = $pdo->prepare(
+            "SELECT COALESCE(SUM(data_length + index_length), 0)
+             FROM information_schema.TABLES
+             WHERE table_schema = DATABASE()"
+        );
+        $sizeQuery->execute();
+        $databaseSize = (int) $sizeQuery->fetchColumn();
+    } catch (Throwable $exception) {
+        error_log('SmartVision admin server database metrics failed.');
+    }
+
+    $cpanel = admin_load_cpanel_stats();
+
+    return [
+        'generated_at' => gmdate('Y-m-d H:i:s'),
+        'php' => [
+            'version' => PHP_VERSION,
+            'memory_limit' => ini_get('memory_limit') ?: 'N/D',
+            'upload_max_filesize' => ini_get('upload_max_filesize') ?: 'N/D',
+            'max_execution_time' => (string) ini_get('max_execution_time'),
+            'opcache' => function_exists('opcache_get_status') && @opcache_get_status(false) ? 'Actif' : 'N/D',
+        ],
+        'database' => [
+            'version' => $databaseVersion,
+            'size' => admin_format_bytes($databaseSize),
+            'active_devices' => (int) ($appStats['active_devices'] ?? 0),
+            'pending_sessions' => (int) ($appStats['pending_sessions'] ?? 0),
+            'active_trials' => (int) ($appStats['active_trials'] ?? 0),
+        ],
+        'cpanel' => $cpanel,
+    ];
+}
+
+function admin_load_cpanel_stats(): array
+{
+    $config = load_database_config();
+    $host = trim((string) ($config['cpanel_host'] ?? ''));
+    $username = trim((string) ($config['cpanel_username'] ?? ''));
+    $token = trim((string) ($config['cpanel_token'] ?? ''));
+
+    if ($host === '' || $username === '' || $token === '') {
+        return [
+            'ok' => false,
+            'message' => 'Acces cPanel non configure dans le fichier prive serveur.',
+            'metrics' => [],
+        ];
+    }
+
+    $result = admin_cpanel_uapi_request($host, $username, $token, 'StatsBar', 'get_stats', [
+        'display' => 'diskusage|bandwidthusage|mysqlusage|cpuusage|memusage|entryprocesses|subdomains|sqldatabases',
+    ]);
+
+    if (!$result['ok']) {
+        return $result;
+    }
+
+    $metrics = [];
+    $data = $result['data']['data'] ?? [];
+    if (is_array($data)) {
+        foreach ($data as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $id = (string) ($item['id'] ?? $item['name'] ?? $item['module'] ?? '');
+            $label = (string) ($item['name'] ?? $item['label'] ?? $id);
+            $value = $item['value'] ?? $item['count'] ?? $item['percent'] ?? null;
+            $max = $item['max'] ?? $item['maximum'] ?? null;
+            $units = (string) ($item['units'] ?? $item['unit'] ?? '');
+            $percent = $item['percent'] ?? null;
+            $metrics[] = [
+                'id' => $id !== '' ? $id : $label,
+                'label' => $label !== '' ? $label : 'Metric cPanel',
+                'value' => admin_metric_value($value, $units),
+                'max' => admin_metric_value($max, $units),
+                'percent' => is_numeric($percent) ? (float) $percent : null,
+            ];
+        }
+    }
+
+    return [
+        'ok' => true,
+        'message' => $metrics === [] ? 'API cPanel disponible, aucune metrique retournee.' : 'API cPanel connectee.',
+        'metrics' => $metrics,
+    ];
+}
+
+function admin_cpanel_uapi_request(string $host, string $username, string $token, string $module, string $function, array $params = []): array
+{
+    $host = preg_replace('#^https?://#', '', $host) ?: $host;
+    $host = rtrim($host, '/');
+    if (!str_contains($host, ':')) {
+        $host .= ':2083';
+    }
+    $url = 'https://' . $host . '/execute/' . rawurlencode($module) . '/' . rawurlencode($function);
+    if ($params !== []) {
+        $url .= '?' . http_build_query($params);
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'timeout' => 8,
+            'header' => "Authorization: cpanel {$username}:{$token}\r\nAccept: application/json\r\n",
+        ],
+    ]);
+
+    $response = @file_get_contents($url, false, $context);
+    if ($response === false) {
+        return [
+            'ok' => false,
+            'message' => 'API cPanel injoignable pour le moment.',
+            'metrics' => [],
+        ];
+    }
+
+    $json = json_decode($response, true);
+    if (!is_array($json) || (int) ($json['status'] ?? 0) !== 1) {
+        return [
+            'ok' => false,
+            'message' => 'Reponse cPanel invalide ou refusee.',
+            'metrics' => [],
+        ];
+    }
+
+    return [
+        'ok' => true,
+        'message' => 'OK',
+        'data' => $json,
+        'metrics' => [],
+    ];
+}
+
+function admin_metric_value(mixed $value, string $units = ''): string
+{
+    if ($value === null || $value === '') {
+        return 'N/D';
+    }
+    if (is_numeric($value)) {
+        $number = (float) $value;
+        $formatted = abs($number - round($number)) < 0.01
+            ? (string) (int) round($number)
+            : number_format($number, 1, ',', ' ');
+        return trim($formatted . ' ' . $units);
+    }
+    return trim((string) $value . ' ' . $units);
+}
+
+function admin_format_bytes(int $bytes): string
+{
+    if ($bytes <= 0) {
+        return '0 o';
+    }
+    $units = ['o', 'Ko', 'Mo', 'Go', 'To'];
+    $index = 0;
+    $value = (float) $bytes;
+    while ($value >= 1024 && $index < count($units) - 1) {
+        $value /= 1024;
+        $index++;
+    }
+    return number_format($value, $index === 0 ? 0 : 1, ',', ' ') . ' ' . $units[$index];
+}
+
 function admin_search_pattern(string $query): string
 {
     return '%' . str_replace(['%', '_'], ['\\%', '\\_'], $query) . '%';
@@ -512,13 +682,19 @@ function admin_load_codes(PDO $pdo, string $query, int $page = 1): array
                    c.valid_until, c.created_at, m.code_hint, m.code_ciphertext, m.created_by, m.last_used_at,
                    m.assigned_device_id, m.assigned_public_device_code,
                    d.device_name, d.status AS device_status, d.last_seen_at AS device_last_seen,
-                   MAX(a.expires_at) AS activation_expires_at,
-                   MAX(a.activation_type) AS activation_type
+                   a.expires_at AS activation_expires_at,
+                   a.activation_type AS activation_type
             FROM activation_codes c
             LEFT JOIN activation_code_metadata m ON m.code_id = c.id
             LEFT JOIN devices d ON d.device_id = m.assigned_device_id
-            LEFT JOIN device_activations a ON a.activation_code_id = c.id";
-    $sql .= $where . " GROUP BY c.id, m.code_id, d.device_id ORDER BY c.id DESC LIMIT {$perPage} OFFSET {$offset}";
+            LEFT JOIN device_activations a ON a.id = (
+                SELECT da.id
+                FROM device_activations da
+                WHERE da.activation_code_id = c.id
+                ORDER BY da.id DESC
+                LIMIT 1
+            )";
+    $sql .= $where . " ORDER BY c.id DESC LIMIT {$perPage} OFFSET {$offset}";
     $statement = $pdo->prepare($sql);
     $statement->execute($params);
     $rows = $statement->fetchAll();
@@ -626,6 +802,7 @@ function render_admin_dashboard(
     array $devicesPagination,
     array $codesPagination,
     array $slides,
+    array $serverStats,
     ?array $flash,
     ?array $generatedCode,
     string $query,
@@ -639,6 +816,7 @@ function render_admin_dashboard(
         'licenses' => ['Licences', 'Generation manuelle et gestion des codes SmartVision.'],
         'devices' => ['Appareils', 'TV associees, essais, licences et configuration Xtream.'],
         'slides' => ['Slides Home', 'Emplacements publicitaires prives visibles sur la Home.'],
+        'server' => ['Serveur', 'Statistiques techniques, ressources cPanel et signaux de charge.'],
         'audit' => ['Journal', 'Dernieres actions administrateur.'],
     ];
     $heading = $pages[$page] ?? $pages['overview'];
@@ -679,7 +857,7 @@ function render_admin_dashboard(
         <section class="admin-panel" id="orders"><div class="admin-panel-heading"><div><h2>Commandes recentes</h2><p><?= count($orders) ?> resultat(s)</p></div></div><div class="admin-table-wrap"><table><thead><tr><th>Reference</th><th>Client</th><th>Plan</th><th>Montant</th><th>Paiement</th><th>Licence</th><th>Date</th><th>Actions</th></tr></thead><tbody>
         <?php if ($orders === []): ?><tr><td colspan="8" class="admin-empty">Aucune commande.</td></tr><?php endif; ?>
         <?php foreach ($orders as $order): ?><tr><td><strong><?= admin_escape($order['order_reference'] ?: 'SV-' . $order['id']) ?></strong><small><?= admin_escape($order['payment_reference'] ?: '-') ?></small></td><td><?= admin_escape($order['display_name'] ?: $order['email']) ?><small><?= admin_escape($order['email']) ?></small></td><td><?= admin_escape($order['plan_label']) ?></td><td><?= commerce_money((int) $order['amount_cents'], (string) $order['currency']) ?></td><td><span class="admin-state <?= admin_escape($order['status']) ?>"><?= admin_escape($order['status']) ?></span></td><td><?= admin_escape($order['code_hint'] ?: '-') ?><small><?= admin_escape($order['code_status'] ?: '-') ?></small></td><td><?= admin_escape($order['paid_at'] ?: $order['created_at']) ?></td><td><?php if ($order['status'] === 'paid' && (int) $order['used_devices'] === 0): ?><form method="post" data-confirm="Annuler cette commande et desactiver sa licence ?"><input type="hidden" name="redirect_page" value="orders"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="cancel_order"><input type="hidden" name="order_id" value="<?= (int) $order['id'] ?>"><button class="admin-button compact danger" type="submit">Annuler</button></form><?php else: ?><span class="muted">-</span><?php endif; ?></td></tr><?php endforeach; ?>
-        </tbody></table></div><?= admin_render_pagination($devicesPagination, $page, $query) ?></section>
+        </tbody></table></div></section>
         <?php endif; ?>
 
         <?php if ($page === 'customers'): ?>
@@ -705,6 +883,31 @@ function render_admin_dashboard(
         <?php if ($slides === []): ?><p class="admin-empty">Aucun slide configure. Rejouez l installation SQL.</p><?php endif; ?>
         <?php foreach ($slides as $slide): ?><form method="post" class="slide-card"><input type="hidden" name="redirect_page" value="slides"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="save_slide"><input type="hidden" name="slide_id" value="<?= (int) $slide['id'] ?>"><label>Ordre<input name="sort_order" type="number" min="0" max="9999" value="<?= (int) $slide['sort_order'] ?>"></label><label>Titre<input name="title" maxlength="120" value="<?= admin_escape($slide['title'] ?: '') ?>"></label><label>Sous-titre<textarea name="subtitle" maxlength="255"><?= admin_escape($slide['subtitle'] ?: '') ?></textarea></label><label>Bouton<input name="button_label" maxlength="60" value="<?= admin_escape($slide['button_label'] ?: '') ?>"></label><label>Route bouton<input name="button_route" maxlength="120" value="<?= admin_escape($slide['button_route'] ?: '') ?>"></label><label>Image URL<input name="image_url" maxlength="500" value="<?= admin_escape($slide['image_url'] ?: '') ?>"></label><label>Etat<select name="status"><option value="active"<?= $slide['status'] === 'active' ? ' selected' : '' ?>>Actif</option><option value="disabled"<?= $slide['status'] === 'disabled' ? ' selected' : '' ?>>Desactive</option></select></label><button class="admin-button primary" type="submit">Enregistrer le slide</button><small class="muted">MAJ <?= admin_escape($slide['updated_at'] ?: '-') ?></small></form><?php endforeach; ?>
         </div></section>
+        <?php endif; ?>
+
+        <?php if ($page === 'server'): ?>
+        <section class="admin-kpis server-kpis" aria-label="Indicateurs serveur">
+            <?= admin_kpi('PHP', $serverStats['php']['version'] ?? 'N/D', 'blue') ?>
+            <?= admin_kpi('MySQL/MariaDB', $serverStats['database']['version'] ?? 'N/D', 'cyan') ?>
+            <?= admin_kpi('Taille base', $serverStats['database']['size'] ?? 'N/D', 'green') ?>
+            <?= admin_kpi('Appareils actifs', $serverStats['database']['active_devices'] ?? 0, 'green') ?>
+            <?= admin_kpi('Sessions attente', $serverStats['database']['pending_sessions'] ?? 0, 'orange') ?>
+            <?= admin_kpi('cPanel', !empty($serverStats['cpanel']['ok']) ? 'Connecte' : 'A verifier', !empty($serverStats['cpanel']['ok']) ? 'cyan' : 'orange') ?>
+        </section>
+        <div class="server-dashboard-grid">
+            <section class="admin-panel server-panel"><div class="admin-panel-heading"><div><h2>Runtime application</h2><p>Derniere lecture <?= admin_escape((string) ($serverStats['generated_at'] ?? '-')) ?> UTC</p></div></div><div class="server-metric-list">
+                <div><span>Memoire PHP</span><strong><?= admin_escape((string) ($serverStats['php']['memory_limit'] ?? 'N/D')) ?></strong></div>
+                <div><span>Upload max</span><strong><?= admin_escape((string) ($serverStats['php']['upload_max_filesize'] ?? 'N/D')) ?></strong></div>
+                <div><span>Execution max</span><strong><?= admin_escape((string) ($serverStats['php']['max_execution_time'] ?? 'N/D')) ?>s</strong></div>
+                <div><span>OPcache</span><strong><?= admin_escape((string) ($serverStats['php']['opcache'] ?? 'N/D')) ?></strong></div>
+                <div><span>Essais actifs</span><strong><?= (int) ($serverStats['database']['active_trials'] ?? 0) ?></strong></div>
+                <div><span>Etat API cPanel</span><strong><?= admin_escape((string) ($serverStats['cpanel']['message'] ?? 'N/D')) ?></strong></div>
+            </div></section>
+            <section class="admin-panel server-panel"><div class="admin-panel-heading"><div><h2>Ressources cPanel</h2><p>Espace disque, bande passante, bases et processus disponibles selon le compte.</p></div></div><div class="admin-table-wrap"><table><thead><tr><th>Ressource</th><th>Utilisation</th><th>Limite</th><th>%</th></tr></thead><tbody>
+            <?php if (($serverStats['cpanel']['metrics'] ?? []) === []): ?><tr><td colspan="4" class="admin-empty"><?= admin_escape((string) ($serverStats['cpanel']['message'] ?? 'Aucune metrique cPanel disponible.')) ?></td></tr><?php endif; ?>
+            <?php foreach (($serverStats['cpanel']['metrics'] ?? []) as $metric): ?><tr><td><strong><?= admin_escape((string) ($metric['label'] ?? 'Metric')) ?></strong><small><?= admin_escape((string) ($metric['id'] ?? '-')) ?></small></td><td><?= admin_escape((string) ($metric['value'] ?? 'N/D')) ?></td><td><?= admin_escape((string) ($metric['max'] ?? 'N/D')) ?></td><td><?= array_key_exists('percent', $metric) && $metric['percent'] !== null ? admin_escape(number_format((float) $metric['percent'], 1, ',', ' ') . ' %') : '-' ?></td></tr><?php endforeach; ?>
+            </tbody></table></div></section>
+        </div>
         <?php endif; ?>
 
         <?php if ($page === 'audit'): ?>

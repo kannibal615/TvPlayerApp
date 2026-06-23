@@ -53,6 +53,7 @@ import com.smartvision.svplayer.ui.catalog.CatalogError
 import com.smartvision.svplayer.ui.catalog.CatalogLoading
 import com.smartvision.svplayer.ui.catalog.CatalogMediaCard
 import com.smartvision.svplayer.ui.catalog.CatalogMetaStyle
+import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
@@ -67,6 +68,9 @@ fun MoviesScreen(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
+    onProfile: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
     onOpenMovieDetails: (Int) -> Unit,
     onWatchMovie: (Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -85,7 +89,8 @@ fun MoviesScreen(
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstMovieFocusRequester = remember { FocusRequester() }
     var inputReady by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
+    var categorySearchQuery by remember { mutableStateOf("") }
+    var contentSearchQuery by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         delay(260)
@@ -123,8 +128,9 @@ fun MoviesScreen(
             onNavigate = onNavigate,
             onSync = onSync,
             onSettings = onSettings,
-            searchQuery = searchQuery,
-            onSearchQueryChange = { searchQuery = it },
+            onProfile = onProfile,
+            onLicenseKey = onLicenseKey,
+            showLicenseKey = showLicenseKey,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -160,7 +166,9 @@ fun MoviesScreen(
                     state = state,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     firstMovieFocusRequester = firstMovieFocusRequester,
-                    searchQuery = searchQuery,
+                    searchQuery = categorySearchQuery,
+                    onSearchQueryChange = { categorySearchQuery = it },
+                    contentSearchQuery = contentSearchQuery,
                     onCategory = { category ->
                         if (inputReady) viewModel.selectCategory(category)
                     },
@@ -172,7 +180,8 @@ fun MoviesScreen(
                     state = state,
                     firstMovieFocusRequester = firstMovieFocusRequester,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
-                    searchQuery = searchQuery,
+                    searchQuery = contentSearchQuery,
+                    onSearchQueryChange = { contentSearchQuery = it },
                     onMovieFocused = viewModel::focusMovie,
                     onMovieClick = { movie ->
                         if (inputReady) {
@@ -196,10 +205,23 @@ private fun MovieCategoryList(
     selectedCategoryFocusRequester: FocusRequester,
     firstMovieFocusRequester: FocusRequester,
     searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    contentSearchQuery: String,
     onCategory: (MovieCategoryUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    MediaCatalogPanel(title = "Categories", modifier = modifier) {
+    MediaCatalogPanel(
+        title = "Categories",
+        modifier = modifier,
+        trailing = {
+            CatalogSearchField(
+                query = searchQuery,
+                onQueryChange = onSearchQueryChange,
+                placeholder = "Dossier",
+                modifier = Modifier.width(118.dp),
+            )
+        },
+    ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
@@ -221,7 +243,7 @@ private fun MovieCategoryList(
                     },
                     rightFocusRequester = firstMovieFocusRequester.takeIf {
                         !state.moviesLoading && state.movies.any {
-                            searchQuery.isBlank() || it.title.contains(searchQuery, ignoreCase = true)
+                            contentSearchQuery.isBlank() || it.title.contains(contentSearchQuery, ignoreCase = true)
                         }
                     },
                     onClick = { onCategory(category) },
@@ -237,6 +259,7 @@ private fun MovieGrid(
     firstMovieFocusRequester: FocusRequester,
     selectedCategoryFocusRequester: FocusRequester,
     searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     onMovieFocused: (MovieItemUi) -> Unit,
     onMovieClick: (MovieItemUi) -> Unit,
     onRetry: () -> Unit,
@@ -244,9 +267,7 @@ private fun MovieGrid(
 ) {
     val gridState = rememberLazyGridState()
     val visibleMovies = state.movies.filter { movie ->
-        searchQuery.isBlank() ||
-            movie.title.contains(searchQuery, ignoreCase = true) ||
-            movie.categoryLabel.contains(searchQuery, ignoreCase = true)
+        searchQuery.isBlank() || movie.title.contains(searchQuery, ignoreCase = true)
     }
 
     LaunchedEffect(state.selectedCategoryId) {
@@ -257,18 +278,27 @@ private fun MovieGrid(
         title = state.selectedCategory?.label ?: "Films",
         modifier = modifier,
         trailing = {
-            val movieCount = if (searchQuery.isBlank()) {
-                state.selectedCategory?.count ?: state.movies.size
-            } else {
-                visibleMovies.size
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val movieCount = if (searchQuery.isBlank()) {
+                    state.selectedCategory?.count ?: state.movies.size
+                } else {
+                    visibleMovies.size
+                }
+                Text(
+                    text = if (movieCount > 0) "$movieCount films" else "Films",
+                    color = SmartVisionColors.TextSecondary,
+                    style = CatalogMetaStyle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.width(10.dp))
+                CatalogSearchField(
+                    query = searchQuery,
+                    onQueryChange = onSearchQueryChange,
+                    placeholder = "Film",
+                    modifier = Modifier.width(190.dp),
+                )
             }
-            Text(
-                text = if (movieCount > 0) "$movieCount films" else "Films",
-                color = SmartVisionColors.TextSecondary,
-                style = CatalogMetaStyle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
         },
     ) {
         when {

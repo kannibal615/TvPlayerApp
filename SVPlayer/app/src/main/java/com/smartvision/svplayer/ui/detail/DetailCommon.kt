@@ -3,6 +3,7 @@ package com.smartvision.svplayer.ui.detail
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,9 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,24 +35,23 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
+import com.smartvision.svplayer.R
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
+import com.smartvision.svplayer.ui.home.HeaderControls
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
-import com.smartvision.svplayer.ui.theme.SmartVisionType
+import androidx.compose.ui.res.painterResource
 
 val DetailHeroTitleStyle = TextStyle(
     fontSize = 42.sp,
@@ -149,6 +146,9 @@ fun DetailHeader(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
+    onProfile: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -159,7 +159,7 @@ fun DetailHeader(
         Spacer(Modifier.width(70.dp))
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             tabs.forEach { tab ->
@@ -173,38 +173,26 @@ fun DetailHeader(
                 )
             }
         }
-        DetailIconButton(icon = Icons.Default.Search, onClick = {}, modifier = Modifier.size(34.dp))
+        HeaderControls(
+            onNotifications = {},
+            onLicenseKey = onLicenseKey,
+            onProfile = onProfile,
+            onSettings = onSettings,
+            showLicenseKey = showLicenseKey,
+        )
     }
 }
 
 @Composable
 private fun DetailLogo() {
-    Row(
+    Image(
+        painter = painterResource(R.drawable.smartvision_logo_wide),
+        contentDescription = "SmartVision IPTV Player",
+        contentScale = ContentScale.Fit,
         modifier = Modifier
-            .width(176.dp)
+            .width(190.dp)
             .fillMaxHeight(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = Icons.Default.PlayArrow,
-            contentDescription = null,
-            tint = SmartVisionColors.Primary,
-            modifier = Modifier.size(32.dp),
-        )
-        Spacer(Modifier.width(9.dp))
-        Text(
-            text = buildAnnotatedString {
-                append("Smart")
-                withStyle(SpanStyle(color = SmartVisionColors.Primary)) {
-                    append("Vision")
-                }
-            },
-            color = SmartVisionColors.TextPrimary,
-            style = SmartVisionType.TitleS,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-        )
-    }
+    )
 }
 
 @Composable

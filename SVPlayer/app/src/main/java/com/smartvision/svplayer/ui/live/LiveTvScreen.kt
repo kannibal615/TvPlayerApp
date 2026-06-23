@@ -90,6 +90,7 @@ import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
+import com.smartvision.svplayer.ui.home.HeaderControls
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
@@ -138,6 +139,9 @@ fun LiveTvScreen(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
+    onProfile: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
     onWatch: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -155,7 +159,8 @@ fun LiveTvScreen(
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstChannelFocusRequester = remember { FocusRequester() }
     var inputReady by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
+    var categorySearchQuery by remember { mutableStateOf("") }
+    var contentSearchQuery by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         delay(260)
@@ -193,8 +198,9 @@ fun LiveTvScreen(
             onNavigate = onNavigate,
             onSync = onSync,
             onSettings = onSettings,
-            searchQuery = searchQuery,
-            onSearchQueryChange = { searchQuery = it },
+            onProfile = onProfile,
+            onLicenseKey = onLicenseKey,
+            showLicenseKey = showLicenseKey,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -230,7 +236,9 @@ fun LiveTvScreen(
                     state = state,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     firstChannelFocusRequester = firstChannelFocusRequester,
-                    searchQuery = searchQuery,
+                    searchQuery = categorySearchQuery,
+                    onSearchQueryChange = { categorySearchQuery = it },
+                    contentSearchQuery = contentSearchQuery,
                     onCategory = { category ->
                         if (inputReady) {
                             viewModel.selectCategory(category)
@@ -244,7 +252,8 @@ fun LiveTvScreen(
                     state = state,
                     firstChannelFocusRequester = firstChannelFocusRequester,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
-                    searchQuery = searchQuery,
+                    searchQuery = contentSearchQuery,
+                    onSearchQueryChange = { contentSearchQuery = it },
                     onChannelFocused = viewModel::focusChannel,
                     onChannelClick = { channel ->
                         if (inputReady) {
@@ -283,8 +292,9 @@ private fun LiveTvHeader(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
-    searchQuery: String,
-    onSearchQueryChange: (String) -> Unit,
+    onProfile: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -297,7 +307,7 @@ private fun LiveTvHeader(
 
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             tabs.forEach { tab ->
@@ -312,12 +322,13 @@ private fun LiveTvHeader(
             }
         }
 
-        CatalogSearchField(
-            query = searchQuery,
-            onQueryChange = onSearchQueryChange,
-            modifier = Modifier.width(190.dp),
+        HeaderControls(
+            onNotifications = {},
+            onLicenseKey = onLicenseKey,
+            onProfile = onProfile,
+            onSettings = onSettings,
+            showLicenseKey = showLicenseKey,
         )
-
     }
 }
 
@@ -339,12 +350,22 @@ private fun CategoryList(
     selectedCategoryFocusRequester: FocusRequester,
     firstChannelFocusRequester: FocusRequester,
     searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    contentSearchQuery: String,
     onCategory: (LiveTvCategory) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LiveTvPanel(
         title = "Categories",
         modifier = modifier,
+        trailing = {
+            CatalogSearchField(
+                query = searchQuery,
+                onQueryChange = onSearchQueryChange,
+                placeholder = "Dossier",
+                modifier = Modifier.width(118.dp),
+            )
+        },
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -365,7 +386,7 @@ private fun CategoryList(
                     },
                     rightFocusRequester = firstChannelFocusRequester.takeIf {
                         !state.channelsLoading && state.channels.any {
-                            searchQuery.isBlank() || it.name.contains(searchQuery, ignoreCase = true)
+                            contentSearchQuery.isBlank() || it.name.contains(contentSearchQuery, ignoreCase = true)
                         }
                     },
                     onClick = { onCategory(category) },
@@ -381,15 +402,14 @@ private fun ChannelList(
     firstChannelFocusRequester: FocusRequester,
     selectedCategoryFocusRequester: FocusRequester,
     searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     onChannelFocused: (LiveTvChannel) -> Unit,
     onChannelClick: (LiveTvChannel) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val visibleChannels = state.channels.filter { channel ->
-        searchQuery.isBlank() ||
-            channel.name.contains(searchQuery, ignoreCase = true) ||
-            channel.program.contains(searchQuery, ignoreCase = true)
+        searchQuery.isBlank() || channel.name.contains(searchQuery, ignoreCase = true)
     }
     LiveTvPanel(
         title = "Chaines",
@@ -413,6 +433,13 @@ private fun ChannelList(
                     contentDescription = null,
                     tint = SmartVisionColors.TextSecondary,
                     modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                CatalogSearchField(
+                    query = searchQuery,
+                    onQueryChange = onSearchQueryChange,
+                    placeholder = "Chaine",
+                    modifier = Modifier.width(190.dp),
                 )
             }
         },
@@ -1404,7 +1431,7 @@ private fun LiveTvPanel(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(24.dp),
+                .height(34.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(

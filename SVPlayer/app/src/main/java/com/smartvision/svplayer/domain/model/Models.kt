@@ -119,6 +119,8 @@ sealed interface SyncStatus {
 
 data class PlayerSettings(
     val displaySize: String = "Normal",
+    val language: String = "Francais",
+    val syncFrequency: String = "A chaque demarrage",
     val animationsEnabled: Boolean = true,
     val videoRatio: String = "Fit",
     val bufferMode: String = "Standard",

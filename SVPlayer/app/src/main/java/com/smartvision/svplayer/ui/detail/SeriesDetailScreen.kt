@@ -203,6 +203,9 @@ fun SeriesDetailRoute(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
+    onProfile: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
     onWatchEpisode: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -225,6 +228,9 @@ fun SeriesDetailRoute(
         onNavigate = onNavigate,
         onSync = onSync,
         onSettings = onSettings,
+        onProfile = onProfile,
+        onLicenseKey = onLicenseKey,
+        showLicenseKey = showLicenseKey,
         onRetry = viewModel::loadDetails,
         onSeason = viewModel::selectSeason,
         onFavorite = viewModel::toggleFavorite,
@@ -241,6 +247,9 @@ private fun SeriesDetailScreen(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
+    onProfile: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
     onRetry: () -> Unit,
     onSeason: (Int) -> Unit,
     onFavorite: () -> Unit,
@@ -261,6 +270,9 @@ private fun SeriesDetailScreen(
             onNavigate = onNavigate,
             onSync = onSync,
             onSettings = onSettings,
+            onProfile = onProfile,
+            onLicenseKey = onLicenseKey,
+            showLicenseKey = showLicenseKey,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = DetailDimens.ScreenPadding)

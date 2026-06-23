@@ -1,6 +1,7 @@
 param(
     [switch]$SkipInstall,
     [switch]$SkipTests,
+    [switch]$SkipApkUpload,
     [switch]$CommerceTestOnly,
     [string]$QaDeviceId = "",
     [string]$QaShortCode = "",
@@ -400,6 +401,9 @@ function New-PrivateConfigFile {
     $adminUsername = [string]$Properties["SMARTVISION_ADMIN_USERNAME"]
     $adminPasswordHash = Get-PhpPasswordHash -Password ([string]$Properties["SMARTVISION_ADMIN_PASSWORD"])
     $credentialsEncryptionKey = [string]$Properties["SMARTVISION_CREDENTIALS_ENCRYPTION_KEY"]
+    $cpanelHost = [string]$Properties["CPANEL_HOST"]
+    $cpanelUsername = Resolve-CpanelUsername -Properties $Properties
+    $cpanelToken = Resolve-CpanelToken -Properties $Properties
 
     $content = @"
 <?php
@@ -413,6 +417,9 @@ return [
     'admin_username' => '$(Escape-PhpString $adminUsername)',
     'admin_password_hash' => '$(Escape-PhpString $adminPasswordHash)',
     'credentials_encryption_key' => '$(Escape-PhpString $credentialsEncryptionKey)',
+    'cpanel_host' => '$(Escape-PhpString $cpanelHost)',
+    'cpanel_username' => '$(Escape-PhpString $cpanelUsername)',
+    'cpanel_token' => '$(Escape-PhpString $cpanelToken)',
 ];
 "@
 
@@ -907,6 +914,7 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/start_trial.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/save_playlist_config.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/create_playlist_setup_session.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/home_slides.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/app_update.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/devices" -FilePath (Join-Path $publicHtmlPath "api/devices/register.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/devices" -FilePath (Join-Path $publicHtmlPath "api/devices/start_trial.php")
@@ -928,11 +936,13 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/activation.js")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/account.js")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/admin.js")
-    foreach ($imageName in @("smartvision-logo-wide.png", "app-live-tv.png", "app-movies.png")) {
-        Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets/images" -FilePath (Join-Path $publicHtmlPath "assets/images/$imageName")
+    Get-ChildItem -LiteralPath (Join-Path $publicHtmlPath "assets/images") -File | Where-Object {
+        $_.Extension -match '^\.(png|jpg|jpeg|webp|svg)$'
+    } | ForEach-Object {
+        Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets/images" -FilePath $_.FullName
     }
     $releaseApk = Join-Path $projectRoot "app/build/outputs/apk/release/app-release.apk"
-    if (Test-Path -LiteralPath $releaseApk) {
+    if ((-not $SkipApkUpload) -and (Test-Path -LiteralPath $releaseApk)) {
         $buildGradlePath = Join-Path $projectRoot "app/build.gradle.kts"
         $buildGradle = Get-Content -LiteralPath $buildGradlePath -Raw
         if ($buildGradle -notmatch "versionCode\s*=\s*(\d+)") {

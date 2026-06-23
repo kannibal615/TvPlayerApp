@@ -156,6 +156,9 @@ fun MovieDetailRoute(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
+    onProfile: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
     onWatchMovie: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -178,6 +181,9 @@ fun MovieDetailRoute(
         onNavigate = onNavigate,
         onSync = onSync,
         onSettings = onSettings,
+        onProfile = onProfile,
+        onLicenseKey = onLicenseKey,
+        showLicenseKey = showLicenseKey,
         onRetry = viewModel::loadDetails,
         onWatchMovie = { onWatchMovie(state.movieId) },
         onFavorite = viewModel::toggleFavorite,
@@ -193,6 +199,9 @@ private fun MovieDetailScreen(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
+    onProfile: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
     onRetry: () -> Unit,
     onWatchMovie: () -> Unit,
     onFavorite: () -> Unit,
@@ -213,6 +222,9 @@ private fun MovieDetailScreen(
             onNavigate = onNavigate,
             onSync = onSync,
             onSettings = onSettings,
+            onProfile = onProfile,
+            onLicenseKey = onLicenseKey,
+            showLicenseKey = showLicenseKey,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = DetailDimens.ScreenPadding)

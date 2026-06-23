@@ -64,7 +64,7 @@ object HomeNavigationData {
             type = HomeCategoryType.Series,
             badge = "SERIES",
             title = "Series",
-            subtitle = "Retrouvez les series de votre abonnement",
+            subtitle = "Parcourez votre catalogue de séries",
             actionLabel = "Explorer",
             visualStyle = HomeVisualStyle.Series,
         ),

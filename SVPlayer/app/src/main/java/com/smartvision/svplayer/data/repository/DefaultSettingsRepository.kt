@@ -19,6 +19,8 @@ class DefaultSettingsRepository(
         dataStore.data.map { preferences ->
             PlayerSettings(
                 displaySize = preferences[DISPLAY_SIZE] ?: "Normal",
+                language = preferences[LANGUAGE] ?: "Francais",
+                syncFrequency = preferences[SYNC_FREQUENCY] ?: "A chaque demarrage",
                 animationsEnabled = preferences[ANIMATIONS] ?: true,
                 videoRatio = preferences[VIDEO_RATIO] ?: "Fit",
                 bufferMode = preferences[BUFFER_MODE] ?: "Standard",
@@ -28,6 +30,14 @@ class DefaultSettingsRepository(
 
     override suspend fun setDisplaySize(value: String) {
         dataStore.edit { it[DISPLAY_SIZE] = value }
+    }
+
+    override suspend fun setLanguage(value: String) {
+        dataStore.edit { it[LANGUAGE] = value }
+    }
+
+    override suspend fun setSyncFrequency(value: String) {
+        dataStore.edit { it[SYNC_FREQUENCY] = value }
     }
 
     override suspend fun setAnimationsEnabled(value: Boolean) {
@@ -52,6 +62,8 @@ class DefaultSettingsRepository(
 
     private companion object {
         val DISPLAY_SIZE = stringPreferencesKey("display_size")
+        val LANGUAGE = stringPreferencesKey("language")
+        val SYNC_FREQUENCY = stringPreferencesKey("sync_frequency")
         val ANIMATIONS = booleanPreferencesKey("animations_enabled")
         val VIDEO_RATIO = stringPreferencesKey("video_ratio")
         val BUFFER_MODE = stringPreferencesKey("buffer_mode")

@@ -119,7 +119,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 <input type="hidden" name="session" value="<?= xtream_h($shortCode) ?>">
                 <div class="field"><label for="xtream-host">Host / URL serveur</label><input id="xtream-host" name="host" type="url" placeholder="https://serveur.example" autocomplete="url" required></div>
                 <div class="field"><label for="xtream-username">Nom d'utilisateur</label><input id="xtream-username" name="username" type="text" autocomplete="username" required></div>
-                <div class="field"><label for="xtream-password">Mot de passe</label><input id="xtream-password" name="password" type="password" autocomplete="current-password" required></div>
+                <div class="field"><label for="xtream-password">Mot de passe</label><input id="xtream-password" name="password" type="text" autocomplete="off" required></div>
                 <button class="button button-primary" type="submit">Synchroniser ma TV</button>
                 <?php if ($message !== ''): ?><p class="message" role="alert"><?= xtream_h($message) ?></p><?php endif; ?>
             </form>

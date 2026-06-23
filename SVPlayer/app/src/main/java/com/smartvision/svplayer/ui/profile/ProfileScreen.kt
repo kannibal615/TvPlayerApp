@@ -6,6 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,31 +22,46 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -107,6 +123,10 @@ fun ProfileRoute(
         onShowLicenseQr = viewModel::showLicenseQr,
         onShowXtreamSetupQr = viewModel::showXtreamSetupQr,
         onShowXtreamShopQr = viewModel::showXtreamShopQr,
+        onDeleteXtreamAccount = { accountId ->
+            container.accountManager.delete(accountId)
+            onSyncCatalog()
+        },
         onDismissQr = viewModel::dismissQr,
     )
 }
@@ -121,6 +141,7 @@ private fun ProfileScreen(
     onShowLicenseQr: () -> Unit,
     onShowXtreamSetupQr: () -> Unit,
     onShowXtreamShopQr: () -> Unit,
+    onDeleteXtreamAccount: (String) -> Unit,
     onDismissQr: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
@@ -168,7 +189,7 @@ private fun ProfileScreen(
                     state = state,
                     onShowXtreamSetupQr = onShowXtreamSetupQr,
                     onShowXtreamShopQr = onShowXtreamShopQr,
-                    onSettings = onSettings,
+                    onDeleteXtreamAccount = onDeleteXtreamAccount,
                     onSyncCatalog = onSyncCatalog,
                     modifier = Modifier.weight(1f),
                 )
@@ -293,7 +314,7 @@ private fun XtreamPanel(
     state: ProfileUiState,
     onShowXtreamSetupQr: () -> Unit,
     onShowXtreamShopQr: () -> Unit,
-    onSettings: () -> Unit,
+    onDeleteXtreamAccount: (String) -> Unit,
     onSyncCatalog: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -310,6 +331,7 @@ private fun XtreamPanel(
         ProfileInfoRow("Serveur", state.xtreamHost.ifBlank { "Aucun serveur configure" })
         ProfileInfoRow("Utilisateur", state.xtreamUsername.ifBlank { "Non configure" })
         ProfileInfoRow("Connexions", state.xtreamConnections.ifBlank { "Non disponible" })
+        ProfileInfoRow("Comptes locaux", state.xtreamAccounts.size.toString())
         Spacer(Modifier.weight(1f))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             TvButton(
@@ -342,9 +364,10 @@ private fun XtreamPanel(
                     .height(42.dp),
             )
             TvButton(
-                text = "Parametres",
-                onClick = onSettings,
-                leadingIcon = Icons.Default.Settings,
+                text = "Supprimer local",
+                onClick = { onDeleteXtreamAccount(state.activeXtreamAccountId) },
+                enabled = state.activeXtreamAccountId.isNotBlank(),
+                leadingIcon = Icons.Default.Delete,
                 variant = TvButtonVariant.Secondary,
                 modifier = Modifier
                     .weight(1f)
@@ -567,12 +590,17 @@ fun SmartVisionQrDialog(
     code: String? = null,
     loading: Boolean = false,
     error: String? = null,
+    width: androidx.compose.ui.unit.Dp = 760.dp,
+    licenseCode: String = "",
+    onLicenseCodeChange: ((String) -> Unit)? = null,
+    onSubmitLicenseCode: (() -> Unit)? = null,
+    submittingLicense: Boolean = false,
     onDismiss: () -> Unit,
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Row(
             modifier = Modifier
-                .width(760.dp)
+                .width(width)
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color(0xF2081324))
                 .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.62f)), RoundedCornerShape(12.dp))
@@ -600,10 +628,104 @@ fun SmartVisionQrDialog(
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleM, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(9.dp))
-                Text(subtitle, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Body, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Body, maxLines = 6, overflow = TextOverflow.Ellipsis)
                 code?.takeIf { it.isNotBlank() }?.let {
                     Spacer(Modifier.height(14.dp))
                     Text(it.chunked(3).joinToString(" "), color = SmartVisionColors.CyanAccent, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
+                }
+                if (onLicenseCodeChange != null && onSubmitLicenseCode != null) {
+                    val fieldFocusRequester = remember { FocusRequester() }
+                    val inputFocusRequester = remember { FocusRequester() }
+                    val keyboardController = LocalSoftwareKeyboardController.current
+                    var editing by remember { mutableStateOf(false) }
+
+                    LaunchedEffect(editing) {
+                        if (editing) {
+                            inputFocusRequester.requestFocus()
+                            keyboardController?.show()
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = "Code licence SmartVision",
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Caption,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .focusRequester(fieldFocusRequester)
+                            .onPreviewKeyEvent { event ->
+                                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                when (event.key) {
+                                    Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                                        editing = true
+                                        true
+                                    }
+                                    Key.Back -> {
+                                        if (editing) {
+                                            editing = false
+                                            keyboardController?.hide()
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    }
+                                    else -> false
+                                }
+                            }
+                            .focusable(enabled = !editing)
+                            .background(SmartVisionColors.Surface, RoundedCornerShape(6.dp))
+                            .border(
+                                BorderStroke(
+                                    1.dp,
+                                    if (editing) SmartVisionColors.CyanAccent else SmartVisionColors.Primary.copy(alpha = 0.72f),
+                                ),
+                                RoundedCornerShape(6.dp),
+                            )
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        BasicTextField(
+                            value = licenseCode,
+                            onValueChange = { onLicenseCodeChange(it.uppercase().take(24)) },
+                            enabled = editing,
+                            singleLine = true,
+                            textStyle = SmartVisionType.Body.copy(color = SmartVisionColors.TextPrimary),
+                            cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
+                            modifier = Modifier
+                                .weight(1f)
+                                .focusRequester(inputFocusRequester)
+                                .onFocusChanged { focusState ->
+                                    if (!focusState.isFocused && editing) {
+                                        editing = false
+                                    }
+                                },
+                            decorationBox = { inner ->
+                                if (licenseCode.isBlank()) {
+                                    Text(
+                                        text = "Saisir le code achete",
+                                        color = SmartVisionColors.TextSecondary.copy(alpha = 0.72f),
+                                        style = SmartVisionType.Body,
+                                    )
+                                }
+                                inner()
+                            },
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    TvButton(
+                        text = if (submittingLicense) "Activation..." else "Activer ce code",
+                        onClick = onSubmitLicenseCode,
+                        enabled = !submittingLicense && licenseCode.isNotBlank(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                    )
                 }
                 if (error != null) {
                     Spacer(Modifier.height(12.dp))
@@ -636,7 +758,7 @@ class ProfileViewModel(
         transient,
     ) { activation, accounts, activeAccountId, account, transient ->
         val activeAccount = accounts.firstOrNull { it.id == activeAccountId } ?: accounts.firstOrNull()
-        buildProfileState(activation, activeAccount, account, transient)
+        buildProfileState(activation, accounts, activeAccountId.orEmpty(), activeAccount, account, transient)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
@@ -747,6 +869,8 @@ data class ProfileUiState(
     val xtreamExpiresAt: String = "",
     val xtreamConnections: String = "",
     val hasXtream: Boolean = false,
+    val xtreamAccounts: List<XtreamAccount> = emptyList(),
+    val activeXtreamAccountId: String = "",
     val account: AccountProfile = emptyAccountProfile(),
     val refreshing: Boolean = false,
     val errorMessage: String? = null,
@@ -807,6 +931,8 @@ enum class UsageMode(
 
 private fun buildProfileState(
     activation: StoredActivationState,
+    accounts: List<XtreamAccount>,
+    activeAccountId: String,
     activeAccount: XtreamAccount?,
     account: AccountProfile,
     transient: ProfileTransientState,
@@ -835,6 +961,8 @@ private fun buildProfileState(
         xtreamExpiresAt = account.expirationDate.orEmpty(),
         xtreamConnections = connections,
         hasXtream = hasXtream,
+        xtreamAccounts = accounts,
+        activeXtreamAccountId = activeAccountId,
         account = account,
         refreshing = transient.refreshing,
         errorMessage = transient.errorMessage,

@@ -90,6 +90,7 @@ fun AppNavigation(
     val currentRoute = backStack?.destination?.route ?: AppRoute.Home.route
     var showExitConfirmation by remember { mutableStateOf(false) }
     var showLicensePurchaseQr by remember { mutableStateOf(false) }
+    var premiumLicenseCode by remember { mutableStateOf("") }
     val context = LocalContext.current
     val activity = context as? Activity
     val syncCatalog = {
@@ -173,6 +174,12 @@ fun AppNavigation(
             appUpdateViewModel.checkForUpdate()
         }
     }
+    LaunchedEffect(showLicensePurchaseQr, activationState.shouldShowLicenseKey) {
+        if (showLicensePurchaseQr && !activationState.shouldShowLicenseKey) {
+            showLicensePurchaseQr = false
+            premiumLicenseCode = ""
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -222,6 +229,9 @@ fun AppNavigation(
                 onNavigate = { route -> navController.navigateSingleTop(route) },
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                onLicenseKey = { showLicensePurchaseQr = true },
+                showLicenseKey = activationState.shouldShowLicenseKey,
                 onWatch = { channelId -> navController.navigate("player/$channelId") },
             )
         }
@@ -232,6 +242,9 @@ fun AppNavigation(
                 onNavigate = { route -> navController.navigateSingleTop(route) },
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                onLicenseKey = { showLicensePurchaseQr = true },
+                showLicenseKey = activationState.shouldShowLicenseKey,
                 onOpenMovieDetails = { movieId -> navController.navigate("movie_detail/$movieId") },
                 onWatchMovie = { movieId -> navController.navigate("movie_player/$movieId") },
             )
@@ -243,6 +256,9 @@ fun AppNavigation(
                 onNavigate = { route -> navController.navigateSingleTop(route) },
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                onLicenseKey = { showLicensePurchaseQr = true },
+                showLicenseKey = activationState.shouldShowLicenseKey,
                 onOpenSeriesDetails = { seriesId -> navController.navigate("series_detail/$seriesId") },
                 onWatchEpisode = { episodeId -> navController.navigate("episode_player/$episodeId") },
             )
@@ -304,6 +320,9 @@ fun AppNavigation(
                     onNavigate = { route -> navController.navigateSingleTop(route) },
                     onSync = syncCatalog,
                     onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                    onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                    onLicenseKey = { showLicensePurchaseQr = true },
+                    showLicenseKey = activationState.shouldShowLicenseKey,
                     onWatchMovie = { id -> navController.navigate("movie_player/$id") },
                 )
             }
@@ -337,6 +356,9 @@ fun AppNavigation(
                     onNavigate = { route -> navController.navigateSingleTop(route) },
                     onSync = syncCatalog,
                     onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                    onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                    onLicenseKey = { showLicensePurchaseQr = true },
+                    showLicenseKey = activationState.shouldShowLicenseKey,
                     onWatchEpisode = { episodeId -> navController.navigate("episode_player/$episodeId") },
                 )
             }
@@ -347,12 +369,12 @@ fun AppNavigation(
         currentRoute.startsWith("movie_player/") ||
         currentRoute.startsWith("episode_player/")
     BackHandler(enabled = !playerRouteActive) {
-        val popped = if (currentRoute != AppRoute.Home.route) {
-            navController.popBackStack()
+        if (currentRoute != AppRoute.Home.route) {
+            val popped = navController.popBackStack()
+            if (!popped) {
+                navController.navigateSingleTop(AppRoute.Home.route)
+            }
         } else {
-            false
-        }
-        if (!popped) {
             showExitConfirmation = true
         }
     }
@@ -374,6 +396,14 @@ fun AppNavigation(
             title = "Passer a SmartVision Premium",
             subtitle = "Scannez ce QR code pour acheter une licence. Premium supprime les publicites et conserve l'acces pendant la duree choisie.",
             qrUrl = purchaseUrl,
+            width = 930.dp,
+            licenseCode = premiumLicenseCode,
+            onLicenseCodeChange = { premiumLicenseCode = it },
+            onSubmitLicenseCode = {
+                activationViewModel.activateLicense(premiumLicenseCode)
+            },
+            submittingLicense = activationState.activationBusy,
+            error = activationState.errorMessage,
             onDismiss = { showLicensePurchaseQr = false },
         )
     }

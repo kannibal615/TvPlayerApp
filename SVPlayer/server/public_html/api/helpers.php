@@ -406,6 +406,19 @@ function create_trial_activation(PDO $pdo, string $deviceId, string $publicDevic
         'device_id' => $deviceId,
         'public_code' => $publicDeviceCode ?: null,
     ]);
+    $pdo->prepare(
+        "UPDATE devices
+         SET status = 'active',
+             license_status = 'active',
+             trial_status = 'active',
+             activated_at = COALESCE(activated_at, NOW()),
+             expires_at = :expires_at,
+             updated_at = NOW()
+         WHERE device_id = :device_id"
+    )->execute([
+        'device_id' => $deviceId,
+        'expires_at' => $expiresAt,
+    ]);
 
     return [
         'code_id' => $created['id'],

@@ -41,6 +41,9 @@ function load_database_config(): array
         'admin_username' => getenv('SMARTVISION_ADMIN_USERNAME') ?: '',
         'admin_password_hash' => getenv('SMARTVISION_ADMIN_PASSWORD_HASH') ?: '',
         'credentials_encryption_key' => getenv('SMARTVISION_CREDENTIALS_ENCRYPTION_KEY') ?: '',
+        'cpanel_host' => getenv('SMARTVISION_CPANEL_HOST') ?: '',
+        'cpanel_username' => getenv('SMARTVISION_CPANEL_USERNAME') ?: '',
+        'cpanel_token' => getenv('SMARTVISION_CPANEL_TOKEN') ?: '',
     ];
 }
 

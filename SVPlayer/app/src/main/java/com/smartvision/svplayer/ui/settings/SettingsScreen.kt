@@ -78,17 +78,11 @@ fun SettingsScreen(
     val container = LocalAppContainer.current
     val accounts by container.accountManager.accounts.collectAsStateWithLifecycle()
     val activeAccountId by container.accountManager.activeAccountId.collectAsStateWithLifecycle()
+    val activeAccount = accounts.firstOrNull { it.id == activeAccountId } ?: accounts.firstOrNull()
     val settings by container.settingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = com.smartvision.svplayer.domain.model.PlayerSettings(),
     )
     val scope = rememberCoroutineScope()
-    var editedAccount by remember { mutableStateOf<XtreamAccount?>(null) }
-
-    fun applyAccountChange(action: () -> Unit) {
-        action()
-        container.xtreamRepository.clearCaches()
-        onSyncCatalog()
-    }
 
     BackHandler(onBack = onBack)
 
@@ -131,11 +125,23 @@ fun SettingsScreen(
             horizontalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             SettingsPanel(
-                title = "Experience",
+                title = "Preferences generales",
                 modifier = Modifier
-                    .weight(0.36f)
+                    .weight(0.42f)
                     .fillMaxHeight(),
             ) {
+                SettingsChoice(
+                    label = "Langue",
+                    values = listOf("Francais", "English", "Espanol", "العربية"),
+                    selected = settings.language,
+                    onSelected = { value -> scope.launch { container.settingsRepository.setLanguage(value) } },
+                )
+                SettingsChoice(
+                    label = "Synchronisation automatique",
+                    values = listOf("24h", "48h", "A chaque demarrage", "Manuelle", "Jamais"),
+                    selected = settings.syncFrequency,
+                    onSelected = { value -> scope.launch { container.settingsRepository.setSyncFrequency(value) } },
+                )
                 SettingsChoice(
                     label = "Format video",
                     values = listOf("Fit", "Fill", "Zoom"),
@@ -155,7 +161,8 @@ fun SettingsScreen(
                     onSelected = { value -> scope.launch { container.settingsRepository.setRetryEnabled(value == "Activee") } },
                 )
                 SettingsInfoRow("Version", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
-                SettingsInfoRow("Compte actif", accounts.firstOrNull { it.id == activeAccountId }?.name ?: "Aucun")
+                SettingsInfoRow("Compte Xtream actif", activeAccount?.name ?: "Aucun")
+                SettingsInfoRow("Serveur actif", activeAccount?.host ?: "Non configure")
                 Spacer(Modifier.height(12.dp))
                 TvButton(
                     text = if (updateState.checking) "Recherche..." else "Chercher une mise a jour",
@@ -208,68 +215,52 @@ fun SettingsScreen(
             }
 
             SettingsPanel(
-                title = "Comptes Xtream",
+                title = "Maintenance et donnees",
                 modifier = Modifier
-                    .weight(0.64f)
+                    .weight(0.58f)
                     .fillMaxHeight(),
-                trailing = {
-                    TvButton(
-                        text = "Ajouter",
-                        leadingIcon = Icons.Default.Add,
-                        onClick = {
-                            editedAccount = XtreamAccount(
-                                id = UUID.randomUUID().toString(),
-                                name = "",
-                                host = "http://",
-                                username = "",
-                                password = "",
-                            )
-                        },
-                        modifier = Modifier.height(40.dp),
-                    )
-                },
             ) {
-                if (accounts.isEmpty()) {
-                    Text(
-                        text = "Aucun compte. Ajoutez des identifiants Xtream pour charger le catalogue.",
-                        color = SmartVisionColors.TextSecondary,
-                        style = SmartVisionType.Body,
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        items(accounts, key = { it.id }) { account ->
-                            AccountRow(
-                                account = account,
-                                active = account.id == activeAccountId,
-                                onConnect = {
-                                    applyAccountChange { container.accountManager.select(account.id) }
-                                },
-                                onEdit = { editedAccount = account },
-                                onDelete = {
-                                    applyAccountChange { container.accountManager.delete(account.id) }
-                                },
-                            )
-                        }
-                    }
-                }
+                SettingsInfoRow("Frequence actuelle", settings.syncFrequency)
+                SettingsInfoRow("Compte actif", activeAccount?.let { "${it.name} - ${it.username}" } ?: "Aucun")
+                SettingsInfoRow("Mode buffer", settings.bufferMode)
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = "Les identifiants Xtream se gerent maintenant depuis Compte utilisateur afin de separer les reglages de l'application et les donnees client.",
+                    color = SmartVisionColors.TextSecondary,
+                    style = SmartVisionType.Body,
+                )
+                Spacer(Modifier.height(16.dp))
+                TvButton(
+                    text = "Synchroniser maintenant",
+                    leadingIcon = Icons.Default.Refresh,
+                    onClick = onSyncCatalog,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(46.dp),
+                )
+                Spacer(Modifier.height(10.dp))
+                TvButton(
+                    text = "Verifier les mises a jour",
+                    leadingIcon = Icons.Default.Refresh,
+                    onClick = onCheckForUpdate,
+                    enabled = !updateState.checking && !updateState.installing,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                )
+                Spacer(Modifier.height(10.dp))
+                TvButton(
+                    text = "Vider les donnees locales",
+                    leadingIcon = Icons.Default.Delete,
+                    onClick = { scope.launch { container.settingsRepository.clearLocalData() } },
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                )
             }
         }
-    }
-
-    editedAccount?.let { account ->
-        AccountEditorDialog(
-            initial = account,
-            onDismiss = { editedAccount = null },
-            onSave = { saved ->
-                applyAccountChange {
-                    val id = container.accountManager.upsert(saved)
-                    container.accountManager.select(id)
-                }
-            },
-        )
     }
 }
 
@@ -310,20 +301,27 @@ private fun SettingsChoice(
 ) {
     Text(label, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Label)
     Spacer(Modifier.height(7.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
-    ) {
-        values.forEach { value ->
-            TvButton(
-                text = value,
-                onClick = { onSelected(value) },
-                selected = value == selected,
-                variant = if (value == selected) TvButtonVariant.Primary else TvButtonVariant.Secondary,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(40.dp),
-            )
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        values.chunked(3).forEach { rowValues ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                rowValues.forEach { value ->
+                    TvButton(
+                        text = value,
+                        onClick = { onSelected(value) },
+                        selected = value == selected,
+                        variant = if (value == selected) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp),
+                    )
+                }
+                repeat(3 - rowValues.size) {
+                    Spacer(Modifier.weight(1f))
+                }
+            }
         }
     }
     Spacer(Modifier.height(18.dp))

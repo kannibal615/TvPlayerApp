@@ -56,6 +56,7 @@ fun HomeScreen(
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val liveFocusRequester = remember { FocusRequester() }
+    val hasContinueWatching = state.continueWatching.isNotEmpty()
 
     LaunchedEffect(Unit) {
         withFrameNanos { }
@@ -124,24 +125,26 @@ fun HomeScreen(
             Spacer(Modifier.height(12.dp))
 
             ContinueWatchingRow(
-                title = "Reprendre la lecture",
-                items = state.continueWatching,
+                title = if (hasContinueWatching) "Reprendre la lecture" else "Tendances",
+                items = if (hasContinueWatching) state.continueWatching else state.trending,
                 showViewAll = true,
-                onViewAll = onContinueViewAll,
+                onViewAll = if (hasContinueWatching) onContinueViewAll else onTrendingViewAll,
                 onItemClick = onContentClick,
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Spacer(Modifier.height(SmartVisionDimensions.HomeTrendFoldOffset))
+            if (hasContinueWatching) {
+                Spacer(Modifier.height(SmartVisionDimensions.HomeTrendFoldOffset))
 
-            ContinueWatchingRow(
-                title = "Tendances",
-                items = state.trending,
-                onItemClick = onContentClick,
-                showViewAll = true,
-                onViewAll = onTrendingViewAll,
-                modifier = Modifier.fillMaxWidth(),
-            )
+                ContinueWatchingRow(
+                    title = "Tendances",
+                    items = state.trending,
+                    onItemClick = onContentClick,
+                    showViewAll = true,
+                    onViewAll = onTrendingViewAll,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
 
             Spacer(Modifier.height(24.dp))
         }

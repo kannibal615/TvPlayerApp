@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.smartvision.svplayer.core.data.LocalAppContainer
@@ -50,6 +52,7 @@ import com.smartvision.svplayer.ui.catalog.CatalogError
 import com.smartvision.svplayer.ui.catalog.CatalogLoading
 import com.smartvision.svplayer.ui.catalog.CatalogMediaCard
 import com.smartvision.svplayer.ui.catalog.CatalogMetaStyle
+import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
@@ -65,6 +68,9 @@ fun SeriesScreen(
     onNavigate: (String) -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
+    onProfile: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
     onOpenSeriesDetails: (Int) -> Unit,
     onWatchEpisode: (Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -83,7 +89,8 @@ fun SeriesScreen(
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstSeriesFocusRequester = remember { FocusRequester() }
     var inputReady by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
+    var categorySearchQuery by remember { mutableStateOf("") }
+    var contentSearchQuery by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         delay(260)
@@ -121,8 +128,9 @@ fun SeriesScreen(
             onNavigate = onNavigate,
             onSync = onSync,
             onSettings = onSettings,
-            searchQuery = searchQuery,
-            onSearchQueryChange = { searchQuery = it },
+            onProfile = onProfile,
+            onLicenseKey = onLicenseKey,
+            showLicenseKey = showLicenseKey,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -158,7 +166,9 @@ fun SeriesScreen(
                     state = state,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     firstSeriesFocusRequester = firstSeriesFocusRequester,
-                    searchQuery = searchQuery,
+                    searchQuery = categorySearchQuery,
+                    onSearchQueryChange = { categorySearchQuery = it },
+                    contentSearchQuery = contentSearchQuery,
                     onCategory = { category ->
                         if (inputReady) viewModel.selectCategory(category)
                     },
@@ -170,7 +180,8 @@ fun SeriesScreen(
                     state = state,
                     firstSeriesFocusRequester = firstSeriesFocusRequester,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
-                    searchQuery = searchQuery,
+                    searchQuery = contentSearchQuery,
+                    onSearchQueryChange = { contentSearchQuery = it },
                     onSeriesFocused = viewModel::focusSeries,
                     onSeriesClick = { series ->
                         if (inputReady) {
@@ -194,10 +205,23 @@ private fun SeriesCategoryList(
     selectedCategoryFocusRequester: FocusRequester,
     firstSeriesFocusRequester: FocusRequester,
     searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    contentSearchQuery: String,
     onCategory: (SeriesCategoryUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    MediaCatalogPanel(title = "Categories", modifier = modifier) {
+    MediaCatalogPanel(
+        title = "Categories",
+        modifier = modifier,
+        trailing = {
+            CatalogSearchField(
+                query = searchQuery,
+                onQueryChange = onSearchQueryChange,
+                placeholder = "Dossier",
+                modifier = Modifier.width(118.dp),
+            )
+        },
+    ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
@@ -219,7 +243,7 @@ private fun SeriesCategoryList(
                     },
                     rightFocusRequester = firstSeriesFocusRequester.takeIf {
                         !state.seriesLoading && state.series.any {
-                            searchQuery.isBlank() || it.title.contains(searchQuery, ignoreCase = true)
+                            contentSearchQuery.isBlank() || it.title.contains(contentSearchQuery, ignoreCase = true)
                         }
                     },
                     onClick = { onCategory(category) },
@@ -235,6 +259,7 @@ private fun SeriesGrid(
     firstSeriesFocusRequester: FocusRequester,
     selectedCategoryFocusRequester: FocusRequester,
     searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     onSeriesFocused: (SeriesItemUi) -> Unit,
     onSeriesClick: (SeriesItemUi) -> Unit,
     onRetry: () -> Unit,
@@ -242,9 +267,7 @@ private fun SeriesGrid(
 ) {
     val gridState = rememberLazyGridState()
     val visibleSeries = state.series.filter { series ->
-        searchQuery.isBlank() ||
-            series.title.contains(searchQuery, ignoreCase = true) ||
-            series.categoryLabel.contains(searchQuery, ignoreCase = true)
+        searchQuery.isBlank() || series.title.contains(searchQuery, ignoreCase = true)
     }
 
     LaunchedEffect(state.selectedCategoryId) {
@@ -255,18 +278,27 @@ private fun SeriesGrid(
         title = state.selectedCategory?.label ?: "Series",
         modifier = modifier,
         trailing = {
-            val seriesCount = if (searchQuery.isBlank()) {
-                state.selectedCategory?.count ?: state.series.size
-            } else {
-                visibleSeries.size
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                val seriesCount = if (searchQuery.isBlank()) {
+                    state.selectedCategory?.count ?: state.series.size
+                } else {
+                    visibleSeries.size
+                }
+                Text(
+                    text = if (seriesCount > 0) "$seriesCount series" else "Series",
+                    color = SmartVisionColors.TextSecondary,
+                    style = CatalogMetaStyle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.width(10.dp))
+                CatalogSearchField(
+                    query = searchQuery,
+                    onQueryChange = onSearchQueryChange,
+                    placeholder = "Serie",
+                    modifier = Modifier.width(190.dp),
+                )
             }
-            Text(
-                text = if (seriesCount > 0) "$seriesCount series" else "Series",
-                color = SmartVisionColors.TextSecondary,
-                style = CatalogMetaStyle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
         },
     ) {
         when {

@@ -98,7 +98,7 @@ function h(string $value): string { return htmlspecialchars($value, ENT_QUOTES |
                 <form id="playlist-form" novalidate>
                     <div class="field"><label for="xtream-host">Adresse du serveur</label><input id="xtream-host" type="url" placeholder="https://serveur.example" autocomplete="url"></div>
                     <div class="field"><label for="xtream-username">Nom d’utilisateur</label><input id="xtream-username" type="text" autocomplete="username"></div>
-                    <div class="field"><label for="xtream-password">Mot de passe</label><input id="xtream-password" type="password" autocomplete="current-password"></div>
+                    <div class="field"><label for="xtream-password">Mot de passe</label><input id="xtream-password" type="text" autocomplete="off"></div>
                     <div class="form-actions">
                         <button class="button button-primary" id="playlist-button" type="submit">Configurer ma TV</button>
                         <button class="button button-outline" id="skip-button" type="button">Configurer plus tard</button>
