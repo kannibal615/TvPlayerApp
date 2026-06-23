@@ -40,7 +40,7 @@ fun XtreamSetupDialog(
     onSave: (XtreamAccount) -> Unit,
     onLater: () -> Unit,
 ) {
-    var host by remember { mutableStateOf("https://") }
+    var host by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }

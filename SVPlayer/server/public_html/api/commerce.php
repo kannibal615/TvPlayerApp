@@ -119,46 +119,17 @@ function commerce_create_test_order(
             throw new RuntimeException('Creation de commande impossible.');
         }
 
-        $plainCode = null;
-        $codeId = null;
-        for ($attempt = 0; $attempt < 12; $attempt++) {
-            $candidate = generate_public_activation_code();
-            try {
-                $insertCode = $pdo->prepare(
-                    "INSERT INTO activation_codes
-                        (code_hash, label, duration_days, max_devices, used_devices, status, valid_until, created_at, updated_at)
-                     VALUES
-                        (:code_hash, :label, :duration_days, 1, 0, 'active', NULL, NOW(), NOW())"
-                );
-                $insertCode->execute([
-                    'code_hash' => activation_code_hash(normalize_activation_code($candidate)),
-                    'label' => $orderReference . ' - ' . $plan['full_label'],
-                    'duration_days' => $plan['duration_days'],
-                ]);
-                $plainCode = $candidate;
-                $codeId = (int) $pdo->lastInsertId();
-                break;
-            } catch (Throwable $exception) {
-                if (!is_duplicate_key($exception)) {
-                    throw $exception;
-                }
-            }
-        }
-
-        if ($plainCode === null || $codeId === null) {
-            throw new RuntimeException('Generation de licence impossible.');
-        }
-
-        $hint = '******' . substr(normalize_activation_code($plainCode), -4);
-        $insertMetadata = $pdo->prepare(
-            "INSERT INTO activation_code_metadata (code_id, code_hint, created_by, last_used_at)
-             VALUES (:code_id, :code_hint, :created_by, NULL)"
+        $createdCode = create_activation_code_record(
+            $pdo,
+            $orderReference . ' - ' . $plan['full_label'],
+            (int) $plan['duration_days'],
+            1,
+            'paid',
+            null,
+            'customer:' . $userId,
         );
-        $insertMetadata->execute([
-            'code_id' => $codeId,
-            'code_hint' => $hint,
-            'created_by' => 'customer:' . $userId,
-        ]);
+        $plainCode = (string) $createdCode['code'];
+        $codeId = (int) $createdCode['id'];
 
         $paymentReference = 'TEST-' . strtoupper(generate_short_code(10));
         $updateOrder = $pdo->prepare(

@@ -75,6 +75,7 @@ data class ActivateLicenseRequest(
 data class DeviceAccessRequest(
     @SerializedName("deviceId") val deviceId: String,
     @SerializedName("publicDeviceCode") val publicDeviceCode: String,
+    @SerializedName("playlistConfigured") val playlistConfigured: Boolean = false,
 )
 
 data class DeviceRegistrationResponse(

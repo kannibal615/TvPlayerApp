@@ -140,6 +140,9 @@ fun AppNavigation(
                 container.xtreamRepository.clearCaches()
                 container.xtreamRepository.getLiveCategories()
                 container.synchronizeCatalog()
+                if (activationState.activationType == "trial_pending_xtream") {
+                    runCatching { container.activationRepository.finalizeTrialAfterPlaylistConfigured() }
+                }
             },
             modifier = Modifier.fillMaxSize(),
         )

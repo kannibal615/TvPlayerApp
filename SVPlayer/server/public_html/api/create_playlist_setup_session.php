@@ -25,13 +25,26 @@ try {
         json_response(['success' => false, 'error' => 'Appareil non autorise.'], 403);
     }
 
-    $activeQuery = $pdo->prepare(
-        "SELECT id FROM device_activations
-         WHERE device_id = :device_id AND status = 'active' AND expires_at > NOW()
+    $accessQuery = $pdo->prepare(
+        "SELECT
+            EXISTS (
+                SELECT 1 FROM device_activations
+                WHERE device_id = :device_id_active AND status = 'active' AND expires_at > NOW()
+                LIMIT 1
+            ) AS has_activation,
+            trial_status
+         FROM devices
+         WHERE device_id = :device_id_device
          LIMIT 1"
     );
-    $activeQuery->execute(['device_id' => $deviceId]);
-    if ($activeQuery->fetchColumn() === false) {
+    $accessQuery->execute([
+        'device_id_active' => $deviceId,
+        'device_id_device' => $deviceId,
+    ]);
+    $access = $accessQuery->fetch();
+    $hasActivation = is_array($access) && (int) ($access['has_activation'] ?? 0) === 1;
+    $hasPendingTrial = is_array($access) && ($access['trial_status'] ?? '') === 'pending_xtream';
+    if (!$hasActivation && !$hasPendingTrial) {
         json_response(['success' => false, 'error' => 'Appareil non active.'], 403);
     }
 

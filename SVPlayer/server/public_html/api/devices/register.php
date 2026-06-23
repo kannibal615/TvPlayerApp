@@ -21,6 +21,9 @@ $manufacturer = clean_optional_text($input['deviceManufacturer'] ?? null, 50);
 $model = clean_optional_text($input['deviceModel'] ?? null, 80);
 $requestedPublicCode = clean_public_device_code($input['localPublicDeviceCode'] ?? $input['publicDeviceCode'] ?? null);
 $deviceName = trim(implode(' ', array_filter([$manufacturer, $model]))) ?: 'Android TV';
+$countryCode = request_country_code();
+$ipHash = request_ip_hash();
+$userAgent = clean_optional_text($_SERVER['HTTP_USER_AGENT'] ?? null, 255);
 
 if ($fingerprintHash === '') {
     $fingerprintHash = $androidIdHash;
@@ -54,10 +57,12 @@ try {
                 $insert = $pdo->prepare(
                     "INSERT INTO devices
                         (device_id, device_fingerprint_hash, public_device_code, device_name, platform, app_version,
-                         status, license_status, trial_status, free_with_ads_status, xtream_status, first_seen_at, last_seen_at)
+                         status, license_status, trial_status, free_with_ads_status, xtream_status,
+                         country_code, install_ip_hash, last_ip_hash, last_user_agent, first_seen_at, last_seen_at)
                      VALUES
                         (:device_id, :fingerprint_hash, :public_code, :device_name, :platform, :app_version,
-                         'pending', 'inactive', 'available', 'inactive', 'missing', NOW(), NOW())"
+                         'pending', 'inactive', 'available', 'inactive', 'missing',
+                         :country_code, :install_ip_hash, :last_ip_hash, :last_user_agent, NOW(), NOW())"
                 );
                 $insert->execute([
                     'device_id' => $deviceId,
@@ -66,6 +71,10 @@ try {
                     'device_name' => $deviceName,
                     'platform' => $platform,
                     'app_version' => $appVersion,
+                    'country_code' => $countryCode,
+                    'install_ip_hash' => $ipHash,
+                    'last_ip_hash' => $ipHash,
+                    'last_user_agent' => $userAgent,
                 ]);
                 $publicCode = $candidate;
                 break;
@@ -103,6 +112,9 @@ try {
              SET device_name = :device_name,
                  platform = :platform,
                  app_version = :app_version,
+                 country_code = COALESCE(:country_code, country_code),
+                 last_ip_hash = :last_ip_hash,
+                 last_user_agent = :last_user_agent,
                  last_seen_at = NOW(),
                  updated_at = NOW()
              WHERE device_id = :device_id"
@@ -111,6 +123,9 @@ try {
             'device_name' => $deviceName,
             'platform' => $platform,
             'app_version' => $appVersion,
+            'country_code' => $countryCode,
+            'last_ip_hash' => $ipHash,
+            'last_user_agent' => $userAgent,
             'device_id' => $deviceId,
         ]);
     }

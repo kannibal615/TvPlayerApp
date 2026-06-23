@@ -47,12 +47,12 @@ function h(string $value): string { return htmlspecialchars($value, ENT_QUOTES |
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Activation SmartVision</title>
-    <link rel="stylesheet" href="/assets/site.css?v=2">
+    <link rel="stylesheet" href="/assets/site.css?v=3">
 </head>
 <body class="activation-page">
 <main class="activation-shell">
     <a class="brand activation-brand" href="/">
-        <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png" alt="SmartVision IPTV Player">
+        <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player">
     </a>
 
     <section class="activation-card">
@@ -114,6 +114,6 @@ function h(string $value): string { return htmlspecialchars($value, ENT_QUOTES |
         <?php endif; ?>
     </section>
 </main>
-<?php if ($hasSession): ?><script src="/assets/activation.js?v=2" defer></script><?php endif; ?>
+<?php if ($hasSession): ?><script src="/assets/activation.js?v=3" defer></script><?php endif; ?>
 </body>
 </html>

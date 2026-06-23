@@ -15,6 +15,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 $input = read_json_input();
 $deviceId = clean_device_id($input['deviceId'] ?? $input['device_id'] ?? null);
 $publicCode = clean_public_device_code($input['publicDeviceCode'] ?? null);
+$playlistConfigured = filter_var($input['playlistConfigured'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
 if ($deviceId === '' || $publicCode === '') {
     json_response(['success' => false, 'error' => 'Identifiant appareil requis.'], 400);
@@ -26,7 +27,7 @@ try {
     $pdo->beginTransaction();
 
     $deviceQuery = $pdo->prepare(
-        'SELECT public_device_code FROM devices WHERE device_id = :device_id LIMIT 1 FOR UPDATE'
+        'SELECT public_device_code, trial_status FROM devices WHERE device_id = :device_id LIMIT 1 FOR UPDATE'
     );
     $deviceQuery->execute(['device_id' => $deviceId]);
     $device = $deviceQuery->fetch();
@@ -60,20 +61,26 @@ try {
         ]);
     }
 
-    $durationDays = max(1, (int) get_setting($pdo, 'trial_duration_days', '7'));
-    $expiresAt = (new DateTimeImmutable('now', new DateTimeZone('UTC')))
-        ->modify('+' . $durationDays . ' days')
-        ->format('Y-m-d H:i:s');
+    if ($playlistConfigured && ($device['trial_status'] ?? '') !== 'pending_xtream') {
+        $pdo->commit();
+        $state = smartvision_device_state($pdo, $deviceId);
+        unset($state['found']);
+        json_response($state);
+    }
 
-    $pdo->prepare("UPDATE device_activations SET status = 'expired' WHERE device_id = :device_id AND status = 'active'")
-        ->execute(['device_id' => $deviceId]);
-
-    $insert = $pdo->prepare(
-        "INSERT INTO device_activations
-            (device_id, activation_code_id, activation_type, status, starts_at, expires_at, created_at)
-         VALUES (:device_id, NULL, 'trial_demo', 'active', NOW(), :expires_at, NOW())"
-    );
-    $insert->execute(['device_id' => $deviceId, 'expires_at' => $expiresAt]);
+    if ($playlistConfigured) {
+        create_trial_activation($pdo, $deviceId, $publicCode);
+    } else {
+        $pdo->prepare(
+            "UPDATE devices
+             SET status = 'active',
+                 trial_status = 'pending_xtream',
+                 xtream_status = CASE WHEN xtream_status = 'configured' THEN xtream_status ELSE 'missing' END,
+                 last_seen_at = NOW(),
+                 updated_at = NOW()
+             WHERE device_id = :device_id"
+        )->execute(['device_id' => $deviceId]);
+    }
 
     $pdo->commit();
 

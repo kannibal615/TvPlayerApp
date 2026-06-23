@@ -45,12 +45,25 @@ try {
         json_response(['success' => false, 'error' => 'Activez d abord cet appareil.'], 403);
     }
 
-    $activationQuery = $pdo->prepare(
-        "SELECT id FROM device_activations
-         WHERE device_id = :device_id AND status = 'active' AND expires_at > NOW() LIMIT 1"
+    $accessQuery = $pdo->prepare(
+        "SELECT public_device_code, trial_status,
+            EXISTS (
+                SELECT 1 FROM device_activations
+                WHERE device_id = :active_device_id AND status = 'active' AND expires_at > NOW()
+                LIMIT 1
+            ) AS has_activation
+         FROM devices
+         WHERE device_id = :device_id
+         LIMIT 1"
     );
-    $activationQuery->execute(['device_id' => $deviceId]);
-    if ($activationQuery->fetchColumn() === false) {
+    $accessQuery->execute([
+        'active_device_id' => $deviceId,
+        'device_id' => $deviceId,
+    ]);
+    $access = $accessQuery->fetch();
+    $hasActivation = is_array($access) && (int) ($access['has_activation'] ?? 0) === 1;
+    $hasPendingTrial = is_array($access) && ($access['trial_status'] ?? '') === 'pending_xtream';
+    if (!$hasActivation && !$hasPendingTrial) {
         json_response(['success' => false, 'error' => 'Activation appareil invalide.'], 403);
     }
 
@@ -66,7 +79,24 @@ try {
     );
     $upsert->execute(['device_id' => $deviceId, 'payload' => $encrypted]);
 
-    json_response(['success' => true, 'playlist_configured' => true]);
+    $trialActivation = null;
+    if (!$hasActivation && $hasPendingTrial) {
+        $trialActivation = create_trial_activation(
+            $pdo,
+            $deviceId,
+            clean_public_device_code($access['public_device_code'] ?? null),
+        );
+    }
+
+    $pdo->prepare("UPDATE devices SET xtream_status = 'configured', updated_at = NOW() WHERE device_id = :device_id")
+        ->execute(['device_id' => $deviceId]);
+
+    json_response([
+        'success' => true,
+        'playlist_configured' => true,
+        'trial_started' => $trialActivation !== null,
+        'expires_at' => is_array($trialActivation) ? ($trialActivation['expires_at'] ?? null) : null,
+    ]);
 } catch (Throwable $exception) {
     error_log('SmartVision save_playlist_config failed.');
     json_response(['success' => false, 'error' => 'Impossible d enregistrer la configuration Xtream.'], 500);

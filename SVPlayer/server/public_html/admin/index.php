@@ -51,15 +51,24 @@ $query = smartvision_text_substr(trim((string) ($_GET['q'] ?? '')), 0, 80);
 $stats = admin_load_stats($pdo);
 $orders = admin_load_orders($pdo, $query);
 $users = admin_load_users($pdo, $query);
-$devices = admin_load_devices($pdo, $query);
-$codes = admin_load_codes($pdo, $query);
+$devicePage = admin_page_number($_GET['devices_page'] ?? 1);
+$licensePage = admin_page_number($_GET['licenses_page'] ?? 1);
+$devicesResult = admin_load_devices($pdo, $query, $devicePage);
+$codesResult = admin_load_codes($pdo, $query, $licensePage);
+$devices = $devicesResult['rows'];
+$codes = $codesResult['rows'];
 $auditLogs = admin_load_audit($pdo);
+$slides = admin_load_slides($pdo);
 $revenueSeries = admin_revenue_series($pdo);
 $alerts = admin_build_alerts($stats);
 $flash = consume_admin_flash();
-$generatedCode = is_string($_SESSION['generated_activation_code'] ?? null)
-    ? $_SESSION['generated_activation_code']
-    : null;
+$generatedCode = $_SESSION['generated_activation_code'] ?? null;
+if (is_string($generatedCode)) {
+    $generatedCode = [$generatedCode];
+}
+if (!is_array($generatedCode)) {
+    $generatedCode = null;
+}
 unset($_SESSION['generated_activation_code']);
 
 render_admin_dashboard(
@@ -71,6 +80,9 @@ render_admin_dashboard(
     $auditLogs,
     $revenueSeries,
     $alerts,
+    $devicesResult['pagination'],
+    $codesResult['pagination'],
+    $slides,
     $flash,
     $generatedCode,
     $query,
@@ -80,9 +92,16 @@ render_admin_dashboard(
 function admin_current_page(mixed $page): string
 {
     $page = is_string($page) ? $page : 'overview';
-    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'devices', 'audit'], true)
+    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'devices', 'slides', 'audit'], true)
         ? $page
         : 'overview';
+}
+
+function admin_page_number(mixed $page): int
+{
+    $value = filter_var($page, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 9999]]);
+
+    return $value === false ? 1 : (int) $value;
 }
 
 function handle_admin_action(PDO $pdo, string $action): void
@@ -92,6 +111,8 @@ function handle_admin_action(PDO $pdo, string $action): void
         case 'set_code_status': admin_set_code_status($pdo); break;
         case 'revoke_code': admin_revoke_code($pdo); break;
         case 'delete_code': admin_delete_code($pdo); break;
+        case 'purge_devices': admin_purge_devices($pdo); break;
+        case 'save_slide': admin_save_slide($pdo); break;
         case 'set_user_status': admin_set_user_status($pdo); break;
         case 'set_device_status': admin_set_device_status($pdo); break;
         case 'extend_activation': admin_extend_activation($pdo); break;
@@ -116,6 +137,11 @@ function admin_generate_code(PDO $pdo): void
     $label = smartvision_text_substr(trim((string) ($_POST['label'] ?? '')), 0, 100);
     $durationDays = admin_positive_int($_POST['duration_days'] ?? null, 36500);
     $maxDevices = admin_positive_int($_POST['max_devices'] ?? null, 1000);
+    $quantity = admin_positive_int($_POST['quantity'] ?? 1, 200);
+    $licenseType = (string) ($_POST['license_type'] ?? 'paid');
+    if (!in_array($licenseType, ['paid', 'trial', 'free', 'manual', 'promo'], true)) {
+        $licenseType = 'manual';
+    }
     $validUntil = null;
     $validUntilInput = trim((string) ($_POST['valid_until'] ?? ''));
     if ($validUntilInput !== '') {
@@ -127,53 +153,31 @@ function admin_generate_code(PDO $pdo): void
     }
 
     $pdo->beginTransaction();
-    $plainCode = null;
-    $codeId = null;
-    for ($attempt = 0; $attempt < 12; $attempt++) {
-        $candidate = generate_smartvision_code();
-        try {
-            $statement = $pdo->prepare(
-                "INSERT INTO activation_codes
-                    (code_hash, label, duration_days, max_devices, used_devices, status, valid_until, created_at, updated_at)
-                 VALUES (:code_hash, :label, :duration_days, :max_devices, 0, 'active', :valid_until, NOW(), NOW())"
-            );
-            $statement->execute([
-                'code_hash' => activation_code_hash(normalize_activation_code($candidate)),
-                'label' => $label === '' ? null : $label,
-                'duration_days' => $durationDays,
-                'max_devices' => $maxDevices,
-                'valid_until' => $validUntil,
-            ]);
-            $plainCode = $candidate;
-            $codeId = (int) $pdo->lastInsertId();
-            break;
-        } catch (Throwable $exception) {
-            if (!is_duplicate_key($exception)) {
-                throw $exception;
-            }
-        }
+    $generated = [];
+    $createdIds = [];
+    for ($index = 0; $index < $quantity; $index++) {
+        $created = create_activation_code_record(
+            $pdo,
+            $quantity === 1 ? $label : trim($label . ' #' . ($index + 1)),
+            $durationDays,
+            $maxDevices,
+            $licenseType,
+            $validUntil,
+            current_admin_username(),
+        );
+        $generated[] = (string) $created['code'];
+        $createdIds[] = (int) $created['id'];
     }
-    if ($plainCode === null || $codeId === null) {
-        throw new RuntimeException('Generation de code impossible.');
-    }
-
-    $metadata = $pdo->prepare(
-        "INSERT INTO activation_code_metadata (code_id, code_hint, created_by, last_used_at)
-         VALUES (:code_id, :code_hint, :created_by, NULL)"
-    );
-    $metadata->execute([
-        'code_id' => $codeId,
-        'code_hint' => '******' . substr(normalize_activation_code($plainCode), -4),
-        'created_by' => current_admin_username(),
-    ]);
-    audit_admin_action($pdo, 'activation_code_created', 'activation_code', (string) $codeId, [
+    audit_admin_action($pdo, 'activation_code_created', 'activation_code', implode(',', $createdIds), [
         'duration_days' => $durationDays,
         'max_devices' => $maxDevices,
+        'quantity' => $quantity,
+        'license_type' => $licenseType,
         'label' => $label,
     ]);
     $pdo->commit();
-    $_SESSION['generated_activation_code'] = $plainCode;
-    set_admin_flash('success', 'Code genere. Copiez-le avant de quitter cette page.');
+    $_SESSION['generated_activation_code'] = $generated;
+    set_admin_flash('success', $quantity === 1 ? 'Code genere.' : $quantity . ' codes generes.');
 }
 
 function admin_set_code_status(PDO $pdo): void
@@ -322,6 +326,73 @@ function admin_cancel_order(PDO $pdo): void
     set_admin_flash('success', 'Commande annulee et licence desactivee.');
 }
 
+function admin_purge_devices(PDO $pdo): void
+{
+    $confirmation = strtoupper(trim((string) ($_POST['confirmation'] ?? '')));
+    if ($confirmation !== 'PURGER') {
+        throw new InvalidArgumentException('Saisissez PURGER pour confirmer la remise a zero des appareils.');
+    }
+
+    $pdo->beginTransaction();
+    $pdo->exec('DELETE FROM device_playlist_configs');
+    $pdo->exec('DELETE FROM activation_session_tokens');
+    $pdo->exec('DELETE FROM activation_sessions');
+    $pdo->exec('DELETE FROM device_activations');
+    $pdo->exec('DELETE FROM devices');
+    $pdo->exec("UPDATE activation_codes SET used_devices = 0, updated_at = NOW() WHERE license_type = 'trial'");
+    $pdo->exec("UPDATE activation_codes SET status = 'disabled', updated_at = NOW() WHERE license_type = 'trial'");
+    $pdo->exec("UPDATE activation_code_metadata SET assigned_device_id = NULL, assigned_public_device_code = NULL WHERE created_by = 'system:trial'");
+    audit_admin_action($pdo, 'devices_purged', 'devices', 'all');
+    $pdo->commit();
+    set_admin_flash('success', 'Appareils, sessions, playlists et essais ont ete purges.');
+}
+
+function admin_save_slide(PDO $pdo): void
+{
+    $slideId = admin_positive_int($_POST['slide_id'] ?? null);
+    $sortOrder = filter_var($_POST['sort_order'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 9999]]);
+    if ($sortOrder === false) {
+        throw new InvalidArgumentException('Ordre de slide invalide.');
+    }
+    $title = smartvision_text_substr(trim((string) ($_POST['title'] ?? '')), 0, 120);
+    if ($title === '') {
+        throw new InvalidArgumentException('Titre de slide obligatoire.');
+    }
+    $subtitle = clean_optional_text($_POST['subtitle'] ?? null, 255);
+    $buttonLabel = clean_optional_text($_POST['button_label'] ?? null, 60);
+    $buttonRoute = clean_optional_text($_POST['button_route'] ?? null, 120);
+    $imageUrl = clean_optional_text($_POST['image_url'] ?? null, 500);
+    $status = (string) ($_POST['status'] ?? 'active');
+    if (!in_array($status, ['active', 'disabled'], true)) {
+        $status = 'disabled';
+    }
+
+    $statement = $pdo->prepare(
+        "UPDATE home_slider_ads
+         SET sort_order = :sort_order,
+             title = :title,
+             subtitle = :subtitle,
+             button_label = :button_label,
+             button_route = :button_route,
+             image_url = :image_url,
+             status = :status,
+             updated_at = NOW()
+         WHERE id = :id"
+    );
+    $statement->execute([
+        'sort_order' => (int) $sortOrder,
+        'title' => $title,
+        'subtitle' => $subtitle,
+        'button_label' => $buttonLabel,
+        'button_route' => $buttonRoute,
+        'image_url' => $imageUrl,
+        'status' => $status,
+        'id' => $slideId,
+    ]);
+    audit_admin_action($pdo, 'home_slide_saved', 'home_slider_ads', (string) $slideId);
+    set_admin_flash('success', 'Slide publicitaire mis a jour.');
+}
+
 function admin_load_stats(PDO $pdo): array
 {
     return [
@@ -380,43 +451,108 @@ function admin_load_users(PDO $pdo, string $query): array
     return $statement->fetchAll();
 }
 
-function admin_load_devices(PDO $pdo, string $query): array
+function admin_load_devices(PDO $pdo, string $query, int $page = 1): array
 {
-    $sql = "SELECT d.device_id, d.public_device_code, d.device_name, d.platform, d.app_version, d.status,
+    $perPage = 25;
+    $offset = ($page - 1) * $perPage;
+    $where = '';
+    $params = [];
+    if ($query !== '') {
+        $where = ' WHERE d.device_id LIKE :q OR d.public_device_code LIKE :q OR d.device_name LIKE :q OR d.app_version LIKE :q OR d.country_code LIKE :q';
+        $params['q'] = admin_search_pattern($query);
+    }
+    $count = $pdo->prepare('SELECT COUNT(*) FROM devices d' . $where);
+    $count->execute($params);
+    $total = (int) $count->fetchColumn();
+
+    $sql = "SELECT d.id, d.device_id, d.public_device_code, d.device_name, d.platform, d.app_version, d.status,
                    d.license_status, d.trial_status, d.free_with_ads_status, d.xtream_status,
-                   d.last_seen_at, d.first_seen_at, d.expires_at,
-                   a.activation_type, a.activation_code_id,
+                   d.country_code, d.install_ip_hash, d.last_ip_hash, d.last_user_agent,
+                   d.created_at, d.last_seen_at, d.first_seen_at, d.activated_at, d.expires_at,
+                   a.activation_type, a.activation_code_id, a.starts_at AS activation_starts_at,
+                   c.license_type, c.duration_days, m.code_hint, m.code_ciphertext,
                    CASE WHEN p.device_id IS NULL THEN 0 ELSE 1 END AS playlist_configured
             FROM devices d
             LEFT JOIN device_activations a ON a.id = (
                 SELECT da.id FROM device_activations da WHERE da.device_id = d.device_id ORDER BY da.id DESC LIMIT 1
             )
+            LEFT JOIN activation_codes c ON c.id = a.activation_code_id
+            LEFT JOIN activation_code_metadata m ON m.code_id = c.id
             LEFT JOIN device_playlist_configs p ON p.device_id = d.device_id";
-    $params = [];
-    if ($query !== '') {
-        $sql .= ' WHERE d.device_id LIKE :q OR d.public_device_code LIKE :q OR d.device_name LIKE :q OR d.app_version LIKE :q';
-        $params['q'] = admin_search_pattern($query);
-    }
-    $sql .= " ORDER BY CASE WHEN d.status = 'pending' THEN 0 ELSE 1 END, d.last_seen_at DESC, d.id DESC LIMIT 120";
+    $sql .= $where . " ORDER BY d.last_seen_at DESC, d.id DESC LIMIT {$perPage} OFFSET {$offset}";
     $statement = $pdo->prepare($sql);
     $statement->execute($params);
-    return $statement->fetchAll();
+    $rows = $statement->fetchAll();
+    foreach ($rows as &$row) {
+        $row['activation_code'] = decrypt_private_value($row['code_ciphertext'] ?? null) ?: ($row['code_hint'] ?? null);
+    }
+    unset($row);
+
+    return [
+        'rows' => $rows,
+        'pagination' => admin_pagination($page, $perPage, $total, 'devices_page'),
+    ];
 }
 
-function admin_load_codes(PDO $pdo, string $query): array
+function admin_load_codes(PDO $pdo, string $query, int $page = 1): array
 {
-    $sql = "SELECT c.id, c.label, c.duration_days, c.max_devices, c.used_devices, c.status,
-                   c.valid_until, c.created_at, m.code_hint, m.created_by, m.last_used_at
-            FROM activation_codes c LEFT JOIN activation_code_metadata m ON m.code_id = c.id";
+    $perPage = 30;
+    $offset = ($page - 1) * $perPage;
+    $where = '';
     $params = [];
     if ($query !== '') {
-        $sql .= ' WHERE c.label LIKE :q OR m.code_hint LIKE :q OR m.created_by LIKE :q';
+        $where = ' WHERE c.label LIKE :q OR m.code_hint LIKE :q OR m.created_by LIKE :q OR m.assigned_public_device_code LIKE :q';
         $params['q'] = admin_search_pattern($query);
     }
-    $sql .= ' ORDER BY c.id DESC LIMIT 100';
+    $count = $pdo->prepare('SELECT COUNT(*) FROM activation_codes c LEFT JOIN activation_code_metadata m ON m.code_id = c.id' . $where);
+    $count->execute($params);
+    $total = (int) $count->fetchColumn();
+
+    $sql = "SELECT c.id, c.label, c.duration_days, c.max_devices, c.used_devices, c.license_type, c.status,
+                   c.valid_until, c.created_at, m.code_hint, m.code_ciphertext, m.created_by, m.last_used_at,
+                   m.assigned_device_id, m.assigned_public_device_code,
+                   d.device_name, d.status AS device_status, d.last_seen_at AS device_last_seen,
+                   MAX(a.expires_at) AS activation_expires_at,
+                   MAX(a.activation_type) AS activation_type
+            FROM activation_codes c
+            LEFT JOIN activation_code_metadata m ON m.code_id = c.id
+            LEFT JOIN devices d ON d.device_id = m.assigned_device_id
+            LEFT JOIN device_activations a ON a.activation_code_id = c.id";
+    $sql .= $where . " GROUP BY c.id, m.code_id, d.device_id ORDER BY c.id DESC LIMIT {$perPage} OFFSET {$offset}";
     $statement = $pdo->prepare($sql);
     $statement->execute($params);
-    return $statement->fetchAll();
+    $rows = $statement->fetchAll();
+    foreach ($rows as &$row) {
+        $row['activation_code'] = decrypt_private_value($row['code_ciphertext'] ?? null) ?: ($row['code_hint'] ?? ('#' . $row['id']));
+    }
+    unset($row);
+
+    return [
+        'rows' => $rows,
+        'pagination' => admin_pagination($page, $perPage, $total, 'licenses_page'),
+    ];
+}
+
+function admin_pagination(int $page, int $perPage, int $total, string $param): array
+{
+    $pages = max(1, (int) ceil($total / max(1, $perPage)));
+    $page = max(1, min($page, $pages));
+
+    return [
+        'page' => $page,
+        'per_page' => $perPage,
+        'total' => $total,
+        'pages' => $pages,
+        'param' => $param,
+    ];
+}
+
+function admin_load_slides(PDO $pdo): array
+{
+    return $pdo->query(
+        "SELECT id, sort_order, title, subtitle, button_label, button_route, image_url, status, updated_at
+         FROM home_slider_ads ORDER BY sort_order ASC, id ASC"
+    )->fetchAll();
 }
 
 function admin_load_audit(PDO $pdo): array
@@ -467,9 +603,9 @@ function render_admin_login(?string $error): void
     $credentials = admin_credentials();
     $configured = $credentials['username'] !== '' && $credentials['password_hash'] !== '';
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=2"><link rel="stylesheet" href="/assets/admin-overrides.css?v=2"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=3"></head>
 <body class="admin-login-body"><main class="admin-login-panel">
-    <a class="admin-brand" href="/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png" alt="SmartVision IPTV Player"></a>
+    <a class="admin-brand" href="/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
     <h1>Administration</h1><p>Commandes, licences et appareils SmartVision.</p>
     <?php if (!$configured): ?><div class="admin-notice error">Administration non configuree sur le serveur.</div><?php else: ?>
     <?php if ($error): ?><div class="admin-notice error"><?= admin_escape($error) ?></div><?php endif; ?>
@@ -487,8 +623,11 @@ function render_admin_dashboard(
     array $auditLogs,
     array $revenueSeries,
     array $alerts,
+    array $devicesPagination,
+    array $codesPagination,
+    array $slides,
     ?array $flash,
-    ?string $generatedCode,
+    ?array $generatedCode,
     string $query,
     string $page,
 ): void {
@@ -499,14 +638,15 @@ function render_admin_dashboard(
         'customers' => ['Clients', 'Comptes clients et historique d achat.'],
         'licenses' => ['Licences', 'Generation manuelle et gestion des codes SmartVision.'],
         'devices' => ['Appareils', 'TV associees, essais, licences et configuration Xtream.'],
+        'slides' => ['Slides Home', 'Emplacements publicitaires prives visibles sur la Home.'],
         'audit' => ['Journal', 'Dernieres actions administrateur.'],
     ];
     $heading = $pages[$page] ?? $pages['overview'];
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=2"><link rel="stylesheet" href="/assets/admin-overrides.css?v=2"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=3"></head>
 <body class="admin-body">
 <aside class="admin-sidebar">
-    <a class="admin-brand" href="/admin/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png" alt="SmartVision IPTV Player"></a>
+    <a class="admin-brand" href="/admin/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
     <nav><?php foreach ($pages as $pageKey => $pageMeta): ?><a class="<?= $page === $pageKey ? 'active' : '' ?>" href="/admin/?page=<?= admin_escape($pageKey) ?>"><?= admin_escape($pageMeta[0]) ?></a><?php endforeach; ?></nav>
     <div class="sidebar-footer"><a href="/" target="_blank" rel="noopener">Voir le site</a><form method="post" action="/admin/logout.php"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><button type="submit">Deconnexion</button></form></div>
 </aside>
@@ -515,7 +655,7 @@ function render_admin_dashboard(
     <main class="admin-main">
         <section class="admin-page-heading"><div><h1><?= admin_escape($heading[0]) ?></h1><p><?= admin_escape($heading[1]) ?></p></div><a class="admin-button secondary" href="/account/" target="_blank" rel="noopener">Voir le parcours client</a></section>
         <?php if ($flash): ?><div class="admin-notice <?= admin_escape((string) ($flash['type'] ?? '')) ?>"><?= admin_escape((string) ($flash['message'] ?? '')) ?></div><?php endif; ?>
-        <?php if ($generatedCode): ?><div class="generated-license"><div><span>Nouveau code</span><strong id="generated-code"><?= admin_escape($generatedCode) ?></strong></div><button class="admin-button primary" type="button" data-copy-target="generated-code">Copier</button></div><?php endif; ?>
+        <?php if ($generatedCode): ?><div class="generated-license generated-license-list"><div><span>Code(s) genere(s)</span><div class="generated-code-grid"><?php foreach ($generatedCode as $generatedIndex => $plainGeneratedCode): ?><strong id="generated-code-<?= (int) $generatedIndex ?>"><?= admin_escape((string) $plainGeneratedCode) ?></strong><button class="admin-button compact primary" type="button" data-copy-target="generated-code-<?= (int) $generatedIndex ?>">Copier</button><?php endforeach; ?></div></div></div><?php endif; ?>
 
         <?php if ($page === 'overview'): ?>
         <section class="admin-kpis" aria-label="Indicateurs">
@@ -539,7 +679,7 @@ function render_admin_dashboard(
         <section class="admin-panel" id="orders"><div class="admin-panel-heading"><div><h2>Commandes recentes</h2><p><?= count($orders) ?> resultat(s)</p></div></div><div class="admin-table-wrap"><table><thead><tr><th>Reference</th><th>Client</th><th>Plan</th><th>Montant</th><th>Paiement</th><th>Licence</th><th>Date</th><th>Actions</th></tr></thead><tbody>
         <?php if ($orders === []): ?><tr><td colspan="8" class="admin-empty">Aucune commande.</td></tr><?php endif; ?>
         <?php foreach ($orders as $order): ?><tr><td><strong><?= admin_escape($order['order_reference'] ?: 'SV-' . $order['id']) ?></strong><small><?= admin_escape($order['payment_reference'] ?: '-') ?></small></td><td><?= admin_escape($order['display_name'] ?: $order['email']) ?><small><?= admin_escape($order['email']) ?></small></td><td><?= admin_escape($order['plan_label']) ?></td><td><?= commerce_money((int) $order['amount_cents'], (string) $order['currency']) ?></td><td><span class="admin-state <?= admin_escape($order['status']) ?>"><?= admin_escape($order['status']) ?></span></td><td><?= admin_escape($order['code_hint'] ?: '-') ?><small><?= admin_escape($order['code_status'] ?: '-') ?></small></td><td><?= admin_escape($order['paid_at'] ?: $order['created_at']) ?></td><td><?php if ($order['status'] === 'paid' && (int) $order['used_devices'] === 0): ?><form method="post" data-confirm="Annuler cette commande et desactiver sa licence ?"><input type="hidden" name="redirect_page" value="orders"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="cancel_order"><input type="hidden" name="order_id" value="<?= (int) $order['id'] ?>"><button class="admin-button compact danger" type="submit">Annuler</button></form><?php else: ?><span class="muted">-</span><?php endif; ?></td></tr><?php endforeach; ?>
-        </tbody></table></div></section>
+        </tbody></table></div><?= admin_render_pagination($devicesPagination, $page, $query) ?></section>
         <?php endif; ?>
 
         <?php if ($page === 'customers'): ?>
@@ -547,17 +687,24 @@ function render_admin_dashboard(
         <?php endif; ?>
 
         <?php if ($page === 'licenses'): ?>
-        <section class="admin-panel generate-panel" id="licenses"><div class="admin-panel-heading"><div><h2>Licences et codes</h2><p>Codes SmartVision generes par l admin ou le parcours achat.</p></div></div><form method="post" class="generate-code-form"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="action" value="generate_code"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><label>Libelle<input name="label" maxlength="100" placeholder="Client ou commande"></label><label>Duree en jours<input name="duration_days" type="number" min="1" max="36500" value="365" required></label><label>Appareils<input name="max_devices" type="number" min="1" max="1000" value="1" required></label><label>Valide jusqu'au<input name="valid_until" type="date"></label><button class="admin-button primary" type="submit">Generer un code</button></form><div class="admin-table-wrap"><table><thead><tr><th>Code</th><th>Libelle</th><th>Usage</th><th>Duree</th><th>Statut</th><th>Origine</th><th>Actions</th></tr></thead><tbody>
-        <?php if ($codes === []): ?><tr><td colspan="7" class="admin-empty">Aucun code licence.</td></tr><?php endif; ?>
-        <?php foreach ($codes as $code): ?><tr data-code-id="<?= (int) $code['id'] ?>" data-label="<?= admin_escape($code['label'] ?: '') ?>"><td><strong><?= admin_escape($code['code_hint'] ?: '#' . $code['id']) ?></strong><small><?= admin_escape($code['created_at']) ?></small></td><td><?= admin_escape($code['label'] ?: '-') ?></td><td><?= (int) $code['used_devices'] ?> / <?= (int) $code['max_devices'] ?></td><td><?= (int) $code['duration_days'] ?> jours</td><td><span class="admin-state <?= admin_escape($code['status']) ?>"><?= admin_escape($code['status']) ?></span></td><td><?= admin_escape($code['created_by'] ?: '-') ?></td><td class="admin-actions"><form method="post"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_code_status"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><input type="hidden" name="status" value="<?= $code['status'] === 'active' ? 'disabled' : 'active' ?>"><button class="admin-button compact secondary" type="submit"><?= $code['status'] === 'active' ? 'Desactiver' : 'Reactiver' ?></button></form><?php if ((int) $code['used_devices'] > 0): ?><form method="post" data-confirm="Revoquer ce code et expirer ses appareils ?"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="revoke_code"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><button class="admin-button compact danger" type="submit">Revoquer</button></form><?php elseif (!str_starts_with((string) $code['created_by'], 'customer:')): ?><form method="post" data-confirm="Supprimer ce code inutilise ?"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="delete_code"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><button class="admin-button compact danger" type="submit">Supprimer</button></form><?php endif; ?></td></tr><?php endforeach; ?>
-        </tbody></table></div></section>
+        <section class="admin-panel generate-panel" id="licenses"><div class="admin-panel-heading"><div><h2>Licences et codes</h2><p><?= (int) $codesPagination['total'] ?> code(s) SmartVision, format public 10 caracteres.</p></div></div><form method="post" class="generate-code-form generate-code-form-wide" data-license-generator><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="action" value="generate_code"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><label>Libelle<input name="label" maxlength="100" placeholder="Client, lot ou campagne"></label><label>Type<select name="license_type"><option value="paid">Payant</option><option value="trial">Essai gratuit</option><option value="free">Gratuit</option><option value="promo">Promo</option><option value="manual">Manuel</option></select></label><label>Duree en jours<input name="duration_days" type="number" min="1" max="36500" value="365" required data-duration-days></label><label>Nombre<input name="quantity" type="number" min="1" max="200" value="1" required></label><label>Appareils<input name="max_devices" type="number" min="1" max="1000" value="1" required></label><label>Valide jusqu'au<input name="valid_until" type="date" value="<?= admin_escape(gmdate('Y-m-d', strtotime('+365 days'))) ?>" data-valid-until></label><button class="admin-button primary" type="submit">Generer</button></form><div class="admin-table-wrap"><table><thead><tr><th>Code</th><th>Type</th><th>Libelle</th><th>Appareil</th><th>Usage</th><th>Duree</th><th>Expiration</th><th>Statut</th><th>Origine</th><th>Actions</th></tr></thead><tbody>
+        <?php if ($codes === []): ?><tr><td colspan="10" class="admin-empty">Aucun code licence.</td></tr><?php endif; ?>
+        <?php foreach ($codes as $code): ?><tr data-code-id="<?= (int) $code['id'] ?>" data-label="<?= admin_escape($code['label'] ?: '') ?>"><td><strong class="license-code"><?= admin_escape((string) ($code['activation_code'] ?: '#' . $code['id'])) ?></strong><small>Genere <?= admin_escape($code['created_at']) ?></small></td><td><span class="admin-state <?= admin_escape($code['license_type'] ?: 'manual') ?>"><?= admin_escape($code['license_type'] ?: 'manual') ?></span><small><?= admin_escape($code['activation_type'] ?: '-') ?></small></td><td><?= admin_escape($code['label'] ?: '-') ?></td><td><strong><?= admin_escape($code['assigned_public_device_code'] ?: '-') ?></strong><small><?= admin_escape($code['device_name'] ?: $code['assigned_device_id'] ?: '-') ?></small></td><td><?= (int) $code['used_devices'] ?> / <?= (int) $code['max_devices'] ?><small>Derniere: <?= admin_escape($code['last_used_at'] ?: '-') ?></small></td><td><?= (int) $code['duration_days'] ?> jours</td><td><?= admin_escape($code['activation_expires_at'] ?: $code['valid_until'] ?: '-') ?></td><td><span class="admin-state <?= admin_escape($code['status']) ?>"><?= admin_escape($code['status']) ?></span><small><?= admin_escape($code['device_status'] ?: '-') ?></small></td><td><?= admin_escape($code['created_by'] ?: '-') ?></td><td class="admin-actions"><form method="post"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_code_status"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><input type="hidden" name="status" value="<?= $code['status'] === 'active' ? 'disabled' : 'active' ?>"><button class="admin-button compact secondary" type="submit"><?= $code['status'] === 'active' ? 'Desactiver' : 'Reactiver' ?></button></form><?php if ((int) $code['used_devices'] > 0): ?><form method="post" data-confirm="Revoquer ce code et expirer ses appareils ?"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="revoke_code"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><button class="admin-button compact danger" type="submit">Revoquer</button></form><?php elseif (!str_starts_with((string) $code['created_by'], 'customer:')): ?><form method="post" data-confirm="Supprimer ce code inutilise ?"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="delete_code"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><button class="admin-button compact danger" type="submit">Supprimer</button></form><?php endif; ?></td></tr><?php endforeach; ?>
+        </tbody></table></div><?= admin_render_pagination($codesPagination, $page, $query) ?></section>
         <?php endif; ?>
 
         <?php if ($page === 'devices'): ?>
-        <section class="admin-panel" id="devices"><div class="admin-panel-heading"><div><h2>Appareils</h2><p><?= count($devices) ?> resultat(s)</p></div></div><div class="admin-table-wrap"><table><thead><tr><th>Appareil</th><th>Version</th><th>Activation</th><th>Playlist</th><th>Expiration</th><th>Derniere activite</th><th>Actions</th></tr></thead><tbody>
-        <?php if ($devices === []): ?><tr><td colspan="7" class="admin-empty">Aucun appareil.</td></tr><?php endif; ?>
-        <?php foreach ($devices as $device): ?><tr><td><strong><?= admin_escape($device['public_device_code'] ?: '------') ?></strong><small><?= admin_escape($device['device_name'] ?: 'Android TV') ?> · <?= admin_escape($device['device_id']) ?></small></td><td><?= admin_escape($device['app_version'] ?: '-') ?><small><?= admin_escape($device['platform'] ?: 'android_tv') ?></small></td><td><span class="admin-state <?= admin_escape($device['status']) ?>"><?= admin_escape($device['status']) ?></span><small>Licence <?= admin_escape($device['license_status'] ?: '-') ?> · Essai <?= admin_escape($device['trial_status'] ?: '-') ?> · Pub <?= admin_escape($device['free_with_ads_status'] ?: '-') ?></small></td><td><?= (int) $device['playlist_configured'] === 1 ? 'Configuree' : 'Absente' ?><small>Xtream <?= admin_escape($device['xtream_status'] ?: '-') ?></small></td><td><?= admin_escape($device['expires_at'] ?: '-') ?></td><td><?= admin_escape($device['last_seen_at'] ?: $device['first_seen_at'] ?: '-') ?></td><td class="admin-actions"><form method="post"><input type="hidden" name="redirect_page" value="devices"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_device_status"><input type="hidden" name="device_id" value="<?= admin_escape($device['device_id']) ?>"><input type="hidden" name="status" value="<?= $device['status'] === 'blocked' ? 'active' : 'blocked' ?>"><button class="admin-button compact secondary" type="submit"><?= $device['status'] === 'blocked' ? 'Debloquer' : 'Bloquer' ?></button></form><form method="post" class="extend-form"><input type="hidden" name="redirect_page" value="devices"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="extend_activation"><input type="hidden" name="device_id" value="<?= admin_escape($device['device_id']) ?>"><input name="days" type="number" min="1" max="3650" value="30" aria-label="Jours a ajouter"><button class="admin-button compact primary" type="submit">Prolonger</button></form></td></tr><?php endforeach; ?>
-        </tbody></table></div></section>
+        <section class="admin-panel" id="devices"><div class="admin-panel-heading"><div><h2>Appareils</h2><p><?= (int) $devicesPagination['total'] ?> appareil(s), tries par derniere activite decroissante.</p></div><form method="post" class="purge-form" data-confirm="Supprimer tous les appareils, sessions, activations et playlists ?"><input type="hidden" name="redirect_page" value="devices"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="purge_devices"><input name="confirmation" placeholder="PURGER" aria-label="Confirmation purge"><button class="admin-button danger" type="submit">Purger appareils</button></form></div><div class="admin-table-wrap"><table><thead><tr><th>Appareil</th><th>Etat</th><th>Licence</th><th>Xtream</th><th>Installation</th><th>Expiration</th><th>Derniere activite</th><th>Actions</th></tr></thead><tbody>
+        <?php if ($devices === []): ?><tr><td colspan="8" class="admin-empty">Aucun appareil.</td></tr><?php endif; ?>
+        <?php foreach ($devices as $device): admin_render_device_row($device); endforeach; ?>
+        </tbody></table></div><?= admin_render_pagination($devicesPagination, $page, $query) ?></section>
+        <?php endif; ?>
+
+        <?php if ($page === 'slides'): ?>
+        <section class="admin-panel" id="slides"><div class="admin-panel-heading"><div><h2>Slides publicitaires Home</h2><p>Images, textes et boutons exposes par l API /api/home_slides.php.</p></div></div><div class="slide-admin-grid">
+        <?php if ($slides === []): ?><p class="admin-empty">Aucun slide configure. Rejouez l installation SQL.</p><?php endif; ?>
+        <?php foreach ($slides as $slide): ?><form method="post" class="slide-card"><input type="hidden" name="redirect_page" value="slides"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="save_slide"><input type="hidden" name="slide_id" value="<?= (int) $slide['id'] ?>"><label>Ordre<input name="sort_order" type="number" min="0" max="9999" value="<?= (int) $slide['sort_order'] ?>"></label><label>Titre<input name="title" maxlength="120" value="<?= admin_escape($slide['title'] ?: '') ?>"></label><label>Sous-titre<textarea name="subtitle" maxlength="255"><?= admin_escape($slide['subtitle'] ?: '') ?></textarea></label><label>Bouton<input name="button_label" maxlength="60" value="<?= admin_escape($slide['button_label'] ?: '') ?>"></label><label>Route bouton<input name="button_route" maxlength="120" value="<?= admin_escape($slide['button_route'] ?: '') ?>"></label><label>Image URL<input name="image_url" maxlength="500" value="<?= admin_escape($slide['image_url'] ?: '') ?>"></label><label>Etat<select name="status"><option value="active"<?= $slide['status'] === 'active' ? ' selected' : '' ?>>Actif</option><option value="disabled"<?= $slide['status'] === 'disabled' ? ' selected' : '' ?>>Desactive</option></select></label><button class="admin-button primary" type="submit">Enregistrer le slide</button><small class="muted">MAJ <?= admin_escape($slide['updated_at'] ?: '-') ?></small></form><?php endforeach; ?>
+        </div></section>
         <?php endif; ?>
 
         <?php if ($page === 'audit'): ?>
@@ -565,11 +712,50 @@ function render_admin_dashboard(
         <?php endif; ?>
     </main>
 </div>
-<script src="/assets/admin.js?v=2" defer></script>
+<script src="/assets/admin.js?v=3" defer></script>
 </body></html><?php
 }
 
 function admin_kpi(string $label, mixed $value, string $tone): string
 {
     return '<div class="admin-kpi ' . admin_escape($tone) . '"><span>' . admin_escape($label) . '</span><strong>' . admin_escape((string) $value) . '</strong></div>';
+}
+
+function admin_render_pagination(array $pagination, string $page, string $query): string
+{
+    $totalPages = (int) ($pagination['pages'] ?? 1);
+    if ($totalPages <= 1) {
+        return '';
+    }
+    $current = (int) ($pagination['page'] ?? 1);
+    $param = (string) ($pagination['param'] ?? 'list_page');
+    $html = '<nav class="admin-pagination" aria-label="Pagination"><span>Page ' . $current . ' / ' . $totalPages . '</span>';
+    for ($index = 1; $index <= $totalPages; $index++) {
+        if ($index > 1 && $index < $totalPages && abs($index - $current) > 2) {
+            if ($index === 2 || $index === $totalPages - 1) {
+                $html .= '<span class="muted">...</span>';
+            }
+            continue;
+        }
+        $url = '/admin/?page=' . rawurlencode($page) . '&' . rawurlencode($param) . '=' . $index;
+        if ($query !== '') {
+            $url .= '&q=' . rawurlencode($query);
+        }
+        $html .= '<a class="' . ($index === $current ? 'active' : '') . '" href="' . admin_escape($url) . '">' . $index . '</a>';
+    }
+    return $html . '</nav>';
+}
+
+function admin_render_device_row(array $device): void
+{
+    ?><tr>
+        <td><strong><?= admin_escape($device['public_device_code'] ?: '------') ?></strong><small><?= admin_escape($device['device_name'] ?: 'Android TV') ?> - <?= admin_escape($device['device_id']) ?></small><small><?= admin_escape($device['platform'] ?: 'android_tv') ?> <?= admin_escape($device['app_version'] ?: '') ?></small></td>
+        <td><span class="admin-state <?= admin_escape($device['status']) ?>"><?= admin_escape($device['status']) ?></span><small>Pays <?= admin_escape($device['country_code'] ?: 'N/D') ?> - UA <?= admin_escape($device['last_user_agent'] ? 'present' : '-') ?></small></td>
+        <td><strong><?= admin_escape($device['activation_type'] ?: '-') ?></strong><small>Code <?= admin_escape($device['activation_code'] ?: '-') ?></small><small>Licence <?= admin_escape($device['license_status'] ?: '-') ?> - Essai <?= admin_escape($device['trial_status'] ?: '-') ?> - Pub <?= admin_escape($device['free_with_ads_status'] ?: '-') ?></small></td>
+        <td><?= (int) $device['playlist_configured'] === 1 ? 'Configuree' : 'Absente' ?><small>Xtream <?= admin_escape($device['xtream_status'] ?: '-') ?></small></td>
+        <td><?= admin_escape($device['first_seen_at'] ?: $device['created_at'] ?: '-') ?><small>Active le <?= admin_escape($device['activated_at'] ?: '-') ?></small></td>
+        <td><?= admin_escape($device['expires_at'] ?: '-') ?><small>Duree <?= admin_escape((string) ($device['duration_days'] ?: '-')) ?> jours</small></td>
+        <td><?= admin_escape($device['last_seen_at'] ?: $device['first_seen_at'] ?: '-') ?><small>IP inst. <?= admin_escape($device['install_ip_hash'] ? substr((string) $device['install_ip_hash'], 0, 8) : '-') ?> - IP der. <?= admin_escape($device['last_ip_hash'] ? substr((string) $device['last_ip_hash'], 0, 8) : '-') ?></small></td>
+        <td class="admin-actions"><form method="post"><input type="hidden" name="redirect_page" value="devices"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_device_status"><input type="hidden" name="device_id" value="<?= admin_escape($device['device_id']) ?>"><input type="hidden" name="status" value="<?= $device['status'] === 'blocked' ? 'active' : 'blocked' ?>"><button class="admin-button compact secondary" type="submit"><?= $device['status'] === 'blocked' ? 'Debloquer' : 'Bloquer' ?></button></form><form method="post" class="extend-form"><input type="hidden" name="redirect_page" value="devices"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="extend_activation"><input type="hidden" name="device_id" value="<?= admin_escape($device['device_id']) ?>"><input name="days" type="number" min="1" max="3650" value="30" aria-label="Jours a ajouter"><button class="admin-button compact primary" type="submit">Prolonger</button></form></td>
+    </tr><?php
 }

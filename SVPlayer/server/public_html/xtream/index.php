@@ -31,9 +31,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     } else {
         try {
             $pdo = db();
-            $deviceLookup = $pdo->prepare('SELECT device_id FROM devices WHERE public_device_code = :public_code LIMIT 1');
+            $deviceLookup = $pdo->prepare('SELECT device_id, trial_status FROM devices WHERE public_device_code = :public_code LIMIT 1');
             $deviceLookup->execute(['public_code' => $publicDeviceCode]);
-            $deviceId = clean_device_id($deviceLookup->fetchColumn() ?: null);
+            $device = $deviceLookup->fetch();
+            $deviceId = clean_device_id(is_array($device) ? ($device['device_id'] ?? null) : null);
             if ($deviceId === '') {
                 throw new RuntimeException('Device not found.');
             }
@@ -60,7 +61,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                  LIMIT 1"
             );
             $activationQuery->execute(['device_id' => $deviceId]);
-            if ($activationQuery->fetchColumn() === false) {
+            $hasActivation = $activationQuery->fetchColumn() !== false;
+            $hasPendingTrial = is_array($device) && ($device['trial_status'] ?? '') === 'pending_xtream';
+            if (!$hasActivation && !$hasPendingTrial) {
                 throw new RuntimeException('Device inactive.');
             }
 
@@ -75,6 +78,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                  ON DUPLICATE KEY UPDATE encrypted_payload = VALUES(encrypted_payload), delivered_at = NULL, updated_at = NOW()"
             );
             $upsert->execute(['device_id' => $deviceId, 'payload' => $encrypted]);
+            if (!$hasActivation && $hasPendingTrial) {
+                create_trial_activation($pdo, $deviceId, $publicDeviceCode);
+            }
             $pdo->prepare("UPDATE devices SET xtream_status = 'configured', updated_at = NOW() WHERE device_id = :device_id")
                 ->execute(['device_id' => $deviceId]);
             $success = true;
@@ -91,12 +97,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Configuration Xtream SmartVision</title>
-    <link rel="stylesheet" href="/assets/site.css?v=2">
+    <link rel="stylesheet" href="/assets/site.css?v=3">
 </head>
 <body class="activation-page">
 <main class="activation-shell">
     <a class="brand activation-brand" href="/">
-        <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png" alt="SmartVision IPTV Player">
+        <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player">
     </a>
 
     <section class="activation-card">

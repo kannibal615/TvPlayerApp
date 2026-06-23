@@ -9,3 +9,153 @@
     width: 210px;
     max-height: 58px;
 }
+
+.generated-license-list {
+    align-items: flex-start;
+}
+
+.generated-code-grid {
+    display: grid;
+    grid-template-columns: minmax(140px, auto) auto;
+    gap: 8px 10px;
+    margin-top: 8px;
+}
+
+.license-code {
+    font-family: Consolas, "SFMono-Regular", monospace;
+    letter-spacing: 1.4px;
+}
+
+.admin-state.trial,
+.admin-state.pending_xtream {
+    background: #3a2e11;
+    color: #f4cd6a;
+}
+
+.admin-state.paid {
+    background: #123c2c;
+    color: #78eab0;
+}
+
+.admin-state.free,
+.admin-state.manual,
+.admin-state.promo {
+    background: #172e54;
+    color: #95c6ff;
+}
+
+.generate-code-form-wide {
+    grid-template-columns: 1.4fr .9fr .8fr .7fr .7fr .9fr auto;
+}
+
+.generate-code-form select,
+.slide-card select,
+.slide-card input,
+.slide-card textarea,
+.purge-form input {
+    border: 1px solid #30445e;
+    border-radius: 5px;
+    outline: none;
+    background: #050d18;
+    color: #fff;
+}
+
+.generate-code-form select {
+    height: 38px;
+    padding: 0 10px;
+}
+
+.admin-pagination {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    border-top: 1px solid #1b2a3e;
+}
+
+.admin-pagination a,
+.admin-pagination span {
+    min-width: 32px;
+    min-height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 9px;
+    border: 1px solid #2b405d;
+    border-radius: 5px;
+    color: #cbd7e7;
+}
+
+.admin-pagination span:first-child {
+    width: auto;
+    border: 0;
+    color: #8fa0b6;
+}
+
+.admin-pagination a.active {
+    border-color: #19c9ef;
+    background: #0d438c;
+    color: #fff;
+}
+
+.purge-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.purge-form input {
+    width: 96px;
+    height: 34px;
+    padding: 0 9px;
+}
+
+.slide-admin-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    padding: 16px;
+}
+
+.slide-card {
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid #203149;
+    border-radius: 7px;
+    background: #0b1828;
+}
+
+.slide-card label {
+    display: grid;
+    gap: 6px;
+    color: #aebdce;
+    font-size: 11px;
+}
+
+.slide-card input,
+.slide-card select {
+    height: 36px;
+    padding: 0 10px;
+}
+
+.slide-card textarea {
+    min-height: 76px;
+    resize: vertical;
+    padding: 9px 10px;
+}
+
+@media (max-width: 1250px) {
+    .generate-code-form-wide,
+    .slide-admin-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 760px) {
+    .generate-code-form-wide,
+    .slide-admin-grid,
+    .generated-code-grid {
+        grid-template-columns: 1fr;
+    }
+}

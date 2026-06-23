@@ -42,35 +42,25 @@ try {
         json_response(['success' => false, 'error' => 'L essai gratuit a deja ete utilise sur cet appareil.'], 409);
     }
 
-    $durationDays = max(1, (int) get_setting($pdo, 'trial_duration_days', '7'));
-    $expiresAt = (new DateTimeImmutable('now', new DateTimeZone('UTC')))
-        ->modify('+' . $durationDays . ' days')
-        ->format('Y-m-d H:i:s');
-
-    $pdo->prepare("UPDATE device_activations SET status = 'expired' WHERE device_id = :device_id AND status = 'active'")
-        ->execute(['device_id' => $deviceId]);
-    $insert = $pdo->prepare(
-        "INSERT INTO device_activations
-            (device_id, activation_code_id, activation_type, status, starts_at, expires_at, created_at)
-         VALUES (:device_id, NULL, 'trial_demo', 'active', NOW(), :expires_at, NOW())"
-    );
-    $insert->execute(['device_id' => $deviceId, 'expires_at' => $expiresAt]);
     $pdo->prepare("UPDATE activation_sessions SET status = 'validated', validated_at = NOW() WHERE id = :id")
         ->execute(['id' => $session['id']]);
     $deviceUpdate = $pdo->prepare(
-        "UPDATE devices SET status = 'active', activated_at = COALESCE(activated_at, NOW()),
-         expires_at = :expires_at, last_seen_at = NOW(), updated_at = NOW() WHERE device_id = :device_id"
+        "UPDATE devices
+         SET status = 'active',
+             trial_status = 'pending_xtream',
+             last_seen_at = NOW(),
+             updated_at = NOW()
+         WHERE device_id = :device_id"
     );
-    $deviceUpdate->execute(['device_id' => $deviceId, 'expires_at' => $expiresAt]);
+    $deviceUpdate->execute(['device_id' => $deviceId]);
     $pdo->commit();
 
     json_response([
         'success' => true,
         'status' => 'active',
         'activated' => true,
-        'activation_type' => 'trial_demo',
-        'expires_at' => $expiresAt,
-        'trial_days' => $durationDays,
+        'activation_type' => 'trial_pending_xtream',
+        'trialStatus' => 'pending_xtream',
     ]);
 } catch (Throwable $exception) {
     if ($pdo->inTransaction()) {

@@ -207,14 +207,14 @@ $selectedPlan = commerce_plan($planKey);
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Gerez vos licences, commandes et activations SmartVision.">
     <title><?= $user ? 'Mon compte' : 'Creer mon compte' ?> | SmartVision</title>
-    <link rel="stylesheet" href="/assets/site.css?v=2">
-    <link rel="stylesheet" href="/assets/account.css?v=2">
-    <link rel="stylesheet" href="/assets/mobile.css?v=2">
+    <link rel="stylesheet" href="/assets/site.css?v=3">
+    <link rel="stylesheet" href="/assets/account.css?v=3">
+    <link rel="stylesheet" href="/assets/mobile.css?v=3">
 </head>
 <body class="account-page">
 <header class="site-header account-header">
     <a class="brand" href="/" aria-label="SmartVision, accueil">
-        <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png" alt="SmartVision IPTV Player">
+        <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player">
     </a>
     <nav aria-label="Navigation compte">
         <a href="/">Accueil</a>
@@ -362,6 +362,6 @@ $selectedPlan = commerce_plan($planKey);
 <?php endif; ?>
 
 <footer class="account-footer"><p>&copy; <?= date('Y') ?> SmartVision. Lecteur IPTV sans contenu inclus.</p><div><a href="/">Accueil</a><a href="/activate/">Activation</a><a href="/download.php">Telecharger</a></div></footer>
-<script src="/assets/account.js?v=2" defer></script>
+<script src="/assets/account.js?v=3" defer></script>
 </body>
 </html>

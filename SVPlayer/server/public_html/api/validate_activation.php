@@ -179,12 +179,22 @@ try {
     );
     $consumeCode->execute(['code_id' => $code['id']]);
 
+    $publicCodeQuery = $pdo->prepare('SELECT public_device_code FROM devices WHERE device_id = :device_id LIMIT 1');
+    $publicCodeQuery->execute(['device_id' => $deviceId]);
+    $publicCode = clean_public_device_code($publicCodeQuery->fetchColumn() ?: null);
+
     $markCodeUsed = $pdo->prepare(
         "UPDATE activation_code_metadata
-         SET last_used_at = NOW()
+         SET last_used_at = NOW(),
+             assigned_device_id = :device_id,
+             assigned_public_device_code = :public_code
          WHERE code_id = :code_id"
     );
-    $markCodeUsed->execute(['code_id' => $code['id']]);
+    $markCodeUsed->execute([
+        'code_id' => $code['id'],
+        'device_id' => $deviceId,
+        'public_code' => $publicCode ?: null,
+    ]);
 
     mark_activation_validated($pdo, (int) $session['id'], $deviceId, $expiresAt);
     $pdo->commit();

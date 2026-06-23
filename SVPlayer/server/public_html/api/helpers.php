@@ -119,6 +119,23 @@ function activation_code_hash(string $normalizedCode): string
     return hash('sha256', $normalizedCode);
 }
 
+function request_country_code(): ?string
+{
+    $country = strtoupper(preg_replace('/[^A-Z]/', '', (string) ($_SERVER['HTTP_CF_IPCOUNTRY'] ?? '')));
+
+    return $country === '' ? null : substr($country, 0, 8);
+}
+
+function request_ip_hash(): ?string
+{
+    $ip = trim((string) ($_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? ''));
+    if (str_contains($ip, ',')) {
+        $ip = trim(explode(',', $ip)[0]);
+    }
+
+    return $ip === '' ? null : hash('sha256', $ip);
+}
+
 function clean_optional_text(mixed $value, int $maxLength): ?string
 {
     $text = trim((string) $value);
@@ -252,6 +269,150 @@ function decrypt_private_value(?string $payload): ?string
     );
 
     return $plainText === false ? null : $plainText;
+}
+
+function create_activation_code_record(
+    PDO $pdo,
+    string $label,
+    int $durationDays,
+    int $maxDevices,
+    string $licenseType,
+    ?string $validUntil,
+    string $createdBy,
+    ?string $assignedDeviceId = null,
+    ?string $assignedPublicDeviceCode = null,
+): array {
+    $licenseType = in_array($licenseType, ['paid', 'trial', 'free', 'manual', 'promo'], true)
+        ? $licenseType
+        : 'manual';
+    $durationDays = max(1, min(36500, $durationDays));
+    $maxDevices = max(1, min(1000, $maxDevices));
+    $label = smartvision_text_substr(trim($label), 0, 100);
+    $assignedDeviceId = $assignedDeviceId === null ? null : clean_device_id($assignedDeviceId);
+    $assignedPublicDeviceCode = $assignedPublicDeviceCode === null ? null : clean_public_device_code($assignedPublicDeviceCode);
+
+    for ($attempt = 0; $attempt < 16; $attempt++) {
+        $plainCode = generate_public_activation_code();
+        try {
+            $statement = $pdo->prepare(
+                "INSERT INTO activation_codes
+                    (code_hash, label, duration_days, max_devices, used_devices, license_type, status, valid_until, created_at, updated_at)
+                 VALUES
+                    (:code_hash, :label, :duration_days, :max_devices, 0, :license_type, 'active', :valid_until, NOW(), NOW())"
+            );
+            $statement->execute([
+                'code_hash' => activation_code_hash(normalize_activation_code($plainCode)),
+                'label' => $label === '' ? null : $label,
+                'duration_days' => $durationDays,
+                'max_devices' => $maxDevices,
+                'license_type' => $licenseType,
+                'valid_until' => $validUntil,
+            ]);
+            $codeId = (int) $pdo->lastInsertId();
+            $metadata = $pdo->prepare(
+                "INSERT INTO activation_code_metadata
+                    (code_id, code_hint, created_by, last_used_at, code_ciphertext, assigned_device_id, assigned_public_device_code)
+                 VALUES
+                    (:code_id, :code_hint, :created_by, NULL, :code_ciphertext, :assigned_device_id, :assigned_public_device_code)"
+            );
+            $metadata->execute([
+                'code_id' => $codeId,
+                'code_hint' => $plainCode,
+                'created_by' => smartvision_text_substr($createdBy, 0, 100),
+                'code_ciphertext' => encrypt_private_value($plainCode),
+                'assigned_device_id' => $assignedDeviceId ?: null,
+                'assigned_public_device_code' => $assignedPublicDeviceCode ?: null,
+            ]);
+
+            return ['id' => $codeId, 'code' => $plainCode];
+        } catch (Throwable $exception) {
+            if (!is_duplicate_key($exception)) {
+                throw $exception;
+            }
+        }
+    }
+
+    throw new RuntimeException('Unable to create activation code.');
+}
+
+function create_trial_activation(PDO $pdo, string $deviceId, string $publicDeviceCode = ''): array
+{
+    $deviceId = clean_device_id($deviceId);
+    $publicDeviceCode = clean_public_device_code($publicDeviceCode);
+    if ($deviceId === '') {
+        throw new InvalidArgumentException('Device id missing.');
+    }
+
+    $existing = $pdo->prepare(
+        "SELECT id, status, expires_at
+         FROM device_activations
+         WHERE device_id = :device_id AND activation_type = 'trial_demo'
+         ORDER BY id DESC LIMIT 1"
+    );
+    $existing->execute(['device_id' => $deviceId]);
+    $trial = $existing->fetch();
+    if (is_array($trial)) {
+        if (($trial['status'] ?? '') === 'active' && strtotime((string) $trial['expires_at']) > time()) {
+            return [
+                'code_id' => null,
+                'code' => null,
+                'expires_at' => (string) $trial['expires_at'],
+                'already_active' => true,
+            ];
+        }
+        throw new RuntimeException('Trial already used.');
+    }
+
+    $durationDays = max(1, (int) get_setting($pdo, 'trial_duration_days', '7'));
+    $expiresAt = (new DateTimeImmutable('now', new DateTimeZone('UTC')))
+        ->modify('+' . $durationDays . ' days')
+        ->format('Y-m-d H:i:s');
+    $created = create_activation_code_record(
+        $pdo,
+        'Essai gratuit ' . ($publicDeviceCode !== '' ? $publicDeviceCode : $deviceId),
+        $durationDays,
+        1,
+        'trial',
+        null,
+        'system:trial',
+        $deviceId,
+        $publicDeviceCode,
+    );
+
+    $pdo->prepare("UPDATE device_activations SET status = 'expired' WHERE device_id = :device_id AND status = 'active'")
+        ->execute(['device_id' => $deviceId]);
+
+    $insert = $pdo->prepare(
+        "INSERT INTO device_activations
+            (device_id, activation_code_id, activation_type, status, starts_at, expires_at, created_at)
+         VALUES
+            (:device_id, :activation_code_id, 'trial_demo', 'active', NOW(), :expires_at, NOW())"
+    );
+    $insert->execute([
+        'device_id' => $deviceId,
+        'activation_code_id' => $created['id'],
+        'expires_at' => $expiresAt,
+    ]);
+
+    $pdo->prepare(
+        "UPDATE activation_codes SET used_devices = used_devices + 1, updated_at = NOW() WHERE id = :id"
+    )->execute(['id' => $created['id']]);
+    $pdo->prepare(
+        "UPDATE activation_code_metadata
+         SET last_used_at = NOW(), assigned_device_id = :device_id, assigned_public_device_code = :public_code
+         WHERE code_id = :id"
+    )->execute([
+        'id' => $created['id'],
+        'device_id' => $deviceId,
+        'public_code' => $publicDeviceCode ?: null,
+    ]);
+
+    return [
+        'code_id' => $created['id'],
+        'code' => $created['code'],
+        'expires_at' => $expiresAt,
+        'already_active' => false,
+    ];
 }
 
 function decrypt_playlist_config(string $payload): ?array

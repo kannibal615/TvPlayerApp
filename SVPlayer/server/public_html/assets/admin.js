@@ -19,4 +19,18 @@
             }
         });
     });
+
+    document.querySelectorAll('[data-license-generator]').forEach((form) => {
+        const durationInput = form.querySelector('[data-duration-days]');
+        const validUntilInput = form.querySelector('[data-valid-until]');
+        const syncValidUntil = () => {
+            if (!durationInput || !validUntilInput) return;
+            const days = Number.parseInt(durationInput.value || '0', 10);
+            if (!Number.isFinite(days) || days < 1) return;
+            const date = new Date();
+            date.setDate(date.getDate() + days);
+            validUntilInput.value = date.toISOString().slice(0, 10);
+        };
+        durationInput?.addEventListener('input', syncValidUntil);
+    });
 })();

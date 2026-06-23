@@ -8,9 +8,13 @@ CREATE TABLE IF NOT EXISTS devices (
     app_version VARCHAR(50) NULL,
     status ENUM('pending', 'active', 'expired', 'blocked') DEFAULT 'pending',
     license_status ENUM('inactive', 'active', 'expired', 'blocked') DEFAULT 'inactive',
-    trial_status ENUM('available', 'active', 'expired', 'used') DEFAULT 'available',
+    trial_status ENUM('available', 'pending_xtream', 'active', 'expired', 'used') DEFAULT 'available',
     free_with_ads_status ENUM('inactive', 'active') DEFAULT 'inactive',
     xtream_status ENUM('missing', 'configured', 'invalid') DEFAULT 'missing',
+    country_code VARCHAR(8) NULL,
+    install_ip_hash CHAR(64) NULL,
+    last_ip_hash CHAR(64) NULL,
+    last_user_agent VARCHAR(255) NULL,
     first_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_seen_at DATETIME NULL,
     activated_at DATETIME NULL,
@@ -22,9 +26,14 @@ CREATE TABLE IF NOT EXISTS devices (
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS device_fingerprint_hash CHAR(64) NULL UNIQUE AFTER device_id;
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS public_device_code VARCHAR(6) NULL UNIQUE AFTER device_fingerprint_hash;
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS license_status ENUM('inactive', 'active', 'expired', 'blocked') DEFAULT 'inactive' AFTER status;
-ALTER TABLE devices ADD COLUMN IF NOT EXISTS trial_status ENUM('available', 'active', 'expired', 'used') DEFAULT 'available' AFTER license_status;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS trial_status ENUM('available', 'pending_xtream', 'active', 'expired', 'used') DEFAULT 'available' AFTER license_status;
+ALTER TABLE devices MODIFY trial_status ENUM('available', 'pending_xtream', 'active', 'expired', 'used') DEFAULT 'available';
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS free_with_ads_status ENUM('inactive', 'active') DEFAULT 'inactive' AFTER trial_status;
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS xtream_status ENUM('missing', 'configured', 'invalid') DEFAULT 'missing' AFTER free_with_ads_status;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS country_code VARCHAR(8) NULL AFTER xtream_status;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS install_ip_hash CHAR(64) NULL AFTER country_code;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_ip_hash CHAR(64) NULL AFTER install_ip_hash;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_user_agent VARCHAR(255) NULL AFTER last_ip_hash;
 
 CREATE TABLE IF NOT EXISTS activation_sessions (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -56,6 +65,7 @@ CREATE TABLE IF NOT EXISTS activation_codes (
     duration_days INT UNSIGNED NOT NULL DEFAULT 365,
     max_devices INT UNSIGNED NOT NULL DEFAULT 1,
     used_devices INT UNSIGNED NOT NULL DEFAULT 0,
+    license_type ENUM('paid', 'trial', 'free', 'manual', 'promo') NOT NULL DEFAULT 'manual',
     status ENUM('active', 'disabled', 'expired') DEFAULT 'active',
     valid_until DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -68,10 +78,18 @@ CREATE TABLE IF NOT EXISTS activation_code_metadata (
     code_hint VARCHAR(32) NULL,
     created_by VARCHAR(100) NULL,
     last_used_at DATETIME NULL,
+    code_ciphertext LONGTEXT NULL,
+    assigned_device_id VARCHAR(100) NULL,
+    assigned_public_device_code VARCHAR(6) NULL,
     CONSTRAINT fk_activation_code_metadata_code
         FOREIGN KEY (code_id) REFERENCES activation_codes(id)
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE activation_codes ADD COLUMN IF NOT EXISTS license_type ENUM('paid', 'trial', 'free', 'manual', 'promo') NOT NULL DEFAULT 'manual' AFTER used_devices;
+ALTER TABLE activation_code_metadata ADD COLUMN IF NOT EXISTS code_ciphertext LONGTEXT NULL AFTER last_used_at;
+ALTER TABLE activation_code_metadata ADD COLUMN IF NOT EXISTS assigned_device_id VARCHAR(100) NULL AFTER code_ciphertext;
+ALTER TABLE activation_code_metadata ADD COLUMN IF NOT EXISTS assigned_public_device_code VARCHAR(6) NULL AFTER assigned_device_id;
 
 CREATE TABLE IF NOT EXISTS admin_audit_logs (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -173,6 +191,26 @@ CREATE TABLE IF NOT EXISTS app_settings (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS home_slider_ads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sort_order INT NOT NULL DEFAULT 0,
+    title VARCHAR(120) NOT NULL,
+    subtitle VARCHAR(255) NULL,
+    button_label VARCHAR(60) NULL,
+    button_route VARCHAR(120) NULL,
+    image_url VARCHAR(500) NULL,
+    status ENUM('active', 'disabled') NOT NULL DEFAULT 'active',
+    starts_at DATETIME NULL,
+    ends_at DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (status),
+    INDEX (sort_order),
+    UNIQUE KEY uq_home_slider_ads_sort (sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE home_slider_ads ADD UNIQUE INDEX IF NOT EXISTS uq_home_slider_ads_sort (sort_order);
+
 INSERT INTO app_settings (setting_key, setting_value) VALUES
 ('trial_duration_days', '7'),
 ('activation_session_minutes', '15'),
@@ -181,3 +219,9 @@ INSERT INTO app_settings (setting_key, setting_value) VALUES
 ('payment_mode', 'test'),
 ('support_email', 'support@smartvisions.net')
 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
+
+INSERT INTO home_slider_ads (sort_order, title, subtitle, button_label, button_route, image_url, status) VALUES
+(10, 'Bienvenue sur SmartVision', 'Une experience IPTV fluide, premium et pensee pour Android TV.', 'En savoir plus', 'live_tv', '/assets/images/app-live-tv.png', 'active'),
+(20, 'Live TV instantanee', 'Retrouvez vos chaines en direct avec une navigation simple a la telecommande.', 'Voir Live TV', 'live_tv', '/assets/images/app-live-tv.png', 'active'),
+(30, 'Films et series', 'Explorez vos catalogues Xtream avec affiches, details et reprise de lecture.', 'Explorer', 'movies', '/assets/images/app-movies.png', 'active')
+ON DUPLICATE KEY UPDATE title = VALUES(title);

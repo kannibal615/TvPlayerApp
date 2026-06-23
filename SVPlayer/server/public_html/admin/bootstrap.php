@@ -158,7 +158,7 @@ function audit_admin_action(
 
 function generate_smartvision_code(): string
 {
-    return 'SV-' . generate_short_code(4) . '-' . generate_short_code(4) . '-' . generate_short_code(4);
+    return generate_public_activation_code();
 }
 
 function admin_redirect(): never

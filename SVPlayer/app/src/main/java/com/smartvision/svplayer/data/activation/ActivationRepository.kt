@@ -275,6 +275,18 @@ class ActivationRepository(
         return persistStatusResponse(response, "Essai gratuit refuse.")
     }
 
+    suspend fun finalizeTrialAfterPlaylistConfigured(): RemoteActivationStatus {
+        val device = currentDeviceAccess()
+        val response = api.startTrial(
+            DeviceAccessRequest(
+                deviceId = device.deviceId,
+                publicDeviceCode = device.publicDeviceCode,
+                playlistConfigured = true,
+            ),
+        )
+        return persistStatusResponse(response, "Finalisation de l essai refusee.")
+    }
+
     suspend fun enableFreeWithAds(): RemoteActivationStatus {
         val device = currentDeviceAccess()
         val response = api.enableFreeWithAds(

@@ -13,13 +13,13 @@ header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-sr
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="SmartVision est un lecteur IPTV premium pour Android TV. Activez votre appareil, ajoutez vos identifiants Xtream et profitez de votre propre abonnement.">
     <title>SmartVision IPTV Player</title>
-    <link rel="stylesheet" href="/assets/site.css?v=2">
-    <link rel="stylesheet" href="/assets/mobile.css?v=2">
+    <link rel="stylesheet" href="/assets/site.css?v=3">
+    <link rel="stylesheet" href="/assets/mobile.css?v=3">
 </head>
 <body>
 <header class="site-header">
     <a class="brand" href="#top" aria-label="SmartVision, accueil">
-        <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png" alt="SmartVision IPTV Player">
+        <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player">
     </a>
     <nav aria-label="Navigation principale">
         <a href="#fonctionnalites">Fonctionnalités</a>
@@ -136,7 +136,7 @@ header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-sr
 
 <footer>
     <a class="brand footer-brand" href="#top">
-        <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png" alt="SmartVision IPTV Player">
+        <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player">
     </a>
     <p>© <?= date('Y') ?> SmartVision. Lecteur IPTV pour Android TV.</p>
     <div><a href="/account/">Mon compte</a><a href="/activate/">Activation</a><a href="https://smartvisions.net">Support</a><a href="/admin/">Administration</a></div>

@@ -115,9 +115,15 @@ try {
 
     $pdo->prepare(
         "UPDATE activation_code_metadata
-         SET last_used_at = NOW()
+         SET last_used_at = NOW(),
+             assigned_device_id = :device_id,
+             assigned_public_device_code = :public_code
          WHERE code_id = :id"
-    )->execute(['id' => $code['id']]);
+    )->execute([
+        'id' => $code['id'],
+        'device_id' => $deviceId,
+        'public_code' => $publicCode,
+    ]);
 
     $pdo->commit();
 

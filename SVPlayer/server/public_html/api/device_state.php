@@ -4,7 +4,7 @@ declare(strict_types=1);
 function smartvision_device_state(PDO $pdo, string $deviceId): array
 {
     $deviceQuery = $pdo->prepare(
-        'SELECT device_id, public_device_code, status
+        'SELECT device_id, public_device_code, status, trial_status
          FROM devices
          WHERE device_id = :device_id
          LIMIT 1'
@@ -89,7 +89,7 @@ function smartvision_device_state(PDO $pdo, string $deviceId): array
     $activationType = null;
     $expiresAt = null;
     $licenseStatus = 'inactive';
-    $trialStatus = 'available';
+    $trialStatus = (($device['trial_status'] ?? '') === 'pending_xtream') ? 'pending_xtream' : 'available';
     $freeWithAdsStatus = 'inactive';
 
     if (is_array($trial)) {
@@ -113,6 +113,10 @@ function smartvision_device_state(PDO $pdo, string $deviceId): array
         } elseif ($activationType === 'free_ads') {
             $freeWithAdsStatus = 'active';
         }
+    } elseif ($trialStatus === 'pending_xtream') {
+        $status = 'active';
+        $activated = true;
+        $activationType = 'trial_pending_xtream';
     } elseif ($trialStatus === 'expired') {
         $status = 'expired';
     }
