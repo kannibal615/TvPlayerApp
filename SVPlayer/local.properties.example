@@ -2,6 +2,7 @@ sdk.dir=C\:\\Users\\ONEDEV\\AppData\\Local\\Android\\Sdk
 XTREAM_HOST=https://example.com
 XTREAM_USERNAME=debug-user
 XTREAM_PASSWORD=debug-password
+DOMAINE_SERVER=smartvisions.net
 
 # Publicite video release (laisser vide pour desactiver les pubs en release).
 GOOGLE_ADS_APPLICATION_ID=

@@ -4,7 +4,7 @@ declare(strict_types=1);
 function apply_api_headers(): void
 {
     $allowedOrigins = [
-        'https://app.smartvisions.net',
+        'https://smartvisions.net',
     ];
 
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';

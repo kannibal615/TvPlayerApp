@@ -150,5 +150,5 @@ class AppContainer(context: Context) {
     val savePlaybackProgress = SavePlaybackProgressUseCase(catalogRepository)
 
     private fun activationBaseUrl(): String =
-        BuildConfig.ACTIVATION_BASE_URL.ifBlank { "https://app.smartvisions.net/" }
+        BuildConfig.ACTIVATION_BASE_URL.ifBlank { "https://smartvisions.net/" }
 }

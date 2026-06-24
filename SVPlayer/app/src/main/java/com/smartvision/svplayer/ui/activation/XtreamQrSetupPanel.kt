@@ -292,7 +292,7 @@ fun XtreamQrSetupPanel(
                             }
                             Spacer(Modifier.height(18.dp))
                             Text(
-                                text = "Besoin d'aide ? Rendez-vous sur app.smartvisions.net",
+                                text = "Besoin d'aide ? Rendez-vous sur smartvisions.net",
                                 color = SmartVisionColors.TextSecondary.copy(alpha = 0.82f),
                                 style = SmartVisionType.Caption,
                             )
@@ -317,7 +317,7 @@ fun XtreamQrSetupPanel(
                             )
                             Spacer(Modifier.height(10.dp))
                             Text(
-                                text = "Scannez pour ouvrir app.smartvisions.net",
+                                text = "Scannez pour ouvrir smartvisions.net",
                                 color = SmartVisionColors.TextSecondary,
                                 style = SmartVisionType.Body,
                                 textAlign = TextAlign.Center,

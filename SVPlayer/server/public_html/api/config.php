@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 date_default_timezone_set('UTC');
 
-const SMARTVISION_PUBLIC_BASE_URL = 'https://app.smartvisions.net';
+const SMARTVISION_PUBLIC_BASE_URL = 'https://smartvisions.net';
 const SMARTVISION_PRIVATE_CONFIG = 'smartvision_private/config.php';
 
 function config_json_error(string $message, int $statusCode = 500): never

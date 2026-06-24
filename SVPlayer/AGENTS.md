@@ -29,7 +29,7 @@ TvPlayerApp/
 
 SVPlayer/
   app/                          Application Android TV
-  server/public_html/           Backend PHP/MySQL et site app.smartvisions.net
+  server/public_html/           Backend PHP/MySQL et site smartvisions.net
   scripts/deploy_activation_phase1.ps1
   design/                       Concepts et assets brand
   screenshots/codex/            Captures QA et arbres UI
@@ -83,7 +83,7 @@ series_detail/{seriesId}
 1. `SplashActivity` affiche le splash natif et ouvre `MainActivity`.
 2. `AppNavigation` cree `ActivationViewModel`.
 3. Si l'appareil n'est pas active, `ActivationScreen` affiche QR code et code court.
-4. L'utilisateur active sur `https://app.smartvisions.net/activate/`.
+4. L'utilisateur active sur `https://smartvisions.net/activate/`.
 5. L'app poll `device_status.php`.
 6. Quand l'appareil est actif, Home devient accessible.
 7. Si aucun compte Xtream n'est configure, les sections Live TV, Films et Series affichent un QR de configuration Xtream.
@@ -236,7 +236,7 @@ server/public_html/
 Domaine cible:
 
 ```text
-https://app.smartvisions.net
+https://smartvisions.net
 ```
 
 Endpoints importants:
@@ -346,10 +346,10 @@ que la mise a jour in-app soit detectee.
 Version release publiee le 2026-06-24:
 
 ```text
-versionName: 0.1.2
-versionCode: 5
-affichage: 0.1.2 (5)
-apk: https://app.smartvisions.net/downloads/smartvision-tv-v5-f5481bad.apk
+versionName: 0.1.3
+versionCode: 6
+affichage: 0.1.3 (6)
+apk: https://smartvisions.net/downloads/smartvision-tv-v6-4b488509.apk
 ```
 
 Si le JBR Android Studio local echoue, utiliser un JDK 21 externe ou portable et definir `JAVA_HOME`.

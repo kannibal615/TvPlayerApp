@@ -11,7 +11,7 @@ $legalPage = [
             'title' => 'Site',
             'items' => [
                 'Nom du site : SmartVision',
-                'Domaine : app.smartvisions.net',
+                'Domaine : smartvisions.net',
                 'Pays : France',
             ],
         ],
@@ -20,8 +20,8 @@ $legalPage = [
             'items' => [
                 'Éditeur : smartvisions',
                 'Responsable de publication : Alain COLIN',
-                'Email principal : <a class="text-link" href="mailto:contact%40app.smartvisions.net"><span>contact</span><span>@</span><span>app.smartvisions.net</span></a>',
-                'Email support : <a class="text-link" href="mailto:support%40app.smartvisions.net"><span>support</span><span>@</span><span>app.smartvisions.net</span></a>',
+                'Email principal : <a class="text-link" href="mailto:contact%40smartvisions.net"><span>contact</span><span>@</span><span>smartvisions.net</span></a>',
+                'Email support : <a class="text-link" href="mailto:support%40smartvisions.net"><span>support</span><span>@</span><span>smartvisions.net</span></a>',
             ],
         ],
         [

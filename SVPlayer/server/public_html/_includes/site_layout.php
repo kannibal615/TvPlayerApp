@@ -12,7 +12,7 @@ function sv_send_site_headers(string $frameAncestors = "'self'"): void
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: SAMEORIGIN');
     header('Referrer-Policy: strict-origin-when-cross-origin');
-    header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; frame-ancestors {$frameAncestors}; base-uri 'self'; form-action 'self'");
+    header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-src 'self' https://pagead2.googlesyndication.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; frame-ancestors {$frameAncestors}; base-uri 'self'; form-action 'self'");
 }
 
 function sv_render_site_header(): void
@@ -55,4 +55,3 @@ function sv_render_site_footer(string $class = ''): void
 </footer>
     <?php
 }
-

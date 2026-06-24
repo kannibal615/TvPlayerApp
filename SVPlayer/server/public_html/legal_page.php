@@ -17,6 +17,7 @@ sv_send_site_headers();
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="<?= sv_h((string) $page['description']) ?>">
     <title><?= sv_h((string) $page['title']) ?></title>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3376574358352765" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="/assets/site.css?v=3">
     <link rel="stylesheet" href="/assets/mobile.css?v=3">
 </head>
@@ -48,4 +49,3 @@ sv_send_site_headers();
 <?php sv_render_site_footer(); ?>
 </body>
 </html>
-

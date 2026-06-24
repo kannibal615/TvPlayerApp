@@ -27,7 +27,7 @@ fun localBoolean(name: String): Boolean =
     localString(name).equals("true", ignoreCase = true)
 
 fun activationBaseUrl(): String {
-    val configured = localString("DOMAINE_SERVER").ifBlank { "app.smartvisions.net" }
+    val configured = localString("DOMAINE_SERVER").ifBlank { "smartvisions.net" }
     val normalized = configured.trim().trimEnd('/')
     val withScheme = if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
         normalized
@@ -45,8 +45,8 @@ android {
         applicationId = "com.smartvision.svplayer"
         minSdk = 23
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.1.2"
+        versionCode = 6
+        versionName = "0.1.3"
 
         buildConfigField("String", "ACTIVATION_BASE_URL", buildConfigString(activationBaseUrl()))
     }

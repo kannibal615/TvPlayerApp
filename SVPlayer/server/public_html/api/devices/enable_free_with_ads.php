@@ -77,9 +77,7 @@ try {
         json_response(['success' => false, 'error' => 'Le mode gratuit sera disponible apres expiration de l essai ou de la licence.'], 403);
     }
 
-    $expiresAt = (new DateTimeImmutable('now', new DateTimeZone('UTC')))
-        ->modify('+36500 days')
-        ->format('Y-m-d H:i:s');
+    $expiresAt = smartvision_free_ads_expires_at();
     $insert = $pdo->prepare(
         "INSERT INTO device_activations
             (device_id, activation_code_id, activation_type, status, starts_at, expires_at, created_at)

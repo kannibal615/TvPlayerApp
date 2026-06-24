@@ -1018,6 +1018,7 @@ try {
     New-AdminBootstrapFile -OutputPath $adminBootstrapPath -Token $adminBootstrapToken
 
     Write-Host "Upload des fichiers PHP/SQL..."
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath (Join-Path $publicHtmlPath ".htaccess")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath (Join-Path $publicHtmlPath "index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath (Join-Path $publicHtmlPath "legal_page.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath (Join-Path $publicHtmlPath "download.php")

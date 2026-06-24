@@ -9,7 +9,7 @@ Ce document decrit l'etat fonctionnel et technique actuel du projet pour permett
 SmartVision est une application Android TV native qui lit les contenus Xtream configures par l'utilisateur. Le projet comprend:
 
 - une application Android TV Kotlin/Compose;
-- un backend PHP/MySQL deploye sur `https://app.smartvisions.net`;
+- un backend PHP/MySQL deploye sur `https://smartvisions.net`;
 - un site public de vente/activation;
 - un espace compte client;
 - un panel admin;
@@ -28,9 +28,9 @@ Activite principale: com.smartvision.svplayer/.MainActivity
 Min SDK: 23
 Compile SDK: 36
 Target SDK: 36
-Version actuelle: 0.1.2
-VersionCode actuel: 5
-Backend: https://app.smartvisions.net
+Version actuelle: 0.1.3
+VersionCode actuel: 6
+Backend: https://smartvisions.net
 ```
 
 ## Etat release connu
@@ -38,14 +38,14 @@ Backend: https://app.smartvisions.net
 Release compilee, signee, deployee et verifiee le 2026-06-24:
 
 ```text
-version_code: 5
-version_name: 0.1.2
-affichage: 0.1.2 (5)
-apk_file: smartvision-tv-v5-f5481bad.apk
-apk_url: https://app.smartvisions.net/downloads/smartvision-tv-v5-f5481bad.apk
-stable_url: https://app.smartvisions.net/downloads/smartvision-tv.apk
-sha256: f5481bad6768ce308c6938fbe1261dff5818622e441d9a952ec637f06d4a63eb
-size: 36496968
+version_code: 6
+version_name: 0.1.3
+affichage: 0.1.3 (6)
+apk_file: smartvision-tv-v6-4b488509.apk
+apk_url: https://smartvisions.net/downloads/smartvision-tv-v6-4b488509.apk
+stable_url: https://smartvisions.net/downloads/smartvision-tv.apk
+sha256: 4b4885095acb6a242fcd39a6496106715ee8097033eee8a2d6c57d4865da2358
+size: 39673855
 ```
 
 Le fichier versionne et l'URL stable ont ete telecharges avec succes apres deploiement.
@@ -54,7 +54,7 @@ Le SHA-256 distant correspond au SHA-256 de l'APK release local.
 Endpoint update verifie:
 
 ```text
-GET https://app.smartvisions.net/api/app_update.php?version_code=0&version_name=qa
+GET https://smartvisions.net/api/app_update.php?version_code=0&version_name=qa
 ```
 
 ## Etat Git actuel
@@ -145,9 +145,9 @@ app/build.gradle.kts
 Points importants:
 
 - `applicationId = "com.smartvision.svplayer"`
-- `versionCode = 5`
-- `versionName = "0.1.2"`
-- `BuildConfig.ACTIVATION_BASE_URL` vient de `DOMAINE_SERVER` dans `local.properties`, fallback `https://app.smartvisions.net/`.
+- `versionCode = 6`
+- `versionName = "0.1.3"`
+- `BuildConfig.ACTIVATION_BASE_URL` vient de `DOMAINE_SERVER` dans `local.properties`, fallback `https://smartvisions.net/`.
 - La signature release lit `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD` depuis `local.properties`.
 - `buildConfig = true`
 - `compose = true`
@@ -739,7 +739,7 @@ Input:
 {
   "device_id": "uuid",
   "device_name": "Android TV",
-  "app_version": "0.1.2"
+  "app_version": "0.1.3"
 }
 ```
 
@@ -1022,13 +1022,13 @@ Deployer site/backend/APK:
 Tester update:
 
 ```powershell
-Invoke-RestMethod 'https://app.smartvisions.net/api/app_update.php?version_code=0&version_name=qa'
+Invoke-RestMethod 'https://smartvisions.net/api/app_update.php?version_code=0&version_name=qa'
 ```
 
 Verifier APK serveur:
 
 ```powershell
-Invoke-WebRequest 'https://app.smartvisions.net/downloads/smartvision-tv.apk' -Method Head -UseBasicParsing
+Invoke-WebRequest 'https://smartvisions.net/downloads/smartvision-tv.apk' -Method Head -UseBasicParsing
 ```
 
 ## Definition de termine pour une tache

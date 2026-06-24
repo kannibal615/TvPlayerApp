@@ -578,6 +578,6 @@ private val headerTabs = listOf(
 )
 
 private fun activationPortalBaseUrl(): String =
-    BuildConfig.ACTIVATION_BASE_URL.ifBlank { "https://app.smartvisions.net/" }
+    BuildConfig.ACTIVATION_BASE_URL.ifBlank { "https://smartvisions.net/" }
         .trim()
         .trimEnd('/') + "/"

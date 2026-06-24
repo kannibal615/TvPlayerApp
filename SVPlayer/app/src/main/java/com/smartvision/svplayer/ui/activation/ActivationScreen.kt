@@ -345,7 +345,7 @@ private fun ActivationMainPanel(
                 }
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "Besoin d'aide ? Rendez-vous sur app.smartvisions.net/support",
+                    text = "Besoin d'aide ? Rendez-vous sur smartvisions.net/support",
                     color = SmartVisionColors.TextSecondary.copy(alpha = 0.82f),
                     style = SmartVisionType.Caption,
                 )

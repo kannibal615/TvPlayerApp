@@ -20,7 +20,7 @@ header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: strict-origin-when-cross-origin');
-header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; frame-ancestors 'self'; base-uri 'self'; form-action 'self'");
+header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-src 'self' https://pagead2.googlesyndication.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'");
 
 function account_escape(mixed $value): string
 {
@@ -207,6 +207,7 @@ $selectedPlan = commerce_plan($planKey);
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Gerez vos licences, commandes et activations SmartVision.">
     <title><?= $user ? 'Mon compte' : 'Creer mon compte' ?> | SmartVision</title>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3376574358352765" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="/assets/site.css?v=3">
     <link rel="stylesheet" href="/assets/account.css?v=3">
     <link rel="stylesheet" href="/assets/mobile.css?v=3">

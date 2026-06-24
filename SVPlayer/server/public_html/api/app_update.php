@@ -42,7 +42,7 @@ if ($apkFile === '' || !preg_match('/^[A-Za-z0-9._-]+\.apk$/', $apkFile)) {
 }
 $apkPath = '/downloads/' . $apkFile;
 $scheme = 'https';
-$host = preg_replace('/[^A-Za-z0-9.-]/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'app.smartvisions.net'));
+$host = preg_replace('/[^A-Za-z0-9.-]/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'smartvisions.net'));
 $apkUrl = $scheme . '://' . $host . $apkPath;
 
 json_response([

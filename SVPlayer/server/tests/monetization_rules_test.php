@@ -19,5 +19,10 @@ expect_same('keep_active', smartvision_free_ads_action('trial_demo', true), 'Ess
 expect_same('keep_active', smartvision_free_ads_action('free_ads', true), 'Activation gratuite idempotente');
 expect_same('enable', smartvision_free_ads_action(null, true), 'Gratuit apres expiration');
 expect_same('forbidden', smartvision_free_ads_action(null, false), 'Gratuit avant expiration refuse');
+expect_same(
+    '2026-06-25 12:30:00',
+    smartvision_free_ads_expires_at(new DateTimeImmutable('2026-06-24 12:30:00', new DateTimeZone('UTC'))),
+    'Gratuit avec pubs expire apres 24h'
+);
 
 fwrite(STDOUT, "Backend monetization rules: OK\n");

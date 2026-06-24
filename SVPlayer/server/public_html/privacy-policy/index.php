@@ -69,8 +69,8 @@ $legalPage = [
         [
             'title' => 'Contact',
             'paragraphs' => [
-                'Email principal : <a class="text-link" href="mailto:contact%40app.smartvisions.net"><span>contact</span><span>@</span><span>app.smartvisions.net</span></a>',
-                'Support : <a class="text-link" href="mailto:support%40app.smartvisions.net"><span>support</span><span>@</span><span>app.smartvisions.net</span></a>',
+                'Email principal : <a class="text-link" href="mailto:contact%40smartvisions.net"><span>contact</span><span>@</span><span>smartvisions.net</span></a>',
+                'Support : <a class="text-link" href="mailto:support%40smartvisions.net"><span>support</span><span>@</span><span>smartvisions.net</span></a>',
             ],
         ],
         [
