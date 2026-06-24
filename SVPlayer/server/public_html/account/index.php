@@ -361,7 +361,7 @@ $selectedPlan = commerce_plan($planKey);
 </main>
 <?php endif; ?>
 
-<footer class="account-footer"><p>&copy; <?= date('Y') ?> SmartVision. Lecteur IPTV sans contenu inclus.</p><div><a href="/">Accueil</a><a href="/activate/">Activation</a><a href="/download.php">Telecharger</a></div></footer>
+<footer class="account-footer"><p>&copy; <?= date('Y') ?> SmartVision. Lecteur IPTV sans contenu inclus.</p><div><a href="/">Accueil</a><a href="/activate/">Activation</a><a href="/download.php">Telecharger</a><a href="/privacy-policy/">Politique de confidentialité</a><a href="/terms-of-use/">Conditions d’utilisation</a><a href="/contact/">Contact</a><a href="/legal-notice/">Mentions légales</a><a href="/legal-iptv-player/">Lecteur IPTV légal</a></div></footer>
 <script src="/assets/account.js?v=3" defer></script>
 </body>
 </html>

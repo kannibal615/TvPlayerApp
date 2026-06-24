@@ -989,6 +989,7 @@ try {
 
     Write-Host "Preparation des dossiers distants..."
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "api"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "_includes"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "$remoteRoot/api" -Name "devices"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "$remoteRoot/api" -Name "licenses"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "activate"
@@ -1000,6 +1001,11 @@ try {
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "assets"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "$remoteRoot/assets" -Name "images"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "downloads"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "privacy-policy"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "terms-of-use"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "contact"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "legal-notice"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "legal-iptv-player"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "." -Name $remotePrivate
 
     $privateConfigPath = Join-Path $tempRoot "config.php"
@@ -1013,7 +1019,9 @@ try {
 
     Write-Host "Upload des fichiers PHP/SQL..."
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath (Join-Path $publicHtmlPath "index.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath (Join-Path $publicHtmlPath "legal_page.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath (Join-Path $publicHtmlPath "download.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/_includes" -FilePath (Join-Path $publicHtmlPath "_includes/site_layout.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/config.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/helpers.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/monetization_rules.php")
@@ -1035,6 +1043,11 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/activation" -FilePath (Join-Path $publicHtmlPath "activation/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/xtream" -FilePath (Join-Path $publicHtmlPath "xtream/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/account" -FilePath (Join-Path $publicHtmlPath "account/index.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/privacy-policy" -FilePath (Join-Path $publicHtmlPath "privacy-policy/index.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/terms-of-use" -FilePath (Join-Path $publicHtmlPath "terms-of-use/index.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/contact" -FilePath (Join-Path $publicHtmlPath "contact/index.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/legal-notice" -FilePath (Join-Path $publicHtmlPath "legal-notice/index.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/legal-iptv-player" -FilePath (Join-Path $publicHtmlPath "legal-iptv-player/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/bootstrap.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/logout.php")
@@ -1114,6 +1127,19 @@ try {
         $homeHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/"
         if ($homeHtml.Content -notmatch "SmartVision IPTV Player" -or $homeHtml.Content -notmatch "12 mois") {
             throw "La page d accueil ne retourne pas le contenu attendu."
+        }
+        $legalPages = @(
+            @{ Path = "privacy-policy"; Expected = "privacy-policy|Politique" },
+            @{ Path = "terms-of-use"; Expected = "terms-of-use|Conditions" },
+            @{ Path = "contact"; Expected = "Contact" },
+            @{ Path = "legal-notice"; Expected = "legal-notice|Mentions" },
+            @{ Path = "legal-iptv-player"; Expected = "legal-iptv-player|Lecteur IPTV" }
+        )
+        foreach ($legalPage in $legalPages) {
+            $legalHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/$($legalPage.Path)/"
+            if ($legalHtml.Content -notmatch $legalPage.Expected -or $legalHtml.Content -notmatch "/privacy-policy/") {
+                throw "La page /$($legalPage.Path)/ ne retourne pas le contenu attendu."
+            }
         }
         $accountHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/account/?plan=year_1"
         if ($accountHtml.Content -notmatch "Choisissez votre licence" -or $accountHtml.Content -notmatch "Se connecter") {

@@ -114,6 +114,21 @@ function h(string $value): string { return htmlspecialchars($value, ENT_QUOTES |
         <?php endif; ?>
     </section>
 </main>
+<footer>
+    <a class="brand footer-brand" href="/">
+        <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player">
+    </a>
+    <p>&copy; <?= date('Y') ?> SmartVision. Lecteur IPTV pour Android TV sans contenu inclus.</p>
+    <div>
+        <a href="/">Accueil</a>
+        <a href="/account/">Mon compte</a>
+        <a href="/privacy-policy/">Politique de confidentialité</a>
+        <a href="/terms-of-use/">Conditions d’utilisation</a>
+        <a href="/contact/">Contact</a>
+        <a href="/legal-notice/">Mentions légales</a>
+        <a href="/legal-iptv-player/">Lecteur IPTV légal</a>
+    </div>
+</footer>
 <?php if ($hasSession): ?><script src="/assets/activation.js?v=3" defer></script><?php endif; ?>
 </body>
 </html>

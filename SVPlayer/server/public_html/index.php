@@ -138,8 +138,17 @@ header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-sr
     <a class="brand footer-brand" href="#top">
         <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player">
     </a>
-    <p>© <?= date('Y') ?> SmartVision. Lecteur IPTV pour Android TV.</p>
-    <div><a href="/account/">Mon compte</a><a href="/activate/">Activation</a><a href="https://smartvisions.net">Support</a><a href="/admin/">Administration</a></div>
+    <p>© <?= date('Y') ?> SmartVision. Lecteur IPTV pour Android TV sans contenu inclus.</p>
+    <div>
+        <a href="/account/">Mon compte</a>
+        <a href="/activate/">Activation</a>
+        <a href="/privacy-policy/">Politique de confidentialité</a>
+        <a href="/terms-of-use/">Conditions d’utilisation</a>
+        <a href="/contact/">Contact</a>
+        <a href="/legal-notice/">Mentions légales</a>
+        <a href="/legal-iptv-player/">Lecteur IPTV légal</a>
+        <a href="/admin/">Administration</a>
+    </div>
 </footer>
 </body>
 </html>
