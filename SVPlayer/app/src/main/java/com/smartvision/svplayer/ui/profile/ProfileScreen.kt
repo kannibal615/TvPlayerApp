@@ -37,12 +37,16 @@ import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -193,6 +197,7 @@ private fun ProfileScreen(
     onDismissQr: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
+    var selectedSection by remember { mutableStateOf(ProfileSection.Overview) }
 
     Column(
         modifier = Modifier
@@ -225,45 +230,81 @@ private fun ProfileScreen(
         ) {
             Column(
                 modifier = Modifier
-                    .weight(0.58f)
+                    .width(292.dp)
                     .fillMaxHeight()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                    .background(Color(0xD9091424), RoundedCornerShape(8.dp))
+                    .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                LicensePanel(
-                    state = state,
-                    onRefresh = onRefresh,
-                    onShowLicenseQr = onShowLicenseQr,
-                    onShowPrivacyOptions = onShowPrivacyOptions,
-                    privacyOptionsRequired = privacyOptionsRequired,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                XtreamPanel(
-                    state = state,
-                    onShowXtreamSetupQr = onShowXtreamSetupQr,
-                    onShowXtreamShopQr = onShowXtreamShopQr,
-                    onSelectXtreamAccount = onSelectXtreamAccount,
-                    onDeleteXtreamAccount = onDeleteXtreamAccount,
-                    onSyncCatalog = onSyncCatalog,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                ProfileSection.entries.forEach { section ->
+                    TvButton(
+                        text = section.label,
+                        leadingIcon = section.icon,
+                        selected = selectedSection == section,
+                        variant = if (selectedSection == section) TvButtonVariant.Primary else TvButtonVariant.Text,
+                        onClick = {
+                            if (section == ProfileSection.SettingsShortcut) {
+                                onSettings()
+                            } else {
+                                selectedSection = section
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                    )
+                }
             }
 
             Column(
                 modifier = Modifier
-                    .weight(0.42f)
+                    .weight(1f)
                     .fillMaxHeight()
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                ConversionPanel(
-                    usageMode = state.usageMode,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                DevicePanel(
-                    state = state,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                when (selectedSection) {
+                    ProfileSection.Overview -> {
+                        LicensePanel(
+                            state = state,
+                            onRefresh = onRefresh,
+                            onShowLicenseQr = onShowLicenseQr,
+                            onShowPrivacyOptions = onShowPrivacyOptions,
+                            privacyOptionsRequired = privacyOptionsRequired,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            XtreamSummaryPanel(state = state, modifier = Modifier.weight(1f))
+                            DevicePanel(state = state, modifier = Modifier.weight(1f))
+                        }
+                    }
+                    ProfileSection.License -> LicensePanel(
+                        state = state,
+                        onRefresh = onRefresh,
+                        onShowLicenseQr = onShowLicenseQr,
+                        onShowPrivacyOptions = onShowPrivacyOptions,
+                        privacyOptionsRequired = privacyOptionsRequired,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    ProfileSection.Xtream -> XtreamPanel(
+                        state = state,
+                        onShowXtreamSetupQr = onShowXtreamSetupQr,
+                        onShowXtreamShopQr = onShowXtreamShopQr,
+                        onSelectXtreamAccount = onSelectXtreamAccount,
+                        onDeleteXtreamAccount = onDeleteXtreamAccount,
+                        onSyncCatalog = onSyncCatalog,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    ProfileSection.Device -> DevicePanel(state = state, modifier = Modifier.fillMaxWidth())
+                    ProfileSection.Usage -> ConversionPanel(usageMode = state.usageMode, modifier = Modifier.fillMaxWidth())
+                    ProfileSection.History -> ProfileHistoryPanel(state = state, modifier = Modifier.fillMaxWidth())
+                    ProfileSection.Help -> ProfileHelpPanel(modifier = Modifier.fillMaxWidth())
+                    ProfileSection.SettingsShortcut -> Unit
+                }
             }
         }
     }
@@ -391,6 +432,20 @@ private fun LicensePanel(
             }
         }
     }
+}
+
+private enum class ProfileSection(
+    val label: String,
+    val icon: ImageVector,
+) {
+    Overview("Vue d'ensemble", Icons.Default.Home),
+    License("Licence SmartVision", Icons.Default.Verified),
+    Xtream("Identifiants Xtream", Icons.Default.CloudSync),
+    Device("Appareil et catalogue", Icons.Default.Devices),
+    Usage("Mode d'utilisation", Icons.Default.CreditCard),
+    History("Historique", Icons.Default.History),
+    Help("Aide", Icons.Default.HelpOutline),
+    SettingsShortcut("Parametres", Icons.Default.Settings),
 }
 
 @Composable
@@ -542,6 +597,71 @@ private fun DevicePanel(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+@Composable
+private fun XtreamSummaryPanel(
+    state: ProfileUiState,
+    modifier: Modifier = Modifier,
+) {
+    ProfilePanel(
+        title = "Identifiants Xtream",
+        icon = Icons.Default.CloudSync,
+        modifier = modifier,
+    ) {
+        ProfileMetric(
+            "Compte",
+            if (state.hasXtream) "Configure" else "Absent",
+            Modifier.fillMaxWidth(),
+            if (state.hasXtream) SmartVisionColors.Success else SmartVisionColors.Warning,
+        )
+        Spacer(Modifier.height(12.dp))
+        ProfileInfoRow("Serveur", state.xtreamHost.ifBlank { "Non configure" })
+        ProfileInfoRow("Utilisateur", state.xtreamUsername.ifBlank { "Non configure" })
+        ProfileInfoRow("Expiration", state.xtreamExpiresAt.ifBlank { "A synchroniser" })
+        ProfileInfoRow("Connexions", state.xtreamConnections.ifBlank { "Non disponible" })
+    }
+}
+
+@Composable
+private fun ProfileHistoryPanel(
+    state: ProfileUiState,
+    modifier: Modifier = Modifier,
+) {
+    ProfilePanel(
+        title = "Historique",
+        icon = Icons.Default.History,
+        modifier = modifier,
+    ) {
+        ProfileInfoRow("Premiere activation", state.account.lastSync ?: "Non disponible")
+        ProfileInfoRow("Derniere synchronisation", state.account.lastSync ?: "Jamais")
+        ProfileInfoRow("Compte actif", state.xtreamUsername.ifBlank { "Non configure" })
+        Text(
+            text = "Les reprises de lecture, favoris et historiques de contenu restent accessibles depuis les sections Live TV, Films et Series.",
+            color = SmartVisionColors.TextSecondary,
+            style = SmartVisionType.Body,
+        )
+    }
+}
+
+@Composable
+private fun ProfileHelpPanel(
+    modifier: Modifier = Modifier,
+) {
+    ProfilePanel(
+        title = "Aide",
+        icon = Icons.Default.HelpOutline,
+        modifier = modifier,
+    ) {
+        ProfileInfoRow("Activation", "Scannez le QR code depuis la TV ou saisissez un code licence.")
+        ProfileInfoRow("Xtream", "Configurez vos propres identifiants depuis le portail SmartVision.")
+        ProfileInfoRow("Support", "support@smartvisions.net")
+        Text(
+            text = "SmartVision est un lecteur IPTV. L'application ne vend, ne fournit et n'heberge aucun contenu TV, film ou serie.",
+            color = SmartVisionColors.TextSecondary,
+            style = SmartVisionType.Body,
+        )
     }
 }
 

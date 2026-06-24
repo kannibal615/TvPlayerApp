@@ -26,10 +26,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,6 +49,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -61,6 +64,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.config.XtreamAccount
 import com.smartvision.svplayer.core.data.LocalAppContainer
+import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -85,6 +89,7 @@ fun SettingsScreen(
         initialValue = com.smartvision.svplayer.domain.model.PlayerSettings(),
     )
     val scope = rememberCoroutineScope()
+    var selectedSection by remember { mutableStateOf(SettingsSection.Preferences) }
 
     BackHandler(onBack = onBack)
 
@@ -121,6 +126,25 @@ fun SettingsScreen(
         }
 
         Spacer(Modifier.height(22.dp))
+
+        SettingsMenuLayout(
+            selectedSection = selectedSection,
+            onSectionSelected = { selectedSection = it },
+            settings = settings,
+            accountsCount = accounts.size,
+            activeAccount = activeAccount,
+            updateState = updateState,
+            onCheckForUpdate = onCheckForUpdate,
+            onSyncCatalog = onSyncCatalog,
+            onSetLanguage = { value -> scope.launch { container.settingsRepository.setLanguage(value) } },
+            onSetSyncFrequency = { value -> scope.launch { container.settingsRepository.setSyncFrequency(value) } },
+            onSetVideoRatio = { value -> scope.launch { container.settingsRepository.setVideoRatio(value) } },
+            onSetAnimations = { value -> scope.launch { container.settingsRepository.setAnimationsEnabled(value) } },
+            onSetRetry = { value -> scope.launch { container.settingsRepository.setRetryEnabled(value) } },
+            onClearLocalData = { scope.launch { container.settingsRepository.clearLocalData() } },
+            modifier = Modifier.fillMaxSize(),
+        )
+        return@Column
 
         Row(
             modifier = Modifier.fillMaxSize(),
@@ -264,6 +288,173 @@ fun SettingsScreen(
             }
         }
     }
+}
+
+@Composable
+private fun SettingsMenuLayout(
+    selectedSection: SettingsSection,
+    onSectionSelected: (SettingsSection) -> Unit,
+    settings: PlayerSettings,
+    accountsCount: Int,
+    activeAccount: XtreamAccount?,
+    updateState: AppUpdateUiState,
+    onCheckForUpdate: () -> Unit,
+    onSyncCatalog: () -> Unit,
+    onSetLanguage: (String) -> Unit,
+    onSetSyncFrequency: (String) -> Unit,
+    onSetVideoRatio: (String) -> Unit,
+    onSetAnimations: (Boolean) -> Unit,
+    onSetRetry: (Boolean) -> Unit,
+    onClearLocalData: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .width(292.dp)
+                .fillMaxHeight()
+                .background(Color(0xD9091424), RoundedCornerShape(8.dp))
+                .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            SettingsSection.entries.forEach { section ->
+                TvButton(
+                    text = section.label,
+                    leadingIcon = section.icon,
+                    selected = selectedSection == section,
+                    variant = if (selectedSection == section) TvButtonVariant.Primary else TvButtonVariant.Text,
+                    onClick = { onSectionSelected(section) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                )
+            }
+        }
+
+        SettingsPanel(
+            title = selectedSection.label,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
+        ) {
+            when (selectedSection) {
+                SettingsSection.Preferences -> {
+                    SettingsChoice(
+                        label = "Langue",
+                        values = listOf("Francais", "English", "Espanol", "Arabe"),
+                        selected = settings.language,
+                        onSelected = onSetLanguage,
+                    )
+                    SettingsChoice(
+                        label = "Format video",
+                        values = listOf("Fit", "Fill", "Zoom"),
+                        selected = settings.videoRatio,
+                        onSelected = onSetVideoRatio,
+                    )
+                    SettingsChoice(
+                        label = "Animations",
+                        values = listOf("Activees", "Reduites"),
+                        selected = if (settings.animationsEnabled) "Activees" else "Reduites",
+                        onSelected = { value -> onSetAnimations(value == "Activees") },
+                    )
+                    SettingsChoice(
+                        label = "Reconnexion automatique",
+                        values = listOf("Activee", "Desactivee"),
+                        selected = if (settings.retryEnabled) "Activee" else "Desactivee",
+                        onSelected = { value -> onSetRetry(value == "Activee") },
+                    )
+                }
+                SettingsSection.Sync -> {
+                    SettingsChoice(
+                        label = "Synchronisation automatique",
+                        values = listOf("24h", "48h", "A chaque demarrage", "Manuelle", "Jamais"),
+                        selected = settings.syncFrequency,
+                        onSelected = onSetSyncFrequency,
+                    )
+                    SettingsInfoRow("Frequence actuelle", settings.syncFrequency)
+                    SettingsInfoRow("Compte actif", activeAccount?.let { "${it.name} - ${it.username}" } ?: "Aucun")
+                    SettingsInfoRow("Serveur actif", activeAccount?.host ?: "Non configure")
+                    Spacer(Modifier.height(14.dp))
+                    TvButton(
+                        text = "Synchroniser le catalogue",
+                        leadingIcon = Icons.Default.Refresh,
+                        onClick = onSyncCatalog,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp),
+                    )
+                }
+                SettingsSection.Updates -> {
+                    SettingsInfoRow("Version installee", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                    SettingsInfoRow("Portail", BuildConfig.ACTIVATION_BASE_URL.removeSuffix("/"))
+                    Spacer(Modifier.height(14.dp))
+                    TvButton(
+                        text = if (updateState.checking) "Recherche..." else "Chercher une mise a jour",
+                        leadingIcon = Icons.Default.Refresh,
+                        onClick = onCheckForUpdate,
+                        enabled = !updateState.checking && !updateState.installing,
+                        variant = TvButtonVariant.Secondary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                    )
+                    updateState.errorMessage?.let { message ->
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = message,
+                            color = SmartVisionColors.Error,
+                            style = SmartVisionType.Caption,
+                            maxLines = 2,
+                        )
+                    }
+                    if (updateState.checkedOnce && updateState.update == null && updateState.errorMessage == null && !updateState.checking) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "Application a jour.",
+                            color = SmartVisionColors.TextSecondary,
+                            style = SmartVisionType.Caption,
+                            maxLines = 1,
+                        )
+                    }
+                }
+                SettingsSection.Data -> {
+                    SettingsInfoRow("Mode buffer", settings.bufferMode)
+                    SettingsInfoRow("Comptes Xtream locaux", accountsCount.toString())
+                    SettingsInfoRow("Compte actif", activeAccount?.name ?: "Aucun")
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = "Les identifiants Xtream se gerent depuis Profil client pour separer les reglages de l'application et les donnees client.",
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Body,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    TvButton(
+                        text = "Vider les donnees locales",
+                        leadingIcon = Icons.Default.Delete,
+                        onClick = onClearLocalData,
+                        variant = TvButtonVariant.Secondary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+private enum class SettingsSection(
+    val label: String,
+    val icon: ImageVector,
+) {
+    Preferences("Preferences generales", Icons.Default.Settings),
+    Sync("Synchronisation", Icons.Default.CloudSync),
+    Updates("Mises a jour", Icons.Default.Refresh),
+    Data("Donnees locales", Icons.Default.Delete),
 }
 
 @Composable

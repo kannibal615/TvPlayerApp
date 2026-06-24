@@ -33,4 +33,18 @@
         };
         durationInput?.addEventListener('input', syncValidUntil);
     });
+
+    document.querySelectorAll('.notification-form').forEach((form) => {
+        const scope = form.querySelector('[data-notification-scope]');
+        const targets = form.querySelector('input[name="target_value"]');
+        const syncTargets = () => {
+            if (!scope || !targets) return;
+            const isAll = scope.value === 'all';
+            targets.disabled = isAll;
+            targets.required = !isAll;
+            if (isAll) targets.value = '';
+        };
+        scope?.addEventListener('change', syncTargets);
+        syncTargets();
+    });
 })();

@@ -14,6 +14,8 @@ import com.smartvision.svplayer.data.monetization.MonetizationStore
 import com.smartvision.svplayer.data.monetization.ImaVideoAdProvider
 import com.smartvision.svplayer.data.monetization.PrivacyConsentManager
 import com.smartvision.svplayer.data.monetization.StaticAdConfigProvider
+import com.smartvision.svplayer.data.notifications.NotificationsApiService
+import com.smartvision.svplayer.data.notifications.NotificationsRepository
 import com.smartvision.svplayer.data.remote.XtreamApiClient
 import com.smartvision.svplayer.data.remote.XtreamApiService
 import com.smartvision.svplayer.data.remote.XtreamUrlFactory
@@ -90,6 +92,7 @@ class AppContainer(context: Context) {
     private val activationApi = activationRetrofit.create(ActivationApiService::class.java)
     private val appUpdateApi = activationRetrofit.create(AppUpdateApiService::class.java)
     private val homeSlidesApi = activationRetrofit.create(HomeSlidesApiService::class.java)
+    private val notificationsApi = activationRetrofit.create(NotificationsApiService::class.java)
 
     val activationRepository: ActivationRepository = ActivationRepository(
         appContext = appContext,
@@ -117,6 +120,10 @@ class AppContainer(context: Context) {
     )
 
     val homeSlidesRepository = HomeSlidesRepository(homeSlidesApi)
+    val notificationsRepository = NotificationsRepository(
+        activationRepository = activationRepository,
+        api = notificationsApi,
+    )
 
     val xtreamRepository: XtreamRepository = XtreamRepository(
         apiClient = xtreamApiClient,

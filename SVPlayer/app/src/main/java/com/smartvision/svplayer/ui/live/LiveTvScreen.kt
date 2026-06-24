@@ -140,6 +140,7 @@ fun LiveTvScreen(
     onSync: () -> Unit,
     onSettings: () -> Unit,
     onProfile: () -> Unit,
+    onNotifications: () -> Unit,
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     onWatch: (Int) -> Unit,
@@ -199,6 +200,7 @@ fun LiveTvScreen(
             onSync = onSync,
             onSettings = onSettings,
             onProfile = onProfile,
+            onNotifications = onNotifications,
             onLicenseKey = onLicenseKey,
             showLicenseKey = showLicenseKey,
             modifier = Modifier.fillMaxWidth(),
@@ -293,6 +295,7 @@ private fun LiveTvHeader(
     onSync: () -> Unit,
     onSettings: () -> Unit,
     onProfile: () -> Unit,
+    onNotifications: () -> Unit,
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     modifier: Modifier = Modifier,
@@ -323,7 +326,7 @@ private fun LiveTvHeader(
         }
 
         HeaderControls(
-            onNotifications = {},
+            onNotifications = onNotifications,
             onLicenseKey = onLicenseKey,
             onProfile = onProfile,
             onSettings = onSettings,

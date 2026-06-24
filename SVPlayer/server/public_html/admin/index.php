@@ -59,6 +59,7 @@ $devices = $devicesResult['rows'];
 $codes = $codesResult['rows'];
 $auditLogs = admin_load_audit($pdo);
 $slides = admin_load_slides($pdo);
+$notifications = admin_load_notifications($pdo);
 $revenueSeries = admin_revenue_series($pdo);
 $alerts = admin_build_alerts($stats);
 $serverStats = admin_load_server_stats($pdo, $stats);
@@ -84,6 +85,7 @@ render_admin_dashboard(
     $devicesResult['pagination'],
     $codesResult['pagination'],
     $slides,
+    $notifications,
     $serverStats,
     $flash,
     $generatedCode,
@@ -94,7 +96,7 @@ render_admin_dashboard(
 function admin_current_page(mixed $page): string
 {
     $page = is_string($page) ? $page : 'overview';
-    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'devices', 'slides', 'server', 'audit'], true)
+    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'devices', 'notifications', 'slides', 'server', 'audit'], true)
         ? $page
         : 'overview';
 }
@@ -115,8 +117,13 @@ function handle_admin_action(PDO $pdo, string $action): void
         case 'delete_code': admin_delete_code($pdo); break;
         case 'purge_devices': admin_purge_devices($pdo); break;
         case 'save_slide': admin_save_slide($pdo); break;
+        case 'send_notification': admin_send_notification($pdo); break;
+        case 'set_notification_status': admin_set_notification_status($pdo); break;
+        case 'delete_notification': admin_delete_notification($pdo); break;
         case 'set_user_status': admin_set_user_status($pdo); break;
         case 'set_device_status': admin_set_device_status($pdo); break;
+        case 'expire_device': admin_expire_device($pdo); break;
+        case 'clear_device_playlist': admin_clear_device_playlist($pdo); break;
         case 'extend_activation': admin_extend_activation($pdo); break;
         case 'cancel_order': admin_cancel_order($pdo); break;
         default: throw new InvalidArgumentException('Action admin inconnue.');
@@ -186,13 +193,13 @@ function admin_set_code_status(PDO $pdo): void
 {
     $codeId = admin_positive_int($_POST['code_id'] ?? null);
     $status = (string) ($_POST['status'] ?? '');
-    if (!in_array($status, ['active', 'disabled'], true)) {
+    if (!in_array($status, ['active', 'disabled', 'expired'], true)) {
         throw new InvalidArgumentException('Statut de code invalide.');
     }
     $statement = $pdo->prepare('UPDATE activation_codes SET status = :status, updated_at = NOW() WHERE id = :id');
     $statement->execute(['status' => $status, 'id' => $codeId]);
     audit_admin_action($pdo, 'activation_code_status_changed', 'activation_code', (string) $codeId, ['status' => $status]);
-    set_admin_flash('success', $status === 'active' ? 'Code reactive.' : 'Code desactive.');
+    set_admin_flash('success', $status === 'active' ? 'Code reactive.' : ($status === 'expired' ? 'Code expire.' : 'Code desactive.'));
 }
 
 function admin_revoke_code(PDO $pdo): void
@@ -302,6 +309,38 @@ function admin_extend_activation(PDO $pdo): void
     set_admin_flash('success', 'Activation prolongee de ' . $days . ' jours.');
 }
 
+function admin_expire_device(PDO $pdo): void
+{
+    $deviceId = clean_device_id((string) ($_POST['device_id'] ?? ''));
+    if ($deviceId === '') {
+        throw new InvalidArgumentException('Appareil invalide.');
+    }
+    $pdo->beginTransaction();
+    $pdo->prepare("UPDATE device_activations SET status = 'expired', expires_at = NOW() WHERE device_id = :device_id AND status IN ('active', 'blocked')")
+        ->execute(['device_id' => $deviceId]);
+    $pdo->prepare("UPDATE devices SET status = 'expired', license_status = 'expired', expires_at = NOW(), updated_at = NOW() WHERE device_id = :device_id")
+        ->execute(['device_id' => $deviceId]);
+    audit_admin_action($pdo, 'device_expired', 'device', $deviceId);
+    $pdo->commit();
+    set_admin_flash('success', 'Appareil expire.');
+}
+
+function admin_clear_device_playlist(PDO $pdo): void
+{
+    $deviceId = clean_device_id((string) ($_POST['device_id'] ?? ''));
+    if ($deviceId === '') {
+        throw new InvalidArgumentException('Appareil invalide.');
+    }
+    $pdo->beginTransaction();
+    $pdo->prepare('DELETE FROM device_playlist_configs WHERE device_id = :device_id')
+        ->execute(['device_id' => $deviceId]);
+    $pdo->prepare("UPDATE devices SET xtream_status = 'missing', updated_at = NOW() WHERE device_id = :device_id")
+        ->execute(['device_id' => $deviceId]);
+    audit_admin_action($pdo, 'device_playlist_cleared', 'device', $deviceId);
+    $pdo->commit();
+    set_admin_flash('success', 'Configuration Xtream appareil supprimee.');
+}
+
 function admin_cancel_order(PDO $pdo): void
 {
     $orderId = admin_positive_int($_POST['order_id'] ?? null);
@@ -393,6 +432,99 @@ function admin_save_slide(PDO $pdo): void
     ]);
     audit_admin_action($pdo, 'home_slide_saved', 'home_slider_ads', (string) $slideId);
     set_admin_flash('success', 'Slide publicitaire mis a jour.');
+}
+
+function admin_send_notification(PDO $pdo): void
+{
+    ensure_app_notifications_table($pdo);
+    $title = smartvision_text_substr(trim((string) ($_POST['title'] ?? '')), 0, 120);
+    $message = smartvision_text_substr(trim((string) ($_POST['message'] ?? '')), 0, 1200);
+    $targetScope = (string) ($_POST['target_scope'] ?? 'all');
+    $targetValue = admin_normalize_notification_targets((string) ($_POST['target_value'] ?? ''));
+    $priority = (string) ($_POST['priority'] ?? 'normal');
+    if ($title === '' || $message === '') {
+        throw new InvalidArgumentException('Titre et message sont obligatoires.');
+    }
+    if (!in_array($targetScope, ['all', 'devices', 'users'], true)) {
+        throw new InvalidArgumentException('Ciblage notification invalide.');
+    }
+    if ($targetScope !== 'all' && $targetValue === '') {
+        throw new InvalidArgumentException('Renseignez au moins une cible.');
+    }
+    if (!in_array($priority, ['normal', 'important', 'urgent'], true)) {
+        $priority = 'normal';
+    }
+    $expiresAt = null;
+    $expiresInput = trim((string) ($_POST['expires_at'] ?? ''));
+    if ($expiresInput !== '') {
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $expiresInput, new DateTimeZone('UTC'));
+        if (!$date) {
+            throw new InvalidArgumentException('Date d expiration invalide.');
+        }
+        $expiresAt = $date->setTime(23, 59, 59)->format('Y-m-d H:i:s');
+    }
+
+    $statement = $pdo->prepare(
+        "INSERT INTO app_notifications
+            (title, message, target_scope, target_value, priority, status, created_by, expires_at, created_at, updated_at)
+         VALUES
+            (:title, :message, :target_scope, :target_value, :priority, 'active', :created_by, :expires_at, NOW(), NOW())"
+    );
+    $statement->execute([
+        'title' => $title,
+        'message' => $message,
+        'target_scope' => $targetScope,
+        'target_value' => $targetScope === 'all' ? null : $targetValue,
+        'priority' => $priority,
+        'created_by' => current_admin_username(),
+        'expires_at' => $expiresAt,
+    ]);
+    $notificationId = (int) $pdo->lastInsertId();
+    audit_admin_action($pdo, 'notification_sent', 'app_notification', (string) $notificationId, [
+        'target_scope' => $targetScope,
+        'priority' => $priority,
+    ]);
+    set_admin_flash('success', 'Notification creee.');
+}
+
+function admin_set_notification_status(PDO $pdo): void
+{
+    ensure_app_notifications_table($pdo);
+    $notificationId = admin_positive_int($_POST['notification_id'] ?? null);
+    $status = (string) ($_POST['status'] ?? '');
+    if (!in_array($status, ['active', 'disabled'], true)) {
+        throw new InvalidArgumentException('Statut notification invalide.');
+    }
+    $pdo->prepare('UPDATE app_notifications SET status = :status, updated_at = NOW() WHERE id = :id')
+        ->execute(['status' => $status, 'id' => $notificationId]);
+    audit_admin_action($pdo, 'notification_status_changed', 'app_notification', (string) $notificationId, ['status' => $status]);
+    set_admin_flash('success', $status === 'active' ? 'Notification reactivee.' : 'Notification desactivee.');
+}
+
+function admin_delete_notification(PDO $pdo): void
+{
+    ensure_app_notifications_table($pdo);
+    $notificationId = admin_positive_int($_POST['notification_id'] ?? null);
+    $pdo->prepare('DELETE FROM app_notifications WHERE id = :id')->execute(['id' => $notificationId]);
+    audit_admin_action($pdo, 'notification_deleted', 'app_notification', (string) $notificationId);
+    set_admin_flash('success', 'Notification supprimee.');
+}
+
+function admin_normalize_notification_targets(string $value): string
+{
+    $parts = preg_split('/[\s,;]+/', strtolower(trim($value)));
+    if (!is_array($parts)) {
+        return '';
+    }
+    $clean = [];
+    foreach ($parts as $part) {
+        $part = smartvision_text_substr(preg_replace('/[^a-z0-9@._:-]/', '', $part) ?: '', 0, 190);
+        if ($part !== '') {
+            $clean[] = $part;
+        }
+    }
+
+    return implode(',', array_values(array_unique($clean)));
 }
 
 function admin_load_stats(PDO $pdo): array
@@ -731,6 +863,17 @@ function admin_load_slides(PDO $pdo): array
     )->fetchAll();
 }
 
+function admin_load_notifications(PDO $pdo): array
+{
+    ensure_app_notifications_table($pdo);
+    return $pdo->query(
+        "SELECT id, title, message, target_scope, target_value, priority, status, created_by, expires_at, created_at, updated_at
+         FROM app_notifications
+         ORDER BY id DESC
+         LIMIT 80"
+    )->fetchAll();
+}
+
 function admin_load_audit(PDO $pdo): array
 {
     return $pdo->query(
@@ -801,6 +944,7 @@ function render_admin_dashboard(
     array $devicesPagination,
     array $codesPagination,
     array $slides,
+    array $notifications,
     array $serverStats,
     ?array $flash,
     ?array $generatedCode,
@@ -814,6 +958,7 @@ function render_admin_dashboard(
         'customers' => ['Clients', 'Comptes clients et historique d achat.'],
         'licenses' => ['Licences', 'Generation manuelle et gestion des codes SmartVision.'],
         'devices' => ['Appareils', 'TV associees, essais, licences et configuration Xtream.'],
+        'notifications' => ['Notifications', 'Messages envoyes vers toutes les TV ou vers des cibles precises.'],
         'slides' => ['Slides Home', 'Emplacements publicitaires prives visibles sur la Home.'],
         'server' => ['Serveur', 'Statistiques techniques, ressources cPanel et signaux de charge.'],
         'audit' => ['Journal', 'Dernieres actions administrateur.'],
@@ -866,15 +1011,23 @@ function render_admin_dashboard(
         <?php if ($page === 'licenses'): ?>
         <section class="admin-panel generate-panel" id="licenses"><div class="admin-panel-heading"><div><h2>Licences et codes</h2><p><?= (int) $codesPagination['total'] ?> code(s) SmartVision, format public 10 caracteres.</p></div></div><form method="post" class="generate-code-form generate-code-form-wide" data-license-generator><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="action" value="generate_code"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><label>Libelle<input name="label" maxlength="100" placeholder="Client, lot ou campagne"></label><label>Type<select name="license_type"><option value="paid">Payant</option><option value="trial">Essai gratuit</option><option value="free">Gratuit</option><option value="promo">Promo</option><option value="manual">Manuel</option></select></label><label>Duree en jours<input name="duration_days" type="number" min="1" max="36500" value="365" required data-duration-days></label><label>Nombre<input name="quantity" type="number" min="1" max="200" value="1" required></label><label>Appareils<input name="max_devices" type="number" min="1" max="1000" value="1" required></label><label>Valide jusqu'au<input name="valid_until" type="date" value="<?= admin_escape(gmdate('Y-m-d', strtotime('+365 days'))) ?>" data-valid-until></label><button class="admin-button primary" type="submit">Generer</button></form><div class="admin-table-wrap"><table><thead><tr><th>Code</th><th>Type</th><th>Libelle</th><th>Appareil</th><th>Usage</th><th>Duree</th><th>Expiration</th><th>Statut</th><th>Origine</th><th>Actions</th></tr></thead><tbody>
         <?php if ($codes === []): ?><tr><td colspan="10" class="admin-empty">Aucun code licence.</td></tr><?php endif; ?>
-        <?php foreach ($codes as $code): ?><tr data-code-id="<?= (int) $code['id'] ?>" data-label="<?= admin_escape($code['label'] ?: '') ?>"><td><strong class="license-code"><?= admin_escape((string) ($code['activation_code'] ?: '#' . $code['id'])) ?></strong><small>Genere <?= admin_escape($code['created_at']) ?></small></td><td><span class="admin-state <?= admin_escape($code['license_type'] ?: 'manual') ?>"><?= admin_escape($code['license_type'] ?: 'manual') ?></span><small><?= admin_escape($code['activation_type'] ?: '-') ?></small></td><td><?= admin_escape($code['label'] ?: '-') ?></td><td><strong><?= admin_escape($code['assigned_public_device_code'] ?: '-') ?></strong><small><?= admin_escape($code['device_name'] ?: $code['assigned_device_id'] ?: '-') ?></small></td><td><?= (int) $code['used_devices'] ?> / <?= (int) $code['max_devices'] ?><small>Derniere: <?= admin_escape($code['last_used_at'] ?: '-') ?></small></td><td><?= (int) $code['duration_days'] ?> jours</td><td><?= admin_escape($code['activation_expires_at'] ?: $code['valid_until'] ?: '-') ?></td><td><span class="admin-state <?= admin_escape($code['status']) ?>"><?= admin_escape($code['status']) ?></span><small><?= admin_escape($code['device_status'] ?: '-') ?></small></td><td><?= admin_escape($code['created_by'] ?: '-') ?></td><td class="admin-actions"><form method="post"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_code_status"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><input type="hidden" name="status" value="<?= $code['status'] === 'active' ? 'disabled' : 'active' ?>"><button class="admin-button compact secondary" type="submit"><?= $code['status'] === 'active' ? 'Desactiver' : 'Reactiver' ?></button></form><?php if ((int) $code['used_devices'] > 0): ?><form method="post" data-confirm="Revoquer ce code et expirer ses appareils ?"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="revoke_code"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><button class="admin-button compact danger" type="submit">Revoquer</button></form><?php elseif (!str_starts_with((string) $code['created_by'], 'customer:')): ?><form method="post" data-confirm="Supprimer ce code inutilise ?"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="delete_code"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><button class="admin-button compact danger" type="submit">Supprimer</button></form><?php endif; ?></td></tr><?php endforeach; ?>
+        <?php foreach ($codes as $code): ?><tr data-code-id="<?= (int) $code['id'] ?>" data-label="<?= admin_escape($code['label'] ?: '') ?>"><td><strong class="license-code"><?= admin_escape((string) ($code['activation_code'] ?: '#' . $code['id'])) ?></strong><small>Genere <?= admin_escape($code['created_at']) ?></small></td><td><span class="admin-state <?= admin_escape($code['license_type'] ?: 'manual') ?>"><?= admin_escape($code['license_type'] ?: 'manual') ?></span><small><?= admin_escape($code['activation_type'] ?: '-') ?></small></td><td><?= admin_escape($code['label'] ?: '-') ?></td><td><strong><?= admin_escape($code['assigned_public_device_code'] ?: '-') ?></strong><small><?= admin_escape($code['device_name'] ?: $code['assigned_device_id'] ?: '-') ?></small></td><td><?= (int) $code['used_devices'] ?> / <?= (int) $code['max_devices'] ?><small>Derniere: <?= admin_escape($code['last_used_at'] ?: '-') ?></small></td><td><?= (int) $code['duration_days'] ?> jours</td><td><?= admin_escape($code['activation_expires_at'] ?: $code['valid_until'] ?: '-') ?></td><td><span class="admin-state <?= admin_escape($code['status']) ?>"><?= admin_escape($code['status']) ?></span><small><?= admin_escape($code['device_status'] ?: '-') ?></small></td><td><?= admin_escape($code['created_by'] ?: '-') ?></td><td class="admin-actions"><form method="post"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_code_status"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><input type="hidden" name="status" value="<?= $code['status'] === 'active' ? 'disabled' : 'active' ?>"><button class="admin-button compact secondary" type="submit"><?= $code['status'] === 'active' ? 'Desactiver' : 'Reactiver' ?></button></form><?php if ($code['status'] !== 'expired'): ?><form method="post" data-confirm="Marquer cette licence comme expiree ?"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_code_status"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><input type="hidden" name="status" value="expired"><button class="admin-button compact secondary" type="submit">Expirer</button></form><?php endif; ?><?php if ((int) $code['used_devices'] > 0): ?><form method="post" data-confirm="Revoquer ce code et expirer ses appareils ?"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="revoke_code"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><button class="admin-button compact danger" type="submit">Revoquer</button></form><?php elseif (!str_starts_with((string) $code['created_by'], 'customer:')): ?><form method="post" data-confirm="Supprimer ce code inutilise ?"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="delete_code"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><button class="admin-button compact danger" type="submit">Supprimer</button></form><?php endif; ?></td></tr><?php endforeach; ?>
         </tbody></table></div><?= admin_render_pagination($codesPagination, $page, $query) ?></section>
         <?php endif; ?>
 
         <?php if ($page === 'devices'): ?>
-        <section class="admin-panel" id="devices"><div class="admin-panel-heading"><div><h2>Appareils</h2><p><?= (int) $devicesPagination['total'] ?> appareil(s), tries par derniere activite decroissante.</p></div><form method="post" class="purge-form" data-confirm="Supprimer tous les appareils, sessions, activations et playlists ?"><input type="hidden" name="redirect_page" value="devices"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="purge_devices"><input name="confirmation" placeholder="PURGER" aria-label="Confirmation purge"><button class="admin-button danger" type="submit">Purger appareils</button></form></div><div class="admin-table-wrap"><table><thead><tr><th>Appareil</th><th>Etat</th><th>Licence</th><th>Xtream</th><th>Installation</th><th>Expiration</th><th>Derniere activite</th><th>Actions</th></tr></thead><tbody>
-        <?php if ($devices === []): ?><tr><td colspan="8" class="admin-empty">Aucun appareil.</td></tr><?php endif; ?>
+        <section class="admin-panel" id="devices"><div class="admin-panel-heading"><div><h2>Appareils</h2><p><?= (int) $devicesPagination['total'] ?> appareil(s), tries par derniere activite decroissante.</p></div><form method="post" class="purge-form" data-confirm="Supprimer tous les appareils, sessions, activations et playlists ?"><input type="hidden" name="redirect_page" value="devices"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="purge_devices"><input name="confirmation" placeholder="PURGER" aria-label="Confirmation purge"><button class="admin-button danger" type="submit">Purger appareils</button></form></div><div class="admin-table-wrap"><table><thead><tr><th>Appareil</th><th>Etat</th><th>Licence</th><th>Xtream</th><th>Installation</th><th>Expiration / activite</th><th>Actions</th></tr></thead><tbody>
+        <?php if ($devices === []): ?><tr><td colspan="7" class="admin-empty">Aucun appareil.</td></tr><?php endif; ?>
         <?php foreach ($devices as $device): admin_render_device_row($device); endforeach; ?>
         </tbody></table></div><?= admin_render_pagination($devicesPagination, $page, $query) ?></section>
+        <?php endif; ?>
+
+        <?php if ($page === 'notifications'): ?>
+        <section class="admin-panel" id="notifications"><div class="admin-panel-heading"><div><h2>Envoyer une notification</h2><p>Pour les cibles multiples, separez les IDs, codes appareil, emails ou IDs client par virgule, espace ou point-virgule.</p></div></div><form method="post" class="notification-form"><input type="hidden" name="redirect_page" value="notifications"><input type="hidden" name="action" value="send_notification"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><label>Titre<input name="title" maxlength="120" required placeholder="Maintenance, information, promotion..."></label><label>Priorite<select name="priority"><option value="normal">Normale</option><option value="important">Importante</option><option value="urgent">Urgente</option></select></label><label>Ciblage<select name="target_scope" data-notification-scope><option value="all">Tous les utilisateurs</option><option value="devices">Appareil(s)</option><option value="users">Client(s)</option></select></label><label>Expiration<input name="expires_at" type="date"></label><label class="notification-message">Message<textarea name="message" maxlength="1200" required placeholder="Message visible dans l'application TV"></textarea></label><label class="notification-targets">Cibles<input name="target_value" placeholder="device_id, code public, email ou id client"></label><button class="admin-button primary" type="submit">Envoyer la notification</button></form></section>
+        <section class="admin-panel" id="notifications-list"><div class="admin-panel-heading"><div><h2>Notifications recentes</h2><p><?= count($notifications) ?> notification(s)</p></div></div><div class="admin-table-wrap"><table><thead><tr><th>Message</th><th>Ciblage</th><th>Priorite</th><th>Statut</th><th>Dates</th><th>Actions</th></tr></thead><tbody>
+        <?php if ($notifications === []): ?><tr><td colspan="6" class="admin-empty">Aucune notification.</td></tr><?php endif; ?>
+        <?php foreach ($notifications as $notification): ?><tr><td><strong><?= admin_escape($notification['title']) ?></strong><small><?= admin_escape(smartvision_text_substr((string) $notification['message'], 0, 180)) ?></small></td><td><span class="admin-state <?= admin_escape($notification['target_scope']) ?>"><?= admin_escape($notification['target_scope']) ?></span><small><?= admin_escape($notification['target_value'] ?: 'Tous') ?></small></td><td><span class="admin-state <?= admin_escape($notification['priority']) ?>"><?= admin_escape($notification['priority']) ?></span></td><td><span class="admin-state <?= admin_escape($notification['status']) ?>"><?= admin_escape($notification['status']) ?></span></td><td><?= admin_escape($notification['created_at']) ?><small>Expire: <?= admin_escape($notification['expires_at'] ?: '-') ?></small></td><td class="admin-actions"><form method="post"><input type="hidden" name="redirect_page" value="notifications"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_notification_status"><input type="hidden" name="notification_id" value="<?= (int) $notification['id'] ?>"><input type="hidden" name="status" value="<?= $notification['status'] === 'active' ? 'disabled' : 'active' ?>"><button class="admin-button compact secondary" type="submit"><?= $notification['status'] === 'active' ? 'Desactiver' : 'Reactiver' ?></button></form><form method="post" data-confirm="Supprimer cette notification ?"><input type="hidden" name="redirect_page" value="notifications"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="delete_notification"><input type="hidden" name="notification_id" value="<?= (int) $notification['id'] ?>"><button class="admin-button compact danger" type="submit">Supprimer</button></form></td></tr><?php endforeach; ?>
+        </tbody></table></div></section>
         <?php endif; ?>
 
         <?php if ($page === 'slides'): ?>
@@ -950,14 +1103,69 @@ function admin_render_pagination(array $pagination, string $page, string $query)
 
 function admin_render_device_row(array $device): void
 {
-    ?><tr>
-        <td><strong><?= admin_escape($device['public_device_code'] ?: '------') ?></strong><small><?= admin_escape($device['device_name'] ?: 'Android TV') ?> - <?= admin_escape($device['device_id']) ?></small><small><?= admin_escape($device['platform'] ?: 'android_tv') ?> <?= admin_escape($device['app_version'] ?: '') ?></small></td>
-        <td><span class="admin-state <?= admin_escape($device['status']) ?>"><?= admin_escape($device['status']) ?></span><small>Pays <?= admin_escape($device['country_code'] ?: 'N/D') ?> - UA <?= admin_escape($device['last_user_agent'] ? 'present' : '-') ?></small></td>
-        <td><strong><?= admin_escape($device['activation_type'] ?: '-') ?></strong><small>Code <?= admin_escape($device['activation_code'] ?: '-') ?></small><small>Licence <?= admin_escape($device['license_status'] ?: '-') ?> - Essai <?= admin_escape($device['trial_status'] ?: '-') ?> - Pub <?= admin_escape($device['free_with_ads_status'] ?: '-') ?></small></td>
-        <td><?= (int) $device['playlist_configured'] === 1 ? 'Configuree' : 'Absente' ?><small>Xtream <?= admin_escape($device['xtream_status'] ?: '-') ?></small></td>
-        <td><?= admin_escape($device['first_seen_at'] ?: $device['created_at'] ?: '-') ?><small>Active le <?= admin_escape($device['activated_at'] ?: '-') ?></small></td>
-        <td><?= admin_escape($device['expires_at'] ?: '-') ?><small>Duree <?= admin_escape((string) ($device['duration_days'] ?: '-')) ?> jours</small></td>
-        <td><?= admin_escape($device['last_seen_at'] ?: $device['first_seen_at'] ?: '-') ?><small>IP inst. <?= admin_escape($device['install_ip_hash'] ? substr((string) $device['install_ip_hash'], 0, 8) : '-') ?> - IP der. <?= admin_escape($device['last_ip_hash'] ? substr((string) $device['last_ip_hash'], 0, 8) : '-') ?></small></td>
-        <td class="admin-actions"><form method="post"><input type="hidden" name="redirect_page" value="devices"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_device_status"><input type="hidden" name="device_id" value="<?= admin_escape($device['device_id']) ?>"><input type="hidden" name="status" value="<?= $device['status'] === 'blocked' ? 'active' : 'blocked' ?>"><button class="admin-button compact secondary" type="submit"><?= $device['status'] === 'blocked' ? 'Debloquer' : 'Bloquer' ?></button></form><form method="post" class="extend-form"><input type="hidden" name="redirect_page" value="devices"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="extend_activation"><input type="hidden" name="device_id" value="<?= admin_escape($device['device_id']) ?>"><input name="days" type="number" min="1" max="3650" value="30" aria-label="Jours a ajouter"><button class="admin-button compact primary" type="submit">Prolonger</button></form></td>
+    $deviceId = (string) $device['device_id'];
+    ?><tr class="device-row">
+        <td>
+            <strong><?= admin_escape($device['public_device_code'] ?: '------') ?></strong>
+            <small><?= admin_escape($device['device_name'] ?: 'Android TV') ?></small>
+            <small class="mono"><?= admin_escape($deviceId) ?></small>
+            <small><?= admin_escape($device['platform'] ?: 'android_tv') ?> <?= admin_escape($device['app_version'] ?: '') ?></small>
+        </td>
+        <td>
+            <span class="admin-state <?= admin_escape($device['status']) ?>"><?= admin_escape($device['status']) ?></span>
+            <small>Licence <?= admin_escape($device['license_status'] ?: '-') ?></small>
+            <small>Essai <?= admin_escape($device['trial_status'] ?: '-') ?> - Pub <?= admin_escape($device['free_with_ads_status'] ?: '-') ?></small>
+        </td>
+        <td>
+            <strong><?= admin_escape($device['activation_type'] ?: '-') ?></strong>
+            <small>Code <?= admin_escape($device['activation_code'] ?: '-') ?></small>
+            <small>Type <?= admin_escape($device['license_type'] ?: '-') ?> - <?= admin_escape((string) ($device['duration_days'] ?: '-')) ?> jours</small>
+        </td>
+        <td>
+            <span class="admin-state <?= (int) $device['playlist_configured'] === 1 ? 'active' : 'pending' ?>"><?= (int) $device['playlist_configured'] === 1 ? 'Configuree' : 'Absente' ?></span>
+            <small>Xtream <?= admin_escape($device['xtream_status'] ?: '-') ?></small>
+        </td>
+        <td>
+            <?= admin_escape($device['first_seen_at'] ?: $device['created_at'] ?: '-') ?>
+            <small>Active le <?= admin_escape($device['activated_at'] ?: '-') ?></small>
+            <small>Pays <?= admin_escape($device['country_code'] ?: 'N/D') ?> - UA <?= admin_escape($device['last_user_agent'] ? 'present' : '-') ?></small>
+        </td>
+        <td>
+            <?= admin_escape($device['expires_at'] ?: '-') ?>
+            <small>Derniere activite <?= admin_escape($device['last_seen_at'] ?: $device['first_seen_at'] ?: '-') ?></small>
+            <small>IP <?= admin_escape($device['last_ip_hash'] ? substr((string) $device['last_ip_hash'], 0, 8) : '-') ?></small>
+        </td>
+        <td class="admin-actions admin-actions-grid">
+            <form method="post">
+                <input type="hidden" name="redirect_page" value="devices">
+                <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                <input type="hidden" name="action" value="set_device_status">
+                <input type="hidden" name="device_id" value="<?= admin_escape($deviceId) ?>">
+                <input type="hidden" name="status" value="<?= $device['status'] === 'blocked' ? 'active' : 'blocked' ?>">
+                <button class="admin-button compact secondary" type="submit"><?= $device['status'] === 'blocked' ? 'Debloquer' : 'Bloquer' ?></button>
+            </form>
+            <form method="post" class="extend-form">
+                <input type="hidden" name="redirect_page" value="devices">
+                <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                <input type="hidden" name="action" value="extend_activation">
+                <input type="hidden" name="device_id" value="<?= admin_escape($deviceId) ?>">
+                <input name="days" type="number" min="1" max="3650" value="30" aria-label="Jours a ajouter">
+                <button class="admin-button compact primary" type="submit">Prolonger</button>
+            </form>
+            <form method="post" data-confirm="Expirer cet appareil immediatement ?">
+                <input type="hidden" name="redirect_page" value="devices">
+                <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                <input type="hidden" name="action" value="expire_device">
+                <input type="hidden" name="device_id" value="<?= admin_escape($deviceId) ?>">
+                <button class="admin-button compact danger" type="submit">Expirer</button>
+            </form>
+            <form method="post" data-confirm="Supprimer la configuration Xtream de cet appareil ?">
+                <input type="hidden" name="redirect_page" value="devices">
+                <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                <input type="hidden" name="action" value="clear_device_playlist">
+                <input type="hidden" name="device_id" value="<?= admin_escape($deviceId) ?>">
+                <button class="admin-button compact secondary" type="submit">Reset Xtream</button>
+            </form>
+        </td>
     </tr><?php
 }

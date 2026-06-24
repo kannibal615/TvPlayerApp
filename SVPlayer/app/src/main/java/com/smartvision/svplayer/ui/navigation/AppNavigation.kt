@@ -57,6 +57,7 @@ import com.smartvision.svplayer.ui.home.HomeCollectionsScreen
 import com.smartvision.svplayer.ui.home.HomeCollectionKind
 import com.smartvision.svplayer.ui.live.LiveTvScreen
 import com.smartvision.svplayer.ui.movies.MoviesScreen
+import com.smartvision.svplayer.ui.notifications.NotificationsRoute
 import com.smartvision.svplayer.ui.player.FullScreenContentKind
 import com.smartvision.svplayer.ui.player.FullScreenPlayerRoute
 import com.smartvision.svplayer.ui.profile.ProfileRoute
@@ -208,6 +209,7 @@ fun AppNavigation(
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 onContentClick = { item -> navController.navigateFromContinueItem(item) },
@@ -245,6 +247,7 @@ fun AppNavigation(
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 onWatch = { channelId -> navController.navigate("player/$channelId") },
@@ -258,6 +261,7 @@ fun AppNavigation(
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 onOpenMovieDetails = { movieId -> navController.navigate("movie_detail/$movieId") },
@@ -272,6 +276,7 @@ fun AppNavigation(
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 onOpenSeriesDetails = { seriesId -> navController.navigate("series_detail/$seriesId") },
@@ -285,6 +290,9 @@ fun AppNavigation(
                 onCheckForUpdate = appUpdateViewModel::checkForUpdate,
                 onSyncCatalog = syncCatalog,
             )
+        }
+        composable(AppRoute.Notifications.route) {
+            NotificationsRoute(onBack = { navController.popBackStack() })
         }
         composable(AppRoute.SyncSettings.route) {
             PlaceholderRouteScreen("Synchronisation", "Action mock. Pas d'appel API Xtream dans cette tache.")
@@ -336,6 +344,7 @@ fun AppNavigation(
                     onSync = syncCatalog,
                     onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                     onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                    onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
                     onLicenseKey = { showLicensePurchaseQr = true },
                     showLicenseKey = activationState.shouldShowLicenseKey,
                     onWatchMovie = { id -> navController.navigate("movie_player/$id") },
@@ -372,6 +381,7 @@ fun AppNavigation(
                     onSync = syncCatalog,
                     onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                     onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                    onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
                     onLicenseKey = { showLicensePurchaseQr = true },
                     showLicenseKey = activationState.shouldShowLicenseKey,
                     onWatchEpisode = { episodeId -> navController.navigate("episode_player/$episodeId") },
@@ -540,9 +550,6 @@ private fun NavHostController.navigateSingleTop(route: String) {
     navigate(route) {
         launchSingleTop = true
         restoreState = true
-        popUpTo(AppRoute.Home.route) {
-            saveState = true
-        }
     }
 }
 
@@ -565,6 +572,7 @@ private enum class AppRoute(val route: String) {
     Series("series"),
     Settings("settings"),
     Profile("profile"),
+    Notifications("notifications"),
     SyncSettings("sync/settings"),
     ContinueWatching("continue_watching"),
     Trending("trending"),

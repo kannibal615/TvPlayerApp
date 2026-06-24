@@ -445,3 +445,26 @@ function decrypt_playlist_config(string $payload): ?array
 
     return is_array($decoded) ? $decoded : null;
 }
+
+function ensure_app_notifications_table(PDO $pdo): void
+{
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS app_notifications (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(120) NOT NULL,
+            message TEXT NOT NULL,
+            target_scope ENUM('all', 'devices', 'users') NOT NULL DEFAULT 'all',
+            target_value TEXT NULL,
+            priority ENUM('normal', 'important', 'urgent') NOT NULL DEFAULT 'normal',
+            status ENUM('active', 'disabled') NOT NULL DEFAULT 'active',
+            created_by VARCHAR(100) NULL,
+            expires_at DATETIME NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX (status),
+            INDEX (target_scope),
+            INDEX (expires_at),
+            INDEX (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
+}

@@ -56,6 +56,7 @@ fun TvHeader(
     onSync: () -> Unit,
     onSettings: () -> Unit,
     onProfile: () -> Unit,
+    onNotifications: () -> Unit,
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     modifier: Modifier = Modifier,
@@ -83,7 +84,7 @@ fun TvHeader(
             }
         }
         HeaderControls(
-            onNotifications = {},
+            onNotifications = onNotifications,
             onLicenseKey = onLicenseKey,
             onProfile = onProfile,
             onSettings = onSettings,

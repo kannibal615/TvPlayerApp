@@ -147,6 +147,7 @@ fun DetailHeader(
     onSync: () -> Unit,
     onSettings: () -> Unit,
     onProfile: () -> Unit,
+    onNotifications: () -> Unit,
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     modifier: Modifier = Modifier,
@@ -174,7 +175,7 @@ fun DetailHeader(
             }
         }
         HeaderControls(
-            onNotifications = {},
+            onNotifications = onNotifications,
             onLicenseKey = onLicenseKey,
             onProfile = onProfile,
             onSettings = onSettings,

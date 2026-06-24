@@ -113,6 +113,7 @@ fun MediaCatalogHeader(
     onSync: () -> Unit,
     onSettings: () -> Unit,
     onProfile: () -> Unit,
+    onNotifications: () -> Unit,
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     modifier: Modifier = Modifier,
@@ -143,7 +144,7 @@ fun MediaCatalogHeader(
         }
 
         HeaderControls(
-            onNotifications = {},
+            onNotifications = onNotifications,
             onLicenseKey = onLicenseKey,
             onProfile = onProfile,
             onSettings = onSettings,

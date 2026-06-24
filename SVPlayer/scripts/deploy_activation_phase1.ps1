@@ -847,10 +847,11 @@ function Test-CustomerCommerce {
             plan = 'year_1'
             accept_terms = '1'
         }
-        if ($paid.Content -notmatch 'Paiement test accepte' -or $paid.Content -notmatch 'SV-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}') {
+        $codePattern = '(SV-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}|[A-Z2-9]{10})'
+        if ($paid.Content -notmatch 'Paiement test accepte' -or $paid.Content -notmatch $codePattern) {
             $flashMatch = [Regex]::Match($paid.Content, '<div class="form-notice[^>]*>(.*?)</div>', [Text.RegularExpressions.RegexOptions]::Singleline)
             $flashText = if ($flashMatch.Success) { [Regex]::Replace($flashMatch.Groups[1].Value, '<[^>]+>', '').Trim() } else { 'aucun message' }
-            $hasCode = $paid.Content -match 'SV-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}'
+            $hasCode = $paid.Content -match $codePattern
             throw "Commande client QA non confirmee: $flashText; code=$hasCode."
         }
     } finally {
@@ -885,21 +886,27 @@ function Test-AdminPanel {
             username = $Username
             password = $Password
         }
-        if ($dashboard.Content -notmatch "Generer un code" -or $dashboard.Content -notmatch "Journal admin") {
+        if ($dashboard.Content -notmatch "Administration" -or $dashboard.Content -notmatch "Licences" -or $dashboard.Content -notmatch "Journal") {
             throw "Connexion admin echouee."
         }
-        $csrf = Get-CsrfTokenFromHtml -Html $dashboard.Content
+        $licensesPage = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Get -Uri "${baseUrl}?page=licenses"
+        if ($licensesPage.Content -notmatch "Licences et codes") {
+            throw "Page licences admin indisponible."
+        }
+        $csrf = Get-CsrfTokenFromHtml -Html $licensesPage.Content
 
         $label = "Automated Admin QA " + [Guid]::NewGuid().ToString("N").Substring(0, 8)
         $generated = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Post -Uri $baseUrl -Body @{
             action = "generate_code"
+            redirect_page = "licenses"
             csrf_token = $csrf
             label = $label
             duration_days = "1"
             max_devices = "1"
+            quantity = "1"
             valid_until = ""
         }
-        if ($generated.Content -notmatch 'SV-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}') {
+        if ($generated.Content -notmatch '(SV-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}|[A-Z2-9]{10})') {
             throw "Code admin QA non affiche."
         }
 
@@ -913,6 +920,7 @@ function Test-AdminPanel {
 
         $disabled = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Post -Uri $baseUrl -Body @{
             action = "set_code_status"
+            redirect_page = "licenses"
             csrf_token = $csrf
             code_id = $codeId
             status = "disabled"
@@ -925,6 +933,7 @@ function Test-AdminPanel {
 
         $deleted = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Post -Uri $baseUrl -Body @{
             action = "delete_code"
+            redirect_page = "licenses"
             csrf_token = $csrf
             code_id = $codeId
         }
@@ -1025,6 +1034,7 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/_includes" -FilePath (Join-Path $publicHtmlPath "_includes/site_layout.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/config.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/helpers.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/notifications.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/monetization_rules.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/device_state.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/commerce.php")
@@ -1224,7 +1234,7 @@ try {
             } | ConvertTo-Json
             $setupSession = Invoke-RestMethod -Method Post -Uri "https://$domain/api/create_playlist_setup_session.php" -ContentType "application/json" -Body $setupBody
             Assert-ApiResult -Result $setupSession -Label "create_playlist_setup_session"
-            if ([string]::IsNullOrWhiteSpace([string]$setupSession.qr_url) -or $setupSession.qr_url -notmatch "mode=xtream") {
+            if ([string]::IsNullOrWhiteSpace([string]$setupSession.qr_url) -or $setupSession.qr_url -notmatch "/xtream/\?") {
                 throw "Lien QR Xtream inattendu."
             }
 
