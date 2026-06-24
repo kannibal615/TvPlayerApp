@@ -308,6 +308,8 @@ class ActivationViewModel(
         status: com.smartvision.svplayer.data.activation.RemoteActivationStatus,
     ): Boolean {
         val monetizationStatus = status.monetizationStatus()
+        val debugStatusForced =
+            BuildConfig.DEBUG && BuildConfig.DEBUG_MONETIZATION_STATUS.isNotBlank()
         when {
             status.status == ActivationStatus.Blocked -> {
                 pollingJob?.cancel()
@@ -334,7 +336,9 @@ class ActivationViewModel(
                 return true
             }
 
-            status.status == ActivationStatus.Expired -> {
+            status.status == ActivationStatus.Expired ||
+                monetizationStatus == MonetizationStatus.TRIAL_EXPIRED ||
+                monetizationStatus == MonetizationStatus.LICENSE_EXPIRED -> {
                 pollingJob?.cancel()
                 _uiState.update {
                     it.copy(
@@ -364,7 +368,12 @@ class ActivationViewModel(
                 return true
             }
 
-            status.activated && status.status == ActivationStatus.Active -> {
+            status.activated && status.status == ActivationStatus.Active ||
+                debugStatusForced && (
+                    monetizationStatus == MonetizationStatus.PREMIUM_ACTIVE ||
+                        monetizationStatus == MonetizationStatus.TRIAL_ACTIVE ||
+                        monetizationStatus == MonetizationStatus.FREE_WITH_ADS
+                    ) -> {
                 pollingJob?.cancel()
                 _uiState.update {
                     it.copy(

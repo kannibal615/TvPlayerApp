@@ -967,13 +967,13 @@ private fun PremiumLicenseDialog(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xCC010711))
-                .padding(horizontal = 48.dp, vertical = 38.dp),
+                .padding(horizontal = 40.dp, vertical = 28.dp),
             contentAlignment = Alignment.Center,
         ) {
             Box(
                 modifier = Modifier
-                    .width(1040.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                    .width(760.dp)
+                    .clip(RoundedCornerShape(20.dp))
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
@@ -985,75 +985,75 @@ private fun PremiumLicenseDialog(
                         ),
                     )
                     .border(
-                        BorderStroke(2.dp, Color(0xFF2A67A7).copy(alpha = 0.82f)),
-                        RoundedCornerShape(24.dp),
+                        BorderStroke(1.dp, Color(0xFF2A67A7).copy(alpha = 0.86f)),
+                        RoundedCornerShape(20.dp),
                     )
-                    .padding(28.dp),
+                    .padding(horizontal = 22.dp, vertical = 20.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(32.dp),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     PremiumQrCard(
                         qrUrl = qrUrl,
                         loading = loading,
                         modifier = Modifier
-                            .width(404.dp)
-                            .height(500.dp),
+                            .width(336.dp)
+                            .height(318.dp),
                     )
 
                     Box(
                         modifier = Modifier
                             .width(1.dp)
-                            .height(456.dp)
+                            .height(308.dp)
                             .background(Color(0xFF1D3553).copy(alpha = 0.72f)),
                     )
 
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(top = 30.dp, end = 12.dp),
+                            .padding(top = 16.dp, end = 12.dp),
                     ) {
                         Text(
                             text = "Passer à",
                             color = SmartVisionColors.TextPrimary,
-                            style = SmartVisionType.TitleL,
+                            style = SmartVisionType.TitleM,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             text = "SmartVision Premium",
                             color = Color(0xFF1687FF),
-                            style = SmartVisionType.TitleL,
+                            style = SmartVisionType.TitleM,
                             fontWeight = FontWeight.Bold,
                         )
-                        Spacer(Modifier.height(18.dp))
+                        Spacer(Modifier.height(12.dp))
                         Text(
                             text = "Débloquez toutes les fonctionnalités premium\net profitez d’une expérience IPTV sans limites.",
                             color = SmartVisionColors.TextSecondary,
-                            style = SmartVisionType.Body,
+                            style = SmartVisionType.Label,
                         )
-                        Spacer(Modifier.height(28.dp))
+                        Spacer(Modifier.height(20.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.Security,
                                 contentDescription = null,
                                 tint = Color(0xFF1687FF),
-                                modifier = Modifier.size(24.dp),
+                                modifier = Modifier.size(20.dp),
                             )
-                            Spacer(Modifier.width(10.dp))
+                            Spacer(Modifier.width(8.dp))
                             Text(
                                 text = "Code licence SmartVision",
                                 color = Color(0xFF1687FF),
-                                style = SmartVisionType.Body,
+                                style = SmartVisionType.Label,
                                 fontWeight = FontWeight.SemiBold,
                             )
                         }
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(10.dp))
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(68.dp)
+                                .height(54.dp)
                                 .focusRequester(fieldFocusRequester)
                                 .onFocusChanged { fieldFocused = it.isFocused }
                                 .onPreviewKeyEvent { event ->
@@ -1076,7 +1076,7 @@ private fun PremiumLicenseDialog(
                                     }
                                 }
                                 .focusable(enabled = !editing)
-                                .clip(RoundedCornerShape(14.dp))
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(Color(0xFF030B18).copy(alpha = 0.92f))
                                 .border(
                                     BorderStroke(
@@ -1087,9 +1087,9 @@ private fun PremiumLicenseDialog(
                                             SmartVisionColors.Primary
                                         },
                                     ),
-                                    RoundedCornerShape(14.dp),
+                                    RoundedCornerShape(10.dp),
                                 )
-                                .padding(horizontal = 22.dp),
+                                .padding(horizontal = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             BasicTextField(
@@ -1097,7 +1097,7 @@ private fun PremiumLicenseDialog(
                                 onValueChange = { onLicenseCodeChange(it.uppercase().take(24)) },
                                 enabled = editing,
                                 singleLine = true,
-                                textStyle = SmartVisionType.TitleS.copy(
+                                textStyle = SmartVisionType.Body.copy(
                                     color = SmartVisionColors.TextPrimary,
                                     fontWeight = FontWeight.SemiBold,
                                 ),
@@ -1115,7 +1115,7 @@ private fun PremiumLicenseDialog(
                                         Text(
                                             text = "Saisir le code",
                                             color = SmartVisionColors.TextSecondary.copy(alpha = 0.62f),
-                                            style = SmartVisionType.TitleS,
+                                            style = SmartVisionType.Body,
                                         )
                                     }
                                     inner()
@@ -1130,7 +1130,7 @@ private fun PremiumLicenseDialog(
                                 style = SmartVisionType.Label,
                             )
                         }
-                        Spacer(Modifier.height(18.dp))
+                        Spacer(Modifier.height(14.dp))
                         PremiumDialogButton(
                             text = if (submittingLicense) "Activation..." else "Activer ce code",
                             onClick = onSubmitLicenseCode,
@@ -1139,16 +1139,16 @@ private fun PremiumLicenseDialog(
                             trailingIcon = Icons.Default.ArrowForward,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(66.dp),
+                                .height(46.dp),
                         )
-                        Spacer(Modifier.height(14.dp))
+                        Spacer(Modifier.height(10.dp))
                         PremiumDialogButton(
                             text = "Fermer",
                             onClick = onDismiss,
                             primary = false,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(58.dp),
+                                .height(46.dp),
                         )
                     }
                 }
@@ -1168,83 +1168,63 @@ private fun PremiumQrCard(
     loading: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(22.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFF0C2342),
-                        Color(0xFF06152A),
-                    ),
-                ),
-            )
-            .border(BorderStroke(2.dp, Color(0xFF166BD1)), RoundedCornerShape(22.dp))
-            .padding(18.dp),
+    Column(
+        modifier = modifier.padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
+        Image(
+            painter = painterResource(R.drawable.smartvision_logo_wide),
+            contentDescription = "SmartVision IPTV Player",
+            modifier = Modifier
+                .width(214.dp)
+                .height(52.dp),
+        )
+        Spacer(Modifier.height(14.dp))
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .border(BorderStroke(2.dp, SmartVisionColors.CyanAccent), RoundedCornerShape(18.dp))
-                .padding(horizontal = 22.dp, vertical = 20.dp),
-            contentAlignment = Alignment.TopCenter,
+                .size(208.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color.White)
+                .padding(12.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Image(
-                    painter = painterResource(R.drawable.smartvision_logo_wide),
-                    contentDescription = "SmartVision IPTV Player",
-                    modifier = Modifier
-                        .width(260.dp)
-                        .height(64.dp),
+            when {
+                loading -> CircularProgressIndicator(color = SmartVisionColors.Primary)
+                qrUrl.isBlank() -> Icon(
+                    Icons.Default.QrCode2,
+                    contentDescription = null,
+                    tint = Color(0xFF10203A),
+                    modifier = Modifier.size(72.dp),
                 )
-                Spacer(Modifier.height(16.dp))
-                Box(
-                    modifier = Modifier
-                        .size(280.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White)
-                        .border(BorderStroke(6.dp, Color(0xFF173B68)), RoundedCornerShape(16.dp))
-                        .padding(18.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    when {
-                        loading -> CircularProgressIndicator(color = SmartVisionColors.Primary)
-                        qrUrl.isBlank() -> Icon(
-                            Icons.Default.QrCode2,
-                            contentDescription = null,
-                            tint = Color(0xFF10203A),
-                            modifier = Modifier.size(92.dp),
-                        )
-                        else -> {
-                            val bitmap = remember(qrUrl) { createQrBitmap(qrUrl, 512) }
-                            Image(
-                                bitmap = bitmap.asImageBitmap(),
-                                contentDescription = "QR code SmartVision",
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.height(16.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.QrCode2,
-                        contentDescription = null,
-                        tint = Color(0xFF1687FF),
-                        modifier = Modifier.size(30.dp),
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        text = "Scannez le QR code\npour acheter une licence",
-                        color = SmartVisionColors.TextPrimary,
-                        style = SmartVisionType.Body,
-                        textAlign = TextAlign.Start,
+                else -> {
+                    val bitmap = remember(qrUrl) { createQrBitmap(qrUrl, 512) }
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "QR code SmartVision",
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
             }
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.QrCode2,
+                contentDescription = null,
+                tint = Color(0xFF1687FF),
+                modifier = Modifier.size(22.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = "Scannez le QR code\npour acheter une licence",
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.Label,
+                textAlign = TextAlign.Start,
+            )
         }
     }
 }
@@ -1260,7 +1240,7 @@ private fun PremiumDialogButton(
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(10.dp)
     val borderColor = when {
         focusState.isFocused -> SmartVisionColors.FocusWhite
         primary -> SmartVisionColors.CyanAccent
@@ -1273,7 +1253,7 @@ private fun PremiumDialogButton(
                 state = focusState,
                 enabled = enabled,
                 glowColor = SmartVisionColors.CyanAccent,
-                cornerRadius = 14.dp,
+                cornerRadius = 10.dp,
             )
             .clip(shape)
             .background(
@@ -1297,14 +1277,14 @@ private fun PremiumDialogButton(
                 onClick = onClick,
             )
             .focusable(enabled = enabled, interactionSource = interactionSource)
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
         Text(
             text = text,
             color = if (enabled) Color.White else Color.White.copy(alpha = 0.42f),
-            style = SmartVisionType.TitleS,
+            style = SmartVisionType.Body,
             fontWeight = FontWeight.SemiBold,
         )
         if (trailingIcon != null) {
@@ -1313,7 +1293,7 @@ private fun PremiumDialogButton(
                 imageVector = trailingIcon,
                 contentDescription = null,
                 tint = if (enabled) Color.White else Color.White.copy(alpha = 0.42f),
-                modifier = Modifier.size(26.dp),
+                modifier = Modifier.size(22.dp),
             )
         }
     }
@@ -1326,15 +1306,15 @@ private fun PremiumCloseButton(
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(12.dp)
 
     Box(
         modifier = modifier
-            .size(54.dp)
+            .size(42.dp)
             .tvFocusTarget(
                 state = focusState,
                 glowColor = SmartVisionColors.CyanAccent,
-                cornerRadius = 14.dp,
+                cornerRadius = 12.dp,
             )
             .clip(shape)
             .background(Color(0xFF0B1728))
@@ -1357,7 +1337,7 @@ private fun PremiumCloseButton(
             imageVector = Icons.Default.Close,
             contentDescription = "Fermer",
             tint = SmartVisionColors.TextSecondary,
-            modifier = Modifier.size(30.dp),
+            modifier = Modifier.size(24.dp),
         )
     }
 }

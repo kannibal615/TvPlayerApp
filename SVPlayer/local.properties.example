@@ -2,3 +2,12 @@ sdk.dir=C\:\\Users\\ONEDEV\\AppData\\Local\\Android\\Sdk
 XTREAM_HOST=https://example.com
 XTREAM_USERNAME=debug-user
 XTREAM_PASSWORD=debug-password
+
+# Publicite video release (laisser vide pour desactiver les pubs en release).
+GOOGLE_ADS_APPLICATION_ID=
+VIDEO_AD_TAG_URL=
+
+# Overrides debug optionnels:
+# PREMIUM_ACTIVE, TRIAL_ACTIVE, TRIAL_EXPIRED, LICENSE_EXPIRED, FREE_WITH_ADS
+SMARTVISION_DEBUG_MONETIZATION_STATUS=
+SMARTVISION_DEBUG_AD_FAILURE=false
