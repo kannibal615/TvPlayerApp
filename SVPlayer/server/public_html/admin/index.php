@@ -776,8 +776,7 @@ function admin_build_alerts(array $stats): array
 
 function render_admin_login(?string $error): void
 {
-    $credentials = admin_credentials();
-    $configured = $credentials['username'] !== '' && $credentials['password_hash'] !== '';
+    $configured = admin_auth_is_configured();
     ?><!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=3"></head>
 <body class="admin-login-body"><main class="admin-login-panel">

@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -58,8 +59,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -85,6 +88,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.smartvision.svplayer.core.data.LocalAppContainer
+import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.models.XtreamSeriesEpisode
 import com.smartvision.svplayer.data.repository.UserContentRepository
@@ -910,27 +914,14 @@ private fun FullPlayerOverlay(
 
 @Composable
 private fun PlayerLogo(modifier: Modifier = Modifier) {
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            imageVector = Icons.Default.PlayArrow,
-            contentDescription = null,
-            tint = SmartVisionColors.Primary,
-            modifier = Modifier.size(26.dp),
-        )
-        Spacer(Modifier.width(6.dp))
-        Text(
-            text = buildAnnotatedString {
-                append("Smart")
-                withStyle(SpanStyle(color = SmartVisionColors.Primary)) {
-                    append("Vision")
-                }
-            },
-            color = Color.White,
-            style = SmartVisionType.Label,
-            fontWeight = FontWeight.Black,
-            maxLines = 1,
-        )
-    }
+    Image(
+        painter = painterResource(R.drawable.smartvision_logo_wide),
+        contentDescription = "SmartVision",
+        contentScale = ContentScale.Fit,
+        modifier = modifier
+            .width(178.dp)
+            .height(44.dp),
+    )
 }
 
 @Composable

@@ -103,6 +103,21 @@ CREATE TABLE IF NOT EXISTS admin_audit_logs (
     INDEX (action)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS admin_users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('super_admin', 'admin', 'support') NOT NULL DEFAULT 'admin',
+    status ENUM('active', 'blocked') NOT NULL DEFAULT 'active',
+    failed_login_attempts INT UNSIGNED NOT NULL DEFAULT 0,
+    locked_until DATETIME NULL,
+    last_login_at DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (status),
+    INDEX (last_login_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS site_users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(190) NOT NULL UNIQUE,

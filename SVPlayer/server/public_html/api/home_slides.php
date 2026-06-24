@@ -5,7 +5,8 @@ require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/config.php';
 
 apply_api_headers();
-header('Cache-Control: public, max-age=120');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     json_response(['success' => false, 'error' => 'Methode non autorisee.'], 405);

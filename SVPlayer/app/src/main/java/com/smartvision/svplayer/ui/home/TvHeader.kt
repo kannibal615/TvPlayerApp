@@ -106,11 +106,6 @@ fun HeaderControls(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        HeaderIconButton(
-            icon = Icons.Default.Notifications,
-            contentDescription = "Notifications",
-            onClick = onNotifications,
-        )
         if (showLicenseKey) {
             HeaderIconButton(
                 icon = Icons.Default.Key,
@@ -119,6 +114,11 @@ fun HeaderControls(
                 accent = SmartVisionColors.Warning,
             )
         }
+        HeaderIconButton(
+            icon = Icons.Default.Notifications,
+            contentDescription = "Notifications",
+            onClick = onNotifications,
+        )
         HeaderIconButton(
             icon = Icons.Default.Person,
             contentDescription = "Profil",

@@ -54,7 +54,11 @@ fun HomeCollectionsScreen(
     val viewModel: HomeViewModel = viewModel(
         key = "home-collection-${kind.name}",
         factory = viewModelFactory {
-            HomeViewModel(container.userContentRepository, container.xtreamRepository)
+            HomeViewModel(
+                container.userContentRepository,
+                container.xtreamRepository,
+                container.homeSlidesRepository,
+            )
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()

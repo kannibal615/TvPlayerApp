@@ -51,6 +51,7 @@ fun HomeScreen(
             HomeViewModel(
                 userContentRepository = container.userContentRepository,
                 xtreamRepository = container.xtreamRepository,
+                homeSlidesRepository = container.homeSlidesRepository,
             )
         },
     )
@@ -59,6 +60,8 @@ fun HomeScreen(
     val hasContinueWatching = state.continueWatching.isNotEmpty()
 
     LaunchedEffect(Unit) {
+        viewModel.refreshSlides()
+        viewModel.refreshTrending()
         withFrameNanos { }
         liveFocusRequester.requestFocus()
     }
@@ -100,6 +103,7 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             HomeHeroBanner(
+                remoteSlides = state.slides,
                 onNavigate = onNavigate,
                 modifier = Modifier.fillMaxWidth(),
             )

@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -202,7 +204,7 @@ fun SettingsScreen(
                         maxLines = 1,
                     )
                 }
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.height(18.dp))
                 TvButton(
                     text = "Vider les donnees locales",
                     leadingIcon = Icons.Default.Refresh,
@@ -288,7 +290,15 @@ private fun SettingsPanel(
             trailing?.invoke()
         }
         Spacer(Modifier.height(18.dp))
-        content()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            content()
+            Spacer(Modifier.height(12.dp))
+        }
     }
 }
 

@@ -19,15 +19,33 @@ function config_json_error(string $message, int $statusCode = 500): never
 
 function load_database_config(): array
 {
-    $privateConfigCandidates = [
-        dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . SMARTVISION_PRIVATE_CONFIG,
-        dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . SMARTVISION_PRIVATE_CONFIG,
-    ];
+    $privateConfigCandidates = [];
+    $ancestor = dirname(__DIR__);
+    while ($ancestor !== dirname($ancestor)) {
+        if (basename($ancestor) === 'public_html') {
+            $privateConfigCandidates[] = dirname($ancestor)
+                . DIRECTORY_SEPARATOR . SMARTVISION_PRIVATE_CONFIG;
+            break;
+        }
+        $ancestor = dirname($ancestor);
+    }
+
+    $accountHome = trim((string) getenv('HOME'));
+    if ($accountHome !== '') {
+        $privateConfigCandidates[] = rtrim($accountHome, DIRECTORY_SEPARATOR)
+            . DIRECTORY_SEPARATOR . SMARTVISION_PRIVATE_CONFIG;
+    }
+
+    $privateConfigCandidates[] = dirname(__DIR__, 2)
+        . DIRECTORY_SEPARATOR . SMARTVISION_PRIVATE_CONFIG;
+    $privateConfigCandidates[] = dirname(__DIR__, 3)
+        . DIRECTORY_SEPARATOR . SMARTVISION_PRIVATE_CONFIG;
 
     foreach (array_unique($privateConfigCandidates) as $privateConfig) {
         if (is_file($privateConfig)) {
             $config = require $privateConfig;
             if (is_array($config)) {
+                $config['_private_config_path'] = $privateConfig;
                 return $config;
             }
         }

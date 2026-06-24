@@ -487,6 +487,113 @@ try {
     Write-Utf8NoBomFile -Path $OutputPath -Content $content
 }
 
+function New-AdminBootstrapFile {
+    param(
+        [string]$OutputPath,
+        [string]$Token
+    )
+
+    $escapedToken = Escape-PhpString $Token
+    $content = @'
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/api/config.php';
+
+header('Content-Type: application/json; charset=utf-8');
+$bootstrapToken = '__BOOTSTRAP_TOKEN__';
+
+if (!hash_equals($bootstrapToken, (string) ($_GET['token'] ?? ''))) {
+    http_response_code(404);
+    echo json_encode(['success' => false, 'error' => 'Not found.']);
+    exit;
+}
+
+register_shutdown_function(static function (): void {
+    @unlink(__FILE__);
+});
+
+try {
+    $config = load_database_config();
+    $username = trim((string) ($config['admin_username'] ?? ''));
+    $adminPassword = (string) ($_POST['admin_password'] ?? '');
+    if ($username === '' || $adminPassword === '') {
+        throw new RuntimeException('Admin bootstrap configuration missing.');
+    }
+    $passwordHash = password_hash($adminPassword, PASSWORD_DEFAULT);
+    if (!is_string($passwordHash) || $passwordHash === '') {
+        throw new RuntimeException('Admin password hash generation failed.');
+    }
+
+    $pdo = db();
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS admin_users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(100) NOT NULL UNIQUE,
+            password_hash VARCHAR(255) NOT NULL,
+            role ENUM('super_admin', 'admin', 'support') NOT NULL DEFAULT 'admin',
+            status ENUM('active', 'blocked') NOT NULL DEFAULT 'active',
+            failed_login_attempts INT UNSIGNED NOT NULL DEFAULT 0,
+            locked_until DATETIME NULL,
+            last_login_at DATETIME NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX (status),
+            INDEX (last_login_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
+
+    $statement = $pdo->prepare(
+        "INSERT INTO admin_users
+            (username, password_hash, role, status, failed_login_attempts, locked_until)
+         VALUES
+            (:username, :password_hash, 'super_admin', 'active', 0, NULL)
+         ON DUPLICATE KEY UPDATE
+            password_hash = VALUES(password_hash),
+            role = 'super_admin',
+            status = 'active',
+            failed_login_attempts = 0,
+            locked_until = NULL"
+    );
+    $statement->execute([
+        'username' => $username,
+        'password_hash' => $passwordHash,
+    ]);
+
+    $privateConfigPath = (string) ($config['_private_config_path'] ?? '');
+    if ($privateConfigPath !== '' && is_file($privateConfigPath)) {
+        unset($config['_private_config_path']);
+        $config['admin_password_hash'] = $passwordHash;
+        $temporaryConfigPath = $privateConfigPath . '.tmp';
+        $privateConfigContents = "<?php\ndeclare(strict_types=1);\n\nreturn "
+            . var_export($config, true)
+            . ";\n";
+        if (file_put_contents($temporaryConfigPath, $privateConfigContents, LOCK_EX) === false
+            || !rename($temporaryConfigPath, $privateConfigPath)) {
+            @unlink($temporaryConfigPath);
+            throw new RuntimeException('Private admin configuration update failed.');
+        }
+        @chmod($privateConfigPath, 0600);
+    }
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Admin account synchronized.',
+    ], JSON_UNESCAPED_SLASHES);
+} catch (Throwable $exception) {
+    error_log('SmartVision admin bootstrap failed.');
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Admin account synchronization failed.',
+    ], JSON_UNESCAPED_SLASHES);
+}
+'@
+    $content = $content.Replace('__BOOTSTRAP_TOKEN__', $escapedToken)
+
+    Write-Utf8NoBomFile -Path $OutputPath -Content $content
+}
+
 function Get-Sha256Hex {
     param([string]$Value)
 
@@ -898,8 +1005,11 @@ try {
     $privateConfigPath = Join-Path $tempRoot "config.php"
     $installPath = Join-Path $tempRoot "install.php"
     $installToken = [Guid]::NewGuid().ToString("N")
+    $adminBootstrapPath = Join-Path $tempRoot "admin_bootstrap.php"
+    $adminBootstrapToken = [Guid]::NewGuid().ToString("N")
     New-PrivateConfigFile -Properties $properties -OutputPath $privateConfigPath
     New-InstallFile -OutputPath $installPath -Token $installToken
+    New-AdminBootstrapFile -OutputPath $adminBootstrapPath -Token $adminBootstrapToken
 
     Write-Host "Upload des fichiers PHP/SQL..."
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath (Join-Path $publicHtmlPath "index.php")
@@ -981,6 +1091,14 @@ try {
         }
     }
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remotePrivate -FilePath $privateConfigPath
+
+    Write-Host "Synchronisation securisee du compte admin..."
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath $adminBootstrapPath
+    $adminBootstrapUrl = "https://$domain/admin_bootstrap.php?token=$adminBootstrapToken"
+    $adminBootstrapResponse = Invoke-RestMethod -Method Post -Uri $adminBootstrapUrl -Body @{
+        admin_password = [string]$properties["SMARTVISION_ADMIN_PASSWORD"]
+    }
+    Assert-ApiResult -Result $adminBootstrapResponse -Label "admin_bootstrap.php"
 
     if (-not $SkipInstall) {
         Write-Host "Installation SQL temporaire..."

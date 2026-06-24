@@ -41,6 +41,7 @@ enum class TvButtonVariant {
     Secondary,
     Tertiary,
     Text,
+    Exit,
 }
 
 @Composable
@@ -63,12 +64,15 @@ fun TvButton(
     val targetBackground = when {
         variant == TvButtonVariant.Text -> Color.Transparent
         selected -> SmartVisionColors.Primary.copy(alpha = 0.34f)
+        variant == TvButtonVariant.Exit && focusState.isFocused -> SmartVisionColors.Error
+        variant == TvButtonVariant.Exit -> SmartVisionColors.Primary
         focusState.isFocused -> SmartVisionColors.SurfaceElevated
         variant == TvButtonVariant.Primary -> SmartVisionColors.Primary
         variant == TvButtonVariant.Secondary -> SmartVisionColors.SurfaceElevated
         else -> SmartVisionColors.Surface.copy(alpha = 0.54f)
     }
     val targetBorder = when {
+        variant == TvButtonVariant.Exit && focusState.isFocused -> SmartVisionColors.Error
         focusState.isFocused -> SmartVisionColors.FocusWhite
         selected -> SmartVisionColors.CyanAccent
         variant == TvButtonVariant.Primary -> SmartVisionColors.Primary
@@ -77,7 +81,7 @@ fun TvButton(
     }
     val targetTextColor = when {
         !enabled -> SmartVisionColors.TextSecondary.copy(alpha = 0.52f)
-        variant == TvButtonVariant.Primary && !focusState.isFocused -> Color.White
+        (variant == TvButtonVariant.Primary || variant == TvButtonVariant.Exit) && !focusState.isFocused -> Color.White
         focusState.isFocused || selected -> SmartVisionColors.TextPrimary
         else -> SmartVisionColors.TextSecondary
     }
@@ -106,7 +110,7 @@ fun TvButton(
                 focusRequester = focusRequester,
                 enabled = enabled,
                 pressed = pressed,
-                glowColor = SmartVisionColors.Primary,
+                glowColor = if (variant == TvButtonVariant.Exit) SmartVisionColors.Error else SmartVisionColors.Primary,
                 cornerRadius = SmartVisionDimensions.ButtonRadius,
             )
             .zIndex(if (focusState.isFocused) 2f else 0f)

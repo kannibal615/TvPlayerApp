@@ -34,6 +34,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -49,8 +51,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -152,6 +160,9 @@ fun CatalogSearchField(
     placeholder: String = "Rechercher",
 ) {
     var focused by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf(false) }
+    val inputFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     val shape = RoundedCornerShape(7.dp)
     val borderColor by animateColorAsState(
         targetValue = if (focused) SmartVisionColors.CyanAccent else SmartVisionColors.Border,
@@ -159,15 +170,46 @@ fun CatalogSearchField(
         label = "catalogSearchBorder",
     )
 
+    LaunchedEffect(editing) {
+        if (editing) {
+            inputFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
     BasicTextField(
         value = query,
         onValueChange = onQueryChange,
         singleLine = true,
+        readOnly = !editing,
         cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
         textStyle = CatalogMetaStyle.copy(color = SmartVisionColors.TextPrimary),
         modifier = modifier
             .height(34.dp)
-            .onFocusChanged { focused = it.isFocused }
+            .focusRequester(inputFocusRequester)
+            .onFocusChanged {
+                focused = it.isFocused
+                if (!it.isFocused) {
+                    editing = false
+                    keyboardController?.hide()
+                }
+            }
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when {
+                    event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter -> {
+                        editing = true
+                        keyboardController?.show()
+                        true
+                    }
+                    event.key == Key.Back && editing -> {
+                        editing = false
+                        keyboardController?.hide()
+                        true
+                    }
+                    else -> false
+                }
+            }
             .clip(shape)
             .background(SmartVisionColors.Surface.copy(alpha = 0.86f))
             .border(

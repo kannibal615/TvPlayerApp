@@ -216,7 +216,7 @@ private fun ActivationMainPanel(
 
     LaunchedEffect(Unit) { licenseFocus.requestFocus() }
 
-    GlassShell(width = 1100.dp) {
+    GlassShell(width = 1000.dp) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
@@ -330,7 +330,7 @@ private fun ActivationQrColumn(
     state: ActivationUiState,
 ) {
     Column(
-        modifier = Modifier.width(326.dp),
+        modifier = Modifier.width(282.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -346,7 +346,7 @@ private fun ActivationQrColumn(
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(16.dp))
-        QrCard(content = state.purchaseUrl, size = 236)
+        QrCard(content = state.purchaseUrl, size = 205)
         Spacer(Modifier.height(22.dp))
         StepsCard(
             steps = listOf(
@@ -368,7 +368,7 @@ private fun TrialExpiredPanel(
     val continueFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { continueFocus.requestFocus() }
 
-    GlassShell(width = 1100.dp) {
+    GlassShell(width = 1000.dp) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
@@ -434,7 +434,7 @@ private fun TrialExpiredPanel(
             VerticalDivider()
 
             Column(
-                modifier = Modifier.width(326.dp),
+                modifier = Modifier.width(282.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
@@ -457,7 +457,7 @@ private fun TrialExpiredPanel(
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(16.dp))
-                QrCard(content = state.purchaseUrl, size = 236)
+                QrCard(content = state.purchaseUrl, size = 205)
                 Spacer(Modifier.height(22.dp))
                 StepsCard(
                     steps = listOf(
@@ -507,8 +507,9 @@ private fun LicenseInput(
     val fieldFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
     var editing by remember { mutableStateOf(false) }
+    var containerFocused by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(7.dp)
-    val borderColor = if (editing) {
+    val borderColor = if (editing || containerFocused) {
         SmartVisionColors.CyanAccent
     } else {
         SmartVisionColors.Primary.copy(alpha = 0.72f)
@@ -526,6 +527,7 @@ private fun LicenseInput(
             .fillMaxWidth()
             .height(44.dp)
             .focusRequester(focusRequester)
+            .onFocusChanged { containerFocused = it.isFocused }
             .onPreviewKeyEvent { event ->
                 if (!enabled) return@onPreviewKeyEvent false
                 when {
@@ -679,7 +681,7 @@ private fun GlassShell(
             .clip(RoundedCornerShape(20.dp))
             .background(GlassPanelBrush())
             .border(BorderStroke(1.dp, Color(0xFF2A3B58)), RoundedCornerShape(20.dp))
-            .padding(horizontal = 34.dp, vertical = 22.dp),
+            .padding(horizontal = 28.dp, vertical = 18.dp),
         content = content,
     )
 }
@@ -687,8 +689,8 @@ private fun GlassShell(
 @Composable
 private fun SmartVisionLogo(
     modifier: Modifier = Modifier
-        .width(220.dp)
-        .height(56.dp),
+        .width(190.dp)
+        .height(48.dp),
 ) {
     Image(
         painter = painterResource(R.drawable.smartvision_logo_wide),
@@ -730,7 +732,7 @@ private fun VerticalDivider() {
     Box(
         modifier = Modifier
             .width(1.dp)
-            .height(480.dp)
+            .height(430.dp)
             .background(Color(0xFF2D4263).copy(alpha = 0.82f)),
     )
 }
@@ -754,8 +756,8 @@ private fun SecureFooter() {
 }
 
 private val ActivationTitleStyle = TextStyle(
-    fontSize = 36.sp,
-    lineHeight = 42.sp,
+    fontSize = 32.sp,
+    lineHeight = 38.sp,
     fontWeight = FontWeight.Bold,
     letterSpacing = 0.sp,
 )

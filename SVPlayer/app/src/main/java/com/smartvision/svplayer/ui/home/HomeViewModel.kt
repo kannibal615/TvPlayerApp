@@ -3,6 +3,8 @@ package com.smartvision.svplayer.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
+import com.smartvision.svplayer.data.home.HomeSlide
+import com.smartvision.svplayer.data.home.HomeSlidesRepository
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import com.smartvision.svplayer.data.models.XtreamMovieStream
@@ -22,13 +24,16 @@ import kotlinx.coroutines.launch
 data class HomeUiState(
     val continueWatching: List<ContinueItem> = emptyList(),
     val trending: List<ContinueItem> = emptyList(),
+    val slides: List<HomeSlide> = emptyList(),
 )
 
 class HomeViewModel(
     private val userContentRepository: UserContentRepository,
     private val xtreamRepository: XtreamRepository,
+    private val homeSlidesRepository: HomeSlidesRepository,
 ) : ViewModel() {
     private val trending = MutableStateFlow<List<ContinueItem>>(emptyList())
+    private val slides = MutableStateFlow<List<HomeSlide>>(emptyList())
     private val continueWatching = userContentRepository.observeRecentProgress(limit = 60)
         .map { progress ->
             progress
@@ -42,10 +47,12 @@ class HomeViewModel(
     val uiState: StateFlow<HomeUiState> = combine(
         continueWatching,
         trending,
-    ) { continueItems, trendItems ->
+        slides,
+    ) { continueItems, trendItems, homeSlides ->
         HomeUiState(
             continueWatching = continueItems,
             trending = trendItems,
+            slides = homeSlides,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -54,15 +61,23 @@ class HomeViewModel(
     )
 
     init {
-        loadTrending()
+        refreshTrending()
+        refreshSlides()
     }
 
-    private fun loadTrending() {
+    fun refreshSlides() {
+        viewModelScope.launch {
+            runCatching { homeSlidesRepository.refresh() }
+                .onSuccess { refreshed -> slides.value = refreshed }
+        }
+    }
+
+    fun refreshTrending() {
         viewModelScope.launch {
             val movies = async { runCatching { loadTrendingMovies() }.getOrDefault(emptyList()) }
             val series = async { runCatching { loadTrendingSeries() }.getOrDefault(emptyList()) }
             trending.value = (movies.await() + series.await())
-                .sortedByDescending { it.score }
+                .shuffled()
                 .take(10)
                 .map { it.item }
         }
@@ -73,8 +88,8 @@ class HomeViewModel(
         return categories.movieTrendingCandidates().flatMap { category ->
             xtreamRepository.getMovies(category.id).take(60)
         }.distinctBy { it.streamId }
-            .sortedByDescending(::movieTrendScore)
-            .take(6)
+            .shuffled()
+            .take(12)
             .map { movie ->
                 ScoredTrend(
                     score = movieTrendScore(movie),
@@ -96,8 +111,8 @@ class HomeViewModel(
         return categories.seriesTrendingCandidates().flatMap { category ->
             xtreamRepository.getSeries(category.id).take(60)
         }.distinctBy { it.seriesId }
-            .sortedByDescending(::seriesTrendScore)
-            .take(6)
+            .shuffled()
+            .take(12)
             .map { series ->
                 ScoredTrend(
                     score = seriesTrendScore(series),

@@ -3,6 +3,8 @@ package com.smartvision.svplayer.ui.navigation
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +32,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -396,7 +399,7 @@ fun AppNavigation(
             title = "Passer a SmartVision Premium",
             subtitle = "Scannez ce QR code pour acheter une licence. Premium supprime les publicites et conserve l'acces pendant la duree choisie.",
             qrUrl = purchaseUrl,
-            width = 930.dp,
+            width = 820.dp,
             licenseCode = premiumLicenseCode,
             onLicenseCodeChange = { premiumLicenseCode = it },
             onSubmitLicenseCode = {
@@ -435,29 +438,33 @@ private fun ExitConfirmationDialog(
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
-                .width(430.dp)
+                .width(520.dp)
                 .background(
                     Brush.verticalGradient(listOf(Color(0xFF111C2E), Color(0xFF07101F))),
-                    RoundedCornerShape(8.dp),
+                    RoundedCornerShape(16.dp),
                 )
-                .padding(28.dp),
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)), RoundedCornerShape(16.dp))
+                .padding(horizontal = 36.dp, vertical = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = "Quitter SmartVision ?",
                 color = SmartVisionColors.TextPrimary,
                 style = SmartVisionType.TitleS,
                 fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(10.dp))
             Text(
-                text = "La lecture en cours sera arretee.",
+                text = "Êtes-vous sûr de vouloir quitter l’application ?",
                 color = SmartVisionColors.TextSecondary,
                 style = SmartVisionType.Body,
+                textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(24.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.Center,
             ) {
                 TvButton(
                     text = "Annuler",
@@ -471,7 +478,7 @@ private fun ExitConfirmationDialog(
                 TvButton(
                     text = "Quitter",
                     onClick = onExit,
-                    variant = TvButtonVariant.Primary,
+                    variant = TvButtonVariant.Exit,
                     contentPadding = PaddingValues(horizontal = 22.dp),
                     modifier = Modifier.height(44.dp),
                 )

@@ -40,6 +40,50 @@ function admin_credentials(): array
     ];
 }
 
+function admin_database_state(string $username = ''): array
+{
+    try {
+        $pdo = db();
+        $count = (int) $pdo->query("SELECT COUNT(*) FROM admin_users")->fetchColumn();
+        $user = null;
+        if ($username !== '') {
+            $statement = $pdo->prepare(
+                "SELECT id, username, password_hash, role, status, failed_login_attempts, locked_until
+                 FROM admin_users
+                 WHERE username = :username
+                 LIMIT 1"
+            );
+            $statement->execute(['username' => $username]);
+            $found = $statement->fetch();
+            $user = is_array($found) ? $found : null;
+        }
+
+        return [
+            'available' => true,
+            'count' => $count,
+            'user' => $user,
+        ];
+    } catch (Throwable $exception) {
+        error_log('SmartVision admin database lookup failed.');
+        return [
+            'available' => false,
+            'count' => 0,
+            'user' => null,
+        ];
+    }
+}
+
+function admin_auth_is_configured(): bool
+{
+    $databaseState = admin_database_state();
+    if ($databaseState['available'] && $databaseState['count'] > 0) {
+        return true;
+    }
+
+    $credentials = admin_credentials();
+    return $credentials['username'] !== '' && $credentials['password_hash'] !== '';
+}
+
 function is_admin_authenticated(): bool
 {
     return ($_SESSION['admin_authenticated'] ?? false) === true
@@ -66,19 +110,62 @@ function verify_admin_login(string $username, string $password): bool
         return false;
     }
 
-    $credentials = admin_credentials();
-    $validUsername = $credentials['username'] !== ''
-        && hash_equals($credentials['username'], trim($username));
-    $validPassword = $credentials['password_hash'] !== ''
-        && password_verify($password, $credentials['password_hash']);
+    $username = trim($username);
+    $databaseState = admin_database_state($username);
+    $databaseUser = $databaseState['user'];
+    $usingDatabase = $databaseState['available'] && $databaseState['count'] > 0;
+    $validUsername = false;
+    $validPassword = false;
+
+    if ($usingDatabase && is_array($databaseUser)) {
+        $lockedUntil = isset($databaseUser['locked_until']) && is_string($databaseUser['locked_until'])
+            ? strtotime($databaseUser['locked_until'])
+            : false;
+        $notLocked = $lockedUntil === false || $lockedUntil <= time();
+        $validUsername = ($databaseUser['status'] ?? '') === 'active' && $notLocked;
+        $validPassword = $validUsername
+            && password_verify($password, (string) ($databaseUser['password_hash'] ?? ''));
+    } elseif (!$usingDatabase) {
+        // Emergency fallback while the database migration is not yet installed.
+        $credentials = admin_credentials();
+        $validUsername = $credentials['username'] !== ''
+            && hash_equals($credentials['username'], $username);
+        $validPassword = $credentials['password_hash'] !== ''
+            && password_verify($password, $credentials['password_hash']);
+    }
 
     if ($validUsername && $validPassword) {
+        if ($usingDatabase && is_array($databaseUser)) {
+            $statement = db()->prepare(
+                "UPDATE admin_users
+                 SET failed_login_attempts = 0, locked_until = NULL, last_login_at = NOW()
+                 WHERE id = :id"
+            );
+            $statement->execute(['id' => (int) $databaseUser['id']]);
+        }
         session_regenerate_id(true);
         $_SESSION['admin_authenticated'] = true;
-        $_SESSION['admin_username'] = $credentials['username'];
+        $_SESSION['admin_username'] = $usingDatabase && is_array($databaseUser)
+            ? (string) $databaseUser['username']
+            : $username;
         $_SESSION['admin_login_failures'] = 0;
         unset($_SESSION['admin_lock_until']);
         return true;
+    }
+
+    if ($usingDatabase && is_array($databaseUser)) {
+        $attempts = (int) ($databaseUser['failed_login_attempts'] ?? 0) + 1;
+        $statement = db()->prepare(
+            "UPDATE admin_users
+             SET failed_login_attempts = :attempts,
+                 locked_until = CASE WHEN :lock_threshold >= 5 THEN DATE_ADD(NOW(), INTERVAL 5 MINUTE) ELSE locked_until END
+             WHERE id = :id"
+        );
+        $statement->execute([
+            'attempts' => $attempts,
+            'lock_threshold' => $attempts,
+            'id' => (int) $databaseUser['id'],
+        ]);
     }
 
     usleep(500000);

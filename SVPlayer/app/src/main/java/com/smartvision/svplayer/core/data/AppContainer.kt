@@ -6,6 +6,8 @@ import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.data.activation.ActivationApiService
 import com.smartvision.svplayer.data.activation.ActivationRepository
+import com.smartvision.svplayer.data.home.HomeSlidesApiService
+import com.smartvision.svplayer.data.home.HomeSlidesRepository
 import com.smartvision.svplayer.data.local.SVDatabase
 import com.smartvision.svplayer.data.remote.XtreamApiClient
 import com.smartvision.svplayer.data.remote.XtreamApiService
@@ -81,6 +83,7 @@ class AppContainer(context: Context) {
 
     private val activationApi = activationRetrofit.create(ActivationApiService::class.java)
     private val appUpdateApi = activationRetrofit.create(AppUpdateApiService::class.java)
+    private val homeSlidesApi = activationRetrofit.create(HomeSlidesApiService::class.java)
 
     val activationRepository: ActivationRepository = ActivationRepository(
         appContext = appContext,
@@ -94,6 +97,8 @@ class AppContainer(context: Context) {
         api = appUpdateApi,
         okHttpClient = activationOkHttpClient,
     )
+
+    val homeSlidesRepository = HomeSlidesRepository(homeSlidesApi)
 
     val xtreamRepository: XtreamRepository = XtreamRepository(
         apiClient = xtreamApiClient,

@@ -7,6 +7,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -123,6 +125,11 @@ fun ProfileRoute(
         onShowLicenseQr = viewModel::showLicenseQr,
         onShowXtreamSetupQr = viewModel::showXtreamSetupQr,
         onShowXtreamShopQr = viewModel::showXtreamShopQr,
+        onSelectXtreamAccount = { accountId ->
+            container.accountManager.select(accountId)
+            container.xtreamRepository.clearCaches()
+            onSyncCatalog()
+        },
         onDeleteXtreamAccount = { accountId ->
             container.accountManager.delete(accountId)
             onSyncCatalog()
@@ -141,6 +148,7 @@ private fun ProfileScreen(
     onShowLicenseQr: () -> Unit,
     onShowXtreamSetupQr: () -> Unit,
     onShowXtreamShopQr: () -> Unit,
+    onSelectXtreamAccount: (String) -> Unit,
     onDeleteXtreamAccount: (String) -> Unit,
     onDismissQr: () -> Unit,
 ) {
@@ -170,44 +178,49 @@ private fun ProfileScreen(
         Spacer(Modifier.height(20.dp))
 
         Row(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Column(
                 modifier = Modifier
                     .weight(0.58f)
-                    .fillMaxHeight(),
+                    .fillMaxHeight()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 LicensePanel(
                     state = state,
                     onRefresh = onRefresh,
                     onShowLicenseQr = onShowLicenseQr,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 XtreamPanel(
                     state = state,
                     onShowXtreamSetupQr = onShowXtreamSetupQr,
                     onShowXtreamShopQr = onShowXtreamShopQr,
+                    onSelectXtreamAccount = onSelectXtreamAccount,
                     onDeleteXtreamAccount = onDeleteXtreamAccount,
                     onSyncCatalog = onSyncCatalog,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 
             Column(
                 modifier = Modifier
                     .weight(0.42f)
-                    .fillMaxHeight(),
+                    .fillMaxHeight()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 ConversionPanel(
                     usageMode = state.usageMode,
-                    modifier = Modifier.weight(1.1f),
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 DevicePanel(
                     state = state,
-                    modifier = Modifier.weight(0.9f),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
@@ -285,7 +298,7 @@ private fun LicensePanel(
         ProfileInfoRow("Type", state.usageMode.description)
         ProfileInfoRow("Identifiant appareil", state.deviceId.ifBlank { "Generation..." })
         ProfileInfoRow("Renouvellement", state.usageMode.renewalHint)
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             TvButton(
                 text = state.usageMode.primaryCta,
@@ -314,6 +327,7 @@ private fun XtreamPanel(
     state: ProfileUiState,
     onShowXtreamSetupQr: () -> Unit,
     onShowXtreamShopQr: () -> Unit,
+    onSelectXtreamAccount: (String) -> Unit,
     onDeleteXtreamAccount: (String) -> Unit,
     onSyncCatalog: () -> Unit,
     modifier: Modifier = Modifier,
@@ -332,7 +346,19 @@ private fun XtreamPanel(
         ProfileInfoRow("Utilisateur", state.xtreamUsername.ifBlank { "Non configure" })
         ProfileInfoRow("Connexions", state.xtreamConnections.ifBlank { "Non disponible" })
         ProfileInfoRow("Comptes locaux", state.xtreamAccounts.size.toString())
-        Spacer(Modifier.weight(1f))
+        if (state.xtreamAccounts.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            state.xtreamAccounts.forEach { account ->
+                ProfileXtreamAccountRow(
+                    account = account,
+                    active = account.id == state.activeXtreamAccountId,
+                    onSelect = { onSelectXtreamAccount(account.id) },
+                    onDelete = { onDeleteXtreamAccount(account.id) },
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+        Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             TvButton(
                 text = if (state.hasXtream) "Modifier par QR" else "Configurer par QR",
@@ -405,7 +431,7 @@ private fun ConversionPanel(
             active = usageMode == UsageMode.FreeAds,
             color = SmartVisionColors.Warning,
         )
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(14.dp))
         Text(
             text = "SmartVision ne fournit aucune chaine, film ou serie. Les contenus viennent uniquement du compte Xtream configure par l'utilisateur.",
             color = SmartVisionColors.TextSecondary,
@@ -531,6 +557,60 @@ private fun ProfileInfoRow(label: String, value: String) {
 }
 
 @Composable
+private fun ProfileXtreamAccountRow(
+    account: XtreamAccount,
+    active: Boolean,
+    onSelect: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(7.dp))
+            .background(if (active) SmartVisionColors.PrimaryDark.copy(alpha = 0.54f) else SmartVisionColors.Surface.copy(alpha = 0.62f))
+            .border(
+                BorderStroke(1.dp, if (active) SmartVisionColors.CyanAccent else SmartVisionColors.Border),
+                RoundedCornerShape(7.dp),
+            )
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = account.name.ifBlank { "Compte Xtream" },
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.Label,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+            Text(
+                text = "${account.host}  •  ${account.username.masked()}",
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Caption,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        TvButton(
+            text = if (active) "Actif" else "Utiliser",
+            onClick = onSelect,
+            selected = active,
+            enabled = !active,
+            variant = if (active) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+            modifier = Modifier.height(38.dp),
+        )
+        Spacer(Modifier.width(7.dp))
+        TvButton(
+            text = "Supprimer",
+            onClick = onDelete,
+            leadingIcon = Icons.Default.Delete,
+            variant = TvButtonVariant.Secondary,
+            modifier = Modifier.height(38.dp),
+        )
+    }
+}
+
+@Composable
 private fun UsageStep(
     title: String,
     text: String,
@@ -595,8 +675,16 @@ fun SmartVisionQrDialog(
     onLicenseCodeChange: ((String) -> Unit)? = null,
     onSubmitLicenseCode: (() -> Unit)? = null,
     submittingLicense: Boolean = false,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
     onDismiss: () -> Unit,
 ) {
+    val closeFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(onLicenseCodeChange, onSubmitLicenseCode) {
+        if (onLicenseCodeChange == null || onSubmitLicenseCode == null) {
+            closeFocusRequester.requestFocus()
+        }
+    }
     Dialog(onDismissRequest = onDismiss) {
         Row(
             modifier = Modifier
@@ -604,13 +692,13 @@ fun SmartVisionQrDialog(
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color(0xF2081324))
                 .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.62f)), RoundedCornerShape(12.dp))
-                .padding(28.dp),
-            horizontalArrangement = Arrangement.spacedBy(28.dp),
+                .padding(22.dp),
+            horizontalArrangement = Arrangement.spacedBy(22.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier = Modifier
-                    .size(252.dp)
+                    .size(220.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(Color.White)
                     .padding(14.dp),
@@ -638,6 +726,10 @@ fun SmartVisionQrDialog(
                     val inputFocusRequester = remember { FocusRequester() }
                     val keyboardController = LocalSoftwareKeyboardController.current
                     var editing by remember { mutableStateOf(false) }
+
+                    LaunchedEffect(Unit) {
+                        fieldFocusRequester.requestFocus()
+                    }
 
                     LaunchedEffect(editing) {
                         if (editing) {
@@ -732,9 +824,20 @@ fun SmartVisionQrDialog(
                     Text(error, color = SmartVisionColors.Error, style = SmartVisionType.Label)
                 }
                 Spacer(Modifier.height(22.dp))
+                if (actionLabel != null && onAction != null) {
+                    TvButton(
+                        text = actionLabel,
+                        onClick = onAction,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
                 TvButton(
                     text = "Fermer",
                     onClick = onDismiss,
+                    focusRequester = closeFocusRequester,
                     variant = TvButtonVariant.Secondary,
                     modifier = Modifier.height(44.dp),
                 )

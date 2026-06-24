@@ -193,7 +193,7 @@ fun XtreamQrSetupPanel(
     ) {
         Column(
             modifier = Modifier
-                .width(1120.dp)
+                .width(1000.dp)
                 .clip(RoundedCornerShape(20.dp))
                 .background(
                     Brush.verticalGradient(
@@ -204,7 +204,7 @@ fun XtreamQrSetupPanel(
                     ),
                 )
                 .border(BorderStroke(1.dp, Color(0xFF2A3B58)), RoundedCornerShape(20.dp))
-                .padding(horizontal = 34.dp, vertical = 22.dp)
+                .padding(horizontal = 28.dp, vertical = 18.dp)
                 .imePadding()
                 .verticalScroll(rememberScrollState()),
         ) {
@@ -302,12 +302,12 @@ fun XtreamQrSetupPanel(
                 Box(
                     modifier = Modifier
                         .width(1.dp)
-                        .height(480.dp)
+                        .height(430.dp)
                         .background(Color(0xFF2D4263).copy(alpha = 0.82f)),
                 )
 
                 Column(
-                    modifier = Modifier.width(326.dp),
+                    modifier = Modifier.width(282.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
@@ -327,7 +327,7 @@ fun XtreamQrSetupPanel(
                     QrCard(
                         content = session?.qrUrl.orEmpty(),
                         loading = loading,
-                        size = 236,
+                        size = 205,
                     )
                     Spacer(Modifier.height(22.dp))
                     XtreamSteps()
@@ -382,8 +382,8 @@ private fun DeviceCodeCard(code: String) {
 @Composable
 private fun SmartVisionLogo(
     modifier: Modifier = Modifier
-        .width(220.dp)
-        .height(56.dp),
+        .width(190.dp)
+        .height(48.dp),
 ) {
     Image(
         painter = painterResource(R.drawable.smartvision_logo_wide),
