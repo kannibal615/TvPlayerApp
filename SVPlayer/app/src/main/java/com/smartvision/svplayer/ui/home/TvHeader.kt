@@ -59,6 +59,7 @@ fun TvHeader(
     onNotifications: () -> Unit,
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
+    hasNewNotifications: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -89,6 +90,7 @@ fun TvHeader(
             onProfile = onProfile,
             onSettings = onSettings,
             showLicenseKey = showLicenseKey,
+            hasNewNotifications = hasNewNotifications,
         )
     }
 }
@@ -100,6 +102,7 @@ fun HeaderControls(
     onProfile: () -> Unit,
     onSettings: () -> Unit,
     showLicenseKey: Boolean,
+    hasNewNotifications: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -119,6 +122,7 @@ fun HeaderControls(
             icon = Icons.Default.Notifications,
             contentDescription = "Notifications",
             onClick = onNotifications,
+            showBadge = hasNewNotifications,
         )
         HeaderIconButton(
             icon = Icons.Default.Person,
@@ -139,6 +143,7 @@ private fun HeaderIconButton(
     contentDescription: String,
     onClick: () -> Unit,
     accent: Color = SmartVisionColors.Primary,
+    showBadge: Boolean = false,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -185,6 +190,15 @@ private fun HeaderIconButton(
             },
             modifier = Modifier.size(21.dp),
         )
+        if (showBadge) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(10.dp)
+                    .background(Color(0xFFFF3B4F), RoundedCornerShape(2.dp))
+                    .border(BorderStroke(1.dp, Color(0xFFFFC5CC)), RoundedCornerShape(2.dp)),
+            )
+        }
     }
 }
 

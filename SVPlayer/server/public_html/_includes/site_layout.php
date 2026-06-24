@@ -24,12 +24,12 @@ function sv_render_site_header(): void
     </a>
     <nav aria-label="Navigation principale">
         <a href="/#fonctionnalites">Fonctionnalités</a>
-        <a href="/#tarifs">Tarifs</a>
+        <a href="/#legal">Lecteur légal</a>
         <a href="/#activation">Activation</a>
         <a href="/account/">Mon compte</a>
         <a href="/legal-iptv-player/">Lecteur IPTV légal</a>
     </nav>
-    <a class="button button-primary header-cta" href="/account/?plan=year_1">Acheter une licence</a>
+    <a class="button button-primary header-cta" href="/download.php">Télécharger</a>
 </header>
     <?php
 }

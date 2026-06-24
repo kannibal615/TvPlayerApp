@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun NotificationsRoute(
     onBack: () -> Unit,
+    onNotificationsSeen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
@@ -66,7 +67,7 @@ fun NotificationsRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        viewModel.refresh()
+        viewModel.refresh(markSeen = true, onSeen = onNotificationsSeen)
     }
 
     NotificationsScreen(
@@ -225,15 +226,27 @@ class NotificationsViewModel(
     private val state = MutableStateFlow(NotificationsUiState())
     val uiState: StateFlow<NotificationsUiState> = state
 
-    fun refresh() {
+    fun refresh(
+        markSeen: Boolean = false,
+        onSeen: (() -> Unit)? = null,
+    ) {
         viewModelScope.launch {
             state.update { it.copy(loading = true, errorMessage = null) }
             runCatching { repository.getNotifications() }
-                .onSuccess { notifications ->
+                .onSuccess { snapshot ->
+                    val notifications = snapshot.notifications
+                    if (markSeen && notifications.isNotEmpty()) {
+                        runCatching { repository.markSeen(notifications.map { it.id }) }
+                        onSeen?.invoke()
+                    }
                     state.update {
                         it.copy(
                             loading = false,
-                            notifications = notifications,
+                            notifications = if (markSeen) {
+                                notifications.map { notification -> notification.copy(seen = true) }
+                            } else {
+                                notifications
+                            },
                             errorMessage = null,
                         )
                     }

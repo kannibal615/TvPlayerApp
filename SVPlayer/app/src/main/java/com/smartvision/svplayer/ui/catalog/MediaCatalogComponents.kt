@@ -116,6 +116,7 @@ fun MediaCatalogHeader(
     onNotifications: () -> Unit,
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
+    hasNewNotifications: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -149,6 +150,7 @@ fun MediaCatalogHeader(
             onProfile = onProfile,
             onSettings = onSettings,
             showLicenseKey = showLicenseKey,
+            hasNewNotifications = hasNewNotifications,
         )
     }
 }

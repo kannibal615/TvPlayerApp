@@ -57,6 +57,7 @@ import com.smartvision.svplayer.ui.home.HomeCollectionsScreen
 import com.smartvision.svplayer.ui.home.HomeCollectionKind
 import com.smartvision.svplayer.ui.live.LiveTvScreen
 import com.smartvision.svplayer.ui.movies.MoviesScreen
+import com.smartvision.svplayer.ui.notifications.NotificationBadgeViewModel
 import com.smartvision.svplayer.ui.notifications.NotificationsRoute
 import com.smartvision.svplayer.ui.player.FullScreenContentKind
 import com.smartvision.svplayer.ui.player.FullScreenPlayerRoute
@@ -195,6 +196,13 @@ fun AppNavigation(
             premiumLicenseCode = ""
         }
     }
+    val notificationBadgeViewModel: NotificationBadgeViewModel = viewModel(
+        factory = viewModelFactory {
+            NotificationBadgeViewModel(container.notificationsRepository)
+        },
+    )
+    val notificationBadgeState by notificationBadgeViewModel.uiState.collectAsStateWithLifecycle()
+    val hasNewNotifications = notificationBadgeState.hasUnread
 
     NavHost(
         navController = navController,
@@ -212,6 +220,7 @@ fun AppNavigation(
                 onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
+                hasNewNotifications = hasNewNotifications,
                 onContentClick = { item -> navController.navigateFromContinueItem(item) },
                 onContinueViewAll = { navController.navigate(AppRoute.ContinueWatching.route) },
                 onTrendingViewAll = { navController.navigate(AppRoute.Trending.route) },
@@ -250,6 +259,7 @@ fun AppNavigation(
                 onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
+                hasNewNotifications = hasNewNotifications,
                 onWatch = { channelId -> navController.navigate("player/$channelId") },
             )
         }
@@ -264,6 +274,7 @@ fun AppNavigation(
                 onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
+                hasNewNotifications = hasNewNotifications,
                 onOpenMovieDetails = { movieId -> navController.navigate("movie_detail/$movieId") },
                 onWatchMovie = { movieId -> navController.navigate("movie_player/$movieId") },
             )
@@ -279,6 +290,7 @@ fun AppNavigation(
                 onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
+                hasNewNotifications = hasNewNotifications,
                 onOpenSeriesDetails = { seriesId -> navController.navigate("series_detail/$seriesId") },
                 onWatchEpisode = { episodeId -> navController.navigate("episode_player/$episodeId") },
             )
@@ -292,7 +304,10 @@ fun AppNavigation(
             )
         }
         composable(AppRoute.Notifications.route) {
-            NotificationsRoute(onBack = { navController.popBackStack() })
+            NotificationsRoute(
+                onBack = { navController.popBackStack() },
+                onNotificationsSeen = notificationBadgeViewModel::clearUnread,
+            )
         }
         composable(AppRoute.SyncSettings.route) {
             PlaceholderRouteScreen("Synchronisation", "Action mock. Pas d'appel API Xtream dans cette tache.")
@@ -347,6 +362,7 @@ fun AppNavigation(
                     onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
                     onLicenseKey = { showLicensePurchaseQr = true },
                     showLicenseKey = activationState.shouldShowLicenseKey,
+                    hasNewNotifications = hasNewNotifications,
                     onWatchMovie = { id -> navController.navigate("movie_player/$id") },
                 )
             }
@@ -384,6 +400,7 @@ fun AppNavigation(
                     onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
                     onLicenseKey = { showLicensePurchaseQr = true },
                     showLicenseKey = activationState.shouldShowLicenseKey,
+                    hasNewNotifications = hasNewNotifications,
                     onWatchEpisode = { episodeId -> navController.navigate("episode_player/$episodeId") },
                 )
             }

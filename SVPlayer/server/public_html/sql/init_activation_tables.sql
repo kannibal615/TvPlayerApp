@@ -244,6 +244,15 @@ CREATE TABLE IF NOT EXISTS app_notifications (
     INDEX (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS app_notification_receipts (
+    notification_id BIGINT NOT NULL,
+    device_id VARCHAR(100) NOT NULL,
+    seen_at DATETIME NOT NULL,
+    PRIMARY KEY (notification_id, device_id),
+    INDEX (device_id),
+    INDEX (seen_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO app_settings (setting_key, setting_value) VALUES
 ('trial_duration_days', '7'),
 ('activation_session_minutes', '15'),

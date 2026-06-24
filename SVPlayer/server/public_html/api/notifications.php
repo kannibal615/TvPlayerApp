@@ -6,15 +6,16 @@ require_once __DIR__ . '/config.php';
 
 apply_api_headers();
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+if (!in_array(($_SERVER['REQUEST_METHOD'] ?? ''), ['GET', 'POST'], true)) {
     json_response([
         'success' => false,
         'error' => 'Methode non autorisee.',
     ], 405);
 }
 
-$deviceId = clean_device_id($_GET['device_id'] ?? null);
-$publicDeviceCode = clean_public_device_code($_GET['public_device_code'] ?? null);
+$input = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' ? read_json_input() : [];
+$deviceId = clean_device_id($_GET['device_id'] ?? ($input['device_id'] ?? null));
+$publicDeviceCode = clean_public_device_code($_GET['public_device_code'] ?? ($input['public_device_code'] ?? null));
 
 if ($deviceId === '' && $publicDeviceCode === '') {
     json_response([
@@ -28,6 +29,59 @@ try {
     ensure_app_notifications_table($pdo);
     $associatedTargets = notification_associated_user_targets($pdo, $deviceId);
     $deviceTargets = array_filter([$deviceId, $publicDeviceCode], static fn(string $value): bool => $value !== '');
+    $visibleRows = notification_visible_rows($pdo, $deviceTargets, $associatedTargets);
+
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+        $action = (string) ($input['action'] ?? 'mark_seen');
+        if ($action !== 'mark_seen') {
+            json_response(['success' => false, 'error' => 'Action inconnue.'], 400);
+        }
+        $ids = notification_requested_ids($input['notification_ids'] ?? null);
+        $visibleIds = array_map(static fn(array $row): int => (int) $row['id'], $visibleRows);
+        $idsToMark = $ids === [] ? $visibleIds : array_values(array_intersect($visibleIds, $ids));
+        notification_mark_seen($pdo, $deviceId, $idsToMark);
+        json_response([
+            'success' => true,
+            'marked_seen' => count($idsToMark),
+            'unread_count' => 0,
+        ]);
+    }
+
+    $seenLookup = notification_seen_lookup($pdo, $deviceId, array_map(static fn(array $row): int => (int) $row['id'], $visibleRows));
+    $notifications = [];
+    $unreadCount = 0;
+
+    foreach ($visibleRows as $row) {
+        $seen = isset($seenLookup[(int) $row['id']]);
+        if (!$seen) {
+            $unreadCount++;
+        }
+        $notifications[] = [
+            'id' => (int) $row['id'],
+            'title' => (string) $row['title'],
+            'message' => (string) $row['message'],
+            'priority' => (string) $row['priority'],
+            'created_at' => (string) $row['created_at'],
+            'expires_at' => $row['expires_at'] === null ? null : (string) $row['expires_at'],
+            'seen' => $seen,
+        ];
+    }
+
+    json_response([
+        'success' => true,
+        'unread_count' => $unreadCount,
+        'notifications' => $notifications,
+    ]);
+} catch (Throwable $exception) {
+    error_log('SmartVision notifications failed.');
+    json_response([
+        'success' => false,
+        'error' => 'Impossible de charger les notifications.',
+    ], 500);
+}
+
+function notification_visible_rows(PDO $pdo, array $deviceTargets, array $associatedTargets): array
+{
     $statement = $pdo->query(
         "SELECT id, title, message, target_scope, target_value, priority, expires_at, created_at
          FROM app_notifications
@@ -37,32 +91,61 @@ try {
          LIMIT 80"
     );
     $rows = $statement->fetchAll();
-    $notifications = [];
+    $visible = [];
 
     foreach ($rows as $row) {
         if (!notification_matches_target($row, $deviceTargets, $associatedTargets)) {
             continue;
         }
-        $notifications[] = [
-            'id' => (int) $row['id'],
-            'title' => (string) $row['title'],
-            'message' => (string) $row['message'],
-            'priority' => (string) $row['priority'],
-            'created_at' => (string) $row['created_at'],
-            'expires_at' => $row['expires_at'] === null ? null : (string) $row['expires_at'],
-        ];
+        $visible[] = $row;
     }
 
-    json_response([
-        'success' => true,
-        'notifications' => $notifications,
-    ]);
-} catch (Throwable $exception) {
-    error_log('SmartVision notifications failed.');
-    json_response([
-        'success' => false,
-        'error' => 'Impossible de charger les notifications.',
-    ], 500);
+    return $visible;
+}
+
+function notification_seen_lookup(PDO $pdo, string $deviceId, array $notificationIds): array
+{
+    if ($deviceId === '' || $notificationIds === []) {
+        return [];
+    }
+    $placeholders = implode(',', array_fill(0, count($notificationIds), '?'));
+    $statement = $pdo->prepare(
+        "SELECT notification_id FROM app_notification_receipts
+         WHERE device_id = ? AND notification_id IN ($placeholders)"
+    );
+    $statement->execute(array_merge([$deviceId], $notificationIds));
+    $seen = [];
+    foreach ($statement->fetchAll(PDO::FETCH_COLUMN) as $id) {
+        $seen[(int) $id] = true;
+    }
+
+    return $seen;
+}
+
+function notification_mark_seen(PDO $pdo, string $deviceId, array $notificationIds): void
+{
+    if ($deviceId === '' || $notificationIds === []) {
+        return;
+    }
+    $statement = $pdo->prepare(
+        "INSERT INTO app_notification_receipts (notification_id, device_id, seen_at)
+         VALUES (:notification_id, :device_id, NOW())
+         ON DUPLICATE KEY UPDATE seen_at = VALUES(seen_at)"
+    );
+    foreach (array_values(array_unique(array_map('intval', $notificationIds))) as $id) {
+        if ($id > 0) {
+            $statement->execute(['notification_id' => $id, 'device_id' => $deviceId]);
+        }
+    }
+}
+
+function notification_requested_ids(mixed $value): array
+{
+    if (!is_array($value)) {
+        return [];
+    }
+
+    return array_values(array_filter(array_map('intval', $value), static fn(int $id): bool => $id > 0));
 }
 
 function notification_associated_user_targets(PDO $pdo, string $deviceId): array

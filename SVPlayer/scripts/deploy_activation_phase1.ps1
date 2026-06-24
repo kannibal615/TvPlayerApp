@@ -1136,7 +1136,7 @@ try {
     if (-not $SkipTests) {
         Write-Host "Tests publics site et activation..."
         $homeHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/"
-        if ($homeHtml.Content -notmatch "SmartVision IPTV Player" -or $homeHtml.Content -notmatch "12 mois") {
+        if ($homeHtml.Content -notmatch "SmartVision IPTV Player" -or $homeHtml.Content -notmatch "Sources utilisateur" -or $homeHtml.Content -notmatch "aucun abonnement IPTV") {
             throw "La page d accueil ne retourne pas le contenu attendu."
         }
         $legalPages = @(

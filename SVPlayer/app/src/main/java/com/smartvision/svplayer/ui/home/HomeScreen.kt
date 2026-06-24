@@ -41,6 +41,7 @@ fun HomeScreen(
     onNotifications: () -> Unit,
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
+    hasNewNotifications: Boolean,
     onContentClick: (ContinueItem) -> Unit,
     onContinueViewAll: () -> Unit,
     onTrendingViewAll: () -> Unit,
@@ -93,6 +94,7 @@ fun HomeScreen(
             onNotifications = onNotifications,
             onLicenseKey = onLicenseKey,
             showLicenseKey = showLicenseKey,
+            hasNewNotifications = hasNewNotifications,
             modifier = Modifier.fillMaxWidth(),
         )
 

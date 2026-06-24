@@ -2,61 +2,20 @@
 declare(strict_types=1);
 
 $legalPage = [
-    'title' => 'Lecteur IPTV légal Android TV — SmartVision',
-    'description' => 'SmartVision est un lecteur IPTV Android TV permettant de lire des playlists ou identifiants fournis légalement par l’utilisateur.',
-    'heading' => 'SmartVision — Lecteur IPTV légal pour Android TV',
-    'intro' => 'SmartVision est un lecteur IPTV Android TV. L’application ne fournit aucun contenu audiovisuel : l’utilisateur ajoute ses propres identifiants ou playlists autorisées.',
+    'title' => 'Lecteur IPTV légal - SmartVision',
+    'description' => 'Positionnement légal de SmartVision, lecteur IPTV Android TV sans contenu inclus.',
+    'heading' => 'SmartVision, lecteur IPTV légal',
+    'intro' => 'Dernière mise à jour : 24 juin 2026. Cette page explique le positionnement légal de SmartVision pour les utilisateurs, partenaires, plateformes de distribution, régies publicitaires et ayants droit.',
     'sections' => [
-        [
-            'title' => 'Présentation',
-            'paragraphs' => [
-                'SmartVision est une application Android TV conçue pour lire des playlists ou identifiants IPTV fournis par l’utilisateur. Elle agit comme un lecteur multimédia technique et compatible avec les usages autorisés.',
-            ],
-        ],
-        [
-            'title' => 'Ce que SmartVision permet',
-            'items' => [
-                'ajouter ses propres identifiants Xtream Codes API',
-                'organiser sa playlist',
-                'lire des flux autorisés',
-                'utiliser une interface TV moderne',
-                'utiliser un lecteur vidéo adapté Android TV',
-            ],
-        ],
-        [
-            'title' => 'Ce que SmartVision ne fournit pas',
-            'paragraphs' => [
-                'SmartVision ne vend pas et ne fournit pas les éléments suivants.',
-            ],
-            'items' => [
-                'chaînes TV',
-                'films',
-                'séries',
-                'bouquets TV',
-                'abonnements IPTV',
-                'accès à des services payants tiers',
-            ],
-        ],
-        [
-            'title' => 'Responsabilité de l’utilisateur',
-            'paragraphs' => [
-                'L’utilisateur doit utiliser SmartVision uniquement avec des contenus, playlists ou identifiants pour lesquels il dispose des droits nécessaires.',
-            ],
-        ],
-        [
-            'title' => 'Clarification importante',
-            'paragraphs' => [
-                'SmartVision n’héberge aucun flux vidéo, ne fournit aucun contenu audiovisuel et ne contrôle pas les playlists ajoutées par les utilisateurs.',
-            ],
-        ],
-        [
-            'title' => 'Signalement',
-            'paragraphs' => [
-                'Pour signaler un usage abusif ou poser une question liée aux droits, contactez SmartVision.',
-                'Email principal : <a class="text-link" href="mailto:contact%40smartvisions.net"><span>contact</span><span>@</span><span>smartvisions.net</span></a>',
-                'Support : <a class="text-link" href="mailto:support%40smartvisions.net"><span>support</span><span>@</span><span>smartvisions.net</span></a>',
-            ],
-        ],
+        ['title' => 'Ce qu’est SmartVision', 'paragraphs' => ['SmartVision est un lecteur IPTV Android TV. Un lecteur IPTV est un outil technique permettant de lire des flux audiovisuels transmis par internet, à condition que l’utilisateur dispose d’un accès légal à ces flux.', 'SmartVision sert uniquement d’interface de lecture et d’organisation. L’application peut aider l’utilisateur à afficher des catégories, chaînes, films ou séries provenant d’une source qu’il ajoute lui-même, mais SmartVision ne sélectionne pas, ne revend pas et ne fournit pas ces contenus.']],
+        ['title' => 'Ce que SmartVision ne fait pas', 'items' => ['ne fournit pas de chaînes TV', 'ne fournit pas de bouquets premium', 'ne fournit pas de films, séries ou événements sportifs', 'ne fournit pas de playlists M3U ou Xtream préchargées', 'ne vend pas d’abonnement IPTV', 'ne fournit pas de comptes pirates ou identifiants partagés', 'ne fournit aucun moyen de contourner protections, restrictions géographiques ou droits numériques', 'ne promet aucun accès à des contenus payants sans autorisation']],
+        ['title' => 'Responsabilité de l’utilisateur', 'paragraphs' => ['L’utilisateur doit vérifier que les sources ajoutées dans SmartVision sont légales. Une source est généralement légitime lorsqu’elle provient d’un fournisseur officiel ou autorisé, d’un abonnement légal, d’un service interne disposant des droits, de contenus libres de droits ou d’un créateur ayant donné son accord.', 'Une offre promettant un accès massif à des chaînes premium, compétitions sportives, films récents ou plateformes payantes pour un prix anormalement bas doit alerter. Il faut vérifier l’identité du fournisseur et ses droits de diffusion.']],
+        ['title' => 'Pourquoi certaines offres IPTV sont illégales', 'paragraphs' => ['Certaines offres détournent la technologie IPTV pour donner accès à des contenus protégés sans autorisation des titulaires de droits. Elles peuvent porter atteinte au droit d’auteur, aux droits voisins, aux droits des diffuseurs et aux règles applicables aux retransmissions sportives ou audiovisuelles.', 'L’utilisation de services illicites peut exposer l’utilisateur à des risques juridiques, à des interruptions de service, à des pertes financières, à des logiciels malveillants, au vol de données ou à des attaques informatiques. SmartVision recommande uniquement les sources officielles et autorisées.']],
+        ['title' => 'Engagements de SmartVision', 'items' => ['ne précharger aucun flux audiovisuel protégé', 'ne vendre aucun abonnement IPTV', 'ne pas intégrer de catalogue pirate', 'ne pas promettre l’accès à des chaînes payantes', 'rappeler que l’utilisateur doit utiliser uniquement des sources autorisées', 'refuser d’aider à configurer une source manifestement illicite', 'coopérer avec les autorités compétentes dans le respect de la loi', 'supprimer toute communication ambiguë laissant croire que SmartVision fournit du contenu']],
+        ['title' => 'Exemples d’utilisations autorisées', 'items' => ['lecture d’un flux vidéo personnel ou privé dont l’utilisateur possède les droits', 'diffusion interne d’entreprise, école, association ou institution lorsque les droits sont couverts', 'accès via identifiants fournis par un service officiel autorisé', 'lecture de chaînes publiques ou libres de droits lorsque la source l’autorise', 'flux d’un créateur ayant donné son accord ou diffusé sous licence adéquate']],
+        ['title' => 'Exemples d’utilisations interdites', 'items' => ['utiliser une playlist trouvée sur internet donnant accès à des chaînes payantes sans autorisation', 'acheter un abonnement IPTV pirate auprès d’un revendeur non officiel', 'partager ses identifiants contrairement au contrat du fournisseur', 'revendre des accès ou codes de lecture sans droits', 'utiliser SmartVision pour contourner un blocage ou une protection technique', 'demander au support SmartVision une playlist ou une méthode d’accès illicite']],
+        ['title' => 'Message recommandé', 'paragraphs' => ['SmartVision est un lecteur IPTV légal. L’application ne fournit aucune chaîne, aucun film, aucune série et aucun abonnement IPTV. Vous devez utiliser uniquement des identifiants, playlists ou flux pour lesquels vous disposez d’une autorisation légale. Toute utilisation de sources piratées est interdite.']],
+        ['title' => 'FAQ', 'paragraphs' => ['SmartVision vend-il des chaînes IPTV ? Non. SmartVision fournit uniquement un logiciel de lecture. Aucune chaîne, playlist ou abonnement IPTV n’est inclus.', 'Puis-je utiliser mes propres identifiants ? Oui, uniquement s’ils proviennent d’un fournisseur autorisé et si votre contrat vous permet de les utiliser sur votre appareil Android TV.', 'Pourquoi SmartVision ne donne pas de playlist ? Parce que SmartVision n’est pas un fournisseur de contenus.', 'Le support peut-il aider à trouver un fournisseur IPTV ? Non. Le support aide uniquement sur l’application, l’activation, la licence, l’installation et les problèmes techniques liés au logiciel.']],
     ],
 ];
 

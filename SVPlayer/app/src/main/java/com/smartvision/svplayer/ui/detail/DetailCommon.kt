@@ -150,6 +150,7 @@ fun DetailHeader(
     onNotifications: () -> Unit,
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
+    hasNewNotifications: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -180,6 +181,7 @@ fun DetailHeader(
             onProfile = onProfile,
             onSettings = onSettings,
             showLicenseKey = showLicenseKey,
+            hasNewNotifications = hasNewNotifications,
         )
     }
 }
