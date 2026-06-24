@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode2
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.CircularProgressIndicator
@@ -68,7 +67,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -78,7 +76,6 @@ import com.smartvision.svplayer.core.config.XtreamAccount
 import com.smartvision.svplayer.data.activation.ActivationException
 import com.smartvision.svplayer.data.activation.ActivationRepository
 import com.smartvision.svplayer.data.activation.ActivationSession
-import com.smartvision.svplayer.data.activation.StoredActivationState
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -95,9 +92,6 @@ fun XtreamQrSetupPanel(
     onManualAccount: suspend (XtreamAccount) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
-    val localState by activationRepository.localState.collectAsStateWithLifecycle(
-        initialValue = StoredActivationState("", "", "pending", false, null, null, null, false),
-    )
     var session by remember { mutableStateOf<ActivationSession?>(null) }
     var loading by remember { mutableStateOf(true) }
     var saving by remember { mutableStateOf(false) }
@@ -191,191 +185,170 @@ fun XtreamQrSetupPanel(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        Column(
-            modifier = Modifier
-                .width(1000.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0xFF102038).copy(alpha = 0.88f),
-                            Color(0xFF071322).copy(alpha = 0.96f),
-                        ),
-                    ),
-                )
-                .border(BorderStroke(1.dp, Color(0xFF2A3B58)), RoundedCornerShape(20.dp))
-                .padding(horizontal = 28.dp, vertical = 18.dp)
-                .imePadding()
-                .verticalScroll(rememberScrollState()),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 6.dp),
-                ) {
-                    SmartVisionLogo()
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = title,
-                        color = SmartVisionColors.TextPrimary,
-                        style = SmartVisionType.TitleL,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = "Saisissez vos identifiants Xtream ou configurez-les depuis le site SmartVision.",
-                        color = SmartVisionColors.TextSecondary,
-                        style = SmartVisionType.Label,
-                    )
-                    Spacer(Modifier.height(18.dp))
-                    DeviceCodeCard(localState.publicDeviceCode.ifBlank { "------" })
-                    Spacer(Modifier.height(18.dp))
-                    Text(
-                        text = "Identifiants Xtream",
-                        color = SmartVisionColors.TextPrimary,
-                        style = SmartVisionType.Label,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    XtreamField(
-                        value = host,
-                        onValueChange = { host = it },
-                        placeholder = "Host / URL serveur",
-                        icon = Icons.Default.Storage,
-                        focusRequester = hostFocus,
-                        next = userFocus,
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    XtreamField(
-                        value = username,
-                        onValueChange = { username = it },
-                        placeholder = "Nom d'utilisateur",
-                        icon = Icons.Default.Person,
-                        focusRequester = userFocus,
-                        previous = hostFocus,
-                        next = passwordFocus,
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    XtreamField(
-                        value = password,
-                        onValueChange = { password = it },
-                        placeholder = "Mot de passe",
-                        icon = Icons.Default.Lock,
-                        focusRequester = passwordFocus,
-                        previous = userFocus,
-                        password = true,
-                    )
-                    Spacer(Modifier.height(20.dp))
-                    TvButton(
-                        text = if (saving) "Validation..." else "Continuer",
-                        onClick = ::saveManual,
-                        enabled = !saving,
-                        contentPadding = PaddingValues(horizontal = 26.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(46.dp),
-                    )
-                    error?.let {
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            text = it,
-                            color = SmartVisionColors.Error,
-                            style = SmartVisionType.Label,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                    Spacer(Modifier.height(18.dp))
-                    Text(
-                        text = "Besoin d'aide ? Rendez-vous sur app.smartvisions.net",
-                        color = SmartVisionColors.TextSecondary.copy(alpha = 0.82f),
-                        style = SmartVisionType.Caption,
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .width(1.dp)
-                        .height(430.dp)
-                        .background(Color(0xFF2D4263).copy(alpha = 0.82f)),
-                )
-
-                Column(
-                    modifier = Modifier.width(282.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        text = "Configurer depuis le site",
-                        color = SmartVisionColors.TextPrimary,
-                        style = SmartVisionType.TitleS,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        text = "Scannez pour ouvrir app.smartvisions.net",
-                        color = SmartVisionColors.TextSecondary,
-                        style = SmartVisionType.Body,
-                        textAlign = TextAlign.Center,
-                    )
-                    Spacer(Modifier.height(22.dp))
-                    QrCard(
-                        content = session?.qrUrl.orEmpty(),
-                        loading = loading,
-                        size = 205,
-                    )
-                    Spacer(Modifier.height(22.dp))
-                    XtreamSteps()
-                }
-            }
-            Spacer(Modifier.height(18.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Default.Lock, contentDescription = null, tint = SmartVisionColors.TextSecondary.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "Connexion securisee - Vos donnees sont protegees.",
-                    color = SmartVisionColors.TextSecondary.copy(alpha = 0.72f),
-                    style = SmartVisionType.Caption,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DeviceCodeCard(code: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(70.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFF0A182B).copy(alpha = 0.82f))
-            .border(BorderStroke(1.dp, Color(0xFF29476E)), RoundedCornerShape(10.dp))
-            .padding(horizontal = 18.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
         Box(
             modifier = Modifier
-                .size(54.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(SmartVisionColors.Primary.copy(alpha = 0.16f))
-                .border(BorderStroke(2.dp, SmartVisionColors.Primary), RoundedCornerShape(16.dp)),
+                .fillMaxSize()
+                .padding(horizontal = 48.dp, vertical = 32.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Default.Security, contentDescription = null, tint = SmartVisionColors.Primary, modifier = Modifier.size(30.dp))
+            ScaledActivationLayout {
+                Column(
+                    modifier = Modifier
+                        .width(1000.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color(0xFF102038).copy(alpha = 0.88f),
+                                    Color(0xFF071322).copy(alpha = 0.96f),
+                                ),
+                            ),
+                        )
+                        .border(BorderStroke(1.dp, Color(0xFF2A3B58)), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 28.dp, vertical = 18.dp)
+                        .imePadding()
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(24.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 6.dp),
+                        ) {
+                            SmartVisionLogo()
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                text = title,
+                                color = SmartVisionColors.TextPrimary,
+                                style = SmartVisionType.TitleL,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = "Saisissez vos identifiants Xtream ou configurez-les depuis le site SmartVision.",
+                                color = SmartVisionColors.TextSecondary,
+                                style = SmartVisionType.Label,
+                            )
+                            Spacer(Modifier.height(18.dp))
+                            Text(
+                                text = "Identifiants Xtream",
+                                color = SmartVisionColors.TextPrimary,
+                                style = SmartVisionType.Label,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            XtreamField(
+                                value = host,
+                                onValueChange = { host = it },
+                                placeholder = "Host / URL serveur",
+                                icon = Icons.Default.Storage,
+                                focusRequester = hostFocus,
+                                next = userFocus,
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            XtreamField(
+                                value = username,
+                                onValueChange = { username = it },
+                                placeholder = "Nom d'utilisateur",
+                                icon = Icons.Default.Person,
+                                focusRequester = userFocus,
+                                previous = hostFocus,
+                                next = passwordFocus,
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            XtreamField(
+                                value = password,
+                                onValueChange = { password = it },
+                                placeholder = "Mot de passe",
+                                icon = Icons.Default.Lock,
+                                focusRequester = passwordFocus,
+                                previous = userFocus,
+                                password = true,
+                            )
+                            Spacer(Modifier.height(20.dp))
+                            TvButton(
+                                text = if (saving) "Validation..." else "Continuer",
+                                onClick = ::saveManual,
+                                enabled = !saving,
+                                contentPadding = PaddingValues(horizontal = 26.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(46.dp),
+                            )
+                            error?.let {
+                                Spacer(Modifier.height(12.dp))
+                                Text(
+                                    text = it,
+                                    color = SmartVisionColors.Error,
+                                    style = SmartVisionType.Label,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+                            Spacer(Modifier.height(18.dp))
+                            Text(
+                                text = "Besoin d'aide ? Rendez-vous sur app.smartvisions.net",
+                                color = SmartVisionColors.TextSecondary.copy(alpha = 0.82f),
+                                style = SmartVisionType.Caption,
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(430.dp)
+                                .background(Color(0xFF2D4263).copy(alpha = 0.82f)),
+                        )
+
+                        Column(
+                            modifier = Modifier.width(282.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                text = "Configurer depuis le site",
+                                color = SmartVisionColors.TextPrimary,
+                                style = SmartVisionType.TitleS,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            Text(
+                                text = "Scannez pour ouvrir app.smartvisions.net",
+                                color = SmartVisionColors.TextSecondary,
+                                style = SmartVisionType.Body,
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(Modifier.height(22.dp))
+                            QrCard(
+                                content = session?.qrUrl.orEmpty(),
+                                loading = loading,
+                                size = 205,
+                            )
+                            Spacer(Modifier.height(22.dp))
+                            XtreamSteps()
+                        }
+                    }
+                    Spacer(Modifier.height(18.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = SmartVisionColors.TextSecondary.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Connexion securisee - Vos donnees sont protegees.",
+                            color = SmartVisionColors.TextSecondary.copy(alpha = 0.72f),
+                            style = SmartVisionType.Caption,
+                        )
+                    }
+                }
+            }
         }
-        Spacer(Modifier.width(20.dp))
-        Text("Identifiant appareil", color = SmartVisionColors.TextPrimary, style = SmartVisionType.Label, modifier = Modifier.weight(1f))
-        Text(code, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleM, fontWeight = FontWeight.Bold)
     }
 }
 

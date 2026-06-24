@@ -1,6 +1,6 @@
 # SmartVision / SVPlayer - Project Notes
 
-Derniere mise a jour: 2026-06-22.
+Derniere mise a jour: 2026-06-24.
 
 Ce document decrit l'etat fonctionnel et technique actuel du projet pour permettre a un agent IA de reprendre rapidement sans casser le fonctionnement existant.
 
@@ -29,23 +29,27 @@ Min SDK: 23
 Compile SDK: 36
 Target SDK: 36
 Version actuelle: 0.1.2
-VersionCode actuel: 3
+VersionCode actuel: 5
 Backend: https://app.smartvisions.net
 ```
 
 ## Etat release connu
 
-Dernier release compile et deploye le 2026-06-22:
+Release compilee, signee, deployee et verifiee le 2026-06-24:
 
 ```text
-version_code: 3
+version_code: 5
 version_name: 0.1.2
-apk_file: smartvision-tv-v3-95411534.apk
-apk_url: https://app.smartvisions.net/downloads/smartvision-tv-v3-95411534.apk
+affichage: 0.1.2 (5)
+apk_file: smartvision-tv-v5-f5481bad.apk
+apk_url: https://app.smartvisions.net/downloads/smartvision-tv-v5-f5481bad.apk
 stable_url: https://app.smartvisions.net/downloads/smartvision-tv.apk
-sha256: 954115344501a8a75bf9bc650ffc93d3317c94ac0786ec552e9f86392f0814fb
-size: 35851497
+sha256: f5481bad6768ce308c6938fbe1261dff5818622e441d9a952ec637f06d4a63eb
+size: 36496968
 ```
+
+Le fichier versionne et l'URL stable ont ete telecharges avec succes apres deploiement.
+Le SHA-256 distant correspond au SHA-256 de l'APK release local.
 
 Endpoint update verifie:
 
@@ -141,7 +145,7 @@ app/build.gradle.kts
 Points importants:
 
 - `applicationId = "com.smartvision.svplayer"`
-- `versionCode = 3`
+- `versionCode = 5`
 - `versionName = "0.1.2"`
 - `BuildConfig.ACTIVATION_BASE_URL` vient de `DOMAINE_SERVER` dans `local.properties`, fallback `https://app.smartvisions.net/`.
 - La signature release lit `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD` depuis `local.properties`.
@@ -841,6 +845,14 @@ Commande recommandee apres build release:
 cd 'C:\Users\ONEDEV\Desktop\IPTV APP NATIVE ANDROID\TvPlayerApp\SVPlayer'
 .\scripts\deploy_activation_phase1.ps1 -SkipInstall
 ```
+
+Regle de publication obligatoire:
+
+- chaque nouvel APK release doit avoir un `versionCode` strictement superieur a celui de la release precedente;
+- la construction locale seule ne suffit pas;
+- apres `assembleRelease`, executer le script de deploiement pour uploader l'APK versionne, l'URL stable et `smartvision-tv.version.json`;
+- verifier ensuite `api/app_update.php?version_code={ancienne_version}` et l'accessibilite de l'APK retourne;
+- ne jamais annoncer une release terminee si le nouveau manifeste n'est pas visible sur le serveur.
 
 Le script:
 

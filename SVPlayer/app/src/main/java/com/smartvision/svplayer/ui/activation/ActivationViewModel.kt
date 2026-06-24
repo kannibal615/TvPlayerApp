@@ -7,6 +7,8 @@ import com.smartvision.svplayer.data.activation.ActivationException
 import com.smartvision.svplayer.data.activation.ActivationRepository
 import com.smartvision.svplayer.data.activation.ActivationSession
 import com.smartvision.svplayer.data.activation.ActivationStatus
+import com.smartvision.svplayer.data.monetization.MonetizationStatus
+import com.smartvision.svplayer.data.monetization.monetizationStatus
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +34,8 @@ data class ActivationUiState(
     val expiresAt: String = "",
     val pollingIntervalSeconds: Int = 5,
     val activationType: String? = null,
+    val licenseStatus: String? = null,
+    val trialStatus: String? = null,
     val freeWithAdsStatus: String? = null,
     val playlistConfigured: Boolean = false,
     val showFreeWithAdsChoice: Boolean = false,
@@ -98,7 +102,7 @@ class ActivationViewModel(
                 )
             }
             runCatching { repository.activateLicense(normalized) }
-                .onSuccess { status -> applyAccessStatus(status, requireFreeAdsConfirmation = false) }
+                .onSuccess { status -> applyAccessStatus(status) }
                 .onFailure { error ->
                     _uiState.update {
                         it.copy(
@@ -123,7 +127,7 @@ class ActivationViewModel(
                 )
             }
             runCatching { repository.startTrial() }
-                .onSuccess { status -> applyAccessStatus(status, requireFreeAdsConfirmation = false) }
+                .onSuccess { status -> applyAccessStatus(status) }
                 .onFailure { error ->
                     _uiState.update {
                         it.copy(
@@ -149,7 +153,7 @@ class ActivationViewModel(
                 )
             }
             runCatching { repository.enableFreeWithAds() }
-                .onSuccess { status -> applyAccessStatus(status, requireFreeAdsConfirmation = false) }
+                .onSuccess { status -> applyAccessStatus(status) }
                 .onFailure { error ->
                     _uiState.update {
                         it.copy(
@@ -186,6 +190,8 @@ class ActivationViewModel(
                     publicDeviceCode = cached.publicDeviceCode.ifBlank { localPublicCode },
                     expiresAt = cached.expiresAt.orEmpty(),
                     activationType = cached.activationType,
+                    licenseStatus = cached.licenseStatus,
+                    trialStatus = cached.trialStatus,
                     freeWithAdsStatus = cached.freeWithAdsStatus,
                     playlistConfigured = cached.playlistConfigured,
                     showFreeWithAdsChoice = false,
@@ -209,7 +215,7 @@ class ActivationViewModel(
                 ?: return@launch
 
             val status = runCatching { repository.checkStatus() }.getOrElse { registration }
-            val handled = applyAccessStatus(status, requireFreeAdsConfirmation = true)
+            val handled = applyAccessStatus(status)
             if (handled) {
                 return@launch
             }
@@ -283,7 +289,7 @@ class ActivationViewModel(
 
         runCatching { repository.checkStatus() }
             .onSuccess { status ->
-                applyAccessStatus(status, requireFreeAdsConfirmation = true)
+                applyAccessStatus(status)
             }
             .onFailure { error ->
                 _uiState.update {
@@ -300,9 +306,8 @@ class ActivationViewModel(
 
     private fun applyAccessStatus(
         status: com.smartvision.svplayer.data.activation.RemoteActivationStatus,
-        requireFreeAdsConfirmation: Boolean,
     ): Boolean {
-        val isFreeAds = status.activationType == "free_ads" || status.freeWithAdsStatus == "active"
+        val monetizationStatus = status.monetizationStatus()
         when {
             status.status == ActivationStatus.Blocked -> {
                 pollingJob?.cancel()
@@ -317,6 +322,8 @@ class ActivationViewModel(
                         deviceId = status.deviceId.ifBlank { it.deviceId },
                         publicDeviceCode = status.publicDeviceCode.ifBlank { it.publicDeviceCode },
                         activationType = null,
+                        licenseStatus = status.licenseStatus,
+                        trialStatus = status.trialStatus,
                         freeWithAdsStatus = status.freeWithAdsStatus,
                         playlistConfigured = status.playlistConfigured,
                         showFreeWithAdsChoice = false,
@@ -341,34 +348,16 @@ class ActivationViewModel(
                         publicDeviceCode = status.publicDeviceCode.ifBlank { it.publicDeviceCode },
                         expiresAt = status.expiresAt.orEmpty(),
                         activationType = status.activationType,
+                        licenseStatus = status.licenseStatus,
+                        trialStatus = status.trialStatus,
                         freeWithAdsStatus = status.freeWithAdsStatus,
                         playlistConfigured = status.playlistConfigured,
                         showFreeWithAdsChoice = true,
-                        statusLabel = "Essai gratuit termine",
-                        errorMessage = null,
-                    )
-                }
-                return true
-            }
-
-            status.activated && status.status == ActivationStatus.Active && isFreeAds && requireFreeAdsConfirmation -> {
-                pollingJob?.cancel()
-                _uiState.update {
-                    it.copy(
-                        checking = false,
-                        creatingSession = false,
-                        polling = false,
-                        activationBusy = false,
-                        activated = false,
-                        blocked = false,
-                        deviceId = status.deviceId.ifBlank { it.deviceId },
-                        publicDeviceCode = status.publicDeviceCode.ifBlank { it.publicDeviceCode },
-                        expiresAt = status.expiresAt.orEmpty(),
-                        activationType = status.activationType,
-                        freeWithAdsStatus = status.freeWithAdsStatus,
-                        playlistConfigured = status.playlistConfigured,
-                        showFreeWithAdsChoice = true,
-                        statusLabel = "Mode gratuit avec pubs",
+                        statusLabel = if (monetizationStatus == MonetizationStatus.LICENSE_EXPIRED) {
+                            "Licence Premium expiree"
+                        } else {
+                            "Essai gratuit termine"
+                        },
                         errorMessage = null,
                     )
                 }
@@ -389,11 +378,17 @@ class ActivationViewModel(
                         publicDeviceCode = status.publicDeviceCode.ifBlank { it.publicDeviceCode },
                         expiresAt = status.expiresAt.orEmpty(),
                         activationType = status.activationType,
+                        licenseStatus = status.licenseStatus,
+                        trialStatus = status.trialStatus,
                         freeWithAdsStatus = status.freeWithAdsStatus,
                         playlistConfigured = status.playlistConfigured,
                         showFreeWithAdsChoice = false,
                         errorMessage = null,
-                        statusLabel = "Activation validee",
+                        statusLabel = if (monetizationStatus == MonetizationStatus.FREE_WITH_ADS) {
+                            "Mode gratuit avec pubs"
+                        } else {
+                            "Activation validee"
+                        },
                     )
                 }
                 return true
@@ -412,6 +407,8 @@ class ActivationViewModel(
                         publicDeviceCode = status.publicDeviceCode.ifBlank { it.publicDeviceCode },
                         expiresAt = status.expiresAt.orEmpty(),
                         activationType = status.activationType,
+                        licenseStatus = status.licenseStatus,
+                        trialStatus = status.trialStatus,
                         freeWithAdsStatus = status.freeWithAdsStatus,
                         playlistConfigured = status.playlistConfigured,
                         showFreeWithAdsChoice = false,
@@ -444,6 +441,8 @@ private fun ActivationUiState.withSession(session: ActivationSession): Activatio
         expiresAt = session.expiresAt,
         pollingIntervalSeconds = session.pollingIntervalSeconds,
         activationType = null,
+        licenseStatus = null,
+        trialStatus = null,
         statusLabel = "En attente de validation",
         errorMessage = null,
     )

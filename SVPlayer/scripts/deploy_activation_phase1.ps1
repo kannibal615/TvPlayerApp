@@ -1016,6 +1016,7 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath (Join-Path $publicHtmlPath "download.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/config.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/helpers.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/monetization_rules.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/device_state.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/commerce.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/create_activation_session.php")

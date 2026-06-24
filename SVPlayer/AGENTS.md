@@ -330,6 +330,28 @@ cd 'C:\Users\ONEDEV\Desktop\IPTV APP NATIVE ANDROID\TvPlayerApp\SVPlayer'
 .\gradlew.bat assembleRelease
 ```
 
+### Regle obligatoire pour chaque nouvelle release APK
+
+Avant toute generation d'un nouvel APK release:
+
+1. incrementer `versionCode` dans `app/build.gradle.kts`, meme si `versionName` reste identique;
+2. construire l'APK release signe;
+3. publier immediatement cet APK avec `scripts/deploy_activation_phase1.ps1 -SkipInstall`;
+4. verifier que `api/app_update.php` retourne le nouveau `latest_version_code`, le bon `latest_version_name` et une URL APK accessible.
+
+Une release locale non publiee ne doit pas etre consideree comme terminee. Le manifeste
+`downloads/smartvision-tv.version.json` doit etre regenere et envoye avec chaque APK afin
+que la mise a jour in-app soit detectee.
+
+Version release publiee le 2026-06-24:
+
+```text
+versionName: 0.1.2
+versionCode: 5
+affichage: 0.1.2 (5)
+apk: https://app.smartvisions.net/downloads/smartvision-tv-v5-f5481bad.apk
+```
+
 Si le JBR Android Studio local echoue, utiliser un JDK 21 externe ou portable et definir `JAVA_HOME`.
 
 Deploiement serveur:

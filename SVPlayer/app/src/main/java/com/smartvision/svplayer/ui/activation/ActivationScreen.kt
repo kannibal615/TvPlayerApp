@@ -72,6 +72,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -94,6 +96,7 @@ fun ActivationScreen(
     onShowActivationForm: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showPurchaseQr by remember { mutableStateOf(false) }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -101,28 +104,61 @@ fun ActivationScreen(
     ) {
         when {
             state.checking -> StartupVerificationPanel(state = state, onRetry = onRetry)
-            else -> Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 48.dp, vertical = 24.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (state.showFreeWithAdsChoice) {
-                    TrialExpiredPanel(
-                        state = state,
-                        onContinueFreeWithAds = onContinueFreeWithAds,
-                        onBuyLicense = onShowActivationForm,
-                        onEnterLicense = onShowActivationForm,
-                    )
-                } else {
-                    ActivationMainPanel(
-                        state = state,
-                        onActivateLicense = onActivateLicense,
-                        onStartTrial = onStartTrial,
-                        onCheckNow = onCheckNow,
-                        onRetry = onRetry,
-                    )
-                }
+            else -> ActivationContent(
+                state = state,
+                onActivateLicense = onActivateLicense,
+                onStartTrial = onStartTrial,
+                onCheckNow = onCheckNow,
+                onRetry = onRetry,
+                onContinueFreeWithAds = onContinueFreeWithAds,
+                onShowActivationForm = onShowActivationForm,
+                onBuyPremium = { showPurchaseQr = true },
+            )
+        }
+    }
+    if (showPurchaseQr) {
+        ActivationPurchaseDialog(
+            purchaseUrl = state.purchaseUrl,
+            onDismiss = { showPurchaseQr = false },
+        )
+    }
+}
+
+@Composable
+private fun ActivationContent(
+    state: ActivationUiState,
+    onActivateLicense: (String) -> Unit,
+    onStartTrial: () -> Unit,
+    onCheckNow: () -> Unit,
+    onRetry: () -> Unit,
+    onContinueFreeWithAds: () -> Unit,
+    onShowActivationForm: () -> Unit,
+    onBuyPremium: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 48.dp, vertical = 32.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        ScaledActivationLayout(
+            scale = ActivationContentScale,
+        ) {
+            if (state.showFreeWithAdsChoice) {
+                TrialExpiredPanel(
+                    state = state,
+                    onContinueFreeWithAds = onContinueFreeWithAds,
+                    onBuyLicense = onBuyPremium,
+                    onEnterLicense = onShowActivationForm,
+                )
+            } else {
+                ActivationMainPanel(
+                    state = state,
+                    onActivateLicense = onActivateLicense,
+                    onStartTrial = onStartTrial,
+                    onCheckNow = onCheckNow,
+                    onRetry = onRetry,
+                )
             }
         }
     }
@@ -309,7 +345,7 @@ private fun ActivationMainPanel(
                 }
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "Besoin d'aide ? Rendez-vous sur smartvision.tv/support",
+                    text = "Besoin d'aide ? Rendez-vous sur app.smartvisions.net/support",
                     color = SmartVisionColors.TextSecondary.copy(alpha = 0.82f),
                     style = SmartVisionType.Caption,
                 )
@@ -382,7 +418,7 @@ private fun TrialExpiredPanel(
                 SmartVisionLogo()
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    text = "Votre essai gratuit est termine",
+                    text = "Continuer avec SmartVision",
                     color = SmartVisionColors.TextPrimary,
                     style = ActivationTitleStyle,
                     fontWeight = FontWeight.Bold,
@@ -391,30 +427,30 @@ private fun TrialExpiredPanel(
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "Vous pouvez continuer gratuitement avec des publicites ou activer une licence SmartVision.",
+                    text = "Votre acces gratuit sans publicite est termine. Vous pouvez activer SmartVision Premium ou continuer gratuitement avec des publicites video raisonnables.",
                     color = SmartVisionColors.TextSecondary,
                     style = SmartVisionType.Label,
                 )
                 Spacer(Modifier.height(26.dp))
                 ChoiceButton(
-                    text = "Mode gratuit avec pubs",
-                    subtitle = "Acces maintenu avec publicites",
+                    text = "Continuer gratuit avec pubs",
+                    subtitle = "Publicites video uniquement dans le lecteur",
                     icon = Icons.Default.Tv,
-                    selected = true,
+                    dangerFocus = true,
                     focusRequester = continueFocus,
                     enabled = !state.activationBusy,
                     onClick = onContinueFreeWithAds,
                 )
                 Spacer(Modifier.height(14.dp))
                 ChoiceButton(
-                    text = "Acheter une licence",
+                    text = "Acheter Premium",
                     icon = Icons.Default.ShoppingCart,
                     enabled = !state.activationBusy,
                     onClick = onBuyLicense,
                 )
                 Spacer(Modifier.height(14.dp))
                 ChoiceButton(
-                    text = "Saisir un code de licence",
+                    text = "Saisir une licence",
                     icon = Icons.Default.Key,
                     enabled = !state.activationBusy,
                     onClick = onEnterLicense,
@@ -479,6 +515,7 @@ private fun ChoiceButton(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     selected: Boolean = false,
+    dangerFocus: Boolean = false,
     enabled: Boolean = true,
     focusRequester: FocusRequester? = null,
 ) {
@@ -489,12 +526,64 @@ private fun ChoiceButton(
         selected = selected,
         enabled = enabled,
         focusRequester = focusRequester,
-        variant = if (selected) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+        variant = when {
+            dangerFocus -> TvButtonVariant.Exit
+            selected -> TvButtonVariant.Primary
+            else -> TvButtonVariant.Secondary
+        },
         contentPadding = PaddingValues(horizontal = 28.dp),
         modifier = modifier
             .fillMaxWidth()
             .height(50.dp),
     )
+}
+
+@Composable
+private fun ActivationPurchaseDialog(
+    purchaseUrl: String,
+    onDismiss: () -> Unit,
+) {
+    val closeFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { closeFocus.requestFocus() }
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.78f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            GlassShell(width = 720.dp) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Acheter SmartVision Premium",
+                        color = SmartVisionColors.TextPrimary,
+                        style = ActivationTitleStyle,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = "Scannez ce QR code avec votre telephone. Premium supprime immediatement toutes les publicites.",
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Body,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(22.dp))
+                    QrCard(content = purchaseUrl, size = 250)
+                    Spacer(Modifier.height(22.dp))
+                    TvButton(
+                        text = "Fermer",
+                        onClick = onDismiss,
+                        focusRequester = closeFocus,
+                        variant = TvButtonVariant.Secondary,
+                        modifier = Modifier.height(48.dp),
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable

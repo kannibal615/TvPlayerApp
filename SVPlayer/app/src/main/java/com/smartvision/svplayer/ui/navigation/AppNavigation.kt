@@ -96,6 +96,17 @@ fun AppNavigation(
     var premiumLicenseCode by remember { mutableStateOf("") }
     val context = LocalContext.current
     val activity = context as? Activity
+    LaunchedEffect(activity) {
+        activity?.let { container.privacyConsentManager.refreshSilently(it) }
+    }
+    LaunchedEffect(
+        activationState.activationType,
+        activationState.licenseStatus,
+        activationState.trialStatus,
+        activationState.freeWithAdsStatus,
+    ) {
+        container.monetizationManager.synchronizeStatus()
+    }
     val syncCatalog = {
         scope.launch {
             runCatching {
@@ -209,6 +220,7 @@ fun AppNavigation(
                 onBack = { navController.popBackStack() },
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 onSyncCatalog = syncCatalog,
+                onActivationChanged = activationViewModel::checkNow,
             )
         }
         composable(AppRoute.ContinueWatching.route) {

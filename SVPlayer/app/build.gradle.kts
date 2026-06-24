@@ -23,6 +23,9 @@ fun buildConfigString(value: String): String {
     return "\"$escaped\""
 }
 
+fun localBoolean(name: String): Boolean =
+    localString(name).equals("true", ignoreCase = true)
+
 fun activationBaseUrl(): String {
     val configured = localString("DOMAINE_SERVER").ifBlank { "app.smartvisions.net" }
     val normalized = configured.trim().trimEnd('/')
@@ -42,7 +45,7 @@ android {
         applicationId = "com.smartvision.svplayer"
         minSdk = 23
         targetSdk = 36
-        versionCode = 4
+        versionCode = 5
         versionName = "0.1.2"
 
         buildConfigField("String", "ACTIVATION_BASE_URL", buildConfigString(activationBaseUrl()))
@@ -61,7 +64,40 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            val testAppId = "ca-app-pub-3940256099942544~3347511713"
+            val testVideoTag =
+                "https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/" +
+                    "single_preroll_skippable&sz=640x480&ciu_szs=300x250%2C728x90&gdfp_req=1" +
+                    "&output=vast&unviewed_position_start=1&env=vp&correlator="
+            manifestPlaceholders["googleAdsApplicationId"] = testAppId
+            buildConfigField("String", "GOOGLE_ADS_APPLICATION_ID", buildConfigString(testAppId))
+            buildConfigField("String", "VIDEO_AD_TAG_URL", buildConfigString(testVideoTag))
+            buildConfigField("boolean", "ADS_RUNTIME_CONFIGURED", "true")
+            buildConfigField(
+                "String",
+                "DEBUG_MONETIZATION_STATUS",
+                buildConfigString(localString("SMARTVISION_DEBUG_MONETIZATION_STATUS")),
+            )
+            buildConfigField(
+                "boolean",
+                "DEBUG_FORCE_AD_FAILURE",
+                localBoolean("SMARTVISION_DEBUG_AD_FAILURE").toString(),
+            )
+        }
         getByName("release") {
+            val productionAppId = localString("GOOGLE_ADS_APPLICATION_ID")
+            val productionVideoTag = localString("VIDEO_AD_TAG_URL")
+            manifestPlaceholders["googleAdsApplicationId"] = productionAppId
+            buildConfigField("String", "GOOGLE_ADS_APPLICATION_ID", buildConfigString(productionAppId))
+            buildConfigField("String", "VIDEO_AD_TAG_URL", buildConfigString(productionVideoTag))
+            buildConfigField(
+                "boolean",
+                "ADS_RUNTIME_CONFIGURED",
+                (productionAppId.isNotBlank() && productionVideoTag.isNotBlank()).toString(),
+            )
+            buildConfigField("String", "DEBUG_MONETIZATION_STATUS", buildConfigString(""))
+            buildConfigField("boolean", "DEBUG_FORCE_AD_FAILURE", "false")
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
         }
@@ -110,7 +146,9 @@ dependencies {
 
     implementation("androidx.media3:media3-exoplayer:1.6.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.6.1")
+    implementation("androidx.media3:media3-exoplayer-ima:1.6.1")
     implementation("androidx.media3:media3-ui:1.6.1")
+    implementation("com.google.android.ump:user-messaging-platform:4.0.0")
 
     implementation("androidx.room:room-ktx:2.7.1")
     implementation("androidx.room:room-runtime:2.7.1")
@@ -127,6 +165,9 @@ dependencies {
 
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

@@ -1,5 +1,7 @@
 package com.smartvision.svplayer.ui.player
 
+import android.app.Activity
+import android.net.Uri
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
@@ -51,6 +53,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,12 +88,19 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.models.XtreamSeriesEpisode
+import com.smartvision.svplayer.data.monetization.MonetizationManager
+import com.smartvision.svplayer.data.monetization.PlayerAdPlan
+import com.smartvision.svplayer.data.monetization.PlayerContentType
+import com.smartvision.svplayer.data.monetization.PrivacyConsentManager
+import com.smartvision.svplayer.data.monetization.VideoAdCallbacks
+import com.smartvision.svplayer.data.monetization.VideoAdProvider
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
@@ -380,6 +390,11 @@ fun FullScreenPlayerRoute(
     val playback by viewModel.uiState.collectAsStateWithLifecycle()
     FullScreenPlayerScreen(
         playback = playback,
+        contentKind = kind,
+        monetizationManager = container.monetizationManager,
+        privacyConsentManager = container.privacyConsentManager,
+        videoAdProvider = container.videoAdProvider,
+        adRequestTimeoutSeconds = container.adConfigProvider.current().requestTimeoutSeconds,
         onBack = onBack,
         onPlayLive = onPlayLive,
         onPlayMovie = onPlayMovie,
@@ -391,6 +406,11 @@ fun FullScreenPlayerRoute(
 @Composable
 private fun FullScreenPlayerScreen(
     playback: FullScreenPlayback,
+    contentKind: FullScreenContentKind,
+    monetizationManager: MonetizationManager,
+    privacyConsentManager: PrivacyConsentManager,
+    videoAdProvider: VideoAdProvider,
+    adRequestTimeoutSeconds: Long,
     onBack: () -> Unit,
     onPlayLive: (Int) -> Unit,
     onPlayMovie: (Int) -> Unit,
@@ -398,6 +418,8 @@ private fun FullScreenPlayerScreen(
     onProgressSnapshot: (positionMs: Long, durationMs: Long) -> Unit,
 ) {
     val context = LocalContext.current
+    val activity = context as? Activity
+    val coroutineScope = rememberCoroutineScope()
     val latestUrl by rememberUpdatedState(playback.url)
     val latestFallbackUrl by rememberUpdatedState(playback.fallbackUrl)
     val playFocusRequester = remember { FocusRequester() }
@@ -417,20 +439,62 @@ private fun FullScreenPlayerScreen(
     var selectedSubtitleId by remember { mutableStateOf<String?>(null) }
     var nextEpisodeCountdown by remember { mutableStateOf<Int?>(null) }
     var nextEpisodeDismissed by remember(playback.streamId) { mutableStateOf(false) }
+    var adGateActive by remember(playback.streamId) { mutableStateOf(false) }
+    var adStarted by remember(playback.streamId) { mutableStateOf(false) }
+    var activeAdRequestId by remember(playback.streamId) { mutableStateOf<String?>(null) }
 
-    val player = remember {
-        ExoPlayer.Builder(context).build().apply {
+    val playerView = remember {
+        PlayerView(context).apply {
+            useController = false
+            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            isFocusable = true
+            isFocusableInTouchMode = true
+        }
+    }
+    val mediaSourceFactory = remember(playerView, videoAdProvider) {
+        DefaultMediaSourceFactory(context)
+            .setLocalAdInsertionComponents(
+                { videoAdProvider.adsLoader },
+                playerView,
+            )
+    }
+    val player = remember(mediaSourceFactory) {
+        ExoPlayer.Builder(context)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .build()
+            .apply {
             playWhenReady = true
         }
     }
 
     fun showOverlay(requestPlayFocus: Boolean = false) {
+        if (adGateActive) return
         val wasVisible = overlayVisible
         overlayVisible = true
         overlayTick += 1
         if (!wasVisible || requestPlayFocus) {
             focusPlayWhenOverlayShows = true
         }
+    }
+
+    fun prepareMedia(mediaItem: MediaItem) {
+        fallbackTried = false
+        errorText = null
+        buffering = true
+        player.stop()
+        player.clearMediaItems()
+        player.setMediaItem(mediaItem)
+        player.prepare()
+        if (playback.resumePositionMs > 0L) {
+            player.seekTo(playback.resumePositionMs)
+        }
+        player.playWhenReady = true
+        nextEpisodeCountdown = null
+        nextEpisodeDismissed = false
+    }
+
+    fun prepareContentWithoutAd() {
+        prepareMedia(MediaItem.fromUri(playback.url))
     }
 
     fun playAdjacent(item: AdjacentPlayback?) {
@@ -446,6 +510,7 @@ private fun FullScreenPlayerScreen(
     fun handleLiveChannelKey(keyCode: Int): Boolean {
         if (playback.contentType != UserContentType.Live) return false
         if (keyCode != AndroidKeyEvent.KEYCODE_DPAD_UP && keyCode != AndroidKeyEvent.KEYCODE_DPAD_DOWN) return false
+        if (adGateActive) return true
         if (!overlayVisible) {
             showOverlay(requestPlayFocus = true)
             return true
@@ -461,7 +526,9 @@ private fun FullScreenPlayerScreen(
     }
 
     BackHandler {
-        if (activeMenu != PlayerOverlayMenu.None) {
+        if (adGateActive) {
+            Unit
+        } else if (activeMenu != PlayerOverlayMenu.None) {
             activeMenu = PlayerOverlayMenu.None
         } else if (nextEpisodeCountdown != null) {
             nextEpisodeCountdown = null
@@ -473,20 +540,78 @@ private fun FullScreenPlayerScreen(
         }
     }
 
-    LaunchedEffect(playback.url, playback.resumePositionMs) {
-        fallbackTried = false
-        errorText = null
-        buffering = true
-        player.stop()
-        player.clearMediaItems()
-        player.setMediaItem(MediaItem.fromUri(playback.url))
-        player.prepare()
-        if (playback.resumePositionMs > 0L) {
-            player.seekTo(playback.resumePositionMs)
+    LaunchedEffect(playback.url, playback.resumePositionMs, contentKind) {
+        adGateActive = false
+        adStarted = false
+        activeAdRequestId = null
+        var resolvedPlan: PlayerAdPlan? = null
+        monetizationManager.maybeShowPlayerAdThenStartPlayback(
+            contentType = contentKind.toPlayerContentType(),
+            onContinue = { resolvedPlan = it },
+        )
+        when (val plan = resolvedPlan ?: PlayerAdPlan.StartDirectly("decision indisponible")) {
+            is PlayerAdPlan.StartDirectly -> {
+                prepareContentWithoutAd()
+            }
+
+            is PlayerAdPlan.ShowPreRoll -> {
+                if (videoAdProvider.forceFailureForDebug) {
+                    monetizationManager.onAdFailed(plan.requestId, "echec debug force")
+                    prepareContentWithoutAd()
+                    return@LaunchedEffect
+                }
+                val consentGranted = activity?.let {
+                    privacyConsentManager.ensureConsentForAd(it)
+                } ?: false
+                if (!consentGranted) {
+                    monetizationManager.onAdFailed(plan.requestId, "consentement publicitaire indisponible")
+                    prepareContentWithoutAd()
+                    return@LaunchedEffect
+                }
+                adGateActive = true
+                overlayVisible = false
+                activeAdRequestId = plan.requestId
+                videoAdProvider.bindRequest(
+                    requestId = plan.requestId,
+                    callbacks = VideoAdCallbacks(
+                        onStarted = {
+                            adStarted = true
+                            adGateActive = true
+                            overlayVisible = false
+                        },
+                        onFinished = {
+                            adGateActive = false
+                            activeAdRequestId = null
+                            buffering = false
+                        },
+                        onFailed = {
+                            adGateActive = false
+                            activeAdRequestId = null
+                        },
+                    ),
+                )
+                val mediaItem = MediaItem.Builder()
+                    .setUri(playback.url)
+                    .setAdsConfiguration(
+                        MediaItem.AdsConfiguration.Builder(Uri.parse(plan.adTagUrl)).build(),
+                    )
+                    .build()
+                prepareMedia(mediaItem)
+            }
         }
-        player.playWhenReady = true
-        nextEpisodeCountdown = null
-        nextEpisodeDismissed = false
+    }
+
+    LaunchedEffect(activeAdRequestId, adStarted) {
+        val requestId = activeAdRequestId ?: return@LaunchedEffect
+        if (adStarted) return@LaunchedEffect
+        delay(adRequestTimeoutSeconds.coerceAtLeast(3) * 1_000L)
+        if (activeAdRequestId == requestId && !adStarted) {
+            videoAdProvider.clearRequest(requestId)
+            monetizationManager.onAdFailed(requestId, "delai de chargement depasse")
+            activeAdRequestId = null
+            adGateActive = false
+            prepareContentWithoutAd()
+        }
     }
 
     LaunchedEffect(overlayVisible, overlayTick) {
@@ -514,11 +639,13 @@ private fun FullScreenPlayerScreen(
     LaunchedEffect(player, playback.url) {
         var tick = 0
         while (true) {
-            positionMs = player.currentPosition.coerceAtLeast(0L)
-            durationMs = player.duration.validDurationMs()
-            bufferedPositionMs = player.bufferedPosition.coerceAtLeast(0L)
-            if (tick % 10 == 0) {
-                onProgressSnapshot(positionMs, durationMs)
+            if (!player.isPlayingAd) {
+                positionMs = player.currentPosition.coerceAtLeast(0L)
+                durationMs = player.duration.validDurationMs()
+                bufferedPositionMs = player.bufferedPosition.coerceAtLeast(0L)
+                if (tick % 10 == 0) {
+                    onProgressSnapshot(positionMs, durationMs)
+                }
             }
             tick += 1
             delay(500)
@@ -526,6 +653,7 @@ private fun FullScreenPlayerScreen(
     }
 
     DisposableEffect(player) {
+        videoAdProvider.attachPlayer(player)
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(isPlayingValue: Boolean) {
                 isPlaying = isPlayingValue
@@ -566,6 +694,17 @@ private fun FullScreenPlayerScreen(
             }
 
             override fun onPlayerError(error: PlaybackException) {
+                val adRequestId = activeAdRequestId
+                if (adRequestId != null && player.isPlayingAd) {
+                    videoAdProvider.clearRequest(adRequestId)
+                    coroutineScope.launch {
+                        monetizationManager.onAdFailed(adRequestId, error.message.orEmpty())
+                    }
+                    activeAdRequestId = null
+                    adGateActive = false
+                    prepareContentWithoutAd()
+                    return
+                }
                 val fallback = latestFallbackUrl
                 if (!fallbackTried && fallback.isNotBlank() && fallback != latestUrl) {
                     fallbackTried = true
@@ -586,8 +725,11 @@ private fun FullScreenPlayerScreen(
         }
         player.addListener(listener)
         onDispose {
-            onProgressSnapshot(player.currentPosition.coerceAtLeast(0L), player.duration.validDurationMs())
+            if (!player.isPlayingAd) {
+                onProgressSnapshot(player.currentPosition.coerceAtLeast(0L), player.duration.validDurationMs())
+            }
             player.removeListener(listener)
+            videoAdProvider.detachPlayer(player)
             player.release()
         }
     }
@@ -610,14 +752,14 @@ private fun FullScreenPlayerScreen(
     ) {
         AndroidView(
             factory = {
-                PlayerView(it).apply {
-                    useController = false
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                playerView.apply {
                     this.player = player
-                    isFocusable = true
-                    isFocusableInTouchMode = true
                     setOnKeyListener { _, keyCode, event ->
                         when {
+                            keyCode == AndroidKeyEvent.KEYCODE_BACK &&
+                                event.action == AndroidKeyEvent.ACTION_UP &&
+                                adGateActive -> true
+
                             keyCode == AndroidKeyEvent.KEYCODE_BACK && event.action == AndroidKeyEvent.ACTION_UP -> {
                                 if (overlayVisible) {
                                     overlayVisible = false
@@ -627,11 +769,11 @@ private fun FullScreenPlayerScreen(
                                 true
                             }
 
-                            event.action == AndroidKeyEvent.ACTION_DOWN && handleLiveChannelKey(keyCode) -> {
-                                true
-                            }
+                            event.action == AndroidKeyEvent.ACTION_DOWN && handleLiveChannelKey(keyCode) -> true
 
-                            event.action == AndroidKeyEvent.ACTION_DOWN && keyCode in overlayKeyCodes -> {
+                            event.action == AndroidKeyEvent.ACTION_DOWN &&
+                                keyCode in overlayKeyCodes &&
+                                !adGateActive -> {
                                 showOverlay()
                                 false
                             }
@@ -672,7 +814,7 @@ private fun FullScreenPlayerScreen(
             modifier = Modifier.matchParentSize(),
         )
 
-        if (buffering) {
+        if (buffering && !player.isPlayingAd) {
             CircularProgressIndicator(
                 color = SmartVisionColors.Primary,
                 strokeWidth = 3.dp,
@@ -682,7 +824,7 @@ private fun FullScreenPlayerScreen(
             )
         }
 
-        if (overlayVisible) {
+        if (overlayVisible && !adGateActive) {
             FullPlayerOverlay(
                 playback = playback,
                 isPlaying = isPlaying,
@@ -1371,6 +1513,13 @@ private fun FullScreenContentKind.storageType(): String =
         FullScreenContentKind.Live -> UserContentType.Live
         FullScreenContentKind.Movie -> UserContentType.Movie
         FullScreenContentKind.Episode -> UserContentType.Episode
+    }
+
+private fun FullScreenContentKind.toPlayerContentType(): PlayerContentType =
+    when (this) {
+        FullScreenContentKind.Live -> PlayerContentType.LIVE_TV
+        FullScreenContentKind.Movie -> PlayerContentType.MOVIE
+        FullScreenContentKind.Episode -> PlayerContentType.SERIES
     }
 
 private fun Long.validDurationMs(): Long =

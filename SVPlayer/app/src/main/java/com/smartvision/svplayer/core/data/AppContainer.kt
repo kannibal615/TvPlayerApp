@@ -9,6 +9,11 @@ import com.smartvision.svplayer.data.activation.ActivationRepository
 import com.smartvision.svplayer.data.home.HomeSlidesApiService
 import com.smartvision.svplayer.data.home.HomeSlidesRepository
 import com.smartvision.svplayer.data.local.SVDatabase
+import com.smartvision.svplayer.data.monetization.MonetizationManager
+import com.smartvision.svplayer.data.monetization.MonetizationStore
+import com.smartvision.svplayer.data.monetization.ImaVideoAdProvider
+import com.smartvision.svplayer.data.monetization.PrivacyConsentManager
+import com.smartvision.svplayer.data.monetization.StaticAdConfigProvider
 import com.smartvision.svplayer.data.remote.XtreamApiClient
 import com.smartvision.svplayer.data.remote.XtreamApiService
 import com.smartvision.svplayer.data.remote.XtreamUrlFactory
@@ -32,6 +37,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 private val Context.settingsDataStore by preferencesDataStore(name = "svplayer_settings")
 private val Context.activationDataStore by preferencesDataStore(name = "smartvision_activation")
+private val Context.monetizationDataStore by preferencesDataStore(name = "smartvision_monetization")
 
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
@@ -90,6 +96,18 @@ class AppContainer(context: Context) {
         api = activationApi,
         dataStore = appContext.activationDataStore,
         accountManager = accountManager,
+    )
+
+    val adConfigProvider = StaticAdConfigProvider()
+    val monetizationManager = MonetizationManager(
+        activationRepository = activationRepository,
+        store = MonetizationStore(appContext.monetizationDataStore),
+        configProvider = adConfigProvider,
+    )
+    val privacyConsentManager = PrivacyConsentManager(appContext)
+    val videoAdProvider = ImaVideoAdProvider(
+        context = appContext,
+        monetizationManager = monetizationManager,
     )
 
     val appUpdateRepository: AppUpdateRepository = AppUpdateRepository(

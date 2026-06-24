@@ -30,6 +30,8 @@ class ActivationRepository(
                 activated = preferences[ACTIVATED] ?: false,
                 expiresAt = preferences[EXPIRES_AT],
                 activationType = preferences[ACTIVATION_TYPE],
+                licenseStatus = preferences[LICENSE_STATUS],
+                trialStatus = preferences[TRIAL_STATUS],
                 freeWithAdsStatus = preferences[FREE_WITH_ADS_STATUS],
                 playlistConfigured = preferences[PLAYLIST_CONFIGURED] ?: false,
             )
@@ -108,6 +110,8 @@ class ActivationRepository(
             } else {
                 preferences[ACTIVATION_TYPE] = response.activationType
             }
+            if (response.licenseStatus.isNullOrBlank()) preferences.remove(LICENSE_STATUS) else preferences[LICENSE_STATUS] = response.licenseStatus
+            if (response.trialStatus.isNullOrBlank()) preferences.remove(TRIAL_STATUS) else preferences[TRIAL_STATUS] = response.trialStatus
             if (response.freeWithAdsStatus.isNullOrBlank()) {
                 preferences.remove(FREE_WITH_ADS_STATUS)
             } else {
@@ -123,6 +127,8 @@ class ActivationRepository(
             publicDeviceCode = publicDeviceCode,
             expiresAt = response.expiresAt,
             activationType = response.activationType,
+            licenseStatus = response.licenseStatus,
+            trialStatus = response.trialStatus,
             freeWithAdsStatus = response.freeWithAdsStatus,
             playlistConfigured = response.playlistConfigured,
         )
@@ -228,6 +234,8 @@ class ActivationRepository(
             } else {
                 preferences[ACTIVATION_TYPE] = response.activationType
             }
+            if (response.licenseStatus.isNullOrBlank()) preferences.remove(LICENSE_STATUS) else preferences[LICENSE_STATUS] = response.licenseStatus
+            if (response.trialStatus.isNullOrBlank()) preferences.remove(TRIAL_STATUS) else preferences[TRIAL_STATUS] = response.trialStatus
             if (response.freeWithAdsStatus.isNullOrBlank()) {
                 preferences.remove(FREE_WITH_ADS_STATUS)
             } else {
@@ -247,6 +255,8 @@ class ActivationRepository(
             publicDeviceCode = response.publicDeviceCode ?: dataStore.data.first()[PUBLIC_DEVICE_CODE].orEmpty(),
             expiresAt = response.expiresAt,
             activationType = response.activationType,
+            licenseStatus = response.licenseStatus,
+            trialStatus = response.trialStatus,
             freeWithAdsStatus = response.freeWithAdsStatus,
             playlistConfigured = response.playlistConfigured,
         )
@@ -327,6 +337,8 @@ class ActivationRepository(
             preferences[PLAYLIST_CONFIGURED] = response.playlistConfigured
             if (response.expiresAt.isNullOrBlank()) preferences.remove(EXPIRES_AT) else preferences[EXPIRES_AT] = response.expiresAt
             if (response.activationType.isNullOrBlank()) preferences.remove(ACTIVATION_TYPE) else preferences[ACTIVATION_TYPE] = response.activationType
+            if (response.licenseStatus.isNullOrBlank()) preferences.remove(LICENSE_STATUS) else preferences[LICENSE_STATUS] = response.licenseStatus
+            if (response.trialStatus.isNullOrBlank()) preferences.remove(TRIAL_STATUS) else preferences[TRIAL_STATUS] = response.trialStatus
             if (response.freeWithAdsStatus.isNullOrBlank()) preferences.remove(FREE_WITH_ADS_STATUS) else preferences[FREE_WITH_ADS_STATUS] = response.freeWithAdsStatus
         }
         return RemoteActivationStatus(
@@ -336,6 +348,8 @@ class ActivationRepository(
             publicDeviceCode = publicDeviceCode,
             expiresAt = response.expiresAt,
             activationType = response.activationType,
+            licenseStatus = response.licenseStatus,
+            trialStatus = response.trialStatus,
             freeWithAdsStatus = response.freeWithAdsStatus,
             playlistConfigured = response.playlistConfigured,
         )
@@ -374,6 +388,8 @@ class ActivationRepository(
         val ACTIVATED = booleanPreferencesKey("activation_activated")
         val EXPIRES_AT = stringPreferencesKey("activation_expires_at")
         val ACTIVATION_TYPE = stringPreferencesKey("activation_type")
+        val LICENSE_STATUS = stringPreferencesKey("activation_license_status")
+        val TRIAL_STATUS = stringPreferencesKey("activation_trial_status")
         val DEVICE_TOKEN = stringPreferencesKey("activation_device_token")
         val PUBLIC_DEVICE_CODE = stringPreferencesKey("activation_public_device_code")
         val FREE_WITH_ADS_STATUS = stringPreferencesKey("activation_free_with_ads_status")
@@ -402,6 +418,8 @@ data class StoredActivationState(
     val activated: Boolean,
     val expiresAt: String?,
     val activationType: String?,
+    val licenseStatus: String?,
+    val trialStatus: String?,
     val freeWithAdsStatus: String?,
     val playlistConfigured: Boolean,
 )
@@ -421,6 +439,8 @@ data class RemoteActivationStatus(
     val publicDeviceCode: String,
     val expiresAt: String?,
     val activationType: String?,
+    val licenseStatus: String?,
+    val trialStatus: String?,
     val freeWithAdsStatus: String?,
     val playlistConfigured: Boolean,
 )

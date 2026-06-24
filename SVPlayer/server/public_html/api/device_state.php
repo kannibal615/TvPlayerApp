@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/monetization_rules.php';
+
 function smartvision_device_state(PDO $pdo, string $deviceId): array
 {
     $deviceQuery = $pdo->prepare(
@@ -76,6 +78,17 @@ function smartvision_device_state(PDO $pdo, string $deviceId): array
     $trialQuery->execute(['device_id' => $deviceId]);
     $trial = $trialQuery->fetch();
 
+    $licenseQuery = $pdo->prepare(
+        "SELECT status, expires_at
+         FROM device_activations
+         WHERE device_id = :device_id
+           AND activation_type IN ('smartvision_code', 'own_xtream')
+         ORDER BY id DESC
+         LIMIT 1"
+    );
+    $licenseQuery->execute(['device_id' => $deviceId]);
+    $license = $licenseQuery->fetch();
+
     $playlistQuery = $pdo->prepare(
         'SELECT encrypted_payload FROM device_playlist_configs WHERE device_id = :device_id LIMIT 1'
     );
@@ -91,6 +104,12 @@ function smartvision_device_state(PDO $pdo, string $deviceId): array
     $licenseStatus = 'inactive';
     $trialStatus = (($device['trial_status'] ?? '') === 'pending_xtream') ? 'pending_xtream' : 'available';
     $freeWithAdsStatus = 'inactive';
+
+    if (is_array($license)) {
+        $licenseStatus = (($license['status'] ?? '') === 'active' && strtotime((string) $license['expires_at']) > time())
+            ? 'active'
+            : 'expired';
+    }
 
     if (is_array($trial)) {
         $trialStatus = (($trial['status'] ?? '') === 'active' && strtotime((string) $trial['expires_at']) > time())
@@ -117,8 +136,8 @@ function smartvision_device_state(PDO $pdo, string $deviceId): array
         $status = 'active';
         $activated = true;
         $activationType = 'trial_pending_xtream';
-    } elseif ($trialStatus === 'expired') {
-        $status = 'expired';
+    } else {
+        $status = smartvision_expiration_status($licenseStatus, $trialStatus);
     }
 
     $update = $pdo->prepare(

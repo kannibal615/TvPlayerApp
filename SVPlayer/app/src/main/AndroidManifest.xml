@@ -24,6 +24,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SVPlayer"
         android:usesCleartextTraffic="true">
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="${googleAdsApplicationId}" />
+
         <activity
             android:name=".SplashActivity"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"

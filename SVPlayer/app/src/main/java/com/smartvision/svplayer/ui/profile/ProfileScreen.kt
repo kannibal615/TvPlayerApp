@@ -1,12 +1,15 @@
 package com.smartvision.svplayer.ui.profile
 
+import android.app.Activity
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -27,7 +30,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
@@ -36,6 +41,7 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,6 +52,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,10 +71,14 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -77,6 +88,7 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import com.smartvision.svplayer.BuildConfig
+import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.config.XtreamAccount
 import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.core.data.LocalAppContainer
@@ -84,11 +96,15 @@ import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.activation.ActivationException
 import com.smartvision.svplayer.data.activation.ActivationRepository
 import com.smartvision.svplayer.data.activation.StoredActivationState
+import com.smartvision.svplayer.data.monetization.MonetizationStatus
+import com.smartvision.svplayer.data.monetization.monetizationStatus
 import com.smartvision.svplayer.data.repository.emptyAccountProfile
 import com.smartvision.svplayer.domain.model.AccountProfile
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.focus.rememberTvFocusState
+import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -103,8 +119,12 @@ fun ProfileRoute(
     onBack: () -> Unit,
     onSettings: () -> Unit,
     onSyncCatalog: () -> Unit,
+    onActivationChanged: () -> Unit,
 ) {
     val container = LocalAppContainer.current
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val scope = rememberCoroutineScope()
     val viewModel: ProfileViewModel = viewModel(
         factory = viewModelFactory {
             ProfileViewModel(
@@ -115,6 +135,14 @@ fun ProfileRoute(
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val privacyOptionsRequired by container.privacyConsentManager.privacyOptionsRequired
+        .collectAsStateWithLifecycle()
+
+    LaunchedEffect(state.usageMode) {
+        if (state.usageMode == UsageMode.Premium) {
+            onActivationChanged()
+        }
+    }
 
     ProfileScreen(
         state = state,
@@ -123,6 +151,14 @@ fun ProfileRoute(
         onRefresh = viewModel::refresh,
         onSyncCatalog = onSyncCatalog,
         onShowLicenseQr = viewModel::showLicenseQr,
+        onLicenseCodeChange = viewModel::updateLicenseCode,
+        onActivateLicense = viewModel::activateLicense,
+        onShowPrivacyOptions = {
+            activity?.let {
+                scope.launch { container.privacyConsentManager.showPrivacyOptions(it) }
+            }
+        },
+        privacyOptionsRequired = privacyOptionsRequired,
         onShowXtreamSetupQr = viewModel::showXtreamSetupQr,
         onShowXtreamShopQr = viewModel::showXtreamShopQr,
         onSelectXtreamAccount = { accountId ->
@@ -146,6 +182,10 @@ private fun ProfileScreen(
     onRefresh: () -> Unit,
     onSyncCatalog: () -> Unit,
     onShowLicenseQr: () -> Unit,
+    onLicenseCodeChange: (String) -> Unit,
+    onActivateLicense: () -> Unit,
+    onShowPrivacyOptions: () -> Unit,
+    privacyOptionsRequired: Boolean,
     onShowXtreamSetupQr: () -> Unit,
     onShowXtreamShopQr: () -> Unit,
     onSelectXtreamAccount: (String) -> Unit,
@@ -194,6 +234,8 @@ private fun ProfileScreen(
                     state = state,
                     onRefresh = onRefresh,
                     onShowLicenseQr = onShowLicenseQr,
+                    onShowPrivacyOptions = onShowPrivacyOptions,
+                    privacyOptionsRequired = privacyOptionsRequired,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 XtreamPanel(
@@ -233,7 +275,11 @@ private fun ProfileScreen(
             qrUrl = qr.url,
             code = qr.code,
             loading = qr.loading,
-            error = qr.error,
+            error = qr.error ?: state.errorMessage,
+            licenseCode = if (qr.allowsLicenseEntry) state.licenseCode else "",
+            onLicenseCodeChange = if (qr.allowsLicenseEntry) onLicenseCodeChange else null,
+            onSubmitLicenseCode = if (qr.allowsLicenseEntry) onActivateLicense else null,
+            submittingLicense = state.submittingLicense,
             onDismiss = onDismissQr,
         )
     }
@@ -283,6 +329,8 @@ private fun LicensePanel(
     state: ProfileUiState,
     onRefresh: () -> Unit,
     onShowLicenseQr: () -> Unit,
+    onShowPrivacyOptions: () -> Unit,
+    privacyOptionsRequired: Boolean,
     modifier: Modifier = Modifier,
 ) {
     ProfilePanel(
@@ -318,6 +366,29 @@ private fun LicensePanel(
                     .weight(1f)
                     .height(46.dp),
             )
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            TvButton(
+                text = "Saisir une licence",
+                onClick = onShowLicenseQr,
+                leadingIcon = Icons.Default.Verified,
+                variant = TvButtonVariant.Secondary,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp),
+            )
+            if (state.usageMode == UsageMode.FreeAds && privacyOptionsRequired) {
+                TvButton(
+                    text = "Confidentialite pubs",
+                    onClick = onShowPrivacyOptions,
+                    leadingIcon = Icons.Default.Security,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp),
+                )
+            }
         }
     }
 }
@@ -679,6 +750,20 @@ fun SmartVisionQrDialog(
     onAction: (() -> Unit)? = null,
     onDismiss: () -> Unit,
 ) {
+    if (onLicenseCodeChange != null && onSubmitLicenseCode != null) {
+        PremiumLicenseDialog(
+            qrUrl = qrUrl,
+            loading = loading,
+            error = error,
+            licenseCode = licenseCode,
+            onLicenseCodeChange = onLicenseCodeChange,
+            onSubmitLicenseCode = onSubmitLicenseCode,
+            submittingLicense = submittingLicense,
+            onDismiss = onDismiss,
+        )
+        return
+    }
+
     val closeFocusRequester = remember { FocusRequester() }
     LaunchedEffect(onLicenseCodeChange, onSubmitLicenseCode) {
         if (onLicenseCodeChange == null || onSubmitLicenseCode == null) {
@@ -846,6 +931,437 @@ fun SmartVisionQrDialog(
     }
 }
 
+@Composable
+private fun PremiumLicenseDialog(
+    qrUrl: String,
+    loading: Boolean,
+    error: String?,
+    licenseCode: String,
+    onLicenseCodeChange: (String) -> Unit,
+    onSubmitLicenseCode: () -> Unit,
+    submittingLicense: Boolean,
+    onDismiss: () -> Unit,
+) {
+    val fieldFocusRequester = remember { FocusRequester() }
+    val inputFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var editing by remember { mutableStateOf(false) }
+    var fieldFocused by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        fieldFocusRequester.requestFocus()
+    }
+
+    LaunchedEffect(editing) {
+        if (editing) {
+            inputFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xCC010711))
+                .padding(horizontal = 48.dp, vertical = 38.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(1040.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                Color(0xFF102542),
+                                Color(0xFF071426),
+                                Color(0xFF030A15),
+                            ),
+                            radius = 1100f,
+                        ),
+                    )
+                    .border(
+                        BorderStroke(2.dp, Color(0xFF2A67A7).copy(alpha = 0.82f)),
+                        RoundedCornerShape(24.dp),
+                    )
+                    .padding(28.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(32.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PremiumQrCard(
+                        qrUrl = qrUrl,
+                        loading = loading,
+                        modifier = Modifier
+                            .width(404.dp)
+                            .height(500.dp),
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(456.dp)
+                            .background(Color(0xFF1D3553).copy(alpha = 0.72f)),
+                    )
+
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(top = 30.dp, end = 12.dp),
+                    ) {
+                        Text(
+                            text = "Passer à",
+                            color = SmartVisionColors.TextPrimary,
+                            style = SmartVisionType.TitleL,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = "SmartVision Premium",
+                            color = Color(0xFF1687FF),
+                            style = SmartVisionType.TitleL,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Spacer(Modifier.height(18.dp))
+                        Text(
+                            text = "Débloquez toutes les fonctionnalités premium\net profitez d’une expérience IPTV sans limites.",
+                            color = SmartVisionColors.TextSecondary,
+                            style = SmartVisionType.Body,
+                        )
+                        Spacer(Modifier.height(28.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = null,
+                                tint = Color(0xFF1687FF),
+                                modifier = Modifier.size(24.dp),
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                text = "Code licence SmartVision",
+                                color = Color(0xFF1687FF),
+                                style = SmartVisionType.Body,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(68.dp)
+                                .focusRequester(fieldFocusRequester)
+                                .onFocusChanged { fieldFocused = it.isFocused }
+                                .onPreviewKeyEvent { event ->
+                                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                    when (event.key) {
+                                        Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                                            editing = true
+                                            true
+                                        }
+                                        Key.Back -> {
+                                            if (editing) {
+                                                editing = false
+                                                keyboardController?.hide()
+                                                true
+                                            } else {
+                                                false
+                                            }
+                                        }
+                                        else -> false
+                                    }
+                                }
+                                .focusable(enabled = !editing)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Color(0xFF030B18).copy(alpha = 0.92f))
+                                .border(
+                                    BorderStroke(
+                                        if (fieldFocused || editing) 2.dp else 1.dp,
+                                        if (fieldFocused || editing) {
+                                            SmartVisionColors.CyanAccent
+                                        } else {
+                                            SmartVisionColors.Primary
+                                        },
+                                    ),
+                                    RoundedCornerShape(14.dp),
+                                )
+                                .padding(horizontal = 22.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            BasicTextField(
+                                value = licenseCode,
+                                onValueChange = { onLicenseCodeChange(it.uppercase().take(24)) },
+                                enabled = editing,
+                                singleLine = true,
+                                textStyle = SmartVisionType.TitleS.copy(
+                                    color = SmartVisionColors.TextPrimary,
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                                cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .focusRequester(inputFocusRequester)
+                                    .onFocusChanged { focusState ->
+                                        if (!focusState.isFocused && editing) {
+                                            editing = false
+                                        }
+                                    },
+                                decorationBox = { inner ->
+                                    if (licenseCode.isBlank()) {
+                                        Text(
+                                            text = "Saisir le code",
+                                            color = SmartVisionColors.TextSecondary.copy(alpha = 0.62f),
+                                            style = SmartVisionType.TitleS,
+                                        )
+                                    }
+                                    inner()
+                                },
+                            )
+                        }
+                        if (!error.isNullOrBlank()) {
+                            Spacer(Modifier.height(10.dp))
+                            Text(
+                                text = error,
+                                color = SmartVisionColors.Error,
+                                style = SmartVisionType.Label,
+                            )
+                        }
+                        Spacer(Modifier.height(18.dp))
+                        PremiumDialogButton(
+                            text = if (submittingLicense) "Activation..." else "Activer ce code",
+                            onClick = onSubmitLicenseCode,
+                            enabled = !submittingLicense && licenseCode.isNotBlank(),
+                            primary = true,
+                            trailingIcon = Icons.Default.ArrowForward,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(66.dp),
+                        )
+                        Spacer(Modifier.height(14.dp))
+                        PremiumDialogButton(
+                            text = "Fermer",
+                            onClick = onDismiss,
+                            primary = false,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(58.dp),
+                        )
+                    }
+                }
+
+                PremiumCloseButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.TopEnd),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PremiumQrCard(
+    qrUrl: String,
+    loading: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF0C2342),
+                        Color(0xFF06152A),
+                    ),
+                ),
+            )
+            .border(BorderStroke(2.dp, Color(0xFF166BD1)), RoundedCornerShape(22.dp))
+            .padding(18.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .border(BorderStroke(2.dp, SmartVisionColors.CyanAccent), RoundedCornerShape(18.dp))
+                .padding(horizontal = 22.dp, vertical = 20.dp),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Image(
+                    painter = painterResource(R.drawable.smartvision_logo_wide),
+                    contentDescription = "SmartVision IPTV Player",
+                    modifier = Modifier
+                        .width(260.dp)
+                        .height(64.dp),
+                )
+                Spacer(Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .size(280.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White)
+                        .border(BorderStroke(6.dp, Color(0xFF173B68)), RoundedCornerShape(16.dp))
+                        .padding(18.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    when {
+                        loading -> CircularProgressIndicator(color = SmartVisionColors.Primary)
+                        qrUrl.isBlank() -> Icon(
+                            Icons.Default.QrCode2,
+                            contentDescription = null,
+                            tint = Color(0xFF10203A),
+                            modifier = Modifier.size(92.dp),
+                        )
+                        else -> {
+                            val bitmap = remember(qrUrl) { createQrBitmap(qrUrl, 512) }
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = "QR code SmartVision",
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.QrCode2,
+                        contentDescription = null,
+                        tint = Color(0xFF1687FF),
+                        modifier = Modifier.size(30.dp),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = "Scannez le QR code\npour acheter une licence",
+                        color = SmartVisionColors.TextPrimary,
+                        style = SmartVisionType.Body,
+                        textAlign = TextAlign.Start,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PremiumDialogButton(
+    text: String,
+    onClick: () -> Unit,
+    primary: Boolean,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    trailingIcon: ImageVector? = null,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(14.dp)
+    val borderColor = when {
+        focusState.isFocused -> SmartVisionColors.FocusWhite
+        primary -> SmartVisionColors.CyanAccent
+        else -> Color(0xFF344761)
+    }
+
+    Row(
+        modifier = modifier
+            .tvFocusTarget(
+                state = focusState,
+                enabled = enabled,
+                glowColor = SmartVisionColors.CyanAccent,
+                cornerRadius = 14.dp,
+            )
+            .clip(shape)
+            .background(
+                if (primary) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color(0xFF0EBEFF),
+                            Color(0xFF0876FF),
+                            Color(0xFF153DFF),
+                        ),
+                    )
+                } else {
+                    Brush.verticalGradient(listOf(Color(0xFF0B172A), Color(0xFF07101D)))
+                },
+            )
+            .border(BorderStroke(if (focusState.isFocused) 2.dp else 1.dp, borderColor), shape)
+            .clickable(
+                enabled = enabled,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .focusable(enabled = enabled, interactionSource = interactionSource)
+            .padding(horizontal = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = text,
+            color = if (enabled) Color.White else Color.White.copy(alpha = 0.42f),
+            style = SmartVisionType.TitleS,
+            fontWeight = FontWeight.SemiBold,
+        )
+        if (trailingIcon != null) {
+            Spacer(Modifier.weight(1f))
+            Icon(
+                imageVector = trailingIcon,
+                contentDescription = null,
+                tint = if (enabled) Color.White else Color.White.copy(alpha = 0.42f),
+                modifier = Modifier.size(26.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PremiumCloseButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(14.dp)
+
+    Box(
+        modifier = modifier
+            .size(54.dp)
+            .tvFocusTarget(
+                state = focusState,
+                glowColor = SmartVisionColors.CyanAccent,
+                cornerRadius = 14.dp,
+            )
+            .clip(shape)
+            .background(Color(0xFF0B1728))
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) 2.dp else 1.dp,
+                    if (focusState.isFocused) SmartVisionColors.FocusWhite else Color(0xFF263B56),
+                ),
+                shape,
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .focusable(interactionSource = interactionSource),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = "Fermer",
+            tint = SmartVisionColors.TextSecondary,
+            modifier = Modifier.size(30.dp),
+        )
+    }
+}
+
 class ProfileViewModel(
     private val activationRepository: ActivationRepository,
     private val accountManager: XtreamAccountManager,
@@ -896,9 +1412,51 @@ class ProfileViewModel(
                         title = "Acheter ou prolonger la licence",
                         subtitle = "Scannez ce QR code avec votre telephone pour choisir une licence SmartVision. Le portail associera l'achat a cet appareil.",
                         url = "${activationBaseUrl()}account/?source=tv&intent=license&device_id=$deviceId&plan=year_1",
+                        allowsLicenseEntry = true,
                     ),
                 )
             }
+        }
+    }
+
+    fun updateLicenseCode(value: String) {
+        transient.update {
+            it.copy(
+                licenseCode = value.replace(Regex("[\\s-]+"), "").uppercase().take(10),
+                errorMessage = null,
+            )
+        }
+    }
+
+    fun activateLicense() {
+        val code = transient.value.licenseCode
+        if (!Regex("^[A-Z0-9]{10}$").matches(code)) {
+            transient.update {
+                it.copy(errorMessage = "Le code licence doit contenir exactement 10 caracteres.")
+            }
+            return
+        }
+        viewModelScope.launch {
+            transient.update { it.copy(submittingLicense = true, errorMessage = null) }
+            runCatching { activationRepository.activateLicense(code) }
+                .onSuccess {
+                    transient.update {
+                        it.copy(
+                            submittingLicense = false,
+                            licenseCode = "",
+                            qrDialog = null,
+                            errorMessage = null,
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    transient.update {
+                        it.copy(
+                            submittingLicense = false,
+                            errorMessage = error.userMessage("Activation de la licence impossible."),
+                        )
+                    }
+                }
         }
     }
 
@@ -958,7 +1516,7 @@ class ProfileViewModel(
     }
 
     fun dismissQr() {
-        transient.update { it.copy(qrDialog = null) }
+        transient.update { it.copy(qrDialog = null, errorMessage = null) }
     }
 }
 
@@ -976,6 +1534,8 @@ data class ProfileUiState(
     val activeXtreamAccountId: String = "",
     val account: AccountProfile = emptyAccountProfile(),
     val refreshing: Boolean = false,
+    val licenseCode: String = "",
+    val submittingLicense: Boolean = false,
     val errorMessage: String? = null,
     val qrDialog: ProfileQrState? = null,
 )
@@ -987,10 +1547,13 @@ data class ProfileQrState(
     val code: String? = null,
     val loading: Boolean = false,
     val error: String? = null,
+    val allowsLicenseEntry: Boolean = false,
 )
 
 private data class ProfileTransientState(
     val refreshing: Boolean = false,
+    val licenseCode: String = "",
+    val submittingLicense: Boolean = false,
     val errorMessage: String? = null,
     val qrDialog: ProfileQrState? = null,
 )
@@ -1040,11 +1603,22 @@ private fun buildProfileState(
     account: AccountProfile,
     transient: ProfileTransientState,
 ): ProfileUiState {
-    val usageMode = when (activation.activationType) {
-        "trial_demo" -> UsageMode.Trial
-        "smartvision_code", "own_xtream" -> UsageMode.Premium
-        "free_ads" -> UsageMode.FreeAds
-        else -> UsageMode.Unknown
+    val usageMode = when (activation.monetizationStatus()) {
+        MonetizationStatus.TRIAL_ACTIVE -> UsageMode.Trial
+        MonetizationStatus.PREMIUM_ACTIVE -> UsageMode.Premium
+        MonetizationStatus.FREE_WITH_ADS -> UsageMode.FreeAds
+        MonetizationStatus.TRIAL_EXPIRED,
+        MonetizationStatus.LICENSE_EXPIRED,
+        null,
+        -> UsageMode.Unknown
+    }
+    val activationStatusLabel = when (activation.monetizationStatus()) {
+        MonetizationStatus.TRIAL_ACTIVE -> "Essai gratuit actif"
+        MonetizationStatus.PREMIUM_ACTIVE -> "Premium actif"
+        MonetizationStatus.FREE_WITH_ADS -> "Gratuit avec pubs"
+        MonetizationStatus.TRIAL_EXPIRED -> "Essai expire"
+        MonetizationStatus.LICENSE_EXPIRED -> "Licence expiree"
+        null -> "Verification"
     }
     val hasXtream = activeAccount != null
     val xtreamUsername = account.usernameMasked.takeIf { it.isNotBlank() }
@@ -1056,7 +1630,7 @@ private fun buildProfileState(
     }
     return ProfileUiState(
         deviceId = activation.deviceId,
-        activationStatusLabel = activation.status.ifBlank { "pending" }.replaceFirstChar { it.uppercase() },
+        activationStatusLabel = activationStatusLabel,
         licenseExpiresAt = activation.expiresAt.orEmpty(),
         usageMode = usageMode,
         xtreamHost = account.host.ifBlank { activeAccount?.host.orEmpty() },
@@ -1068,6 +1642,8 @@ private fun buildProfileState(
         activeXtreamAccountId = activeAccountId,
         account = account,
         refreshing = transient.refreshing,
+        licenseCode = transient.licenseCode,
+        submittingLicense = transient.submittingLicense,
         errorMessage = transient.errorMessage,
         qrDialog = transient.qrDialog,
     )
