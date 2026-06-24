@@ -60,6 +60,7 @@ $codes = $codesResult['rows'];
 $auditLogs = admin_load_audit($pdo);
 $slides = admin_load_slides($pdo);
 $notifications = admin_load_notifications($pdo);
+$messages = admin_load_contact_messages($pdo, $query);
 $revenueSeries = admin_revenue_series($pdo);
 $alerts = admin_build_alerts($stats);
 $serverStats = admin_load_server_stats($pdo, $stats);
@@ -86,6 +87,7 @@ render_admin_dashboard(
     $codesResult['pagination'],
     $slides,
     $notifications,
+    $messages,
     $serverStats,
     $flash,
     $generatedCode,
@@ -96,7 +98,7 @@ render_admin_dashboard(
 function admin_current_page(mixed $page): string
 {
     $page = is_string($page) ? $page : 'overview';
-    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'devices', 'notifications', 'slides', 'server', 'audit'], true)
+    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'devices', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
         ? $page
         : 'overview';
 }
@@ -120,6 +122,7 @@ function handle_admin_action(PDO $pdo, string $action): void
         case 'send_notification': admin_send_notification($pdo); break;
         case 'set_notification_status': admin_set_notification_status($pdo); break;
         case 'delete_notification': admin_delete_notification($pdo); break;
+        case 'set_contact_message_status': admin_set_contact_message_status($pdo); break;
         case 'set_user_status': admin_set_user_status($pdo); break;
         case 'set_device_status': admin_set_device_status($pdo); break;
         case 'expire_device': admin_expire_device($pdo); break;
@@ -510,6 +513,20 @@ function admin_delete_notification(PDO $pdo): void
     set_admin_flash('success', 'Notification supprimee.');
 }
 
+function admin_set_contact_message_status(PDO $pdo): void
+{
+    ensure_contact_messages_table($pdo);
+    $messageId = admin_positive_int($_POST['message_id'] ?? null);
+    $status = (string) ($_POST['status'] ?? '');
+    if (!in_array($status, ['new', 'read', 'handled', 'archived'], true)) {
+        throw new InvalidArgumentException('Statut message invalide.');
+    }
+    $pdo->prepare('UPDATE contact_messages SET status = :status, updated_at = NOW() WHERE id = :id')
+        ->execute(['status' => $status, 'id' => $messageId]);
+    audit_admin_action($pdo, 'contact_message_status_changed', 'contact_message', (string) $messageId, ['status' => $status]);
+    set_admin_flash('success', 'Statut du message mis a jour.');
+}
+
 function admin_normalize_notification_targets(string $value): string
 {
     $parts = preg_split('/[\s,;]+/', strtolower(trim($value)));
@@ -716,6 +733,33 @@ function admin_search_pattern(string $query): string
     return '%' . str_replace(['%', '_'], ['\\%', '\\_'], $query) . '%';
 }
 
+function admin_sort_sql(string $default, array $allowed): string
+{
+    $sort = (string) ($_GET['sort'] ?? '');
+    $dir = strtolower((string) ($_GET['dir'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
+    $column = $allowed[$sort] ?? $allowed[$default] ?? reset($allowed);
+    return $column . ' ' . $dir;
+}
+
+function admin_sort_link(string $page, string $label, string $sort, string $query): string
+{
+    $currentSort = (string) ($_GET['sort'] ?? '');
+    $currentDir = strtolower((string) ($_GET['dir'] ?? 'desc'));
+    $nextDir = $currentSort === $sort && $currentDir === 'asc' ? 'desc' : 'asc';
+    $url = '/admin/?page=' . rawurlencode($page) . '&sort=' . rawurlencode($sort) . '&dir=' . rawurlencode($nextDir);
+    if ($query !== '') {
+        $url .= '&q=' . rawurlencode($query);
+    }
+    foreach (['order_status', 'customer_status', 'license_status', 'device_status', 'xtream_status', 'message_status'] as $param) {
+        $value = (string) ($_GET[$param] ?? '');
+        if ($value !== '') {
+            $url .= '&' . rawurlencode($param) . '=' . rawurlencode($value);
+        }
+    }
+    $indicator = $currentSort === $sort ? ($currentDir === 'asc' ? ' asc' : ' desc') : '';
+    return '<a class="admin-sort-link" href="' . admin_escape($url) . '">' . admin_escape($label . $indicator) . '</a>';
+}
+
 function admin_load_orders(PDO $pdo, string $query): array
 {
     $sql = "SELECT o.id, o.order_reference, o.plan_label, o.amount_cents, o.currency, o.status,
@@ -726,11 +770,27 @@ function admin_load_orders(PDO $pdo, string $query): array
             LEFT JOIN activation_codes c ON c.id = o.activation_code_id
             LEFT JOIN activation_code_metadata m ON m.code_id = c.id";
     $params = [];
+    $whereParts = [];
     if ($query !== '') {
-        $sql .= " WHERE o.order_reference LIKE :q OR u.email LIKE :q OR u.display_name LIKE :q OR o.payment_reference LIKE :q";
+        $whereParts[] = "(o.order_reference LIKE :q OR u.email LIKE :q OR u.display_name LIKE :q OR o.payment_reference LIKE :q)";
         $params['q'] = admin_search_pattern($query);
     }
-    $sql .= ' ORDER BY o.id DESC LIMIT 80';
+    $status = (string) ($_GET['order_status'] ?? '');
+    if (in_array($status, ['pending', 'paid', 'cancelled'], true)) {
+        $whereParts[] = 'o.status = :status';
+        $params['status'] = $status;
+    }
+    if ($whereParts !== []) {
+        $sql .= ' WHERE ' . implode(' AND ', $whereParts);
+    }
+    $sql .= ' ORDER BY ' . admin_sort_sql('date', [
+        'reference' => 'o.order_reference',
+        'client' => 'u.email',
+        'plan' => 'o.plan_label',
+        'amount' => 'o.amount_cents',
+        'payment' => 'o.status',
+        'date' => 'COALESCE(o.paid_at, o.created_at)',
+    ]) . ' LIMIT 80';
     $statement = $pdo->prepare($sql);
     $statement->execute($params);
     return $statement->fetchAll();
@@ -743,26 +803,108 @@ function admin_load_users(PDO $pdo, string $query): array
                    COALESCE(SUM(CASE WHEN o.status = 'paid' THEN o.amount_cents ELSE 0 END), 0) AS total_spent
             FROM site_users u LEFT JOIN activation_orders o ON o.user_id = u.id";
     $params = [];
+    $whereParts = [];
     if ($query !== '') {
-        $sql .= ' WHERE u.email LIKE :q OR u.display_name LIKE :q';
+        $whereParts[] = '(u.email LIKE :q OR u.display_name LIKE :q)';
         $params['q'] = admin_search_pattern($query);
     }
-    $sql .= ' GROUP BY u.id ORDER BY u.id DESC LIMIT 60';
+    $status = (string) ($_GET['customer_status'] ?? '');
+    if (in_array($status, ['active', 'blocked'], true)) {
+        $whereParts[] = 'u.status = :status';
+        $params['status'] = $status;
+    }
+    if ($whereParts !== []) {
+        $sql .= ' WHERE ' . implode(' AND ', $whereParts);
+    }
+    $sql .= ' GROUP BY u.id ORDER BY ' . admin_sort_sql('created', [
+        'client' => 'u.email',
+        'orders' => 'orders_count',
+        'spent' => 'total_spent',
+        'status' => 'u.status',
+        'created' => 'u.id',
+    ]) . ' LIMIT 60';
     $statement = $pdo->prepare($sql);
     $statement->execute($params);
-    return $statement->fetchAll();
+    $rows = $statement->fetchAll();
+    foreach ($rows as &$row) {
+        $row['details'] = admin_load_customer_detail($pdo, (int) $row['id']);
+    }
+    unset($row);
+    return $rows;
+}
+
+function admin_load_customer_detail(PDO $pdo, int $userId): array
+{
+    $orders = $pdo->prepare(
+        "SELECT o.id, o.order_reference, o.plan_label, o.amount_cents, o.currency, o.status, o.created_at, o.paid_at,
+                c.status AS code_status, c.used_devices, c.max_devices, m.code_hint, m.assigned_device_id, m.assigned_public_device_code
+         FROM activation_orders o
+         LEFT JOIN activation_codes c ON c.id = o.activation_code_id
+         LEFT JOIN activation_code_metadata m ON m.code_id = c.id
+         WHERE o.user_id = :user_id
+         ORDER BY o.id DESC
+         LIMIT 8"
+    );
+    $orders->execute(['user_id' => $userId]);
+    $orderRows = $orders->fetchAll();
+
+    $devices = $pdo->prepare(
+        "SELECT DISTINCT d.device_id, d.public_device_code, d.device_name, d.status, d.license_status,
+                d.xtream_status, d.app_version, d.last_seen_at, d.expires_at
+         FROM activation_orders o
+         JOIN activation_codes c ON c.id = o.activation_code_id
+         LEFT JOIN activation_code_metadata m ON m.code_id = c.id
+         LEFT JOIN device_activations a ON a.activation_code_id = c.id
+         LEFT JOIN devices d ON d.device_id = COALESCE(m.assigned_device_id, a.device_id)
+         WHERE o.user_id = :user_id AND d.device_id IS NOT NULL
+         ORDER BY COALESCE(d.last_seen_at, d.first_seen_at, d.created_at) DESC
+         LIMIT 8"
+    );
+    $devices->execute(['user_id' => $userId]);
+
+    return [
+        'orders' => $orderRows,
+        'devices' => $devices->fetchAll(),
+    ];
+}
+
+function admin_load_device_history(PDO $pdo, string $deviceId): array
+{
+    $history = $pdo->prepare(
+        "SELECT a.activation_type, a.status, a.starts_at, a.expires_at, a.created_at,
+                c.license_type, c.duration_days, c.status AS code_status, m.code_hint
+         FROM device_activations a
+         LEFT JOIN activation_codes c ON c.id = a.activation_code_id
+         LEFT JOIN activation_code_metadata m ON m.code_id = c.id
+         WHERE a.device_id = :device_id
+         ORDER BY a.id DESC
+         LIMIT 10"
+    );
+    $history->execute(['device_id' => $deviceId]);
+    return $history->fetchAll();
 }
 
 function admin_load_devices(PDO $pdo, string $query, int $page = 1): array
 {
     $perPage = 25;
     $offset = ($page - 1) * $perPage;
-    $where = '';
     $params = [];
+    $whereParts = [];
     if ($query !== '') {
-        $where = ' WHERE d.device_id LIKE :q OR d.public_device_code LIKE :q OR d.device_name LIKE :q OR d.app_version LIKE :q OR d.country_code LIKE :q';
+        $whereParts[] = '(d.device_id LIKE :q OR d.public_device_code LIKE :q OR d.device_name LIKE :q OR d.app_version LIKE :q OR d.country_code LIKE :q)';
         $params['q'] = admin_search_pattern($query);
     }
+    $deviceStatus = (string) ($_GET['device_status'] ?? '');
+    if (in_array($deviceStatus, ['pending', 'active', 'expired', 'blocked'], true)) {
+        $whereParts[] = 'd.status = :device_status';
+        $params['device_status'] = $deviceStatus;
+    }
+    $xtreamStatus = (string) ($_GET['xtream_status'] ?? '');
+    if (in_array($xtreamStatus, ['missing', 'configured', 'invalid'], true)) {
+        $whereParts[] = 'd.xtream_status = :xtream_status';
+        $params['xtream_status'] = $xtreamStatus;
+    }
+    $where = $whereParts === [] ? '' : ' WHERE ' . implode(' AND ', $whereParts);
     $count = $pdo->prepare('SELECT COUNT(*) FROM devices d' . $where);
     $count->execute($params);
     $total = (int) $count->fetchColumn();
@@ -781,12 +923,21 @@ function admin_load_devices(PDO $pdo, string $query, int $page = 1): array
             LEFT JOIN activation_codes c ON c.id = a.activation_code_id
             LEFT JOIN activation_code_metadata m ON m.code_id = c.id
             LEFT JOIN device_playlist_configs p ON p.device_id = d.device_id";
-    $sql .= $where . " ORDER BY d.last_seen_at DESC, d.id DESC LIMIT {$perPage} OFFSET {$offset}";
+    $sql .= $where . ' ORDER BY ' . admin_sort_sql('activity', [
+        'device' => 'd.public_device_code',
+        'status' => 'd.status',
+        'license' => 'd.license_status',
+        'xtream' => 'd.xtream_status',
+        'installed' => 'COALESCE(d.first_seen_at, d.created_at)',
+        'expires' => 'd.expires_at',
+        'activity' => 'COALESCE(d.last_seen_at, d.first_seen_at, d.created_at)',
+    ]) . ", d.id DESC LIMIT {$perPage} OFFSET {$offset}";
     $statement = $pdo->prepare($sql);
     $statement->execute($params);
     $rows = $statement->fetchAll();
     foreach ($rows as &$row) {
         $row['activation_code'] = decrypt_private_value($row['code_ciphertext'] ?? null) ?: ($row['code_hint'] ?? null);
+        $row['history'] = admin_load_device_history($pdo, (string) $row['device_id']);
     }
     unset($row);
 
@@ -800,12 +951,18 @@ function admin_load_codes(PDO $pdo, string $query, int $page = 1): array
 {
     $perPage = 30;
     $offset = ($page - 1) * $perPage;
-    $where = '';
     $params = [];
+    $whereParts = [];
     if ($query !== '') {
-        $where = ' WHERE c.label LIKE :q OR m.code_hint LIKE :q OR m.created_by LIKE :q OR m.assigned_public_device_code LIKE :q';
+        $whereParts[] = '(c.label LIKE :q OR m.code_hint LIKE :q OR m.created_by LIKE :q OR m.assigned_public_device_code LIKE :q)';
         $params['q'] = admin_search_pattern($query);
     }
+    $status = (string) ($_GET['license_status'] ?? '');
+    if (in_array($status, ['active', 'disabled', 'expired'], true)) {
+        $whereParts[] = 'c.status = :status';
+        $params['status'] = $status;
+    }
+    $where = $whereParts === [] ? '' : ' WHERE ' . implode(' AND ', $whereParts);
     $count = $pdo->prepare('SELECT COUNT(*) FROM activation_codes c LEFT JOIN activation_code_metadata m ON m.code_id = c.id' . $where);
     $count->execute($params);
     $total = (int) $count->fetchColumn();
@@ -826,7 +983,16 @@ function admin_load_codes(PDO $pdo, string $query, int $page = 1): array
                 ORDER BY da.id DESC
                 LIMIT 1
             )";
-    $sql .= $where . " ORDER BY c.id DESC LIMIT {$perPage} OFFSET {$offset}";
+    $sql .= $where . ' ORDER BY ' . admin_sort_sql('created', [
+        'code' => 'm.code_hint',
+        'type' => 'c.license_type',
+        'label' => 'c.label',
+        'usage' => 'c.used_devices',
+        'duration' => 'c.duration_days',
+        'expiration' => 'COALESCE(a.expires_at, c.valid_until)',
+        'status' => 'c.status',
+        'created' => 'c.id',
+    ]) . " LIMIT {$perPage} OFFSET {$offset}";
     $statement = $pdo->prepare($sql);
     $statement->execute($params);
     $rows = $statement->fetchAll();
@@ -872,6 +1038,27 @@ function admin_load_notifications(PDO $pdo): array
          ORDER BY id DESC
          LIMIT 80"
     )->fetchAll();
+}
+
+function admin_load_contact_messages(PDO $pdo, string $query): array
+{
+    ensure_contact_messages_table($pdo);
+    $sql = "SELECT id, name, email, subject, message, status, ip_hash, user_agent, created_at, updated_at
+            FROM contact_messages";
+    $params = [];
+    if ($query !== '') {
+        $sql .= " WHERE name LIKE :q OR email LIKE :q OR subject LIKE :q OR message LIKE :q";
+        $params['q'] = admin_search_pattern($query);
+    }
+    $status = (string) ($_GET['message_status'] ?? '');
+    if (in_array($status, ['new', 'read', 'handled', 'archived'], true)) {
+        $sql .= ($params === [] ? ' WHERE' : ' AND') . ' status = :status';
+        $params['status'] = $status;
+    }
+    $sql .= ' ORDER BY id DESC LIMIT 120';
+    $statement = $pdo->prepare($sql);
+    $statement->execute($params);
+    return $statement->fetchAll();
 }
 
 function admin_load_audit(PDO $pdo): array
@@ -945,6 +1132,7 @@ function render_admin_dashboard(
     array $codesPagination,
     array $slides,
     array $notifications,
+    array $messages,
     array $serverStats,
     ?array $flash,
     ?array $generatedCode,
@@ -959,6 +1147,7 @@ function render_admin_dashboard(
         'licenses' => ['Licences', 'Generation manuelle et gestion des codes SmartVision.'],
         'devices' => ['Appareils', 'TV associees, essais, licences et configuration Xtream.'],
         'notifications' => ['Notifications', 'Messages envoyes vers toutes les TV ou vers des cibles precises.'],
+        'messages' => ['Messages clients', 'Demandes envoyees depuis le formulaire de contact.'],
         'slides' => ['Slides Home', 'Emplacements publicitaires prives visibles sur la Home.'],
         'server' => ['Serveur', 'Statistiques techniques, ressources cPanel et signaux de charge.'],
         'audit' => ['Journal', 'Dernieres actions administrateur.'],
@@ -975,7 +1164,7 @@ function render_admin_dashboard(
 <div class="admin-shell">
     <header class="admin-topbar"><form method="get" class="admin-search"><input type="hidden" name="page" value="<?= admin_escape($page) ?>"><label class="sr-only" for="admin-search">Rechercher</label><input id="admin-search" name="q" value="<?= admin_escape($query) ?>" placeholder="Rechercher client, commande, licence ou appareil"><button type="submit">Rechercher</button></form><div class="admin-account"><span><?= admin_escape(current_admin_username()) ?></span><small>Administrateur</small></div></header>
     <main class="admin-main">
-        <section class="admin-page-heading"><div><h1><?= admin_escape($heading[0]) ?></h1><p><?= admin_escape($heading[1]) ?></p></div><a class="admin-button secondary" href="/account/" target="_blank" rel="noopener">Voir le parcours client</a></section>
+        <section class="admin-page-heading"><div><h1><?= admin_escape($heading[0]) ?></h1><p><?= admin_escape($heading[1]) ?></p></div></section>
         <?php if ($flash): ?><div class="admin-notice <?= admin_escape((string) ($flash['type'] ?? '')) ?>"><?= admin_escape((string) ($flash['message'] ?? '')) ?></div><?php endif; ?>
         <?php if ($generatedCode): ?><div class="generated-license generated-license-list"><div><span>Code(s) genere(s)</span><div class="generated-code-grid"><?php foreach ($generatedCode as $generatedIndex => $plainGeneratedCode): ?><strong id="generated-code-<?= (int) $generatedIndex ?>"><?= admin_escape((string) $plainGeneratedCode) ?></strong><button class="admin-button compact primary" type="button" data-copy-target="generated-code-<?= (int) $generatedIndex ?>">Copier</button><?php endforeach; ?></div></div></div><?php endif; ?>
 
@@ -998,28 +1187,28 @@ function render_admin_dashboard(
         <?php endif; ?>
 
         <?php if ($page === 'orders'): ?>
-        <section class="admin-panel" id="orders"><div class="admin-panel-heading"><div><h2>Commandes recentes</h2><p><?= count($orders) ?> resultat(s)</p></div></div><div class="admin-table-wrap"><table><thead><tr><th>Reference</th><th>Client</th><th>Plan</th><th>Montant</th><th>Paiement</th><th>Licence</th><th>Date</th><th>Actions</th></tr></thead><tbody>
+        <section class="admin-panel" id="orders"><div class="admin-panel-heading"><div><h2>Commandes recentes</h2><p><?= count($orders) ?> resultat(s)</p></div><form class="admin-filter-row" method="get"><input type="hidden" name="page" value="orders"><input type="hidden" name="q" value="<?= admin_escape($query) ?>"><label>Statut<select name="order_status"><option value="">Tous</option><?php foreach (['pending', 'paid', 'cancelled'] as $statusOption): ?><option value="<?= admin_escape($statusOption) ?>"<?= ($_GET['order_status'] ?? '') === $statusOption ? ' selected' : '' ?>><?= admin_escape($statusOption) ?></option><?php endforeach; ?></select></label><button class="admin-button compact secondary" type="submit">Filtrer</button></form></div><div class="admin-table-wrap"><table><thead><tr><th><?= admin_sort_link('orders', 'Reference', 'reference', $query) ?></th><th><?= admin_sort_link('orders', 'Client', 'client', $query) ?></th><th><?= admin_sort_link('orders', 'Plan', 'plan', $query) ?></th><th><?= admin_sort_link('orders', 'Montant', 'amount', $query) ?></th><th><?= admin_sort_link('orders', 'Paiement', 'payment', $query) ?></th><th>Licence</th><th><?= admin_sort_link('orders', 'Date', 'date', $query) ?></th><th>Actions</th></tr></thead><tbody>
         <?php if ($orders === []): ?><tr><td colspan="8" class="admin-empty">Aucune commande.</td></tr><?php endif; ?>
         <?php foreach ($orders as $order): ?><tr><td><strong><?= admin_escape($order['order_reference'] ?: 'SV-' . $order['id']) ?></strong><small><?= admin_escape($order['payment_reference'] ?: '-') ?></small></td><td><?= admin_escape($order['display_name'] ?: $order['email']) ?><small><?= admin_escape($order['email']) ?></small></td><td><?= admin_escape($order['plan_label']) ?></td><td><?= commerce_money((int) $order['amount_cents'], (string) $order['currency']) ?></td><td><span class="admin-state <?= admin_escape($order['status']) ?>"><?= admin_escape($order['status']) ?></span></td><td><?= admin_escape($order['code_hint'] ?: '-') ?><small><?= admin_escape($order['code_status'] ?: '-') ?></small></td><td><?= admin_escape($order['paid_at'] ?: $order['created_at']) ?></td><td><?php if ($order['status'] === 'paid' && (int) $order['used_devices'] === 0): ?><form method="post" data-confirm="Annuler cette commande et desactiver sa licence ?"><input type="hidden" name="redirect_page" value="orders"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="cancel_order"><input type="hidden" name="order_id" value="<?= (int) $order['id'] ?>"><button class="admin-button compact danger" type="submit">Annuler</button></form><?php else: ?><span class="muted">-</span><?php endif; ?></td></tr><?php endforeach; ?>
         </tbody></table></div></section>
         <?php endif; ?>
 
         <?php if ($page === 'customers'): ?>
-        <section class="admin-panel" id="customers"><div class="admin-panel-heading"><div><h2>Clients</h2><p><?= count($users) ?> resultat(s)</p></div></div><div class="admin-table-wrap"><table><thead><tr><th>Client</th><th>Commandes</th><th>Depense</th><th>Statut</th><th>Actions</th></tr></thead><tbody><?php if ($users === []): ?><tr><td colspan="5" class="admin-empty">Aucun client.</td></tr><?php endif; ?><?php foreach ($users as $user): ?><tr><td><strong><?= admin_escape($user['display_name'] ?: $user['email']) ?></strong><small><?= admin_escape($user['email']) ?></small></td><td><?= (int) $user['orders_count'] ?></td><td><?= commerce_money((int) $user['total_spent']) ?></td><td><span class="admin-state <?= admin_escape($user['status']) ?>"><?= admin_escape($user['status']) ?></span></td><td><form method="post"><input type="hidden" name="redirect_page" value="customers"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_user_status"><input type="hidden" name="user_id" value="<?= (int) $user['id'] ?>"><input type="hidden" name="status" value="<?= $user['status'] === 'active' ? 'blocked' : 'active' ?>"><button class="admin-button compact secondary" type="submit"><?= $user['status'] === 'active' ? 'Bloquer' : 'Reactiver' ?></button></form></td></tr><?php endforeach; ?></tbody></table></div></section>
+        <section class="admin-panel" id="customers"><div class="admin-panel-heading"><div><h2>Clients</h2><p><?= count($users) ?> resultat(s)</p></div><form class="admin-filter-row" method="get"><input type="hidden" name="page" value="customers"><input type="hidden" name="q" value="<?= admin_escape($query) ?>"><label>Statut<select name="customer_status"><option value="">Tous</option><?php foreach (['active', 'blocked'] as $statusOption): ?><option value="<?= admin_escape($statusOption) ?>"<?= ($_GET['customer_status'] ?? '') === $statusOption ? ' selected' : '' ?>><?= admin_escape($statusOption) ?></option><?php endforeach; ?></select></label><button class="admin-button compact secondary" type="submit">Filtrer</button></form></div><div class="admin-table-wrap"><table><thead><tr><th><?= admin_sort_link('customers', 'Client', 'client', $query) ?></th><th><?= admin_sort_link('customers', 'Commandes', 'orders', $query) ?></th><th><?= admin_sort_link('customers', 'Depense', 'spent', $query) ?></th><th><?= admin_sort_link('customers', 'Statut', 'status', $query) ?></th><th>Actions</th></tr></thead><tbody><?php if ($users === []): ?><tr><td colspan="5" class="admin-empty">Aucun client.</td></tr><?php endif; ?><?php foreach ($users as $user): $customerModalId = 'customer-modal-' . (int) $user['id']; ?><tr class="admin-click-row" tabindex="0" data-modal-target="<?= admin_escape($customerModalId) ?>"><td><strong><?= admin_escape($user['display_name'] ?: $user['email']) ?></strong><small><?= admin_escape($user['email']) ?></small><small>Inscrit <?= admin_escape($user['created_at'] ?: '-') ?></small></td><td><?= (int) $user['orders_count'] ?></td><td><?= commerce_money((int) $user['total_spent']) ?></td><td><span class="admin-state <?= admin_escape($user['status']) ?>"><?= admin_escape($user['status']) ?></span></td><td><form method="post"><input type="hidden" name="redirect_page" value="customers"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_user_status"><input type="hidden" name="user_id" value="<?= (int) $user['id'] ?>"><input type="hidden" name="status" value="<?= $user['status'] === 'active' ? 'blocked' : 'active' ?>"><button class="admin-button compact secondary" type="submit"><?= $user['status'] === 'active' ? 'Bloquer' : 'Reactiver' ?></button></form></td></tr><?php endforeach; ?></tbody></table></div><?php foreach ($users as $user): admin_render_customer_modal($user); endforeach; ?></section>
         <?php endif; ?>
 
         <?php if ($page === 'licenses'): ?>
-        <section class="admin-panel generate-panel" id="licenses"><div class="admin-panel-heading"><div><h2>Licences et codes</h2><p><?= (int) $codesPagination['total'] ?> code(s) SmartVision, format public 10 caracteres.</p></div></div><form method="post" class="generate-code-form generate-code-form-wide" data-license-generator><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="action" value="generate_code"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><label>Libelle<input name="label" maxlength="100" placeholder="Client, lot ou campagne"></label><label>Type<select name="license_type"><option value="paid">Payant</option><option value="trial">Essai gratuit</option><option value="free">Gratuit</option><option value="promo">Promo</option><option value="manual">Manuel</option></select></label><label>Duree en jours<input name="duration_days" type="number" min="1" max="36500" value="365" required data-duration-days></label><label>Nombre<input name="quantity" type="number" min="1" max="200" value="1" required></label><label>Appareils<input name="max_devices" type="number" min="1" max="1000" value="1" required></label><label>Valide jusqu'au<input name="valid_until" type="date" value="<?= admin_escape(gmdate('Y-m-d', strtotime('+365 days'))) ?>" data-valid-until></label><button class="admin-button primary" type="submit">Generer</button></form><div class="admin-table-wrap"><table><thead><tr><th>Code</th><th>Type</th><th>Libelle</th><th>Appareil</th><th>Usage</th><th>Duree</th><th>Expiration</th><th>Statut</th><th>Origine</th><th>Actions</th></tr></thead><tbody>
+        <section class="admin-panel generate-panel" id="licenses"><div class="admin-panel-heading"><div><h2>Licences et codes</h2><p><?= (int) $codesPagination['total'] ?> code(s) SmartVision, format public 10 caracteres.</p></div><form class="admin-filter-row" method="get"><input type="hidden" name="page" value="licenses"><input type="hidden" name="q" value="<?= admin_escape($query) ?>"><label>Statut<select name="license_status"><option value="">Tous</option><?php foreach (['active', 'disabled', 'expired'] as $statusOption): ?><option value="<?= admin_escape($statusOption) ?>"<?= ($_GET['license_status'] ?? '') === $statusOption ? ' selected' : '' ?>><?= admin_escape($statusOption) ?></option><?php endforeach; ?></select></label><button class="admin-button compact secondary" type="submit">Filtrer</button></form></div><form method="post" class="generate-code-form generate-code-form-wide" data-license-generator><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="action" value="generate_code"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><label>Libelle<input name="label" maxlength="100" placeholder="Client, lot ou campagne"></label><label>Type<select name="license_type"><option value="paid">Payant</option><option value="trial">Essai gratuit</option><option value="free">Gratuit</option><option value="promo">Promo</option><option value="manual">Manuel</option></select></label><label>Duree en jours<input name="duration_days" type="number" min="1" max="36500" value="365" required data-duration-days></label><label>Nombre<input name="quantity" type="number" min="1" max="200" value="1" required></label><label>Appareils<input name="max_devices" type="number" min="1" max="1000" value="1" required></label><label>Valide jusqu'au<input name="valid_until" type="date" value="<?= admin_escape(gmdate('Y-m-d', strtotime('+365 days'))) ?>" data-valid-until></label><button class="admin-button primary" type="submit">Generer</button></form><div class="admin-table-wrap"><table><thead><tr><th><?= admin_sort_link('licenses', 'Code', 'code', $query) ?></th><th><?= admin_sort_link('licenses', 'Type', 'type', $query) ?></th><th><?= admin_sort_link('licenses', 'Libelle', 'label', $query) ?></th><th>Appareil</th><th><?= admin_sort_link('licenses', 'Usage', 'usage', $query) ?></th><th><?= admin_sort_link('licenses', 'Duree', 'duration', $query) ?></th><th><?= admin_sort_link('licenses', 'Expiration', 'expiration', $query) ?></th><th><?= admin_sort_link('licenses', 'Statut', 'status', $query) ?></th><th>Origine</th><th>Actions</th></tr></thead><tbody>
         <?php if ($codes === []): ?><tr><td colspan="10" class="admin-empty">Aucun code licence.</td></tr><?php endif; ?>
         <?php foreach ($codes as $code): ?><tr data-code-id="<?= (int) $code['id'] ?>" data-label="<?= admin_escape($code['label'] ?: '') ?>"><td><strong class="license-code"><?= admin_escape((string) ($code['activation_code'] ?: '#' . $code['id'])) ?></strong><small>Genere <?= admin_escape($code['created_at']) ?></small></td><td><span class="admin-state <?= admin_escape($code['license_type'] ?: 'manual') ?>"><?= admin_escape($code['license_type'] ?: 'manual') ?></span><small><?= admin_escape($code['activation_type'] ?: '-') ?></small></td><td><?= admin_escape($code['label'] ?: '-') ?></td><td><strong><?= admin_escape($code['assigned_public_device_code'] ?: '-') ?></strong><small><?= admin_escape($code['device_name'] ?: $code['assigned_device_id'] ?: '-') ?></small></td><td><?= (int) $code['used_devices'] ?> / <?= (int) $code['max_devices'] ?><small>Derniere: <?= admin_escape($code['last_used_at'] ?: '-') ?></small></td><td><?= (int) $code['duration_days'] ?> jours</td><td><?= admin_escape($code['activation_expires_at'] ?: $code['valid_until'] ?: '-') ?></td><td><span class="admin-state <?= admin_escape($code['status']) ?>"><?= admin_escape($code['status']) ?></span><small><?= admin_escape($code['device_status'] ?: '-') ?></small></td><td><?= admin_escape($code['created_by'] ?: '-') ?></td><td class="admin-actions"><form method="post"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_code_status"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><input type="hidden" name="status" value="<?= $code['status'] === 'active' ? 'disabled' : 'active' ?>"><button class="admin-button compact secondary" type="submit"><?= $code['status'] === 'active' ? 'Desactiver' : 'Reactiver' ?></button></form><?php if ($code['status'] !== 'expired'): ?><form method="post" data-confirm="Marquer cette licence comme expiree ?"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_code_status"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><input type="hidden" name="status" value="expired"><button class="admin-button compact secondary" type="submit">Expirer</button></form><?php endif; ?><?php if ((int) $code['used_devices'] > 0): ?><form method="post" data-confirm="Revoquer ce code et expirer ses appareils ?"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="revoke_code"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><button class="admin-button compact danger" type="submit">Revoquer</button></form><?php elseif (!str_starts_with((string) $code['created_by'], 'customer:')): ?><form method="post" data-confirm="Supprimer ce code inutilise ?"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="delete_code"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><button class="admin-button compact danger" type="submit">Supprimer</button></form><?php endif; ?></td></tr><?php endforeach; ?>
         </tbody></table></div><?= admin_render_pagination($codesPagination, $page, $query) ?></section>
         <?php endif; ?>
 
         <?php if ($page === 'devices'): ?>
-        <section class="admin-panel" id="devices"><div class="admin-panel-heading"><div><h2>Appareils</h2><p><?= (int) $devicesPagination['total'] ?> appareil(s), tries par derniere activite decroissante.</p></div><form method="post" class="purge-form" data-confirm="Supprimer tous les appareils, sessions, activations et playlists ?"><input type="hidden" name="redirect_page" value="devices"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="purge_devices"><input name="confirmation" placeholder="PURGER" aria-label="Confirmation purge"><button class="admin-button danger" type="submit">Purger appareils</button></form></div><div class="admin-table-wrap"><table><thead><tr><th>Appareil</th><th>Etat</th><th>Licence</th><th>Xtream</th><th>Installation</th><th>Expiration / activite</th><th>Actions</th></tr></thead><tbody>
+        <section class="admin-panel" id="devices"><div class="admin-panel-heading"><div><h2>Appareils</h2><p><?= (int) $devicesPagination['total'] ?> appareil(s), tries par derniere activite decroissante.</p></div><form class="admin-filter-row" method="get"><input type="hidden" name="page" value="devices"><input type="hidden" name="q" value="<?= admin_escape($query) ?>"><label>Etat<select name="device_status"><option value="">Tous</option><?php foreach (['pending', 'active', 'expired', 'blocked'] as $statusOption): ?><option value="<?= admin_escape($statusOption) ?>"<?= ($_GET['device_status'] ?? '') === $statusOption ? ' selected' : '' ?>><?= admin_escape($statusOption) ?></option><?php endforeach; ?></select></label><label>Xtream<select name="xtream_status"><option value="">Tous</option><?php foreach (['missing', 'configured', 'invalid'] as $statusOption): ?><option value="<?= admin_escape($statusOption) ?>"<?= ($_GET['xtream_status'] ?? '') === $statusOption ? ' selected' : '' ?>><?= admin_escape($statusOption) ?></option><?php endforeach; ?></select></label><button class="admin-button compact secondary" type="submit">Filtrer</button></form><form method="post" class="purge-form" data-confirm="Supprimer tous les appareils, sessions, activations et playlists ?"><input type="hidden" name="redirect_page" value="devices"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="purge_devices"><input name="confirmation" placeholder="PURGER" aria-label="Confirmation purge"><button class="admin-button danger" type="submit">Purger appareils</button></form></div><div class="admin-table-wrap"><table><thead><tr><th><?= admin_sort_link('devices', 'Appareil', 'device', $query) ?></th><th><?= admin_sort_link('devices', 'Etat', 'status', $query) ?></th><th><?= admin_sort_link('devices', 'Licence', 'license', $query) ?></th><th><?= admin_sort_link('devices', 'Xtream', 'xtream', $query) ?></th><th><?= admin_sort_link('devices', 'Installation', 'installed', $query) ?></th><th><?= admin_sort_link('devices', 'Expiration / activite', 'activity', $query) ?></th><th>Actions</th></tr></thead><tbody>
         <?php if ($devices === []): ?><tr><td colspan="7" class="admin-empty">Aucun appareil.</td></tr><?php endif; ?>
         <?php foreach ($devices as $device): admin_render_device_row($device); endforeach; ?>
-        </tbody></table></div><?= admin_render_pagination($devicesPagination, $page, $query) ?></section>
+        </tbody></table></div><?= admin_render_pagination($devicesPagination, $page, $query) ?><?php foreach ($devices as $device): admin_render_device_modal($device); endforeach; ?></section>
         <?php endif; ?>
 
         <?php if ($page === 'notifications'): ?>
@@ -1027,6 +1216,13 @@ function render_admin_dashboard(
         <section class="admin-panel" id="notifications-list"><div class="admin-panel-heading"><div><h2>Notifications recentes</h2><p><?= count($notifications) ?> notification(s)</p></div></div><div class="admin-table-wrap"><table><thead><tr><th>Message</th><th>Ciblage</th><th>Priorite</th><th>Statut</th><th>Dates</th><th>Actions</th></tr></thead><tbody>
         <?php if ($notifications === []): ?><tr><td colspan="6" class="admin-empty">Aucune notification.</td></tr><?php endif; ?>
         <?php foreach ($notifications as $notification): ?><tr><td><strong><?= admin_escape($notification['title']) ?></strong><small><?= admin_escape(smartvision_text_substr((string) $notification['message'], 0, 180)) ?></small></td><td><span class="admin-state <?= admin_escape($notification['target_scope']) ?>"><?= admin_escape($notification['target_scope']) ?></span><small><?= admin_escape($notification['target_value'] ?: 'Tous') ?></small></td><td><span class="admin-state <?= admin_escape($notification['priority']) ?>"><?= admin_escape($notification['priority']) ?></span></td><td><span class="admin-state <?= admin_escape($notification['status']) ?>"><?= admin_escape($notification['status']) ?></span></td><td><?= admin_escape($notification['created_at']) ?><small>Expire: <?= admin_escape($notification['expires_at'] ?: '-') ?></small></td><td class="admin-actions"><form method="post"><input type="hidden" name="redirect_page" value="notifications"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_notification_status"><input type="hidden" name="notification_id" value="<?= (int) $notification['id'] ?>"><input type="hidden" name="status" value="<?= $notification['status'] === 'active' ? 'disabled' : 'active' ?>"><button class="admin-button compact secondary" type="submit"><?= $notification['status'] === 'active' ? 'Desactiver' : 'Reactiver' ?></button></form><form method="post" data-confirm="Supprimer cette notification ?"><input type="hidden" name="redirect_page" value="notifications"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="delete_notification"><input type="hidden" name="notification_id" value="<?= (int) $notification['id'] ?>"><button class="admin-button compact danger" type="submit">Supprimer</button></form></td></tr><?php endforeach; ?>
+        </tbody></table></div></section>
+        <?php endif; ?>
+
+        <?php if ($page === 'messages'): ?>
+        <section class="admin-panel" id="messages"><div class="admin-panel-heading"><div><h2>Messages clients</h2><p><?= count($messages) ?> message(s)</p></div><form class="admin-filter-row" method="get"><input type="hidden" name="page" value="messages"><input type="hidden" name="q" value="<?= admin_escape($query) ?>"><label>Statut<select name="message_status"><option value="">Tous</option><?php foreach (['new', 'read', 'handled', 'archived'] as $statusOption): ?><option value="<?= admin_escape($statusOption) ?>"<?= ($_GET['message_status'] ?? '') === $statusOption ? ' selected' : '' ?>><?= admin_escape($statusOption) ?></option><?php endforeach; ?></select></label><button class="admin-button compact secondary" type="submit">Filtrer</button></form></div><div class="admin-table-wrap"><table><thead><tr><th>Client</th><th>Sujet</th><th>Message</th><th>Statut</th><th>Date</th><th>Actions</th></tr></thead><tbody>
+        <?php if ($messages === []): ?><tr><td colspan="6" class="admin-empty">Aucun message client.</td></tr><?php endif; ?>
+        <?php foreach ($messages as $message): ?><tr><td><strong><?= admin_escape($message['name']) ?></strong><small><?= admin_escape($message['email']) ?></small></td><td><?= admin_escape($message['subject']) ?></td><td><small><?= admin_escape(smartvision_text_substr((string) $message['message'], 0, 220)) ?></small></td><td><span class="admin-state <?= admin_escape($message['status']) ?>"><?= admin_escape($message['status']) ?></span></td><td><?= admin_escape($message['created_at']) ?><small>MAJ <?= admin_escape($message['updated_at'] ?: '-') ?></small></td><td class="admin-actions"><a class="admin-button compact primary" href="mailto:<?= admin_escape(rawurlencode((string) $message['email'])) ?>?subject=<?= admin_escape(rawurlencode('Re: ' . (string) $message['subject'])) ?>">Repondre</a><form method="post"><input type="hidden" name="redirect_page" value="messages"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_contact_message_status"><input type="hidden" name="message_id" value="<?= (int) $message['id'] ?>"><select name="status" aria-label="Statut message"><option value="read"<?= $message['status'] === 'read' ? ' selected' : '' ?>>Lu</option><option value="handled"<?= $message['status'] === 'handled' ? ' selected' : '' ?>>Traite</option><option value="archived"<?= $message['status'] === 'archived' ? ' selected' : '' ?>>Archive</option><option value="new"<?= $message['status'] === 'new' ? ' selected' : '' ?>>Nouveau</option></select><button class="admin-button compact secondary" type="submit">OK</button></form></td></tr><tr class="message-detail-row"><td colspan="6"><strong>Message complet</strong><p><?= nl2br(admin_escape($message['message'])) ?></p><small>IP hash <?= admin_escape($message['ip_hash'] ?: '-') ?> - UA <?= admin_escape($message['user_agent'] ? 'present' : '-') ?></small></td></tr><?php endforeach; ?>
         </tbody></table></div></section>
         <?php endif; ?>
 
@@ -1096,6 +1292,12 @@ function admin_render_pagination(array $pagination, string $page, string $query)
         if ($query !== '') {
             $url .= '&q=' . rawurlencode($query);
         }
+        foreach (['sort', 'dir', 'order_status', 'customer_status', 'license_status', 'device_status', 'xtream_status', 'message_status'] as $keepParam) {
+            $value = (string) ($_GET[$keepParam] ?? '');
+            if ($value !== '') {
+                $url .= '&' . rawurlencode($keepParam) . '=' . rawurlencode($value);
+            }
+        }
         $html .= '<a class="' . ($index === $current ? 'active' : '') . '" href="' . admin_escape($url) . '">' . $index . '</a>';
     }
     return $html . '</nav>';
@@ -1104,7 +1306,8 @@ function admin_render_pagination(array $pagination, string $page, string $query)
 function admin_render_device_row(array $device): void
 {
     $deviceId = (string) $device['device_id'];
-    ?><tr class="device-row">
+    $modalId = 'device-modal-' . preg_replace('/[^a-zA-Z0-9_-]/', '-', $deviceId);
+    ?><tr class="device-row admin-click-row" tabindex="0" data-modal-target="<?= admin_escape($modalId) ?>">
         <td>
             <strong><?= admin_escape($device['public_device_code'] ?: '------') ?></strong>
             <small><?= admin_escape($device['device_name'] ?: 'Android TV') ?></small>
@@ -1168,4 +1371,58 @@ function admin_render_device_row(array $device): void
             </form>
         </td>
     </tr><?php
+}
+
+function admin_render_customer_modal(array $user): void
+{
+    $modalId = 'customer-modal-' . (int) $user['id'];
+    $details = is_array($user['details'] ?? null) ? $user['details'] : ['orders' => [], 'devices' => []];
+    ?><div class="admin-modal" id="<?= admin_escape($modalId) ?>" role="dialog" aria-modal="true" aria-labelledby="<?= admin_escape($modalId) ?>-title" hidden>
+        <div class="admin-modal-backdrop" data-modal-close></div>
+        <section class="admin-modal-card">
+            <header class="admin-modal-header">
+                <div><h2 id="<?= admin_escape($modalId) ?>-title"><?= admin_escape($user['display_name'] ?: $user['email']) ?></h2><p><?= admin_escape($user['email']) ?></p></div>
+                <button type="button" class="admin-modal-close" data-modal-close>Fermer</button>
+            </header>
+            <div class="admin-detail-grid">
+                <div><span>Statut</span><strong><span class="admin-state <?= admin_escape($user['status']) ?>"><?= admin_escape($user['status']) ?></span></strong></div>
+                <div><span>Commandes</span><strong><?= (int) $user['orders_count'] ?></strong></div>
+                <div><span>Depense</span><strong><?= commerce_money((int) $user['total_spent']) ?></strong></div>
+                <div><span>Derniere connexion</span><strong><?= admin_escape($user['last_login_at'] ?: '-') ?></strong></div>
+            </div>
+            <div class="admin-modal-columns">
+                <section><h3>Commandes et licences</h3><?php if (($details['orders'] ?? []) === []): ?><p class="muted">Aucune commande.</p><?php endif; ?><ul class="admin-detail-list"><?php foreach (($details['orders'] ?? []) as $order): ?><li><strong><?= admin_escape($order['order_reference'] ?: 'SV-' . $order['id']) ?> - <?= admin_escape($order['plan_label']) ?></strong><span><?= commerce_money((int) $order['amount_cents'], (string) $order['currency']) ?> - <?= admin_escape($order['status']) ?> - code <?= admin_escape($order['code_hint'] ?: '-') ?></span><small>Usage <?= (int) ($order['used_devices'] ?? 0) ?> / <?= (int) ($order['max_devices'] ?? 1) ?> - appareil <?= admin_escape($order['assigned_public_device_code'] ?: '-') ?></small></li><?php endforeach; ?></ul></section>
+                <section><h3>Appareils lies</h3><?php if (($details['devices'] ?? []) === []): ?><p class="muted">Aucun appareil lie.</p><?php endif; ?><ul class="admin-detail-list"><?php foreach (($details['devices'] ?? []) as $device): ?><li><strong><?= admin_escape($device['public_device_code'] ?: '------') ?> - <?= admin_escape($device['device_name'] ?: 'Android TV') ?></strong><span><?= admin_escape($device['status']) ?> / licence <?= admin_escape($device['license_status'] ?: '-') ?> / Xtream <?= admin_escape($device['xtream_status'] ?: '-') ?></span><small>Derniere activite <?= admin_escape($device['last_seen_at'] ?: '-') ?> - expire <?= admin_escape($device['expires_at'] ?: '-') ?></small></li><?php endforeach; ?></ul></section>
+            </div>
+        </section>
+    </div><?php
+}
+
+function admin_render_device_modal(array $device): void
+{
+    $deviceId = (string) $device['device_id'];
+    $modalId = 'device-modal-' . preg_replace('/[^a-zA-Z0-9_-]/', '-', $deviceId);
+    ?><div class="admin-modal" id="<?= admin_escape($modalId) ?>" role="dialog" aria-modal="true" aria-labelledby="<?= admin_escape($modalId) ?>-title" hidden>
+        <div class="admin-modal-backdrop" data-modal-close></div>
+        <section class="admin-modal-card">
+            <header class="admin-modal-header">
+                <div><h2 id="<?= admin_escape($modalId) ?>-title"><?= admin_escape($device['public_device_code'] ?: '------') ?> - <?= admin_escape($device['device_name'] ?: 'Android TV') ?></h2><p class="mono"><?= admin_escape($deviceId) ?></p></div>
+                <button type="button" class="admin-modal-close" data-modal-close>Fermer</button>
+            </header>
+            <div class="admin-detail-grid">
+                <div><span>Etat</span><strong><span class="admin-state <?= admin_escape($device['status']) ?>"><?= admin_escape($device['status']) ?></span></strong></div>
+                <div><span>Licence</span><strong><?= admin_escape($device['license_status'] ?: '-') ?></strong></div>
+                <div><span>Xtream</span><strong><?= admin_escape($device['xtream_status'] ?: '-') ?></strong></div>
+                <div><span>App version</span><strong><?= admin_escape($device['app_version'] ?: '-') ?></strong></div>
+                <div><span>Premiere vue</span><strong><?= admin_escape($device['first_seen_at'] ?: $device['created_at'] ?: '-') ?></strong></div>
+                <div><span>Derniere activite</span><strong><?= admin_escape($device['last_seen_at'] ?: '-') ?></strong></div>
+                <div><span>Expiration</span><strong><?= admin_escape($device['expires_at'] ?: '-') ?></strong></div>
+                <div><span>Pays / UA</span><strong><?= admin_escape($device['country_code'] ?: 'N/D') ?> / <?= admin_escape($device['last_user_agent'] ? 'present' : '-') ?></strong></div>
+            </div>
+            <div class="admin-modal-columns">
+                <section><h3>Activation actuelle</h3><ul class="admin-detail-list"><li><strong><?= admin_escape($device['activation_type'] ?: '-') ?></strong><span>Code <?= admin_escape($device['activation_code'] ?: '-') ?> - type <?= admin_escape($device['license_type'] ?: '-') ?></span><small>Duree <?= admin_escape((string) ($device['duration_days'] ?: '-')) ?> jours - playlist <?= (int) $device['playlist_configured'] === 1 ? 'configuree' : 'absente' ?></small></li></ul></section>
+                <section><h3>Historique</h3><?php if (($device['history'] ?? []) === []): ?><p class="muted">Aucun historique.</p><?php endif; ?><ul class="admin-detail-list"><?php foreach (($device['history'] ?? []) as $history): ?><li><strong><?= admin_escape($history['activation_type'] ?: '-') ?> - <?= admin_escape($history['status'] ?: '-') ?></strong><span>Code <?= admin_escape($history['code_hint'] ?: '-') ?> / <?= admin_escape($history['license_type'] ?: '-') ?></span><small><?= admin_escape($history['starts_at'] ?: $history['created_at'] ?: '-') ?> -> <?= admin_escape($history['expires_at'] ?: '-') ?></small></li><?php endforeach; ?></ul></section>
+            </div>
+        </section>
+    </div><?php
 }

@@ -47,4 +47,41 @@
         scope?.addEventListener('change', syncTargets);
         syncTargets();
     });
+
+    const closeModal = (modal) => {
+        if (!modal) return;
+        modal.hidden = true;
+        document.body.classList.remove('admin-modal-open');
+    };
+
+    const openModal = (id) => {
+        const modal = document.getElementById(id || '');
+        if (!modal) return;
+        modal.hidden = false;
+        document.body.classList.add('admin-modal-open');
+        modal.querySelector('[data-modal-close]')?.focus?.();
+    };
+
+    document.querySelectorAll('[data-modal-target]').forEach((row) => {
+        row.addEventListener('click', (event) => {
+            if (event.target.closest('a,button,input,select,textarea,form,label')) return;
+            openModal(row.dataset.modalTarget || '');
+        });
+        row.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openModal(row.dataset.modalTarget || '');
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-modal-close]').forEach((button) => {
+        button.addEventListener('click', () => closeModal(button.closest('.admin-modal')));
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            document.querySelectorAll('.admin-modal:not([hidden])').forEach(closeModal);
+        }
+    });
 })();

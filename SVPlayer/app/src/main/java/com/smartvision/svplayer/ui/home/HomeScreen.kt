@@ -42,6 +42,7 @@ fun HomeScreen(
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     onContentClick: (ContinueItem) -> Unit,
     onContinueViewAll: () -> Unit,
     onTrendingViewAll: () -> Unit,
@@ -95,6 +96,7 @@ fun HomeScreen(
             onLicenseKey = onLicenseKey,
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
+            notificationBadgeCount = notificationBadgeCount,
             modifier = Modifier.fillMaxWidth(),
         )
 

@@ -19,6 +19,7 @@ sv_send_site_headers();
     <title><?= sv_h((string) $page['title']) ?></title>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3376574358352765" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="/assets/site.css?v=3">
+    <link rel="stylesheet" href="/assets/site-overrides.css?v=4">
     <link rel="stylesheet" href="/assets/mobile.css?v=3">
 </head>
 <body class="legal-page">

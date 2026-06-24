@@ -73,6 +73,7 @@ fun MoviesScreen(
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     onOpenMovieDetails: (Int) -> Unit,
     onWatchMovie: (Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -135,6 +136,7 @@ fun MoviesScreen(
             onLicenseKey = onLicenseKey,
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
+            notificationBadgeCount = notificationBadgeCount,
             modifier = Modifier.fillMaxWidth(),
         )
 

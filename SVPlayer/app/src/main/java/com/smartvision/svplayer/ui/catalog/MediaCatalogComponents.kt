@@ -117,6 +117,7 @@ fun MediaCatalogHeader(
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -151,6 +152,7 @@ fun MediaCatalogHeader(
             onSettings = onSettings,
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
+            notificationBadgeCount = notificationBadgeCount,
         )
     }
 }

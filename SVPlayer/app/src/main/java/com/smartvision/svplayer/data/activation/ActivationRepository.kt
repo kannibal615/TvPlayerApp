@@ -14,6 +14,7 @@ import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import retrofit2.HttpException
 
 class ActivationRepository(
     private val appContext: Context,
@@ -211,55 +212,23 @@ class ActivationRepository(
     suspend fun checkStatus(): RemoteActivationStatus {
         val deviceId = ensureRegisteredDeviceId()
         val deviceToken = dataStore.data.first()[DEVICE_TOKEN]
-        val response = api.getDeviceStatus(deviceId, deviceToken)
-
-        if (!response.success) {
-            throw ActivationException(response.error ?: "Statut activation indisponible.")
+        val response = try {
+            api.getDeviceStatus(deviceId, deviceToken)
+        } catch (error: HttpException) {
+            if (error.code() == 404) {
+                return registerDevice()
+            }
+            throw error
         }
 
-        val status = ActivationStatus.fromValue(response.status)
-        dataStore.edit { preferences ->
-            preferences[DEVICE_ID] = response.serverDeviceId ?: response.legacyDeviceId ?: deviceId
-            response.publicDeviceCode?.takeIf { it.isNotBlank() }?.let { preferences[PUBLIC_DEVICE_CODE] = it }
-            preferences[STATUS] = status.value
-            preferences[ACTIVATED] = response.activated
-            preferences[PLAYLIST_CONFIGURED] = response.playlistConfigured
-            if (response.expiresAt.isNullOrBlank()) {
-                preferences.remove(EXPIRES_AT)
-            } else {
-                preferences[EXPIRES_AT] = response.expiresAt
-            }
-            if (response.activationType.isNullOrBlank()) {
-                preferences.remove(ACTIVATION_TYPE)
-            } else {
-                preferences[ACTIVATION_TYPE] = response.activationType
-            }
-            if (response.licenseStatus.isNullOrBlank()) preferences.remove(LICENSE_STATUS) else preferences[LICENSE_STATUS] = response.licenseStatus
-            if (response.trialStatus.isNullOrBlank()) preferences.remove(TRIAL_STATUS) else preferences[TRIAL_STATUS] = response.trialStatus
-            if (response.freeWithAdsStatus.isNullOrBlank()) {
-                preferences.remove(FREE_WITH_ADS_STATUS)
-            } else {
-                preferences[FREE_WITH_ADS_STATUS] = response.freeWithAdsStatus
-            }
-        }
+        val resolved = persistStatusResponse(response, "Statut activation indisponible.")
 
         response.playlistConfig?.toAccount()?.let { account ->
             val id = accountManager.upsert(account)
             accountManager.select(id)
         }
 
-        return RemoteActivationStatus(
-            status = status,
-            activated = response.activated,
-            deviceId = response.serverDeviceId ?: response.legacyDeviceId ?: deviceId,
-            publicDeviceCode = response.publicDeviceCode ?: dataStore.data.first()[PUBLIC_DEVICE_CODE].orEmpty(),
-            expiresAt = response.expiresAt,
-            activationType = response.activationType,
-            licenseStatus = response.licenseStatus,
-            trialStatus = response.trialStatus,
-            freeWithAdsStatus = response.freeWithAdsStatus,
-            playlistConfigured = response.playlistConfigured,
-        )
+        return resolved
     }
 
     suspend fun activateLicense(licenseCode: String): RemoteActivationStatus {

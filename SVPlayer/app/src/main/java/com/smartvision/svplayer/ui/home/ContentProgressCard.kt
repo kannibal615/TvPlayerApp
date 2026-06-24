@@ -116,14 +116,14 @@ fun ContentProgressCard(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .padding(start = 8.dp, end = 8.dp, bottom = 6.dp),
+                .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
         ) {
             Text(
                 text = item.title,
                 color = Color.White,
                 style = SmartVisionType.Caption,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(4.dp))
@@ -138,12 +138,15 @@ fun ContentProgressCard(
                     color = SmartVisionColors.TextSecondary,
                     style = SmartVisionType.Caption,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
                 Text(
                     text = item.remaining,
                     color = SmartVisionColors.TextSecondary,
                     style = SmartVisionType.Caption,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }

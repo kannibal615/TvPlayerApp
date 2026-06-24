@@ -144,6 +144,7 @@ fun LiveTvScreen(
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     onWatch: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -205,6 +206,7 @@ fun LiveTvScreen(
             onLicenseKey = onLicenseKey,
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
+            notificationBadgeCount = notificationBadgeCount,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -301,6 +303,7 @@ private fun LiveTvHeader(
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -335,6 +338,7 @@ private fun LiveTvHeader(
             onSettings = onSettings,
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
+            notificationBadgeCount = notificationBadgeCount,
         )
     }
 }

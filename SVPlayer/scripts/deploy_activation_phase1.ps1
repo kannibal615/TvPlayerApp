@@ -1064,11 +1064,13 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/logout.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/sql" -FilePath (Join-Path $publicHtmlPath "sql/init_activation_tables.sql")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/site.css")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/site-overrides.css")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/account.css")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/admin.css")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/admin-overrides.css")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/mobile.css")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/activation.js")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/site.js")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/account.js")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/admin.js")
     Get-ChildItem -LiteralPath (Join-Path $publicHtmlPath "assets/images") -File | Where-Object {
@@ -1136,7 +1138,7 @@ try {
     if (-not $SkipTests) {
         Write-Host "Tests publics site et activation..."
         $homeHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/"
-        if ($homeHtml.Content -notmatch "SmartVision IPTV Player" -or $homeHtml.Content -notmatch "Sources utilisateur" -or $homeHtml.Content -notmatch "aucun abonnement IPTV") {
+        if ($homeHtml.Content -notmatch "SmartVision IPTV Player" -or $homeHtml.Content -notmatch "Acheter une licence" -or $homeHtml.Content -notmatch "Aucun contenu inclus") {
             throw "La page d accueil ne retourne pas le contenu attendu."
         }
         $legalPages = @(
@@ -1153,7 +1155,7 @@ try {
             }
         }
         $accountHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/account/?plan=year_1"
-        if ($accountHtml.Content -notmatch "Choisissez votre licence" -or $accountHtml.Content -notmatch "Se connecter") {
+        if ($accountHtml.Content -notmatch "Creer mon compte" -or $accountHtml.Content -notmatch "Se connecter") {
             throw "La page compte/commande ne retourne pas le contenu attendu."
         }
         $activateHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/activate/"

@@ -73,7 +73,7 @@ function commerce_create_test_order(
     $tokenHash = hash('sha256', $checkoutToken);
 
     $existing = commerce_find_order_by_token($pdo, $userId, $tokenHash);
-    if ($existing !== null) {
+    if ($existing !== null && ($existing['status'] ?? '') === 'paid' && !empty($existing['activation_code'])) {
         return $existing;
     }
 
@@ -81,36 +81,57 @@ function commerce_create_test_order(
     try {
         $orderId = null;
         $orderReference = null;
-        for ($attempt = 0; $attempt < 10; $attempt++) {
-            $candidateReference = commerce_order_reference();
-            try {
-                $insertOrder = $pdo->prepare(
-                    "INSERT INTO activation_orders
-                        (user_id, order_reference, plan_key, plan_label, amount_cents, currency,
-                         status, payment_provider, checkout_token_hash, created_at, updated_at)
-                     VALUES
-                        (:user_id, :order_reference, :plan_key, :plan_label, :amount_cents, 'EUR',
-                         'pending', 'test', :checkout_token_hash, NOW(), NOW())"
-                );
-                $insertOrder->execute([
-                    'user_id' => $userId,
-                    'order_reference' => $candidateReference,
-                    'plan_key' => $planKey,
-                    'plan_label' => $plan['full_label'],
-                    'amount_cents' => $plan['amount_cents'],
-                    'checkout_token_hash' => $tokenHash,
-                ]);
-                $orderId = (int) $pdo->lastInsertId();
-                $orderReference = $candidateReference;
-                break;
-            } catch (Throwable $exception) {
-                if (!is_duplicate_key($exception)) {
-                    throw $exception;
-                }
-                $existing = commerce_find_order_by_token($pdo, $userId, $tokenHash);
-                if ($existing !== null) {
-                    $pdo->rollBack();
-                    return $existing;
+        if ($existing !== null && ($existing['status'] ?? '') === 'pending') {
+            $orderId = (int) $existing['id'];
+            $orderReference = (string) $existing['order_reference'];
+            $pdo->prepare(
+                "UPDATE activation_orders
+                 SET plan_key = :plan_key, plan_label = :plan_label, amount_cents = :amount_cents, updated_at = NOW()
+                 WHERE id = :id AND user_id = :user_id AND status = 'pending'"
+            )->execute([
+                'plan_key' => $planKey,
+                'plan_label' => $plan['full_label'],
+                'amount_cents' => $plan['amount_cents'],
+                'id' => $orderId,
+                'user_id' => $userId,
+            ]);
+        } else {
+            for ($attempt = 0; $attempt < 10; $attempt++) {
+                $candidateReference = commerce_order_reference();
+                try {
+                    $insertOrder = $pdo->prepare(
+                        "INSERT INTO activation_orders
+                            (user_id, order_reference, plan_key, plan_label, amount_cents, currency,
+                             status, payment_provider, checkout_token_hash, created_at, updated_at)
+                         VALUES
+                            (:user_id, :order_reference, :plan_key, :plan_label, :amount_cents, 'EUR',
+                             'pending', 'test', :checkout_token_hash, NOW(), NOW())"
+                    );
+                    $insertOrder->execute([
+                        'user_id' => $userId,
+                        'order_reference' => $candidateReference,
+                        'plan_key' => $planKey,
+                        'plan_label' => $plan['full_label'],
+                        'amount_cents' => $plan['amount_cents'],
+                        'checkout_token_hash' => $tokenHash,
+                    ]);
+                    $orderId = (int) $pdo->lastInsertId();
+                    $orderReference = $candidateReference;
+                    break;
+                } catch (Throwable $exception) {
+                    if (!is_duplicate_key($exception)) {
+                        throw $exception;
+                    }
+                    $existing = commerce_find_order_by_token($pdo, $userId, $tokenHash);
+                    if ($existing !== null && ($existing['status'] ?? '') === 'paid' && !empty($existing['activation_code'])) {
+                        $pdo->rollBack();
+                        return $existing;
+                    }
+                    if ($existing !== null && ($existing['status'] ?? '') === 'pending') {
+                        $orderId = (int) $existing['id'];
+                        $orderReference = (string) $existing['order_reference'];
+                        break;
+                    }
                 }
             }
         }
@@ -170,7 +191,7 @@ function commerce_create_test_order(
 
         if (is_duplicate_key($exception)) {
             $existing = commerce_find_order_by_token($pdo, $userId, $tokenHash);
-            if ($existing !== null) {
+            if ($existing !== null && ($existing['status'] ?? '') === 'paid' && !empty($existing['activation_code'])) {
                 return $existing;
             }
         }

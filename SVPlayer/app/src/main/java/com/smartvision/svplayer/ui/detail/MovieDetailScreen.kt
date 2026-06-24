@@ -161,6 +161,7 @@ fun MovieDetailRoute(
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     onWatchMovie: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -188,6 +189,7 @@ fun MovieDetailRoute(
         onLicenseKey = onLicenseKey,
         showLicenseKey = showLicenseKey,
         hasNewNotifications = hasNewNotifications,
+        notificationBadgeCount = notificationBadgeCount,
         onRetry = viewModel::loadDetails,
         onWatchMovie = { onWatchMovie(state.movieId) },
         onFavorite = viewModel::toggleFavorite,
@@ -208,6 +210,7 @@ private fun MovieDetailScreen(
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     onRetry: () -> Unit,
     onWatchMovie: () -> Unit,
     onFavorite: () -> Unit,
@@ -233,6 +236,7 @@ private fun MovieDetailScreen(
             onLicenseKey = onLicenseKey,
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
+            notificationBadgeCount = notificationBadgeCount,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = DetailDimens.ScreenPadding)

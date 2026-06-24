@@ -1,0 +1,421 @@
+.brand-logo-wide {
+    width: 205px;
+    max-height: 54px;
+    object-fit: contain;
+    object-position: left center;
+}
+
+.site-header {
+    grid-template-columns: minmax(180px, 260px) 1fr auto;
+    gap: 18px;
+}
+
+.site-nav {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+}
+
+.site-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.site-menu-toggle {
+    display: none;
+    min-height: 42px;
+    padding: 0 14px;
+    border: 1px solid #2a74bd;
+    border-radius: 7px;
+    background: #081528;
+    color: #ddecff;
+    font-weight: 800;
+}
+
+.home-hero {
+    min-height: 680px;
+}
+
+.download-section,
+.help-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+    margin-bottom: 96px;
+    padding: 34px 38px;
+    border: 1px solid #1f3856;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #071321, #0a1d34);
+}
+
+.download-section h2,
+.help-section h2,
+.legal-home h2 {
+    margin: 0;
+    font-size: clamp(30px, 3.6vw, 50px);
+    line-height: 1.08;
+}
+
+.download-section p,
+.help-section p,
+.legal-home p {
+    max-width: 780px;
+    margin: 14px 0 0;
+    color: #aebbd0;
+    font-size: 17px;
+    line-height: 1.65;
+}
+
+.premium-section {
+    padding: 8px 0 110px;
+}
+
+.plan-features {
+    display: grid;
+    gap: 8px;
+    margin: 18px 0 0;
+    padding: 0;
+    list-style: none;
+    color: #aebbd0;
+    font-size: 14px;
+}
+
+.plan-features li::before {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin: 0 9px 1px 0;
+    border-radius: 50%;
+    background: #18ceff;
+}
+
+.legal-home {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(300px, .8fr);
+    gap: 36px;
+    margin-bottom: 96px;
+    padding: 42px 48px;
+    border-block: 1px solid #24415f;
+    background: #071322;
+}
+
+.legal-home ul {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.legal-home li {
+    padding: 13px 14px;
+    border: 1px solid #203b5c;
+    border-radius: 7px;
+    background: #091a2e;
+    color: #d7e6f8;
+}
+
+.faq-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 96px;
+}
+
+.faq-strip article {
+    padding: 22px;
+    border: 1px solid #1d3049;
+    border-radius: 8px;
+    background: #071321;
+}
+
+.faq-strip strong,
+.faq-strip span {
+    display: block;
+}
+
+.faq-strip span {
+    margin-top: 8px;
+    color: #9eacc0;
+    line-height: 1.55;
+}
+
+.help-section {
+    margin-bottom: 110px;
+}
+
+.activation-card form .button {
+    width: 100%;
+    margin-top: 18px;
+}
+
+.activation-page .site-header,
+.account-page .site-header,
+.legal-page .site-header {
+    position: sticky;
+}
+
+.activation-shell {
+    padding-top: 42px;
+}
+
+.activation-card {
+    margin-top: 0;
+}
+
+.account-slim {
+    padding-top: 46px;
+}
+
+.single-auth {
+    grid-template-columns: minmax(0, 620px);
+    justify-content: center;
+    min-height: auto;
+}
+
+.single-auth .auth-form-panel {
+    width: 100%;
+}
+
+.customer-heading-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.customer-heading-actions form {
+    margin: 0;
+}
+
+.contact-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, .52fr);
+    gap: 26px;
+    padding-bottom: 96px;
+}
+
+.contact-form,
+.contact-aside {
+    padding: 26px;
+    border: 1px solid #1f3856;
+    border-radius: 8px;
+    background: #071321;
+}
+
+.contact-form textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #344b67;
+    border-radius: 6px;
+    outline: 0;
+    background: #030b16;
+    color: #fff;
+    font: inherit;
+    resize: vertical;
+}
+
+.contact-form .button {
+    width: 100%;
+    margin-top: 18px;
+}
+
+.robot-field {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.contact-aside h2 {
+    margin: 0 0 12px;
+}
+
+.contact-aside p,
+.contact-aside li {
+    color: #aebbd0;
+    line-height: 1.65;
+}
+
+.contact-aside ul {
+    display: grid;
+    gap: 10px;
+    margin: 18px 0 0;
+    padding-left: 18px;
+}
+
+@media (max-width: 980px) {
+    .site-header {
+        grid-template-columns: 1fr auto;
+        min-height: auto;
+        padding: 14px 18px;
+    }
+
+    .brand-logo-wide {
+        width: 168px;
+    }
+
+    .site-menu-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .site-nav {
+        position: absolute;
+        top: 100%;
+        left: 14px;
+        right: 14px;
+        display: none;
+        grid-template-columns: 1fr;
+        gap: 0;
+        padding: 8px;
+        border: 1px solid #1f3856;
+        border-radius: 8px;
+        background: #06111f;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, .38);
+    }
+
+    .site-nav.open {
+        display: grid;
+    }
+
+    .site-nav a {
+        padding: 14px 12px;
+        border-radius: 6px;
+    }
+
+    .site-nav a:hover,
+    .site-nav a:focus-visible {
+        background: #0d2542;
+    }
+
+    .site-actions {
+        grid-column: 1 / -1;
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .site-actions .button {
+        width: 100%;
+    }
+
+    .download-section,
+    .help-section,
+    .legal-home,
+    .contact-layout {
+        grid-template-columns: 1fr;
+        align-items: flex-start;
+    }
+
+    .customer-heading-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .customer-heading-actions .button {
+        width: 100%;
+    }
+
+    .faq-strip,
+    .price-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .price-grid {
+        max-width: 560px;
+    }
+
+    .home-hero {
+        min-height: auto;
+    }
+
+    .product-stage {
+        order: -1;
+    }
+
+    .hero-copy {
+        text-align: left;
+    }
+
+    .hero-actions,
+    .hero-facts {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 640px) {
+    .site-header {
+        padding-inline: 14px;
+    }
+
+    .site-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .customer-heading-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .site-actions .button {
+        min-height: 44px;
+    }
+
+    .home-hero {
+        padding-top: 28px;
+    }
+
+    .product-stage {
+        display: none;
+    }
+
+    .hero h1 {
+        font-size: 44px;
+    }
+
+    .hero-lead {
+        font-size: 17px;
+    }
+
+    .download-section,
+    .help-section,
+    .legal-home {
+        padding: 26px 20px;
+        margin-bottom: 68px;
+    }
+
+    .premium-section {
+        padding-bottom: 76px;
+    }
+
+    .price-card {
+        padding: 26px;
+    }
+
+    .activation-flow {
+        padding: 70px 0;
+    }
+
+    .steps {
+        gap: 24px;
+    }
+
+    .faq-strip {
+        margin-bottom: 70px;
+    }
+
+    footer {
+        gap: 18px;
+    }
+
+    footer > div {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px 18px;
+    }
+}

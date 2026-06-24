@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -34,7 +36,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
@@ -60,6 +65,7 @@ fun TvHeader(
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -91,6 +97,7 @@ fun TvHeader(
             onSettings = onSettings,
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
+            notificationBadgeCount = notificationBadgeCount,
         )
     }
 }
@@ -103,6 +110,7 @@ fun HeaderControls(
     onSettings: () -> Unit,
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -123,6 +131,7 @@ fun HeaderControls(
             contentDescription = "Notifications",
             onClick = onNotifications,
             showBadge = hasNewNotifications,
+            badgeCount = notificationBadgeCount,
         )
         HeaderIconButton(
             icon = Icons.Default.Person,
@@ -144,60 +153,74 @@ private fun HeaderIconButton(
     onClick: () -> Unit,
     accent: Color = SmartVisionColors.Primary,
     showBadge: Boolean = false,
+    badgeCount: Int = 0,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val shape = RoundedCornerShape(10.dp)
 
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .tvFocusTarget(
-                state = focusState,
-                pressed = pressed,
-                glowColor = accent,
-                cornerRadius = 10.dp,
+    Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .tvFocusTarget(
+                    state = focusState,
+                    pressed = pressed,
+                    glowColor = accent,
+                    cornerRadius = 10.dp,
+                )
+                .clip(shape)
+                .background(if (focusState.isFocused) SmartVisionColors.SurfaceElevated else Color(0xB8121B2D))
+                .border(
+                    BorderStroke(
+                        if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                        when {
+                            focusState.isFocused -> SmartVisionColors.FocusWhite
+                            accent != SmartVisionColors.Primary -> accent.copy(alpha = 0.58f)
+                            else -> SmartVisionColors.Border
+                        },
+                    ),
+                    shape,
+                )
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick,
+                )
+                .focusable(interactionSource = interactionSource),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = when {
+                    focusState.isFocused -> SmartVisionColors.TextPrimary
+                    accent != SmartVisionColors.Primary -> accent
+                    else -> SmartVisionColors.TextSecondary
+                },
+                modifier = Modifier.size(21.dp),
             )
-            .clip(shape)
-            .background(if (focusState.isFocused) SmartVisionColors.SurfaceElevated else Color(0xB8121B2D))
-            .border(
-                BorderStroke(
-                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
-                    when {
-                        focusState.isFocused -> SmartVisionColors.FocusWhite
-                        accent != SmartVisionColors.Primary -> accent.copy(alpha = 0.58f)
-                        else -> SmartVisionColors.Border
-                    },
-                ),
-                shape,
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-            )
-            .focusable(interactionSource = interactionSource),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = when {
-                focusState.isFocused -> SmartVisionColors.TextPrimary
-                accent != SmartVisionColors.Primary -> accent
-                else -> SmartVisionColors.TextSecondary
-            },
-            modifier = Modifier.size(21.dp),
-        )
+        }
         if (showBadge) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .size(10.dp)
-                    .background(Color(0xFFFF3B4F), RoundedCornerShape(2.dp))
-                    .border(BorderStroke(1.dp, Color(0xFFFFC5CC)), RoundedCornerShape(2.dp)),
-            )
+                    .offset(x = (-1).dp, y = 1.dp)
+                    .zIndex(3f)
+                    .size(if (badgeCount > 9) 22.dp else 19.dp)
+                    .background(Color(0xFFFF2034), RoundedCornerShape(50))
+                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.92f)), RoundedCornerShape(50)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = if (badgeCount > 9) "9+" else badgeCount.coerceAtLeast(1).toString(),
+                    color = Color.White,
+                    fontSize = if (badgeCount > 9) 9.sp else 11.sp,
+                    fontWeight = FontWeight.Black,
+                    lineHeight = 11.sp,
+                )
+            }
         }
     }
 }

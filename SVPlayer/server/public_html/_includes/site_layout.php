@@ -22,14 +22,17 @@ function sv_render_site_header(): void
     <a class="brand" href="/" aria-label="SmartVision, accueil">
         <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player">
     </a>
-    <nav aria-label="Navigation principale">
-        <a href="/#fonctionnalites">Fonctionnalités</a>
-        <a href="/#legal">Lecteur légal</a>
-        <a href="/#activation">Activation</a>
-        <a href="/account/">Mon compte</a>
-        <a href="/legal-iptv-player/">Lecteur IPTV légal</a>
+    <button class="site-menu-toggle" type="button" data-site-menu-toggle aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Navigation principale">
+        <a href="/">Accueil</a>
+        <a href="/activate/">Activation</a>
+        <a href="/#tarifs">Tarifs</a>
+        <a href="/#activation">Fonctionnalités</a>
     </nav>
-    <a class="button button-primary header-cta" href="/download.php">Télécharger</a>
+    <div class="site-actions">
+        <a class="button button-outline header-cta" href="/account/?mode=login">Se connecter</a>
+        <a class="button button-primary header-cta" href="/account/?mode=register">Créer un compte</a>
+    </div>
 </header>
     <?php
 }
@@ -42,16 +45,19 @@ function sv_render_site_footer(string $class = ''): void
     <a class="brand footer-brand" href="/">
         <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player">
     </a>
-    <p>&copy; <?= date('Y') ?> SmartVision. Lecteur IPTV pour Android TV sans contenu inclus.</p>
+    <p>&copy; <?= date('Y') ?> SmartVision. Licence lecteur Android TV, sans contenu inclus.</p>
     <div>
-        <a href="/account/">Mon compte</a>
+        <a href="/">Accueil</a>
         <a href="/activate/">Activation</a>
-        <a href="/privacy-policy/">Politique de confidentialité</a>
-        <a href="/terms-of-use/">Conditions d’utilisation</a>
+        <a href="/#tarifs">Tarifs</a>
+        <a href="/account/">Compte client</a>
         <a href="/contact/">Contact</a>
+        <a href="/privacy-policy/">Confidentialité</a>
+        <a href="/terms-of-use/">Conditions</a>
         <a href="/legal-notice/">Mentions légales</a>
         <a href="/legal-iptv-player/">Lecteur IPTV légal</a>
     </div>
 </footer>
+<script src="/assets/site.js?v=4" defer></script>
     <?php
 }

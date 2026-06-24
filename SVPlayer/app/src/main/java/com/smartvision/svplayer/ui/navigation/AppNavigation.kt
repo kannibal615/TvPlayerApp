@@ -203,6 +203,7 @@ fun AppNavigation(
     )
     val notificationBadgeState by notificationBadgeViewModel.uiState.collectAsStateWithLifecycle()
     val hasNewNotifications = notificationBadgeState.hasUnread
+    val notificationBadgeCount = notificationBadgeState.unreadCount
 
     NavHost(
         navController = navController,
@@ -221,6 +222,7 @@ fun AppNavigation(
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
+                notificationBadgeCount = notificationBadgeCount,
                 onContentClick = { item -> navController.navigateFromContinueItem(item) },
                 onContinueViewAll = { navController.navigate(AppRoute.ContinueWatching.route) },
                 onTrendingViewAll = { navController.navigate(AppRoute.Trending.route) },
@@ -260,6 +262,7 @@ fun AppNavigation(
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
+                notificationBadgeCount = notificationBadgeCount,
                 onWatch = { channelId -> navController.navigate("player/$channelId") },
             )
         }
@@ -275,6 +278,7 @@ fun AppNavigation(
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
+                notificationBadgeCount = notificationBadgeCount,
                 onOpenMovieDetails = { movieId -> navController.navigate("movie_detail/$movieId") },
                 onWatchMovie = { movieId -> navController.navigate("movie_player/$movieId") },
             )
@@ -291,6 +295,7 @@ fun AppNavigation(
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
+                notificationBadgeCount = notificationBadgeCount,
                 onOpenSeriesDetails = { seriesId -> navController.navigate("series_detail/$seriesId") },
                 onWatchEpisode = { episodeId -> navController.navigate("episode_player/$episodeId") },
             )
@@ -363,6 +368,7 @@ fun AppNavigation(
                     onLicenseKey = { showLicensePurchaseQr = true },
                     showLicenseKey = activationState.shouldShowLicenseKey,
                     hasNewNotifications = hasNewNotifications,
+                    notificationBadgeCount = notificationBadgeCount,
                     onWatchMovie = { id -> navController.navigate("movie_player/$id") },
                 )
             }
@@ -401,6 +407,7 @@ fun AppNavigation(
                     onLicenseKey = { showLicensePurchaseQr = true },
                     showLicenseKey = activationState.shouldShowLicenseKey,
                     hasNewNotifications = hasNewNotifications,
+                    notificationBadgeCount = notificationBadgeCount,
                     onWatchEpisode = { episodeId -> navController.navigate("episode_player/$episodeId") },
                 )
             }

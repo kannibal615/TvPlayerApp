@@ -73,6 +73,7 @@ fun SeriesScreen(
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     onOpenSeriesDetails: (Int) -> Unit,
     onWatchEpisode: (Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -135,6 +136,7 @@ fun SeriesScreen(
             onLicenseKey = onLicenseKey,
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
+            notificationBadgeCount = notificationBadgeCount,
             modifier = Modifier.fillMaxWidth(),
         )
 

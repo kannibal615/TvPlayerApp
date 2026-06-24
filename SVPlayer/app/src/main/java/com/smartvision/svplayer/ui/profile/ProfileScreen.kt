@@ -1477,7 +1477,18 @@ class ProfileViewModel(
         transient,
     ) { activation, accounts, activeAccountId, account, transient ->
         val activeAccount = accounts.firstOrNull { it.id == activeAccountId } ?: accounts.firstOrNull()
-        buildProfileState(activation, accounts, activeAccountId.orEmpty(), activeAccount, account, transient)
+        runCatching {
+            buildProfileState(activation, accounts, activeAccountId.orEmpty(), activeAccount, account, transient)
+        }.getOrElse {
+            ProfileUiState(
+                deviceId = activation.deviceId,
+                refreshing = transient.refreshing,
+                licenseCode = transient.licenseCode,
+                submittingLicense = transient.submittingLicense,
+                errorMessage = "Impossible d'afficher toutes les informations du compte. Actualisez le statut.",
+                qrDialog = transient.qrDialog,
+            )
+        }
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
@@ -1491,15 +1502,18 @@ class ProfileViewModel(
     fun refresh() {
         viewModelScope.launch {
             transient.update { it.copy(refreshing = true, errorMessage = null) }
-            runCatching {
-                activationRepository.getOrCreateDeviceId()
-                activationRepository.checkStatus()
-            }.onFailure { error ->
-                transient.update {
-                    it.copy(errorMessage = error.userMessage("Impossible de verifier le compte."))
+            try {
+                runCatching {
+                    activationRepository.getOrCreateDeviceId()
+                    activationRepository.checkStatus()
+                }.onFailure { error ->
+                    transient.update {
+                        it.copy(errorMessage = error.userMessage("Impossible de verifier le compte."))
+                    }
                 }
+            } finally {
+                transient.update { it.copy(refreshing = false) }
             }
-            transient.update { it.copy(refreshing = false) }
         }
     }
 

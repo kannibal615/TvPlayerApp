@@ -19,7 +19,7 @@ class NotificationBadgeViewModel(
     init {
         viewModelScope.launch {
             while (isActive) {
-                refresh()
+                refreshOnce()
                 delay(60_000)
             }
         }
@@ -27,15 +27,7 @@ class NotificationBadgeViewModel(
 
     fun refresh() {
         viewModelScope.launch {
-            runCatching { repository.getNotifications() }
-                .onSuccess { snapshot ->
-                    state.update {
-                        it.copy(
-                            unreadCount = snapshot.unreadCount,
-                            hasUnread = snapshot.unreadCount > 0,
-                        )
-                    }
-                }
+            refreshOnce()
         }
     }
 
@@ -44,6 +36,18 @@ class NotificationBadgeViewModel(
         viewModelScope.launch {
             runCatching { repository.markSeen() }
         }
+    }
+
+    private suspend fun refreshOnce() {
+        runCatching { repository.getNotifications() }
+            .onSuccess { snapshot ->
+                state.update {
+                    it.copy(
+                        unreadCount = snapshot.unreadCount,
+                        hasUnread = snapshot.unreadCount > 0,
+                    )
+                }
+            }
     }
 }
 

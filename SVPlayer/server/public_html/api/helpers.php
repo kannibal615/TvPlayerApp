@@ -478,3 +478,24 @@ function ensure_app_notifications_table(PDO $pdo): void
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
 }
+
+function ensure_contact_messages_table(PDO $pdo): void
+{
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS contact_messages (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(120) NOT NULL,
+            email VARCHAR(190) NOT NULL,
+            subject VARCHAR(160) NOT NULL,
+            message TEXT NOT NULL,
+            status ENUM('new', 'read', 'handled', 'archived') NOT NULL DEFAULT 'new',
+            ip_hash CHAR(64) NULL,
+            user_agent VARCHAR(255) NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX (status),
+            INDEX (email),
+            INDEX (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
+}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/api/config.php';
 require_once dirname(__DIR__) . '/api/helpers.php';
 require_once dirname(__DIR__) . '/api/commerce.php';
+require_once dirname(__DIR__) . '/_includes/site_layout.php';
 
 session_name('smartvision_customer');
 session_set_cookie_params([
@@ -170,7 +171,7 @@ try {
                 throw new RuntimeException('Connectez-vous pour commander.');
             }
             if (($_POST['accept_terms'] ?? '') !== '1') {
-                throw new RuntimeException('Confirmez que la licence ne contient aucun abonnement IPTV.');
+                throw new RuntimeException('Confirmez que la licence concerne uniquement le lecteur SmartVision.');
             }
             $checkoutToken = (string) ($_POST['checkout_token'] ?? '');
             if (!hash_equals((string) ($_SESSION['checkout_token'] ?? ''), $checkoutToken)) {
@@ -209,48 +210,15 @@ $selectedPlan = commerce_plan($planKey);
     <title><?= $user ? 'Mon compte' : 'Creer mon compte' ?> | SmartVision</title>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3376574358352765" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="/assets/site.css?v=3">
+    <link rel="stylesheet" href="/assets/site-overrides.css?v=4">
     <link rel="stylesheet" href="/assets/account.css?v=3">
     <link rel="stylesheet" href="/assets/mobile.css?v=3">
 </head>
 <body class="account-page">
-<header class="site-header account-header">
-    <a class="brand" href="/" aria-label="SmartVision, accueil">
-        <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player">
-    </a>
-    <nav aria-label="Navigation compte">
-        <a href="/">Accueil</a>
-        <a href="/download.php">Telecharger</a>
-        <a href="/activate/">Activer une TV</a>
-    </nav>
-    <?php if ($user): ?>
-        <div class="account-user-menu">
-            <span><?= account_escape($user['display_name'] ?: $user['email']) ?></span>
-            <form method="post">
-                <input type="hidden" name="csrf_token" value="<?= account_escape($csrf) ?>">
-                <button class="button button-outline header-cta" name="action" value="logout">Deconnexion</button>
-            </form>
-        </div>
-    <?php else: ?>
-        <a class="button button-outline header-cta" href="/activate/">J'ai deja un code</a>
-    <?php endif; ?>
-</header>
+<?php sv_render_site_header(); ?>
 
 <?php if (!$user): ?>
-<main class="auth-layout">
-    <section class="auth-intro">
-        <p class="section-label">Compte SmartVision</p>
-        <h1>Votre activation en quelques minutes.</h1>
-        <p>Un seul compte pour retrouver vos commandes, vos codes et l'etat de vos appareils.</p>
-        <ol class="compact-steps">
-            <li><span>1</span><div><strong>Creez votre compte</strong><small>Une adresse email et un mot de passe.</small></div></li>
-            <li><span>2</span><div><strong>Choisissez votre licence</strong><small>Une activation correspond a un appareil.</small></div></li>
-            <li><span>3</span><div><strong>Activez votre TV</strong><small>Saisissez le code depuis votre telephone.</small></div></li>
-        </ol>
-        <div class="auth-plan-summary">
-            <span>Licence selectionnee</span>
-            <strong><?= account_escape($selectedPlan['label']) ?> - <?= commerce_money((int) $selectedPlan['amount_cents']) ?></strong>
-        </div>
-    </section>
+<main class="auth-layout single-auth account-slim">
     <section class="auth-form-panel">
         <h2>Creer mon compte</h2>
         <p>Votre licence restera accessible ici apres la commande.</p>
@@ -279,7 +247,7 @@ $selectedPlan = commerce_plan($planKey);
 <main class="customer-dashboard">
     <section class="customer-heading">
         <div><p class="section-label">Espace client</p><h1>Bonjour <?= account_escape($user['display_name'] ?: $user['email']) ?></h1><p>Commandez une licence, retrouvez vos codes et activez vos appareils.</p></div>
-        <a class="button button-outline" href="/activate/">Activer une TV</a>
+        <div class="customer-heading-actions"><a class="button button-outline" href="/activate/">Activer une TV</a><form method="post"><input type="hidden" name="csrf_token" value="<?= account_escape($csrf) ?>"><button class="button button-outline" name="action" value="logout">Deconnexion</button></form></div>
     </section>
 
     <?php if ($flash): ?><div class="form-notice <?= account_escape($flash['type'] ?? '') ?>"><?= account_escape($flash['message'] ?? '') ?></div><?php endif; ?>
@@ -311,11 +279,11 @@ $selectedPlan = commerce_plan($planKey);
                         <strong><?= account_escape($plan['label']) ?></strong>
                         <div class="account-plan-price"><?= commerce_money((int) $plan['amount_cents']) ?></div>
                         <p><?= account_escape($plan['description']) ?></p>
-                        <ul><li>1 appareil</li><li>Mises a jour incluses</li><li>Votre propre abonnement Xtream</li></ul>
+                        <ul><li>1 appareil</li><li>Mises a jour incluses</li><li>Vos propres sources autorisees</li></ul>
                     </label>
                 <?php endforeach; ?>
             </div>
-            <div class="license-rule"><strong>Important</strong><span>SmartVision est un lecteur. La licence ne fournit aucune chaine, film ou abonnement IPTV.</span></div>
+            <div class="license-rule"><strong>Important</strong><span>SmartVision est un lecteur. La licence ne fournit aucune chaine, film, serie, playlist ou contenu tiers.</span></div>
         </section>
 
         <aside class="order-summary">
@@ -323,7 +291,7 @@ $selectedPlan = commerce_plan($planKey);
             <dl><div><dt>Licence</dt><dd id="summary-plan"><?= account_escape($selectedPlan['label']) ?></dd></div><div><dt>Appareils</dt><dd>1</dd></div><div><dt>Frais</dt><dd>0,00 EUR</dd></div></dl>
             <div class="order-total"><span>Total</span><strong id="summary-price"><?= commerce_money((int) $selectedPlan['amount_cents']) ?></strong></div>
             <div class="test-payment-note"><strong>Paiement de test</strong><span>Aucun montant reel ne sera debite. Le code genere est utilisable.</span></div>
-            <label class="terms-check"><input type="checkbox" name="accept_terms" value="1" required><span>Je confirme acheter le lecteur SmartVision, sans contenu IPTV inclus.</span></label>
+            <label class="terms-check"><input type="checkbox" name="accept_terms" value="1" required><span>Je confirme acheter une licence du lecteur SmartVision, sans contenu inclus.</span></label>
             <button class="button button-primary" name="action" value="test_payment">Valider le paiement test</button>
             <small class="secure-note">Prix et duree verifies cote serveur. Une seule licence sera generee.</small>
         </aside>
@@ -362,7 +330,7 @@ $selectedPlan = commerce_plan($planKey);
 </main>
 <?php endif; ?>
 
-<footer class="account-footer"><p>&copy; <?= date('Y') ?> SmartVision. Lecteur IPTV sans contenu inclus.</p><div><a href="/">Accueil</a><a href="/activate/">Activation</a><a href="/download.php">Telecharger</a><a href="/privacy-policy/">Politique de confidentialité</a><a href="/terms-of-use/">Conditions d’utilisation</a><a href="/contact/">Contact</a><a href="/legal-notice/">Mentions légales</a><a href="/legal-iptv-player/">Lecteur IPTV légal</a></div></footer>
+<?php sv_render_site_footer('account-footer'); ?>
 <script src="/assets/account.js?v=3" defer></script>
 </body>
 </html>

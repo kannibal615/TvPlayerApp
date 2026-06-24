@@ -208,6 +208,7 @@ fun SeriesDetailRoute(
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     onWatchEpisode: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -235,6 +236,7 @@ fun SeriesDetailRoute(
         onLicenseKey = onLicenseKey,
         showLicenseKey = showLicenseKey,
         hasNewNotifications = hasNewNotifications,
+        notificationBadgeCount = notificationBadgeCount,
         onRetry = viewModel::loadDetails,
         onSeason = viewModel::selectSeason,
         onFavorite = viewModel::toggleFavorite,
@@ -256,6 +258,7 @@ private fun SeriesDetailScreen(
     onLicenseKey: () -> Unit,
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     onRetry: () -> Unit,
     onSeason: (Int) -> Unit,
     onFavorite: () -> Unit,
@@ -281,6 +284,7 @@ private fun SeriesDetailScreen(
             onLicenseKey = onLicenseKey,
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
+            notificationBadgeCount = notificationBadgeCount,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = DetailDimens.ScreenPadding)
