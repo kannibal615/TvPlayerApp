@@ -114,6 +114,7 @@ import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -385,6 +386,7 @@ private fun LicensePanel(
         }
         Spacer(Modifier.height(10.dp))
         ProfileInfoRow("Type", state.usageMode.description)
+        ProfileInfoRow("Code TV", state.tvCode)
         ProfileInfoRow("Identifiant appareil", state.deviceId.ifBlank { "Generation..." })
         ProfileInfoRow("Renouvellement", state.usageMode.renewalHint)
         Spacer(Modifier.height(14.dp))
@@ -584,6 +586,8 @@ private fun DevicePanel(
             ProfileMetric("Series", state.account.seriesCount.toString(), Modifier.weight(1f))
         }
         Spacer(Modifier.height(12.dp))
+        ProfileInfoRow("Code TV", state.tvCode)
+        ProfileInfoRow("Identifiant appareil", state.deviceId.ifBlank { "Generation..." })
         ProfileInfoRow("Derniere sync", state.account.lastSync ?: "Jamais")
         ProfileInfoRow("Version", BuildConfig.VERSION_NAME)
         ProfileInfoRow("Portail", BuildConfig.ACTIVATION_BASE_URL.removeSuffix("/"))
@@ -1519,13 +1523,13 @@ class ProfileViewModel(
 
     fun showLicenseQr() {
         viewModelScope.launch {
-            val deviceId = activationRepository.getOrCreateDeviceId()
+            val device = activationRepository.currentDisplayDevice()
             transient.update {
                 it.copy(
                     qrDialog = ProfileQrState(
                         title = "Acheter ou prolonger la licence",
                         subtitle = "Scannez ce QR code avec votre telephone pour choisir une licence SmartVision. Le portail associera l'achat a cet appareil.",
-                        url = "${activationBaseUrl()}account/?source=tv&intent=license&device_id=$deviceId&plan=year_1",
+                        url = "${activationBaseUrl()}account/?source=tv&intent=license&${tvDeviceQuery(device.publicDeviceCode, device.deviceId)}&plan=year_1",
                         allowsLicenseEntry = true,
                     ),
                 )
@@ -1616,13 +1620,13 @@ class ProfileViewModel(
 
     fun showXtreamShopQr() {
         viewModelScope.launch {
-            val deviceId = activationRepository.getOrCreateDeviceId()
+            val device = activationRepository.currentDisplayDevice()
             transient.update {
                 it.copy(
                     qrDialog = ProfileQrState(
                         title = "Acheter ou prolonger Xtream",
                         subtitle = "Scannez ce QR code pour continuer sur le portail. Le parcours Xtream sera finalise sur mobile, pas avec la telecommande.",
-                        url = "${activationBaseUrl()}account/?source=tv&intent=xtream&device_id=$deviceId",
+                        url = "${activationBaseUrl()}account/?source=tv&intent=xtream&${tvDeviceQuery(device.publicDeviceCode, device.deviceId)}",
                     ),
                 )
             }
@@ -1636,6 +1640,7 @@ class ProfileViewModel(
 
 data class ProfileUiState(
     val deviceId: String = "",
+    val publicDeviceCode: String = "",
     val activationStatusLabel: String = "Verification",
     val licenseExpiresAt: String = "",
     val usageMode: UsageMode = UsageMode.Unknown,
@@ -1652,7 +1657,9 @@ data class ProfileUiState(
     val submittingLicense: Boolean = false,
     val errorMessage: String? = null,
     val qrDialog: ProfileQrState? = null,
-)
+) {
+    val tvCode: String = publicDeviceCode.ifBlank { "Generation..." }
+}
 
 data class ProfileQrState(
     val title: String,
@@ -1744,6 +1751,7 @@ private fun buildProfileState(
     }
     return ProfileUiState(
         deviceId = activation.deviceId,
+        publicDeviceCode = activation.publicDeviceCode,
         activationStatusLabel = activationStatusLabel,
         licenseExpiresAt = activation.expiresAt.orEmpty(),
         usageMode = usageMode,
@@ -1774,6 +1782,25 @@ private fun activationBaseUrl(): String =
     BuildConfig.ACTIVATION_BASE_URL.ifBlank { "https://smartvisions.net/" }
         .trim()
         .trimEnd('/') + "/"
+
+private data class ProfileDeviceDisplay(
+    val deviceId: String,
+    val publicDeviceCode: String,
+)
+
+private suspend fun ActivationRepository.currentDisplayDevice(): ProfileDeviceDisplay {
+    val state = localState.first()
+    val publicCode = state.publicDeviceCode.ifBlank { getOrCreateLocalPublicCode() }
+    val deviceId = state.deviceId.ifBlank { getOrCreateDeviceId() }
+    return ProfileDeviceDisplay(deviceId = deviceId, publicDeviceCode = publicCode)
+}
+
+private fun tvDeviceQuery(publicDeviceCode: String, deviceId: String): String =
+    if (publicDeviceCode.isNotBlank()) {
+        "device=$publicDeviceCode"
+    } else {
+        "device_id=$deviceId"
+    }
 
 private fun Throwable.userMessage(defaultMessage: String): String =
     when (this) {

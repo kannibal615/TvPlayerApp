@@ -6,6 +6,15 @@ require_once dirname(__DIR__) . '/api/helpers.php';
 require_once dirname(__DIR__) . '/api/mail_service.php';
 require_once dirname(__DIR__) . '/_includes/site_layout.php';
 
+session_name('smartvision_customer');
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'secure' => smartvision_cookie_secure(),
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
+session_start();
 sv_send_site_headers();
 
 $pdo = db();
@@ -39,11 +48,18 @@ if (preg_match('/^[a-f0-9]{64}$/', $token)) {
             ->execute(['id' => (int) $verification['id']]);
         $pdo->commit();
 
+        session_regenerate_id(true);
+        $_SESSION['site_user_id'] = (int) $verification['user_id'];
+        unset($_SESSION['customer_intent']);
+        $pdo->prepare('UPDATE site_users SET last_login_at = NOW(), updated_at = NOW() WHERE id = :id')
+            ->execute(['id' => (int) $verification['user_id']]);
+        sv_set_customer_header_state(true);
+
         $success = true;
         $message = 'Votre adresse email est confirmée. Vous pouvez maintenant commander une licence.';
         sv_send_email($pdo, 'registration_thanks', (string) $verification['email'], [
             'customer' => [
-                'name' => (string) ($verification['display_name'] ?: $verification['email']),
+                'name' => sv_mail_customer_name((string) ($verification['display_name'] ?? ''), (string) $verification['email']),
                 'email' => (string) $verification['email'],
             ],
             'account_url' => smartvision_public_base_url() . '/account/?section=buy-license',

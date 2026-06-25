@@ -47,7 +47,9 @@ data class ActivationUiState(
     val hasSession: Boolean = shortCode.isNotBlank() && qrUrl.isNotBlank()
     val shouldShowLicenseKey: Boolean = activationType == "trial_demo" || activationType == "free_ads" || freeWithAdsStatus == "active"
     val purchaseUrl: String =
-        backendUrl.trimEnd('/') + "/activation?device=" + publicDeviceCode.ifBlank { deviceId }
+        backendUrl.trimEnd('/') + "/account/?source=tv&intent=license&" +
+            tvDeviceQuery(publicDeviceCode, deviceId) +
+            "&plan=year_1"
     val xtreamSetupUrl: String =
         backendUrl.trimEnd('/') + "/xtream?device=" + publicDeviceCode.ifBlank { deviceId }
 }
@@ -455,6 +457,13 @@ private fun ActivationUiState.withSession(session: ActivationSession): Activatio
         statusLabel = "En attente de validation",
         errorMessage = null,
     )
+
+private fun tvDeviceQuery(publicDeviceCode: String, deviceId: String): String =
+    if (publicDeviceCode.isNotBlank()) {
+        "device=$publicDeviceCode"
+    } else {
+        "device_id=$deviceId"
+    }
 
 private fun Throwable.userMessage(defaultMessage: String): String =
     when (this) {

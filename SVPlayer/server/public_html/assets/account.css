@@ -358,6 +358,15 @@
     line-height: 1.55;
 }
 
+.panel-heading .device-code-note {
+    color: #d7f6ff;
+}
+
+.device-code-note strong {
+    color: #66e8ff;
+    letter-spacing: 0.06em;
+}
+
 .slim-button {
     min-height: 42px;
     padding-inline: 16px;

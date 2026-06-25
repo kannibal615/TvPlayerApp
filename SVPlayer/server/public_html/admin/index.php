@@ -46,7 +46,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             ? $exception->getMessage()
             : 'Action impossible. Verifiez les valeurs et reessayez.');
     }
-    header('Location: /admin/?page=' . rawurlencode($page));
+    $redirectUrl = '/admin/?page=' . rawurlencode($page);
+    if ($page === 'emails') {
+        $emailTab = (string) ($_POST['email_tab'] ?? '');
+        if (in_array($emailTab, ['overview', 'list', 'settings', 'templates'], true)) {
+            $redirectUrl .= '&email_tab=' . rawurlencode($emailTab);
+        }
+        $templateId = filter_var($_POST['template_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($emailTab === 'templates' && $templateId !== false) {
+            $redirectUrl .= '&template_id=' . rawurlencode((string) $templateId);
+        }
+    }
+    header('Location: ' . $redirectUrl);
     exit;
 }
 
@@ -134,6 +145,7 @@ function handle_admin_action(PDO $pdo, string $action): void
         case 'save_email_settings': admin_save_email_settings($pdo); break;
         case 'save_email_template': admin_save_email_template($pdo); break;
         case 'send_test_email': admin_send_test_email($pdo); break;
+        case 'send_admin_email': admin_send_admin_email($pdo); break;
         case 'send_notification': admin_send_notification($pdo); break;
         case 'set_notification_status': admin_set_notification_status($pdo); break;
         case 'delete_notification': admin_delete_notification($pdo); break;
@@ -342,6 +354,10 @@ function admin_save_email_settings(PDO $pdo): void
     if ($settings['smtp_host'] === '') {
         throw new InvalidArgumentException('Le serveur SMTP est obligatoire.');
     }
+    $smtpPassword = (string) ($_POST['smtp_password'] ?? '');
+    if ($smtpPassword !== '') {
+        $settings['smtp_password_ciphertext'] = encrypt_private_value($smtpPassword);
+    }
 
     $statement = $pdo->prepare(
         "INSERT INTO app_settings (setting_key, setting_value)
@@ -354,7 +370,7 @@ function admin_save_email_settings(PDO $pdo): void
     }
     $pdo->commit();
     audit_admin_action($pdo, 'email_settings_updated', 'settings', 'smtp');
-    set_admin_flash('success', 'Configuration email enregistree. Le mot de passe reste dans le fichier prive.');
+    set_admin_flash('success', 'Configuration email enregistree.');
 }
 
 function admin_save_email_template(PDO $pdo): void
@@ -411,6 +427,75 @@ function admin_send_test_email(PDO $pdo): void
     );
 }
 
+function admin_send_admin_email(PDO $pdo): void
+{
+    $recipient = strtolower(trim((string) ($_POST['recipient_email'] ?? '')));
+    $recipientName = '';
+    $userId = filter_var($_POST['recipient_user_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($recipient === '') {
+        if ($userId !== false) {
+            $statement = $pdo->prepare('SELECT email, display_name FROM site_users WHERE id = :id LIMIT 1');
+            $statement->execute(['id' => (int) $userId]);
+            $user = $statement->fetch();
+            if (is_array($user)) {
+                $recipient = strtolower(trim((string) $user['email']));
+                $recipientName = (string) ($user['display_name'] ?? '');
+            }
+        }
+    }
+    if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+        throw new InvalidArgumentException('Destinataire email invalide.');
+    }
+
+    $templateKey = smartvision_text_substr(trim((string) ($_POST['template_key'] ?? '')), 0, 120);
+    $statement = $pdo->prepare('SELECT template_key FROM email_templates WHERE template_key = :template_key AND is_active = 1 LIMIT 1');
+    $statement->execute(['template_key' => $templateKey]);
+    if ((string) $statement->fetchColumn() === '') {
+        throw new InvalidArgumentException('Template email invalide ou inactif.');
+    }
+    if ($templateKey === 'verify_email') {
+        if ($userId === false) {
+            throw new InvalidArgumentException('Pour envoyer une confirmation email, choisissez un client existant afin de generer un lien valide.');
+        }
+        sv_create_email_verification($pdo, (int) $userId, $recipient, $recipientName);
+        set_admin_flash('success', 'Email de confirmation envoye avec un lien valide.');
+        return;
+    }
+
+    $subject = smartvision_text_substr(trim((string) ($_POST['subject'] ?? '')), 0, 255);
+    $message = smartvision_text_substr(trim((string) ($_POST['message'] ?? '')), 0, 3000);
+    $baseUrl = smartvision_public_base_url();
+    $status = sv_send_email($pdo, $templateKey, $recipient, [
+        'customer' => ['name' => sv_mail_customer_name($recipientName, $recipient), 'email' => $recipient],
+        'user' => ['email' => $recipient],
+        'order' => ['reference' => 'MANUAL', 'plan' => 'SmartVision', 'amount' => '-'],
+        'payment' => ['txn' => 'MANUAL'],
+        'event' => [
+            'title' => $subject !== '' ? $subject : 'Message SmartVision',
+            'message' => $message !== '' ? $message : 'Message envoye depuis le panneau administrateur.',
+        ],
+        'admin_event' => [
+            'Destinataire' => $recipient,
+            'Template' => $templateKey,
+            'Operateur' => current_admin_username(),
+            'Date' => gmdate('Y-m-d H:i:s') . ' UTC',
+        ],
+        'admin_url' => $baseUrl . '/admin/?page=emails',
+        'account_url' => $baseUrl . '/account',
+        'orders_url' => $baseUrl . '/account',
+        'verify_url' => $baseUrl . '/verify-email/',
+        'site_url' => $baseUrl,
+        'site_name' => 'SmartVision',
+    ]);
+
+    set_admin_flash(
+        $status === 'sent' ? 'success' : 'error',
+        $status === 'sent'
+            ? 'Email envoye.'
+            : 'Email journalise avec le statut ' . $status . '. Verifiez la configuration SMTP.',
+    );
+}
+
 function admin_load_email_admin(PDO $pdo): array
 {
     sv_mail_ensure_schema($pdo);
@@ -422,11 +507,19 @@ function admin_load_email_admin(PDO $pdo): array
         "SELECT id, email_type, recipient_email, subject, status, error_message, provider, template_key, created_at
          FROM email_logs ORDER BY id DESC LIMIT 80"
     )->fetchAll();
+    $recipients = $pdo->query(
+        "SELECT id, email, display_name
+         FROM site_users
+         WHERE email IS NOT NULL AND email <> ''
+         ORDER BY id DESC
+         LIMIT 200"
+    )->fetchAll();
     return [
         'config' => $config,
         'password_configured' => $config['password'] !== '',
         'templates' => $templates,
         'logs' => $logs,
+        'recipients' => $recipients,
     ];
 }
 
@@ -1333,13 +1426,13 @@ function render_admin_login(?string $error): void
 {
     $configured = admin_auth_is_configured();
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=4"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=5"></head>
 <body class="admin-login-body"><main class="admin-login-panel">
     <a class="admin-brand" href="/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
     <h1>Administration</h1><p>Commandes, licences et appareils SmartVision.</p>
     <?php if (!$configured): ?><div class="admin-notice error">Administration non configuree sur le serveur.</div><?php else: ?>
     <?php if ($error): ?><div class="admin-notice error"><?= admin_escape($error) ?></div><?php endif; ?>
-    <form method="post" class="admin-stack-form"><input type="hidden" name="action" value="login"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><label for="username">Identifiant</label><input id="username" name="username" autocomplete="username" required autofocus><label for="password">Mot de passe</label><input id="password" name="password" type="password" autocomplete="current-password" required><button class="admin-button primary" type="submit">Se connecter</button></form>
+    <form method="post" action="/admin/" class="admin-stack-form"><input type="hidden" name="action" value="login"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><label for="username">Identifiant</label><input id="username" name="username" autocomplete="username" required autofocus><label for="password">Mot de passe</label><input id="password" name="password" type="password" autocomplete="current-password" required><button class="admin-button primary" type="submit">Se connecter</button></form>
     <?php endif; ?>
 </main></body></html><?php
 }
@@ -1384,7 +1477,7 @@ function render_admin_dashboard(
     ];
     $heading = $pages[$page] ?? $pages['overview'];
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=4"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=5"></head>
 <body class="admin-body">
 <aside class="admin-sidebar">
     <a class="admin-brand" href="/admin/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
@@ -1511,6 +1604,165 @@ function render_admin_dashboard(
         <?php endif; ?>
 
         <?php if ($page === 'emails'):
+            $mailConfig = $emailAdmin['config'];
+            $emailTab = (string) ($_GET['email_tab'] ?? 'overview');
+            if (!in_array($emailTab, ['overview', 'list', 'settings', 'templates'], true)) {
+                $emailTab = 'overview';
+            }
+            $emailTabs = ['overview' => 'Overview', 'list' => 'Liste des emails', 'settings' => 'Parametres', 'templates' => 'Templates'];
+            $emailTypes = array_values(array_unique(array_filter(array_map(static fn(array $log): string => (string) $log['email_type'], $emailAdmin['logs']))));
+            sort($emailTypes);
+            $emailProviders = array_values(array_unique(array_filter(array_map(static fn(array $log): string => (string) $log['provider'], $emailAdmin['logs']))));
+            sort($emailProviders);
+            $emailStatuses = array_values(array_unique(array_filter(array_map(static fn(array $log): string => (string) $log['status'], $emailAdmin['logs']))));
+            sort($emailStatuses);
+            $emailCounts = [];
+            foreach ($emailAdmin['logs'] as $log) {
+                $type = (string) ($log['email_type'] ?: 'manual');
+                $emailCounts[$type] ??= ['total' => 0, 'errors' => 0];
+                $emailCounts[$type]['total']++;
+                if ((string) $log['status'] === 'error') {
+                    $emailCounts[$type]['errors']++;
+                }
+            }
+            $recentErrors = array_values(array_filter($emailAdmin['logs'], static fn(array $log): bool => (string) $log['status'] === 'error' || (string) ($log['error_message'] ?? '') !== ''));
+            $logSearch = strtolower(trim((string) ($_GET['email_q'] ?? '')));
+            $logType = (string) ($_GET['email_type'] ?? '');
+            $logStatus = (string) ($_GET['email_status'] ?? '');
+            $logProvider = (string) ($_GET['email_provider'] ?? '');
+            $logPeriod = (string) ($_GET['email_period'] ?? '');
+            $filteredLogs = array_values(array_filter($emailAdmin['logs'], static function (array $log) use ($logSearch, $logType, $logStatus, $logProvider, $logPeriod): bool {
+                if ($logType !== '' && (string) $log['email_type'] !== $logType) { return false; }
+                if ($logStatus !== '' && (string) $log['status'] !== $logStatus) { return false; }
+                if ($logProvider !== '' && (string) $log['provider'] !== $logProvider) { return false; }
+                if ($logSearch !== '') {
+                    $haystack = strtolower(implode(' ', [(string) $log['recipient_email'], (string) $log['subject'], (string) $log['email_type'], (string) $log['template_key']]));
+                    if (!str_contains($haystack, $logSearch)) { return false; }
+                }
+                if (in_array($logPeriod, ['1', '7', '30'], true)) {
+                    $createdAt = strtotime((string) $log['created_at']);
+                    if ($createdAt === false || $createdAt < time() - ((int) $logPeriod * 86400)) { return false; }
+                }
+                return true;
+            }));
+            $templateSearch = strtolower(trim((string) ($_GET['template_q'] ?? '')));
+            $templateCategory = (string) ($_GET['template_category'] ?? '');
+            $templateStatus = (string) ($_GET['template_status'] ?? '');
+            $templateType = (string) ($_GET['template_type'] ?? '');
+            $templateCategories = array_values(array_unique(array_filter(array_map(static fn(array $template): string => (string) $template['category'], $emailAdmin['templates']))));
+            sort($templateCategories);
+            $templateTypes = array_values(array_unique(array_filter(array_map(static fn(array $template): string => !empty($template['is_system']) ? 'system' : 'custom', $emailAdmin['templates']))));
+            sort($templateTypes);
+            $visibleTemplates = array_values(array_filter($emailAdmin['templates'], static function (array $template) use ($templateSearch, $templateCategory, $templateStatus, $templateType): bool {
+                if ($templateCategory !== '' && (string) $template['category'] !== $templateCategory) { return false; }
+                if ($templateType !== '' && (!empty($template['is_system']) ? 'system' : 'custom') !== $templateType) { return false; }
+                if ($templateStatus === 'active' && (int) $template['is_active'] !== 1) { return false; }
+                if ($templateStatus === 'inactive' && (int) $template['is_active'] === 1) { return false; }
+                if ($templateSearch !== '') {
+                    $haystack = strtolower(implode(' ', [(string) $template['name'], (string) $template['template_key'], (string) $template['category']]));
+                    if (!str_contains($haystack, $templateSearch)) { return false; }
+                }
+                return true;
+            }));
+            $selectedTemplateId = filter_var($_GET['template_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $selectedTemplate = $visibleTemplates[0] ?? ($emailAdmin['templates'][0] ?? null);
+            foreach ($emailAdmin['templates'] as $template) {
+                if ($selectedTemplateId !== false && (int) $template['id'] === (int) $selectedTemplateId) {
+                    $selectedTemplate = $template;
+                    break;
+                }
+            }
+        ?>
+        <section class="admin-panel email-admin-panel">
+            <nav class="email-tabs" aria-label="Sections email">
+                <?php foreach ($emailTabs as $tabKey => $tabLabel): ?>
+                    <a class="<?= $emailTab === $tabKey ? 'active' : '' ?>" href="/admin/?page=emails&amp;email_tab=<?= admin_escape($tabKey) ?>"><?= admin_escape($tabLabel) ?></a>
+                <?php endforeach; ?>
+            </nav>
+            <?php if ($emailTab === 'overview'): ?>
+            <div class="email-tab-body">
+                <div class="email-kpi-grid">
+                    <?php foreach ($emailCounts as $type => $count): ?>
+                    <article class="email-kpi-card"><span><?= admin_escape($type) ?></span><strong><?= (int) $count['total'] ?></strong><small><?= (int) $count['total'] ?> envoyes / <?= (int) $count['errors'] ?> erreurs</small></article>
+                    <?php endforeach; ?>
+                    <?php if ($emailCounts === []): ?><p class="admin-empty">Aucun email journalise.</p><?php endif; ?>
+                </div>
+                <div class="email-overview-grid">
+                    <section class="email-card">
+                        <h2>Envoyer un email</h2>
+                        <form method="post" class="email-form">
+                            <input type="hidden" name="redirect_page" value="emails"><input type="hidden" name="email_tab" value="overview"><input type="hidden" name="action" value="send_admin_email"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                            <label>Client existant<select name="recipient_user_id"><option value="">Choisir ou saisir un email ci-dessous</option><?php foreach ($emailAdmin['recipients'] as $recipient): ?><option value="<?= (int) $recipient['id'] ?>"><?= admin_escape(($recipient['display_name'] ?: $recipient['email']) . ' - ' . $recipient['email']) ?></option><?php endforeach; ?></select></label>
+                            <label>Ou email destinataire<input name="recipient_email" type="email"></label>
+                            <label>Template<select name="template_key" required><?php foreach ($emailAdmin['templates'] as $template): if ((int) $template['is_active'] !== 1) { continue; } ?><option value="<?= admin_escape($template['template_key']) ?>"><?= admin_escape($template['name'] . ' - ' . $template['template_key']) ?></option><?php endforeach; ?></select></label>
+                            <label>Sujet optionnel<input name="subject" maxlength="255" placeholder="Utilise par les templates generiques"></label>
+                            <label>Message optionnel<textarea name="message" placeholder="Utilise par les templates generiques"></textarea></label>
+                            <button class="admin-button primary" type="submit">Envoyer</button>
+                        </form>
+                    </section>
+                    <section class="email-card">
+                        <h2>Erreurs recentes</h2>
+                        <div class="admin-table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Email</th><th>Erreur</th></tr></thead><tbody>
+                        <?php if ($recentErrors === []): ?><tr><td colspan="4" class="admin-empty">Aucune erreur recente.</td></tr><?php endif; ?>
+                        <?php foreach (array_slice($recentErrors, 0, 8) as $log): ?><tr><td><?= admin_escape($log['created_at']) ?></td><td><?= admin_escape($log['email_type']) ?></td><td><?= admin_escape($log['recipient_email'] ?: '-') ?></td><td><small><?= admin_escape($log['error_message'] ?: '-') ?></small></td></tr><?php endforeach; ?>
+                        </tbody></table></div>
+                    </section>
+                </div>
+            </div>
+            <?php endif; ?>
+            <?php if ($emailTab === 'list'): ?>
+            <div class="email-tab-body">
+                <form method="get" class="email-filter-grid"><input type="hidden" name="page" value="emails"><input type="hidden" name="email_tab" value="list">
+                    <label>Rechercher un email<input name="email_q" value="<?= admin_escape((string) ($_GET['email_q'] ?? '')) ?>" placeholder="Rechercher un email"></label>
+                    <label>Type<select name="email_type"><option value="">Tous</option><?php foreach ($emailTypes as $type): ?><option value="<?= admin_escape($type) ?>"<?= $logType === $type ? ' selected' : '' ?>><?= admin_escape($type) ?></option><?php endforeach; ?></select></label>
+                    <label>Statut<select name="email_status"><option value="">Tous</option><?php foreach ($emailStatuses as $status): ?><option value="<?= admin_escape($status) ?>"<?= $logStatus === $status ? ' selected' : '' ?>><?= admin_escape($status) ?></option><?php endforeach; ?></select></label>
+                    <label>Provider<select name="email_provider"><option value="">Tous</option><?php foreach ($emailProviders as $provider): ?><option value="<?= admin_escape($provider) ?>"<?= $logProvider === $provider ? ' selected' : '' ?>><?= admin_escape($provider) ?></option><?php endforeach; ?></select></label>
+                    <label>Periode<select name="email_period"><option value="">Tous</option><option value="1"<?= $logPeriod === '1' ? ' selected' : '' ?>>24h</option><option value="7"<?= $logPeriod === '7' ? ' selected' : '' ?>>7 jours</option><option value="30"<?= $logPeriod === '30' ? ' selected' : '' ?>>30 jours</option></select></label>
+                    <button class="admin-button secondary" type="submit">Filtrer</button>
+                </form>
+                <div class="admin-table-wrap email-table-card"><table><thead><tr><th>Date</th><th>Type</th><th>Destinataire</th><th>Sujet</th><th>Statut</th><th>Provider</th><th>Erreur</th></tr></thead><tbody>
+                <?php if ($filteredLogs === []): ?><tr><td colspan="7" class="admin-empty">Aucun email trouve.</td></tr><?php endif; ?>
+                <?php foreach ($filteredLogs as $log): ?><tr><td><?= admin_escape($log['created_at']) ?></td><td><strong><?= admin_escape($log['email_type']) ?></strong><small><?= admin_escape($log['template_key']) ?></small></td><td><?= admin_escape($log['recipient_email'] ?: '-') ?></td><td><?= admin_escape($log['subject'] ?: '-') ?></td><td><span class="admin-state <?= admin_escape($log['status']) ?>"><?= admin_escape($log['status']) ?></span></td><td><?= admin_escape($log['provider'] ?: '-') ?></td><td><small><?= admin_escape($log['error_message'] ?: '-') ?></small></td></tr><?php endforeach; ?>
+                </tbody></table></div>
+            </div>
+            <?php endif; ?>
+            <?php if ($emailTab === 'settings'): ?>
+            <div class="email-tab-body">
+                <div class="email-status-grid"><article><span class="admin-state <?= !empty($mailConfig['smtp_enabled']) ? 'active' : 'disabled' ?>"><?= !empty($mailConfig['smtp_enabled']) ? 'SMTP pret' : 'SMTP off' ?></span><strong>cPanel / SMTP HostCreed</strong></article><article><span class="admin-state <?= !empty($mailConfig['external_enabled']) ? 'active' : 'disabled' ?>"><?= !empty($mailConfig['external_enabled']) ? 'EmailJS pret' : 'Services off' ?></span><strong>Gmail et Microsoft</strong></article><article><span class="admin-state <?= !empty($mailConfig['admin_email']) ? 'active' : 'disabled' ?>"><?= !empty($mailConfig['admin_email']) ? 'Admin configure' : 'Admin absent' ?></span><strong><?= admin_escape($mailConfig['admin_email'] ?: '-') ?></strong></article></div>
+                <form method="post" class="email-settings-form"><input type="hidden" name="redirect_page" value="emails"><input type="hidden" name="email_tab" value="settings"><input type="hidden" name="action" value="save_email_settings"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                    <h2>cPanel / SMTP</h2>
+                    <label>Activer SMTP<select name="smtp_enabled"><option value="0"<?= empty($mailConfig['smtp_enabled']) ? ' selected' : '' ?>>Non</option><option value="1"<?= !empty($mailConfig['smtp_enabled']) ? ' selected' : '' ?>>Oui</option></select></label>
+                    <label>Serveur SMTP<input name="smtp_host" value="<?= admin_escape($mailConfig['host']) ?>" required></label><label>Port<input name="smtp_port" type="number" min="1" max="65535" value="<?= (int) $mailConfig['port'] ?>" required></label>
+                    <label>Securite<select name="smtp_secure"><option value="ssl"<?= $mailConfig['secure'] === 'ssl' ? ' selected' : '' ?>>SSL 465</option><option value="tls"<?= $mailConfig['secure'] === 'tls' ? ' selected' : '' ?>>STARTTLS 587</option></select></label>
+                    <label>Utilisateur SMTP<input name="smtp_user" value="<?= admin_escape($mailConfig['username']) ?>"></label><label>Mot de passe SMTP<input name="smtp_password" type="password" autocomplete="new-password" placeholder="<?= !empty($emailAdmin['password_configured']) ? 'Laisser vide pour conserver' : 'Mot de passe SMTP' ?>"></label>
+                    <label>Email expediteur<input name="smtp_from_email" type="email" value="<?= admin_escape($mailConfig['from_email']) ?>"></label><label>Nom expediteur<input name="smtp_from_name" value="<?= admin_escape($mailConfig['from_name']) ?>"></label><label>Reply-To<input name="smtp_reply_to" type="email" value="<?= admin_escape($mailConfig['reply_to']) ?>"></label>
+                    <label class="email-settings-wide">Notifications administrateur<input name="admin_notification_email" type="email" value="<?= admin_escape($mailConfig['admin_email']) ?>"></label>
+                    <label>Services externes<select name="external_services_enabled"><option value="0"<?= empty($mailConfig['external_enabled']) ? ' selected' : '' ?>>Desactives</option><option value="1"<?= !empty($mailConfig['external_enabled']) ? ' selected' : '' ?>>Actives</option></select></label>
+                    <div class="email-settings-actions"><button class="admin-button primary" type="submit">Enregistrer</button></div>
+                </form>
+            </div>
+            <?php endif; ?>
+            <?php if ($emailTab === 'templates'): ?>
+            <div class="email-tab-body email-templates-layout">
+                <div><form method="get" class="email-template-filters"><input type="hidden" name="page" value="emails"><input type="hidden" name="email_tab" value="templates">
+                    <label>Rechercher un template<input name="template_q" value="<?= admin_escape((string) ($_GET['template_q'] ?? '')) ?>" placeholder="Rechercher un template"></label>
+                    <label>Categorie<select name="template_category"><option value="">Tous</option><?php foreach ($templateCategories as $category): ?><option value="<?= admin_escape($category) ?>"<?= $templateCategory === $category ? ' selected' : '' ?>><?= admin_escape($category) ?></option><?php endforeach; ?></select></label>
+                    <label>Statut<select name="template_status"><option value="">Tous</option><option value="active"<?= $templateStatus === 'active' ? ' selected' : '' ?>>Actif</option><option value="inactive"<?= $templateStatus === 'inactive' ? ' selected' : '' ?>>Inactif</option></select></label>
+                    <label>Type<select name="template_type"><option value="">Tous</option><?php foreach ($templateTypes as $type): ?><option value="<?= admin_escape($type) ?>"<?= $templateType === $type ? ' selected' : '' ?>><?= admin_escape($type) ?></option><?php endforeach; ?></select></label><button class="admin-button primary" type="submit">Filtrer</button>
+                </form><div class="admin-table-wrap email-table-card"><table><thead><tr><th>Template</th><th>Categorie</th><th>Statut</th><th>Type</th><th>Mise a jour</th><th>Actions</th></tr></thead><tbody>
+                    <?php if ($visibleTemplates === []): ?><tr><td colspan="6" class="admin-empty">Aucun template.</td></tr><?php endif; ?>
+                    <?php foreach ($visibleTemplates as $template): ?><tr class="<?= $selectedTemplate !== null && (int) $selectedTemplate['id'] === (int) $template['id'] ? 'selected-row' : '' ?>"><td><strong><?= admin_escape($template['name']) ?></strong><small><?= admin_escape($template['template_key']) ?></small></td><td><?= admin_escape($template['category']) ?></td><td><span class="admin-state <?= (int) $template['is_active'] === 1 ? 'active' : 'disabled' ?>"><?= (int) $template['is_active'] === 1 ? 'Actif' : 'Inactif' ?></span></td><td><?= !empty($template['is_system']) ? 'system' : 'custom' ?></td><td><?= admin_escape($template['updated_at'] ?: '-') ?></td><td><a class="admin-button compact secondary" href="/admin/?page=emails&amp;email_tab=templates&amp;template_id=<?= (int) $template['id'] ?>">Modifier</a></td></tr><?php endforeach; ?>
+                </tbody></table></div></div>
+                <?php if ($selectedTemplate !== null): ?><aside class="email-template-editor"><h2>Template: <?= admin_escape($selectedTemplate['name']) ?></h2><p><?= admin_escape($selectedTemplate['template_key']) ?></p><form method="post" class="email-form"><input type="hidden" name="redirect_page" value="emails"><input type="hidden" name="email_tab" value="templates"><input type="hidden" name="action" value="save_email_template"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="template_id" value="<?= (int) $selectedTemplate['id'] ?>">
+                    <fieldset><legend>Identite</legend><label>Cle technique<input value="<?= admin_escape($selectedTemplate['template_key']) ?>" disabled></label><div class="email-three-fields"><label>Nom<input value="<?= admin_escape($selectedTemplate['name']) ?>" disabled></label><label>Categorie<input value="<?= admin_escape($selectedTemplate['category']) ?>" disabled></label><label>Ordre<input value="<?= (int) $selectedTemplate['sort_order'] ?>" disabled></label></div><label class="email-checkbox"><input name="is_active" type="checkbox" value="1"<?= (int) $selectedTemplate['is_active'] === 1 ? ' checked' : '' ?>> Actif</label></fieldset>
+                    <fieldset><legend>Contenu</legend><label>Sujet<input name="subject_template" maxlength="255" value="<?= admin_escape($selectedTemplate['subject_template']) ?>" required></label><label>Titre<input name="title_template" maxlength="255" value="<?= admin_escape($selectedTemplate['title_template']) ?>" required></label><label>Introduction HTML<textarea name="intro_html"><?= admin_escape($selectedTemplate['intro_html']) ?></textarea></label><label>Corps HTML<textarea name="body_html"><?= admin_escape($selectedTemplate['body_html']) ?></textarea></label><label>Pied HTML<textarea name="footer_html"><?= admin_escape($selectedTemplate['footer_html']) ?></textarea></label></fieldset>
+                    <button class="admin-button primary" type="submit">Enregistrer le template</button></form></aside><?php endif; ?>
+            </div>
+            <?php endif; ?>
+        </section>
+        <?php endif; ?>
+
+        <?php if ($page === 'emails' && false):
             $mailConfig = $emailAdmin['config'];
         ?>
         <section class="admin-panel">

@@ -666,7 +666,7 @@ function commerce_load_customer_orders(PDO $pdo, int $userId): array
                 orders.payment_reference, orders.activation_code_ciphertext,
                 orders.created_at, orders.paid_at,
                 codes.status AS code_status, codes.max_devices, codes.used_devices,
-                metadata.code_hint, metadata.last_used_at,
+                metadata.code_hint, metadata.last_used_at, metadata.assigned_public_device_code,
                 MAX(activations.expires_at) AS activation_expires_at,
                 SUM(CASE WHEN activations.status = 'active' AND activations.expires_at > NOW() THEN 1 ELSE 0 END) AS active_devices
          FROM activation_orders orders
@@ -674,7 +674,7 @@ function commerce_load_customer_orders(PDO $pdo, int $userId): array
          LEFT JOIN activation_code_metadata metadata ON metadata.code_id = codes.id
          LEFT JOIN device_activations activations ON activations.activation_code_id = codes.id
          WHERE orders.user_id = :user_id
-         GROUP BY orders.id, codes.id, metadata.code_id
+         GROUP BY orders.id, codes.id, metadata.code_id, metadata.assigned_public_device_code
          ORDER BY orders.id DESC
          LIMIT 50"
     );

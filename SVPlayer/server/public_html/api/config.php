@@ -19,8 +19,7 @@ function smartvision_is_https(): bool
 {
     $forwardedProto = strtolower(trim((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')));
     return (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
-        || $forwardedProto === 'https'
-        || str_starts_with(smartvision_public_base_url(), 'https://');
+        || $forwardedProto === 'https';
 }
 
 function smartvision_cookie_secure(): bool

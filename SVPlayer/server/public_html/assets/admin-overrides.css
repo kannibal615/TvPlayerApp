@@ -37,6 +37,16 @@
     color: #78eab0;
 }
 
+.admin-state.sent {
+    background: #123c2c;
+    color: #78eab0;
+}
+
+.admin-state.error {
+    background: #401d25;
+    color: #ff9dab;
+}
+
 .admin-state.free,
 .admin-state.manual,
 .admin-state.promo {
@@ -143,6 +153,326 @@
     min-height: 76px;
     resize: vertical;
     padding: 9px 10px;
+}
+
+.email-admin-panel {
+    overflow: hidden;
+}
+
+.email-tabs {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 20px 24px 0;
+    border-bottom: 1px solid var(--admin-line);
+}
+
+.email-tabs a {
+    position: relative;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    color: #aebdce;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.email-tabs a.active {
+    color: var(--admin-blue);
+}
+
+.email-tabs a.active::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: var(--admin-blue);
+}
+
+.email-tab-body {
+    padding: 32px 24px;
+}
+
+.email-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(150px, 1fr));
+    gap: 14px;
+    margin-bottom: 32px;
+}
+
+.email-kpi-card,
+.email-card,
+.email-status-grid article,
+.email-template-editor,
+.email-table-card {
+    border: 1px solid var(--admin-line);
+    border-radius: 8px;
+    background: var(--admin-panel-2);
+}
+
+.email-kpi-card {
+    min-height: 112px;
+    padding: 18px;
+}
+
+.email-kpi-card::after {
+    content: "";
+    display: block;
+    width: 34px;
+    height: 2px;
+    margin: 6px 0 0 auto;
+    border-radius: 4px;
+    background: #70b7ff;
+}
+
+.email-kpi-card span,
+.email-kpi-card strong,
+.email-kpi-card small {
+    display: block;
+}
+
+.email-kpi-card span {
+    overflow: hidden;
+    color: #9fb0c6;
+    font-size: 11px;
+    font-weight: 900;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.email-kpi-card strong {
+    margin-top: 12px;
+    font-size: 26px;
+}
+
+.email-kpi-card small {
+    margin-top: 10px;
+    color: var(--admin-muted);
+}
+
+.email-overview-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 1fr);
+    gap: 18px;
+}
+
+.email-card {
+    padding: 24px;
+}
+
+.email-card h2,
+.email-settings-form h2,
+.email-template-editor h2 {
+    margin: 0 0 18px;
+    font-size: 18px;
+}
+
+.email-form,
+.email-settings-form,
+.email-filter-grid,
+.email-template-filters {
+    display: grid;
+    gap: 14px;
+}
+
+.email-form label,
+.email-settings-form label,
+.email-filter-grid label,
+.email-template-filters label,
+.email-template-editor label {
+    display: grid;
+    gap: 7px;
+    color: #aebdce;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.email-form input,
+.email-form select,
+.email-form textarea,
+.email-settings-form input,
+.email-settings-form select,
+.email-filter-grid input,
+.email-filter-grid select,
+.email-template-filters input,
+.email-template-filters select,
+.email-template-editor input,
+.email-template-editor select,
+.email-template-editor textarea {
+    width: 100%;
+    border: 1px solid #30445e;
+    border-radius: 6px;
+    outline: none;
+    background: #050d18;
+    color: #fff;
+}
+
+.email-form input,
+.email-form select,
+.email-settings-form input,
+.email-settings-form select,
+.email-filter-grid input,
+.email-filter-grid select,
+.email-template-filters input,
+.email-template-filters select,
+.email-template-editor input,
+.email-template-editor select {
+    height: 40px;
+    padding: 0 12px;
+}
+
+.email-form textarea,
+.email-template-editor textarea {
+    min-height: 100px;
+    padding: 11px 12px;
+    resize: vertical;
+}
+
+.email-filter-grid {
+    grid-template-columns: 1.35fr repeat(4, minmax(150px, .7fr)) auto;
+    align-items: end;
+    margin-bottom: 22px;
+}
+
+.email-status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.email-status-grid article {
+    display: grid;
+    gap: 12px;
+    min-height: 82px;
+    padding: 18px;
+}
+
+.email-settings-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 20px;
+    border: 1px solid var(--admin-line);
+    border-radius: 8px;
+    background: var(--admin-panel-2);
+}
+
+.email-settings-form h2,
+.email-settings-wide,
+.email-settings-actions {
+    grid-column: 1 / -1;
+}
+
+.email-settings-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.email-templates-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(360px, .75fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.email-template-filters {
+    grid-template-columns: 1.2fr .7fr .7fr .7fr auto;
+    align-items: end;
+    margin-bottom: 16px;
+}
+
+.email-table-card {
+    overflow: auto;
+}
+
+tr.selected-row {
+    background: rgba(25, 121, 255, .14);
+}
+
+.email-template-editor {
+    position: sticky;
+    top: 90px;
+    padding: 24px;
+}
+
+.email-template-editor > p {
+    margin: -10px 0 18px;
+    color: var(--admin-muted);
+}
+
+.email-template-editor fieldset {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+    padding: 16px;
+    border: 1px solid var(--admin-line);
+    border-radius: 8px;
+}
+
+.email-template-editor legend {
+    padding: 0 8px;
+    color: #aebdce;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.email-three-fields {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.email-checkbox {
+    display: flex !important;
+    grid-template-columns: none !important;
+    align-items: center;
+    gap: 8px !important;
+}
+
+.email-checkbox input {
+    width: auto;
+    height: auto;
+}
+
+@media (max-width: 1320px) {
+    .email-kpi-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .email-overview-grid,
+    .email-templates-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .email-template-editor {
+        position: static;
+    }
+}
+
+@media (max-width: 960px) {
+    .email-filter-grid,
+    .email-template-filters,
+    .email-settings-form,
+    .email-status-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .email-tabs {
+        overflow-x: auto;
+    }
+}
+
+@media (max-width: 620px) {
+    .email-kpi-grid,
+    .email-three-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .email-tab-body {
+        padding: 20px 14px;
+    }
 }
 
 .server-kpis {

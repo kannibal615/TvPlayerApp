@@ -436,10 +436,13 @@ fun AppNavigation(
     }
 
     if (showLicensePurchaseQr) {
-        val deviceId = activationState.deviceId
+        val deviceQuery = tvDeviceQuery(
+            publicDeviceCode = activationState.publicDeviceCode,
+            deviceId = activationState.deviceId,
+        )
         val purchaseUrl = activationPortalBaseUrl()
-            .plus("account/?source=tv&intent=license&device_id=")
-            .plus(deviceId)
+            .plus("account/?source=tv&intent=license&")
+            .plus(deviceQuery)
             .plus("&plan=year_1")
         SmartVisionQrDialog(
             title = "Passer a SmartVision Premium",
@@ -613,3 +616,10 @@ private fun activationPortalBaseUrl(): String =
     BuildConfig.ACTIVATION_BASE_URL.ifBlank { "https://smartvisions.net/" }
         .trim()
         .trimEnd('/') + "/"
+
+private fun tvDeviceQuery(publicDeviceCode: String, deviceId: String): String =
+    if (publicDeviceCode.isNotBlank()) {
+        "device=$publicDeviceCode"
+    } else {
+        "device_id=$deviceId"
+    }

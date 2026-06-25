@@ -43,6 +43,7 @@ $hasSession = $deviceId !== '' && $shortCode !== '';
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Activation SmartVision</title>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3376574358352765" crossorigin="anonymous"></script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9499676739525429" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="/assets/site.css?v=5">
     <link rel="stylesheet" href="/assets/site-overrides.css?v=5">
 </head>

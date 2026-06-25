@@ -5,9 +5,14 @@ require_once dirname(__DIR__) . '/api/helpers.php';
 
 $code = normalize_activation_code($_GET['code'] ?? null);
 $deviceId = clean_device_id($_GET['device_id'] ?? null);
+$publicDeviceCode = clean_public_device_code($_GET['device'] ?? null);
 
 $target = '/activate/';
 $params = [];
+if ($code === '' && $publicDeviceCode !== '') {
+    header('Location: /account/?source=tv&intent=license&device=' . rawurlencode($publicDeviceCode) . '&plan=year_1', true, 302);
+    exit;
+}
 if ($code !== '') {
     $params['code'] = $code;
 }

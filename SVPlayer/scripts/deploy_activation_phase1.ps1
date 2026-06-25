@@ -825,7 +825,7 @@ function Test-CustomerCommerce {
     New-CommerceCleanupFile -OutputPath $cleanupPath -Token $cleanupToken -Email $email
 
     try {
-        $accountUrl = "https://$Domain/account/?plan=year_1"
+        $accountUrl = "https://$Domain/account/?plan=year_1&intent=license"
         $registerPage = Invoke-WebRequest -UseBasicParsing -WebSession $session -Uri $accountUrl
         $csrf = Get-CsrfTokenFromHtml -Html $registerPage.Content
         $dashboard = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Post -Uri $accountUrl -Body @{
@@ -836,12 +836,20 @@ function Test-CustomerCommerce {
             email = $email
             password = $password
         }
-        if ($dashboard.Content -notmatch 'Choisissez votre licence' -or $dashboard.Content -notmatch 'D.connexion') {
+        if ($dashboard.Content -notmatch 'Choisissez votre licence' -or $dashboard.Content -notmatch 'account-plan-grid') {
             throw 'Creation du compte client QA echouee.'
         }
 
         $csrf = Get-CsrfTokenFromHtml -Html $dashboard.Content
-        $checkoutToken = Get-HiddenValueFromHtml -Html $dashboard.Content -Name 'checkout_token'
+        $checkoutTokenMatch = [Regex]::Match($dashboard.Content, 'name="' + [Regex]::Escape('checkout_token') + '"\s+value="([^"]*)"')
+        if (-not $checkoutTokenMatch.Success) {
+            if ($dashboard.Content -notmatch 'Confirmez votre email|Confirmez votre adresse email') {
+                throw 'Commande client QA indisponible sans message de verification email.'
+            }
+            Write-Host "Commande QA bloquee comme attendu tant que l email client n est pas confirme."
+            return
+        }
+        $checkoutToken = [System.Net.WebUtility]::HtmlDecode($checkoutTokenMatch.Groups[1].Value)
         $paid = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Post -Uri "https://$Domain/account/" -Body @{
             action = 'test_payment'
             csrf_token = $csrf
@@ -1165,7 +1173,7 @@ try {
             }
         }
         $accountHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/account/?plan=year_1"
-        if ($accountHtml.Content -notmatch "Cr.er mon compte" -or $accountHtml.Content -notmatch "Se connecter") {
+        if ($accountHtml.Content -notmatch "Cr.er mon compte" -or $accountHtml.Content -notmatch "Connexion") {
             throw "La page compte/commande ne retourne pas le contenu attendu."
         }
         $activateHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/activate/"

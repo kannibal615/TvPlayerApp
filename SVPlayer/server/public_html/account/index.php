@@ -173,6 +173,10 @@ if (($_GET['intent'] ?? '') === 'license') {
         $authMode = 'login';
     }
 }
+$tvCodeFromQr = clean_public_device_code($_GET['device'] ?? null);
+if ($tvCodeFromQr !== '') {
+    $_SESSION['customer_tv_code'] = $tvCodeFromQr;
+}
 
 try {
     if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
@@ -344,6 +348,7 @@ $summary = commerce_customer_summary($orders);
 $flash = account_consume_flash();
 $highlightOrder = preg_replace('/[^A-Z0-9-]/', '', strtoupper((string) ($_GET['order'] ?? '')));
 $csrf = account_csrf_token();
+$customerTvCode = clean_public_device_code($_SESSION['customer_tv_code'] ?? null);
 $simulationToken = '';
 if ($user !== null && (string) getenv('SMARTVISION_ENV') === 'development') {
     $simulationToken = (string) ($_SESSION['payment_simulation_token'] ?? '');
@@ -371,6 +376,7 @@ $sectionTitles = [
     <meta name="description" content="Gérez vos licences, commandes et activations SmartVision.">
     <title><?= $user ? account_escape($sectionTitles[$section]) : ($authMode === 'login' ? 'Connexion' : 'Créer mon compte') ?> | SmartVision</title>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3376574358352765" crossorigin="anonymous"></script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9499676739525429" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="/assets/site.css?v=5">
     <link rel="stylesheet" href="/assets/site-overrides.css?v=5">
     <link rel="stylesheet" href="/assets/account.css?v=6">
@@ -479,6 +485,7 @@ $sectionTitles = [
                         <?php foreach ($orders as $order):
                             $plainCode = (string) ($order['activation_code'] ?? '');
                             $activeDevices = (int) ($order['active_devices'] ?? 0);
+                            $linkedTvCode = clean_public_device_code($order['assigned_public_device_code'] ?? null);
                             $isHighlighted = $highlightOrder !== '' && hash_equals((string) $order['order_reference'], $highlightOrder);
                         ?>
                             <article class="license-card<?= $isHighlighted ? ' highlight-order' : '' ?>">
@@ -493,6 +500,7 @@ $sectionTitles = [
                                     <div><dt>Code licence</dt><dd><?php if ($plainCode !== ''): ?><strong><?= account_escape($plainCode) ?></strong><?php else: ?><?= account_escape($order['code_hint'] ?: 'Indisponible') ?><?php endif; ?></dd></div>
                                     <div><dt>Achat</dt><dd><?= account_escape((string) $order['created_at']) ?></dd></div>
                                     <div><dt>Expiration</dt><dd><?= account_escape($order['activation_expires_at'] ?: 'Débute à l’activation') ?></dd></div>
+                                    <div><dt>Code TV</dt><dd><?= account_escape($linkedTvCode !== '' ? $linkedTvCode : ($customerTvCode !== '' ? $customerTvCode : 'Non lie')) ?></dd></div>
                                     <div><dt>Appareil lié</dt><dd><?= $activeDevices ?> / <?= (int) ($order['max_devices'] ?? 1) ?></dd></div>
                                 </dl>
                                 <div class="license-actions">
@@ -512,6 +520,7 @@ $sectionTitles = [
                     <div>
                         <h2>Choisissez votre licence</h2>
                         <p>Une activation correspond à un seul appareil. Les paiements uniques ne sont pas des abonnements.</p>
+                        <?php if ($customerTvCode !== ''): ?><p class="device-code-note">Code TV detecte : <strong><?= account_escape($customerTvCode) ?></strong></p><?php endif; ?>
                     </div>
                 </div>
                 <div class="account-plan-grid">
@@ -586,6 +595,7 @@ $sectionTitles = [
                             <?php foreach ($orders as $order):
                                 $plainCode = (string) ($order['activation_code'] ?? '');
                                 $activeDevices = (int) ($order['active_devices'] ?? 0);
+                                $linkedTvCode = clean_public_device_code($order['assigned_public_device_code'] ?? null);
                             ?>
                                 <tr>
                                     <td><strong><?= account_escape($order['order_reference'] ?: 'SV-' . $order['id']) ?></strong><small><?= account_escape((string) $order['created_at']) ?></small></td>
@@ -593,7 +603,7 @@ $sectionTitles = [
                                     <td><?= account_escape(commerce_money((int) $order['amount_cents'], (string) $order['currency'])) ?></td>
                                     <td><span class="state <?= account_escape((string) $order['status']) ?>"><?= account_escape(account_status_label((string) $order['status'])) ?></span></td>
                                     <td><?php if ($plainCode !== ''): ?><code><?= account_escape($plainCode) ?></code><?php else: ?><?= account_escape($order['code_hint'] ?: 'Code indisponible') ?><?php endif; ?></td>
-                                    <td><?= $activeDevices ?> / <?= (int) ($order['max_devices'] ?? 1) ?><small><?= $activeDevices > 0 ? 'Activé' : 'Non activé' ?></small></td>
+                                    <td><?= $activeDevices ?> / <?= (int) ($order['max_devices'] ?? 1) ?><small><?= $activeDevices > 0 ? 'Activé' : 'Non activé' ?><?= $linkedTvCode !== '' ? ' - TV ' . account_escape($linkedTvCode) : '' ?></small></td>
                                     <td><?= account_escape($order['activation_expires_at'] ?: 'Débute à l’activation') ?></td>
                                     <td class="table-actions"><?php if ($plainCode !== ''): ?><button class="mini-button" type="button" data-copy="<?= account_escape($plainCode) ?>">Copier</button><?php endif; ?><a class="mini-button" href="/activate/">Activer</a></td>
                                 </tr>
