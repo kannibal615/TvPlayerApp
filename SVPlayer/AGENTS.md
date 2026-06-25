@@ -346,10 +346,10 @@ que la mise a jour in-app soit detectee.
 Version release publiee le 2026-06-25:
 
 ```text
-versionName: 0.1.9
-versionCode: 12
-affichage: 0.1.9 (12)
-apk: https://smartvisions.net/downloads/smartvision-tv-v12-53a88d14.apk
+versionName: 0.1.10
+versionCode: 13
+affichage: 0.1.10 (13)
+apk: https://smartvisions.net/downloads/smartvision-tv-v13-490f9767.apk
 ```
 
 Si le JBR Android Studio local echoue, utiliser un JDK 21 externe ou portable et definir `JAVA_HOME`.
