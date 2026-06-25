@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__) . '/api/commerce.php';
+require_once dirname(__DIR__) . '/api/mail_service.php';
 
 $loginError = null;
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'login') {
@@ -26,6 +27,8 @@ if (!is_admin_authenticated()) {
 }
 
 $pdo = db();
+sv_mail_ensure_schema($pdo);
+commerce_ensure_payment_schema($pdo);
 $page = admin_current_page($_POST['redirect_page'] ?? $_GET['page'] ?? 'overview');
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (!verify_csrf($_POST['csrf_token'] ?? null)) {
@@ -64,6 +67,9 @@ $messages = admin_load_contact_messages($pdo, $query);
 $revenueSeries = admin_revenue_series($pdo);
 $alerts = admin_build_alerts($stats);
 $serverStats = admin_load_server_stats($pdo, $stats);
+$paymentPacks = admin_load_payment_packs($pdo);
+$gammalPayments = commerce_load_gammal_payments($pdo);
+$emailAdmin = admin_load_email_admin($pdo);
 $flash = consume_admin_flash();
 $generatedCode = $_SESSION['generated_activation_code'] ?? null;
 if (is_string($generatedCode)) {
@@ -89,6 +95,9 @@ render_admin_dashboard(
     $notifications,
     $messages,
     $serverStats,
+    $paymentPacks,
+    $gammalPayments,
+    $emailAdmin,
     $flash,
     $generatedCode,
     $query,
@@ -98,7 +107,7 @@ render_admin_dashboard(
 function admin_current_page(mixed $page): string
 {
     $page = is_string($page) ? $page : 'overview';
-    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'devices', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
+    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'payments', 'emails', 'devices', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
         ? $page
         : 'overview';
 }
@@ -119,6 +128,12 @@ function handle_admin_action(PDO $pdo, string $action): void
         case 'delete_code': admin_delete_code($pdo); break;
         case 'purge_devices': admin_purge_devices($pdo); break;
         case 'save_slide': admin_save_slide($pdo); break;
+        case 'save_payment_packs': admin_save_payment_packs($pdo); break;
+        case 'approve_gammal_payment': admin_approve_gammal_payment($pdo); break;
+        case 'reject_gammal_payment': admin_reject_gammal_payment($pdo); break;
+        case 'save_email_settings': admin_save_email_settings($pdo); break;
+        case 'save_email_template': admin_save_email_template($pdo); break;
+        case 'send_test_email': admin_send_test_email($pdo); break;
         case 'send_notification': admin_send_notification($pdo); break;
         case 'set_notification_status': admin_set_notification_status($pdo); break;
         case 'delete_notification': admin_delete_notification($pdo); break;
@@ -203,6 +218,216 @@ function admin_set_code_status(PDO $pdo): void
     $statement->execute(['status' => $status, 'id' => $codeId]);
     audit_admin_action($pdo, 'activation_code_status_changed', 'activation_code', (string) $codeId, ['status' => $status]);
     set_admin_flash('success', $status === 'active' ? 'Code reactive.' : ($status === 'expired' ? 'Code expire.' : 'Code desactive.'));
+}
+
+function admin_save_payment_packs(PDO $pdo): void
+{
+    $plans = commerce_payment_plans();
+    $statement = $pdo->prepare(
+        "INSERT INTO app_settings (setting_key, setting_value)
+         VALUES (:setting_key, :setting_value)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)"
+    );
+
+    $pdo->beginTransaction();
+    foreach ($plans as $planKey => $plan) {
+        $url = trim((string) ($_POST['payment_url'][$planKey] ?? ''));
+        $enabled = isset($_POST['payment_enabled'][$planKey]);
+        if ($url !== '' && !commerce_is_valid_gammal_payment_url($url)) {
+            throw new InvalidArgumentException(
+                'Le lien du pack ' . (string) $plan['label'] . ' doit utiliser HTTPS sur gammal.tech.'
+            );
+        }
+        if ($enabled && $url === '') {
+            throw new InvalidArgumentException(
+                'Ajoutez un lien Gammal Tech avant d activer le pack ' . (string) $plan['label'] . '.'
+            );
+        }
+
+        $statement->execute([
+            'setting_key' => commerce_payment_setting_key((string) $planKey, 'url'),
+            'setting_value' => $url,
+        ]);
+        $statement->execute([
+            'setting_key' => commerce_payment_setting_key((string) $planKey, 'enabled'),
+            'setting_value' => $enabled ? '1' : '0',
+        ]);
+    }
+    $pdo->commit();
+
+    audit_admin_action($pdo, 'payment_packs_updated', 'settings', 'gammal_tech');
+    set_admin_flash('success', 'Configuration des packs Gammal Tech enregistree.');
+}
+
+function admin_load_payment_packs(PDO $pdo): array
+{
+    $packs = [];
+    foreach (commerce_payment_plans() as $planKey => $plan) {
+        $packs[$planKey] = [
+            'label' => (string) $plan['label'],
+            'description' => (string) $plan['description'],
+            'amount' => commerce_money((int) $plan['amount_cents']),
+            'url' => trim((string) get_setting(
+                $pdo,
+                commerce_payment_setting_key((string) $planKey, 'url'),
+                '',
+            )),
+            'enabled' => (string) get_setting(
+                $pdo,
+                commerce_payment_setting_key((string) $planKey, 'enabled'),
+                '0',
+            ) === '1',
+        ];
+    }
+
+    return $packs;
+}
+
+function admin_approve_gammal_payment(PDO $pdo): void
+{
+    $paymentId = admin_positive_int($_POST['payment_id'] ?? null);
+    $result = commerce_approve_gammal_payment($pdo, $paymentId, current_admin_username());
+    sv_send_email($pdo, 'order_confirmed', (string) $result['email'], [
+        'customer' => ['name' => (string) ($result['display_name'] ?: $result['email'])],
+        'order' => [
+            'reference' => (string) $result['order_reference'],
+            'plan' => (string) $result['plan_label'],
+            'amount' => commerce_money((int) $result['amount_cents'], (string) $result['currency']),
+        ],
+        'license' => ['code' => (string) ($result['activation_code'] ?? '')],
+        'account_url' => smartvision_public_base_url() . '/account/?section=licenses',
+    ]);
+    sv_send_admin_notification($pdo, 'admin_notification_order_created', [
+        'Commande' => (string) $result['order_reference'],
+        'Transaction' => (string) $result['txn'],
+        'Email client' => (string) $result['email'],
+        'Pack' => (string) $result['plan_label'],
+        'Validation' => current_admin_username(),
+    ], '/admin/?page=orders');
+    audit_admin_action($pdo, 'gammal_payment_approved', 'commerce_payment', (string) $paymentId, [
+        'txn' => (string) $result['txn'],
+    ]);
+    set_admin_flash('success', 'Paiement approuve et licence creee.');
+}
+
+function admin_reject_gammal_payment(PDO $pdo): void
+{
+    $paymentId = admin_positive_int($_POST['payment_id'] ?? null);
+    commerce_reject_gammal_payment($pdo, $paymentId, current_admin_username());
+    audit_admin_action($pdo, 'gammal_payment_rejected', 'commerce_payment', (string) $paymentId);
+    set_admin_flash('success', 'Paiement rejete. Aucune licence n a ete creee.');
+}
+
+function admin_save_email_settings(PDO $pdo): void
+{
+    $settings = [
+        'external_services_enabled' => (string) ($_POST['external_services_enabled'] ?? '0') === '1' ? '1' : '0',
+        'smtp_enabled' => (string) ($_POST['smtp_enabled'] ?? '0') === '1' ? '1' : '0',
+        'smtp_host' => smartvision_text_substr(trim((string) ($_POST['smtp_host'] ?? '')), 0, 190),
+        'smtp_port' => (string) admin_positive_int($_POST['smtp_port'] ?? 465, 65535),
+        'smtp_secure' => in_array((string) ($_POST['smtp_secure'] ?? ''), ['ssl', 'tls'], true)
+            ? (string) $_POST['smtp_secure']
+            : 'ssl',
+        'smtp_user' => smartvision_text_substr(trim((string) ($_POST['smtp_user'] ?? '')), 0, 255),
+        'smtp_from_email' => strtolower(trim((string) ($_POST['smtp_from_email'] ?? ''))),
+        'smtp_from_name' => smartvision_text_substr(trim((string) ($_POST['smtp_from_name'] ?? 'SmartVision')), 0, 120),
+        'smtp_reply_to' => strtolower(trim((string) ($_POST['smtp_reply_to'] ?? ''))),
+        'admin_notification_email' => strtolower(trim((string) ($_POST['admin_notification_email'] ?? ''))),
+    ];
+    foreach (['smtp_from_email', 'smtp_reply_to', 'admin_notification_email'] as $emailKey) {
+        if ($settings[$emailKey] !== '' && !filter_var($settings[$emailKey], FILTER_VALIDATE_EMAIL)) {
+            throw new InvalidArgumentException('Adresse email invalide dans la configuration SMTP.');
+        }
+    }
+    if ($settings['smtp_host'] === '') {
+        throw new InvalidArgumentException('Le serveur SMTP est obligatoire.');
+    }
+
+    $statement = $pdo->prepare(
+        "INSERT INTO app_settings (setting_key, setting_value)
+         VALUES (:setting_key, :setting_value)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)"
+    );
+    $pdo->beginTransaction();
+    foreach ($settings as $key => $value) {
+        $statement->execute(['setting_key' => $key, 'setting_value' => $value]);
+    }
+    $pdo->commit();
+    audit_admin_action($pdo, 'email_settings_updated', 'settings', 'smtp');
+    set_admin_flash('success', 'Configuration email enregistree. Le mot de passe reste dans le fichier prive.');
+}
+
+function admin_save_email_template(PDO $pdo): void
+{
+    $templateId = admin_positive_int($_POST['template_id'] ?? null);
+    $subject = smartvision_text_substr(trim((string) ($_POST['subject_template'] ?? '')), 0, 255);
+    $title = smartvision_text_substr(trim((string) ($_POST['title_template'] ?? '')), 0, 255);
+    $intro = smartvision_text_substr(trim((string) ($_POST['intro_html'] ?? '')), 0, 10000);
+    $body = smartvision_text_substr(trim((string) ($_POST['body_html'] ?? '')), 0, 30000);
+    $footer = smartvision_text_substr(trim((string) ($_POST['footer_html'] ?? '')), 0, 10000);
+    if ($subject === '' || $title === '') {
+        throw new InvalidArgumentException('Le sujet et le titre du template sont obligatoires.');
+    }
+    $pdo->prepare(
+        "UPDATE email_templates
+         SET subject_template = :subject, title_template = :title, intro_html = :intro,
+             body_html = :body, footer_html = :footer, is_active = :is_active, updated_at = NOW()
+         WHERE id = :id"
+    )->execute([
+        'subject' => $subject,
+        'title' => $title,
+        'intro' => $intro,
+        'body' => $body,
+        'footer' => $footer,
+        'is_active' => isset($_POST['is_active']) ? 1 : 0,
+        'id' => $templateId,
+    ]);
+    audit_admin_action($pdo, 'email_template_updated', 'email_template', (string) $templateId);
+    set_admin_flash('success', 'Template email enregistre.');
+}
+
+function admin_send_test_email(PDO $pdo): void
+{
+    $recipient = strtolower(trim((string) ($_POST['test_recipient'] ?? '')));
+    if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+        throw new InvalidArgumentException('Adresse de test invalide.');
+    }
+    $status = sv_send_email($pdo, 'admin_notification_generic', $recipient, [
+        'event' => [
+            'title' => 'Test email SmartVision',
+            'message' => 'Ce message valide le rendu du template et la configuration SMTP.',
+        ],
+        'admin_event' => [
+            'Environnement' => (string) (getenv('SMARTVISION_ENV') ?: 'production'),
+            'Date' => gmdate('Y-m-d H:i:s') . ' UTC',
+        ],
+        'admin_url' => smartvision_public_base_url() . '/admin/?page=emails',
+    ]);
+    set_admin_flash(
+        $status === 'sent' ? 'success' : 'error',
+        $status === 'sent'
+            ? 'Email de test envoye.'
+            : 'Email journalise avec le statut ' . $status . '. Verifiez la configuration et les logs.',
+    );
+}
+
+function admin_load_email_admin(PDO $pdo): array
+{
+    sv_mail_ensure_schema($pdo);
+    $config = sv_mail_config($pdo);
+    $templates = $pdo->query(
+        "SELECT * FROM email_templates ORDER BY category, sort_order, id"
+    )->fetchAll();
+    $logs = $pdo->query(
+        "SELECT id, email_type, recipient_email, subject, status, error_message, provider, template_key, created_at
+         FROM email_logs ORDER BY id DESC LIMIT 80"
+    )->fetchAll();
+    return [
+        'config' => $config,
+        'password_configured' => $config['password'] !== '',
+        'templates' => $templates,
+        'logs' => $logs,
+    ];
 }
 
 function admin_revoke_code(PDO $pdo): void
@@ -1108,7 +1333,7 @@ function render_admin_login(?string $error): void
 {
     $configured = admin_auth_is_configured();
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=3"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=4"></head>
 <body class="admin-login-body"><main class="admin-login-panel">
     <a class="admin-brand" href="/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
     <h1>Administration</h1><p>Commandes, licences et appareils SmartVision.</p>
@@ -1134,6 +1359,9 @@ function render_admin_dashboard(
     array $notifications,
     array $messages,
     array $serverStats,
+    array $paymentPacks,
+    array $gammalPayments,
+    array $emailAdmin,
     ?array $flash,
     ?array $generatedCode,
     string $query,
@@ -1145,6 +1373,8 @@ function render_admin_dashboard(
         'orders' => ['Commandes', 'Commandes, paiements test et codes generes.'],
         'customers' => ['Clients', 'Comptes clients et historique d achat.'],
         'licenses' => ['Licences', 'Generation manuelle et gestion des codes SmartVision.'],
+        'payments' => ['Paiements', 'Packs Gammal Tech et transactions en attente de validation.'],
+        'emails' => ['Emails', 'Configuration SMTP, templates transactionnels et journal des envois.'],
         'devices' => ['Appareils', 'TV associees, essais, licences et configuration Xtream.'],
         'notifications' => ['Notifications', 'Messages envoyes vers toutes les TV ou vers des cibles precises.'],
         'messages' => ['Messages clients', 'Demandes envoyees depuis le formulaire de contact.'],
@@ -1154,7 +1384,7 @@ function render_admin_dashboard(
     ];
     $heading = $pages[$page] ?? $pages['overview'];
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=3"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=4"></head>
 <body class="admin-body">
 <aside class="admin-sidebar">
     <a class="admin-brand" href="/admin/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
@@ -1202,6 +1432,152 @@ function render_admin_dashboard(
         <?php if ($codes === []): ?><tr><td colspan="10" class="admin-empty">Aucun code licence.</td></tr><?php endif; ?>
         <?php foreach ($codes as $code): ?><tr data-code-id="<?= (int) $code['id'] ?>" data-label="<?= admin_escape($code['label'] ?: '') ?>"><td><strong class="license-code"><?= admin_escape((string) ($code['activation_code'] ?: '#' . $code['id'])) ?></strong><small>Genere <?= admin_escape($code['created_at']) ?></small></td><td><span class="admin-state <?= admin_escape($code['license_type'] ?: 'manual') ?>"><?= admin_escape($code['license_type'] ?: 'manual') ?></span><small><?= admin_escape($code['activation_type'] ?: '-') ?></small></td><td><?= admin_escape($code['label'] ?: '-') ?></td><td><strong><?= admin_escape($code['assigned_public_device_code'] ?: '-') ?></strong><small><?= admin_escape($code['device_name'] ?: $code['assigned_device_id'] ?: '-') ?></small></td><td><?= (int) $code['used_devices'] ?> / <?= (int) $code['max_devices'] ?><small>Derniere: <?= admin_escape($code['last_used_at'] ?: '-') ?></small></td><td><?= (int) $code['duration_days'] ?> jours</td><td><?= admin_escape($code['activation_expires_at'] ?: $code['valid_until'] ?: '-') ?></td><td><span class="admin-state <?= admin_escape($code['status']) ?>"><?= admin_escape($code['status']) ?></span><small><?= admin_escape($code['device_status'] ?: '-') ?></small></td><td><?= admin_escape($code['created_by'] ?: '-') ?></td><td class="admin-actions"><form method="post"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_code_status"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><input type="hidden" name="status" value="<?= $code['status'] === 'active' ? 'disabled' : 'active' ?>"><button class="admin-button compact secondary" type="submit"><?= $code['status'] === 'active' ? 'Desactiver' : 'Reactiver' ?></button></form><?php if ($code['status'] !== 'expired'): ?><form method="post" data-confirm="Marquer cette licence comme expiree ?"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_code_status"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><input type="hidden" name="status" value="expired"><button class="admin-button compact secondary" type="submit">Expirer</button></form><?php endif; ?><?php if ((int) $code['used_devices'] > 0): ?><form method="post" data-confirm="Revoquer ce code et expirer ses appareils ?"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="revoke_code"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><button class="admin-button compact danger" type="submit">Revoquer</button></form><?php elseif (!str_starts_with((string) $code['created_by'], 'customer:')): ?><form method="post" data-confirm="Supprimer ce code inutilise ?"><input type="hidden" name="redirect_page" value="licenses"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="delete_code"><input type="hidden" name="code_id" value="<?= (int) $code['id'] ?>"><button class="admin-button compact danger" type="submit">Supprimer</button></form><?php endif; ?></td></tr><?php endforeach; ?>
         </tbody></table></div><?= admin_render_pagination($codesPagination, $page, $query) ?></section>
+        <?php endif; ?>
+
+        <?php if ($page === 'payments'): ?>
+        <section class="admin-panel payment-pack-panel" id="payments">
+            <div class="admin-panel-heading">
+                <div>
+                    <h2>Packs Gammal Tech</h2>
+                    <p>Configurez un lien HTTPS Gammal Tech par offre. Un pack desactive ne peut pas etre commande.</p>
+                </div>
+            </div>
+            <form method="post" class="payment-pack-form">
+                <input type="hidden" name="redirect_page" value="payments">
+                <input type="hidden" name="action" value="save_payment_packs">
+                <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                <div class="payment-pack-grid">
+                    <?php foreach ($paymentPacks as $packKey => $pack): ?>
+                    <article class="payment-pack-card">
+                        <div class="payment-pack-heading">
+                            <div><strong><?= admin_escape($pack['label']) ?></strong><span><?= admin_escape($pack['amount']) ?></span></div>
+                            <label class="payment-pack-toggle"><input type="checkbox" name="payment_enabled[<?= admin_escape((string) $packKey) ?>]" value="1"<?= $pack['enabled'] ? ' checked' : '' ?>> Actif</label>
+                        </div>
+                        <p><?= admin_escape($pack['description']) ?></p>
+                        <label>Lien de paiement Gammal Tech
+                            <input name="payment_url[<?= admin_escape((string) $packKey) ?>]" type="url" maxlength="1000" placeholder="https://...gammal.tech/..." value="<?= admin_escape($pack['url']) ?>">
+                        </label>
+                    </article>
+                    <?php endforeach; ?>
+                </div>
+                <div class="payment-pack-actions">
+                    <p>Les paiements Gammal Tech doivent etre approuves et leur callback marchand configure par Gammal Tech avant la mise en production.</p>
+                    <button class="admin-button primary" type="submit">Enregistrer les packs</button>
+                </div>
+            </form>
+        </section>
+        <section class="admin-panel" id="gammal-payment-reviews">
+            <div class="admin-panel-heading">
+                <div>
+                    <h2>Retours Gammal Tech</h2>
+                    <p>Une licence n’est créée qu’après validation administrateur tant que la vérification serveur Gammal n’est pas disponible.</p>
+                </div>
+            </div>
+            <div class="admin-table-wrap"><table>
+                <thead><tr><th>Transaction</th><th>Client</th><th>Pack</th><th>Montants Gammal</th><th>État</th><th>Date</th><th>Actions</th></tr></thead>
+                <tbody>
+                <?php if ($gammalPayments === []): ?><tr><td colspan="7" class="admin-empty">Aucun retour de paiement enregistré.</td></tr><?php endif; ?>
+                <?php foreach ($gammalPayments as $payment): ?>
+                <tr>
+                    <td><strong><?= admin_escape($payment['txn']) ?></strong><small><?= admin_escape($payment['order_reference'] ?: '-') ?></small></td>
+                    <td><?= admin_escape($payment['display_name'] ?: $payment['email']) ?><small><?= admin_escape($payment['email']) ?></small></td>
+                    <td><?= admin_escape($payment['plan_label']) ?><small>Prix client <?= commerce_money((int) $payment['amount_cents'], (string) $payment['currency']) ?></small></td>
+                    <td><?= commerce_money((int) $payment['reported_amount_cents'], (string) $payment['currency']) ?><small>Attendu <?= commerce_money((int) $payment['expected_amount_cents'], (string) $payment['currency']) ?></small></td>
+                    <td><span class="admin-state <?= admin_escape($payment['verification_status']) ?>"><?= admin_escape($payment['verification_status']) ?></span><small>Commande <?= admin_escape($payment['order_status'] ?: '-') ?></small></td>
+                    <td><?= admin_escape($payment['created_at']) ?><small><?= admin_escape($payment['reviewed_by'] ?: '-') ?></small></td>
+                    <td class="admin-actions">
+                        <?php if ($payment['verification_status'] === 'pending_review'): ?>
+                        <form method="post" data-confirm="Confirmer ce paiement et générer la licence ?">
+                            <input type="hidden" name="redirect_page" value="payments">
+                            <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                            <input type="hidden" name="action" value="approve_gammal_payment">
+                            <input type="hidden" name="payment_id" value="<?= (int) $payment['id'] ?>">
+                            <button class="admin-button compact primary" type="submit">Approuver</button>
+                        </form>
+                        <form method="post" data-confirm="Rejeter ce retour de paiement sans créer de licence ?">
+                            <input type="hidden" name="redirect_page" value="payments">
+                            <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                            <input type="hidden" name="action" value="reject_gammal_payment">
+                            <input type="hidden" name="payment_id" value="<?= (int) $payment['id'] ?>">
+                            <button class="admin-button compact danger" type="submit">Rejeter</button>
+                        </form>
+                        <?php else: ?><span class="muted">Traité</span><?php endif; ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table></div>
+        </section>
+        <?php endif; ?>
+
+        <?php if ($page === 'emails'):
+            $mailConfig = $emailAdmin['config'];
+        ?>
+        <section class="admin-panel">
+            <div class="admin-panel-heading"><div><h2>Configuration SMTP HostCreed</h2><p>Le mot de passe n’est jamais stocké dans la base ni affiché ici.</p></div></div>
+            <form method="post" class="generate-code-form generate-code-form-wide">
+                <input type="hidden" name="redirect_page" value="emails">
+                <input type="hidden" name="action" value="save_email_settings">
+                <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                <label>Services externes<select name="external_services_enabled"><option value="0"<?= empty($mailConfig['external_enabled']) ? ' selected' : '' ?>>Désactivés</option><option value="1"<?= !empty($mailConfig['external_enabled']) ? ' selected' : '' ?>>Activés</option></select></label>
+                <label>SMTP<select name="smtp_enabled"><option value="0"<?= empty($mailConfig['smtp_enabled']) ? ' selected' : '' ?>>Désactivé</option><option value="1"<?= !empty($mailConfig['smtp_enabled']) ? ' selected' : '' ?>>Activé</option></select></label>
+                <label>Hôte<input name="smtp_host" value="<?= admin_escape($mailConfig['host']) ?>" required></label>
+                <label>Port<input name="smtp_port" type="number" min="1" max="65535" value="<?= (int) $mailConfig['port'] ?>" required></label>
+                <label>Sécurité<select name="smtp_secure"><option value="ssl"<?= $mailConfig['secure'] === 'ssl' ? ' selected' : '' ?>>SSL</option><option value="tls"<?= $mailConfig['secure'] === 'tls' ? ' selected' : '' ?>>STARTTLS</option></select></label>
+                <label>Utilisateur SMTP<input name="smtp_user" value="<?= admin_escape($mailConfig['username']) ?>"></label>
+                <label>Email expéditeur<input name="smtp_from_email" type="email" value="<?= admin_escape($mailConfig['from_email']) ?>"></label>
+                <label>Nom expéditeur<input name="smtp_from_name" value="<?= admin_escape($mailConfig['from_name']) ?>"></label>
+                <label>Reply-To<input name="smtp_reply_to" type="email" value="<?= admin_escape($mailConfig['reply_to']) ?>"></label>
+                <label>Email administrateur<input name="admin_notification_email" type="email" value="<?= admin_escape($mailConfig['admin_email']) ?>"></label>
+                <button class="admin-button primary" type="submit">Enregistrer</button>
+            </form>
+            <p class="muted">Mot de passe SMTP : <?= !empty($emailAdmin['password_configured']) ? 'configuré dans le fichier privé' : 'absent — ajoutez SMTP_PASSWORD dans local.properties en dev et dans la configuration privée serveur avant production' ?>.</p>
+            <form method="post" class="admin-filter-row">
+                <input type="hidden" name="redirect_page" value="emails">
+                <input type="hidden" name="action" value="send_test_email">
+                <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                <label>Destinataire test<input name="test_recipient" type="email" required></label>
+                <button class="admin-button secondary" type="submit">Tester l’email</button>
+            </form>
+        </section>
+        <section class="admin-panel">
+            <div class="admin-panel-heading"><div><h2>Templates</h2><p>Les variables entre doubles accolades sont conservées lors du rendu.</p></div></div>
+            <div class="slide-admin-grid">
+            <?php foreach ($emailAdmin['templates'] as $template): ?>
+                <form method="post" class="slide-card">
+                    <input type="hidden" name="redirect_page" value="emails">
+                    <input type="hidden" name="action" value="save_email_template">
+                    <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                    <input type="hidden" name="template_id" value="<?= (int) $template['id'] ?>">
+                    <strong><?= admin_escape($template['name']) ?></strong><small><?= admin_escape($template['template_key']) ?></small>
+                    <label>Sujet<input name="subject_template" maxlength="255" value="<?= admin_escape($template['subject_template']) ?>" required></label>
+                    <label>Titre<input name="title_template" maxlength="255" value="<?= admin_escape($template['title_template']) ?>" required></label>
+                    <label>Introduction HTML<textarea name="intro_html"><?= admin_escape($template['intro_html']) ?></textarea></label>
+                    <label>Corps HTML<textarea name="body_html"><?= admin_escape($template['body_html']) ?></textarea></label>
+                    <label>Pied HTML<textarea name="footer_html"><?= admin_escape($template['footer_html']) ?></textarea></label>
+                    <label><input name="is_active" type="checkbox" value="1"<?= (int) $template['is_active'] === 1 ? ' checked' : '' ?>> Template actif</label>
+                    <button class="admin-button primary" type="submit">Enregistrer le template</button>
+                </form>
+            <?php endforeach; ?>
+            </div>
+        </section>
+        <section class="admin-panel">
+            <div class="admin-panel-heading"><div><h2>Journal email</h2><p>80 dernières tentatives. En local, un SMTP désactivé produit volontairement le statut pending.</p></div></div>
+            <div class="admin-table-wrap"><table>
+                <thead><tr><th>Date</th><th>Type</th><th>Destinataire</th><th>Sujet</th><th>Statut</th><th>Erreur</th></tr></thead>
+                <tbody>
+                <?php if ($emailAdmin['logs'] === []): ?><tr><td colspan="6" class="admin-empty">Aucun email journalisé.</td></tr><?php endif; ?>
+                <?php foreach ($emailAdmin['logs'] as $log): ?><tr>
+                    <td><?= admin_escape($log['created_at']) ?></td>
+                    <td><?= admin_escape($log['email_type']) ?><small><?= admin_escape($log['template_key']) ?></small></td>
+                    <td><?= admin_escape($log['recipient_email'] ?: '-') ?></td>
+                    <td><?= admin_escape($log['subject'] ?: '-') ?></td>
+                    <td><span class="admin-state <?= admin_escape($log['status']) ?>"><?= admin_escape($log['status']) ?></span></td>
+                    <td><small><?= admin_escape($log['error_message'] ?: '-') ?></small></td>
+                </tr><?php endforeach; ?>
+                </tbody>
+            </table></div>
+        </section>
         <?php endif; ?>
 
         <?php if ($page === 'devices'): ?>

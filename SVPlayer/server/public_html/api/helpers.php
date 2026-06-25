@@ -6,6 +6,12 @@ function apply_api_headers(): void
     $allowedOrigins = [
         'https://smartvisions.net',
     ];
+    if ((string) getenv('SMARTVISION_ENV') === 'development') {
+        $localOrigin = rtrim(trim((string) getenv('SMARTVISION_PUBLIC_BASE_URL')), '/');
+        if ($localOrigin !== '') {
+            $allowedOrigins[] = $localOrigin;
+        }
+    }
 
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
     if (in_array($origin, $allowedOrigins, true)) {

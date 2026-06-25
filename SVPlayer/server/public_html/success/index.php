@@ -10,7 +10,7 @@ session_name('smartvision_customer');
 session_set_cookie_params([
     'lifetime' => 0,
     'path' => '/',
-    'secure' => true,
+    'secure' => smartvision_cookie_secure(),
     'httponly' => true,
     'samesite' => 'Lax',
 ]);
@@ -101,7 +101,7 @@ $code = is_array($order) ? (string) ($order['activation_code'] ?? '') : '';
             </div>
 
             <div class="success-actions">
-                <a class="button button-primary" href="/account/?order=<?= sv_h((string) $order['order_reference']) ?>">Accéder à mon espace client</a>
+                <a class="button button-primary" href="/account/?section=licenses&amp;order=<?= sv_h((string) $order['order_reference']) ?>">Accéder à mon espace client</a>
                 <a class="button button-outline" href="/activate/">Activer une TV</a>
             </div>
         <?php endif; ?>

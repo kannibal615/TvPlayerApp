@@ -4,13 +4,14 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/api/config.php';
 require_once dirname(__DIR__) . '/api/helpers.php';
 require_once dirname(__DIR__) . '/api/commerce.php';
+require_once dirname(__DIR__) . '/api/mail_service.php';
 require_once dirname(__DIR__) . '/_includes/site_layout.php';
 
 session_name('smartvision_customer');
 session_set_cookie_params([
     'lifetime' => 0,
     'path' => '/',
-    'secure' => true,
+    'secure' => smartvision_cookie_secure(),
     'httponly' => true,
     'samesite' => 'Lax',
 ]);
@@ -21,7 +22,7 @@ header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: strict-origin-when-cross-origin');
-header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-src 'self' https://pagead2.googlesyndication.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'");
+header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-src 'self' https://api.gammal.tech https://pagead2.googlesyndication.com; connect-src 'self' https://api.gammal.tech https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; img-src 'self' data: https:; frame-src https://api.gammal.tech https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self' https://api.gammal.tech");
 
 function account_escape(mixed $value): string
 {
@@ -53,7 +54,7 @@ function account_current_user(PDO $pdo): ?array
     }
 
     $statement = $pdo->prepare(
-        "SELECT id, email, display_name, status, created_at, last_login_at
+        "SELECT id, email, display_name, status, email_verified_at, created_at, last_login_at
          FROM site_users WHERE id = :id LIMIT 1"
     );
     $statement->execute(['id' => $userId]);
@@ -77,14 +78,31 @@ function account_consume_flash(): ?array
     return is_array($flash) ? $flash : null;
 }
 
-function account_redirect(string $planKey = 'year_1', ?string $highlight = null): never
+function account_redirect(?string $highlight = null, bool $toLicenses = false): never
 {
-    $url = '/account/?plan=' . rawurlencode($planKey);
+    $params = [];
     if ($highlight !== null && $highlight !== '') {
-        $url .= '&order=' . rawurlencode($highlight);
+        $params['order'] = $highlight;
     }
+    if ($toLicenses) {
+        $params['section'] = 'buy-license';
+    }
+    $url = '/account/' . ($params !== [] ? '?' . http_build_query($params) : '');
     header('Location: ' . $url, true, 303);
     exit;
+}
+
+function account_section(mixed $value): string
+{
+    $section = is_string($value) ? $value : 'licenses';
+    return in_array($section, ['licenses', 'buy-license', 'activate', 'orders', 'download', 'profile'], true)
+        ? $section
+        : 'licenses';
+}
+
+function account_section_url(string $section): string
+{
+    return '/account/?section=' . rawurlencode(account_section($section));
 }
 
 function account_success_redirect(string $orderReference, string $planKey): never
@@ -118,6 +136,13 @@ function account_plan_ui(string $key): array
             'description' => 'Licence permanente pour un appareil.',
             'badge' => 'Meilleure valeur',
         ],
+        'simulation' => [
+            'title' => 'Abonnement test',
+            'price' => '0 €',
+            'payment' => 'Simulation Gammal Tech',
+            'description' => 'Crée une commande et une licence test valable 1 jour.',
+            'badge' => 'DEV uniquement',
+        ],
     ];
 
     return $map[$key] ?? $map['year_1'];
@@ -137,21 +162,31 @@ function account_status_label(string $status): string
 }
 
 $pdo = db();
+sv_mail_ensure_schema($pdo);
 $plans = commerce_plans();
-$planKey = commerce_plan_key($_REQUEST['plan'] ?? $_SESSION['selected_plan'] ?? 'year_1');
-$_SESSION['selected_plan'] = $planKey;
+$planKey = commerce_plan_key($_REQUEST['plan'] ?? 'year_1');
 $error = null;
+$authMode = ($_GET['mode'] ?? '') === 'login' ? 'login' : 'register';
+if (($_GET['intent'] ?? '') === 'license') {
+    $_SESSION['customer_intent'] = 'license';
+    if ((int) ($_SESSION['site_user_id'] ?? 0) <= 0) {
+        $authMode = 'login';
+    }
+}
 
 try {
     if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         account_assert_csrf();
         $action = (string) ($_POST['action'] ?? '');
+        if (in_array($action, ['login', 'register'], true)) {
+            $authMode = $action;
+        }
         $planKey = commerce_plan_key($_POST['plan'] ?? $planKey);
-        $_SESSION['selected_plan'] = $planKey;
 
         if ($action === 'logout') {
             $_SESSION = [];
             session_destroy();
+            sv_set_customer_header_state(false);
             header('Location: /account/', true, 303);
             exit;
         }
@@ -169,8 +204,10 @@ try {
 
             try {
                 $insert = $pdo->prepare(
-                    "INSERT INTO site_users (email, display_name, password_hash, status, created_at, updated_at)
-                     VALUES (:email, :display_name, :password_hash, 'active', NOW(), NOW())"
+                    "INSERT INTO site_users
+                        (email, display_name, password_hash, status, email_verified_at, created_at, updated_at)
+                     VALUES
+                        (:email, :display_name, :password_hash, 'active', NULL, NOW(), NOW())"
                 );
                 $insert->execute([
                     'email' => $email,
@@ -186,8 +223,18 @@ try {
 
             session_regenerate_id(true);
             $_SESSION['site_user_id'] = (int) $pdo->lastInsertId();
-            account_flash('success', 'Compte créé. Choisissez votre licence puis confirmez la commande.');
-            account_redirect($planKey);
+            $registeredName = $displayName ?: (string) strstr($email, '@', true);
+            sv_create_email_verification($pdo, (int) $_SESSION['site_user_id'], $email, $registeredName);
+            sv_send_admin_notification($pdo, 'admin_notification_account_created', [
+                'Client' => $registeredName,
+                'Email' => $email,
+                'Date' => gmdate('Y-m-d H:i:s') . ' UTC',
+            ], '/admin/?page=customers');
+            sv_set_customer_header_state(true);
+            account_flash('success', 'Compte créé. Confirmez votre adresse email avant de commander.');
+            $toLicenses = ($_SESSION['customer_intent'] ?? '') === 'license';
+            unset($_SESSION['customer_intent']);
+            account_redirect(null, $toLicenses);
         }
 
         if ($action === 'login') {
@@ -208,16 +255,62 @@ try {
 
             session_regenerate_id(true);
             $_SESSION['site_user_id'] = (int) $found['id'];
+            sv_set_customer_header_state(true);
             $pdo->prepare('UPDATE site_users SET last_login_at = NOW(), updated_at = NOW() WHERE id = :id')
                 ->execute(['id' => $_SESSION['site_user_id']]);
             account_flash('success', 'Connexion réussie.');
-            account_redirect($planKey);
+            $toLicenses = ($_SESSION['customer_intent'] ?? '') === 'license';
+            unset($_SESSION['customer_intent']);
+            account_redirect(null, $toLicenses);
+        }
+
+        if ($action === 'start_payment') {
+            $user = account_current_user($pdo);
+            if ($user === null) {
+                $_SESSION['customer_intent'] = 'license';
+                header('Location: /account/?mode=login&intent=license', true, 303);
+                exit;
+            }
+            if (empty($user['email_verified_at'])) {
+                throw new RuntimeException('Confirmez votre adresse email avant de commander.');
+            }
+
+            $intent = commerce_create_payment_intent($pdo, (int) $user['id'], $planKey);
+            header('Location: ' . (string) $intent['checkout_url'], true, 303);
+            exit;
+        }
+
+        if ($action === 'resend_verification') {
+            $user = account_current_user($pdo);
+            if ($user === null) {
+                throw new RuntimeException('Connectez-vous pour renvoyer le message de vérification.');
+            }
+            if (!empty($user['email_verified_at'])) {
+                account_flash('success', 'Votre adresse email est déjà confirmée.');
+                account_redirect();
+            }
+            $lastSentAt = (int) ($_SESSION['verification_email_sent_at'] ?? 0);
+            if ($lastSentAt > time() - 60) {
+                throw new RuntimeException('Patientez une minute avant de demander un nouvel envoi.');
+            }
+            sv_create_email_verification(
+                $pdo,
+                (int) $user['id'],
+                (string) $user['email'],
+                (string) ($user['display_name'] ?: $user['email']),
+            );
+            $_SESSION['verification_email_sent_at'] = time();
+            account_flash('success', 'Un nouveau lien de vérification a été préparé.');
+            account_redirect();
         }
 
         if ($action === 'test_payment') {
             $user = account_current_user($pdo);
             if ($user === null) {
                 throw new RuntimeException('Connectez-vous pour commander.');
+            }
+            if (empty($user['email_verified_at'])) {
+                throw new RuntimeException('Confirmez votre adresse email avant de lancer la simulation.');
             }
             if (($_POST['accept_terms'] ?? '') !== '1') {
                 throw new RuntimeException('Confirmez que la licence concerne uniquement le lecteur SmartVision.');
@@ -239,31 +332,48 @@ try {
 }
 
 $user = account_current_user($pdo);
+sv_set_customer_header_state($user !== null);
+if ($user !== null && ($_SESSION['customer_intent'] ?? '') === 'license') {
+    unset($_SESSION['customer_intent']);
+    header('Location: ' . account_section_url('buy-license'), true, 303);
+    exit;
+}
+$section = account_section($_GET['section'] ?? 'licenses');
 $orders = $user ? commerce_load_customer_orders($pdo, (int) $user['id']) : [];
 $summary = commerce_customer_summary($orders);
 $flash = account_consume_flash();
 $highlightOrder = preg_replace('/[^A-Z0-9-]/', '', strtoupper((string) ($_GET['order'] ?? '')));
-$checkoutToken = (string) ($_SESSION['checkout_token'] ?? '');
-if (!preg_match('/^[a-f0-9]{48}$/', $checkoutToken)) {
-    $checkoutToken = commerce_checkout_token();
-    $_SESSION['checkout_token'] = $checkoutToken;
-}
 $csrf = account_csrf_token();
-$selectedPlan = commerce_plan($planKey);
-$selectedUi = account_plan_ui($planKey);
+$simulationToken = '';
+if ($user !== null && (string) getenv('SMARTVISION_ENV') === 'development') {
+    $simulationToken = (string) ($_SESSION['payment_simulation_token'] ?? '');
+    if (!preg_match('/^[a-f0-9]{48}$/', $simulationToken)) {
+        $simulationToken = commerce_checkout_token();
+        $_SESSION['payment_simulation_token'] = $simulationToken;
+    }
+    $_SESSION['payment_simulation_expires_at'] = time() + 900;
+}
 $manifest = sv_apk_manifest();
 $versionName = trim((string) ($manifest['latest_version_name'] ?? $manifest['version_name'] ?? 'Dernière version'));
+$sectionTitles = [
+    'licenses' => 'Mes licences',
+    'buy-license' => 'Choisir une licence',
+    'activate' => 'Activer une TV',
+    'orders' => 'Commandes',
+    'download' => 'Téléchargement',
+    'profile' => 'Mon compte',
+];
 ?><!doctype html>
 <html lang="fr">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Gérez vos licences, commandes et activations SmartVision.">
-    <title><?= $user ? 'Mon compte' : 'Créer mon compte' ?> | SmartVision</title>
+    <title><?= $user ? account_escape($sectionTitles[$section]) : ($authMode === 'login' ? 'Connexion' : 'Créer mon compte') ?> | SmartVision</title>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3376574358352765" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="/assets/site.css?v=5">
     <link rel="stylesheet" href="/assets/site-overrides.css?v=5">
-    <link rel="stylesheet" href="/assets/account.css?v=5">
+    <link rel="stylesheet" href="/assets/account.css?v=6">
     <link rel="stylesheet" href="/assets/mobile.css?v=5">
 </head>
 <body class="account-page">
@@ -271,16 +381,20 @@ $versionName = trim((string) ($manifest['latest_version_name'] ?? $manifest['ver
 
 <?php if (!$user): ?>
 <main class="auth-shell">
-    <section class="auth-hero-panel">
-        <h1>Achetez une licence, puis activez votre TV.</h1>
-        <p>Créez votre espace client pour retrouver vos codes SmartVision, gérer vos commandes et activer vos appareils Android TV.</p>
-        <div class="auth-legal-box">
-            <strong>Licence logiciel uniquement</strong>
-            <span>SmartVision ne fournit aucun contenu audiovisuel, chaîne, film, série ou playlist.</span>
-        </div>
-    </section>
-
     <section class="auth-form-panel">
+        <?php if ($authMode === 'login'): ?>
+        <h2>Connexion</h2>
+        <p>Accédez à vos licences, commandes et appareils SmartVision.</p>
+        <?php if ($error): ?><div class="form-notice error" role="alert"><?= account_escape($error) ?></div><?php endif; ?>
+        <form method="post" class="stack-form">
+            <input type="hidden" name="csrf_token" value="<?= account_escape($csrf) ?>">
+            <input type="hidden" name="plan" value="<?= account_escape($planKey) ?>">
+            <div class="field"><label for="login-email">Email</label><input id="login-email" name="email" type="email" autocomplete="email" required></div>
+            <div class="field"><label for="login-password">Mot de passe</label><input id="login-password" name="password" type="password" autocomplete="current-password" required></div>
+            <button class="button button-primary" name="action" value="login">Se connecter</button>
+        </form>
+        <p class="auth-switch">Nouveau sur SmartVision ? <a href="/account/?mode=register<?= ($_SESSION['customer_intent'] ?? '') === 'license' ? '&amp;intent=license' : '' ?>">Créer un compte</a></p>
+        <?php else: ?>
         <h2>Créer mon compte</h2>
         <p>Votre licence restera accessible ici après la commande.</p>
         <?php if ($error): ?><div class="form-notice error" role="alert"><?= account_escape($error) ?></div><?php endif; ?>
@@ -292,16 +406,8 @@ $versionName = trim((string) ($manifest['latest_version_name'] ?? $manifest['ver
             <div class="field"><label for="register-password">Mot de passe</label><input id="register-password" name="password" type="password" minlength="8" autocomplete="new-password" required><small>8 caractères minimum.</small></div>
             <button class="button button-primary" name="action" value="register">Créer mon compte et continuer</button>
         </form>
-        <details class="login-disclosure"<?= ($_GET['mode'] ?? '') === 'login' ? ' open' : '' ?>>
-            <summary>J’ai déjà un compte</summary>
-            <form method="post" class="stack-form compact-form">
-                <input type="hidden" name="csrf_token" value="<?= account_escape($csrf) ?>">
-                <input type="hidden" name="plan" value="<?= account_escape($planKey) ?>">
-                <div class="field"><label for="login-email">Email</label><input id="login-email" name="email" type="email" autocomplete="email" required></div>
-                <div class="field"><label for="login-password">Mot de passe</label><input id="login-password" name="password" type="password" autocomplete="current-password" required></div>
-                <button class="button button-outline" name="action" value="login">Se connecter</button>
-            </form>
-        </details>
+        <p class="auth-switch">Vous avez déjà un compte ? <a href="/account/?mode=login<?= ($_SESSION['customer_intent'] ?? '') === 'license' ? '&amp;intent=license' : '' ?>">J’ai déjà un compte</a></p>
+        <?php endif; ?>
     </section>
 </main>
 <?php else: ?>
@@ -311,60 +417,62 @@ $versionName = trim((string) ($manifest['latest_version_name'] ?? $manifest['ver
             <h1>Bonjour <?= account_escape($user['display_name'] ?: $user['email']) ?></h1>
             <p>Gérez vos licences, activez vos appareils et téléchargez la dernière version de SmartVision.</p>
         </div>
-        <div class="dashboard-quick-actions">
-            <a href="#activate-tv"><span class="quick-icon screen"></span>Activer une TV</a>
-            <a href="/download.php"><span class="quick-icon download"></span>Télécharger l’APK</a>
-            <a href="#buy-license"><span class="quick-icon cart"></span>Acheter une licence</a>
-        </div>
     </section>
 
     <?php if ($flash): ?><div class="form-notice <?= account_escape($flash['type'] ?? '') ?>"><?= account_escape($flash['message'] ?? '') ?></div><?php endif; ?>
     <?php if ($error): ?><div class="form-notice error" role="alert"><?= account_escape($error) ?></div><?php endif; ?>
+    <?php if (empty($user['email_verified_at'])): ?>
+    <div class="form-notice warning" role="status">
+        Votre adresse email n’est pas encore confirmée. Les commandes restent bloquées jusqu’à la vérification.
+        <form method="post" class="inline-form">
+            <input type="hidden" name="csrf_token" value="<?= account_escape($csrf) ?>">
+            <button class="mini-button" name="action" value="resend_verification" type="submit">Renvoyer le lien</button>
+        </form>
+    </div>
+    <?php endif; ?>
 
-    <section class="customer-stats" aria-label="Résumé du compte">
+    <!-- <section class="customer-stats" aria-label="Résumé du compte">
         <div><span>Commandes</span><strong><?= (int) $summary['orders'] ?></strong></div>
         <div><span>Licences</span><strong><?= (int) $summary['licenses'] ?></strong></div>
         <div><span>Licences actives</span><strong><?= (int) $summary['active_licenses'] ?></strong></div>
         <div><span>Appareils activés</span><strong><?= (int) $summary['devices'] ?></strong></div>
-    </section>
+    </section> -->
 
     <section class="dashboard-shell">
         <aside class="dashboard-sidebar" aria-label="Navigation espace client">
-            <a href="#licenses" class="active">Mes licences</a>
-            <a href="#activate-tv">Activer une TV</a>
-            <a href="#orders">Commandes</a>
-            <a href="#download">Téléchargement</a>
-            <a href="#account">Compte</a>
-            <div class="legal-mini">
-                <strong>Lecteur légal</strong>
-                <span>SmartVision ne vend aucun contenu. Vous utilisez vos propres sources autorisées.</span>
-                <a href="/legal-iptv-player/">En savoir plus</a>
-            </div>
+            <a href="<?= account_escape(account_section_url('licenses')) ?>"<?= $section === 'licenses' ? ' class="active" aria-current="page"' : '' ?>>Mes licences</a>
+            <a href="<?= account_escape(account_section_url('buy-license')) ?>"<?= $section === 'buy-license' ? ' class="active" aria-current="page"' : '' ?>>Acheter une licence</a>
+            <a href="<?= account_escape(account_section_url('activate')) ?>"<?= $section === 'activate' ? ' class="active" aria-current="page"' : '' ?>>Activer une TV</a>
+            <a href="<?= account_escape(account_section_url('orders')) ?>"<?= $section === 'orders' ? ' class="active" aria-current="page"' : '' ?>>Commandes</a>
+            <a href="<?= account_escape(account_section_url('download')) ?>"<?= $section === 'download' ? ' class="active" aria-current="page"' : '' ?>>Téléchargement</a>
+            <a href="<?= account_escape(account_section_url('profile')) ?>"<?= $section === 'profile' ? ' class="active" aria-current="page"' : '' ?>>Compte</a>
         </aside>
 
         <div class="dashboard-content">
             <nav class="dashboard-tabs" aria-label="Sections du compte">
-                <a href="#licenses">Mes licences</a>
-                <a href="#activate-tv">Activer une TV</a>
-                <a href="#orders">Commandes</a>
-                <a href="#download">Téléchargement</a>
-                <a href="#account">Compte</a>
+                <a href="<?= account_escape(account_section_url('licenses')) ?>"<?= $section === 'licenses' ? ' class="active" aria-current="page"' : '' ?>>Mes licences</a>
+                <a href="<?= account_escape(account_section_url('buy-license')) ?>"<?= $section === 'buy-license' ? ' class="active" aria-current="page"' : '' ?>>Acheter une licence</a>
+                <a href="<?= account_escape(account_section_url('activate')) ?>"<?= $section === 'activate' ? ' class="active" aria-current="page"' : '' ?>>Activer une TV</a>
+                <a href="<?= account_escape(account_section_url('orders')) ?>"<?= $section === 'orders' ? ' class="active" aria-current="page"' : '' ?>>Commandes</a>
+                <a href="<?= account_escape(account_section_url('download')) ?>"<?= $section === 'download' ? ' class="active" aria-current="page"' : '' ?>>Téléchargement</a>
+                <a href="<?= account_escape(account_section_url('profile')) ?>"<?= $section === 'profile' ? ' class="active" aria-current="page"' : '' ?>>Compte</a>
             </nav>
 
+            <?php if ($section === 'licenses'): ?>
             <section class="dashboard-panel" id="licenses">
                 <div class="panel-heading">
                     <div>
                         <h2>Mes licences</h2>
                         <p>Vos codes restent disponibles dans votre compte.</p>
                     </div>
-                    <a class="button button-outline slim-button" href="#buy-license">Acheter une licence</a>
+                    <a class="button button-outline slim-button" href="<?= account_escape(account_section_url('buy-license')) ?>">Acheter une licence</a>
                 </div>
 
                 <?php if ($orders === []): ?>
                     <div class="empty-state license-empty">
                         <strong>Aucune licence pour le moment.</strong>
                         <span>Achetez une licence pour activer votre appareil SmartVision.</span>
-                        <a class="button button-primary" href="#buy-license">Acheter une licence</a>
+                        <a class="button button-primary" href="<?= account_escape(account_section_url('buy-license')) ?>">Acheter une licence</a>
                     </div>
                 <?php else: ?>
                     <div class="license-card-grid">
@@ -382,7 +490,7 @@ $versionName = trim((string) ($manifest['latest_version_name'] ?? $manifest['ver
                                     <span class="state <?= account_escape((string) $order['status']) ?>"><?= account_escape(account_status_label((string) $order['status'])) ?></span>
                                 </div>
                                 <dl>
-                                    <div><dt>Code licence</dt><dd><?php if ($plainCode !== ''): ?><code><?= account_escape($plainCode) ?></code><?php else: ?><?= account_escape($order['code_hint'] ?: 'Indisponible') ?><?php endif; ?></dd></div>
+                                    <div><dt>Code licence</dt><dd><?php if ($plainCode !== ''): ?><strong><?= account_escape($plainCode) ?></strong><?php else: ?><?= account_escape($order['code_hint'] ?: 'Indisponible') ?><?php endif; ?></dd></div>
                                     <div><dt>Achat</dt><dd><?= account_escape((string) $order['created_at']) ?></dd></div>
                                     <div><dt>Expiration</dt><dd><?= account_escape($order['activation_expires_at'] ?: 'Débute à l’activation') ?></dd></div>
                                     <div><dt>Appareil lié</dt><dd><?= $activeDevices ?> / <?= (int) ($order['max_devices'] ?? 1) ?></dd></div>
@@ -396,7 +504,9 @@ $versionName = trim((string) ($manifest['latest_version_name'] ?? $manifest['ver
                     </div>
                 <?php endif; ?>
             </section>
+            <?php endif; ?>
 
+            <?php if ($section === 'buy-license'): ?>
             <section class="dashboard-panel" id="buy-license">
                 <div class="panel-heading">
                     <div>
@@ -404,43 +514,42 @@ $versionName = trim((string) ($manifest['latest_version_name'] ?? $manifest['ver
                         <p>Une activation correspond à un seul appareil. Les paiements uniques ne sont pas des abonnements.</p>
                     </div>
                 </div>
-                <form method="post" class="checkout-layout" id="checkout-form">
-                    <input type="hidden" name="csrf_token" value="<?= account_escape($csrf) ?>">
-                    <input type="hidden" name="checkout_token" value="<?= account_escape($checkoutToken) ?>">
-                    <section class="plan-selector">
-                        <div class="account-plan-grid">
-                            <?php foreach ($plans as $key => $plan):
-                                $ui = account_plan_ui((string) $key);
-                            ?>
-                                <label class="account-plan<?= $key === $planKey ? ' selected' : '' ?><?= !empty($ui['featured']) ? ' featured' : '' ?>">
-                                    <input type="radio" name="plan" value="<?= account_escape($key) ?>" data-plan-label="<?= account_escape($ui['title']) ?>" data-plan-price="<?= account_escape($ui['price']) ?>"<?= $key === $planKey ? ' checked' : '' ?>>
-                                    <?php if (!empty($ui['badge'])): ?><span class="plan-recommended"><?= account_escape($ui['badge']) ?></span><?php endif; ?>
-                                    <strong><?= account_escape($ui['title']) ?></strong>
-                                    <div class="account-plan-price"><?= account_escape($ui['price']) ?></div>
-                                    <p><b><?= account_escape($ui['payment']) ?></b><br><?= account_escape($ui['description']) ?></p>
-                                    <ul><li>1 appareil</li><li>Mises à jour incluses</li><li>Vos propres sources autorisées</li><li>Aucun contenu fourni</li></ul>
-                                </label>
-                            <?php endforeach; ?>
-                        </div>
-                        <div class="license-rule"><strong>Important</strong><span>SmartVision est un lecteur. La licence ne fournit aucune chaîne, film, série, playlist ou contenu tiers.</span></div>
-                    </section>
-
-                    <aside class="order-summary">
-                        <h2>Votre commande</h2>
-                        <dl>
-                            <div><dt>Licence</dt><dd id="summary-plan"><?= account_escape($selectedUi['title']) ?></dd></div>
-                            <div><dt>Paiement</dt><dd><?= account_escape($selectedUi['payment']) ?></dd></div>
-                            <div><dt>Appareils</dt><dd>1</dd></div>
-                        </dl>
-                        <div class="order-total"><span>Total</span><strong id="summary-price"><?= account_escape($selectedUi['price']) ?></strong></div>
-                        <div class="test-payment-note"><strong>Paiement de test</strong><span>Aucun montant réel ne sera débité. Le code généré est utilisable.</span></div>
-                        <label class="terms-check"><input type="checkbox" name="accept_terms" value="1" required><span>Je confirme acheter une licence du lecteur SmartVision, sans contenu inclus.</span></label>
-                        <button class="button button-primary" name="action" value="test_payment">Valider le paiement test</button>
-                        <small class="secure-note">Prix et durée vérifiés côté serveur. Une seule licence sera générée.</small>
-                    </aside>
-                </form>
+                <div class="account-plan-grid">
+                    <?php foreach ($plans as $key => $plan):
+                        $ui = account_plan_ui((string) $key);
+                        $isSimulation = !empty($plan['simulation']);
+                        $paymentUrl = $isSimulation && $simulationToken !== ''
+                            ? '/payment-callback/?simulation_token=' . rawurlencode($simulationToken)
+                            : commerce_payment_url($pdo, (string) $key);
+                        $paymentAvailable = $paymentUrl !== '' && !empty($user['email_verified_at']);
+                    ?>
+                        <article class="account-plan<?= $isSimulation ? ' simulation-plan' : '' ?>">
+                            <?php if (!empty($ui['badge'])): ?><span class="plan-recommended"><?= account_escape($ui['badge']) ?></span><?php endif; ?>
+                            <strong><?= account_escape($ui['title']) ?></strong>
+                            <div class="account-plan-price"><?= account_escape($ui['price']) ?></div>
+                            <p><b><?= account_escape($ui['payment']) ?></b><br><?= account_escape($ui['description']) ?></p>
+                            <ul><li>1 appareil</li><li>Mises à jour incluses</li><li>Vos propres sources autorisées</li><li>Aucun contenu fourni</li></ul>
+                            <?php if ($paymentAvailable): ?>
+                                <?php if ($isSimulation): ?>
+                                <a class="button button-primary plan-order-action" href="<?= account_escape($paymentUrl) ?>">Simuler le paiement</a>
+                                <?php else: ?>
+                                <form method="post" class="plan-order-form">
+                                    <input type="hidden" name="csrf_token" value="<?= account_escape($csrf) ?>">
+                                    <input type="hidden" name="plan" value="<?= account_escape((string) $key) ?>">
+                                    <button class="button button-primary plan-order-action" name="action" value="start_payment" type="submit">Commander</button>
+                                </form>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <span class="button button-primary plan-order-action disabled" aria-disabled="true">Commander</span>
+                            <?php endif; ?>
+                            <?php if (!$paymentAvailable): ?><small class="payment-unavailable"><?= empty($user['email_verified_at']) ? 'Confirmez votre email pour commander.' : 'Lien de paiement non configuré.' ?></small><?php endif; ?>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
             </section>
+            <?php endif; ?>
 
+            <?php if ($section === 'activate'): ?>
             <section class="dashboard-panel split-panel" id="activate-tv">
                 <div>
                     <h2>Activer mon appareil</h2>
@@ -460,7 +569,9 @@ $versionName = trim((string) ($manifest['latest_version_name'] ?? $manifest['ver
                     <button class="button button-primary" type="submit">Activer cet appareil</button>
                 </form>
             </section>
+            <?php endif; ?>
 
+            <?php if ($section === 'orders'): ?>
             <section class="dashboard-panel" id="orders">
                 <div class="panel-heading">
                     <div><h2>Commandes</h2><p>Historique de vos achats SmartVision.</p></div>
@@ -492,7 +603,9 @@ $versionName = trim((string) ($manifest['latest_version_name'] ?? $manifest['ver
                     </div>
                 <?php endif; ?>
             </section>
+            <?php endif; ?>
 
+            <?php if ($section === 'download'): ?>
             <section class="dashboard-panel split-panel" id="download">
                 <div>
                     <h2>Téléchargement</h2>
@@ -506,12 +619,15 @@ $versionName = trim((string) ($manifest['latest_version_name'] ?? $manifest['ver
                     <a class="button button-outline" href="/contact/">Guide d’installation</a>
                 </div>
             </section>
+            <?php endif; ?>
 
+            <?php if ($section === 'profile'): ?>
             <section class="dashboard-panel split-panel" id="account">
                 <div>
                     <h2>Compte</h2>
                     <dl class="account-details">
                         <div><dt>Email</dt><dd><?= account_escape($user['email']) ?></dd></div>
+                        <div><dt>Vérification email</dt><dd><?= !empty($user['email_verified_at']) ? 'Confirmée' : 'En attente' ?></dd></div>
                         <div><dt>Nom</dt><dd><?= account_escape($user['display_name'] ?: '-') ?></dd></div>
                         <div><dt>Statut</dt><dd><?= account_escape(account_status_label((string) $user['status'])) ?></dd></div>
                         <div><dt>Créé le</dt><dd><?= account_escape((string) $user['created_at']) ?></dd></div>
@@ -524,12 +640,14 @@ $versionName = trim((string) ($manifest['latest_version_name'] ?? $manifest['ver
                     <button class="button button-outline" name="action" value="logout">Déconnexion</button>
                 </form>
             </section>
+            <?php endif; ?>
         </div>
     </section>
 </main>
 <?php endif; ?>
 
 <?php sv_render_site_footer('account-footer'); ?>
-<script src="/assets/account.js?v=5" defer></script>
+<script src="https://api.gammal.tech/sdk-web.js"></script>
+<script src="/assets/account.js?v=6" defer></script>
 </body>
 </html>

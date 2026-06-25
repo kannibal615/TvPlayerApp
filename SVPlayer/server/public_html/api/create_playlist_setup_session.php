@@ -87,7 +87,7 @@ try {
         throw new RuntimeException('Unable to generate a unique setup code.');
     }
 
-    $qrUrl = SMARTVISION_PUBLIC_BASE_URL
+    $qrUrl = smartvision_public_base_url()
         . '/xtream/?device=' . rawurlencode($publicDeviceCode)
         . '&session=' . rawurlencode($shortCode);
 

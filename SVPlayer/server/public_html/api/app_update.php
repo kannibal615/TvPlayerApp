@@ -13,7 +13,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
 }
 
 $currentVersionCode = max(0, (int) ($_GET['version_code'] ?? 0));
-$metadataPath = dirname(__DIR__) . '/downloads/smartvision-tv.version.json';
+$configuredMetadataPath = trim((string) getenv('SMARTVISION_APK_MANIFEST_PATH'));
+$metadataPath = $configuredMetadataPath !== ''
+    ? $configuredMetadataPath
+    : dirname(__DIR__) . '/downloads/smartvision-tv.version.json';
 
 if (!is_file($metadataPath)) {
     json_response([
@@ -41,9 +44,9 @@ if ($apkFile === '' || !preg_match('/^[A-Za-z0-9._-]+\.apk$/', $apkFile)) {
     $apkFile = 'smartvision-tv.apk';
 }
 $apkPath = '/downloads/' . $apkFile;
-$scheme = 'https';
-$host = preg_replace('/[^A-Za-z0-9.-]/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'smartvisions.net'));
-$apkUrl = $scheme . '://' . $host . $apkPath;
+$downloadBaseUrl = trim((string) getenv('SMARTVISION_DOWNLOAD_BASE_URL'));
+$apkUrl = ($downloadBaseUrl !== '' ? rtrim($downloadBaseUrl, '/') : smartvision_public_base_url())
+    . $apkPath;
 
 json_response([
     'success' => true,

@@ -3,8 +3,30 @@ declare(strict_types=1);
 
 date_default_timezone_set('UTC');
 
-const SMARTVISION_PUBLIC_BASE_URL = 'https://smartvisions.net';
 const SMARTVISION_PRIVATE_CONFIG = 'smartvision_private/config.php';
+
+function smartvision_public_base_url(): string
+{
+    $configured = trim((string) getenv('SMARTVISION_PUBLIC_BASE_URL'));
+    if ($configured !== '' && filter_var($configured, FILTER_VALIDATE_URL)) {
+        return rtrim($configured, '/');
+    }
+
+    return 'https://smartvisions.net';
+}
+
+function smartvision_is_https(): bool
+{
+    $forwardedProto = strtolower(trim((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')));
+    return (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
+        || $forwardedProto === 'https'
+        || str_starts_with(smartvision_public_base_url(), 'https://');
+}
+
+function smartvision_cookie_secure(): bool
+{
+    return smartvision_is_https();
+}
 
 function config_json_error(string $message, int $statusCode = 500): never
 {
@@ -62,6 +84,7 @@ function load_database_config(): array
         'cpanel_host' => getenv('SMARTVISION_CPANEL_HOST') ?: '',
         'cpanel_username' => getenv('SMARTVISION_CPANEL_USERNAME') ?: '',
         'cpanel_token' => getenv('SMARTVISION_CPANEL_TOKEN') ?: '',
+        'smtp_password' => getenv('SMARTVISION_SMTP_PASSWORD') ?: '',
     ];
 }
 

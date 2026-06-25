@@ -102,7 +102,7 @@ try {
 
     $pdo->commit();
 
-    $qrUrl = SMARTVISION_PUBLIC_BASE_URL
+    $qrUrl = smartvision_public_base_url()
         . '/activate/?device_id=' . rawurlencode($deviceId)
         . '&code=' . rawurlencode($shortCode);
 

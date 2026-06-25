@@ -3,12 +3,11 @@
 }
 
 .auth-shell {
-    width: min(1120px, calc(100% - 32px));
+    width: min(560px, calc(100% - 32px));
     min-height: calc(100vh - 170px);
-    display: grid;
-    grid-template-columns: minmax(0, .95fr) minmax(360px, .72fr);
-    gap: 34px;
+    display: flex;
     align-items: center;
+    justify-content: center;
     margin: 0 auto;
     padding: 70px 0 92px;
 }
@@ -74,6 +73,7 @@
 }
 
 .auth-form-panel {
+    width: 100%;
     padding: 32px;
 }
 
@@ -105,20 +105,22 @@
     line-height: 1.45;
 }
 
-.login-disclosure {
+.auth-switch {
     margin-top: 24px;
     padding-top: 20px;
     border-top: 1px solid rgba(255, 255, 255, .1);
+    color: #a8b3c7;
+    text-align: center;
 }
 
-.login-disclosure summary {
+.auth-switch a {
     color: #72c7ff;
     font-weight: 800;
-    cursor: pointer;
 }
 
-.compact-form {
-    margin-top: 18px;
+.auth-switch a:hover,
+.auth-switch a:focus-visible {
+    color: #9ce7ff;
 }
 
 .form-notice {
@@ -138,6 +140,16 @@
 .form-notice.error {
     border-color: rgba(255, 109, 126, .45);
     color: #ffadba;
+}
+
+.form-notice.warning {
+    border-color: rgba(245, 158, 11, .45);
+    color: #ffd38a;
+}
+
+.inline-form {
+    display: inline-flex;
+    margin-left: 12px;
 }
 
 .customer-dashboard {
@@ -483,23 +495,17 @@
     border: 1px solid rgba(255, 255, 255, .12);
     border-radius: 12px;
     background: rgba(2, 8, 23, .44);
-    cursor: pointer;
 }
 
-.account-plan.featured,
-.account-plan.selected,
-.account-plan:has(input:focus-visible) {
+.account-plan.featured {
     border-color: rgba(0, 212, 255, .68);
     background: rgba(10, 36, 65, .68);
 }
 
-.account-plan input {
-    position: absolute;
-    right: 16px;
-    bottom: 16px;
-    width: 20px;
-    height: 20px;
-    accent-color: #1687ff;
+.account-plan.simulation-plan {
+    border-style: dashed;
+    border-color: rgba(242, 167, 43, .68);
+    background: rgba(64, 42, 10, .42);
 }
 
 .account-plan > strong {
@@ -530,6 +536,87 @@
     list-style: none;
     color: #dce7f6;
     font-size: 13px;
+}
+
+.plan-order-action {
+    display: inline-flex;
+    width: 100%;
+    margin-top: auto;
+}
+
+.plan-order-form {
+    display: flex;
+    width: 100%;
+    margin-top: auto;
+}
+
+.plan-order-action.disabled {
+    cursor: not-allowed;
+    opacity: .48;
+}
+
+.payment-unavailable {
+    color: #8f9fb6;
+    font-size: 12px;
+    text-align: center;
+}
+
+.payment-return-shell {
+    width: min(680px, calc(100% - 32px));
+    min-height: calc(100vh - 170px);
+    display: grid;
+    place-items: center;
+    margin: 0 auto;
+    padding: 60px 0 90px;
+}
+
+.payment-return-card {
+    width: 100%;
+    padding: 42px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(10, 26, 47, .94), rgba(7, 20, 38, .84));
+    box-shadow: 0 24px 72px rgba(0, 0, 0, .25);
+    text-align: center;
+}
+
+.payment-return-icon {
+    display: grid;
+    width: 58px;
+    height: 58px;
+    place-items: center;
+    margin: 0 auto 22px;
+    border: 1px solid rgba(0, 212, 255, .5);
+    border-radius: 50%;
+    background: rgba(0, 212, 255, .1);
+    color: #8ceeff;
+    font-size: 28px;
+    font-weight: 900;
+}
+
+.payment-return-card h1 {
+    margin: 0;
+    font-size: clamp(32px, 5vw, 46px);
+}
+
+.payment-return-card p {
+    margin: 16px auto 0;
+    color: #a8b3c7;
+    font-size: 17px;
+    line-height: 1.65;
+}
+
+.payment-return-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 28px;
+}
+
+.payment-return-card small {
+    display: block;
+    margin-top: 22px;
+    color: #7f90a8;
 }
 
 .account-plan li::before {
@@ -814,8 +901,7 @@
 
 @media (max-width: 1120px) {
     .auth-shell {
-        grid-template-columns: 1fr;
-        max-width: 720px;
+        max-width: 560px;
     }
 
     .auth-hero-panel {
@@ -921,6 +1007,14 @@
     }
 
     .license-rule {
+        display: grid;
+    }
+
+    .payment-return-card {
+        padding: 30px 20px;
+    }
+
+    .payment-return-actions {
         display: grid;
     }
 }

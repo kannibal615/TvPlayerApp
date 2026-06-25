@@ -62,19 +62,14 @@ sv_send_site_headers();
 <main id="top">
     <section class="hero band home-hero">
         <div class="hero-copy">
-            <h1>SmartVision IPTV Player</h1>
+            <h1>SmartVision</h1>
+            <h1>IPTV Player</h1>
+
             <p class="hero-lead">Un lecteur IPTV Android TV légal, rapide et moderne. Ajoutez vos propres identifiants ou playlists autorisées.</p>
-            <p class="legal-inline">SmartVision ne fournit aucun contenu audiovisuel.</p>
             <div class="hero-actions">
-                <a class="button button-primary" href="/account/?intent=license&plan=year_1">Acheter une licence</a>
+                <a class="button button-primary" href="/account/?intent=license">Acheter une licence</a>
                 <a class="button button-outline" href="/download.php">Télécharger l’application</a>
             </div>
-            <ul class="hero-facts" aria-label="Points clés">
-                <li>Android TV optimisé</li>
-                <li>Interface claire et rapide</li>
-                <li>Activation sécurisée</li>
-                <li>Aucun contenu inclus</li>
-            </ul>
         </div>
         <div class="product-stage" aria-label="Aperçu de l’application SmartVision">
             <div class="ambient-card ambient-one"></div>
@@ -96,7 +91,6 @@ sv_send_site_headers();
                 <div><dt>Prix</dt><dd>Gratuit</dd></div>
                 <div><dt>Version</dt><dd><?= $versionName !== '' ? sv_h($versionName) : 'Dernière APK' ?></dd></div>
                 <div><dt>Compatibilité</dt><dd>Android TV</dd></div>
-                <div><dt>Installation</dt><dd>Manuelle selon l’appareil</dd></div>
             </dl>
         </div>
         <a class="button button-primary" href="/download.php">Télécharger Android TV</a>
@@ -123,7 +117,7 @@ sv_send_site_headers();
                         <li>Vos propres sources autorisées</li>
                         <li>Aucun contenu fourni par SmartVision</li>
                     </ul>
-                    <a class="button button-primary" href="/account/?plan=<?= sv_h((string) $key) ?>"><?= sv_h($ui['cta']) ?></a>
+                    <a class="button button-primary" href="/account/?intent=license"><?= sv_h($ui['cta']) ?></a>
                     <?php if (!$isAvailable): ?><small>Offre indisponible temporairement.</small><?php endif; ?>
                 </article>
             <?php endforeach; ?>
@@ -151,11 +145,7 @@ sv_send_site_headers();
         <div class="showcase-copy">
             <h2>Une expérience pensée pour la TV.</h2>
             <p>Navigation télécommande, grands focus visibles, reprise de lecture, favoris, historique et écran adapté au canapé. L’interface reste lisible et fluide sur Android TV.</p>
-            <ul>
-                <li>Contrôles simples au D-pad</li>
-                <li>Mode Premium sans publicité</li>
-                <li>Compte client pour retrouver vos licences</li>
-            </ul>
+            
         </div>
     </section>
 

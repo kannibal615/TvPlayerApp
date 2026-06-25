@@ -646,6 +646,26 @@ Racine locale:
 server/public_html/
 ```
 
+### Demarrage local du site
+
+Le site peut etre lance localement tout en utilisant la base MySQL de production:
+
+```powershell
+cd 'C:\Users\ONEDEV\Desktop\IPTV APP NATIVE ANDROID\TvPlayerApp\SVPlayer'
+.\scripts\start_web_dev.ps1
+```
+
+URL par defaut:
+
+```text
+http://127.0.0.1:8080/
+```
+
+Le script lit les secrets depuis `local.properties`, les injecte uniquement dans
+le processus PHP et utilise l'hote cPanel lorsque `MYSQL_HOST=localhost`.
+Il ne deploie aucun fichier. Les actions effectuees dans le site local modifient
+la base de production; utiliser des donnees de test identifiables.
+
 Structure:
 
 ```text
@@ -799,11 +819,38 @@ Enregistre host/username/password Xtream chiffres pour l'appareil.
 
 - inscription;
 - connexion;
-- choix plan;
-- paiement fictif test;
-- generation immediate du code activation;
+- redirection automatique vers `?section=buy-license` apres connexion lorsqu'un achat est demande;
+- navigation multi-page avec une seule section rendue par URL:
+  - `?section=licenses`;
+  - `?section=buy-license`;
+  - `?section=activate`;
+  - `?section=orders`;
+  - `?section=download`;
+  - `?section=profile`;
+- cartes de licences sans offre preselectionnee;
+- liens de paiement Gammal Tech configurables dans le panel admin;
 - liste commandes/licences;
 - telechargement APK.
+
+Le menu admin `Packs paiement` stocke les URLs dans `app_settings`:
+
+```text
+gammal_payment_month_1_url
+gammal_payment_month_1_enabled
+gammal_payment_year_1_url
+gammal_payment_year_1_enabled
+gammal_payment_lifetime_url
+gammal_payment_lifetime_enabled
+```
+
+Le callback public est `/payment-callback/`. Il affiche un retour utilisateur
+sans accorder de licence sur la seule base de parametres URL non verifies.
+
+En environnement `development`, un quatrieme pack temporaire `Simulation DEV`
+est affiche dans `?section=buy-license`. Il simule un callback Gammal Tech avec
+un jeton de session a usage unique, puis cree une commande test et une licence
+valable 1 jour. Ce pack est absent lorsque `SMARTVISION_ENV` n'est pas
+`development`.
 
 `server/public_html/activate/index.php`:
 

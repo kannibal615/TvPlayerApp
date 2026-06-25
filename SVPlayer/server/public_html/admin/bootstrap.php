@@ -23,7 +23,7 @@ function start_admin_session(): void
     session_set_cookie_params([
         'lifetime' => 0,
         'path' => '/admin/',
-        'secure' => true,
+        'secure' => smartvision_cookie_secure(),
         'httponly' => true,
         'samesite' => 'Strict',
     ]);
@@ -184,7 +184,7 @@ function destroy_admin_session(): void
     $_SESSION = [];
     if (ini_get('session.use_cookies')) {
         $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000, $params['path'], '', true, true);
+        setcookie(session_name(), '', time() - 42000, $params['path'], '', (bool) $params['secure'], true);
     }
     session_destroy();
 }

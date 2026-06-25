@@ -9,7 +9,7 @@ session_name('smartvision_contact');
 session_set_cookie_params([
     'lifetime' => 0,
     'path' => '/',
-    'secure' => true,
+    'secure' => smartvision_cookie_secure(),
     'httponly' => true,
     'samesite' => 'Lax',
 ]);

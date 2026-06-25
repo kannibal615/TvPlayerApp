@@ -404,6 +404,7 @@ function New-PrivateConfigFile {
     $cpanelHost = [string]$Properties["CPANEL_HOST"]
     $cpanelUsername = Resolve-CpanelUsername -Properties $Properties
     $cpanelToken = Resolve-CpanelToken -Properties $Properties
+    $smtpPassword = [string]$Properties["SMTP_PASSWORD"]
 
     $content = @"
 <?php
@@ -420,6 +421,7 @@ return [
     'cpanel_host' => '$(Escape-PhpString $cpanelHost)',
     'cpanel_username' => '$(Escape-PhpString $cpanelUsername)',
     'cpanel_token' => '$(Escape-PhpString $cpanelToken)',
+    'smtp_password' => '$(Escape-PhpString $smtpPassword)',
 ];
 "@
 
@@ -1014,6 +1016,8 @@ try {
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "privacy-policy"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "terms-of-use"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "contact"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "payment-callback"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "verify-email"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "legal-notice"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "legal-iptv-player"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "." -Name $remotePrivate
@@ -1039,6 +1043,7 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/monetization_rules.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/device_state.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/commerce.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/mail_service.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/create_activation_session.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/device_status.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/validate_activation.php")
@@ -1059,6 +1064,8 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/privacy-policy" -FilePath (Join-Path $publicHtmlPath "privacy-policy/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/terms-of-use" -FilePath (Join-Path $publicHtmlPath "terms-of-use/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/contact" -FilePath (Join-Path $publicHtmlPath "contact/index.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/payment-callback" -FilePath (Join-Path $publicHtmlPath "payment-callback/index.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/verify-email" -FilePath (Join-Path $publicHtmlPath "verify-email/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/legal-notice" -FilePath (Join-Path $publicHtmlPath "legal-notice/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/legal-iptv-player" -FilePath (Join-Path $publicHtmlPath "legal-iptv-player/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/admin" -FilePath (Join-Path $publicHtmlPath "admin/bootstrap.php")
@@ -1074,6 +1081,7 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/activation.js")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/site.js")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/account.js")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/payment-callback.js")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/assets" -FilePath (Join-Path $publicHtmlPath "assets/admin.js")
     Get-ChildItem -LiteralPath (Join-Path $publicHtmlPath "assets/images") -File | Where-Object {
         $_.Extension -match '^\.(png|jpg|jpeg|webp|svg)$'

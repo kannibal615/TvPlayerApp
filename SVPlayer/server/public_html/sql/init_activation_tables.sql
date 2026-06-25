@@ -124,6 +124,7 @@ CREATE TABLE IF NOT EXISTS site_users (
     display_name VARCHAR(120) NULL,
     password_hash VARCHAR(255) NOT NULL,
     status ENUM('active', 'blocked') DEFAULT 'active',
+    email_verified_at DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_login_at DATETIME NULL,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -174,6 +175,7 @@ CREATE TABLE IF NOT EXISTS activation_orders (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE site_users ADD COLUMN IF NOT EXISTS status ENUM('active', 'blocked') DEFAULT 'active' AFTER password_hash;
+ALTER TABLE site_users ADD COLUMN IF NOT EXISTS email_verified_at DATETIME NULL AFTER status;
 ALTER TABLE site_users ADD COLUMN IF NOT EXISTS updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER last_login_at;
 
 ALTER TABLE activation_orders ADD COLUMN IF NOT EXISTS order_reference VARCHAR(32) NULL AFTER user_id;
@@ -205,6 +207,124 @@ CREATE TABLE IF NOT EXISTS app_settings (
     setting_value TEXT NULL,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS commerce_order_intents (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token_hash CHAR(64) NOT NULL,
+    plan_key VARCHAR(40) NOT NULL,
+    plan_label VARCHAR(80) NOT NULL,
+    amount_cents INT UNSIGNED NOT NULL,
+    merchant_amount_cents INT UNSIGNED NOT NULL,
+    currency CHAR(3) NOT NULL DEFAULT 'EUR',
+    status ENUM('started', 'callback_received', 'approved', 'rejected', 'cancelled', 'expired') NOT NULL DEFAULT 'started',
+    checkout_url TEXT NULL,
+    raw_payload JSON NULL,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_commerce_order_intents_token (token_hash),
+    INDEX idx_commerce_order_intents_user (user_id, status),
+    INDEX idx_commerce_order_intents_expiry (expires_at),
+    CONSTRAINT fk_commerce_order_intents_user
+        FOREIGN KEY (user_id) REFERENCES site_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS commerce_payments (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    intent_id BIGINT UNSIGNED NOT NULL,
+    user_id INT NOT NULL,
+    activation_order_id INT NULL,
+    txn VARCHAR(190) NOT NULL,
+    gateway VARCHAR(40) NOT NULL DEFAULT 'gammal',
+    gateway_status INT NOT NULL,
+    verification_status ENUM('pending_review', 'approved', 'rejected') NOT NULL DEFAULT 'pending_review',
+    reported_amount_cents INT UNSIGNED NOT NULL,
+    expected_amount_cents INT UNSIGNED NOT NULL,
+    currency CHAR(3) NOT NULL DEFAULT 'EUR',
+    raw_payload JSON NOT NULL,
+    reviewed_by VARCHAR(100) NULL,
+    reviewed_at DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_commerce_payments_txn (txn),
+    UNIQUE KEY uq_commerce_payments_intent (intent_id),
+    INDEX idx_commerce_payments_review (verification_status, created_at),
+    CONSTRAINT fk_commerce_payments_intent
+        FOREIGN KEY (intent_id) REFERENCES commerce_order_intents(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_commerce_payments_user
+        FOREIGN KEY (user_id) REFERENCES site_users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_commerce_payments_order
+        FOREIGN KEY (activation_order_id) REFERENCES activation_orders(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS email_templates (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    template_key VARCHAR(96) NOT NULL,
+    locale VARCHAR(32) NOT NULL DEFAULT 'fr-FR',
+    name VARCHAR(255) NOT NULL,
+    category VARCHAR(64) NOT NULL,
+    subject_template VARCHAR(255) NOT NULL,
+    title_template VARCHAR(255) NOT NULL,
+    intro_html TEXT NULL,
+    body_html MEDIUMTEXT NULL,
+    button_label_template VARCHAR(255) NULL,
+    button_url_variable VARCHAR(96) NULL,
+    footer_html TEXT NULL,
+    variables_json JSON NULL,
+    is_system TINYINT(1) NOT NULL DEFAULT 1,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    sort_order INT NOT NULL DEFAULT 100,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY email_templates_key_locale (template_key, locale)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS email_logs (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    email_type VARCHAR(64) NOT NULL,
+    recipient_email VARCHAR(255) NOT NULL,
+    subject VARCHAR(255) NULL,
+    status VARCHAR(64) NOT NULL DEFAULT 'pending',
+    error_message TEXT NULL,
+    provider VARCHAR(64) NULL,
+    template_key VARCHAR(96) NULL,
+    html_snapshot MEDIUMTEXT NULL,
+    text_snapshot MEDIUMTEXT NULL,
+    payload_json JSON NULL,
+    from_email VARCHAR(255) NULL,
+    reply_to VARCHAR(255) NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX email_logs_type_status_idx (email_type, status),
+    INDEX email_logs_provider_idx (provider),
+    INDEX email_logs_recipient_idx (recipient_email),
+    INDEX email_logs_created_idx (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    expires_at DATETIME NOT NULL,
+    used_at DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX email_verification_user_idx (user_id, used_at, expires_at),
+    CONSTRAINT fk_email_verification_user
+        FOREIGN KEY (user_id) REFERENCES site_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO app_settings (setting_key, setting_value) VALUES
+    ('external_services_enabled', '0'),
+    ('smtp_enabled', '0'),
+    ('smtp_host', 'nls.hostcreed.com'),
+    ('smtp_port', '465'),
+    ('smtp_secure', 'ssl'),
+    ('smtp_user', ''),
+    ('smtp_from_email', ''),
+    ('smtp_from_name', 'SmartVision'),
+    ('smtp_reply_to', ''),
+    ('admin_notification_email', '')
+ON DUPLICATE KEY UPDATE setting_key = VALUES(setting_key);
 
 CREATE TABLE IF NOT EXISTS home_slider_ads (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -277,6 +397,15 @@ INSERT INTO app_settings (setting_key, setting_value) VALUES
 ('payment_mode', 'test'),
 ('support_email', 'support@smartvisions.net')
 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
+
+INSERT INTO app_settings (setting_key, setting_value) VALUES
+('gammal_payment_month_1_url', ''),
+('gammal_payment_month_1_enabled', '0'),
+('gammal_payment_year_1_url', ''),
+('gammal_payment_year_1_enabled', '0'),
+('gammal_payment_lifetime_url', ''),
+('gammal_payment_lifetime_enabled', '0')
+ON DUPLICATE KEY UPDATE setting_key = VALUES(setting_key);
 
 INSERT INTO home_slider_ads (sort_order, title, subtitle, button_label, button_route, image_url, status) VALUES
 (10, 'Bienvenue sur SmartVision', 'Une experience IPTV fluide, premium et pensee pour Android TV.', 'En savoir plus', 'live_tv', '/assets/images/app-live-tv.png', 'active'),

@@ -17,7 +17,10 @@ function sv_send_site_headers(string $frameAncestors = "'self'"): void
 
 function sv_apk_manifest(): array
 {
-    $path = dirname(__DIR__) . '/downloads/smartvision-tv.version.json';
+    $configuredPath = trim((string) getenv('SMARTVISION_APK_MANIFEST_PATH'));
+    $path = $configuredPath !== ''
+        ? $configuredPath
+        : dirname(__DIR__) . '/downloads/smartvision-tv.version.json';
     if (!is_file($path)) {
         return [];
     }
@@ -31,8 +34,33 @@ function sv_apk_manifest(): array
     return $manifest;
 }
 
+function sv_customer_header_is_logged_in(): bool
+{
+    return hash_equals('1', (string) ($_COOKIE['smartvision_customer_logged_in'] ?? ''));
+}
+
+function sv_set_customer_header_state(bool $isLoggedIn): void
+{
+    setcookie('smartvision_customer_logged_in', $isLoggedIn ? '1' : '', [
+        'expires' => $isLoggedIn ? 0 : time() - 3600,
+        'path' => '/',
+        'secure' => function_exists('smartvision_cookie_secure') && smartvision_cookie_secure(),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+
+    if ($isLoggedIn) {
+        $_COOKIE['smartvision_customer_logged_in'] = '1';
+    } else {
+        unset($_COOKIE['smartvision_customer_logged_in']);
+    }
+}
+
 function sv_render_site_header(): void
 {
+    $isLoggedIn = sv_customer_header_is_logged_in();
+    $accountLabel = $isLoggedIn ? 'Mon compte' : 'Connexion';
+    $accountUrl = $isLoggedIn ? '/account/' : '/account/?mode=login';
     ?>
 <header class="site-header">
     <a class="brand" href="/" aria-label="SmartVision, accueil">
@@ -46,12 +74,11 @@ function sv_render_site_header(): void
         <a href="/#tarifs">Tarifs</a>
         <a href="/activate/">Activation</a>
         <a href="/#telecharger">Télécharger l’application</a>
-        <a href="/legal-iptv-player/">Lecteur IPTV légal</a>
-        <a class="mobile-only" href="/account/?mode=login">Connexion</a>
+        <a class="mobile-only" href="<?= sv_h($accountUrl) ?>"><?= sv_h($accountLabel) ?></a>
     </nav>
     <div class="site-actions">
-        <a class="button button-outline header-cta" href="/account/?mode=login">Connexion</a>
-        <a class="button button-primary header-cta" href="/account/?intent=license&plan=year_1">Acheter une licence</a>
+        <a class="button button-outline header-cta" href="<?= sv_h($accountUrl) ?>"><?= sv_h($accountLabel) ?></a>
+        <a class="button button-primary header-cta" href="/account/?intent=license">Acheter une licence</a>
     </div>
 </header>
     <?php
