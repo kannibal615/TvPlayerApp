@@ -2,3 +2,6 @@ Options -Indexes
 DirectoryIndex index.php
 AddDefaultCharset UTF-8
 
+RewriteEngine On
+RewriteRule ^api/app/ads-config/?$ api/app/ads-config.php [L,QSA]
+RewriteRule ^api/app/ads-events/?$ api/app/ads-events.php [L,QSA]

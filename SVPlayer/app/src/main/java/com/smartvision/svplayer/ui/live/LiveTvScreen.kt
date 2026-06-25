@@ -1,5 +1,8 @@
 package com.smartvision.svplayer.ui.live
 
+import android.net.Uri
+import android.view.View
+import android.view.ViewGroup
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -46,6 +49,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -55,6 +60,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
@@ -78,12 +84,17 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
+import com.google.ads.interactivemedia.v3.api.AdEvent
+import com.google.ads.interactivemedia.v3.api.ImaSdkFactory
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
+import com.smartvision.svplayer.data.monetization.MonetizationManager
+import androidx.media3.exoplayer.ima.ImaAdsLoader
 import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
@@ -276,6 +287,8 @@ fun LiveTvScreen(
                 )
                 PreviewPanel(
                     channel = state.selectedChannel,
+                    idleAdContentUrl = state.focusedChannel?.streamUrl,
+                    monetizationManager = container.monetizationManager,
                     onWatch = {
                         if (inputReady) {
                             state.selectedChannel?.streamId?.let(onWatch)
@@ -496,6 +509,8 @@ private fun ChannelList(
 @Composable
 private fun PreviewPanel(
     channel: LiveTvChannel?,
+    idleAdContentUrl: String?,
+    monetizationManager: MonetizationManager,
     onWatch: () -> Unit,
     onFavorite: () -> Unit,
     modifier: Modifier = Modifier,
@@ -505,11 +520,21 @@ private fun PreviewPanel(
         modifier = modifier,
     ) {
         if (channel == null) {
-            EmptyState(
-                title = "Selectionnez une chaine",
-                subtitle = "Appuyez sur OK pour lancer l'apercu.",
-                modifier = Modifier.fillMaxSize(),
-            )
+            Column(modifier = Modifier.fillMaxSize()) {
+                IdlePreviewAdFrame(
+                    contentUrl = idleAdContentUrl,
+                    monetizationManager = monetizationManager,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1.88f),
+                )
+                Spacer(Modifier.height(10.dp))
+                EmptyState(
+                    title = "Selectionnez une chaine",
+                    subtitle = "Appuyez sur OK pour lancer l'apercu.",
+                    modifier = Modifier.weight(1f),
+                )
+            }
             return@LiveTvPanel
         }
 
@@ -554,6 +579,234 @@ private fun PreviewPanel(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun IdlePreviewAdFrame(
+    contentUrl: String?,
+    monetizationManager: MonetizationManager,
+    modifier: Modifier = Modifier,
+) {
+    var adTagUrl by remember { mutableStateOf<String?>(null) }
+    var configLoaded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(monetizationManager) {
+        adTagUrl = monetizationManager.idleLivePreviewAdTagUrl()
+        configLoaded = true
+    }
+
+    val shape = RoundedCornerShape(LiveTvDimens.ItemRadius)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(Color.Black)
+            .border(BorderStroke(1.dp, SmartVisionColors.Border), shape)
+            .focusProperties { canFocus = false },
+        contentAlignment = Alignment.Center,
+    ) {
+        val tagUrl = adTagUrl
+        if (tagUrl != null && !contentUrl.isNullOrBlank()) {
+            var adCycle by remember(tagUrl, contentUrl) { mutableIntStateOf(0) }
+            key(adCycle) {
+                IdlePreviewImaPlayer(
+                    adTagUrl = tagUrl,
+                    contentUrl = contentUrl,
+                    monetizationManager = monetizationManager,
+                    onCycleFinished = { adCycle += 1 },
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
+        } else {
+            if (!configLoaded) {
+                CircularProgressIndicator(
+                    color = SmartVisionColors.Primary,
+                    strokeWidth = 3.dp,
+                    modifier = Modifier.size(30.dp),
+                )
+            } else {
+                IdlePreviewPlaceholder()
+            }
+        }
+    }
+}
+
+@Composable
+private fun IdlePreviewImaPlayer(
+    adTagUrl: String,
+    contentUrl: String,
+    monetizationManager: MonetizationManager,
+    onCycleFinished: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    var loading by remember(adTagUrl) { mutableStateOf(true) }
+    var adStarted by remember(adTagUrl) { mutableStateOf(false) }
+    var adFinished by remember(adTagUrl) { mutableStateOf(false) }
+    var adFailed by remember(adTagUrl) { mutableStateOf(false) }
+    var cycleRestarted by remember(adTagUrl) { mutableStateOf(false) }
+    val playerView = remember {
+        PlayerView(context).apply {
+            useController = false
+            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            isFocusable = false
+            isFocusableInTouchMode = false
+            isClickable = false
+            isLongClickable = false
+            descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+        }
+    }
+    val adsLoader = remember(adTagUrl) {
+        ImaAdsLoader.Builder(context.applicationContext)
+            .setImaSdkSettings(
+                ImaSdkFactory.getInstance().createImaSdkSettings().apply {
+                    playerType = "SmartVision Android TV Idle Preview"
+                    playerVersion = com.smartvision.svplayer.BuildConfig.VERSION_NAME
+                },
+            )
+            .setFocusSkipButtonWhenAvailable(false)
+            .setEnableContinuousPlayback(false)
+            .setAdPreloadTimeoutMs(8_000)
+            .setVastLoadTimeoutMs(8_000)
+            .setMediaLoadTimeoutMs(8_000)
+            .setAdEventListener { event ->
+                when (event.type) {
+                    AdEvent.AdEventType.LOADED -> loading = false
+                    AdEvent.AdEventType.STARTED -> {
+                        loading = false
+                        adStarted = true
+                    }
+                    AdEvent.AdEventType.COMPLETED,
+                    AdEvent.AdEventType.SKIPPED,
+                    AdEvent.AdEventType.ALL_ADS_COMPLETED,
+                    AdEvent.AdEventType.CONTENT_RESUME_REQUESTED,
+                    -> adFinished = true
+                    else -> Unit
+                }
+            }
+            .setAdErrorListener {
+                loading = false
+                adFailed = true
+            }
+            .build()
+    }
+    val mediaSourceFactory = remember(playerView, adsLoader) {
+        DefaultMediaSourceFactory(context)
+            .setLocalAdInsertionComponents({ adsLoader }, playerView)
+    }
+    val player = remember(mediaSourceFactory) {
+        ExoPlayer.Builder(context)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .build()
+            .apply {
+                volume = 0f
+                playWhenReady = true
+            }
+    }
+
+    LaunchedEffect(adTagUrl, contentUrl) {
+        loading = true
+        adStarted = false
+        adFinished = false
+        adFailed = false
+        player.stop()
+        player.clearMediaItems()
+        player.setMediaItem(
+            MediaItem.Builder()
+                .setUri(contentUrl)
+                .setAdsConfiguration(
+                    MediaItem.AdsConfiguration.Builder(Uri.parse(adTagUrl)).build(),
+                )
+                .build(),
+        )
+        player.prepare()
+        player.playWhenReady = true
+    }
+
+    LaunchedEffect(adFinished, adFailed) {
+        if ((adFinished || adFailed) && !cycleRestarted) {
+            cycleRestarted = true
+            player.pause()
+            player.stop()
+            delay(300)
+            onCycleFinished()
+        }
+    }
+
+    LaunchedEffect(adStarted) {
+        if (adStarted) {
+            monetizationManager.onIdleLivePreviewAdStarted()
+        }
+    }
+
+    DisposableEffect(player, adsLoader) {
+        adsLoader.setPlayer(player)
+        onDispose {
+            adsLoader.setPlayer(null)
+            player.release()
+        }
+    }
+
+    Box(modifier = modifier.background(Color.Black), contentAlignment = Alignment.Center) {
+        AndroidView(
+            factory = {
+                playerView.apply {
+                    this.player = player
+                    clearFocus()
+                }
+            },
+            update = {
+                it.player = player
+                it.clearFocus()
+                it.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+            },
+            modifier = Modifier
+                .matchParentSize()
+                .focusProperties { canFocus = false },
+        )
+
+        if (loading && !adFailed) {
+            CircularProgressIndicator(
+                color = SmartVisionColors.Primary,
+                strokeWidth = 3.dp,
+                modifier = Modifier.size(30.dp),
+            )
+        }
+
+        if (adStarted && !adFinished && !adFailed) {
+            LiveBadge(
+                text = "PUBLICITE",
+                color = SmartVisionColors.PrimaryDark,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(8.dp),
+            )
+        }
+
+        if (adFinished || adFailed) {
+            IdlePreviewPlaceholder()
+        }
+    }
+}
+
+@Composable
+private fun IdlePreviewPlaceholder() {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(
+            imageVector = Icons.Default.Tv,
+            contentDescription = null,
+            tint = SmartVisionColors.Primary,
+            modifier = Modifier.size(34.dp),
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "Apercu SmartVision",
+            color = SmartVisionColors.TextPrimary,
+            style = LiveTvItemMetaStyle,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
     }
 }
 

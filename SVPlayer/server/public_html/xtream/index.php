@@ -9,7 +9,7 @@ header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: no-referrer');
-header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-src 'self' https://pagead2.googlesyndication.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data: https:; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
 
 function xtream_h(string $value): string
 {
@@ -97,8 +97,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Configuration Xtream SmartVision</title>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3376574358352765" crossorigin="anonymous"></script>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9499676739525429" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="/assets/site.css?v=3">
 </head>
 <body class="activation-page">

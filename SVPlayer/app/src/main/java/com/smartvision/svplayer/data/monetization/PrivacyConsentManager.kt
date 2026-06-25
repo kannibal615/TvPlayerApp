@@ -15,15 +15,20 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 
 class PrivacyConsentManager(context: Context) {
     private val consentInformation =
-        UserMessagingPlatform.getConsentInformation(context.applicationContext)
+        if (BuildConfig.GOOGLE_ADS_APPLICATION_ID.isBlank()) {
+            null
+        } else {
+            UserMessagingPlatform.getConsentInformation(context.applicationContext)
+        }
     private val _privacyOptionsRequired = MutableStateFlow(false)
     val privacyOptionsRequired: StateFlow<Boolean> = _privacyOptionsRequired.asStateFlow()
 
     suspend fun refreshSilently(activity: Activity): Boolean {
         if (!BuildConfig.ADS_RUNTIME_CONFIGURED) return false
+        val consentInfo = consentInformation ?: return false
         val updated = suspendCancellableCoroutine { continuation ->
             val parameters = ConsentRequestParameters.Builder().build()
-            consentInformation.requestConsentInfoUpdate(
+            consentInfo.requestConsentInfoUpdate(
                 activity,
                 parameters,
                 {
@@ -41,8 +46,9 @@ class PrivacyConsentManager(context: Context) {
 
     suspend fun ensureConsentForAd(activity: Activity): Boolean {
         if (!BuildConfig.ADS_RUNTIME_CONFIGURED) return false
+        val consentInfo = consentInformation ?: return true
         refreshSilently(activity)
-        if (consentInformation.canRequestAds()) return true
+        if (consentInfo.canRequestAds()) return true
         suspendCancellableCoroutine { continuation ->
             UserMessagingPlatform.loadAndShowConsentFormIfRequired(activity) { error ->
                 if (error != null) {
@@ -50,15 +56,19 @@ class PrivacyConsentManager(context: Context) {
                 }
                 updatePrivacyOptionState()
                 if (continuation.isActive) {
-                    continuation.resume(consentInformation.canRequestAds())
+                    continuation.resume(consentInfo.canRequestAds())
                 }
             }
         }
-        return consentInformation.canRequestAds()
+        return consentInfo.canRequestAds()
     }
 
     suspend fun showPrivacyOptions(activity: Activity): Boolean =
         suspendCancellableCoroutine { continuation ->
+            if (consentInformation == null) {
+                if (continuation.isActive) continuation.resume(false)
+                return@suspendCancellableCoroutine
+            }
             UserMessagingPlatform.showPrivacyOptionsForm(activity) { error ->
                 if (error != null) {
                     Log.w(TAG, "Options de confidentialite indisponibles: ${error.message}")
@@ -70,7 +80,7 @@ class PrivacyConsentManager(context: Context) {
 
     private fun updatePrivacyOptionState() {
         _privacyOptionsRequired.value =
-            consentInformation.privacyOptionsRequirementStatus ==
+            consentInformation?.privacyOptionsRequirementStatus ==
                 ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
     }
 

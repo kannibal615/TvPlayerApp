@@ -208,6 +208,66 @@ CREATE TABLE IF NOT EXISTS app_settings (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS ads_settings (
+    id TINYINT UNSIGNED NOT NULL PRIMARY KEY DEFAULT 1,
+    ads_enabled TINYINT(1) NOT NULL DEFAULT 1,
+    provider ENUM('HILLTOPADS_VAST', 'GOOGLE_IMA_TEST', 'CUSTOM_VAST') NOT NULL DEFAULT 'HILLTOPADS_VAST',
+    use_test_ads TINYINT(1) NOT NULL DEFAULT 1,
+    vast_production_tag_url TEXT NULL,
+    vast_test_tag_url TEXT NULL,
+    min_minutes_between_ads INT UNSIGNED NOT NULL DEFAULT 30,
+    max_ads_per_day INT UNSIGNED NOT NULL DEFAULT 3,
+    show_ad_before_live_stream TINYINT(1) NOT NULL DEFAULT 1,
+    show_ad_before_movie TINYINT(1) NOT NULL DEFAULT 1,
+    show_ad_before_series_episode TINYINT(1) NOT NULL DEFAULT 1,
+    allow_playback_if_ad_fails TINYINT(1) NOT NULL DEFAULT 1,
+    ads_only_inside_player TINYINT(1) NOT NULL DEFAULT 1,
+    estimated_ecpm_eur DECIMAL(8,2) NOT NULL DEFAULT 5.00,
+    hilltop_site_id VARCHAR(64) NULL,
+    hilltop_zone_id VARCHAR(64) NULL,
+    config_version INT UNSIGNED NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100) NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE ads_settings ADD COLUMN IF NOT EXISTS estimated_ecpm_eur DECIMAL(8,2) NOT NULL DEFAULT 5.00 AFTER ads_only_inside_player;
+ALTER TABLE ads_settings ADD COLUMN IF NOT EXISTS hilltop_site_id VARCHAR(64) NULL AFTER estimated_ecpm_eur;
+ALTER TABLE ads_settings ADD COLUMN IF NOT EXISTS hilltop_zone_id VARCHAR(64) NULL AFTER hilltop_site_id;
+
+CREATE TABLE IF NOT EXISTS ads_events (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    device_id_hash CHAR(64) NULL,
+    app_version VARCHAR(50) NULL,
+    platform ENUM('ANDROID_TV', 'FIRE_TV', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    user_status ENUM('PREMIUM_ACTIVE', 'TRIAL_ACTIVE', 'TRIAL_EXPIRED', 'LICENSE_EXPIRED', 'FREE_WITH_ADS', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    content_type ENUM('LIVE_TV', 'MOVIE', 'SERIES', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    provider ENUM('HILLTOPADS_VAST', 'GOOGLE_IMA_TEST', 'CUSTOM_VAST', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    event_type VARCHAR(40) NOT NULL,
+    reason VARCHAR(60) NULL,
+    error_code VARCHAR(60) NULL,
+    error_message VARCHAR(255) NULL,
+    ad_duration_seconds INT UNSIGNED NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_ads_events_created (created_at),
+    INDEX idx_ads_events_event_type (event_type),
+    INDEX idx_ads_events_provider (provider),
+    INDEX idx_ads_events_content_type (content_type),
+    INDEX idx_ads_events_platform (platform),
+    INDEX idx_ads_events_user_status (user_status),
+    INDEX idx_ads_events_device_time (device_id_hash, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO ads_settings
+    (id, ads_enabled, provider, use_test_ads, vast_production_tag_url, vast_test_tag_url,
+     min_minutes_between_ads, max_ads_per_day, show_ad_before_live_stream, show_ad_before_movie,
+     show_ad_before_series_episode, allow_playback_if_ad_fails, ads_only_inside_player,
+     estimated_ecpm_eur, hilltop_site_id, hilltop_zone_id, config_version, updated_by)
+VALUES
+    (1, 1, 'HILLTOPADS_VAST', 1, '', 'https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/single_preroll_skippable&sz=640x480&ciu_szs=300x250%2C728x90&gdfp_req=1&output=vast&unviewed_position_start=1&env=vp&correlator=',
+     30, 3, 1, 1, 1, 1, 1, 5.00, '', '', 1, 'system')
+ON DUPLICATE KEY UPDATE id = VALUES(id);
+
 CREATE TABLE IF NOT EXISTS commerce_order_intents (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,

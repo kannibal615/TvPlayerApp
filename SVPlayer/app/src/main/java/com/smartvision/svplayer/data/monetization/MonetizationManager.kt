@@ -13,11 +13,13 @@ class MonetizationManager(
     private val activationRepository: ActivationRepository,
     private val store: MonetizationStore,
     private val configProvider: AdConfigProvider,
+    private val eventReporter: AdsEventReporter,
     private val clock: Clock = Clock.systemUTC(),
 ) {
     private val mutex = Mutex()
     private val requestGate = AdRequestGate()
     private var lastKnownStatus: MonetizationStatus? = null
+    private var pendingContentType: PlayerContentType? = null
 
     suspend fun synchronizeStatus(): MonetizationStatus? {
         val status = activationRepository.localState.first().monetizationStatus()
@@ -41,7 +43,7 @@ class MonetizationManager(
         onContinue: (PlayerAdPlan) -> Unit,
     ) {
         val status = synchronizeStatus()
-        val config = configProvider.current()
+        val config = configProvider.refresh()
         val now = clock.millis()
         val plan = mutex.withLock {
             requestGate.expireStale(now)
@@ -52,7 +54,7 @@ class MonetizationManager(
                 config = config,
                 frequency = frequency,
                 nowMillis = now,
-                runtimeConfigured = BuildConfig.ADS_RUNTIME_CONFIGURED,
+                runtimeConfigured = BuildConfig.ADS_RUNTIME_CONFIGURED || config.adTagUrl.isNotBlank(),
                 requestAlreadyPending = requestGate.hasPending,
             )
             if (reason != null) {
@@ -61,6 +63,7 @@ class MonetizationManager(
             } else {
                 val requestId = UUID.randomUUID().toString()
                 requestGate.reserve(requestId, now)
+                pendingContentType = contentType
                 Log.i(TAG, "Utilisateur FREE_WITH_ADS: pub autorisee pour $contentType")
                 PlayerAdPlan.ShowPreRoll(
                     requestId = requestId,
@@ -71,17 +74,36 @@ class MonetizationManager(
         onContinue(plan)
     }
 
+    suspend fun idleLivePreviewAdTagUrl(): String? {
+        val status = synchronizeStatus()
+        val config = configProvider.refresh()
+        return config.adTagUrl.takeIf {
+            status == MonetizationStatus.FREE_WITH_ADS &&
+                config.adsEnabled &&
+                config.adsOnlyInsidePlayer &&
+                config.showAdBeforeLiveStream &&
+                it.isNotBlank()
+        }
+    }
+
     suspend fun onAdStarted(requestId: String) {
-        mutex.withLock {
+        val contentType = mutex.withLock {
             if (!requestGate.markStarted(requestId)) return
             store.recordAdStarted()
-            Log.i(TAG, "Pub affichee")
+            pendingContentType ?: PlayerContentType.LIVE_TV
         }
+        eventReporter.reportStarted(contentType)
+        Log.i(TAG, "Pub affichee")
+    }
+
+    suspend fun onIdleLivePreviewAdStarted() {
+        eventReporter.reportStarted(PlayerContentType.LIVE_TV)
     }
 
     suspend fun onAdCompleted(requestId: String) {
         mutex.withLock {
             if (requestGate.release(requestId)) {
+                pendingContentType = null
                 Log.i(TAG, "Pub terminee")
                 Log.i(TAG, "Video lancee apres pub")
             }
@@ -91,6 +113,7 @@ class MonetizationManager(
     suspend fun onAdFailed(requestId: String, reason: String) {
         mutex.withLock {
             if (requestGate.release(requestId)) {
+                pendingContentType = null
                 Log.w(TAG, "Pub echouee: $reason; lecture autorisee")
                 Log.i(TAG, "Video lancee apres echec pub")
             }

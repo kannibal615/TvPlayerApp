@@ -405,6 +405,9 @@ function New-PrivateConfigFile {
     $cpanelUsername = Resolve-CpanelUsername -Properties $Properties
     $cpanelToken = Resolve-CpanelToken -Properties $Properties
     $smtpPassword = [string]$Properties["SMTP_PASSWORD"]
+    $hilltopAdsApiKey = [string]$Properties["HILLTOPADS_API_KEY"]
+    $hilltopAdsPublisherId = [string]$Properties["HILLTOPADS_PUBLISHER_ID"]
+    $hilltopAdsVastTagUrl = [string]$Properties["HILLTOPADS_VAST_TAG_URL"]
 
     $content = @"
 <?php
@@ -422,6 +425,9 @@ return [
     'cpanel_username' => '$(Escape-PhpString $cpanelUsername)',
     'cpanel_token' => '$(Escape-PhpString $cpanelToken)',
     'smtp_password' => '$(Escape-PhpString $smtpPassword)',
+    'hilltopads_api_key' => '$(Escape-PhpString $hilltopAdsApiKey)',
+    'hilltopads_publisher_id' => '$(Escape-PhpString $hilltopAdsPublisherId)',
+    'hilltopads_vast_tag_url' => '$(Escape-PhpString $hilltopAdsVastTagUrl)',
 ];
 "@
 
@@ -731,6 +737,86 @@ function Assert-ApiResult {
     }
 }
 
+function New-AdsQaCleanupFile {
+    param(
+        [string]$OutputPath,
+        [string]$Token,
+        [string]$DeviceHash
+    )
+
+    $content = @'
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/api/config.php';
+
+header('Content-Type: application/json; charset=utf-8');
+if (!hash_equals('__TOKEN__', (string) ($_GET['token'] ?? ''))) {
+    http_response_code(404);
+    echo json_encode(['success' => false]);
+    exit;
+}
+
+register_shutdown_function(static function (): void { @unlink(__FILE__); });
+
+try {
+    $statement = db()->prepare('DELETE FROM ads_events WHERE device_id_hash = :device_id_hash');
+    $statement->execute(['device_id_hash' => '__DEVICE_HASH__']);
+    echo json_encode(['success' => true, 'deleted' => $statement->rowCount()], JSON_UNESCAPED_SLASHES);
+} catch (Throwable $exception) {
+    error_log('Ads QA cleanup failed.');
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Cleanup failed.']);
+}
+'@
+    $content = $content.Replace('__TOKEN__', (Escape-PhpString $Token))
+    $content = $content.Replace('__DEVICE_HASH__', (Escape-PhpString $DeviceHash))
+    Write-Utf8NoBomFile -Path $OutputPath -Content $content
+}
+
+function Test-AdsApi {
+    param(
+        [string]$Domain,
+        [string]$CpanelBaseUrl,
+        [hashtable]$Headers,
+        [string]$RemoteRoot,
+        [string]$TempRoot
+    )
+
+    $config = Invoke-RestMethod -Method Get -Uri "https://$Domain/api/app/ads-config"
+    Assert-ApiResult -Result $config -Label "ads-config"
+    if ($null -eq $config.configVersion -or $config.adsOnlyInsidePlayer -ne $true) {
+        throw "Configuration publicitaire API incomplete."
+    }
+
+    $deviceId = "qa-ads-" + [Guid]::NewGuid().ToString("N")
+    $deviceHash = Get-Sha256Hex -Value $deviceId
+    $cleanupToken = [Guid]::NewGuid().ToString("N")
+    $cleanupPath = Join-Path $TempRoot "ads_qa_cleanup.php"
+    New-AdsQaCleanupFile -OutputPath $cleanupPath -Token $cleanupToken -DeviceHash $deviceHash
+
+    try {
+        $payload = @{
+            deviceId = $deviceId
+            appVersion = "deploy-qa"
+            platform = "ANDROID_TV"
+            userStatus = "FREE_WITH_ADS"
+            contentType = "LIVE_TV"
+            provider = "HILLTOPADS_VAST"
+            eventType = "AD_REQUESTED"
+        } | ConvertTo-Json
+        $event = Invoke-RestMethod -Method Post -Uri "https://$Domain/api/app/ads-events" -ContentType "application/json" -Body $payload
+        Assert-ApiResult -Result $event -Label "ads-events"
+        if ([int]$event.event_id -lt 1) {
+            throw "Evenement publicitaire QA non persiste."
+        }
+    } finally {
+        Upload-File -BaseUrl $CpanelBaseUrl -Headers $Headers -Directory $RemoteRoot -FilePath $cleanupPath
+        $cleanup = Invoke-RestMethod -Method Get -Uri "https://$Domain/ads_qa_cleanup.php?token=$cleanupToken"
+        Assert-ApiResult -Result $cleanup -Label "ads_qa_cleanup"
+    }
+}
+
 function Get-CsrfTokenFromHtml {
     param([string]$Html)
 
@@ -903,6 +989,10 @@ function Test-AdminPanel {
         if ($licensesPage.Content -notmatch "Licences et codes") {
             throw "Page licences admin indisponible."
         }
+        $adsPage = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Get -Uri "${baseUrl}?page=ads"
+        if ($adsPage.Content -notmatch "Configuration des pubs" -or $adsPage.Content -notmatch "Provider / VAST" -or $adsPage.Content -notmatch "Evenements recents") {
+            throw "Page publicites admin indisponible."
+        }
         $csrf = Get-CsrfTokenFromHtml -Html $licensesPage.Content
 
         $label = "Automated Admin QA " + [Guid]::NewGuid().ToString("N").Substring(0, 8)
@@ -1009,6 +1099,7 @@ try {
     Write-Host "Preparation des dossiers distants..."
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "api"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "_includes"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "$remoteRoot/api" -Name "app"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "$remoteRoot/api" -Name "devices"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "$remoteRoot/api" -Name "licenses"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "activate"
@@ -1047,6 +1138,7 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/_includes" -FilePath (Join-Path $publicHtmlPath "_includes/site_layout.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/config.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/helpers.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/ads_service.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/notifications.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/monetization_rules.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/device_state.php")
@@ -1060,6 +1152,8 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/create_playlist_setup_session.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/home_slides.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/app_update.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/app" -FilePath (Join-Path $publicHtmlPath "api/app/ads-config.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/app" -FilePath (Join-Path $publicHtmlPath "api/app/ads-events.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/devices" -FilePath (Join-Path $publicHtmlPath "api/devices/register.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/devices" -FilePath (Join-Path $publicHtmlPath "api/devices/start_trial.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/devices" -FilePath (Join-Path $publicHtmlPath "api/devices/enable_free_with_ads.php")
@@ -1185,6 +1279,13 @@ try {
         if ([int]$updateStatus.latest_version_code -lt 0) {
             throw "Le manifest de mise a jour est invalide."
         }
+        Test-AdsApi `
+            -Domain $domain `
+            -CpanelBaseUrl $cpanelBaseUrl `
+            -Headers $headers `
+            -RemoteRoot $remoteRoot `
+            -TempRoot $tempRoot
+        Write-Host "Tests pubs OK: configuration, evenement et nettoyage."
 
         Write-Host "Test du parcours compte et commande..."
         Test-CustomerCommerce `

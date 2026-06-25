@@ -13,7 +13,10 @@ import com.smartvision.svplayer.data.monetization.MonetizationManager
 import com.smartvision.svplayer.data.monetization.MonetizationStore
 import com.smartvision.svplayer.data.monetization.ImaVideoAdProvider
 import com.smartvision.svplayer.data.monetization.PrivacyConsentManager
-import com.smartvision.svplayer.data.monetization.StaticAdConfigProvider
+import com.smartvision.svplayer.data.monetization.AdConfigApiService
+import com.smartvision.svplayer.data.monetization.AdsEventReporter
+import com.smartvision.svplayer.data.monetization.AdsEventsApiService
+import com.smartvision.svplayer.data.monetization.RemoteAdConfigProvider
 import com.smartvision.svplayer.data.notifications.NotificationsApiService
 import com.smartvision.svplayer.data.notifications.NotificationsRepository
 import com.smartvision.svplayer.data.remote.XtreamApiClient
@@ -93,6 +96,8 @@ class AppContainer(context: Context) {
     private val appUpdateApi = activationRetrofit.create(AppUpdateApiService::class.java)
     private val homeSlidesApi = activationRetrofit.create(HomeSlidesApiService::class.java)
     private val notificationsApi = activationRetrofit.create(NotificationsApiService::class.java)
+    private val adConfigApi = activationRetrofit.create(AdConfigApiService::class.java)
+    private val adsEventsApi = activationRetrofit.create(AdsEventsApiService::class.java)
 
     val activationRepository: ActivationRepository = ActivationRepository(
         appContext = appContext,
@@ -101,11 +106,13 @@ class AppContainer(context: Context) {
         accountManager = accountManager,
     )
 
-    val adConfigProvider = StaticAdConfigProvider()
+    val adConfigProvider = RemoteAdConfigProvider(adConfigApi)
+    private val adsEventReporter = AdsEventReporter(activationRepository, adsEventsApi)
     val monetizationManager = MonetizationManager(
         activationRepository = activationRepository,
         store = MonetizationStore(appContext.monetizationDataStore),
         configProvider = adConfigProvider,
+        eventReporter = adsEventReporter,
     )
     val privacyConsentManager = PrivacyConsentManager(appContext)
     val videoAdProvider = ImaVideoAdProvider(

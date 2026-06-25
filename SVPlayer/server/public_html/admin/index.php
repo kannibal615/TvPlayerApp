@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__) . '/api/commerce.php';
 require_once dirname(__DIR__) . '/api/mail_service.php';
+require_once dirname(__DIR__) . '/api/ads_service.php';
 
 $loginError = null;
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'login') {
@@ -29,6 +30,7 @@ if (!is_admin_authenticated()) {
 $pdo = db();
 sv_mail_ensure_schema($pdo);
 commerce_ensure_payment_schema($pdo);
+ads_ensure_schema($pdo);
 $page = admin_current_page($_POST['redirect_page'] ?? $_GET['page'] ?? 'overview');
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (!verify_csrf($_POST['csrf_token'] ?? null)) {
@@ -81,6 +83,8 @@ $serverStats = admin_load_server_stats($pdo, $stats);
 $paymentPacks = admin_load_payment_packs($pdo);
 $gammalPayments = commerce_load_gammal_payments($pdo);
 $emailAdmin = admin_load_email_admin($pdo);
+$adsPeriod = ads_period_days($_GET['ads_period'] ?? 1);
+$adsAdmin = $page === 'ads' ? admin_load_ads_admin($pdo, $adsPeriod) : [];
 $flash = consume_admin_flash();
 $generatedCode = $_SESSION['generated_activation_code'] ?? null;
 if (is_string($generatedCode)) {
@@ -109,6 +113,7 @@ render_admin_dashboard(
     $paymentPacks,
     $gammalPayments,
     $emailAdmin,
+    $adsAdmin,
     $flash,
     $generatedCode,
     $query,
@@ -118,7 +123,7 @@ render_admin_dashboard(
 function admin_current_page(mixed $page): string
 {
     $page = is_string($page) ? $page : 'overview';
-    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'payments', 'emails', 'devices', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
+    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'payments', 'emails', 'ads', 'devices', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
         ? $page
         : 'overview';
 }
@@ -140,6 +145,9 @@ function handle_admin_action(PDO $pdo, string $action): void
         case 'purge_devices': admin_purge_devices($pdo); break;
         case 'save_slide': admin_save_slide($pdo); break;
         case 'save_payment_packs': admin_save_payment_packs($pdo); break;
+        case 'save_ads_settings': admin_save_ads_settings($pdo); break;
+        case 'reset_ads_settings': admin_reset_ads_settings($pdo); break;
+        case 'test_ads_vast': admin_test_ads_vast($pdo); break;
         case 'approve_gammal_payment': admin_approve_gammal_payment($pdo); break;
         case 'reject_gammal_payment': admin_reject_gammal_payment($pdo); break;
         case 'save_email_settings': admin_save_email_settings($pdo); break;
@@ -862,6 +870,164 @@ function admin_normalize_notification_targets(string $value): string
     return implode(',', array_values(array_unique($clean)));
 }
 
+function admin_load_ads_admin(PDO $pdo, int $periodDays): array
+{
+    return ads_dashboard($pdo, $periodDays);
+}
+
+function admin_save_ads_settings(PDO $pdo): void
+{
+    $provider = (string) ($_POST['provider'] ?? 'HILLTOPADS_VAST');
+    if (!in_array($provider, ['HILLTOPADS_VAST', 'GOOGLE_IMA_TEST', 'CUSTOM_VAST'], true)) {
+        throw new InvalidArgumentException('Provider pub invalide.');
+    }
+
+    $productionTag = admin_optional_url($_POST['vast_production_tag_url'] ?? '', 2000);
+    $testTag = admin_optional_url($_POST['vast_test_tag_url'] ?? '', 2000);
+    $adsEnabled = ads_bool($_POST['ads_enabled'] ?? '0');
+    $useTestAds = ads_bool($_POST['use_test_ads'] ?? '0');
+    if ($adsEnabled === 1 && $productionTag === '' && $useTestAds !== 1) {
+        $useTestAds = 1;
+    }
+
+    $minMinutes = admin_int_range($_POST['min_minutes_between_ads'] ?? 30, 1, 1440);
+    $maxPerDay = admin_int_range($_POST['max_ads_per_day'] ?? 3, 1, 50);
+    $estimatedEcpm = admin_decimal_range($_POST['estimated_ecpm_eur'] ?? '5', 0, 1000);
+    $hilltopSiteId = smartvision_text_substr(preg_replace('/[^A-Za-z0-9._:-]/', '', trim((string) ($_POST['hilltop_site_id'] ?? ''))) ?: '', 0, 64);
+    $hilltopZoneId = smartvision_text_substr(preg_replace('/[^A-Za-z0-9._:-]/', '', trim((string) ($_POST['hilltop_zone_id'] ?? ''))) ?: '', 0, 64);
+
+    $statement = $pdo->prepare(
+        "UPDATE ads_settings
+         SET ads_enabled = :ads_enabled,
+             provider = :provider,
+             use_test_ads = :use_test_ads,
+             vast_production_tag_url = :vast_production_tag_url,
+             vast_test_tag_url = :vast_test_tag_url,
+             min_minutes_between_ads = :min_minutes_between_ads,
+             max_ads_per_day = :max_ads_per_day,
+             show_ad_before_live_stream = :show_ad_before_live_stream,
+             show_ad_before_movie = :show_ad_before_movie,
+             show_ad_before_series_episode = :show_ad_before_series_episode,
+             allow_playback_if_ad_fails = :allow_playback_if_ad_fails,
+             ads_only_inside_player = 1,
+             estimated_ecpm_eur = :estimated_ecpm_eur,
+             hilltop_site_id = :hilltop_site_id,
+             hilltop_zone_id = :hilltop_zone_id,
+             config_version = config_version + 1,
+             updated_by = :updated_by,
+             updated_at = NOW()
+         WHERE id = 1"
+    );
+    $statement->execute([
+        'ads_enabled' => $adsEnabled,
+        'provider' => $provider,
+        'use_test_ads' => $useTestAds,
+        'vast_production_tag_url' => $productionTag,
+        'vast_test_tag_url' => $testTag,
+        'min_minutes_between_ads' => $minMinutes,
+        'max_ads_per_day' => $maxPerDay,
+        'show_ad_before_live_stream' => ads_bool($_POST['show_ad_before_live_stream'] ?? '0'),
+        'show_ad_before_movie' => ads_bool($_POST['show_ad_before_movie'] ?? '0'),
+        'show_ad_before_series_episode' => ads_bool($_POST['show_ad_before_series_episode'] ?? '0'),
+        'allow_playback_if_ad_fails' => ads_bool($_POST['allow_playback_if_ad_fails'] ?? '0'),
+        'estimated_ecpm_eur' => number_format($estimatedEcpm, 2, '.', ''),
+        'hilltop_site_id' => $hilltopSiteId,
+        'hilltop_zone_id' => $hilltopZoneId,
+        'updated_by' => current_admin_username(),
+    ]);
+    audit_admin_action($pdo, 'ads_settings_updated', 'ads_settings', '1', [
+        'provider' => $provider,
+        'ads_enabled' => $adsEnabled,
+        'use_test_ads' => $useTestAds,
+    ]);
+    set_admin_flash('success', 'Configuration publicitaire enregistree.');
+}
+
+function admin_reset_ads_settings(PDO $pdo): void
+{
+    $current = ads_load_settings($pdo);
+    $defaults = ads_default_settings();
+    $defaults['config_version'] = (int) ($current['config_version'] ?? 1) + 1;
+    $defaults['updated_by'] = current_admin_username();
+    $statement = $pdo->prepare(
+        "UPDATE ads_settings
+         SET ads_enabled = :ads_enabled,
+             provider = :provider,
+             use_test_ads = :use_test_ads,
+             vast_production_tag_url = :vast_production_tag_url,
+             vast_test_tag_url = :vast_test_tag_url,
+             min_minutes_between_ads = :min_minutes_between_ads,
+             max_ads_per_day = :max_ads_per_day,
+             show_ad_before_live_stream = :show_ad_before_live_stream,
+             show_ad_before_movie = :show_ad_before_movie,
+             show_ad_before_series_episode = :show_ad_before_series_episode,
+             allow_playback_if_ad_fails = :allow_playback_if_ad_fails,
+             ads_only_inside_player = :ads_only_inside_player,
+             estimated_ecpm_eur = :estimated_ecpm_eur,
+             hilltop_site_id = :hilltop_site_id,
+             hilltop_zone_id = :hilltop_zone_id,
+             config_version = :config_version,
+             updated_by = :updated_by,
+             updated_at = NOW()
+         WHERE id = 1"
+    );
+    $statement->execute($defaults);
+    audit_admin_action($pdo, 'ads_settings_reset', 'ads_settings', '1');
+    set_admin_flash('success', 'Configuration publicitaire reinitialisee.');
+}
+
+function admin_test_ads_vast(PDO $pdo): void
+{
+    $settings = ads_load_settings($pdo);
+    $mode = (string) ($_POST['vast_mode'] ?? 'active');
+    $url = match ($mode) {
+        'production' => (string) ($settings['vast_production_tag_url'] ?? ''),
+        'test' => (string) ($settings['vast_test_tag_url'] ?? ''),
+        default => ads_selected_vast_tag($settings),
+    };
+    $result = ads_test_vast_tag($url);
+    audit_admin_action($pdo, 'ads_vast_tested', 'ads_settings', '1', [
+        'mode' => $mode,
+        'ok' => (bool) $result['ok'],
+        'http_code' => $result['http_code'],
+    ]);
+    $code = $result['http_code'] !== null ? ' HTTP ' . (int) $result['http_code'] . '.' : '';
+    set_admin_flash($result['ok'] ? 'success' : 'error', $result['message'] . $code);
+}
+
+function admin_optional_url(mixed $value, int $maxLength): string
+{
+    $url = smartvision_text_substr(trim((string) $value), 0, $maxLength);
+    if ($url === '') {
+        return '';
+    }
+    if (!filter_var($url, FILTER_VALIDATE_URL)) {
+        throw new InvalidArgumentException('URL invalide.');
+    }
+
+    return $url;
+}
+
+function admin_int_range(mixed $value, int $min, int $max): int
+{
+    $validated = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => $min, 'max_range' => $max]]);
+    if ($validated === false) {
+        throw new InvalidArgumentException('Valeur numerique invalide.');
+    }
+
+    return (int) $validated;
+}
+
+function admin_decimal_range(mixed $value, float $min, float $max): float
+{
+    $number = filter_var(str_replace(',', '.', (string) $value), FILTER_VALIDATE_FLOAT);
+    if ($number === false || $number < $min || $number > $max) {
+        throw new InvalidArgumentException('Montant eCPM invalide.');
+    }
+
+    return (float) $number;
+}
+
 function admin_load_stats(PDO $pdo): array
 {
     return [
@@ -1233,19 +1399,28 @@ function admin_load_devices(PDO $pdo, string $query, int $page = 1): array
                    d.created_at, d.last_seen_at, d.first_seen_at, d.activated_at, d.expires_at,
                    a.activation_type, a.activation_code_id, a.starts_at AS activation_starts_at,
                    c.license_type, c.duration_days, m.code_hint, m.code_ciphertext,
-                   CASE WHEN p.device_id IS NULL THEN 0 ELSE 1 END AS playlist_configured
+                   CASE WHEN p.device_id IS NULL THEN 0 ELSE 1 END AS playlist_configured,
+                   COALESCE(ad_stats.ad_views, 0) AS ad_views,
+                   ad_stats.last_ad_view_at
             FROM devices d
             LEFT JOIN device_activations a ON a.id = (
                 SELECT da.id FROM device_activations da WHERE da.device_id = d.device_id ORDER BY da.id DESC LIMIT 1
             )
             LEFT JOIN activation_codes c ON c.id = a.activation_code_id
             LEFT JOIN activation_code_metadata m ON m.code_id = c.id
-            LEFT JOIN device_playlist_configs p ON p.device_id = d.device_id";
+            LEFT JOIN device_playlist_configs p ON p.device_id = d.device_id
+            LEFT JOIN (
+                SELECT device_id_hash, COUNT(*) AS ad_views, MAX(created_at) AS last_ad_view_at
+                FROM ads_events
+                WHERE event_type = 'AD_STARTED'
+                GROUP BY device_id_hash
+            ) ad_stats ON ad_stats.device_id_hash = SHA2(d.device_id, 256)";
     $sql .= $where . ' ORDER BY ' . admin_sort_sql('activity', [
         'device' => 'd.public_device_code',
         'status' => 'd.status',
         'license' => 'd.license_status',
         'xtream' => 'd.xtream_status',
+        'ad_views' => 'COALESCE(ad_stats.ad_views, 0)',
         'installed' => 'COALESCE(d.first_seen_at, d.created_at)',
         'expires' => 'd.expires_at',
         'activity' => 'COALESCE(d.last_seen_at, d.first_seen_at, d.created_at)',
@@ -1426,7 +1601,7 @@ function render_admin_login(?string $error): void
 {
     $configured = admin_auth_is_configured();
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=5"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=6"></head>
 <body class="admin-login-body"><main class="admin-login-panel">
     <a class="admin-brand" href="/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
     <h1>Administration</h1><p>Commandes, licences et appareils SmartVision.</p>
@@ -1455,6 +1630,7 @@ function render_admin_dashboard(
     array $paymentPacks,
     array $gammalPayments,
     array $emailAdmin,
+    array $adsAdmin,
     ?array $flash,
     ?array $generatedCode,
     string $query,
@@ -1468,6 +1644,7 @@ function render_admin_dashboard(
         'licenses' => ['Licences', 'Generation manuelle et gestion des codes SmartVision.'],
         'payments' => ['Paiements', 'Packs Gammal Tech et transactions en attente de validation.'],
         'emails' => ['Emails', 'Configuration SMTP, templates transactionnels et journal des envois.'],
+        'ads' => ['Publicites', 'Gestion des publicites video du player SmartVision.'],
         'devices' => ['Appareils', 'TV associees, essais, licences et configuration Xtream.'],
         'notifications' => ['Notifications', 'Messages envoyes vers toutes les TV ou vers des cibles precises.'],
         'messages' => ['Messages clients', 'Demandes envoyees depuis le formulaire de contact.'],
@@ -1477,7 +1654,7 @@ function render_admin_dashboard(
     ];
     $heading = $pages[$page] ?? $pages['overview'];
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=5"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=6"></head>
 <body class="admin-body">
 <aside class="admin-sidebar">
     <a class="admin-brand" href="/admin/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
@@ -1508,6 +1685,8 @@ function render_admin_dashboard(
             <section class="admin-panel alerts-panel"><div class="admin-panel-heading"><div><h2>Alertes et actions</h2><p>Points a surveiller</p></div></div><ul><?php foreach ($alerts as $alert): ?><li class="<?= admin_escape($alert['level']) ?>"><span><?= admin_escape($alert['label']) ?></span><strong><?= (int) $alert['value'] ?></strong></li><?php endforeach; ?></ul></section>
         </div>
         <?php endif; ?>
+
+        <?php if ($page === 'ads'): admin_render_ads_page($adsAdmin); endif; ?>
 
         <?php if ($page === 'orders'): ?>
         <section class="admin-panel" id="orders"><div class="admin-panel-heading"><div><h2>Commandes recentes</h2><p><?= count($orders) ?> resultat(s)</p></div><form class="admin-filter-row" method="get"><input type="hidden" name="page" value="orders"><input type="hidden" name="q" value="<?= admin_escape($query) ?>"><label>Statut<select name="order_status"><option value="">Tous</option><?php foreach (['pending', 'paid', 'cancelled'] as $statusOption): ?><option value="<?= admin_escape($statusOption) ?>"<?= ($_GET['order_status'] ?? '') === $statusOption ? ' selected' : '' ?>><?= admin_escape($statusOption) ?></option><?php endforeach; ?></select></label><button class="admin-button compact secondary" type="submit">Filtrer</button></form></div><div class="admin-table-wrap"><table><thead><tr><th><?= admin_sort_link('orders', 'Reference', 'reference', $query) ?></th><th><?= admin_sort_link('orders', 'Client', 'client', $query) ?></th><th><?= admin_sort_link('orders', 'Plan', 'plan', $query) ?></th><th><?= admin_sort_link('orders', 'Montant', 'amount', $query) ?></th><th><?= admin_sort_link('orders', 'Paiement', 'payment', $query) ?></th><th>Licence</th><th><?= admin_sort_link('orders', 'Date', 'date', $query) ?></th><th>Actions</th></tr></thead><tbody>
@@ -1833,8 +2012,8 @@ function render_admin_dashboard(
         <?php endif; ?>
 
         <?php if ($page === 'devices'): ?>
-        <section class="admin-panel" id="devices"><div class="admin-panel-heading"><div><h2>Appareils</h2><p><?= (int) $devicesPagination['total'] ?> appareil(s), tries par derniere activite decroissante.</p></div><form class="admin-filter-row" method="get"><input type="hidden" name="page" value="devices"><input type="hidden" name="q" value="<?= admin_escape($query) ?>"><label>Etat<select name="device_status"><option value="">Tous</option><?php foreach (['pending', 'active', 'expired', 'blocked'] as $statusOption): ?><option value="<?= admin_escape($statusOption) ?>"<?= ($_GET['device_status'] ?? '') === $statusOption ? ' selected' : '' ?>><?= admin_escape($statusOption) ?></option><?php endforeach; ?></select></label><label>Xtream<select name="xtream_status"><option value="">Tous</option><?php foreach (['missing', 'configured', 'invalid'] as $statusOption): ?><option value="<?= admin_escape($statusOption) ?>"<?= ($_GET['xtream_status'] ?? '') === $statusOption ? ' selected' : '' ?>><?= admin_escape($statusOption) ?></option><?php endforeach; ?></select></label><button class="admin-button compact secondary" type="submit">Filtrer</button></form><form method="post" class="purge-form" data-confirm="Supprimer tous les appareils, sessions, activations et playlists ?"><input type="hidden" name="redirect_page" value="devices"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="purge_devices"><input name="confirmation" placeholder="PURGER" aria-label="Confirmation purge"><button class="admin-button danger" type="submit">Purger appareils</button></form></div><div class="admin-table-wrap"><table><thead><tr><th><?= admin_sort_link('devices', 'Appareil', 'device', $query) ?></th><th><?= admin_sort_link('devices', 'Etat', 'status', $query) ?></th><th><?= admin_sort_link('devices', 'Licence', 'license', $query) ?></th><th><?= admin_sort_link('devices', 'Xtream', 'xtream', $query) ?></th><th><?= admin_sort_link('devices', 'Installation', 'installed', $query) ?></th><th><?= admin_sort_link('devices', 'Expiration / activite', 'activity', $query) ?></th><th>Actions</th></tr></thead><tbody>
-        <?php if ($devices === []): ?><tr><td colspan="7" class="admin-empty">Aucun appareil.</td></tr><?php endif; ?>
+        <section class="admin-panel" id="devices"><div class="admin-panel-heading"><div><h2>Appareils</h2><p><?= (int) $devicesPagination['total'] ?> appareil(s), tries par derniere activite decroissante.</p></div><form class="admin-filter-row" method="get"><input type="hidden" name="page" value="devices"><input type="hidden" name="q" value="<?= admin_escape($query) ?>"><label>Etat<select name="device_status"><option value="">Tous</option><?php foreach (['pending', 'active', 'expired', 'blocked'] as $statusOption): ?><option value="<?= admin_escape($statusOption) ?>"<?= ($_GET['device_status'] ?? '') === $statusOption ? ' selected' : '' ?>><?= admin_escape($statusOption) ?></option><?php endforeach; ?></select></label><label>Xtream<select name="xtream_status"><option value="">Tous</option><?php foreach (['missing', 'configured', 'invalid'] as $statusOption): ?><option value="<?= admin_escape($statusOption) ?>"<?= ($_GET['xtream_status'] ?? '') === $statusOption ? ' selected' : '' ?>><?= admin_escape($statusOption) ?></option><?php endforeach; ?></select></label><button class="admin-button compact secondary" type="submit">Filtrer</button></form><form method="post" class="purge-form" data-confirm="Supprimer tous les appareils, sessions, activations et playlists ?"><input type="hidden" name="redirect_page" value="devices"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="purge_devices"><input name="confirmation" placeholder="PURGER" aria-label="Confirmation purge"><button class="admin-button danger" type="submit">Purger appareils</button></form></div><div class="admin-table-wrap"><table><thead><tr><th><?= admin_sort_link('devices', 'Appareil', 'device', $query) ?></th><th><?= admin_sort_link('devices', 'Etat', 'status', $query) ?></th><th><?= admin_sort_link('devices', 'Licence', 'license', $query) ?></th><th><?= admin_sort_link('devices', 'Xtream', 'xtream', $query) ?></th><th><?= admin_sort_link('devices', 'Ad view', 'ad_views', $query) ?></th><th><?= admin_sort_link('devices', 'Installation', 'installed', $query) ?></th><th><?= admin_sort_link('devices', 'Expiration / activite', 'activity', $query) ?></th><th>Actions</th></tr></thead><tbody>
+        <?php if ($devices === []): ?><tr><td colspan="8" class="admin-empty">Aucun appareil.</td></tr><?php endif; ?>
         <?php foreach ($devices as $device): admin_render_device_row($device); endforeach; ?>
         </tbody></table></div><?= admin_render_pagination($devicesPagination, $page, $query) ?><?php foreach ($devices as $device): admin_render_device_modal($device); endforeach; ?></section>
         <?php endif; ?>
@@ -1893,6 +2072,166 @@ function render_admin_dashboard(
 </div>
 <script src="/assets/admin.js?v=3" defer></script>
 </body></html><?php
+}
+
+function admin_render_ads_page(array $adsAdmin): void
+{
+    $settings = $adsAdmin['settings'] ?? ads_default_settings();
+    $summary = $adsAdmin['summary'] ?? [];
+    $series = $adsAdmin['series'] ?? [];
+    $events = $adsAdmin['recent_events'] ?? [];
+    $provider = $adsAdmin['provider'] ?? [];
+    $diagnostics = $adsAdmin['diagnostics'] ?? [];
+    $hilltop = $adsAdmin['hilltop'] ?? [];
+    $periodDays = (int) ($adsAdmin['period_days'] ?? 1);
+    $estimatedRevenue = ((int) ($summary['shown'] ?? 0) / 1000) * (float) ($settings['estimated_ecpm_eur'] ?? 0);
+    ?>
+        <nav class="admin-tabs ads-tabs" aria-label="Filtres publicites">
+            <?php foreach ([1 => "Aujourd'hui", 7 => '7 derniers jours', 30 => '30 derniers jours'] as $days => $label): ?>
+                <a class="<?= $periodDays === $days ? 'active' : '' ?>" href="/admin/?page=ads&amp;ads_period=<?= (int) $days ?>"><?= admin_escape($label) ?></a>
+            <?php endforeach; ?>
+        </nav>
+
+        <section class="admin-kpis ads-kpis" aria-label="Indicateurs publicites">
+            <?= admin_kpi('Pubs demandees', (int) ($summary['requested'] ?? 0), 'blue') ?>
+            <?= admin_kpi('Pubs affichees', (int) ($summary['shown'] ?? 0), 'cyan') ?>
+            <?= admin_kpi('Pubs terminees', (int) ($summary['completed'] ?? 0), 'green') ?>
+            <?= admin_kpi('Pubs echouees', (int) ($summary['failed'] ?? 0), 'orange') ?>
+            <?= admin_kpi('Taux echec', number_format((float) ($summary['failure_rate'] ?? 0), 1, ',', ' ') . ' %', 'orange') ?>
+            <?= admin_kpi('Taux completion', number_format((float) ($summary['completion_rate'] ?? 0), 1, ',', ' ') . ' %', 'green') ?>
+            <?= admin_kpi('FREE_WITH_ADS actifs', (int) ($summary['free_devices'] ?? 0), 'cyan') ?>
+            <?= admin_kpi('Config active', !empty($settings['ads_enabled']) ? 'Active' : 'Inactive', !empty($settings['ads_enabled']) ? 'green' : 'orange') ?>
+        </section>
+
+        <div class="ads-dashboard-grid">
+            <section class="admin-panel ads-chart-panel">
+                <div class="admin-panel-heading"><div><h2>Tableau de bord</h2><p>Volumes app Android TV sur la periode filtree.</p></div></div>
+                <div class="ads-metric-list">
+                    <div><span>Pubs bloquees par frequence</span><strong><?= (int) ($summary['blocked_frequency'] ?? 0) ?></strong></div>
+                    <div><span>Pubs bloquees par limite journaliere</span><strong><?= (int) ($summary['blocked_daily_limit'] ?? 0) ?></strong></div>
+                    <div><span>Derniere pub affichee</span><strong><?= admin_escape((string) ($summary['last_started_at'] ?? '-')) ?></strong></div>
+                    <div><span>Derniere erreur pub</span><strong><?= admin_escape((string) (($summary['last_error']['created_at'] ?? null) ?: '-')) ?></strong><small><?= admin_escape((string) (($summary['last_error']['error_message'] ?? null) ?: '-')) ?></small></div>
+                    <div><span>Revenu estime</span><strong><?= admin_escape(number_format($estimatedRevenue, 2, ',', ' ') . ' EUR') ?></strong><small>Indicatif uniquement, verifier HilltopAds.</small></div>
+                </div>
+                <div class="ads-series-table">
+                    <table><thead><tr><th>Jour</th><th>Demandes</th><th>Impressions</th><th>Terminees</th><th>Erreurs</th><th>Completion</th></tr></thead><tbody>
+                    <?php foreach ($series as $point): ?><tr><td><?= admin_escape($point['label']) ?></td><td><?= (int) $point['requested'] ?></td><td><?= (int) $point['shown'] ?></td><td><?= (int) $point['completed'] ?></td><td><?= (int) $point['failed'] ?></td><td><?= admin_escape(number_format((float) $point['completion_rate'], 1, ',', ' ')) ?> %</td></tr><?php endforeach; ?>
+                    </tbody></table>
+                </div>
+            </section>
+
+            <section class="admin-panel ads-provider-panel">
+                <div class="admin-panel-heading"><div><h2>Provider / VAST</h2><p>Etat du fournisseur et infos HilltopAds.</p></div></div>
+                <div class="ads-metric-list">
+                    <div><span>Provider actuel</span><strong><?= admin_escape((string) ($provider['provider'] ?? '-')) ?></strong></div>
+                    <div><span>Mode</span><strong><?= admin_escape((string) ($provider['mode'] ?? '-')) ?></strong></div>
+                    <div><span>Statut</span><strong><?= admin_escape((string) ($provider['status'] ?? '-')) ?></strong></div>
+                    <div><span>VAST utilise</span><strong><?= admin_escape(admin_mask_url((string) ($provider['vast_tag_url'] ?? ''))) ?></strong></div>
+                    <div><span>Hilltop API</span><strong><?= !empty($hilltop['configured']) ? admin_escape((string) ($hilltop['message'] ?? 'Configuree')) : 'Non configuree' ?></strong><small>Publisher ID <?= !empty($hilltop['publisher_id_present']) ? 'present' : 'absent' ?></small></div>
+                    <div><span>Balance Hilltop</span><strong><?= admin_escape(admin_hilltop_balance_label($hilltop['balance'] ?? [])) ?></strong></div>
+                    <div><span>Inventaire Hilltop</span><strong><?= (int) (($hilltop['inventory']['site_count'] ?? 0)) ?> site(s), <?= (int) (($hilltop['inventory']['zone_count'] ?? 0)) ?> zone(s)</strong></div>
+                    <div><span>Stats Hilltop periode</span><strong><?= admin_escape(number_format((float) (($hilltop['stats']['impressions'] ?? 0)), 0, ',', ' ')) ?> impressions</strong><small><?= admin_escape(number_format((float) (($hilltop['stats']['revenue'] ?? 0)), 4, ',', ' ')) ?> revenu API</small></div>
+                </div>
+                <form method="post" class="ads-vast-test-form">
+                    <input type="hidden" name="redirect_page" value="ads">
+                    <input type="hidden" name="action" value="test_ads_vast">
+                    <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                    <label>Tag a tester<select name="vast_mode"><option value="active">Actif</option><option value="production">Production</option><option value="test">Test</option></select></label>
+                    <button class="admin-button secondary" type="submit">Tester le tag VAST</button>
+                </form>
+            </section>
+        </div>
+
+        <section class="admin-panel ads-config-panel">
+            <div class="admin-panel-heading"><div><h2>Configuration des pubs</h2><p>Ces reglages sont lus par l application via /api/app/ads-config.</p></div></div>
+            <form method="post" class="ads-settings-form">
+                <input type="hidden" name="redirect_page" value="ads">
+                <input type="hidden" name="action" value="save_ads_settings">
+                <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                <label><span>adsEnabled</span><input name="ads_enabled" type="checkbox" value="1"<?= !empty($settings['ads_enabled']) ? ' checked' : '' ?>> Activer les pubs</label>
+                <label><span>useTestAds</span><input name="use_test_ads" type="checkbox" value="1"<?= !empty($settings['use_test_ads']) ? ' checked' : '' ?>> Utiliser le tag test</label>
+                <label><span>Provider</span><select name="provider"><?php foreach (['HILLTOPADS_VAST', 'GOOGLE_IMA_TEST', 'CUSTOM_VAST'] as $providerOption): ?><option value="<?= admin_escape($providerOption) ?>"<?= ($settings['provider'] ?? '') === $providerOption ? ' selected' : '' ?>><?= admin_escape($providerOption) ?></option><?php endforeach; ?></select></label>
+                <label class="ads-wide"><span>vastProductionTagUrl</span><input name="vast_production_tag_url" type="url" maxlength="2000" value="<?= admin_escape((string) ($settings['vast_production_tag_url'] ?? '')) ?>"></label>
+                <label class="ads-wide"><span>vastTestTagUrl</span><input name="vast_test_tag_url" type="url" maxlength="2000" value="<?= admin_escape((string) ($settings['vast_test_tag_url'] ?? '')) ?>"></label>
+                <label><span>minMinutesBetweenAds</span><input name="min_minutes_between_ads" type="number" min="1" max="1440" value="<?= (int) ($settings['min_minutes_between_ads'] ?? 30) ?>"></label>
+                <label><span>maxAdsPerDay</span><input name="max_ads_per_day" type="number" min="1" max="50" value="<?= (int) ($settings['max_ads_per_day'] ?? 3) ?>"></label>
+                <label><span>estimatedEcpm EUR</span><input name="estimated_ecpm_eur" type="number" min="0" max="1000" step="0.01" value="<?= admin_escape((string) ($settings['estimated_ecpm_eur'] ?? '5.00')) ?>"></label>
+                <label><span>Hilltop siteID</span><input name="hilltop_site_id" maxlength="64" value="<?= admin_escape((string) ($settings['hilltop_site_id'] ?? '')) ?>"></label>
+                <label><span>Hilltop zoneID</span><input name="hilltop_zone_id" maxlength="64" value="<?= admin_escape((string) ($settings['hilltop_zone_id'] ?? '')) ?>"></label>
+                <label><span>Live TV</span><input name="show_ad_before_live_stream" type="checkbox" value="1"<?= !empty($settings['show_ad_before_live_stream']) ? ' checked' : '' ?>> Pre-roll Live</label>
+                <label><span>Films</span><input name="show_ad_before_movie" type="checkbox" value="1"<?= !empty($settings['show_ad_before_movie']) ? ' checked' : '' ?>> Pre-roll film</label>
+                <label><span>Series</span><input name="show_ad_before_series_episode" type="checkbox" value="1"<?= !empty($settings['show_ad_before_series_episode']) ? ' checked' : '' ?>> Pre-roll episode</label>
+                <label><span>Fallback video</span><input name="allow_playback_if_ad_fails" type="checkbox" value="1"<?= !empty($settings['allow_playback_if_ad_fails']) ? ' checked' : '' ?>> Lire si pub echoue</label>
+                <label><span>adsOnlyInsidePlayer</span><input type="checkbox" checked disabled> Force a true</label>
+                <div class="ads-config-meta"><strong>Version config <?= (int) ($settings['config_version'] ?? 1) ?></strong><small>MAJ <?= admin_escape((string) ($settings['updated_at'] ?? '-')) ?> par <?= admin_escape((string) ($settings['updated_by'] ?? '-')) ?></small></div>
+                <div class="ads-settings-actions"><button class="admin-button primary" type="submit">Enregistrer configuration</button></div>
+            </form>
+            <form method="post" class="ads-reset-form" data-confirm="Reinitialiser la configuration publicitaire ?">
+                <input type="hidden" name="redirect_page" value="ads">
+                <input type="hidden" name="action" value="reset_ads_settings">
+                <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                <button class="admin-button secondary" type="submit">Reinitialiser configuration par defaut</button>
+            </form>
+        </section>
+
+        <div class="ads-dashboard-grid">
+            <section class="admin-panel">
+                <div class="admin-panel-heading"><div><h2>Diagnostic</h2><p>Alertes simples pour eviter les erreurs de monétisation.</p></div></div>
+                <ul class="ads-diagnostics">
+                    <?php foreach ($diagnostics as $diagnostic): ?><li class="<?= admin_escape((string) ($diagnostic['level'] ?? 'info')) ?>"><?= admin_escape((string) ($diagnostic['message'] ?? '')) ?></li><?php endforeach; ?>
+                </ul>
+            </section>
+            <section class="admin-panel">
+                <div class="admin-panel-heading"><div><h2>Demandes par contexte</h2><p>Types de contenu et plateformes.</p></div></div>
+                <div class="ads-breakdown-grid">
+                    <table><thead><tr><th>Content type</th><th>Demandes</th></tr></thead><tbody><?php foreach (($summary['content_breakdown'] ?? []) as $row): ?><tr><td><?= admin_escape((string) $row['content_type']) ?></td><td><?= (int) $row['requests'] ?></td></tr><?php endforeach; ?></tbody></table>
+                    <table><thead><tr><th>Platform</th><th>Demandes</th></tr></thead><tbody><?php foreach (($summary['platform_breakdown'] ?? []) as $row): ?><tr><td><?= admin_escape((string) $row['platform']) ?></td><td><?= (int) $row['requests'] ?></td></tr><?php endforeach; ?></tbody></table>
+                </div>
+            </section>
+        </div>
+
+        <section class="admin-panel" id="ads-events">
+            <div class="admin-panel-heading"><div><h2>Evenements recents</h2><p>Derniers evenements pub remontes par l application.</p></div><a class="admin-button compact secondary" href="/admin/?page=ads&amp;ads_period=<?= (int) $periodDays ?>">Actualiser statistiques</a></div>
+            <div class="admin-table-wrap"><table><thead><tr><th>Date</th><th>Device hash</th><th>User</th><th>Content</th><th>Platform</th><th>App</th><th>Event</th><th>Provider</th><th>Raison / erreur</th><th>Duree</th></tr></thead><tbody>
+                <?php if ($events === []): ?><tr><td colspan="10" class="admin-empty">Aucun evenement pub enregistre.</td></tr><?php endif; ?>
+                <?php foreach ($events as $event): ?><tr>
+                    <td><?= admin_escape((string) $event['created_at']) ?></td>
+                    <td><small><?= admin_escape(ads_mask_hash($event['device_id_hash'] ?? null)) ?></small></td>
+                    <td><?= admin_escape((string) $event['user_status']) ?></td>
+                    <td><?= admin_escape((string) $event['content_type']) ?></td>
+                    <td><?= admin_escape((string) $event['platform']) ?></td>
+                    <td><?= admin_escape((string) ($event['app_version'] ?: '-')) ?></td>
+                    <td><strong><?= admin_escape((string) $event['event_type']) ?></strong></td>
+                    <td><?= admin_escape((string) $event['provider']) ?></td>
+                    <td><small><?= admin_escape(trim((string) ($event['reason'] ?: '') . ' ' . (string) ($event['error_code'] ?: '') . ' ' . (string) ($event['error_message'] ?: '')) ?: '-') ?></small></td>
+                    <td><?= $event['ad_duration_seconds'] !== null ? (int) $event['ad_duration_seconds'] . 's' : '-' ?></td>
+                </tr><?php endforeach; ?>
+            </tbody></table></div>
+        </section>
+    <?php
+}
+
+function admin_mask_url(string $url): string
+{
+    $url = trim($url);
+    if ($url === '') {
+        return '-';
+    }
+    $parts = parse_url($url);
+    if (!is_array($parts) || empty($parts['host'])) {
+        return smartvision_text_substr($url, 0, 32) . '...';
+    }
+
+    return (string) ($parts['scheme'] ?? 'https') . '://' . (string) $parts['host'] . '/...';
+}
+
+function admin_hilltop_balance_label(array $balance): string
+{
+    if (empty($balance['ok'])) {
+        return 'N/D';
+    }
+
+    return trim((string) ($balance['balance'] ?? '0') . ' ' . (string) ($balance['currency'] ?? ''));
 }
 
 function admin_kpi(string $label, mixed $value, string $tone): string
@@ -1955,6 +2294,10 @@ function admin_render_device_row(array $device): void
         <td>
             <span class="admin-state <?= (int) $device['playlist_configured'] === 1 ? 'active' : 'pending' ?>"><?= (int) $device['playlist_configured'] === 1 ? 'Configuree' : 'Absente' ?></span>
             <small>Xtream <?= admin_escape($device['xtream_status'] ?: '-') ?></small>
+        </td>
+        <td>
+            <strong><?= number_format((int) ($device['ad_views'] ?? 0), 0, ',', ' ') ?></strong>
+            <small>pub(s) vue(s)</small>
         </td>
         <td>
             <?= admin_escape($device['first_seen_at'] ?: $device['created_at'] ?: '-') ?>
@@ -2041,6 +2384,8 @@ function admin_render_device_modal(array $device): void
                 <div><span>Etat</span><strong><span class="admin-state <?= admin_escape($device['status']) ?>"><?= admin_escape($device['status']) ?></span></strong></div>
                 <div><span>Licence</span><strong><?= admin_escape($device['license_status'] ?: '-') ?></strong></div>
                 <div><span>Xtream</span><strong><?= admin_escape($device['xtream_status'] ?: '-') ?></strong></div>
+                <div><span>Ad views</span><strong><?= number_format((int) ($device['ad_views'] ?? 0), 0, ',', ' ') ?></strong></div>
+                <div><span>Derniere pub vue</span><strong><?= admin_escape($device['last_ad_view_at'] ?: '-') ?></strong></div>
                 <div><span>App version</span><strong><?= admin_escape($device['app_version'] ?: '-') ?></strong></div>
                 <div><span>Premiere vue</span><strong><?= admin_escape($device['first_seen_at'] ?: $device['created_at'] ?: '-') ?></strong></div>
                 <div><span>Derniere activite</span><strong><?= admin_escape($device['last_seen_at'] ?: '-') ?></strong></div>

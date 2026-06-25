@@ -343,13 +343,13 @@ Une release locale non publiee ne doit pas etre consideree comme terminee. Le ma
 `downloads/smartvision-tv.version.json` doit etre regenere et envoye avec chaque APK afin
 que la mise a jour in-app soit detectee.
 
-Version release publiee le 2026-06-24:
+Version release publiee le 2026-06-25:
 
 ```text
-versionName: 0.1.3
-versionCode: 6
-affichage: 0.1.3 (6)
-apk: https://smartvisions.net/downloads/smartvision-tv-v6-4b488509.apk
+versionName: 0.1.9
+versionCode: 12
+affichage: 0.1.9 (12)
+apk: https://smartvisions.net/downloads/smartvision-tv-v12-53a88d14.apk
 ```
 
 Si le JBR Android Studio local echoue, utiliser un JDK 21 externe ou portable et definir `JAVA_HOME`.

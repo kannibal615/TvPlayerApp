@@ -26,6 +26,12 @@ fun buildConfigString(value: String): String {
 fun localBoolean(name: String): Boolean =
     localString(name).equals("true", ignoreCase = true)
 
+fun localAdString(name: String): String =
+    localString(name).trim().removeSurrounding("\"").removeSurrounding("'")
+
+fun productionVideoAdTagUrl(): String =
+    localAdString("VIDEO_AD_TAG_URL").ifBlank { localAdString("HILLTOPADS_VAST_TAG_URL") }
+
 fun activationBaseUrl(): String {
     val configured = localString("DOMAINE_SERVER").ifBlank { "smartvisions.net" }
     val normalized = configured.trim().trimEnd('/')
@@ -45,8 +51,8 @@ android {
         applicationId = "com.smartvision.svplayer"
         minSdk = 23
         targetSdk = 36
-        versionCode = 10
-        versionName = "0.1.7"
+        versionCode = 13
+        versionName = "0.1.10"
 
         buildConfigField("String", "ACTIVATION_BASE_URL", buildConfigString(activationBaseUrl()))
     }
@@ -87,14 +93,14 @@ android {
         }
         getByName("release") {
             val productionAppId = localString("GOOGLE_ADS_APPLICATION_ID")
-            val productionVideoTag = localString("VIDEO_AD_TAG_URL")
+            val productionVideoTag = productionVideoAdTagUrl()
             manifestPlaceholders["googleAdsApplicationId"] = productionAppId
             buildConfigField("String", "GOOGLE_ADS_APPLICATION_ID", buildConfigString(productionAppId))
             buildConfigField("String", "VIDEO_AD_TAG_URL", buildConfigString(productionVideoTag))
             buildConfigField(
                 "boolean",
                 "ADS_RUNTIME_CONFIGURED",
-                (productionAppId.isNotBlank() && productionVideoTag.isNotBlank()).toString(),
+                productionVideoTag.isNotBlank().toString(),
             )
             buildConfigField("String", "DEBUG_MONETIZATION_STATUS", buildConfigString(""))
             buildConfigField("boolean", "DEBUG_FORCE_AD_FAILURE", "false")

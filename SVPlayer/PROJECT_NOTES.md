@@ -1,6 +1,6 @@
 # SmartVision / SVPlayer - Project Notes
 
-Derniere mise a jour: 2026-06-24.
+Derniere mise a jour: 2026-06-25.
 
 Ce document decrit l'etat fonctionnel et technique actuel du projet pour permettre a un agent IA de reprendre rapidement sans casser le fonctionnement existant.
 
@@ -28,24 +28,24 @@ Activite principale: com.smartvision.svplayer/.MainActivity
 Min SDK: 23
 Compile SDK: 36
 Target SDK: 36
-Version actuelle: 0.1.3
-VersionCode actuel: 6
+Version actuelle: 0.1.9
+VersionCode actuel: 11
 Backend: https://smartvisions.net
 ```
 
 ## Etat release connu
 
-Release compilee, signee, deployee et verifiee le 2026-06-24:
+Release compilee, signee, deployee et verifiee le 2026-06-25:
 
 ```text
-version_code: 6
-version_name: 0.1.3
-affichage: 0.1.3 (6)
-apk_file: smartvision-tv-v6-4b488509.apk
-apk_url: https://smartvisions.net/downloads/smartvision-tv-v6-4b488509.apk
+version_code: 12
+version_name: 0.1.9
+affichage: 0.1.9 (12)
+apk_file: smartvision-tv-v12-53a88d14.apk
+apk_url: https://smartvisions.net/downloads/smartvision-tv-v12-53a88d14.apk
 stable_url: https://smartvisions.net/downloads/smartvision-tv.apk
-sha256: 4b4885095acb6a242fcd39a6496106715ee8097033eee8a2d6c57d4865da2358
-size: 39673855
+sha256: 53a88d144fbfbc244f1c303db10c4fa0e840769b7ad38d5bd4a8597aa6f70f2c
+size: 38504859
 ```
 
 Le fichier versionne et l'URL stable ont ete telecharges avec succes apres deploiement.

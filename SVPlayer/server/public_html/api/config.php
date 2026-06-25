@@ -84,6 +84,9 @@ function load_database_config(): array
         'cpanel_username' => getenv('SMARTVISION_CPANEL_USERNAME') ?: '',
         'cpanel_token' => getenv('SMARTVISION_CPANEL_TOKEN') ?: '',
         'smtp_password' => getenv('SMARTVISION_SMTP_PASSWORD') ?: '',
+        'hilltopads_api_key' => getenv('SMARTVISION_HILLTOPADS_API_KEY') ?: '',
+        'hilltopads_publisher_id' => getenv('SMARTVISION_HILLTOPADS_PUBLISHER_ID') ?: '',
+        'hilltopads_vast_tag_url' => getenv('SMARTVISION_HILLTOPADS_VAST_TAG_URL') ?: '',
     ];
 }
 

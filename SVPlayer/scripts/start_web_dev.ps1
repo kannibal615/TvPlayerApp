@@ -70,6 +70,9 @@ $env:SMARTVISION_CREDENTIALS_ENCRYPTION_KEY = Require-Property -Properties $prop
 $env:SMARTVISION_CPANEL_HOST = Require-Property -Properties $properties -Name "CPANEL_HOST"
 $env:SMARTVISION_CPANEL_TOKEN = Require-Property -Properties $properties -Name "CPANEL_API_KEY"
 $env:SMARTVISION_SMTP_PASSWORD = [string]$properties["SMTP_PASSWORD"]
+$env:SMARTVISION_HILLTOPADS_API_KEY = [string]$properties["HILLTOPADS_API_KEY"]
+$env:SMARTVISION_HILLTOPADS_PUBLISHER_ID = [string]$properties["HILLTOPADS_PUBLISHER_ID"]
+$env:SMARTVISION_HILLTOPADS_VAST_TAG_URL = [string]$properties["HILLTOPADS_VAST_TAG_URL"]
 
 $adminPassword = Require-Property -Properties $properties -Name "SMARTVISION_ADMIN_PASSWORD"
 $env:SMARTVISION_ADMIN_PASSWORD_HASH = $adminPassword |

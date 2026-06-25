@@ -22,7 +22,7 @@ header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: strict-origin-when-cross-origin');
-header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-src 'self' https://api.gammal.tech https://pagead2.googlesyndication.com; connect-src 'self' https://api.gammal.tech https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; img-src 'self' data: https:; frame-src https://api.gammal.tech https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self' https://api.gammal.tech");
+header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-src 'self' https://api.gammal.tech; connect-src 'self' https://api.gammal.tech; img-src 'self' data: https:; frame-src https://api.gammal.tech; frame-ancestors 'self'; base-uri 'self'; form-action 'self' https://api.gammal.tech");
 
 function account_escape(mixed $value): string
 {
@@ -375,8 +375,6 @@ $sectionTitles = [
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Gérez vos licences, commandes et activations SmartVision.">
     <title><?= $user ? account_escape($sectionTitles[$section]) : ($authMode === 'login' ? 'Connexion' : 'Créer mon compte') ?> | SmartVision</title>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3376574358352765" crossorigin="anonymous"></script>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9499676739525429" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="/assets/site.css?v=5">
     <link rel="stylesheet" href="/assets/site-overrides.css?v=5">
     <link rel="stylesheet" href="/assets/account.css?v=6">
