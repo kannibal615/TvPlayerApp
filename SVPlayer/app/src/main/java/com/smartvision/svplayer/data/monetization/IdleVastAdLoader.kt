@@ -30,7 +30,7 @@ class IdleVastAdLoader(
                 client.newCall(
                     Request.Builder()
                         .url(rawUrl.withCacheBuster())
-                        .header("User-Agent", ANDROID_TV_USER_AGENT)
+                        .header("User-Agent", SMARTVISION_AD_USER_AGENT)
                         .get()
                         .build(),
                 )
@@ -45,7 +45,7 @@ class IdleVastAdLoader(
         val xml = client.newCall(
             Request.Builder()
                 .url(tagUrl.withCacheBuster())
-                .header("User-Agent", ANDROID_TV_USER_AGENT)
+                .header("User-Agent", SMARTVISION_AD_USER_AGENT)
                 .header("Accept", "application/xml,text/xml,*/*")
                 .get()
                 .build(),
@@ -86,12 +86,6 @@ class IdleVastAdLoader(
             impressionUrls = document.elements("Impression").texts(),
             trackingUrls = document.trackingUrls(),
         )
-    }
-
-    private companion object {
-        const val ANDROID_TV_USER_AGENT =
-            "Mozilla/5.0 (Linux; Android 12; Android TV) AppleWebKit/537.36 " +
-                "(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36"
     }
 }
 

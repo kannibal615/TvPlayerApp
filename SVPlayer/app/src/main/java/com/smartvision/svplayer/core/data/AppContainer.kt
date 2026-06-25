@@ -11,7 +11,6 @@ import com.smartvision.svplayer.data.home.HomeSlidesRepository
 import com.smartvision.svplayer.data.local.SVDatabase
 import com.smartvision.svplayer.data.monetization.MonetizationManager
 import com.smartvision.svplayer.data.monetization.MonetizationStore
-import com.smartvision.svplayer.data.monetization.ImaVideoAdProvider
 import com.smartvision.svplayer.data.monetization.IdleVastAdLoader
 import com.smartvision.svplayer.data.monetization.PrivacyConsentManager
 import com.smartvision.svplayer.data.monetization.AdConfigApiService
@@ -117,10 +116,6 @@ class AppContainer(context: Context) {
     )
     val privacyConsentManager = PrivacyConsentManager(appContext)
     val idleVastAdLoader = IdleVastAdLoader(activationOkHttpClient)
-    val videoAdProvider = ImaVideoAdProvider(
-        context = appContext,
-        monetizationManager = monetizationManager,
-    )
 
     val appUpdateRepository: AppUpdateRepository = AppUpdateRepository(
         appContext = appContext,

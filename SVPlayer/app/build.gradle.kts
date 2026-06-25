@@ -51,8 +51,8 @@ android {
         applicationId = "com.smartvision.svplayer"
         minSdk = 23
         targetSdk = 36
-        versionCode = 16
-        versionName = "0.1.13"
+        versionCode = 18
+        versionName = "0.1.15"
 
         buildConfigField("String", "ACTIVATION_BASE_URL", buildConfigString(activationBaseUrl()))
     }
@@ -152,7 +152,6 @@ dependencies {
 
     implementation("androidx.media3:media3-exoplayer:1.6.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.6.1")
-    implementation("androidx.media3:media3-exoplayer-ima:1.6.1")
     implementation("androidx.media3:media3-ui:1.6.1")
     implementation("com.google.android.ump:user-messaging-platform:4.0.0")
 

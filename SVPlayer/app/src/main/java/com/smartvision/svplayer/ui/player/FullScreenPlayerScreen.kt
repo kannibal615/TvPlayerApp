@@ -1,7 +1,5 @@
 package com.smartvision.svplayer.ui.player
 
-import android.app.Activity
-import android.net.Uri
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
@@ -88,19 +86,19 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.models.XtreamSeriesEpisode
+import com.smartvision.svplayer.data.monetization.IdleVastAdLoader
+import com.smartvision.svplayer.data.monetization.IdleVastCreative
 import com.smartvision.svplayer.data.monetization.MonetizationManager
 import com.smartvision.svplayer.data.monetization.PlayerAdPlan
 import com.smartvision.svplayer.data.monetization.PlayerContentType
-import com.smartvision.svplayer.data.monetization.PrivacyConsentManager
-import com.smartvision.svplayer.data.monetization.VideoAdCallbacks
-import com.smartvision.svplayer.data.monetization.VideoAdProvider
+import com.smartvision.svplayer.data.monetization.smartVisionMediaSourceFactory
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
@@ -392,8 +390,7 @@ fun FullScreenPlayerRoute(
         playback = playback,
         contentKind = kind,
         monetizationManager = container.monetizationManager,
-        privacyConsentManager = container.privacyConsentManager,
-        videoAdProvider = container.videoAdProvider,
+        idleVastAdLoader = container.idleVastAdLoader,
         adRequestTimeoutSeconds = container.adConfigProvider.current().requestTimeoutSeconds,
         onBack = onBack,
         onPlayLive = onPlayLive,
@@ -408,8 +405,7 @@ private fun FullScreenPlayerScreen(
     playback: FullScreenPlayback,
     contentKind: FullScreenContentKind,
     monetizationManager: MonetizationManager,
-    privacyConsentManager: PrivacyConsentManager,
-    videoAdProvider: VideoAdProvider,
+    idleVastAdLoader: IdleVastAdLoader,
     adRequestTimeoutSeconds: Long,
     onBack: () -> Unit,
     onPlayLive: (Int) -> Unit,
@@ -418,7 +414,6 @@ private fun FullScreenPlayerScreen(
     onProgressSnapshot: (positionMs: Long, durationMs: Long) -> Unit,
 ) {
     val context = LocalContext.current
-    val activity = context as? Activity
     val coroutineScope = rememberCoroutineScope()
     val latestUrl by rememberUpdatedState(playback.url)
     val latestFallbackUrl by rememberUpdatedState(playback.fallbackUrl)
@@ -442,6 +437,11 @@ private fun FullScreenPlayerScreen(
     var adGateActive by remember(playback.streamId) { mutableStateOf(false) }
     var adStarted by remember(playback.streamId) { mutableStateOf(false) }
     var activeAdRequestId by remember(playback.streamId) { mutableStateOf<String?>(null) }
+    var activeAdCreative by remember(playback.streamId) { mutableStateOf<IdleVastCreative?>(null) }
+    var firedAdTrackingEvents by remember(playback.streamId) { mutableStateOf(emptySet<String>()) }
+    var adPositionMs by remember(playback.streamId) { mutableLongStateOf(0L) }
+    var adDurationMs by remember(playback.streamId) { mutableLongStateOf(0L) }
+    val adSkipDelayMs = 5_000L
 
     val playerView = remember {
         PlayerView(context).apply {
@@ -451,13 +451,7 @@ private fun FullScreenPlayerScreen(
             isFocusableInTouchMode = true
         }
     }
-    val mediaSourceFactory = remember(playerView, videoAdProvider) {
-        DefaultMediaSourceFactory(context)
-            .setLocalAdInsertionComponents(
-                { videoAdProvider.adsLoader },
-                playerView,
-            )
-    }
+    val mediaSourceFactory = remember(context) { smartVisionMediaSourceFactory(context) }
     val player = remember(mediaSourceFactory) {
         ExoPlayer.Builder(context)
             .setMediaSourceFactory(mediaSourceFactory)
@@ -477,7 +471,7 @@ private fun FullScreenPlayerScreen(
         }
     }
 
-    fun prepareMedia(mediaItem: MediaItem) {
+    fun prepareMedia(mediaItem: MediaItem, resumeContent: Boolean = true) {
         fallbackTried = false
         errorText = null
         buffering = true
@@ -485,7 +479,7 @@ private fun FullScreenPlayerScreen(
         player.clearMediaItems()
         player.setMediaItem(mediaItem)
         player.prepare()
-        if (playback.resumePositionMs > 0L) {
+        if (resumeContent && playback.resumePositionMs > 0L) {
             player.seekTo(playback.resumePositionMs)
         }
         player.playWhenReady = true
@@ -544,6 +538,10 @@ private fun FullScreenPlayerScreen(
         adGateActive = false
         adStarted = false
         activeAdRequestId = null
+        activeAdCreative = null
+        firedAdTrackingEvents = emptySet()
+        adPositionMs = 0L
+        adDurationMs = 0L
         var resolvedPlan: PlayerAdPlan? = null
         monetizationManager.maybeShowPlayerAdThenStartPlayback(
             contentType = contentKind.toPlayerContentType(),
@@ -555,50 +553,53 @@ private fun FullScreenPlayerScreen(
             }
 
             is PlayerAdPlan.ShowPreRoll -> {
-                if (videoAdProvider.forceFailureForDebug) {
+                if (BuildConfig.DEBUG && BuildConfig.DEBUG_FORCE_AD_FAILURE) {
                     monetizationManager.onAdFailed(plan.requestId, "echec debug force")
-                    prepareContentWithoutAd()
-                    return@LaunchedEffect
-                }
-                val consentGranted = activity?.let {
-                    privacyConsentManager.ensureConsentForAd(it)
-                } ?: false
-                if (!consentGranted) {
-                    monetizationManager.onAdFailed(plan.requestId, "consentement publicitaire indisponible")
                     prepareContentWithoutAd()
                     return@LaunchedEffect
                 }
                 adGateActive = true
                 overlayVisible = false
                 activeAdRequestId = plan.requestId
-                videoAdProvider.bindRequest(
-                    requestId = plan.requestId,
-                    callbacks = VideoAdCallbacks(
-                        onStarted = {
-                            adStarted = true
-                            adGateActive = true
-                            overlayVisible = false
-                        },
-                        onFinished = {
-                            adGateActive = false
-                            activeAdRequestId = null
-                            buffering = false
-                        },
-                        onFailed = {
-                            adGateActive = false
-                            activeAdRequestId = null
-                        },
-                    ),
-                )
-                val mediaItem = MediaItem.Builder()
-                    .setUri(playback.url)
-                    .setAdsConfiguration(
-                        MediaItem.AdsConfiguration.Builder(Uri.parse(plan.adTagUrl)).build(),
-                    )
-                    .build()
-                prepareMedia(mediaItem)
+                firedAdTrackingEvents = emptySet()
+                val creative = idleVastAdLoader.load(plan.adTagUrl)
+                val mediaUrl = creative?.mediaUrl
+                if (mediaUrl.isNullOrBlank()) {
+                    monetizationManager.onAdFailed(plan.requestId, "creative VAST indisponible")
+                    adGateActive = false
+                    activeAdRequestId = null
+                    prepareContentWithoutAd()
+                    return@LaunchedEffect
+                }
+                activeAdCreative = creative
+                prepareMedia(MediaItem.fromUri(mediaUrl), resumeContent = false)
             }
         }
+    }
+
+    fun finishAdAndStartContent(skipped: Boolean) {
+        val requestId = activeAdRequestId ?: return
+        val creative = activeAdCreative
+        activeAdRequestId = null
+        activeAdCreative = null
+        adGateActive = false
+        adStarted = false
+        firedAdTrackingEvents = emptySet()
+        adPositionMs = 0L
+        adDurationMs = 0L
+        coroutineScope.launch {
+            idleVastAdLoader.ping(
+                if (skipped) {
+                    creative?.trackingUrls?.get("skip").orEmpty() +
+                        creative?.trackingUrls?.get("close").orEmpty() +
+                        creative?.trackingUrls?.get("closeLinear").orEmpty()
+                } else {
+                    creative?.trackingUrls?.get("complete").orEmpty()
+                },
+            )
+            monetizationManager.onAdCompleted(requestId)
+        }
+        prepareContentWithoutAd()
     }
 
     LaunchedEffect(activeAdRequestId, adStarted) {
@@ -606,11 +607,36 @@ private fun FullScreenPlayerScreen(
         if (adStarted) return@LaunchedEffect
         delay(adRequestTimeoutSeconds.coerceAtLeast(3) * 1_000L)
         if (activeAdRequestId == requestId && !adStarted) {
-            videoAdProvider.clearRequest(requestId)
             monetizationManager.onAdFailed(requestId, "delai de chargement depasse")
             activeAdRequestId = null
             adGateActive = false
+            activeAdCreative = null
+            adPositionMs = 0L
+            adDurationMs = 0L
             prepareContentWithoutAd()
+        }
+    }
+
+    LaunchedEffect(activeAdRequestId, adStarted, activeAdCreative) {
+        val creative = activeAdCreative ?: return@LaunchedEffect
+        while (activeAdRequestId != null && adStarted && adGateActive) {
+            val duration = player.duration.takeIf { it > 0L } ?: 0L
+            adPositionMs = player.currentPosition.coerceAtLeast(0L)
+            adDurationMs = duration
+            if (duration > 0L) {
+                val progress = player.currentPosition.toDouble() / duration.toDouble()
+                val event = when {
+                    progress >= 0.75 && "thirdQuartile" !in firedAdTrackingEvents -> "thirdQuartile"
+                    progress >= 0.50 && "midpoint" !in firedAdTrackingEvents -> "midpoint"
+                    progress >= 0.25 && "firstQuartile" !in firedAdTrackingEvents -> "firstQuartile"
+                    else -> null
+                }
+                if (event != null) {
+                    firedAdTrackingEvents = firedAdTrackingEvents + event
+                    idleVastAdLoader.ping(creative.trackingUrls[event].orEmpty())
+                }
+            }
+            delay(250)
         }
     }
 
@@ -639,7 +665,7 @@ private fun FullScreenPlayerScreen(
     LaunchedEffect(player, playback.url) {
         var tick = 0
         while (true) {
-            if (!player.isPlayingAd) {
+            if (!adGateActive) {
                 positionMs = player.currentPosition.coerceAtLeast(0L)
                 durationMs = player.duration.validDurationMs()
                 bufferedPositionMs = player.bufferedPosition.coerceAtLeast(0L)
@@ -653,16 +679,34 @@ private fun FullScreenPlayerScreen(
     }
 
     DisposableEffect(player) {
-        videoAdProvider.attachPlayer(player)
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(isPlayingValue: Boolean) {
                 isPlaying = isPlayingValue
+                val requestId = activeAdRequestId
+                val creative = activeAdCreative
+                if (adGateActive && requestId != null && creative != null && isPlayingValue && !adStarted) {
+                    adStarted = true
+                    adPositionMs = player.currentPosition.coerceAtLeast(0L)
+                    adDurationMs = player.duration.validDurationMs()
+                    buffering = false
+                    overlayVisible = false
+                    coroutineScope.launch {
+                        idleVastAdLoader.ping(creative.impressionUrls)
+                        idleVastAdLoader.ping(creative.trackingUrls["start"].orEmpty())
+                        monetizationManager.onAdStarted(requestId)
+                    }
+                }
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 buffering = playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE
                 if (playbackState == Player.STATE_READY) {
                     errorText = null
+                }
+                if (playbackState == Player.STATE_ENDED && adGateActive) {
+                    buffering = true
+                    finishAdAndStartContent(skipped = false)
+                    return
                 }
                 if (playbackState == Player.STATE_ENDED && playback.nextEpisode != null && !nextEpisodeDismissed) {
                     nextEpisodeCountdown = 3
@@ -695,13 +739,16 @@ private fun FullScreenPlayerScreen(
 
             override fun onPlayerError(error: PlaybackException) {
                 val adRequestId = activeAdRequestId
-                if (adRequestId != null && player.isPlayingAd) {
-                    videoAdProvider.clearRequest(adRequestId)
+                if (adRequestId != null && adGateActive) {
                     coroutineScope.launch {
                         monetizationManager.onAdFailed(adRequestId, error.message.orEmpty())
                     }
                     activeAdRequestId = null
                     adGateActive = false
+                    activeAdCreative = null
+                    firedAdTrackingEvents = emptySet()
+                    adPositionMs = 0L
+                    adDurationMs = 0L
                     prepareContentWithoutAd()
                     return
                 }
@@ -725,11 +772,10 @@ private fun FullScreenPlayerScreen(
         }
         player.addListener(listener)
         onDispose {
-            if (!player.isPlayingAd) {
+            if (!adGateActive) {
                 onProgressSnapshot(player.currentPosition.coerceAtLeast(0L), player.duration.validDurationMs())
             }
             player.removeListener(listener)
-            videoAdProvider.detachPlayer(player)
             player.release()
         }
     }
@@ -754,6 +800,8 @@ private fun FullScreenPlayerScreen(
             factory = {
                 playerView.apply {
                     this.player = player
+                    isFocusable = !adGateActive
+                    isFocusableInTouchMode = !adGateActive
                     setOnKeyListener { _, keyCode, event ->
                         when {
                             keyCode == AndroidKeyEvent.KEYCODE_BACK &&
@@ -781,14 +829,21 @@ private fun FullScreenPlayerScreen(
                             else -> false
                         }
                     }
-                    requestFocus()
+                    if (!adGateActive) requestFocus()
                 }
             },
             update = {
                 it.player = player
                 it.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                it.isFocusable = !adGateActive
+                it.isFocusableInTouchMode = !adGateActive
+                if (adGateActive) it.clearFocus()
                 it.setOnKeyListener { _, keyCode, event ->
                     when {
+                        keyCode == AndroidKeyEvent.KEYCODE_BACK &&
+                            event.action == AndroidKeyEvent.ACTION_UP &&
+                            adGateActive -> true
+
                         keyCode == AndroidKeyEvent.KEYCODE_BACK && event.action == AndroidKeyEvent.ACTION_UP -> {
                             if (overlayVisible) {
                                 overlayVisible = false
@@ -814,13 +869,22 @@ private fun FullScreenPlayerScreen(
             modifier = Modifier.matchParentSize(),
         )
 
-        if (buffering && !player.isPlayingAd) {
+        if (buffering && !adGateActive) {
             CircularProgressIndicator(
                 color = SmartVisionColors.Primary,
                 strokeWidth = 3.dp,
                 modifier = Modifier
                     .align(Alignment.Center)
                     .size(46.dp),
+            )
+        }
+
+        if (adGateActive) {
+            FullScreenAdOverlay(
+                positionMs = adPositionMs,
+                durationMs = adDurationMs,
+                skipDelayMs = adSkipDelayMs,
+                onSkip = { finishAdAndStartContent(skipped = true) },
             )
         }
 
@@ -936,6 +1000,80 @@ private fun FullScreenPlayerScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun FullScreenAdOverlay(
+    positionMs: Long,
+    durationMs: Long,
+    skipDelayMs: Long,
+    onSkip: () -> Unit,
+) {
+    val skipFocusRequester = remember { FocusRequester() }
+    val skipEnabled = positionMs >= skipDelayMs
+    val remainingMs = if (durationMs > 0L) (durationMs - positionMs).coerceAtLeast(0L) else 0L
+    val skipCountdownSeconds = ((skipDelayMs - positionMs).coerceAtLeast(0L) + 999L) / 1_000L
+    val timerText = if (durationMs > 0L) remainingMs.formatPlaybackTime() else "--:--"
+
+    LaunchedEffect(skipEnabled) {
+        if (skipEnabled) {
+            delay(80)
+            skipFocusRequester.requestFocus()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color.Black.copy(alpha = 0.30f),
+                        Color.Transparent,
+                        Color.Black.copy(alpha = 0.42f),
+                    ),
+                ),
+            ),
+    ) {
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 26.dp, end = 32.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xD6071123))
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), RoundedCornerShape(8.dp))
+                .padding(horizontal = 14.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = "Publicite",
+                color = SmartVisionColors.TextSecondary,
+                style = PlayerMetaStyle,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = timerText,
+                color = Color.White,
+                style = PlayerTitleStyle,
+                fontWeight = FontWeight.Black,
+            )
+        }
+
+        TvButton(
+            text = if (skipEnabled) "Passer" else "Passer dans ${skipCountdownSeconds.coerceAtLeast(1L)}",
+            onClick = onSkip,
+            enabled = skipEnabled,
+            leadingIcon = Icons.Default.SkipNext,
+            focusRequester = skipFocusRequester,
+            variant = if (skipEnabled) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 32.dp, bottom = 30.dp)
+                .height(44.dp)
+                .width(176.dp),
+        )
     }
 }
 

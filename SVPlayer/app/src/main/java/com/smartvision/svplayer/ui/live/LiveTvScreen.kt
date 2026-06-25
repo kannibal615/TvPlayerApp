@@ -99,6 +99,7 @@ import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.monetization.IdleVastAdLoader
 import com.smartvision.svplayer.data.monetization.IdleVastCreative
 import com.smartvision.svplayer.data.monetization.MonetizationManager
+import com.smartvision.svplayer.data.monetization.smartVisionMediaSourceFactory
 import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
@@ -742,8 +743,12 @@ private fun IdlePreviewVastPlayer(
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
         }
     }
-    val player = remember {
-        ExoPlayer.Builder(context).build().apply {
+    val adMediaSourceFactory = remember(context) { smartVisionMediaSourceFactory(context) }
+    val player = remember(adMediaSourceFactory) {
+        ExoPlayer.Builder(context)
+            .setMediaSourceFactory(adMediaSourceFactory)
+            .build()
+            .apply {
             volume = 0f
             playWhenReady = true
         }

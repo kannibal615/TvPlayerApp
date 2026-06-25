@@ -80,9 +80,7 @@ sv_send_site_headers();
     </section>
 
     <section class="download-section band" id="telecharger">
-        <div class="download-icon" aria-hidden="true">
-            <span></span>
-        </div>
+        
         <div>
             <h2>Télécharger l’application Android TV</h2>
             <p>Installez SmartVision sur votre Android TV, box Android ou appareil compatible. Le téléchargement est gratuit, puis vous activez Premium uniquement si vous souhaitez débloquer les fonctions avancées.</p>
@@ -95,12 +93,12 @@ sv_send_site_headers();
         <a class="button button-primary" href="/download.php">Télécharger Android TV</a>
     </section>
 
-    <section class="premium-section band" id="tarifs">
+    <section class="premium-section band" >
         <div class="section-heading compact">
-            <h2>Obtenir SmartVision Premium</h2>
+            <h2>SmartVision Premium</h2>
             <p>Premium supprime la publicité et débloque plus de fonctionnalités du lecteur. La licence concerne uniquement le logiciel SmartVision, jamais un accès à des chaînes ou catalogues tiers.</p>
         </div>
-        <div class="price-grid">
+        <div class="price-grid" id="tarifs">
             <?php foreach ($planUi as $key => $ui): ?>
                 <?php $isAvailable = isset($plans[$key]); ?>
                 <article class="price-card<?= !empty($ui['featured']) ? ' featured' : '' ?>">
@@ -142,24 +140,13 @@ sv_send_site_headers();
     <section class="feature-showcase band">
         <div class="showcase-image"><img src="/assets/images/app-movies.png" alt="Interface catalogue SmartVision"></div>
         <div class="showcase-copy">
-            <h2>Une expérience pensée pour la TV.</h2>
+            <h2>Une expérience pensée pour Android TV.</h2>
             <p>Navigation télécommande, grands focus visibles, reprise de lecture, favoris, historique et écran adapté au canapé. L’interface reste lisible et fluide sur Android TV.</p>
             
         </div>
     </section>
 
-    <section class="legal-home band" id="lecteur-legal">
-        <div>
-            <h2>Un lecteur légal, pas un fournisseur de contenus</h2>
-            <p>SmartVision est un lecteur IPTV légal. L’application ne fournit, ne vend et n’héberge aucun contenu audiovisuel, chaîne TV, film, série ou playlist. L’utilisateur est seul responsable des sources qu’il ajoute dans l’application.</p>
-        </div>
-        <ul>
-            <li>Aucun flux préchargé</li>
-            <li>Aucun catalogue vendu</li>
-            <li>Aucune promesse d’accès à des contenus payants</li>
-            <li>Lecture de vos sources autorisées uniquement</li>
-        </ul>
-    </section>
+
 
     <section class="faq-strip band" aria-label="Questions fréquentes">
         <article><strong>L’application est-elle gratuite ?</strong><span>Oui. Le téléchargement Android TV est gratuit. Premium est optionnel.</span></article>
