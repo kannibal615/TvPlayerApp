@@ -1154,6 +1154,7 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/app_update.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/app" -FilePath (Join-Path $publicHtmlPath "api/app/ads-config.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/app" -FilePath (Join-Path $publicHtmlPath "api/app/ads-events.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/app" -FilePath (Join-Path $publicHtmlPath "api/app/ads-vast.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/devices" -FilePath (Join-Path $publicHtmlPath "api/devices/register.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/devices" -FilePath (Join-Path $publicHtmlPath "api/devices/start_trial.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/devices" -FilePath (Join-Path $publicHtmlPath "api/devices/enable_free_with_ads.php")

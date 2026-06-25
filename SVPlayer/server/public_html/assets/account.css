@@ -106,6 +106,9 @@
 }
 
 .auth-switch {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     margin-top: 24px;
     padding-top: 20px;
     border-top: 1px solid rgba(255, 255, 255, .1);
@@ -113,14 +116,18 @@
     text-align: center;
 }
 
-.auth-switch a {
+.auth-switch a:not(.button) {
     color: #72c7ff;
     font-weight: 800;
 }
 
-.auth-switch a:hover,
-.auth-switch a:focus-visible {
+.auth-switch a:not(.button):hover,
+.auth-switch a:not(.button):focus-visible {
     color: #9ce7ff;
+}
+
+.auth-switch-button {
+    width: 100%;
 }
 
 .form-notice {

@@ -11,12 +11,12 @@ class RemoteAdConfigTest {
             success = true,
             adsEnabled = true,
             minMinutesBetweenAds = 1,
-            maxAdsPerDay = 50,
+            maxAdsPerDay = 500,
             vastTagUrl = "https://example.test/vast",
         ).toAdConfig(AdConfig())
 
         assertEquals(1, config.minMinutesBetweenAds)
-        assertEquals(50, config.maxAdsPerDay)
+        assertEquals(500, config.maxAdsPerDay)
         assertEquals("https://example.test/vast", config.adTagUrl)
     }
 

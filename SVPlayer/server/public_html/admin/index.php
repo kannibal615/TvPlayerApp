@@ -891,7 +891,7 @@ function admin_save_ads_settings(PDO $pdo): void
     }
 
     $minMinutes = admin_int_range($_POST['min_minutes_between_ads'] ?? 30, 1, 1440);
-    $maxPerDay = admin_int_range($_POST['max_ads_per_day'] ?? 3, 1, 50);
+    $maxPerDay = admin_int_range($_POST['max_ads_per_day'] ?? 3, 1, 500);
     $estimatedEcpm = admin_decimal_range($_POST['estimated_ecpm_eur'] ?? '5', 0, 1000);
     $hilltopSiteId = smartvision_text_substr(preg_replace('/[^A-Za-z0-9._:-]/', '', trim((string) ($_POST['hilltop_site_id'] ?? ''))) ?: '', 0, 64);
     $hilltopZoneId = smartvision_text_substr(preg_replace('/[^A-Za-z0-9._:-]/', '', trim((string) ($_POST['hilltop_zone_id'] ?? ''))) ?: '', 0, 64);
@@ -2154,7 +2154,7 @@ function admin_render_ads_page(array $adsAdmin): void
                 <label class="ads-wide"><span>vastProductionTagUrl</span><input name="vast_production_tag_url" type="url" maxlength="2000" value="<?= admin_escape((string) ($settings['vast_production_tag_url'] ?? '')) ?>"></label>
                 <label class="ads-wide"><span>vastTestTagUrl</span><input name="vast_test_tag_url" type="url" maxlength="2000" value="<?= admin_escape((string) ($settings['vast_test_tag_url'] ?? '')) ?>"></label>
                 <label><span>minMinutesBetweenAds</span><input name="min_minutes_between_ads" type="number" min="1" max="1440" value="<?= (int) ($settings['min_minutes_between_ads'] ?? 30) ?>"></label>
-                <label><span>maxAdsPerDay</span><input name="max_ads_per_day" type="number" min="1" max="50" value="<?= (int) ($settings['max_ads_per_day'] ?? 3) ?>"></label>
+                <label><span>maxAdsPerDay</span><input name="max_ads_per_day" type="number" min="1" max="500" value="<?= (int) ($settings['max_ads_per_day'] ?? 3) ?>"></label>
                 <label><span>estimatedEcpm EUR</span><input name="estimated_ecpm_eur" type="number" min="0" max="1000" step="0.01" value="<?= admin_escape((string) ($settings['estimated_ecpm_eur'] ?? '5.00')) ?>"></label>
                 <label><span>Hilltop siteID</span><input name="hilltop_site_id" maxlength="64" value="<?= admin_escape((string) ($settings['hilltop_site_id'] ?? '')) ?>"></label>
                 <label><span>Hilltop zoneID</span><input name="hilltop_zone_id" maxlength="64" value="<?= admin_escape((string) ($settings['hilltop_zone_id'] ?? '')) ?>"></label>

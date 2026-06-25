@@ -28,8 +28,8 @@ Activite principale: com.smartvision.svplayer/.MainActivity
 Min SDK: 23
 Compile SDK: 36
 Target SDK: 36
-Version actuelle: 0.1.14
-VersionCode actuel: 17
+Version actuelle: 0.1.17
+VersionCode actuel: 20
 Backend: https://smartvisions.net
 ```
 
@@ -38,14 +38,14 @@ Backend: https://smartvisions.net
 Release compilee, signee, deployee et verifiee le 2026-06-25:
 
 ```text
-version_code: 17
-version_name: 0.1.14
-affichage: 0.1.14 (17)
-apk_file: smartvision-tv-v17-0e4ec2e9.apk
-apk_url: https://smartvisions.net/downloads/smartvision-tv-v17-0e4ec2e9.apk
+version_code: 20
+version_name: 0.1.17
+affichage: 0.1.17 (20)
+apk_file: smartvision-tv-v20-0eab602a.apk
+apk_url: https://smartvisions.net/downloads/smartvision-tv-v20-0eab602a.apk
 stable_url: https://smartvisions.net/downloads/smartvision-tv.apk
-sha256: 0e4ec2e9ce1666f8e6eee00618055a0540222fac256138cc3f25ef31ec7eb3c6
-size: 35684408
+sha256: 0eab602adcb3c5de10796210df02ae8ae3fa561eb1050759a5f86d6b0801e241
+size: 35700781
 ```
 
 Le fichier versionne et l'URL stable ont ete telecharges avec succes apres deploiement.

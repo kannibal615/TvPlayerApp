@@ -21,6 +21,9 @@ data class AdsEventRequest(
     @SerializedName("contentType") val contentType: String,
     @SerializedName("provider") val provider: String = "UNKNOWN",
     @SerializedName("eventType") val eventType: String,
+    @SerializedName("reason") val reason: String? = null,
+    @SerializedName("errorCode") val errorCode: String? = null,
+    @SerializedName("errorMessage") val errorMessage: String? = null,
 )
 
 data class AdsEventResponse(
@@ -31,7 +34,13 @@ class AdsEventReporter(
     private val activationRepository: ActivationRepository,
     private val api: AdsEventsApiService,
 ) {
-    suspend fun reportStarted(contentType: PlayerContentType) {
+    suspend fun report(
+        contentType: PlayerContentType,
+        eventType: String,
+        reason: String? = null,
+        errorCode: String? = null,
+        errorMessage: String? = null,
+    ) {
         val activation = activationRepository.localState.first()
         if (activation.deviceId.isBlank()) return
 
@@ -42,13 +51,20 @@ class AdsEventReporter(
                     appVersion = BuildConfig.VERSION_NAME,
                     userStatus = activation.monetizationStatus()?.name ?: "UNKNOWN",
                     contentType = contentType.name,
-                    eventType = "AD_STARTED",
+                    provider = "HILLTOPADS_VAST",
+                    eventType = eventType,
+                    reason = reason,
+                    errorCode = errorCode,
+                    errorMessage = errorMessage?.take(255),
                 ),
             )
         }.onFailure {
             Log.w(TAG, "Evenement publicitaire non envoye")
         }
     }
+
+    suspend fun reportStarted(contentType: PlayerContentType) =
+        report(contentType, eventType = "AD_STARTED")
 
     private companion object {
         const val TAG = "SmartVisionAdsEvents"

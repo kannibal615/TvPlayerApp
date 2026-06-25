@@ -58,6 +58,9 @@ fun resolveMonetizationStatus(
 ): MonetizationStatus? {
     debugOverride?.let { return it }
     return when {
+        freeWithAdsStatus == "active" ||
+            activationType == "free_ads" -> MonetizationStatus.FREE_WITH_ADS
+
         licenseStatus == "active" ||
             activationType == "smartvision_code" ||
             activationType == "own_xtream" -> MonetizationStatus.PREMIUM_ACTIVE
@@ -66,9 +69,6 @@ fun resolveMonetizationStatus(
             trialStatus == "pending_xtream" ||
             activationType == "trial_demo" ||
             activationType == "trial_pending_xtream" -> MonetizationStatus.TRIAL_ACTIVE
-
-        freeWithAdsStatus == "active" ||
-            activationType == "free_ads" -> MonetizationStatus.FREE_WITH_ADS
 
         licenseStatus == "expired" -> MonetizationStatus.LICENSE_EXPIRED
         trialStatus == "expired" -> MonetizationStatus.TRIAL_EXPIRED

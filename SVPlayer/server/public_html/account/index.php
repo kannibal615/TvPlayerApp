@@ -166,10 +166,13 @@ sv_mail_ensure_schema($pdo);
 $plans = commerce_plans();
 $planKey = commerce_plan_key($_REQUEST['plan'] ?? 'year_1');
 $error = null;
-$authMode = ($_GET['mode'] ?? '') === 'login' ? 'login' : 'register';
+$requestedAuthMode = is_string($_GET['mode'] ?? null) ? $_GET['mode'] : '';
+$authMode = $requestedAuthMode === 'login' ? 'login' : 'register';
 if (($_GET['intent'] ?? '') === 'license') {
     $_SESSION['customer_intent'] = 'license';
-    if ((int) ($_SESSION['site_user_id'] ?? 0) <= 0) {
+    if ((int) ($_SESSION['site_user_id'] ?? 0) <= 0 &&
+        !in_array($requestedAuthMode, ['login', 'register'], true)
+    ) {
         $authMode = 'login';
     }
 }
@@ -397,7 +400,7 @@ $sectionTitles = [
             <div class="field"><label for="login-password">Mot de passe</label><input id="login-password" name="password" type="password" autocomplete="current-password" required></div>
             <button class="button button-primary" name="action" value="login">Se connecter</button>
         </form>
-        <p class="auth-switch">Nouveau sur SmartVision ? <a href="/account/?mode=register<?= ($_SESSION['customer_intent'] ?? '') === 'license' ? '&amp;intent=license' : '' ?>">Créer un compte</a></p>
+        <div class="auth-switch"><span>Nouveau sur SmartVision ?</span><a class="button button-outline auth-switch-button" href="/account/?mode=register<?= ($_SESSION['customer_intent'] ?? '') === 'license' ? '&amp;intent=license' : '' ?>">Créer un compte</a></div>
         <?php else: ?>
         <h2>Créer mon compte</h2>
         <p>Votre licence restera accessible ici après la commande.</p>
@@ -410,7 +413,7 @@ $sectionTitles = [
             <div class="field"><label for="register-password">Mot de passe</label><input id="register-password" name="password" type="password" minlength="8" autocomplete="new-password" required><small>8 caractères minimum.</small></div>
             <button class="button button-primary" name="action" value="register">Créer mon compte et continuer</button>
         </form>
-        <p class="auth-switch">Vous avez déjà un compte ? <a href="/account/?mode=login<?= ($_SESSION['customer_intent'] ?? '') === 'license' ? '&amp;intent=license' : '' ?>">J’ai déjà un compte</a></p>
+        <div class="auth-switch"><span>Vous avez déjà un compte ?</span><a class="button button-outline auth-switch-button" href="/account/?mode=login<?= ($_SESSION['customer_intent'] ?? '') === 'license' ? '&amp;intent=license' : '' ?>">J’ai déjà un compte</a></div>
         <?php endif; ?>
     </section>
 </main>

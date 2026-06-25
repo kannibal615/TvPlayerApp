@@ -5,9 +5,14 @@ import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.data.activation.ActivationRepository
 import java.time.Clock
 import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 
 class MonetizationManager(
     private val activationRepository: ActivationRepository,
@@ -17,12 +22,20 @@ class MonetizationManager(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     private val mutex = Mutex()
+    private val reportingScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val requestGate = AdRequestGate()
     private var lastKnownStatus: MonetizationStatus? = null
     private var pendingContentType: PlayerContentType? = null
 
     suspend fun synchronizeStatus(): MonetizationStatus? {
-        val status = activationRepository.localState.first().monetizationStatus()
+        val remoteStatus = withTimeoutOrNull(5_000L) {
+            runCatching {
+                activationRepository.checkStatus().monetizationStatus()
+            }.onFailure {
+                Log.w(TAG, "Rafraichissement du statut monetisation impossible")
+            }.getOrNull()
+        }
+        val status = remoteStatus ?: activationRepository.localState.first().monetizationStatus()
         if (status != null) {
             store.updateStatus(status)
             if (lastKnownStatus != status) {
@@ -45,6 +58,7 @@ class MonetizationManager(
         val status = synchronizeStatus()
         val config = configProvider.refresh()
         val now = clock.millis()
+        reportAsync(contentType, eventType = "AD_REQUESTED")
         val plan = mutex.withLock {
             requestGate.expireStale(now)
             val frequency = store.frequencySnapshot()
@@ -59,12 +73,18 @@ class MonetizationManager(
             )
             if (reason != null) {
                 Log.i(TAG, "Pub refusee: $reason")
+                reportAsync(
+                    contentType = contentType,
+                    eventType = "AD_BLOCKED",
+                    reason = reason.toServerReason(),
+                )
                 PlayerAdPlan.StartDirectly(reason)
             } else {
                 val requestId = UUID.randomUUID().toString()
                 requestGate.reserve(requestId, now)
                 pendingContentType = contentType
                 Log.i(TAG, "Utilisateur FREE_WITH_ADS: pub autorisee pour $contentType")
+                reportAsync(contentType, eventType = "AD_ALLOWED")
                 PlayerAdPlan.ShowPreRoll(
                     requestId = requestId,
                     adTagUrl = config.adTagUrl,
@@ -92,12 +112,33 @@ class MonetizationManager(
             store.recordAdStarted()
             pendingContentType ?: PlayerContentType.LIVE_TV
         }
-        eventReporter.reportStarted(contentType)
+        reportAsync(contentType, eventType = "AD_STARTED")
         Log.i(TAG, "Pub affichee")
     }
 
     suspend fun onIdleLivePreviewAdStarted() {
-        eventReporter.reportStarted(PlayerContentType.LIVE_TV)
+        reportAsync(PlayerContentType.LIVE_TV, eventType = "AD_STARTED")
+    }
+
+    suspend fun onIdleLivePreviewAdLoaded() {
+        reportAsync(PlayerContentType.LIVE_TV, eventType = "AD_LOADED")
+    }
+
+    suspend fun onIdleLivePreviewAdFailed(reason: String) {
+        reportAsync(
+            contentType = PlayerContentType.LIVE_TV,
+            eventType = "AD_FAILED",
+            errorCode = "IDLE_PREVIEW_ERROR",
+            errorMessage = reason,
+        )
+    }
+
+    suspend fun onAdLoaded(requestId: String) {
+        val contentType = mutex.withLock {
+            if (!requestGate.matches(requestId)) return
+            pendingContentType ?: PlayerContentType.LIVE_TV
+        }
+        reportAsync(contentType, eventType = "AD_LOADED")
     }
 
     suspend fun onAdCompleted(requestId: String) {
@@ -111,12 +152,42 @@ class MonetizationManager(
     }
 
     suspend fun onAdFailed(requestId: String, reason: String) {
-        mutex.withLock {
+        val contentType = mutex.withLock {
             if (requestGate.release(requestId)) {
+                val failedContentType = pendingContentType ?: PlayerContentType.LIVE_TV
                 pendingContentType = null
                 Log.w(TAG, "Pub echouee: $reason; lecture autorisee")
                 Log.i(TAG, "Video lancee apres echec pub")
+                failedContentType
+            } else {
+                null
             }
+        }
+        contentType?.let {
+            reportAsync(
+                contentType = it,
+                eventType = "AD_FAILED",
+                errorCode = "PLAYER_OR_VAST_ERROR",
+                errorMessage = reason,
+            )
+        }
+    }
+
+    private fun reportAsync(
+        contentType: PlayerContentType,
+        eventType: String,
+        reason: String? = null,
+        errorCode: String? = null,
+        errorMessage: String? = null,
+    ) {
+        reportingScope.launch {
+            eventReporter.report(
+                contentType = contentType,
+                eventType = eventType,
+                reason = reason,
+                errorCode = errorCode,
+                errorMessage = errorMessage,
+            )
         }
     }
 
@@ -150,6 +221,8 @@ internal class AdRequestGate(
         return true
     }
 
+    fun matches(requestId: String): Boolean = reservation?.requestId == requestId
+
     fun expireStale(nowMillis: Long) {
         val current = reservation ?: return
         if (nowMillis - current.createdAt >= timeoutMillis) {
@@ -162,6 +235,19 @@ internal class AdRequestGate(
         val createdAt: Long,
         val impressionRecorded: Boolean = false,
     )
+}
+
+private fun String.toServerReason(): String = when {
+    startsWith("utilisateur Premium") -> "USER_PREMIUM"
+    startsWith("essai actif") -> "TRIAL_ACTIVE"
+    this == "pubs desactivees" -> "ADS_DISABLED"
+    startsWith("statut utilisateur") -> "NOT_FREE_WITH_ADS"
+    startsWith("intervalle ") -> "MIN_INTERVAL_NOT_REACHED"
+    this == "limite journaliere atteinte" -> "DAILY_LIMIT_REACHED"
+    this == "contexte non autorise" -> "CONTENT_TYPE_DISABLED"
+    this == "configuration player invalide" -> "INVALID_CONTEXT"
+    this == "regie publicitaire non configuree" -> "MISSING_VAST_TAG"
+    else -> "INVALID_CONTEXT"
 }
 
 object AdEligibilityPolicy {

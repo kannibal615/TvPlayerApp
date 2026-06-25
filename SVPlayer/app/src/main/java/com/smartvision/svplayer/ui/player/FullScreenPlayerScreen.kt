@@ -560,7 +560,6 @@ private fun FullScreenPlayerScreen(
                 }
                 adGateActive = true
                 overlayVisible = false
-                activeAdRequestId = plan.requestId
                 firedAdTrackingEvents = emptySet()
                 val creative = idleVastAdLoader.load(plan.adTagUrl)
                 val mediaUrl = creative?.mediaUrl
@@ -572,6 +571,8 @@ private fun FullScreenPlayerScreen(
                     return@LaunchedEffect
                 }
                 activeAdCreative = creative
+                activeAdRequestId = plan.requestId
+                monetizationManager.onAdLoaded(plan.requestId)
                 prepareMedia(MediaItem.fromUri(mediaUrl), resumeContent = false)
             }
         }

@@ -3,6 +3,7 @@ package com.smartvision.svplayer.data.monetization
 import java.io.StringReader
 import java.util.UUID
 import javax.xml.parsers.DocumentBuilderFactory
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -21,7 +22,11 @@ class IdleVastAdLoader(
     private val client: OkHttpClient,
 ) {
     suspend fun load(tagUrl: String): IdleVastCreative? = withContext(Dispatchers.IO) {
-        loadRecursive(tagUrl, depth = 0)
+        runCatching {
+            loadRecursive(tagUrl, depth = 0)
+        }.onFailure {
+            Log.w(TAG, "Chargement VAST impossible", it)
+        }.getOrNull()
     }
 
     suspend fun ping(urls: List<String>) = withContext(Dispatchers.IO) {
@@ -86,6 +91,10 @@ class IdleVastAdLoader(
             impressionUrls = document.elements("Impression").texts(),
             trackingUrls = document.trackingUrls(),
         )
+    }
+
+    private companion object {
+        const val TAG = "SmartVisionVast"
     }
 }
 

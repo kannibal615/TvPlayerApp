@@ -33,6 +33,20 @@ class MonetizationStatusTest {
     }
 
     @Test
+    fun `active free status wins over stale activation type`() {
+        assertEquals(
+            MonetizationStatus.FREE_WITH_ADS,
+            resolveMonetizationStatus(
+                activationType = "own_xtream",
+                licenseStatus = "inactive",
+                trialStatus = "expired",
+                freeWithAdsStatus = "active",
+                debugOverride = null,
+            ),
+        )
+    }
+
+    @Test
     fun `license and trial expiration stay distinguishable`() {
         assertEquals(
             MonetizationStatus.LICENSE_EXPIRED,

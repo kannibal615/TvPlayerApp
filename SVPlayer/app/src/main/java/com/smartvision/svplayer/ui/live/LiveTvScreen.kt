@@ -53,6 +53,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -113,6 +114,7 @@ import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 private val LiveTvPanelTitleStyle = TextStyle(
     fontSize = 16.sp,
@@ -724,6 +726,7 @@ private fun IdlePreviewVastPlayer(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var loading by remember(adTagUrl) { mutableStateOf(true) }
     var adStarted by remember(adTagUrl) { mutableStateOf(false) }
     var adFinished by remember(adTagUrl) { mutableStateOf(false) }
@@ -767,7 +770,9 @@ private fun IdlePreviewVastPlayer(
         if (mediaUrl.isNullOrBlank()) {
             loading = false
             adFailed = true
+            monetizationManager.onIdleLivePreviewAdFailed("creative VAST indisponible")
         } else {
+            monetizationManager.onIdleLivePreviewAdLoaded()
             player.setMediaItem(MediaItem.fromUri(mediaUrl))
             player.prepare()
             player.playWhenReady = true
@@ -792,6 +797,9 @@ private fun IdlePreviewVastPlayer(
             override fun onPlayerError(error: PlaybackException) {
                 loading = false
                 adFailed = true
+                coroutineScope.launch {
+                    monetizationManager.onIdleLivePreviewAdFailed(error.message.orEmpty())
+                }
             }
         }
         player.addListener(listener)

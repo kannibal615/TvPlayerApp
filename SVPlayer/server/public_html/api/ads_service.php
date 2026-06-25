@@ -173,12 +173,16 @@ function ads_selected_vast_tag(array $settings): string
 function ads_public_config(PDO $pdo): array
 {
     $settings = ads_load_settings($pdo);
+    $selectedTag = ads_selected_vast_tag($settings);
+    $publicTag = $selectedTag === ''
+        ? ''
+        : smartvision_public_base_url() . '/api/app/ads-vast';
 
     return [
         'adsEnabled' => (bool) $settings['ads_enabled'],
         'provider' => (string) $settings['provider'],
         'useTestAds' => (bool) $settings['use_test_ads'],
-        'vastTagUrl' => ads_selected_vast_tag($settings),
+        'vastTagUrl' => $publicTag,
         'minMinutesBetweenAds' => (int) $settings['min_minutes_between_ads'],
         'maxAdsPerDay' => (int) $settings['max_ads_per_day'],
         'showAdBeforeLiveStream' => (bool) $settings['show_ad_before_live_stream'],
@@ -188,6 +192,39 @@ function ads_public_config(PDO $pdo): array
         'adsOnlyInsidePlayer' => true,
         'configVersion' => (int) $settings['config_version'],
     ];
+}
+
+function ads_fetch_vast_xml(PDO $pdo): string
+{
+    $settings = ads_load_settings($pdo);
+    $url = ads_selected_vast_tag($settings);
+    if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
+        throw new RuntimeException('Tag VAST absent.');
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'timeout' => 12,
+            'ignore_errors' => true,
+            'follow_location' => 1,
+            'max_redirects' => 5,
+            'header' => "User-Agent: Mozilla/5.0 (Linux; Android 12; Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36\r\nAccept: application/xml,text/xml,*/*\r\nAccept-Encoding: identity\r\n",
+        ],
+    ]);
+    $xml = @file_get_contents($url, false, $context);
+    $statusLine = $http_response_header[0] ?? '';
+    preg_match('/\s(\d{3})\s/', (string) $statusLine, $matches);
+    $statusCode = isset($matches[1]) ? (int) $matches[1] : 0;
+
+    if (!is_string($xml) || $xml === '' || $statusCode < 200 || $statusCode >= 300) {
+        throw new RuntimeException('Tag VAST indisponible.');
+    }
+    if (!preg_match('/<VAST(?:\s|>)/i', substr($xml, 0, 5000))) {
+        throw new RuntimeException('Reponse VAST invalide.');
+    }
+
+    return $xml;
 }
 
 function ads_allowed_event_types(): array
