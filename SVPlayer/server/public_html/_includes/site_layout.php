@@ -15,6 +15,22 @@ function sv_send_site_headers(string $frameAncestors = "'self'"): void
     header("Content-Security-Policy: default-src 'self'; style-src 'self'; script-src 'self' https://pagead2.googlesyndication.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; frame-ancestors {$frameAncestors}; base-uri 'self'; form-action 'self'");
 }
 
+function sv_apk_manifest(): array
+{
+    $path = dirname(__DIR__) . '/downloads/smartvision-tv.version.json';
+    if (!is_file($path)) {
+        return [];
+    }
+
+    $raw = preg_replace('/^\xEF\xBB\xBF/', '', (string) file_get_contents($path));
+    $manifest = json_decode((string) $raw, true);
+    if (!is_array($manifest)) {
+        return [];
+    }
+
+    return $manifest;
+}
+
 function sv_render_site_header(): void
 {
     ?>
@@ -22,16 +38,20 @@ function sv_render_site_header(): void
     <a class="brand" href="/" aria-label="SmartVision, accueil">
         <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player">
     </a>
-    <button class="site-menu-toggle" type="button" data-site-menu-toggle aria-expanded="false" aria-controls="site-nav">Menu</button>
-    <nav id="site-nav" class="site-nav" aria-label="Navigation principale">
+    <button class="site-menu-toggle" type="button" data-site-menu-toggle aria-expanded="false" aria-controls="site-nav" aria-label="Ouvrir le menu">
+        <span></span><span></span><span></span>
+    </button>
+    <nav id="site-nav" class="site-nav" aria-label="Navigation principale" data-site-menu>
         <a href="/">Accueil</a>
-        <a href="/activate/">Activation</a>
         <a href="/#tarifs">Tarifs</a>
-        <a href="/#activation">Fonctionnalités</a>
+        <a href="/activate/">Activation</a>
+        <a href="/#telecharger">Télécharger l’application</a>
+        <a href="/legal-iptv-player/">Lecteur IPTV légal</a>
+        <a class="mobile-only" href="/account/?mode=login">Connexion</a>
     </nav>
     <div class="site-actions">
-        <a class="button button-outline header-cta" href="/account/?mode=login">Se connecter</a>
-        <a class="button button-primary header-cta" href="/account/?mode=register">Créer un compte</a>
+        <a class="button button-outline header-cta" href="/account/?mode=login">Connexion</a>
+        <a class="button button-primary header-cta" href="/account/?intent=license&plan=year_1">Acheter une licence</a>
     </div>
 </header>
     <?php
@@ -42,22 +62,25 @@ function sv_render_site_footer(string $class = ''): void
     $classAttribute = $class !== '' ? ' class="' . sv_h($class) . '"' : '';
     ?>
 <footer<?= $classAttribute ?>>
-    <a class="brand footer-brand" href="/">
-        <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player">
-    </a>
-    <p>&copy; <?= date('Y') ?> SmartVision. Licence lecteur Android TV, sans contenu inclus.</p>
-    <div>
+    <div class="footer-main">
+        <a class="brand footer-brand" href="/">
+            <img class="brand-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player">
+        </a>
+        <p>SmartVision est un lecteur Android TV légal. L’application ne fournit, ne vend et n’héberge aucun contenu audiovisuel, chaîne TV, film, série ou playlist.</p>
+    </div>
+    <nav class="footer-links" aria-label="Liens de pied de page">
         <a href="/">Accueil</a>
-        <a href="/activate/">Activation</a>
         <a href="/#tarifs">Tarifs</a>
+        <a href="/activate/">Activation</a>
         <a href="/account/">Compte client</a>
         <a href="/contact/">Contact</a>
+        <a href="/terms-of-use/">Conditions d’utilisation</a>
         <a href="/privacy-policy/">Confidentialité</a>
-        <a href="/terms-of-use/">Conditions</a>
         <a href="/legal-notice/">Mentions légales</a>
         <a href="/legal-iptv-player/">Lecteur IPTV légal</a>
-    </div>
+    </nav>
+    <p class="footer-copy">&copy; <?= date('Y') ?> SmartVision. Lecteur Android TV, sans contenu inclus.</p>
 </footer>
-<script src="/assets/site.js?v=4" defer></script>
+<script src="/assets/site.js?v=5" defer></script>
     <?php
 }

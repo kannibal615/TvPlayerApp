@@ -1,1 +1,926 @@
-.account-page{min-height:100vh;background:linear-gradient(180deg,#020611,#06101c 55%,#020611)}.account-header{grid-template-columns:280px 1fr auto}.account-user-menu{display:flex;align-items:center;gap:14px;color:#aebcd0}.account-user-menu form{margin:0}.auth-layout{width:min(1120px,calc(100% - 32px));min-height:calc(100vh - 170px);display:grid;grid-template-columns:.92fr 1.08fr;align-items:center;gap:80px;margin:0 auto;padding:60px 0}.auth-intro h1{max-width:600px;margin:0;font-size:clamp(44px,5vw,72px);line-height:1.02}.auth-intro>p:not(.section-label){max-width:560px;color:#a8b6c9;font-size:18px;line-height:1.6}.section-label{margin:0 0 14px;color:#31a7ff;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1.3px}.compact-steps{display:grid;gap:16px;margin:34px 0;padding:0;list-style:none}.compact-steps li{display:flex;align-items:center;gap:14px}.compact-steps li>span{width:34px;height:34px;display:grid;place-items:center;flex:0 0 34px;border:1px solid #2686e8;border-radius:50%;color:#6eb9ff;font-weight:800}.compact-steps strong,.compact-steps small{display:block}.compact-steps small{margin-top:4px;color:#8798ad}.auth-plan-summary{max-width:520px;padding:17px 20px;border-left:3px solid #1979ff;background:#07182c}.auth-plan-summary span,.auth-plan-summary strong{display:block}.auth-plan-summary span{color:#889bb1;font-size:12px}.auth-plan-summary strong{margin-top:6px;font-size:18px}.auth-form-panel{padding:34px;border:1px solid #253a55;border-radius:8px;background:#081423;box-shadow:0 30px 80px rgba(0,0,0,.38)}.auth-form-panel h2{margin:0;font-size:28px}.auth-form-panel>p{margin:8px 0 20px;color:#91a2b7}.stack-form{display:grid;gap:15px}.stack-form .field{margin:0}.stack-form .field small{display:block;margin-top:6px;color:#72849a;font-size:11px}.login-disclosure{margin-top:22px;border-top:1px solid #223650;padding-top:18px}.login-disclosure summary{color:#66b5ff;font-weight:750;cursor:pointer}.compact-form{margin-top:18px}.form-notice{margin:0 0 18px;padding:13px 15px;border:1px solid #35506e;border-radius:6px;background:#0b1a2c;color:#ccd8e6}.form-notice.success{border-color:#287c58;color:#77e7ab}.form-notice.error{border-color:#7a3541;color:#ff9da9}.customer-dashboard{width:min(1520px,calc(100% - 42px));margin:0 auto;padding:34px 0 80px}.customer-heading{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:20px}.customer-heading h1{margin:0;font-size:32px}.customer-heading p:not(.section-label){margin:7px 0 0;color:#91a2b7}.customer-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:14px}.customer-stats>div{padding:16px 18px;border:1px solid #223650;border-radius:7px;background:#091523}.customer-stats span,.customer-stats strong{display:block}.customer-stats span{color:#8ea0b6;font-size:12px}.customer-stats strong{margin-top:6px;font-size:25px}.purchase-progress{display:grid;grid-template-columns:repeat(3,1fr);margin:20px 0 14px;border-block:1px solid #21354e}.purchase-progress>div{position:relative;display:grid;grid-template-columns:40px 1fr;grid-template-rows:auto auto;column-gap:12px;padding:16px 20px;color:#71839a}.purchase-progress>div:not(:last-child)::after{content:"";position:absolute;right:0;top:20%;width:1px;height:60%;background:#21354e}.purchase-progress span{grid-row:1/3;width:34px;height:34px;display:grid;place-items:center;border:1px solid #52647c;border-radius:50%;font-weight:800}.purchase-progress strong{color:#b9c6d5}.purchase-progress small{margin-top:3px}.purchase-progress .active{color:#58aaff}.purchase-progress .active span{border-color:#258bff;color:#fff}.purchase-progress .active strong{color:#fff}.checkout-layout{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:14px;align-items:start}.plan-selector,.order-summary,.licenses-section{border:1px solid #223650;border-radius:7px;background:#081423}.plan-selector{padding:20px}.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:24px}.panel-heading h2{margin:0;font-size:20px}.panel-heading p{margin:5px 0 0;color:#899bb0;font-size:13px}.account-plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}.account-plan{position:relative;min-height:250px;padding:25px 22px;border:1px solid #2b405b;border-radius:7px;background:#06101d;cursor:pointer}.account-plan:has(input:focus-visible),.account-plan.selected{border-color:#2a91ff;box-shadow:0 0 0 1px rgba(25,121,255,.4);background:#08182b}.account-plan input{position:absolute;right:18px;bottom:18px;width:20px;height:20px;accent-color:#1979ff}.account-plan>strong{display:block;font-size:20px}.account-plan-price{margin:12px 0;color:#3c93ff;font-size:32px;font-weight:850}.account-plan p{min-height:42px;color:#8ea0b5;line-height:1.5}.account-plan ul{display:grid;gap:8px;margin:18px 0 35px;padding:0;list-style:none;color:#bac6d4;font-size:12px}.account-plan li::before{content:"\2713";margin-right:8px;color:#2e91ff}.plan-recommended{position:absolute;top:0;left:50%;transform:translate(-50%,-50%);padding:5px 9px;border-radius:4px;background:#1979ff;color:#fff;font-size:10px;font-weight:800;text-transform:uppercase;white-space:nowrap}.license-rule{display:flex;gap:14px;margin-top:15px;padding:15px 17px;border-top:1px solid #223650;background:#07111e}.license-rule strong{color:#69b6ff}.license-rule span{color:#93a4b8;font-size:13px;line-height:1.45}.order-summary{position:sticky;top:96px;padding:22px}.order-summary h2{margin:0 0 20px;font-size:20px}.order-summary dl{margin:0}.order-summary dl>div{display:flex;justify-content:space-between;gap:20px;padding:10px 0;border-bottom:1px solid #1d3048}.order-summary dt{color:#8ea0b5}.order-summary dd{margin:0;color:#e7edf5}.order-total{display:flex;align-items:center;justify-content:space-between;margin:18px 0}.order-total span{font-size:17px;font-weight:750}.order-total strong{color:#3b91ff;font-size:26px}.test-payment-note{display:grid;gap:5px;margin:18px 0;padding:14px;border-left:3px solid #1ac7ed;background:#07182a}.test-payment-note span{color:#90a2b7;font-size:12px;line-height:1.45}.terms-check{display:flex;align-items:flex-start;gap:10px;margin:16px 0;color:#aab8c9;font-size:12px;line-height:1.5}.terms-check input{flex:0 0 auto;margin-top:3px;accent-color:#1979ff}.order-summary .button{width:100%}.secure-note{display:block;margin-top:12px;color:#6f8196;line-height:1.45}.licenses-section{margin-top:14px;padding:20px}.customer-table-wrap{overflow:auto;margin-top:17px;border:1px solid #1c2e45;border-radius:6px}.customer-table{width:100%;border-collapse:collapse}.customer-table th,.customer-table td{padding:12px 13px;border-top:1px solid #1c2e45;text-align:left;vertical-align:middle;font-size:12px;white-space:nowrap}.customer-table th{border-top:0;color:#7c8da3;font-size:10px;text-transform:uppercase}.customer-table td strong,.customer-table td small{display:block}.customer-table td small{margin-top:4px;color:#76889e}.customer-table code{color:#dceaff;font-family:"SFMono-Regular",Consolas,monospace;font-size:12px}.highlight-order{background:rgba(25,121,255,.1)}.state{display:inline-flex;min-height:24px;align-items:center;padding:0 8px;border-radius:4px;background:#152338;color:#b1c0d2;font-size:10px;font-weight:800;text-transform:uppercase}.state.paid,.state.active{background:#123c2c;color:#75e4aa}.state.cancelled,.state.expired{background:#401d25;color:#ff9dab}.table-actions{display:flex;gap:6px}.mini-button{display:inline-flex;min-height:30px;align-items:center;justify-content:center;padding:0 9px;border:1px solid #31547b;border-radius:5px;background:#0a1a2d;color:#70b7ff;font:inherit;font-size:11px;cursor:pointer}.empty-state{display:grid;gap:5px;margin-top:17px;padding:34px;border:1px dashed #2b4059;text-align:center;color:#8193a8}.empty-state strong{color:#d8e2ee}.account-footer{width:min(1520px,calc(100% - 42px));margin:0 auto}.hero-text-link{align-self:center;padding:14px 8px}@media(max-width:1100px){.auth-layout{grid-template-columns:1fr;gap:34px;max-width:700px}.auth-intro{text-align:center}.compact-steps,.auth-plan-summary{margin-inline:auto;text-align:left}.checkout-layout{grid-template-columns:1fr}.order-summary{position:static}.account-plan-grid{grid-template-columns:1fr}.account-plan{min-height:0}.customer-stats{grid-template-columns:repeat(2,1fr)}}@media(max-width:720px){.account-header{grid-template-columns:1fr auto}.account-header nav,.account-user-menu>span{display:none}.auth-layout{padding:38px 0}.auth-intro h1{font-size:42px}.auth-form-panel{padding:25px 20px}.customer-dashboard{width:min(100% - 24px,1520px);padding-top:24px}.customer-heading{align-items:flex-start;flex-direction:column}.purchase-progress{grid-template-columns:1fr}.purchase-progress>div{padding:12px 8px}.purchase-progress>div:not(:last-child)::after{display:none}.plan-selector,.order-summary,.licenses-section{padding:16px}.customer-stats{grid-template-columns:1fr 1fr}.panel-heading{align-items:flex-start;flex-direction:column}.account-footer{width:min(100% - 24px,1520px)}}
+.account-page {
+    min-height: 100vh;
+}
+
+.auth-shell {
+    width: min(1120px, calc(100% - 32px));
+    min-height: calc(100vh - 170px);
+    display: grid;
+    grid-template-columns: minmax(0, .95fr) minmax(360px, .72fr);
+    gap: 34px;
+    align-items: center;
+    margin: 0 auto;
+    padding: 70px 0 92px;
+}
+
+.auth-hero-panel,
+.auth-form-panel,
+.dashboard-panel,
+.dashboard-sidebar,
+.customer-stats > div,
+.dashboard-quick-actions a,
+.license-card,
+.download-card,
+.logout-card {
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(10, 26, 47, .92), rgba(7, 20, 38, .82));
+    box-shadow: 0 24px 72px rgba(0, 0, 0, .18);
+}
+
+.auth-hero-panel {
+    min-height: 520px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 46px;
+    background:
+        radial-gradient(circle at 82% 16%, rgba(0, 212, 255, .2), transparent 22rem),
+        linear-gradient(180deg, rgba(10, 26, 47, .94), rgba(7, 20, 38, .78));
+}
+
+.auth-hero-panel h1 {
+    max-width: 620px;
+    margin: 0;
+    font-size: clamp(42px, 5vw, 70px);
+    line-height: 1;
+}
+
+.auth-hero-panel p {
+    max-width: 560px;
+    color: #a8b3c7;
+    font-size: 18px;
+    line-height: 1.65;
+}
+
+.auth-legal-box {
+    display: grid;
+    gap: 7px;
+    max-width: 520px;
+    margin-top: 28px;
+    padding: 18px;
+    border: 1px solid rgba(0, 212, 255, .25);
+    border-radius: 12px;
+    background: rgba(0, 212, 255, .07);
+}
+
+.auth-legal-box strong {
+    color: #eaf6ff;
+}
+
+.auth-legal-box span {
+    color: #9fb0c5;
+    line-height: 1.55;
+}
+
+.auth-form-panel {
+    padding: 32px;
+}
+
+.auth-form-panel h2 {
+    margin: 0;
+    font-size: 30px;
+}
+
+.auth-form-panel > p {
+    margin: 8px 0 22px;
+    color: #a8b3c7;
+}
+
+.stack-form {
+    display: grid;
+    gap: 15px;
+}
+
+.stack-form .field {
+    margin: 0;
+}
+
+.field small,
+.stack-form .field small {
+    display: block;
+    margin-top: 7px;
+    color: #7f90a8;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.login-disclosure {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, .1);
+}
+
+.login-disclosure summary {
+    color: #72c7ff;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.compact-form {
+    margin-top: 18px;
+}
+
+.form-notice {
+    margin: 0 0 18px;
+    padding: 14px 16px;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 10px;
+    background: rgba(7, 20, 38, .82);
+    color: #d9e5f7;
+}
+
+.form-notice.success {
+    border-color: rgba(34, 197, 94, .38);
+    color: #8cf2b9;
+}
+
+.form-notice.error {
+    border-color: rgba(255, 109, 126, .45);
+    color: #ffadba;
+}
+
+.customer-dashboard {
+    width: min(1280px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 40px 0 86px;
+}
+
+.dashboard-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    margin-bottom: 18px;
+}
+
+.dashboard-hero h1 {
+    margin: 0;
+    font-size: clamp(34px, 4vw, 52px);
+    line-height: 1.05;
+}
+
+.dashboard-hero h1::first-letter {
+    color: #fff;
+}
+
+.dashboard-hero p {
+    margin: 12px 0 0;
+    color: #a8b3c7;
+    font-size: 17px;
+    line-height: 1.55;
+}
+
+.dashboard-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.dashboard-quick-actions a {
+    display: flex;
+    min-height: 76px;
+    align-items: center;
+    gap: 14px;
+    padding: 18px;
+    color: #f4f9ff;
+    font-weight: 850;
+}
+
+.dashboard-quick-actions a:hover,
+.dashboard-quick-actions a:focus-visible {
+    border-color: rgba(0, 212, 255, .55);
+    background: linear-gradient(180deg, rgba(10, 36, 65, .96), rgba(7, 20, 38, .86));
+}
+
+.quick-icon {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    border: 2px solid #00d4ff;
+    border-radius: 8px;
+    box-shadow: 0 0 22px rgba(0, 212, 255, .22);
+}
+
+.quick-icon.download {
+    border-width: 0 0 4px 0;
+    border-radius: 0;
+    position: relative;
+}
+
+.quick-icon.download::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 3px;
+    width: 4px;
+    height: 24px;
+    border-radius: 999px;
+    background: #00d4ff;
+    transform: translateX(-50%);
+}
+
+.quick-icon.cart {
+    border-color: #7d7cff;
+    border-radius: 4px 4px 10px 10px;
+}
+
+.customer-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 18px 0;
+}
+
+.customer-stats > div {
+    padding: 20px;
+}
+
+.customer-stats span,
+.customer-stats strong {
+    display: block;
+}
+
+.customer-stats span {
+    color: #96a7bd;
+    font-size: 13px;
+}
+
+.customer-stats strong {
+    margin-top: 8px;
+    color: #fff;
+    font-size: 34px;
+    line-height: 1;
+}
+
+.dashboard-shell {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.dashboard-sidebar {
+    position: sticky;
+    top: 94px;
+    display: grid;
+    gap: 6px;
+    padding: 16px;
+}
+
+.dashboard-sidebar > a,
+.dashboard-tabs a {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    padding: 0 14px;
+    border-radius: 10px;
+    color: #c4d2e5;
+    font-weight: 750;
+}
+
+.dashboard-sidebar > a:hover,
+.dashboard-sidebar > a:focus-visible,
+.dashboard-sidebar > a.active {
+    background: rgba(22, 135, 255, .18);
+    color: #fff;
+}
+
+.legal-mini {
+    display: grid;
+    gap: 8px;
+    margin-top: 18px;
+    padding: 16px;
+    border: 1px solid rgba(0, 212, 255, .18);
+    border-radius: 12px;
+    background: rgba(2, 8, 23, .42);
+}
+
+.legal-mini strong {
+    color: #fff;
+}
+
+.legal-mini span {
+    color: #a8b3c7;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.legal-mini a {
+    color: #55b8ff;
+    font-weight: 850;
+}
+
+.dashboard-content {
+    display: grid;
+    gap: 18px;
+}
+
+.dashboard-tabs {
+    display: none;
+}
+
+.dashboard-panel {
+    scroll-margin-top: 96px;
+    padding: 24px;
+}
+
+.panel-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: flex-start;
+    margin-bottom: 18px;
+}
+
+.panel-heading h2,
+.dashboard-panel h2 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.panel-heading p,
+.dashboard-panel > p,
+.split-panel p {
+    margin: 6px 0 0;
+    color: #a8b3c7;
+    line-height: 1.55;
+}
+
+.slim-button {
+    min-height: 42px;
+    padding-inline: 16px;
+}
+
+.empty-state {
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+    min-height: 220px;
+    place-content: center;
+    padding: 32px;
+    border: 1px dashed rgba(255, 255, 255, .18);
+    border-radius: 12px;
+    background: rgba(2, 8, 23, .42);
+    color: #9fb0c5;
+    text-align: center;
+}
+
+.empty-state strong {
+    color: #fff;
+    font-size: 18px;
+}
+
+.empty-state .button {
+    margin-top: 8px;
+}
+
+.license-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.license-card {
+    padding: 20px;
+}
+
+.license-card.highlight-order {
+    border-color: rgba(0, 212, 255, .65);
+    box-shadow: 0 0 0 1px rgba(0, 212, 255, .2), 0 24px 72px rgba(0, 143, 255, .18);
+}
+
+.license-card-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: flex-start;
+    margin-bottom: 18px;
+}
+
+.license-card-head span,
+.license-card-head strong {
+    display: block;
+}
+
+.license-card-head > div > span {
+    color: #94a6bd;
+    font-size: 13px;
+}
+
+.license-card-head strong {
+    margin-top: 3px;
+    color: #fff;
+    font-size: 20px;
+}
+
+.license-card dl,
+.account-details {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+}
+
+.license-card dl div,
+.account-details div {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 11px 0;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+}
+
+.license-card dt,
+.account-details dt {
+    color: #899bb3;
+}
+
+.license-card dd,
+.account-details dd {
+    margin: 0;
+    color: #eaf4ff;
+    text-align: right;
+}
+
+.license-card code,
+.customer-table code {
+    color: #fff;
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 13px;
+}
+
+.license-actions,
+.table-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 18px;
+}
+
+.checkout-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 16px;
+    align-items: start;
+}
+
+.plan-selector,
+.order-summary {
+    min-width: 0;
+}
+
+.account-plan-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.account-plan {
+    position: relative;
+    display: grid;
+    gap: 12px;
+    min-height: 286px;
+    padding: 22px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 12px;
+    background: rgba(2, 8, 23, .44);
+    cursor: pointer;
+}
+
+.account-plan.featured,
+.account-plan.selected,
+.account-plan:has(input:focus-visible) {
+    border-color: rgba(0, 212, 255, .68);
+    background: rgba(10, 36, 65, .68);
+}
+
+.account-plan input {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    width: 20px;
+    height: 20px;
+    accent-color: #1687ff;
+}
+
+.account-plan > strong {
+    color: #fff;
+    font-size: 20px;
+}
+
+.account-plan-price {
+    color: #fff;
+    font-size: 34px;
+    font-weight: 900;
+}
+
+.account-plan p {
+    color: #a8b3c7;
+    line-height: 1.45;
+}
+
+.account-plan p b {
+    color: #00d4ff;
+}
+
+.account-plan ul {
+    display: grid;
+    gap: 7px;
+    margin: 0 0 26px;
+    padding: 0;
+    list-style: none;
+    color: #dce7f6;
+    font-size: 13px;
+}
+
+.account-plan li::before {
+    content: "✓";
+    margin-right: 8px;
+    color: #55f1a9;
+    font-weight: 900;
+}
+
+.plan-recommended {
+    justify-self: start;
+    padding: 6px 9px;
+    border: 1px solid rgba(0, 212, 255, .35);
+    border-radius: 999px;
+    background: rgba(0, 212, 255, .09);
+    color: #8ceeff;
+    font-size: 11px;
+    font-weight: 850;
+}
+
+.license-rule {
+    display: flex;
+    gap: 14px;
+    margin-top: 14px;
+    padding: 15px;
+    border: 1px solid rgba(0, 212, 255, .18);
+    border-radius: 12px;
+    background: rgba(0, 212, 255, .06);
+}
+
+.license-rule strong {
+    color: #8ceeff;
+}
+
+.license-rule span {
+    color: #a8b3c7;
+    line-height: 1.5;
+}
+
+.order-summary {
+    position: sticky;
+    top: 94px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 12px;
+    background: rgba(2, 8, 23, .56);
+}
+
+.order-summary h2 {
+    margin: 0 0 16px;
+}
+
+.order-summary dl {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+}
+
+.order-summary dl div {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+
+.order-summary dt {
+    color: #8f9fb6;
+}
+
+.order-summary dd {
+    margin: 0;
+    color: #fff;
+    font-weight: 750;
+    text-align: right;
+}
+
+.order-total {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: center;
+    margin: 18px 0;
+}
+
+.order-total span {
+    color: #fff;
+    font-weight: 850;
+}
+
+.order-total strong {
+    color: #00d4ff;
+    font-size: 28px;
+}
+
+.test-payment-note {
+    display: grid;
+    gap: 5px;
+    margin: 18px 0;
+    padding: 14px;
+    border-left: 3px solid #00d4ff;
+    background: rgba(0, 212, 255, .07);
+}
+
+.test-payment-note span,
+.secure-note {
+    color: #9fb0c5;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.terms-check {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin: 16px 0;
+    color: #a8b3c7;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.terms-check input {
+    margin-top: 3px;
+    accent-color: #1687ff;
+}
+
+.order-summary .button {
+    width: 100%;
+}
+
+.secure-note {
+    display: block;
+    margin-top: 12px;
+}
+
+.split-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, .82fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.activation-mini-steps {
+    display: grid;
+    gap: 10px;
+    margin: 18px 0 0;
+    padding-left: 20px;
+    color: #d5e1f1;
+    line-height: 1.55;
+}
+
+.activation-mini-form {
+    display: grid;
+    gap: 16px;
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 12px;
+    background: rgba(2, 8, 23, .42);
+}
+
+.activation-mini-form .button {
+    width: 100%;
+}
+
+.customer-table-wrap {
+    overflow: auto;
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 12px;
+}
+
+.customer-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.customer-table th,
+.customer-table td {
+    padding: 13px 14px;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+    text-align: left;
+    vertical-align: middle;
+    white-space: nowrap;
+    font-size: 13px;
+}
+
+.customer-table th {
+    border-top: 0;
+    color: #8798ad;
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+.customer-table td strong,
+.customer-table td small {
+    display: block;
+}
+
+.customer-table td small {
+    margin-top: 4px;
+    color: #7f90a8;
+}
+
+.state {
+    display: inline-flex;
+    min-height: 25px;
+    align-items: center;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, .14);
+    color: #c9d6e8;
+    font-size: 11px;
+    font-weight: 850;
+}
+
+.state.paid,
+.state.active {
+    background: rgba(34, 197, 94, .14);
+    color: #87f2b7;
+}
+
+.state.cancelled,
+.state.expired {
+    background: rgba(255, 109, 126, .14);
+    color: #ffadba;
+}
+
+.mini-button {
+    display: inline-flex;
+    min-height: 34px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 11px;
+    border: 1px solid rgba(79, 160, 255, .42);
+    border-radius: 9px;
+    background: rgba(7, 20, 38, .82);
+    color: #83c9ff;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 850;
+    cursor: pointer;
+}
+
+.download-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 18px;
+}
+
+.download-chips span {
+    padding: 7px 10px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 999px;
+    color: #c9d6e8;
+    font-size: 12px;
+    font-weight: 750;
+}
+
+.download-card,
+.logout-card {
+    display: grid;
+    gap: 12px;
+    padding: 20px;
+}
+
+.download-card strong,
+.logout-card strong {
+    color: #fff;
+    font-size: 18px;
+}
+
+.download-card span,
+.logout-card span {
+    color: #a8b3c7;
+    line-height: 1.5;
+}
+
+.account-footer {
+    width: 100%;
+    margin: 0;
+}
+
+@media (max-width: 1120px) {
+    .auth-shell {
+        grid-template-columns: 1fr;
+        max-width: 720px;
+    }
+
+    .auth-hero-panel {
+        min-height: auto;
+    }
+
+    .dashboard-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-sidebar {
+        display: none;
+    }
+
+    .dashboard-tabs {
+        position: sticky;
+        top: 68px;
+        z-index: 10;
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        margin: -2px -2px 0;
+        padding: 2px 2px 12px;
+        background: rgba(2, 8, 23, .74);
+        backdrop-filter: blur(12px);
+    }
+
+    .dashboard-tabs a {
+        flex: 0 0 auto;
+        border: 1px solid rgba(255, 255, 255, .1);
+        background: rgba(7, 20, 38, .8);
+        white-space: nowrap;
+    }
+
+    .checkout-layout,
+    .split-panel {
+        grid-template-columns: 1fr;
+    }
+
+    .order-summary {
+        position: static;
+    }
+
+    .account-plan-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .account-plan {
+        min-height: 0;
+    }
+}
+
+@media (max-width: 760px) {
+    .auth-shell,
+    .customer-dashboard {
+        width: min(100% - 24px, 1280px);
+        padding-top: 28px;
+    }
+
+    .auth-hero-panel,
+    .auth-form-panel,
+    .dashboard-panel {
+        padding: 22px 18px;
+    }
+
+    .auth-hero-panel h1 {
+        font-size: 38px;
+    }
+
+    .dashboard-quick-actions,
+    .customer-stats,
+    .license-card-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-hero h1 {
+        font-size: 32px;
+    }
+
+    .panel-heading {
+        display: grid;
+    }
+
+    .panel-heading .button {
+        width: 100%;
+    }
+
+    .customer-stats {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .license-card dl div,
+    .account-details div,
+    .order-summary dl div {
+        display: grid;
+        gap: 4px;
+    }
+
+    .license-card dd,
+    .account-details dd,
+    .order-summary dd {
+        text-align: left;
+    }
+
+    .license-rule {
+        display: grid;
+    }
+}

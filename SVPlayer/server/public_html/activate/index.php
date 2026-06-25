@@ -43,16 +43,21 @@ $hasSession = $deviceId !== '' && $shortCode !== '';
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Activation SmartVision</title>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3376574358352765" crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="/assets/site.css?v=4">
-    <link rel="stylesheet" href="/assets/site-overrides.css?v=4">
+    <link rel="stylesheet" href="/assets/site.css?v=5">
+    <link rel="stylesheet" href="/assets/site-overrides.css?v=5">
 </head>
 <body class="activation-page">
 <?php sv_render_site_header(); ?>
-<main class="activation-shell">
+<main class="activation-shell activation-shell-wide">
     <section class="activation-card">
         <?php if (!$hasSession): ?>
-            <h1>Saisissez le code de votre TV</h1>
-            <p class="lead">Ouvrez SmartVision sur votre téléviseur et recopiez ici le code affiché dans l’application.</p>
+            <h1>Activer mon appareil</h1>
+            <p class="lead">Ouvrez SmartVision sur votre Android TV, notez le code affiché à l’écran, puis saisissez-le ici pour continuer.</p>
+            <ol class="activation-mini-steps public-activation-steps">
+                <li>Ouvrez SmartVision sur votre TV.</li>
+                <li>Recopiez le code d’activation.</li>
+                <li>Associez votre licence SmartVision.</li>
+            </ol>
             <form method="get" action="/activate/" class="activation-code-form">
                 <div class="field">
                     <label for="tv-code">Code TV</label>

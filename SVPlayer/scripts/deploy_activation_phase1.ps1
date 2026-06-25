@@ -834,7 +834,7 @@ function Test-CustomerCommerce {
             email = $email
             password = $password
         }
-        if ($dashboard.Content -notmatch 'Choisissez votre licence' -or $dashboard.Content -notmatch 'Deconnexion') {
+        if ($dashboard.Content -notmatch 'Choisissez votre licence' -or $dashboard.Content -notmatch 'D.connexion') {
             throw 'Creation du compte client QA echouee.'
         }
 
@@ -848,7 +848,7 @@ function Test-CustomerCommerce {
             accept_terms = '1'
         }
         $codePattern = '(SV-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}|[A-Z2-9]{10})'
-        if ($paid.Content -notmatch 'Paiement test accepte' -or $paid.Content -notmatch $codePattern) {
+        if ($paid.Content -notmatch 'Paiement confirm' -or $paid.Content -notmatch $codePattern) {
             $flashMatch = [Regex]::Match($paid.Content, '<div class="form-notice[^>]*>(.*?)</div>', [Text.RegularExpressions.RegexOptions]::Singleline)
             $flashText = if ($flashMatch.Success) { [Regex]::Replace($flashMatch.Groups[1].Value, '<[^>]+>', '').Trim() } else { 'aucun message' }
             $hasCode = $paid.Content -match $codePattern
@@ -1005,6 +1005,7 @@ try {
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "activation"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "xtream"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "account"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "success"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "admin"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "sql"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "assets"
@@ -1054,6 +1055,7 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/activation" -FilePath (Join-Path $publicHtmlPath "activation/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/xtream" -FilePath (Join-Path $publicHtmlPath "xtream/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/account" -FilePath (Join-Path $publicHtmlPath "account/index.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/success" -FilePath (Join-Path $publicHtmlPath "success/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/privacy-policy" -FilePath (Join-Path $publicHtmlPath "privacy-policy/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/terms-of-use" -FilePath (Join-Path $publicHtmlPath "terms-of-use/index.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/contact" -FilePath (Join-Path $publicHtmlPath "contact/index.php")
@@ -1155,11 +1157,11 @@ try {
             }
         }
         $accountHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/account/?plan=year_1"
-        if ($accountHtml.Content -notmatch "Creer mon compte" -or $accountHtml.Content -notmatch "Se connecter") {
+        if ($accountHtml.Content -notmatch "Cr.er mon compte" -or $accountHtml.Content -notmatch "Se connecter") {
             throw "La page compte/commande ne retourne pas le contenu attendu."
         }
         $activateHtml = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://$domain/activate/"
-        if ($activateHtml.Content -notmatch "Saisissez le code de votre TV") {
+        if ($activateHtml.Content -notmatch "Activer mon appareil") {
             throw "La page /activate/ ne retourne pas le contenu attendu."
         }
         $updateStatus = Invoke-RestMethod -Method Get -Uri "https://$domain/api/app_update.php?version_code=0&version_name=qa"

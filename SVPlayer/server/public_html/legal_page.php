@@ -20,7 +20,7 @@ sv_send_site_headers();
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3376574358352765" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="/assets/site.css?v=3">
     <link rel="stylesheet" href="/assets/site-overrides.css?v=4">
-    <link rel="stylesheet" href="/assets/mobile.css?v=3">
+    <link rel="stylesheet" href="/assets/mobile.css?v=5">
 </head>
 <body class="legal-page">
 <?php sv_render_site_header(); ?>
