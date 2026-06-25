@@ -20,7 +20,9 @@ class MonetizationStore(
         val now = clock.millis()
         dataStore.edit { preferences ->
             val previous = preferences[USER_MONETIZATION_STATUS]
-            preferences[USER_MONETIZATION_STATUS] = status.name
+            if (previous != status.name) {
+                preferences[USER_MONETIZATION_STATUS] = status.name
+            }
             if (status == MonetizationStatus.FREE_WITH_ADS &&
                 previous != MonetizationStatus.FREE_WITH_ADS.name &&
                 preferences[FREE_WITH_ADS_ACCEPTED_AT] == null

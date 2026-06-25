@@ -1,6 +1,6 @@
 package com.smartvision.svplayer.ui.live
 
-import android.net.Uri
+import android.graphics.Bitmap
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.animation.animateColorAsState
@@ -61,18 +61,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -84,17 +85,20 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
-import com.google.ads.interactivemedia.v3.api.AdEvent
-import com.google.ads.interactivemedia.v3.api.ImaSdkFactory
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
+import com.smartvision.svplayer.data.monetization.IdleVastAdLoader
+import com.smartvision.svplayer.data.monetization.IdleVastCreative
 import com.smartvision.svplayer.data.monetization.MonetizationManager
-import androidx.media3.exoplayer.ima.ImaAdsLoader
 import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
@@ -107,6 +111,7 @@ import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 
 private val LiveTvPanelTitleStyle = TextStyle(
     fontSize = 16.sp,
@@ -175,10 +180,32 @@ fun LiveTvScreen(
     var inputReady by remember { mutableStateOf(false) }
     var categorySearchQuery by remember { mutableStateOf("") }
     var contentSearchQuery by remember { mutableStateOf("") }
+    var premiumPurchaseUrl by remember {
+        mutableStateOf(
+            BuildConfig.ACTIVATION_BASE_URL.trimEnd('/') +
+                "/account/?source=tv&intent=license&plan=year_1",
+        )
+    }
 
     LaunchedEffect(Unit) {
         delay(260)
         inputReady = true
+    }
+
+    LaunchedEffect(container.activationRepository) {
+        val activation = container.activationRepository.localState.first()
+        val deviceQuery = when {
+            activation.publicDeviceCode.isNotBlank() -> "device=${activation.publicDeviceCode}"
+            activation.deviceId.isNotBlank() -> "device_id=${activation.deviceId}"
+            else -> ""
+        }
+        premiumPurchaseUrl = BuildConfig.ACTIVATION_BASE_URL.trimEnd('/') +
+            "/account/?source=tv&intent=license" +
+            if (deviceQuery.isBlank()) {
+                "&plan=year_1"
+            } else {
+                "&$deviceQuery&plan=year_1"
+            }
     }
 
     LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty()) {
@@ -287,7 +314,9 @@ fun LiveTvScreen(
                 )
                 PreviewPanel(
                     channel = state.selectedChannel,
-                    idleAdContentUrl = state.focusedChannel?.streamUrl,
+                    idleAdContentUrl = state.channels.firstOrNull()?.streamUrl,
+                    premiumPurchaseUrl = premiumPurchaseUrl,
+                    idleVastAdLoader = container.idleVastAdLoader,
                     monetizationManager = container.monetizationManager,
                     onWatch = {
                         if (inputReady) {
@@ -510,6 +539,8 @@ private fun ChannelList(
 private fun PreviewPanel(
     channel: LiveTvChannel?,
     idleAdContentUrl: String?,
+    premiumPurchaseUrl: String,
+    idleVastAdLoader: IdleVastAdLoader,
     monetizationManager: MonetizationManager,
     onWatch: () -> Unit,
     onFavorite: () -> Unit,
@@ -522,16 +553,16 @@ private fun PreviewPanel(
         if (channel == null) {
             Column(modifier = Modifier.fillMaxSize()) {
                 IdlePreviewAdFrame(
-                    contentUrl = idleAdContentUrl,
+                    enabled = !idleAdContentUrl.isNullOrBlank(),
+                    idleVastAdLoader = idleVastAdLoader,
                     monetizationManager = monetizationManager,
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1.88f),
                 )
                 Spacer(Modifier.height(10.dp))
-                EmptyState(
-                    title = "Selectionnez une chaine",
-                    subtitle = "Appuyez sur OK pour lancer l'apercu.",
+                PremiumPreviewQr(
+                    purchaseUrl = premiumPurchaseUrl,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -583,8 +614,57 @@ private fun PreviewPanel(
 }
 
 @Composable
+private fun PremiumPreviewQr(
+    purchaseUrl: String,
+    modifier: Modifier = Modifier,
+) {
+    val bitmap = remember(purchaseUrl) { createLivePreviewQrBitmap(purchaseUrl, 384) }
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .focusProperties { canFocus = false }
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(108.dp)
+                .clip(RoundedCornerShape(7.dp))
+                .background(Color.White)
+                .padding(7.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "QR code SmartVision Premium",
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "Supprimez les pubs",
+            color = SmartVisionColors.TextPrimary,
+            style = LiveTvItemTitleStyle,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+        )
+        Text(
+            text = "Passez a Premium",
+            color = SmartVisionColors.Primary,
+            style = LiveTvItemMetaStyle,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
 private fun IdlePreviewAdFrame(
-    contentUrl: String?,
+    enabled: Boolean,
+    idleVastAdLoader: IdleVastAdLoader,
     monetizationManager: MonetizationManager,
     modifier: Modifier = Modifier,
 ) {
@@ -606,14 +686,17 @@ private fun IdlePreviewAdFrame(
         contentAlignment = Alignment.Center,
     ) {
         val tagUrl = adTagUrl
-        if (tagUrl != null && !contentUrl.isNullOrBlank()) {
-            var adCycle by remember(tagUrl, contentUrl) { mutableIntStateOf(0) }
+        if (tagUrl != null && enabled) {
+            var adCycle by remember(tagUrl) { mutableIntStateOf(0) }
             key(adCycle) {
-                IdlePreviewImaPlayer(
+                IdlePreviewVastPlayer(
                     adTagUrl = tagUrl,
-                    contentUrl = contentUrl,
+                    idleVastAdLoader = idleVastAdLoader,
                     monetizationManager = monetizationManager,
-                    onCycleFinished = { adCycle += 1 },
+                    onCycleFinished = { retryDelayMillis ->
+                        delay(retryDelayMillis)
+                        adCycle += 1
+                    },
                     modifier = Modifier.matchParentSize(),
                 )
             }
@@ -632,11 +715,11 @@ private fun IdlePreviewAdFrame(
 }
 
 @Composable
-private fun IdlePreviewImaPlayer(
+private fun IdlePreviewVastPlayer(
     adTagUrl: String,
-    contentUrl: String,
+    idleVastAdLoader: IdleVastAdLoader,
     monetizationManager: MonetizationManager,
-    onCycleFinished: () -> Unit,
+    onCycleFinished: suspend (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -645,6 +728,8 @@ private fun IdlePreviewImaPlayer(
     var adFinished by remember(adTagUrl) { mutableStateOf(false) }
     var adFailed by remember(adTagUrl) { mutableStateOf(false) }
     var cycleRestarted by remember(adTagUrl) { mutableStateOf(false) }
+    var creative by remember(adTagUrl) { mutableStateOf<IdleVastCreative?>(null) }
+    var firedEvents by remember(adTagUrl) { mutableStateOf(emptySet<String>()) }
     val playerView = remember {
         PlayerView(context).apply {
             useController = false
@@ -657,94 +742,100 @@ private fun IdlePreviewImaPlayer(
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
         }
     }
-    val adsLoader = remember(adTagUrl) {
-        ImaAdsLoader.Builder(context.applicationContext)
-            .setImaSdkSettings(
-                ImaSdkFactory.getInstance().createImaSdkSettings().apply {
-                    playerType = "SmartVision Android TV Idle Preview"
-                    playerVersion = com.smartvision.svplayer.BuildConfig.VERSION_NAME
-                },
-            )
-            .setFocusSkipButtonWhenAvailable(false)
-            .setEnableContinuousPlayback(false)
-            .setAdPreloadTimeoutMs(8_000)
-            .setVastLoadTimeoutMs(8_000)
-            .setMediaLoadTimeoutMs(8_000)
-            .setAdEventListener { event ->
-                when (event.type) {
-                    AdEvent.AdEventType.LOADED -> loading = false
-                    AdEvent.AdEventType.STARTED -> {
-                        loading = false
-                        adStarted = true
-                    }
-                    AdEvent.AdEventType.COMPLETED,
-                    AdEvent.AdEventType.SKIPPED,
-                    AdEvent.AdEventType.ALL_ADS_COMPLETED,
-                    AdEvent.AdEventType.CONTENT_RESUME_REQUESTED,
-                    -> adFinished = true
-                    else -> Unit
-                }
-            }
-            .setAdErrorListener {
-                loading = false
-                adFailed = true
-            }
-            .build()
-    }
-    val mediaSourceFactory = remember(playerView, adsLoader) {
-        DefaultMediaSourceFactory(context)
-            .setLocalAdInsertionComponents({ adsLoader }, playerView)
-    }
-    val player = remember(mediaSourceFactory) {
-        ExoPlayer.Builder(context)
-            .setMediaSourceFactory(mediaSourceFactory)
-            .build()
-            .apply {
-                volume = 0f
-                playWhenReady = true
-            }
+    val player = remember {
+        ExoPlayer.Builder(context).build().apply {
+            volume = 0f
+            playWhenReady = true
+        }
     }
 
-    LaunchedEffect(adTagUrl, contentUrl) {
+    LaunchedEffect(adTagUrl) {
         loading = true
         adStarted = false
         adFinished = false
         adFailed = false
+        firedEvents = emptySet()
         player.stop()
         player.clearMediaItems()
-        player.setMediaItem(
-            MediaItem.Builder()
-                .setUri(contentUrl)
-                .setAdsConfiguration(
-                    MediaItem.AdsConfiguration.Builder(Uri.parse(adTagUrl)).build(),
-                )
-                .build(),
-        )
-        player.prepare()
-        player.playWhenReady = true
+        creative = idleVastAdLoader.load(adTagUrl)
+        val mediaUrl = creative?.mediaUrl
+        if (mediaUrl.isNullOrBlank()) {
+            loading = false
+            adFailed = true
+        } else {
+            player.setMediaItem(MediaItem.fromUri(mediaUrl))
+            player.prepare()
+            player.playWhenReady = true
+        }
     }
 
-    LaunchedEffect(adFinished, adFailed) {
-        if ((adFinished || adFailed) && !cycleRestarted) {
-            cycleRestarted = true
-            player.pause()
-            player.stop()
-            delay(300)
-            onCycleFinished()
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying && !adStarted) {
+                    loading = false
+                    adStarted = true
+                }
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) {
+                    adFinished = true
+                }
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                loading = false
+                adFailed = true
+            }
+        }
+        player.addListener(listener)
+        onDispose {
+            player.removeListener(listener)
+            playerView.player = null
+            player.clearMediaItems()
+            player.release()
         }
     }
 
     LaunchedEffect(adStarted) {
         if (adStarted) {
+            idleVastAdLoader.ping(creative?.impressionUrls.orEmpty())
+            idleVastAdLoader.ping(creative?.trackingUrls?.get("start").orEmpty())
             monetizationManager.onIdleLivePreviewAdStarted()
         }
     }
 
-    DisposableEffect(player, adsLoader) {
-        adsLoader.setPlayer(player)
-        onDispose {
-            adsLoader.setPlayer(null)
-            player.release()
+    LaunchedEffect(adStarted, adFinished, adFailed, creative) {
+        while (adStarted && !adFinished && !adFailed) {
+            val duration = player.duration.takeIf { it > 0L } ?: 0L
+            if (duration > 0L) {
+                val progress = player.currentPosition.toDouble() / duration.toDouble()
+                val event = when {
+                    progress >= 0.75 && "thirdQuartile" !in firedEvents -> "thirdQuartile"
+                    progress >= 0.50 && "midpoint" !in firedEvents -> "midpoint"
+                    progress >= 0.25 && "firstQuartile" !in firedEvents -> "firstQuartile"
+                    else -> null
+                }
+                if (event != null) {
+                    firedEvents = firedEvents + event
+                    idleVastAdLoader.ping(creative?.trackingUrls?.get(event).orEmpty())
+                }
+            }
+            delay(500)
+        }
+    }
+
+    LaunchedEffect(adFinished, adFailed) {
+        if ((adFinished || adFailed) && !cycleRestarted) {
+            cycleRestarted = true
+            if (adFinished) {
+                idleVastAdLoader.ping(creative?.trackingUrls?.get("complete").orEmpty())
+            }
+            player.pause()
+            player.stop()
+            player.clearMediaItems()
+            onCycleFinished(if (adFailed) 5_000L else 1_000L)
         }
     }
 
@@ -784,7 +875,7 @@ private fun IdlePreviewImaPlayer(
             )
         }
 
-        if (adFinished || adFailed) {
+        if (adFailed) {
             IdlePreviewPlaceholder()
         }
     }
@@ -807,6 +898,29 @@ private fun IdlePreviewPlaceholder() {
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
         )
+    }
+}
+
+private fun createLivePreviewQrBitmap(content: String, size: Int): Bitmap {
+    val hints = mapOf(
+        EncodeHintType.CHARACTER_SET to "UTF-8",
+        EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,
+        EncodeHintType.MARGIN to 1,
+    )
+    val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size, hints)
+    val pixels = IntArray(size * size)
+    for (y in 0 until size) {
+        val offset = y * size
+        for (x in 0 until size) {
+            pixels[offset + x] = if (matrix[x, y]) {
+                android.graphics.Color.BLACK
+            } else {
+                android.graphics.Color.WHITE
+            }
+        }
+    }
+    return Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).apply {
+        setPixels(pixels, 0, size, 0, 0, size, size)
     }
 }
 
