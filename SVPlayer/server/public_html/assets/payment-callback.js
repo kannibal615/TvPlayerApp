@@ -37,6 +37,13 @@
         throw new Error(result.error || "Enregistrement impossible.");
       }
       if (accountLink && result.account_url) accountLink.href = result.account_url;
+      if (result.status === "approved") {
+        setState(
+          "Paiement confirme",
+          "Votre paiement a ete valide et votre licence est disponible dans votre espace client."
+        );
+        return;
+      }
       setState(
         "Paiement reçu",
         result.duplicate

@@ -140,6 +140,31 @@ function commerce_ensure_payment_schema(PDO $pdo): void
             CONSTRAINT fk_commerce_payments_order FOREIGN KEY (activation_order_id) REFERENCES activation_orders(id) ON DELETE SET NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS commerce_webhook_events (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            event_type VARCHAR(80) NOT NULL,
+            token_hash CHAR(64) NOT NULL,
+            txn VARCHAR(190) NULL,
+            project_id BIGINT NULL,
+            amount_cents INT UNSIGNED NULL,
+            currency CHAR(3) NULL,
+            verification_status ENUM('valid', 'invalid') NOT NULL DEFAULT 'valid',
+            processing_status ENUM('captured', 'approved', 'duplicate', 'pending_callback', 'configuration_required', 'rejected') NOT NULL DEFAULT 'captured',
+            payment_id BIGINT UNSIGNED NULL,
+            message VARCHAR(255) NULL,
+            claims_json JSON NULL,
+            raw_payload JSON NULL,
+            user_agent VARCHAR(190) NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_commerce_webhook_events_token (token_hash),
+            UNIQUE KEY uq_commerce_webhook_events_event_txn (event_type, txn),
+            INDEX idx_commerce_webhook_events_status (processing_status, created_at),
+            INDEX idx_commerce_webhook_events_payment (payment_id),
+            CONSTRAINT fk_commerce_webhook_events_payment FOREIGN KEY (payment_id) REFERENCES commerce_payments(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
     $ensured[$connectionId] = true;
 }
 
@@ -249,6 +274,11 @@ function commerce_record_gammal_callback(PDO $pdo, string $token, array $payment
         $existing->execute(['txn' => $txn]);
         $existingPayment = $existing->fetch();
         if (is_array($existingPayment)) {
+            $autoApproved = commerce_auto_approve_payment_if_webhook_valid($pdo, (int) $existingPayment['id']);
+            if ($autoApproved !== null) {
+                $autoApproved['duplicate'] = true;
+                return $autoApproved;
+            }
             $existingPayment['duplicate'] = true;
             return $existingPayment;
         }
@@ -318,7 +348,7 @@ function commerce_record_gammal_callback(PDO $pdo, string $token, array $payment
         ]);
         $pdo->commit();
 
-        return [
+        $result = [
             'id' => $paymentId,
             'intent_id' => (int) $intent['id'],
             'user_id' => (int) $intent['user_id'],
@@ -334,6 +364,13 @@ function commerce_record_gammal_callback(PDO $pdo, string $token, array $payment
             'order_reference' => $orderReference,
             'duplicate' => false,
         ];
+        $autoApproved = commerce_auto_approve_payment_if_webhook_valid($pdo, $paymentId);
+        if ($autoApproved !== null) {
+            $autoApproved['duplicate'] = false;
+            return $autoApproved;
+        }
+
+        return $result;
     } catch (Throwable $exception) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
@@ -343,6 +380,341 @@ function commerce_record_gammal_callback(PDO $pdo, string $token, array $payment
         $release = $pdo->prepare('SELECT RELEASE_LOCK(:lock_name)');
         $release->execute(['lock_name' => $lockName]);
     }
+}
+
+function commerce_gammal_webhook_project_ids(PDO $pdo): array
+{
+    $raw = trim((string) get_setting($pdo, 'gammal_webhook_project_ids', ''));
+    if ($raw === '') {
+        return [];
+    }
+
+    $ids = [];
+    foreach (preg_split('/[,\s;]+/', $raw) ?: [] as $part) {
+        if (preg_match('/^\d+$/', $part)) {
+            $ids[] = (int) $part;
+        }
+    }
+
+    return array_values(array_unique(array_filter($ids, static fn(int $id): bool => $id > 0)));
+}
+
+function commerce_gammal_webhook_auto_approve_enabled(PDO $pdo): bool
+{
+    return (string) get_setting($pdo, 'gammal_webhook_auto_approve', '0') === '1';
+}
+
+function commerce_verify_gammal_payment_token(PDO $pdo, string $token, bool $allowKeyRefresh = true): array
+{
+    if (!preg_match('/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/', $token)) {
+        throw new InvalidArgumentException('Token webhook Gammal malforme.');
+    }
+
+    [$headerB64, $payloadB64, $signatureB64] = explode('.', $token);
+    $header = json_decode(commerce_base64url_decode($headerB64), true);
+    $claims = json_decode(commerce_base64url_decode($payloadB64), true);
+    if (!is_array($header) || !is_array($claims)) {
+        throw new InvalidArgumentException('JWT Gammal illisible.');
+    }
+    if (($header['alg'] ?? '') !== 'RS256') {
+        throw new InvalidArgumentException('Algorithme JWT Gammal refuse.');
+    }
+
+    $signed = $headerB64 . '.' . $payloadB64;
+    $signature = commerce_base64url_decode($signatureB64);
+    $publicKey = commerce_gammal_public_key($pdo, false);
+    $valid = $publicKey !== '' ? openssl_verify($signed, $signature, $publicKey, OPENSSL_ALGO_SHA256) : 0;
+    if ($valid !== 1 && $allowKeyRefresh) {
+        $publicKey = commerce_gammal_public_key($pdo, true);
+        $valid = $publicKey !== '' ? openssl_verify($signed, $signature, $publicKey, OPENSSL_ALGO_SHA256) : 0;
+    }
+    if ($valid !== 1) {
+        throw new InvalidArgumentException('Signature webhook Gammal invalide.');
+    }
+
+    if (($claims['iss'] ?? '') !== 'api.gammal.tech') {
+        throw new InvalidArgumentException('Emetteur webhook Gammal invalide.');
+    }
+    if (($claims['type'] ?? '') !== 'payment') {
+        throw new InvalidArgumentException('Type webhook Gammal invalide.');
+    }
+    if ((int) ($claims['exp'] ?? 0) < time()) {
+        throw new InvalidArgumentException('Token webhook Gammal expire.');
+    }
+
+    return $claims;
+}
+
+function commerce_base64url_decode(string $value): string
+{
+    $decoded = base64_decode(strtr($value, '-_', '+/') . str_repeat('=', (4 - strlen($value) % 4) % 4), true);
+    if ($decoded === false) {
+        throw new InvalidArgumentException('Base64url invalide.');
+    }
+
+    return $decoded;
+}
+
+function commerce_gammal_public_key(PDO $pdo, bool $forceRefresh = false): string
+{
+    $manual = trim((string) get_setting($pdo, 'gammal_webhook_public_key_manual', ''));
+    if ($manual !== '' && str_contains($manual, 'BEGIN PUBLIC KEY')) {
+        return $manual;
+    }
+
+    $cached = trim((string) get_setting($pdo, 'gammal_webhook_public_key_cache', ''));
+    $cachedAt = (int) get_setting($pdo, 'gammal_webhook_public_key_cached_at', '0');
+    if (!$forceRefresh && $cached !== '' && $cachedAt > time() - 3600) {
+        return $cached;
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'timeout' => 5,
+            'header' => "User-Agent: SmartVision-Gammal-Webhook/1.0\r\nAccept: text/plain,*/*\r\n",
+        ],
+    ]);
+    $fetched = @file_get_contents('https://api.gammal.tech/api/token/public-key.php', false, $context);
+    if (is_string($fetched) && str_contains($fetched, 'BEGIN PUBLIC KEY')) {
+        $statement = $pdo->prepare(
+            "INSERT INTO app_settings (setting_key, setting_value)
+             VALUES (:setting_key, :setting_value)
+             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)"
+        );
+        $statement->execute(['setting_key' => 'gammal_webhook_public_key_cache', 'setting_value' => trim($fetched)]);
+        $statement->execute(['setting_key' => 'gammal_webhook_public_key_cached_at', 'setting_value' => (string) time()]);
+        return trim($fetched);
+    }
+
+    return $cached;
+}
+
+function commerce_record_gammal_webhook_event(
+    PDO $pdo,
+    string $token,
+    array $claims,
+    array $rawPayload,
+    string $processingStatus,
+    ?int $paymentId,
+    string $message,
+): array {
+    commerce_ensure_payment_schema($pdo);
+    $txn = smartvision_text_substr(trim((string) ($claims['txn'] ?? '')), 0, 190);
+    $amount = filter_var($claims['amount'] ?? null, FILTER_VALIDATE_FLOAT);
+    $currency = strtoupper(trim((string) ($claims['currency'] ?? '')));
+    $amountCents = $amount === false ? null : (int) round((float) $amount * 100);
+    $eventType = smartvision_text_substr(trim((string) ($rawPayload['event'] ?? 'payment.success')), 0, 80);
+    $tokenHash = hash('sha256', $token);
+    $userAgent = smartvision_text_substr(trim((string) ($_SERVER['HTTP_USER_AGENT'] ?? '')), 0, 190);
+
+    $statement = $pdo->prepare(
+        "INSERT INTO commerce_webhook_events
+            (event_type, token_hash, txn, project_id, amount_cents, currency,
+             verification_status, processing_status, payment_id, message, claims_json, raw_payload, user_agent)
+         VALUES
+            (:event_type, :token_hash, :txn, :project_id, :amount_cents, :currency,
+             'valid', :processing_status, :payment_id, :message, :claims_json, :raw_payload, :user_agent)
+         ON DUPLICATE KEY UPDATE
+            processing_status = IF(processing_status = 'approved', 'approved', VALUES(processing_status)),
+            payment_id = COALESCE(VALUES(payment_id), payment_id),
+            message = VALUES(message),
+            updated_at = NOW()"
+    );
+    $statement->execute([
+        'event_type' => $eventType === '' ? 'payment.success' : $eventType,
+        'token_hash' => $tokenHash,
+        'txn' => $txn === '' ? null : $txn,
+        'project_id' => isset($claims['project_id']) ? (int) $claims['project_id'] : null,
+        'amount_cents' => $amountCents,
+        'currency' => preg_match('/^[A-Z]{3}$/', $currency) ? $currency : null,
+        'processing_status' => $processingStatus,
+        'payment_id' => $paymentId,
+        'message' => smartvision_text_substr($message, 0, 255),
+        'claims_json' => json_encode($claims, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'raw_payload' => json_encode(commerce_scrub_gammal_webhook_payload($rawPayload), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'user_agent' => $userAgent === '' ? null : $userAgent,
+    ]);
+
+    return [
+        'id' => (int) $pdo->lastInsertId(),
+        'txn' => $txn,
+        'processing_status' => $processingStatus,
+        'payment_id' => $paymentId,
+    ];
+}
+
+function commerce_scrub_gammal_webhook_payload(array $payload): array
+{
+    if (isset($payload['payment_token'])) {
+        $payload['payment_token'] = '[scrubbed:' . hash('sha256', (string) $payload['payment_token']) . ']';
+    }
+
+    return $payload;
+}
+
+function commerce_process_gammal_webhook(PDO $pdo, array $payload): array
+{
+    $token = trim((string) ($payload['payment_token'] ?? ''));
+    if ($token === '') {
+        throw new InvalidArgumentException('payment_token manquant.');
+    }
+    $claims = commerce_verify_gammal_payment_token($pdo, $token);
+    $projectId = (int) ($claims['project_id'] ?? 0);
+    $allowedProjects = commerce_gammal_webhook_project_ids($pdo);
+    if ($allowedProjects === [] || !in_array($projectId, $allowedProjects, true)) {
+        commerce_record_gammal_webhook_event(
+            $pdo,
+            $token,
+            $claims,
+            $payload,
+            'configuration_required',
+            null,
+            'Projet Gammal non configure pour auto-validation.',
+        );
+        return ['success' => true, 'status' => 'configuration_required'];
+    }
+
+    $txn = smartvision_text_substr(trim((string) ($claims['txn'] ?? '')), 0, 190);
+    if ($txn === '') {
+        commerce_record_gammal_webhook_event($pdo, $token, $claims, $payload, 'rejected', null, 'Transaction absente.');
+        return ['success' => true, 'status' => 'rejected'];
+    }
+
+    $payment = commerce_find_payment_by_txn($pdo, $txn);
+    if ($payment === null) {
+        commerce_record_gammal_webhook_event(
+            $pdo,
+            $token,
+            $claims,
+            $payload,
+            'pending_callback',
+            null,
+            'Paiement signe capture, en attente du callback navigateur pour correlation client.',
+        );
+        return ['success' => true, 'status' => 'pending_callback'];
+    }
+
+    $paymentId = (int) $payment['id'];
+    if (!commerce_gammal_claims_match_payment($claims, $payment)) {
+        commerce_record_gammal_webhook_event($pdo, $token, $claims, $payload, 'rejected', $paymentId, 'Montant ou devise incoherent.');
+        return ['success' => true, 'status' => 'rejected'];
+    }
+    if (($payment['verification_status'] ?? '') === 'approved') {
+        commerce_record_gammal_webhook_event($pdo, $token, $claims, $payload, 'duplicate', $paymentId, 'Paiement deja approuve.');
+        return ['success' => true, 'status' => 'duplicate'];
+    }
+
+    commerce_record_gammal_webhook_event($pdo, $token, $claims, $payload, 'captured', $paymentId, 'Webhook signe capture.');
+    $approved = commerce_auto_approve_payment_if_webhook_valid($pdo, $paymentId);
+    if ($approved !== null) {
+        return ['success' => true, 'status' => 'approved', 'payment' => $approved];
+    }
+
+    return ['success' => true, 'status' => 'captured'];
+}
+
+function commerce_find_payment_by_txn(PDO $pdo, string $txn): ?array
+{
+    commerce_ensure_payment_schema($pdo);
+    $statement = $pdo->prepare(
+        "SELECT p.*, i.plan_key, i.plan_label, i.amount_cents, i.currency AS intent_currency,
+                u.email, u.display_name, o.order_reference, o.status AS order_status
+         FROM commerce_payments p
+         JOIN commerce_order_intents i ON i.id = p.intent_id
+         JOIN site_users u ON u.id = p.user_id
+         JOIN activation_orders o ON o.id = p.activation_order_id
+         WHERE p.txn = :txn
+         LIMIT 1"
+    );
+    $statement->execute(['txn' => $txn]);
+    $payment = $statement->fetch();
+
+    return is_array($payment) ? $payment : null;
+}
+
+function commerce_gammal_claims_match_payment(array $claims, array $payment): bool
+{
+    $amount = filter_var($claims['amount'] ?? null, FILTER_VALIDATE_FLOAT);
+    $currency = strtoupper(trim((string) ($claims['currency'] ?? '')));
+    if ($amount === false || !preg_match('/^[A-Z]{3}$/', $currency)) {
+        return false;
+    }
+
+    return (int) round((float) $amount * 100) === (int) $payment['reported_amount_cents']
+        && $currency === strtoupper((string) $payment['currency']);
+}
+
+function commerce_auto_approve_payment_if_webhook_valid(PDO $pdo, int $paymentId): ?array
+{
+    if (!commerce_gammal_webhook_auto_approve_enabled($pdo)) {
+        return null;
+    }
+
+    $payment = commerce_load_payment_for_auto_approval($pdo, $paymentId);
+    if ($payment === null || $payment['verification_status'] !== 'pending_review' || $payment['order_status'] !== 'pending') {
+        return null;
+    }
+
+    $event = commerce_load_valid_webhook_for_txn($pdo, (string) $payment['txn']);
+    if ($event === null) {
+        return null;
+    }
+    $claims = json_decode((string) ($event['claims_json'] ?? ''), true);
+    if (!is_array($claims) || !commerce_gammal_claims_match_payment($claims, $payment)) {
+        return null;
+    }
+    $allowedProjects = commerce_gammal_webhook_project_ids($pdo);
+    if ($allowedProjects === [] || !in_array((int) ($claims['project_id'] ?? 0), $allowedProjects, true)) {
+        return null;
+    }
+
+    $approved = commerce_approve_gammal_payment($pdo, $paymentId, 'gammal_webhook');
+    $pdo->prepare(
+        "UPDATE commerce_webhook_events
+         SET processing_status = 'approved', payment_id = :payment_id, message = 'Licence creee automatiquement.', updated_at = NOW()
+         WHERE id = :id"
+    )->execute(['payment_id' => $paymentId, 'id' => (int) $event['id']]);
+    $approved['auto_approved'] = true;
+
+    return $approved;
+}
+
+function commerce_load_payment_for_auto_approval(PDO $pdo, int $paymentId): ?array
+{
+    $statement = $pdo->prepare(
+        "SELECT p.*, i.plan_key, i.plan_label, i.amount_cents, i.currency AS intent_currency,
+                u.email, u.display_name, o.order_reference, o.status AS order_status
+         FROM commerce_payments p
+         JOIN commerce_order_intents i ON i.id = p.intent_id
+         JOIN site_users u ON u.id = p.user_id
+         JOIN activation_orders o ON o.id = p.activation_order_id
+         WHERE p.id = :id
+         LIMIT 1"
+    );
+    $statement->execute(['id' => $paymentId]);
+    $payment = $statement->fetch();
+
+    return is_array($payment) ? $payment : null;
+}
+
+function commerce_load_valid_webhook_for_txn(PDO $pdo, string $txn): ?array
+{
+    commerce_ensure_payment_schema($pdo);
+    $statement = $pdo->prepare(
+        "SELECT *
+         FROM commerce_webhook_events
+         WHERE txn = :txn
+           AND event_type = 'payment.success'
+           AND verification_status = 'valid'
+           AND processing_status IN ('captured', 'pending_callback', 'configuration_required')
+         ORDER BY id DESC
+         LIMIT 1"
+    );
+    $statement->execute(['txn' => $txn]);
+    $event = $statement->fetch();
+
+    return is_array($event) ? $event : null;
 }
 
 function commerce_approve_gammal_payment(PDO $pdo, int $paymentId, string $reviewedBy): array
@@ -463,6 +835,19 @@ function commerce_load_gammal_payments(PDO $pdo, int $limit = 80): array
          JOIN site_users u ON u.id = p.user_id
          LEFT JOIN activation_orders o ON o.id = p.activation_order_id
          ORDER BY CASE WHEN p.verification_status = 'pending_review' THEN 0 ELSE 1 END, p.id DESC
+         LIMIT {$limit}"
+    )->fetchAll();
+}
+
+function commerce_load_gammal_webhook_events(PDO $pdo, int $limit = 40): array
+{
+    commerce_ensure_payment_schema($pdo);
+    $limit = max(1, min(100, $limit));
+    return $pdo->query(
+        "SELECT event_type, txn, project_id, amount_cents, currency, verification_status,
+                processing_status, payment_id, message, created_at, updated_at
+         FROM commerce_webhook_events
+         ORDER BY id DESC
          LIMIT {$limit}"
     )->fetchAll();
 }

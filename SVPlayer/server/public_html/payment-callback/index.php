@@ -35,22 +35,42 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         );
 
         if (empty($result['duplicate'])) {
-            sv_send_email($pdo, 'payment_received', (string) $result['email'], [
-                'customer' => ['name' => (string) ($result['display_name'] ?: $result['email'])],
-                'order' => [
-                    'reference' => (string) $result['order_reference'],
-                    'plan' => (string) $result['plan_label'],
-                ],
-                'payment' => ['txn' => (string) $result['txn']],
-                'orders_url' => smartvision_public_base_url() . '/account/?section=orders',
-            ]);
-            sv_send_admin_notification($pdo, 'admin_notification_payment_review', [
-                'Commande' => (string) $result['order_reference'],
-                'Transaction' => (string) $result['txn'],
-                'Email client' => (string) $result['email'],
-                'Pack' => (string) $result['plan_label'],
-                'Montant client' => commerce_money((int) $result['amount_cents'], (string) $result['currency']),
-            ], '/admin/?page=payments');
+            if (!empty($result['auto_approved'])) {
+                sv_send_email($pdo, 'order_confirmed', (string) $result['email'], [
+                    'customer' => ['name' => (string) ($result['display_name'] ?: $result['email'])],
+                    'order' => [
+                        'reference' => (string) $result['order_reference'],
+                        'plan' => (string) $result['plan_label'],
+                        'amount' => commerce_money((int) $result['amount_cents'], (string) $result['currency']),
+                    ],
+                    'license' => ['code' => (string) ($result['activation_code'] ?? '')],
+                    'account_url' => smartvision_public_base_url() . '/account/?section=licenses',
+                ]);
+                sv_send_admin_notification($pdo, 'admin_notification_order_created', [
+                    'Commande' => (string) $result['order_reference'],
+                    'Transaction' => (string) $result['txn'],
+                    'Email client' => (string) $result['email'],
+                    'Pack' => (string) $result['plan_label'],
+                    'Validation' => 'Webhook Gammal signe',
+                ], '/admin/?page=orders');
+            } else {
+                sv_send_email($pdo, 'payment_received', (string) $result['email'], [
+                    'customer' => ['name' => (string) ($result['display_name'] ?: $result['email'])],
+                    'order' => [
+                        'reference' => (string) $result['order_reference'],
+                        'plan' => (string) $result['plan_label'],
+                    ],
+                    'payment' => ['txn' => (string) $result['txn']],
+                    'orders_url' => smartvision_public_base_url() . '/account/?section=orders',
+                ]);
+                sv_send_admin_notification($pdo, 'admin_notification_payment_review', [
+                    'Commande' => (string) $result['order_reference'],
+                    'Transaction' => (string) $result['txn'],
+                    'Email client' => (string) $result['email'],
+                    'Pack' => (string) $result['plan_label'],
+                    'Montant client' => commerce_money((int) $result['amount_cents'], (string) $result['currency']),
+                ], '/admin/?page=payments');
+            }
         }
 
         echo json_encode([

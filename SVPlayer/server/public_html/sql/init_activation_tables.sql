@@ -318,6 +318,31 @@ CREATE TABLE IF NOT EXISTS commerce_payments (
         FOREIGN KEY (activation_order_id) REFERENCES activation_orders(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS commerce_webhook_events (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    event_type VARCHAR(80) NOT NULL,
+    token_hash CHAR(64) NOT NULL,
+    txn VARCHAR(190) NULL,
+    project_id BIGINT NULL,
+    amount_cents INT UNSIGNED NULL,
+    currency CHAR(3) NULL,
+    verification_status ENUM('valid', 'invalid') NOT NULL DEFAULT 'valid',
+    processing_status ENUM('captured', 'approved', 'duplicate', 'pending_callback', 'configuration_required', 'rejected') NOT NULL DEFAULT 'captured',
+    payment_id BIGINT UNSIGNED NULL,
+    message VARCHAR(255) NULL,
+    claims_json JSON NULL,
+    raw_payload JSON NULL,
+    user_agent VARCHAR(190) NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_commerce_webhook_events_token (token_hash),
+    UNIQUE KEY uq_commerce_webhook_events_event_txn (event_type, txn),
+    INDEX idx_commerce_webhook_events_status (processing_status, created_at),
+    INDEX idx_commerce_webhook_events_payment (payment_id),
+    CONSTRAINT fk_commerce_webhook_events_payment
+        FOREIGN KEY (payment_id) REFERENCES commerce_payments(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS email_templates (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     template_key VARCHAR(96) NOT NULL,
@@ -464,7 +489,12 @@ INSERT INTO app_settings (setting_key, setting_value) VALUES
 ('gammal_payment_year_1_url', ''),
 ('gammal_payment_year_1_enabled', '0'),
 ('gammal_payment_lifetime_url', ''),
-('gammal_payment_lifetime_enabled', '0')
+('gammal_payment_lifetime_enabled', '0'),
+('gammal_webhook_project_ids', ''),
+('gammal_webhook_auto_approve', '0'),
+('gammal_webhook_public_key_manual', ''),
+('gammal_webhook_public_key_cache', ''),
+('gammal_webhook_public_key_cached_at', '0')
 ON DUPLICATE KEY UPDATE setting_key = VALUES(setting_key);
 
 INSERT INTO home_slider_ads (sort_order, title, subtitle, button_label, button_route, image_url, status) VALUES

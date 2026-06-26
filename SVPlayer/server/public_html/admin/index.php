@@ -82,6 +82,8 @@ $alerts = admin_build_alerts($stats);
 $serverStats = admin_load_server_stats($pdo, $stats);
 $paymentPacks = admin_load_payment_packs($pdo);
 $gammalPayments = commerce_load_gammal_payments($pdo);
+$gammalWebhookConfig = admin_load_gammal_webhook_config($pdo);
+$gammalWebhookEvents = commerce_load_gammal_webhook_events($pdo);
 $emailAdmin = admin_load_email_admin($pdo);
 $adsPeriod = ads_period_days($_GET['ads_period'] ?? 1);
 $adsAdmin = $page === 'ads' ? admin_load_ads_admin($pdo, $adsPeriod) : [];
@@ -112,6 +114,8 @@ render_admin_dashboard(
     $serverStats,
     $paymentPacks,
     $gammalPayments,
+    $gammalWebhookConfig,
+    $gammalWebhookEvents,
     $emailAdmin,
     $adsAdmin,
     $flash,
@@ -145,6 +149,7 @@ function handle_admin_action(PDO $pdo, string $action): void
         case 'purge_devices': admin_purge_devices($pdo); break;
         case 'save_slide': admin_save_slide($pdo); break;
         case 'save_payment_packs': admin_save_payment_packs($pdo); break;
+        case 'save_gammal_webhook_settings': admin_save_gammal_webhook_settings($pdo); break;
         case 'save_ads_settings': admin_save_ads_settings($pdo); break;
         case 'reset_ads_settings': admin_reset_ads_settings($pdo); break;
         case 'test_ads_vast': admin_test_ads_vast($pdo); break;
@@ -301,6 +306,55 @@ function admin_load_payment_packs(PDO $pdo): array
     }
 
     return $packs;
+}
+
+function admin_save_gammal_webhook_settings(PDO $pdo): void
+{
+    $projectIds = trim((string) ($_POST['gammal_webhook_project_ids'] ?? ''));
+    $normalizedIds = [];
+    foreach (preg_split('/[,\s;]+/', $projectIds) ?: [] as $part) {
+        if ($part === '') {
+            continue;
+        }
+        if (!preg_match('/^\d+$/', $part)) {
+            throw new InvalidArgumentException('Les IDs projet Gammal doivent etre numeriques.');
+        }
+        $normalizedIds[] = (string) (int) $part;
+    }
+
+    $settings = [
+        'gammal_webhook_project_ids' => implode(',', array_values(array_unique($normalizedIds))),
+        'gammal_webhook_auto_approve' => isset($_POST['gammal_webhook_auto_approve']) ? '1' : '0',
+        'gammal_webhook_public_key_manual' => trim((string) ($_POST['gammal_webhook_public_key_manual'] ?? '')),
+    ];
+    if ($settings['gammal_webhook_auto_approve'] === '1' && $settings['gammal_webhook_project_ids'] === '') {
+        throw new InvalidArgumentException('Ajoutez au moins un ID projet Gammal avant d activer l auto-validation.');
+    }
+    if ($settings['gammal_webhook_public_key_manual'] !== '' && !str_contains($settings['gammal_webhook_public_key_manual'], 'BEGIN PUBLIC KEY')) {
+        throw new InvalidArgumentException('La cle publique Gammal doit etre au format PEM.');
+    }
+
+    $statement = $pdo->prepare(
+        "INSERT INTO app_settings (setting_key, setting_value)
+         VALUES (:setting_key, :setting_value)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)"
+    );
+    foreach ($settings as $key => $value) {
+        $statement->execute(['setting_key' => $key, 'setting_value' => $value]);
+    }
+
+    audit_admin_action($pdo, 'gammal_webhook_settings_updated', 'settings', 'gammal_webhook', $settings);
+    set_admin_flash('success', 'Configuration webhook Gammal enregistree.');
+}
+
+function admin_load_gammal_webhook_config(PDO $pdo): array
+{
+    return [
+        'url' => smartvision_public_base_url() . '/api/gammal-webhook',
+        'project_ids' => trim((string) get_setting($pdo, 'gammal_webhook_project_ids', '')),
+        'auto_approve' => (string) get_setting($pdo, 'gammal_webhook_auto_approve', '0') === '1',
+        'public_key_manual' => trim((string) get_setting($pdo, 'gammal_webhook_public_key_manual', '')),
+    ];
 }
 
 function admin_approve_gammal_payment(PDO $pdo): void
@@ -1629,6 +1683,8 @@ function render_admin_dashboard(
     array $serverStats,
     array $paymentPacks,
     array $gammalPayments,
+    array $gammalWebhookConfig,
+    array $gammalWebhookEvents,
     array $emailAdmin,
     array $adsAdmin,
     ?array $flash,
@@ -1738,11 +1794,49 @@ function render_admin_dashboard(
                 </div>
             </form>
         </section>
+        <section class="admin-panel" id="gammal-webhook-settings">
+            <div class="admin-panel-heading">
+                <div>
+                    <h2>Webhook Gammal Tech</h2>
+                    <p>URL a configurer dans Gammal Tech : <strong><?= admin_escape($gammalWebhookConfig['url']) ?></strong></p>
+                </div>
+            </div>
+            <form method="post" class="payment-pack-form">
+                <input type="hidden" name="redirect_page" value="payments">
+                <input type="hidden" name="action" value="save_gammal_webhook_settings">
+                <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                <div class="payment-pack-grid">
+                    <article class="payment-pack-card">
+                        <label>IDs projet Gammal autorises
+                            <input name="gammal_webhook_project_ids" maxlength="190" placeholder="5 ou 5,7,12" value="<?= admin_escape($gammalWebhookConfig['project_ids']) ?>">
+                        </label>
+                        <p>Le webhook est capture meme sans ID configure, mais aucune licence n est creee automatiquement.</p>
+                    </article>
+                    <article class="payment-pack-card">
+                        <label>Cle publique Gammal optionnelle
+                            <textarea name="gammal_webhook_public_key_manual" rows="5" placeholder="-----BEGIN PUBLIC KEY-----"><?= admin_escape($gammalWebhookConfig['public_key_manual']) ?></textarea>
+                        </label>
+                        <p>Utilisee si l endpoint public de cle Gammal est bloque par le serveur.</p>
+                    </article>
+                    <article class="payment-pack-card">
+                        <div class="payment-pack-heading">
+                            <div><strong>Auto-validation</strong><span><?= $gammalWebhookConfig['auto_approve'] ? 'active' : 'inactive' ?></span></div>
+                            <label class="payment-pack-toggle"><input type="checkbox" name="gammal_webhook_auto_approve" value="1"<?= $gammalWebhookConfig['auto_approve'] ? ' checked' : '' ?>> Actif</label>
+                        </div>
+                        <p>Une licence est creee automatiquement uniquement si le webhook signe correspond a un retour navigateur deja enregistre avec le meme txn.</p>
+                    </article>
+                </div>
+                <div class="payment-pack-actions">
+                    <p>Webhook recommande : <?= admin_escape($gammalWebhookConfig['url']) ?></p>
+                    <button class="admin-button primary" type="submit">Enregistrer le webhook</button>
+                </div>
+            </form>
+        </section>
         <section class="admin-panel" id="gammal-payment-reviews">
             <div class="admin-panel-heading">
                 <div>
                     <h2>Retours Gammal Tech</h2>
-                    <p>Une licence n’est créée qu’après validation administrateur tant que la vérification serveur Gammal n’est pas disponible.</p>
+                    <p>Les paiements restent approuvables manuellement; le webhook signe peut aussi les approuver automatiquement quand la correlation est sure.</p>
                 </div>
             </div>
             <div class="admin-table-wrap"><table>
@@ -1775,6 +1869,30 @@ function render_admin_dashboard(
                         </form>
                         <?php else: ?><span class="muted">Traité</span><?php endif; ?>
                     </td>
+                </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table></div>
+        </section>
+        <section class="admin-panel" id="gammal-webhook-events">
+            <div class="admin-panel-heading">
+                <div>
+                    <h2>Journal webhooks Gammal</h2>
+                    <p>Dernieres confirmations serveur signees recues depuis Gammal Tech.</p>
+                </div>
+            </div>
+            <div class="admin-table-wrap"><table>
+                <thead><tr><th>Transaction</th><th>Projet</th><th>Montant</th><th>Etat</th><th>Message</th><th>Date</th></tr></thead>
+                <tbody>
+                <?php if ($gammalWebhookEvents === []): ?><tr><td colspan="6" class="admin-empty">Aucun webhook Gammal capture.</td></tr><?php endif; ?>
+                <?php foreach ($gammalWebhookEvents as $event): ?>
+                <tr>
+                    <td><strong><?= admin_escape($event['txn'] ?: '-') ?></strong><small><?= admin_escape($event['event_type']) ?></small></td>
+                    <td><?= admin_escape((string) ($event['project_id'] ?? '-')) ?><small>payment #<?= admin_escape((string) ($event['payment_id'] ?? '-')) ?></small></td>
+                    <td><?= $event['amount_cents'] === null ? '-' : commerce_money((int) $event['amount_cents'], (string) ($event['currency'] ?: 'EUR')) ?></td>
+                    <td><span class="admin-state <?= admin_escape($event['processing_status']) ?>"><?= admin_escape($event['processing_status']) ?></span><small><?= admin_escape($event['verification_status']) ?></small></td>
+                    <td><?= admin_escape($event['message'] ?: '-') ?></td>
+                    <td><?= admin_escape($event['created_at']) ?><small>MAJ <?= admin_escape($event['updated_at'] ?: '-') ?></small></td>
                 </tr>
                 <?php endforeach; ?>
                 </tbody>
