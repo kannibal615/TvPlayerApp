@@ -251,6 +251,26 @@ function Ensure-RemoteDirectory {
     }
 }
 
+function Resolve-CurlExe {
+    $command = Get-Command curl.exe -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+
+    $candidates = @(
+        (Join-Path $env:SystemRoot "System32\curl.exe"),
+        (Join-Path $env:ProgramFiles "Git\mingw64\bin\curl.exe"),
+        (Join-Path ${env:ProgramFiles(x86)} "Git\mingw64\bin\curl.exe")
+    )
+    foreach ($candidate in $candidates) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path -LiteralPath $candidate)) {
+            return $candidate
+        }
+    }
+
+    throw "curl.exe introuvable. Installez curl ou ajoutez-le au PATH."
+}
+
 function Upload-File {
     param(
         [string]$BaseUrl,
@@ -259,7 +279,7 @@ function Upload-File {
         [string]$FilePath
     )
 
-    $curl = Get-Command curl.exe -ErrorAction Stop
+    $curl = Resolve-CurlExe
     $auth = $Headers.Authorization
     $arguments = @(
         "-sS",
@@ -270,7 +290,7 @@ function Upload-File {
         "$BaseUrl/execute/Fileman/upload_files"
     )
 
-    $result = & $curl.Source @arguments
+    $result = & $curl @arguments
     if ($LASTEXITCODE -ne 0) {
         throw "Echec upload cPanel pour $(Split-Path -Leaf $FilePath)."
     }

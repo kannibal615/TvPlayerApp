@@ -28,8 +28,8 @@ Activite principale: com.smartvision.svplayer/.MainActivity
 Min SDK: 23
 Compile SDK: 36
 Target SDK: 36
-Version actuelle: 0.1.17
-VersionCode actuel: 20
+Version actuelle: 0.1.21
+VersionCode actuel: 24
 Backend: https://smartvisions.net
 ```
 
@@ -38,23 +38,24 @@ Backend: https://smartvisions.net
 Release compilee, signee, deployee et verifiee le 2026-06-25:
 
 ```text
-version_code: 20
-version_name: 0.1.17
-affichage: 0.1.17 (20)
-apk_file: smartvision-tv-v20-0eab602a.apk
-apk_url: https://smartvisions.net/downloads/smartvision-tv-v20-0eab602a.apk
+version_code: 24
+version_name: 0.1.21
+affichage: 0.1.21 (24)
+apk_file: smartvision-tv-v24-a7c3dfe4.apk
+apk_url: https://smartvisions.net/downloads/smartvision-tv-v24-a7c3dfe4.apk
 stable_url: https://smartvisions.net/downloads/smartvision-tv.apk
-sha256: 0eab602adcb3c5de10796210df02ae8ae3fa561eb1050759a5f86d6b0801e241
+sha256: a7c3dfe41d5e88cc6e47b64970373e541e99a994b0db90492029bca82aef374e
 size: 35700781
 ```
 
 Le fichier versionne et l'URL stable ont ete telecharges avec succes apres deploiement.
 Le SHA-256 distant correspond au SHA-256 de l'APK release local.
+Cette release publie le code local restaure avec un `versionCode` superieur a la prod precedente pour permettre aux appareils en 0.1.20 (23) de recevoir le rollback.
 
 Endpoint update verifie:
 
 ```text
-GET https://smartvisions.net/api/app_update.php?version_code=0&version_name=qa
+GET https://smartvisions.net/api/app_update.php?platform=android&current_version_code=23
 ```
 
 ## Etat Git actuel
@@ -145,8 +146,8 @@ app/build.gradle.kts
 Points importants:
 
 - `applicationId = "com.smartvision.svplayer"`
-- `versionCode = 6`
-- `versionName = "0.1.3"`
+- `versionCode = 24`
+- `versionName = "0.1.21"`
 - `BuildConfig.ACTIVATION_BASE_URL` vient de `DOMAINE_SERVER` dans `local.properties`, fallback `https://smartvisions.net/`.
 - La signature release lit `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD` depuis `local.properties`.
 - `buildConfig = true`
