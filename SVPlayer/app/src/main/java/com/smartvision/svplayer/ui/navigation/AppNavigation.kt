@@ -314,9 +314,6 @@ fun AppNavigation(
                 onNotificationsSeen = notificationBadgeViewModel::clearUnread,
             )
         }
-        composable(AppRoute.SyncSettings.route) {
-            PlaceholderRouteScreen("Synchronisation", "Action mock. Pas d'appel API Xtream dans cette tache.")
-        }
         composable("player/{channelId}") { entry ->
             val channelId = entry.arguments?.getString("channelId")?.toIntOrNull()
             if (channelId == null) {
@@ -600,7 +597,6 @@ private enum class AppRoute(val route: String) {
     Settings("settings"),
     Profile("profile"),
     Notifications("notifications"),
-    SyncSettings("sync/settings"),
     ContinueWatching("continue_watching"),
     Trending("trending"),
 }

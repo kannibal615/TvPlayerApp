@@ -28,8 +28,8 @@ Activite principale: com.smartvision.svplayer/.MainActivity
 Min SDK: 23
 Compile SDK: 36
 Target SDK: 36
-Version actuelle: 0.1.22
-VersionCode actuel: 25
+Version actuelle: 0.1.23
+VersionCode actuel: 26
 Backend: https://smartvisions.net
 ```
 
@@ -38,14 +38,14 @@ Backend: https://smartvisions.net
 Release compilee, signee, deployee et verifiee le 2026-06-26:
 
 ```text
-version_code: 25
-version_name: 0.1.22
-affichage: 0.1.22 (25)
-apk_file: smartvision-tv-v25-baddafdf.apk
-apk_url: https://smartvisions.net/downloads/smartvision-tv-v25-baddafdf.apk
+version_code: 26
+version_name: 0.1.23
+affichage: 0.1.23 (26)
+apk_file: smartvision-tv-v26-49b583c5.apk
+apk_url: https://smartvisions.net/downloads/smartvision-tv-v26-49b583c5.apk
 stable_url: https://smartvisions.net/downloads/smartvision-tv.apk
-sha256: baddafdf63a092e36dd79650e5ae09fbee557d8f0c640fc8ca831079fc82aea1
-size: 36012223
+sha256: 49b583c5b7169e8e67ab259080a24417ad1db355df16b950ea258abdc9d91e84
+size: 35881150
 ```
 
 Le fichier versionne a ete telecharge avec succes apres deploiement.
@@ -56,7 +56,7 @@ Cette release publie les ajustements UI Live TV/categories avec un `versionCode`
 Endpoint update verifie:
 
 ```text
-GET https://smartvisions.net/api/app_update.php?platform=android&current_version_code=24
+GET https://smartvisions.net/api/app_update.php?platform=android&current_version_code=25
 ```
 
 ## Etat Git actuel
@@ -147,8 +147,8 @@ app/build.gradle.kts
 Points importants:
 
 - `applicationId = "com.smartvision.svplayer"`
-- `versionCode = 25`
-- `versionName = "0.1.22"`
+- `versionCode = 26`
+- `versionName = "0.1.23"`
 - `BuildConfig.ACTIVATION_BASE_URL` vient de `DOMAINE_SERVER` dans `local.properties`, fallback `https://smartvisions.net/`.
 - La signature release lit `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD` depuis `local.properties`.
 - `buildConfig = true`
