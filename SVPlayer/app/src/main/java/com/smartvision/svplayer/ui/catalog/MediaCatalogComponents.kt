@@ -312,7 +312,7 @@ fun MediaCatalogPanel(
 fun CatalogCategoryRow(
     label: String,
     count: Int?,
-    icon: ImageVector,
+    icon: ImageVector?,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -388,13 +388,15 @@ fun CatalogCategoryRow(
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
-            modifier = Modifier.size(20.dp),
-        )
-        Spacer(Modifier.width(10.dp))
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+        }
         Text(
             text = label,
             color = SmartVisionColors.TextPrimary,

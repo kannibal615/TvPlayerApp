@@ -115,24 +115,19 @@ class SeriesViewModel(
                     return@onSuccess
                 }
                 _uiState.update {
-                    val visibleCategories = categories.withSpecialCategories(favoriteIds.size, historySeries().size)
-                    val initialCategoryId = if (favoriteIds.isNotEmpty()) {
-                        FavoriteSeriesCategoryId
-                    } else {
-                        categories.first().id
-                    }
+                    val visibleCategories = categories.withSpecialCategories(
+                        allCount = xtreamRepository.getCachedSeriesList().size.takeIf { it > 0 },
+                        favoriteCount = favoriteIds.size,
+                        historyCount = historySeries().size,
+                    )
                     it.copy(
                         categoriesLoading = false,
                         categories = visibleCategories,
-                        selectedCategoryId = initialCategoryId,
+                        selectedCategoryId = HistorySeriesCategoryId,
                         errorMessage = null,
                     )
                 }
-                if (favoriteIds.isNotEmpty()) {
-                    loadFavoriteSeries()
-                } else {
-                    loadSeries(categories.first().id)
-                }
+                loadHistorySeries()
             }.onFailure { error ->
                 _uiState.value = SeriesScreenState(
                     categoriesLoading = false,
@@ -152,6 +147,10 @@ class SeriesViewModel(
         }
         if (category.id == HistorySeriesCategoryId) {
             loadHistorySeries()
+            return
+        }
+        if (category.id == AllSeriesCategoryId) {
+            loadAllSeries()
             return
         }
         loadSeries(category.id)
@@ -217,7 +216,11 @@ class SeriesViewModel(
                         state.series.map { it.copy(isFavorite = it.seriesId in ids) }
                     }
                     state.copy(
-                        categories = state.categories.withSpecialCategories(ids.size, historySeries().size),
+                        categories = state.categories.withSpecialCategories(
+                            allCount = xtreamRepository.getCachedSeriesList().size.takeIf { it > 0 },
+                            favoriteCount = ids.size,
+                            historyCount = historySeries().size,
+                        ),
                         series = refreshedSeries,
                         focusedSeriesId = state.focusedSeriesId
                             ?.takeIf { focusedId -> refreshedSeries.any { it.seriesId == focusedId } }
@@ -239,7 +242,11 @@ class SeriesViewModel(
                 _uiState.update { state ->
                     val history = historySeries()
                     state.copy(
-                        categories = state.categories.withSpecialCategories(favoriteIds.size, history.size),
+                        categories = state.categories.withSpecialCategories(
+                            allCount = xtreamRepository.getCachedSeriesList().size.takeIf { it > 0 },
+                            favoriteCount = favoriteIds.size,
+                            historyCount = history.size,
+                        ),
                         series = if (state.selectedCategoryId == HistorySeriesCategoryId) history else state.series,
                         focusedSeriesId = if (state.selectedCategoryId == HistorySeriesCategoryId) history.firstOrNull()?.seriesId else state.focusedSeriesId,
                     )
@@ -259,7 +266,11 @@ class SeriesViewModel(
                 episodesLoading = false,
                 errorMessage = null,
                 selectedCategoryId = FavoriteSeriesCategoryId,
-                categories = state.categories.withSpecialCategories(favoriteIds.size, historySeries().size),
+                categories = state.categories.withSpecialCategories(
+                    allCount = xtreamRepository.getCachedSeriesList().size.takeIf { it > 0 },
+                    favoriteCount = favoriteIds.size,
+                    historyCount = historySeries().size,
+                ),
                 series = series,
                 focusedSeriesId = series.firstOrNull()?.seriesId,
                 selectedSeriesId = null,
@@ -279,12 +290,72 @@ class SeriesViewModel(
                 episodesLoading = false,
                 errorMessage = null,
                 selectedCategoryId = HistorySeriesCategoryId,
-                categories = state.categories.withSpecialCategories(favoriteIds.size, series.size),
+                categories = state.categories.withSpecialCategories(
+                    allCount = xtreamRepository.getCachedSeriesList().size.takeIf { it > 0 },
+                    favoriteCount = favoriteIds.size,
+                    historyCount = series.size,
+                ),
                 series = series,
                 focusedSeriesId = series.firstOrNull()?.seriesId,
                 selectedSeriesId = null,
                 episodes = emptyList(),
             )
+        }
+    }
+
+    private fun loadAllSeries() {
+        seriesJob?.cancel()
+        episodesJob?.cancel()
+        metadataJob?.cancel()
+        seriesJob = viewModelScope.launch {
+            val categories = _uiState.value.categories.filterNot { it.id in SpecialSeriesCategoryIds }
+            _uiState.update {
+                it.copy(
+                    seriesLoading = true,
+                    episodesLoading = false,
+                    errorMessage = null,
+                    selectedCategoryId = AllSeriesCategoryId,
+                    series = emptyList(),
+                    episodes = emptyList(),
+                    focusedSeriesId = null,
+                    selectedSeriesId = null,
+                )
+            }
+            runCatching {
+                categories.flatMap { category ->
+                    xtreamRepository.getSeries(category.id).map { series -> category.label to series }
+                }
+                    .distinctBy { (_, series) -> series.seriesId }
+                    .mapIndexed { index, (categoryLabel, series) ->
+                        series.toUiSeries(index, categoryLabel, favoriteIds)
+                    }
+            }.onSuccess { series ->
+                _uiState.update { state ->
+                    state.copy(
+                        seriesLoading = false,
+                        categories = state.categories.withSpecialCategories(
+                            allCount = series.size,
+                            favoriteCount = favoriteIds.size,
+                            historyCount = historySeries().size,
+                        ),
+                        series = series,
+                        focusedSeriesId = series.firstOrNull()?.seriesId,
+                        errorMessage = null,
+                    )
+                }
+                loadVisibleMetadata(series)
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        seriesLoading = false,
+                        series = emptyList(),
+                        focusedSeriesId = null,
+                        selectedSeriesId = null,
+                        episodes = emptyList(),
+                        errorMessage = error.userMessage("Impossible de charger toutes les series Xtream."),
+                    )
+                }
+            }
         }
     }
 
@@ -304,7 +375,7 @@ class SeriesViewModel(
                     number = (index + 1).toString().padStart(3, '0'),
                     title = progress.title ?: "Serie $seriesId",
                     coverUrl = progress.imageUrl,
-                    categoryLabel = "Historiques",
+                    categoryLabel = "Historique",
                     plot = null,
                     genre = null,
                     releaseDate = null,
@@ -354,7 +425,11 @@ class SeriesViewModel(
                         seriesLoading = false,
                         categories = state.categories.map {
                             if (it.id == categoryId) it.copy(count = series.size) else it
-                        }.withSpecialCategories(favoriteIds.size, historySeries().size),
+                        }.withSpecialCategories(
+                            allCount = xtreamRepository.getCachedSeriesList().size.takeIf { it > 0 },
+                            favoriteCount = favoriteIds.size,
+                            historyCount = historySeries().size,
+                        ),
                         series = series,
                         focusedSeriesId = series.firstOrNull()?.seriesId,
                         errorMessage = null,
@@ -437,9 +512,20 @@ class SeriesViewModel(
 
 private const val FavoriteSeriesCategoryId = "__favorites_series__"
 private const val HistorySeriesCategoryId = "__history_series__"
+private const val AllSeriesCategoryId = "__all_series__"
+private val SpecialSeriesCategoryIds = setOf(AllSeriesCategoryId, FavoriteSeriesCategoryId, HistorySeriesCategoryId)
 
-private fun List<SeriesCategoryUi>.withSpecialCategories(favoriteCount: Int, historyCount: Int): List<SeriesCategoryUi> =
+private fun List<SeriesCategoryUi>.withSpecialCategories(
+    allCount: Int?,
+    favoriteCount: Int,
+    historyCount: Int,
+): List<SeriesCategoryUi> =
     listOf(
+        SeriesCategoryUi(
+            id = AllSeriesCategoryId,
+            label = "ALL",
+            count = allCount,
+        ),
         SeriesCategoryUi(
             id = FavoriteSeriesCategoryId,
             label = "Favoris",
@@ -447,10 +533,10 @@ private fun List<SeriesCategoryUi>.withSpecialCategories(favoriteCount: Int, his
         ),
         SeriesCategoryUi(
             id = HistorySeriesCategoryId,
-            label = "Historiques",
+            label = "Historique",
             count = historyCount,
         ),
-    ) + filterNot { it.id == FavoriteSeriesCategoryId || it.id == HistorySeriesCategoryId }
+    ) + filterNot { it.id in SpecialSeriesCategoryIds }
 
 private fun XtreamSeriesCategory.toUiCategory(): SeriesCategoryUi =
     SeriesCategoryUi(

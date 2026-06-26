@@ -1,21 +1,47 @@
-sdk.dir=C\:\\Users\\ONEDEV\\AppData\\Local\\Android\\Sdk
+sdk.dir=C\:\\Users\\YOUR_USER\\AppData\\Local\\Android\\Sdk
+
+# Xtream local/debug account.
 XTREAM_HOST=https://example.com
 XTREAM_USERNAME=debug-user
 XTREAM_PASSWORD=debug-password
+
+# Public backend domain used by Android BuildConfig.ACTIVATION_BASE_URL.
 DOMAINE_SERVER=smartvisions.net
 
-# Publicite video release (laisser vide pour desactiver les pubs en release).
-# VIDEO_AD_TAG_URL est prioritaire. HILLTOPADS_VAST_TAG_URL est accepte comme alias fournisseur.
+# Android release signing. Keep real values only in local.properties.
+RELEASE_STORE_FILE=keystore/release.keystore
+RELEASE_STORE_PASSWORD=
+RELEASE_KEY_ALIAS=
+RELEASE_KEY_PASSWORD=
+
+# cPanel deployment.
+CPANEL_HOST=smartvisions.net
+CPANEL_USERNAME=
+CPANEL_API_KEY=
+
+# Production MySQL used by deploy scripts and local web dev.
+MYSQL_HOST=localhost
+MYSQL_USERNAME=
+MYSQL_PASSWORD=
+MYSQL_DATABASE=
+
+# SmartVision backend/admin private configuration.
+SMARTVISION_ADMIN_USERNAME=smartvision_admin
+SMARTVISION_ADMIN_PASSWORD=
+SMARTVISION_CREDENTIALS_ENCRYPTION_KEY=
+
+# Release video ads. Leave blank to disable release ads.
+# VIDEO_AD_TAG_URL has priority. HILLTOPADS_VAST_TAG_URL is accepted as provider alias.
 GOOGLE_ADS_APPLICATION_ID=
 VIDEO_AD_TAG_URL=
 HILLTOPADS_VAST_TAG_URL=
 HILLTOPADS_API_KEY=
 HILLTOPADS_PUBLISHER_ID=
 
-# Overrides debug optionnels:
+# Optional debug overrides:
 # PREMIUM_ACTIVE, TRIAL_ACTIVE, TRIAL_EXPIRED, LICENSE_EXPIRED, FREE_WITH_ADS
 SMARTVISION_DEBUG_MONETIZATION_STATUS=
 SMARTVISION_DEBUG_AD_FAILURE=false
 
-# Email SMTP transactionnel (optionnel en local).
+# Transactional SMTP. Optional locally, required when testing email flows.
 SMTP_PASSWORD=

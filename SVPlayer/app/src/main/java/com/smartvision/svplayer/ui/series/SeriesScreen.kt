@@ -21,10 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Slideshow
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Theaters
-import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -365,14 +362,12 @@ private fun seriesCardMeta(series: SeriesItemUi): String =
         series.episodesCount?.let { "$it ep" },
     ).joinToString("  |  ").ifBlank { series.categoryLabel }
 
-private fun seriesCategoryIcon(label: String): ImageVector {
+private fun seriesCategoryIcon(label: String): ImageVector? {
     val normalized = label.lowercase()
     return when {
+        normalized == "all" -> Icons.Default.Menu
         "favoris" in normalized -> Icons.Default.Favorite
         "histor" in normalized -> Icons.Default.History
-        "kids" in normalized || "jeunesse" in normalized -> Icons.Default.Tv
-        "anime" in normalized || "animation" in normalized -> Icons.Default.Slideshow
-        "top" in normalized || "new" in normalized || "nouveau" in normalized -> Icons.Default.Star
-        else -> Icons.Default.Theaters
+        else -> null
     }
 }

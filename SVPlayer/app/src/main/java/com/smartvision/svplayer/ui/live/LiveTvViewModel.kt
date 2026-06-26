@@ -105,24 +105,19 @@ class LiveTvViewModel(
                 }
 
                 _uiState.update {
-                    val visibleCategories = categories.withSpecialCategories(favoriteIds.size, historyProgress.size)
-                    val initialCategoryId = if (favoriteIds.isNotEmpty()) {
-                        FavoriteLiveCategoryId
-                    } else {
-                        categories.first().id
-                    }
+                    val visibleCategories = categories.withSpecialCategories(
+                        allCount = xtreamRepository.getCachedLiveStreams().size.takeIf { it > 0 },
+                        favoriteCount = favoriteIds.size,
+                        historyCount = historyProgress.size,
+                    )
                     it.copy(
                         categoriesLoading = false,
                         errorMessage = null,
                         categories = visibleCategories,
-                        selectedCategoryId = initialCategoryId,
+                        selectedCategoryId = HistoryLiveCategoryId,
                     )
                 }
-                if (favoriteIds.isNotEmpty()) {
-                    loadFavoriteChannels()
-                } else {
-                    loadChannels(categories.first().id)
-                }
+                loadHistoryChannels()
             }.onFailure { error ->
                 _uiState.value = LiveTvUiState(
                     categoriesLoading = false,
@@ -142,6 +137,10 @@ class LiveTvViewModel(
         }
         if (category.id == HistoryLiveCategoryId) {
             loadHistoryChannels()
+            return
+        }
+        if (category.id == AllLiveCategoryId) {
+            loadAllChannels()
             return
         }
         loadChannels(category.id)
@@ -199,7 +198,11 @@ class LiveTvViewModel(
                         state.channels.map { it.copy(isFavorite = it.streamId in ids) }
                     }
                     state.copy(
-                        categories = state.categories.withSpecialCategories(ids.size, historyProgress.size),
+                        categories = state.categories.withSpecialCategories(
+                            allCount = xtreamRepository.getCachedLiveStreams().size.takeIf { it > 0 },
+                            favoriteCount = ids.size,
+                            historyCount = historyProgress.size,
+                        ),
                         channels = refreshedChannels,
                         focusedChannelId = state.focusedChannelId
                             ?.takeIf { focusedId -> refreshedChannels.any { it.streamId == focusedId } }
@@ -220,7 +223,11 @@ class LiveTvViewModel(
                 _uiState.update { state ->
                     val history = historyChannels()
                     state.copy(
-                        categories = state.categories.withSpecialCategories(favoriteIds.size, history.size),
+                        categories = state.categories.withSpecialCategories(
+                            allCount = xtreamRepository.getCachedLiveStreams().size.takeIf { it > 0 },
+                            favoriteCount = favoriteIds.size,
+                            historyCount = history.size,
+                        ),
                         channels = if (state.selectedCategoryId == HistoryLiveCategoryId) history else state.channels,
                         focusedChannelId = if (state.selectedCategoryId == HistoryLiveCategoryId) history.firstOrNull()?.streamId else state.focusedChannelId,
                     )
@@ -237,7 +244,11 @@ class LiveTvViewModel(
                 channelsLoading = false,
                 errorMessage = null,
                 selectedCategoryId = FavoriteLiveCategoryId,
-                categories = state.categories.withSpecialCategories(favoriteIds.size, historyProgress.size),
+                categories = state.categories.withSpecialCategories(
+                    allCount = xtreamRepository.getCachedLiveStreams().size.takeIf { it > 0 },
+                    favoriteCount = favoriteIds.size,
+                    historyCount = historyProgress.size,
+                ),
                 channels = channels,
                 focusedChannelId = channels.firstOrNull()?.streamId,
                 selectedChannelId = null,
@@ -253,11 +264,71 @@ class LiveTvViewModel(
                 channelsLoading = false,
                 errorMessage = null,
                 selectedCategoryId = HistoryLiveCategoryId,
-                categories = state.categories.withSpecialCategories(favoriteIds.size, channels.size),
+                categories = state.categories.withSpecialCategories(
+                    allCount = xtreamRepository.getCachedLiveStreams().size.takeIf { it > 0 },
+                    favoriteCount = favoriteIds.size,
+                    historyCount = channels.size,
+                ),
                 channels = channels,
                 focusedChannelId = channels.firstOrNull()?.streamId,
                 selectedChannelId = null,
             )
+        }
+    }
+
+    private fun loadAllChannels() {
+        channelsJob?.cancel()
+        channelsJob = viewModelScope.launch {
+            val categories = _uiState.value.categories.filterNot { it.id in SpecialLiveCategoryIds }
+            _uiState.update { state ->
+                state.copy(
+                    channelsLoading = true,
+                    errorMessage = null,
+                    selectedCategoryId = AllLiveCategoryId,
+                    channels = emptyList(),
+                    focusedChannelId = null,
+                    selectedChannelId = null,
+                )
+            }
+
+            runCatching {
+                categories.flatMap { category ->
+                    xtreamRepository.getLiveStreams(category.id).map { stream -> category.label to stream }
+                }
+                    .distinctBy { (_, stream) -> stream.streamId }
+                    .mapIndexed { index, (categoryLabel, stream) ->
+                        stream.toUiChannel(
+                            index = index,
+                            categoryLabel = categoryLabel,
+                            xtreamRepository = xtreamRepository,
+                            favoriteIds = favoriteIds,
+                        )
+                    }
+            }.onSuccess { channels ->
+                _uiState.update { state ->
+                    state.copy(
+                        channelsLoading = false,
+                        categories = state.categories.withSpecialCategories(
+                            allCount = channels.size,
+                            favoriteCount = favoriteIds.size,
+                            historyCount = historyProgress.size,
+                        ),
+                        channels = channels,
+                        focusedChannelId = channels.firstOrNull()?.streamId,
+                        errorMessage = null,
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update { state ->
+                    state.copy(
+                        channelsLoading = false,
+                        channels = emptyList(),
+                        focusedChannelId = null,
+                        selectedChannelId = null,
+                        errorMessage = error.userMessage("Impossible de charger toutes les chaines Xtream."),
+                    )
+                }
+            }
         }
     }
 
@@ -272,7 +343,7 @@ class LiveTvViewModel(
                 logoUrl = progress.imageUrl,
                 name = name,
                 program = "Direct",
-                genre = "Historiques",
+                genre = "Historique",
                 timeRange = "Live",
                 progress = 0f,
                 description = "Chaine deja regardee.",
@@ -329,7 +400,11 @@ class LiveTvViewModel(
                 _uiState.update { state ->
                     val refreshedCategories = state.categories.map { category ->
                         if (category.id == categoryId) category.copy(count = channels.size) else category
-                    }.withSpecialCategories(favoriteIds.size, historyProgress.size)
+                    }.withSpecialCategories(
+                        allCount = xtreamRepository.getCachedLiveStreams().size.takeIf { it > 0 },
+                        favoriteCount = favoriteIds.size,
+                        historyCount = historyProgress.size,
+                    )
                     state.copy(
                         channelsLoading = false,
                         categories = refreshedCategories,
@@ -355,9 +430,21 @@ class LiveTvViewModel(
 
 private const val FavoriteLiveCategoryId = "__favorites_live__"
 private const val HistoryLiveCategoryId = "__history_live__"
+private const val AllLiveCategoryId = "__all_live__"
+private val SpecialLiveCategoryIds = setOf(AllLiveCategoryId, FavoriteLiveCategoryId, HistoryLiveCategoryId)
 
-private fun List<LiveTvCategory>.withSpecialCategories(favoriteCount: Int, historyCount: Int): List<LiveTvCategory> =
+private fun List<LiveTvCategory>.withSpecialCategories(
+    allCount: Int?,
+    favoriteCount: Int,
+    historyCount: Int,
+): List<LiveTvCategory> =
     listOf(
+        LiveTvCategory(
+            id = AllLiveCategoryId,
+            label = "ALL",
+            count = allCount,
+            kind = LiveTvCategoryKind.Generic,
+        ),
         LiveTvCategory(
             id = FavoriteLiveCategoryId,
             label = "Favoris",
@@ -366,11 +453,11 @@ private fun List<LiveTvCategory>.withSpecialCategories(favoriteCount: Int, histo
         ),
         LiveTvCategory(
             id = HistoryLiveCategoryId,
-            label = "Historiques",
+            label = "Historique",
             count = historyCount,
             kind = LiveTvCategoryKind.Generic,
         ),
-    ) + filterNot { it.id == FavoriteLiveCategoryId || it.id == HistoryLiveCategoryId }
+    ) + filterNot { it.id in SpecialLiveCategoryIds }
 
 private fun XtreamLiveCategory.toUiCategory(): LiveTvCategory =
     LiveTvCategory(

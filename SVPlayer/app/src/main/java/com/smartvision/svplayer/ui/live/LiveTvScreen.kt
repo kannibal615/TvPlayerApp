@@ -33,15 +33,12 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -99,7 +96,9 @@ import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.monetization.IdleVastAdLoader
 import com.smartvision.svplayer.data.monetization.IdleVastCreative
+import com.smartvision.svplayer.data.monetization.MonetizationStatus
 import com.smartvision.svplayer.data.monetization.MonetizationManager
+import com.smartvision.svplayer.data.monetization.monetizationStatus
 import com.smartvision.svplayer.data.monetization.smartVisionMediaSourceFactory
 import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
 import com.smartvision.svplayer.ui.components.TvButton
@@ -113,6 +112,7 @@ import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -180,9 +180,11 @@ fun LiveTvScreen(
     val accounts by container.accountManager.accounts.collectAsStateWithLifecycle()
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstChannelFocusRequester = remember { FocusRequester() }
+    val firstPreviewActionFocusRequester = remember { FocusRequester() }
     var inputReady by remember { mutableStateOf(false) }
     var categorySearchQuery by remember { mutableStateOf("") }
     var contentSearchQuery by remember { mutableStateOf("") }
+    var showFreeAdsPreview by remember { mutableStateOf(false) }
     var premiumPurchaseUrl by remember {
         mutableStateOf(
             BuildConfig.ACTIVATION_BASE_URL.trimEnd('/') +
@@ -209,6 +211,12 @@ fun LiveTvScreen(
             } else {
                 "&$deviceQuery&plan=year_1"
             }
+    }
+
+    LaunchedEffect(container.activationRepository) {
+        container.activationRepository.localState.collect { activation ->
+            showFreeAdsPreview = activation.monetizationStatus() == MonetizationStatus.FREE_WITH_ADS
+        }
     }
 
     LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty()) {
@@ -301,6 +309,9 @@ fun LiveTvScreen(
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     searchQuery = contentSearchQuery,
                     onSearchQueryChange = { contentSearchQuery = it },
+                    previewActionFocusRequester = firstPreviewActionFocusRequester.takeIf {
+                        state.selectedChannel != null
+                    },
                     onChannelFocused = viewModel::focusChannel,
                     onChannelClick = { channel ->
                         if (inputReady) {
@@ -317,10 +328,12 @@ fun LiveTvScreen(
                 )
                 PreviewPanel(
                     channel = state.selectedChannel,
+                    showFreeAdsPreview = showFreeAdsPreview,
                     idleAdContentUrl = state.channels.firstOrNull()?.streamUrl,
                     premiumPurchaseUrl = premiumPurchaseUrl,
                     idleVastAdLoader = container.idleVastAdLoader,
                     monetizationManager = container.monetizationManager,
+                    firstActionFocusRequester = firstPreviewActionFocusRequester,
                     onWatch = {
                         if (inputReady) {
                             state.selectedChannel?.streamId?.let(onWatch)
@@ -459,6 +472,7 @@ private fun ChannelList(
     selectedCategoryFocusRequester: FocusRequester,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
+    previewActionFocusRequester: FocusRequester?,
     onChannelFocused: (LiveTvChannel) -> Unit,
     onChannelClick: (LiveTvChannel) -> Unit,
     onRetry: () -> Unit,
@@ -529,6 +543,7 @@ private fun ChannelList(
                         selected = channel.streamId == state.selectedChannel?.streamId,
                         focusRequester = firstChannelFocusRequester.takeIf { index == 0 },
                         leftFocusRequester = selectedCategoryFocusRequester,
+                        rightFocusRequester = previewActionFocusRequester,
                         onFocused = { onChannelFocused(channel) },
                         onClick = { onChannelClick(channel) },
                     )
@@ -541,10 +556,12 @@ private fun ChannelList(
 @Composable
 private fun PreviewPanel(
     channel: LiveTvChannel?,
+    showFreeAdsPreview: Boolean,
     idleAdContentUrl: String?,
     premiumPurchaseUrl: String,
     idleVastAdLoader: IdleVastAdLoader,
     monetizationManager: MonetizationManager,
+    firstActionFocusRequester: FocusRequester,
     onWatch: () -> Unit,
     onFavorite: () -> Unit,
     modifier: Modifier = Modifier,
@@ -554,20 +571,24 @@ private fun PreviewPanel(
         modifier = modifier,
     ) {
         if (channel == null) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                IdlePreviewAdFrame(
-                    enabled = !idleAdContentUrl.isNullOrBlank(),
-                    idleVastAdLoader = idleVastAdLoader,
-                    monetizationManager = monetizationManager,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1.88f),
-                )
-                Spacer(Modifier.height(10.dp))
-                PremiumPreviewQr(
-                    purchaseUrl = premiumPurchaseUrl,
-                    modifier = Modifier.weight(1f),
-                )
+            if (showFreeAdsPreview) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    IdlePreviewAdFrame(
+                        enabled = !idleAdContentUrl.isNullOrBlank(),
+                        idleVastAdLoader = idleVastAdLoader,
+                        monetizationManager = monetizationManager,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1.88f),
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    PremiumPreviewQr(
+                        purchaseUrl = premiumPurchaseUrl,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            } else {
+                IdlePreviewSmartVisionPrompt(modifier = Modifier.fillMaxSize())
             }
             return@LiveTvPanel
         }
@@ -598,6 +619,7 @@ private fun PreviewPanel(
                     onClick = onWatch,
                     icon = Icons.Default.PlayArrow,
                     primary = true,
+                    focusRequester = firstActionFocusRequester,
                     modifier = Modifier
                         .weight(1.25f)
                         .height(32.dp),
@@ -613,6 +635,38 @@ private fun PreviewPanel(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun IdlePreviewSmartVisionPrompt(
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .focusProperties { canFocus = false }
+            .padding(horizontal = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.smartvision_logo_wide),
+            contentDescription = "SmartVision IPTV Player",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxWidth(0.72f)
+                .height(58.dp),
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = "Selectionnez une chaine pour lancer l'apercu...",
+            color = SmartVisionColors.TextSecondary,
+            style = LiveTvItemMetaStyle,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -945,6 +999,7 @@ private fun PreviewActionButton(
     modifier: Modifier = Modifier,
     primary: Boolean = false,
     selected: Boolean = false,
+    focusRequester: FocusRequester? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -979,6 +1034,7 @@ private fun PreviewActionButton(
         modifier = modifier
             .tvFocusTarget(
                 state = focusState,
+                focusRequester = focusRequester,
                 pressed = pressed,
                 focusedScale = 1.04f,
                 glowColor = SmartVisionColors.Primary,
@@ -1099,8 +1155,16 @@ private fun CategoryRow(
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CategoryIcon(category = category, active = active)
-        Spacer(Modifier.width(10.dp))
+        val icon = category.specialIcon()
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+        }
         Text(
             text = category.label,
             color = SmartVisionColors.TextPrimary,
@@ -1125,6 +1189,7 @@ private fun ChannelRow(
     selected: Boolean,
     focusRequester: FocusRequester?,
     leftFocusRequester: FocusRequester,
+    rightFocusRequester: FocusRequester?,
     onFocused: () -> Unit,
     onClick: () -> Unit,
 ) {
@@ -1147,7 +1212,12 @@ private fun ChannelRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(LiveTvDimens.ChannelRowHeight)
-            .focusProperties { left = leftFocusRequester }
+            .focusProperties {
+                left = leftFocusRequester
+                if (rightFocusRequester != null) {
+                    right = rightFocusRequester
+                }
+            }
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -1222,13 +1292,15 @@ private fun ChannelRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = channel.program,
-                color = SmartVisionColors.TextSecondary,
-                style = LiveTvItemMetaStyle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            if (channel.program != "Direct") {
+                Text(
+                    text = channel.program,
+                    color = SmartVisionColors.TextSecondary,
+                    style = LiveTvItemMetaStyle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
 
     }
@@ -1475,52 +1547,14 @@ private fun ProgramInfoCard(
     }
 }
 
-@Composable
-private fun CategoryIcon(
-    category: LiveTvCategory,
-    active: Boolean,
-) {
-    if (category.label.equals("Favoris", ignoreCase = true)) {
-        Icon(
-            imageVector = Icons.Default.Favorite,
-            contentDescription = null,
-            tint = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
-            modifier = Modifier.size(20.dp),
-        )
-        return
+private fun LiveTvCategory.specialIcon(): ImageVector? {
+    val normalized = label.lowercase()
+    return when {
+        normalized == "all" -> Icons.Default.Menu
+        "favoris" in normalized -> Icons.Default.Favorite
+        "histor" in normalized -> Icons.Default.History
+        else -> null
     }
-
-    if (category.label.equals("Historiques", ignoreCase = true)) {
-        Icon(
-            imageVector = Icons.Default.History,
-            contentDescription = null,
-            tint = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
-            modifier = Modifier.size(20.dp),
-        )
-        return
-    }
-
-    if (category.kind == LiveTvCategoryKind.France) {
-        FranceFlagIcon(active = active)
-        return
-    }
-
-    val icon = when (category.kind) {
-        LiveTvCategoryKind.Sport -> Icons.Default.EmojiEvents
-        LiveTvCategoryKind.Info -> Icons.Default.Info
-        LiveTvCategoryKind.Cinema -> Icons.Default.Movie
-        LiveTvCategoryKind.Kids -> Icons.Default.Tv
-        LiveTvCategoryKind.Documentary -> Icons.Default.VideoLibrary
-        LiveTvCategoryKind.France -> Icons.Default.Tv
-        LiveTvCategoryKind.Generic -> Icons.Default.Tv
-    }
-
-    Icon(
-        imageVector = icon,
-        contentDescription = null,
-        tint = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
-        modifier = Modifier.size(20.dp),
-    )
 }
 
 @Composable
