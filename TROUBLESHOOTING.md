@@ -120,3 +120,22 @@ Erreurs a eviter :
 - ne pas marquer `PLAYER_PROGRESS_SAVE_DONE` avant que Room ait vraiment termine ;
 - ne pas appeler `onProgressSnapshot()` apres `onBack()` ;
 - ne pas conclure qu il n y a pas crash si le compteur admin ignore `PROCESS_EXIT_*`.
+
+## 2026-06-27 - Crash sortie Live persistant et WebView YouTube renderer
+
+Probleme rencontre :
+Apres la release 0.1.33, la sortie du player Live pouvait encore produire un `PROCESS_EXIT_CRASH` au redemarrage suivant. L ecran YouTube pouvait aussi devenir instable quand le lecteur etait affiche et que la telecommande envoyait des touches.
+
+Contexte :
+Les anomalies prod montraient pour Live un dernier contexte `step=before_onBack`, ce qui indiquait que la navigation quittait encore l ecran avant une liberation certaine du player/surface. Pour YouTube, la console WebView remontait `queueMicrotask is not defined`, signe d un WebView TV ancien incompatible avec un script charge par l IFrame API.
+
+Solution qui fonctionne :
+- sur sortie player, detacher `PlayerView`, nettoyer la surface et appeler `player.release()` avant `onBack()` ;
+- garder `releaseScheduled` comme garde anti-double release pour que `onDispose` ne relance pas une release differee apres navigation ;
+- ajouter un polyfill `queueMicrotask` avant `https://www.youtube.com/iframe_api` ;
+- intercepter `WebViewClient.onRenderProcessGone`, detruire proprement la WebView morte, reporter `YOUTUBE_RENDER_PROCESS_GONE`, puis recréer le lecteur Compose.
+
+Erreurs a eviter :
+- ne pas compter uniquement sur `onDispose` apres navigation pour liberer Media3 quand le crash arrive autour de `before_onBack` ;
+- ne pas supposer que les WebView Android TV anciens exposent toutes les API JS modernes ;
+- ne pas laisser un renderer WebView mort tuer tout le processus app.

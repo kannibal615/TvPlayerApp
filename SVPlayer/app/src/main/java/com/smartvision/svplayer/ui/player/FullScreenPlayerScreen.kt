@@ -579,6 +579,30 @@ private fun FullScreenPlayerScreen(
         )
     }
 
+    fun releasePlayerBeforeNavigation(source: String) {
+        if (!releaseScheduled.compareAndSet(false, true)) return
+        val releaseContext = playerExitContext("exit_release", "source=$source")
+        reportPlayerExitStep("before_exit_release", "source=$source")
+        runCatching {
+            playerView.player = null
+            player.clearVideoSurface()
+            player.release()
+            anomalyReporter.setCurrentContext(releaseContext)
+            anomalyReporter.reportAsync(
+                anomalyType = "PLAYER_RELEASE_DONE",
+                message = "Player release done before navigation",
+                context = releaseContext,
+            )
+        }.onFailure { error ->
+            anomalyReporter.reportAsync(
+                anomalyType = "PLAYER_RELEASE_ERROR",
+                message = error.message ?: "Erreur release player avant navigation",
+                throwable = error,
+                context = releaseContext,
+            )
+        }
+    }
+
     fun exitPlayer(source: String) {
         if (exiting) return
         exiting = true
@@ -646,6 +670,7 @@ private fun FullScreenPlayerScreen(
                     )
                 }
             }
+            releasePlayerBeforeNavigation(source)
             reportPlayerExitStep("before_onBack", "source=$source")
             onBack()
         }
@@ -912,17 +937,17 @@ private fun FullScreenPlayerScreen(
         player.addListener(listener)
         onDispose {
             runCatching {
-                val releaseBeginContext = playerExitContext("release_begin")
-                anomalyReporter.setCurrentContext(releaseBeginContext)
-                anomalyReporter.reportAsync(
-                    anomalyType = "PLAYER_RELEASE_BEGIN",
-                    message = "Player release begin",
-                    context = releaseBeginContext,
-                )
                 player.removeListener(listener)
                 playerView.player = null
                 if (releaseScheduled.compareAndSet(false, true)) {
+                    val releaseBeginContext = playerExitContext("release_begin")
                     val releaseDoneContext = playerExitContext("release_done")
+                    anomalyReporter.setCurrentContext(releaseBeginContext)
+                    anomalyReporter.reportAsync(
+                        anomalyType = "PLAYER_RELEASE_BEGIN",
+                        message = "Player release begin",
+                        context = releaseBeginContext,
+                    )
                     mainHandler.postDelayed(
                         {
                             runCatching {

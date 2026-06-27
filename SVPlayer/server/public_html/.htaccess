@@ -4,6 +4,9 @@ AddDefaultCharset UTF-8
 
 <IfModule mod_headers.c>
 Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+SetEnvIf Request_URI "^/downloads/smartvision-tv\.apk$" smartvision_stable_apk
+Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0" env=smartvision_stable_apk
+Header always set Pragma "no-cache" env=smartvision_stable_apk
 </IfModule>
 
 RewriteEngine On

@@ -4,15 +4,22 @@ import android.annotation.SuppressLint
 import android.os.Build
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.ConsoleMessage
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.smartvision.svplayer.data.anomaly.AnomalyReporter
@@ -31,51 +38,59 @@ internal fun YoutubeWebPlayer(
     anomalyReporter: AnomalyReporter? = null,
 ) {
     val safeVideoId = videoId.sanitizeYoutubeVideoId()
-    AndroidView(
-        modifier = modifier,
-        factory = { context ->
-            WebView(context).apply {
-                configureYoutubeWebView(mode, anomalyReporter, safeVideoId)
-                if (mode == YoutubePlaybackMode.Fullscreen && anomalyReporter != null) {
-                    addJavascriptInterface(
-                        YoutubePlayerBridge(anomalyReporter, safeVideoId, mode.name),
-                        JavascriptBridgeName,
+    var renderRestart by remember(safeVideoId, mode) { mutableIntStateOf(0) }
+    key(renderRestart) {
+        AndroidView(
+            modifier = modifier,
+            factory = { context ->
+                WebView(context).apply {
+                    configureYoutubeWebView(
+                        mode = mode,
+                        anomalyReporter = anomalyReporter,
+                        videoId = safeVideoId,
+                        onRenderProcessGone = { renderRestart += 1 },
+                    )
+                    if (mode == YoutubePlaybackMode.Fullscreen && anomalyReporter != null) {
+                        addJavascriptInterface(
+                            YoutubePlayerBridge(anomalyReporter, safeVideoId, mode.name),
+                            JavascriptBridgeName,
+                        )
+                    }
+                }
+            },
+            update = { webView ->
+                val tag = "${mode.name}:$safeVideoId"
+                if (webView.tag != tag) {
+                    webView.tag = tag
+                    webView.loadDataWithBaseURL(
+                        YoutubePlayerOrigin,
+                        youtubePlayerHtml(
+                            videoId = safeVideoId,
+                            autoplay = true,
+                            muted = mode != YoutubePlaybackMode.Fullscreen,
+                            controls = false,
+                        ),
+                        "text/html",
+                        "utf-8",
+                        null,
                     )
                 }
-            }
-        },
-        update = { webView ->
-            val tag = "${mode.name}:$safeVideoId"
-            if (webView.tag != tag) {
-                webView.tag = tag
-                webView.loadDataWithBaseURL(
-                    YoutubePlayerOrigin,
-                    youtubePlayerHtml(
-                        videoId = safeVideoId,
-                        autoplay = true,
-                        muted = mode != YoutubePlaybackMode.Fullscreen,
-                        controls = false,
-                    ),
-                    "text/html",
-                    "utf-8",
-                    null,
-                )
-            }
-            if (mode == YoutubePlaybackMode.Fullscreen) {
-                webView.requestFocus()
-            }
-        },
-        onRelease = { webView ->
-            runCatching {
-                webView.evaluateJavascript("window.smartVisionStop && window.smartVisionStop();", null)
-                webView.stopLoading()
-                webView.loadUrl("about:blank")
-                webView.removeJavascriptInterface(JavascriptBridgeName)
-                webView.removeAllViews()
-                webView.destroy()
-            }
-        },
-    )
+                if (mode == YoutubePlaybackMode.Fullscreen) {
+                    webView.requestFocus()
+                }
+            },
+            onRelease = { webView ->
+                runCatching {
+                    webView.evaluateJavascript("window.smartVisionStop && window.smartVisionStop();", null)
+                    webView.stopLoading()
+                    webView.loadUrl("about:blank")
+                    webView.removeJavascriptInterface(JavascriptBridgeName)
+                    webView.removeAllViews()
+                    webView.destroy()
+                }
+            },
+        )
+    }
 }
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -83,6 +98,7 @@ private fun WebView.configureYoutubeWebView(
     mode: YoutubePlaybackMode,
     anomalyReporter: AnomalyReporter?,
     videoId: String,
+    onRenderProcessGone: () -> Unit,
 ) {
     setBackgroundColor(android.graphics.Color.BLACK)
     isFocusable = mode == YoutubePlaybackMode.Fullscreen
@@ -111,6 +127,24 @@ private fun WebView.configureYoutubeWebView(
         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
             val host = request?.url?.host.orEmpty().lowercase()
             return host.isNotBlank() && AllowedYoutubeHosts.none { host == it || host.endsWith(".$it") }
+        }
+
+        override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
+            anomalyReporter?.reportAsync(
+                anomalyType = "YOUTUBE_RENDER_PROCESS_GONE",
+                message = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && detail?.didCrash() == true) {
+                    "WebView renderer crash"
+                } else {
+                    "WebView renderer gone"
+                },
+                context = "videoId=$videoId mode=${mode.name}",
+            )
+            runCatching {
+                (view?.parent as? ViewGroup)?.removeView(view)
+                view?.destroy()
+            }
+            onRenderProcessGone()
+            return true
         }
     }
     settings.javaScriptEnabled = true
@@ -238,6 +272,13 @@ private fun youtubePlayerHtml(
             <div id="error">Cette video ne peut pas etre lue dans le lecteur integre YouTube.</div>
             <script src="https://www.youtube.com/iframe_api"></script>
             <script>
+              if (!window.queueMicrotask) {
+                window.queueMicrotask = function(callback) {
+                  Promise.resolve().then(callback).catch(function(error) {
+                    setTimeout(function() { throw error; }, 0);
+                  });
+                };
+              }
               var player;
               var playerReady = false;
               var playerState = -1;
