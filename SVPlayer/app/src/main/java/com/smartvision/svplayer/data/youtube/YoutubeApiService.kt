@@ -13,13 +13,14 @@ interface YoutubeApiService {
         @Query("q") query: String,
         @Query("maxResults") maxResults: Int = 50,
         @Query("safeSearch") safeSearch: String = "moderate",
+        @Query("videoEmbeddable") videoEmbeddable: String = "true",
         @Query("pageToken") pageToken: String? = null,
     ): YoutubeSearchResponse
 
     @GET("videos")
     suspend fun mostPopularVideos(
         @Query("key") apiKey: String,
-        @Query("part") part: String = "snippet",
+        @Query("part") part: String = "snippet,status",
         @Query("chart") chart: String = "mostPopular",
         @Query("maxResults") maxResults: Int = 50,
         @Query("regionCode") regionCode: String = "FR",
@@ -49,6 +50,11 @@ data class YoutubeSearchIdDto(
 data class YoutubeVideoDto(
     @SerializedName("id") val id: String?,
     @SerializedName("snippet") val snippet: YoutubeSnippetDto?,
+    @SerializedName("status") val status: YoutubeStatusDto? = null,
+)
+
+data class YoutubeStatusDto(
+    @SerializedName("embeddable") val embeddable: Boolean? = null,
 )
 
 data class YoutubeSnippetDto(

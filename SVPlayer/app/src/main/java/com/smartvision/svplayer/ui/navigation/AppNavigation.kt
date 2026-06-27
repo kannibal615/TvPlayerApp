@@ -74,6 +74,7 @@ import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.update.AppUpdateDialog
 import com.smartvision.svplayer.ui.update.AppUpdateViewModel
+import com.smartvision.svplayer.ui.youtube.YoutubePlayerScreen
 import com.smartvision.svplayer.ui.youtube.YoutubeScreen
 import kotlinx.coroutines.launch
 
@@ -334,6 +335,14 @@ fun AppNavigation(
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
                 notificationBadgeCount = notificationBadgeCount,
+                onOpenYoutubeVideo = { videoId -> navController.navigate("youtube_player/$videoId") },
+            )
+        }
+        composable(AppRoute.YoutubePlayer.route) { backStackEntry ->
+            YoutubePlayerScreen(
+                videoId = backStackEntry.arguments?.getString("videoId").orEmpty(),
+                anomalyReporter = container.anomalyReporter,
+                onBack = { navController.popBackStack() },
             )
         }
         composable(AppRoute.Settings.route) {
@@ -632,6 +641,7 @@ private enum class AppRoute(val route: String) {
     Movies("movies"),
     Series("series"),
     Youtube("youtube"),
+    YoutubePlayer("youtube_player/{videoId}"),
     Settings("settings"),
     Profile("profile"),
     Notifications("notifications"),

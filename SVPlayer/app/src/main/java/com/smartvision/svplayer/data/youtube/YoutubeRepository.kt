@@ -61,7 +61,9 @@ class YoutubeRepository(
                 ensureApiKey()
                 val response = api.mostPopularVideos(apiKey = apiKey, pageToken = pageToken)
                 YoutubePage(
-                    videos = response.items.mapNotNull { it.toVideo() },
+                    videos = response.items
+                        .filter { it.status?.embeddable != false }
+                        .mapNotNull { it.toVideo() },
                     nextPageToken = response.nextPageToken,
                 )
             }

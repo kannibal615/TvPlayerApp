@@ -60,10 +60,16 @@ class AnomalyReporter(
 
     fun setCurrentRoute(route: String?) {
         currentRoute = route
+        if (!route.isNullOrBlank()) {
+            prefs.edit().putString(KEY_LAST_ROUTE, route).apply()
+        }
     }
 
     fun setCurrentContext(context: String?) {
         currentContext = context
+        if (!context.isNullOrBlank()) {
+            prefs.edit().putString(KEY_LAST_CONTEXT, context).apply()
+        }
     }
 
     fun reportAsync(
@@ -151,16 +157,23 @@ class AnomalyReporter(
         if (exit.timestamp <= lastReported) return@withContext
 
         prefs.edit().putLong(KEY_LAST_EXIT_REPORTED_AT, exit.timestamp).apply()
+        val lastRoute = prefs.getString(KEY_LAST_ROUTE, null).orEmpty()
+        val lastContext = prefs.getString(KEY_LAST_CONTEXT, null).orEmpty()
+        val trace = runCatching {
+            exit.traceInputStream?.bufferedReader()?.use { it.readText() }
+        }.getOrNull()
         report(
             anomalyType = "PROCESS_EXIT_${exit.reasonName()}",
             message = exit.description?.takeIf { it.isNotBlank() } ?: "Sortie brutale detectee au demarrage",
-            stackTrace = null,
+            stackTrace = trace,
             context = listOf(
                 "pid=${exit.pid}",
                 "importance=${exit.importance}",
                 "pss=${exit.pss}",
                 "rss=${exit.rss}",
                 "timestamp=${exit.timestamp}",
+                "lastRoute=$lastRoute",
+                "lastContext=$lastContext",
                 currentContext.orEmpty(),
             ).filter { it.isNotBlank() }.joinToString(" | "),
         )
@@ -223,6 +236,8 @@ class AnomalyReporter(
     private companion object {
         const val TAG = "SmartVisionAnomaly"
         const val KEY_LAST_EXIT_REPORTED_AT = "last_exit_reported_at"
+        const val KEY_LAST_ROUTE = "last_route"
+        const val KEY_LAST_CONTEXT = "last_context"
     }
 }
 

@@ -1,12 +1,5 @@
 package com.smartvision.svplayer.ui.youtube
 
-import android.annotation.SuppressLint
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -72,12 +65,10 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -86,7 +77,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
-import com.smartvision.svplayer.data.anomaly.AnomalyReporter
 import com.smartvision.svplayer.ui.catalog.CatalogCategoryRow
 import com.smartvision.svplayer.ui.catalog.CatalogEmpty
 import com.smartvision.svplayer.ui.catalog.CatalogError
@@ -117,10 +107,10 @@ fun YoutubeScreen(
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
     notificationBadgeCount: Int,
+    onOpenYoutubeVideo: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
-    val context = LocalContext.current
     val viewModel: YoutubeViewModel = viewModel(
         factory = viewModelFactory {
             YoutubeViewModel(container.youtubeRepository)
@@ -197,7 +187,7 @@ fun YoutubeScreen(
                 onVideoFocused = viewModel::focusVideo,
                 onVideoClick = { video ->
                     viewModel.openYoutubeVideo(video)
-                    openYoutubeVideo(context, video.videoId, container.anomalyReporter)
+                    onOpenYoutubeVideo(video.videoId)
                 },
                 onLoadMore = viewModel::loadMoreIfNeeded,
                 onRetry = viewModel::retry,
@@ -757,97 +747,17 @@ private fun YoutubeVideoCard(
     }
 }
 
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun YoutubeInlinePreview(
     videoId: String,
     modifier: Modifier = Modifier,
 ) {
-    AndroidView(
+    YoutubeWebPlayer(
+        videoId = videoId,
+        mode = YoutubePlaybackMode.Preview,
         modifier = modifier,
-        factory = { context ->
-            WebView(context).apply {
-                isFocusable = false
-                isFocusableInTouchMode = false
-                webViewClient = WebViewClient()
-                settings.javaScriptEnabled = true
-                settings.mediaPlaybackRequiresUserGesture = false
-                settings.domStorageEnabled = true
-                setBackgroundColor(android.graphics.Color.BLACK)
-            }
-        },
-        update = { webView ->
-            webView.loadDataWithBaseURL(
-                "https://www.youtube.com",
-                youtubePreviewHtml(videoId),
-                "text/html",
-                "utf-8",
-                null,
-            )
-        },
     )
 }
-
-private fun openYoutubeVideo(
-    context: Context,
-    videoId: String,
-    anomalyReporter: AnomalyReporter,
-) {
-    val intents = listOf(
-        Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:$videoId"))
-            .setPackage("com.google.android.youtube.tv"),
-        Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:$videoId"))
-            .setPackage("com.google.android.youtube"),
-        Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=$videoId")),
-    ).map { intent ->
-        intent
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            .putExtra("force_fullscreen", true)
-            .putExtra("finish_on_ended", false)
-    }
-
-    for (intent in intents) {
-        try {
-            context.startActivity(intent)
-            return
-        } catch (_: ActivityNotFoundException) {
-            // Try the next official target.
-        } catch (error: Throwable) {
-            anomalyReporter.reportAsync(
-                anomalyType = "YOUTUBE_OPEN_ERROR",
-                message = error.message ?: "Ouverture YouTube impossible",
-                throwable = error,
-                context = "videoId=$videoId package=${intent.`package`.orEmpty()}",
-            )
-        }
-    }
-    anomalyReporter.reportAsync(
-        anomalyType = "YOUTUBE_OPEN_ERROR",
-        message = "Aucune application compatible YouTube",
-        context = "videoId=$videoId",
-    )
-}
-
-private fun youtubePreviewHtml(videoId: String): String =
-    """
-    <!doctype html>
-    <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          html, body, iframe { margin:0; width:100%; height:100%; background:#000; overflow:hidden; }
-        </style>
-      </head>
-      <body>
-        <iframe
-          src="https://www.youtube.com/embed/$videoId?autoplay=1&mute=1&controls=0&playsinline=1&rel=0&modestbranding=1"
-          frameborder="0"
-          allow="autoplay; encrypted-media; picture-in-picture"
-          allowfullscreen>
-        </iframe>
-      </body>
-    </html>
-    """.trimIndent()
 
 @Composable
 private fun YoutubeLogoMark(modifier: Modifier = Modifier) {
