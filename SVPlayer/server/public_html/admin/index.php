@@ -5,6 +5,7 @@ require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__) . '/api/commerce.php';
 require_once dirname(__DIR__) . '/api/mail_service.php';
 require_once dirname(__DIR__) . '/api/ads_service.php';
+require_once dirname(__DIR__) . '/api/anomaly_service.php';
 
 $loginError = null;
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'login') {
@@ -31,6 +32,7 @@ $pdo = db();
 sv_mail_ensure_schema($pdo);
 commerce_ensure_payment_schema($pdo);
 ads_ensure_schema($pdo);
+anomaly_ensure_schema($pdo);
 $page = admin_current_page($_POST['redirect_page'] ?? $_GET['page'] ?? 'overview');
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (!verify_csrf($_POST['csrf_token'] ?? null)) {
@@ -87,6 +89,7 @@ $gammalWebhookEvents = commerce_load_gammal_webhook_events($pdo);
 $emailAdmin = admin_load_email_admin($pdo);
 $adsPeriod = ads_period_days($_GET['ads_period'] ?? 1);
 $adsAdmin = $page === 'ads' ? admin_load_ads_admin($pdo, $adsPeriod) : [];
+$anomaliesAdmin = $page === 'anomalies' ? admin_load_anomalies_admin($pdo) : [];
 $flash = consume_admin_flash();
 $generatedCode = $_SESSION['generated_activation_code'] ?? null;
 if (is_string($generatedCode)) {
@@ -118,6 +121,7 @@ render_admin_dashboard(
     $gammalWebhookEvents,
     $emailAdmin,
     $adsAdmin,
+    $anomaliesAdmin,
     $flash,
     $generatedCode,
     $query,
@@ -127,7 +131,7 @@ render_admin_dashboard(
 function admin_current_page(mixed $page): string
 {
     $page = is_string($page) ? $page : 'overview';
-    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'payments', 'emails', 'ads', 'devices', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
+    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'payments', 'emails', 'ads', 'anomalies', 'devices', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
         ? $page
         : 'overview';
 }
@@ -929,6 +933,39 @@ function admin_load_ads_admin(PDO $pdo, int $periodDays): array
     return ads_dashboard($pdo, $periodDays);
 }
 
+function admin_load_anomalies_admin(PDO $pdo): array
+{
+    anomaly_ensure_schema($pdo);
+    $events = $pdo->query(
+        "SELECT id, device_id_hash, app_version, platform, route, anomaly_type, message, stack_trace, context_json, created_at
+         FROM app_anomaly_events
+         ORDER BY id DESC
+         LIMIT 120"
+    )->fetchAll();
+    $summaryRows = $pdo->query(
+        "SELECT anomaly_type, COUNT(*) AS count, MAX(created_at) AS last_seen
+         FROM app_anomaly_events
+         WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+         GROUP BY anomaly_type
+         ORDER BY count DESC, anomaly_type ASC"
+    )->fetchAll();
+    $last24h = (int) $pdo->query(
+        "SELECT COUNT(*) FROM app_anomaly_events WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)"
+    )->fetchColumn();
+    $crashes24h = (int) $pdo->query(
+        "SELECT COUNT(*) FROM app_anomaly_events
+         WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)
+           AND anomaly_type IN ('UNCAUGHT_EXCEPTION', 'CRASH')"
+    )->fetchColumn();
+
+    return [
+        'events' => $events,
+        'summary' => $summaryRows,
+        'last24h' => $last24h,
+        'crashes24h' => $crashes24h,
+    ];
+}
+
 function admin_save_ads_settings(PDO $pdo): void
 {
     $provider = (string) ($_POST['provider'] ?? 'HILLTOPADS_VAST');
@@ -1687,6 +1724,7 @@ function render_admin_dashboard(
     array $gammalWebhookEvents,
     array $emailAdmin,
     array $adsAdmin,
+    array $anomaliesAdmin,
     ?array $flash,
     ?array $generatedCode,
     string $query,
@@ -1701,6 +1739,7 @@ function render_admin_dashboard(
         'payments' => ['Paiements', 'Packs Gammal Tech et transactions en attente de validation.'],
         'emails' => ['Emails', 'Configuration SMTP, templates transactionnels et journal des envois.'],
         'ads' => ['Publicites', 'Gestion des publicites video du player SmartVision.'],
+        'anomalies' => ['Anomalies', 'Crashs et erreurs remontes par les applications TV.'],
         'devices' => ['Appareils', 'TV associees, essais, licences et configuration Xtream.'],
         'notifications' => ['Notifications', 'Messages envoyes vers toutes les TV ou vers des cibles precises.'],
         'messages' => ['Messages clients', 'Demandes envoyees depuis le formulaire de contact.'],
@@ -1743,6 +1782,7 @@ function render_admin_dashboard(
         <?php endif; ?>
 
         <?php if ($page === 'ads'): admin_render_ads_page($adsAdmin); endif; ?>
+        <?php if ($page === 'anomalies'): admin_render_anomalies_page($anomaliesAdmin); endif; ?>
 
         <?php if ($page === 'orders'): ?>
         <section class="admin-panel" id="orders"><div class="admin-panel-heading"><div><h2>Commandes recentes</h2><p><?= count($orders) ?> resultat(s)</p></div><form class="admin-filter-row" method="get"><input type="hidden" name="page" value="orders"><input type="hidden" name="q" value="<?= admin_escape($query) ?>"><label>Statut<select name="order_status"><option value="">Tous</option><?php foreach (['pending', 'paid', 'cancelled'] as $statusOption): ?><option value="<?= admin_escape($statusOption) ?>"<?= ($_GET['order_status'] ?? '') === $statusOption ? ' selected' : '' ?>><?= admin_escape($statusOption) ?></option><?php endforeach; ?></select></label><button class="admin-button compact secondary" type="submit">Filtrer</button></form></div><div class="admin-table-wrap"><table><thead><tr><th><?= admin_sort_link('orders', 'Reference', 'reference', $query) ?></th><th><?= admin_sort_link('orders', 'Client', 'client', $query) ?></th><th><?= admin_sort_link('orders', 'Plan', 'plan', $query) ?></th><th><?= admin_sort_link('orders', 'Montant', 'amount', $query) ?></th><th><?= admin_sort_link('orders', 'Paiement', 'payment', $query) ?></th><th>Licence</th><th><?= admin_sort_link('orders', 'Date', 'date', $query) ?></th><th>Actions</th></tr></thead><tbody>
@@ -2323,6 +2363,44 @@ function admin_render_ads_page(array $adsAdmin): void
                     <td><?= admin_escape((string) $event['provider']) ?></td>
                     <td><small><?= admin_escape(trim((string) ($event['reason'] ?: '') . ' ' . (string) ($event['error_code'] ?: '') . ' ' . (string) ($event['error_message'] ?: '')) ?: '-') ?></small></td>
                     <td><?= $event['ad_duration_seconds'] !== null ? (int) $event['ad_duration_seconds'] . 's' : '-' ?></td>
+                </tr><?php endforeach; ?>
+            </tbody></table></div>
+        </section>
+    <?php
+}
+
+function admin_render_anomalies_page(array $anomaliesAdmin): void
+{
+    $events = $anomaliesAdmin['events'] ?? [];
+    $summary = $anomaliesAdmin['summary'] ?? [];
+    ?>
+        <section class="admin-kpis" aria-label="Anomalies">
+            <?= admin_kpi('Anomalies 24h', (int) ($anomaliesAdmin['last24h'] ?? 0), 'orange') ?>
+            <?= admin_kpi('Crashs 24h', (int) ($anomaliesAdmin['crashes24h'] ?? 0), 'red') ?>
+            <?= admin_kpi('Types 7 jours', count($summary), 'cyan') ?>
+        </section>
+
+        <section class="admin-panel">
+            <div class="admin-panel-heading"><div><h2>Synthese 7 jours</h2><p>Regroupement par type d anomalie.</p></div></div>
+            <div class="admin-table-wrap"><table><thead><tr><th>Type</th><th>Occurrences</th><th>Dernier signal</th></tr></thead><tbody>
+                <?php if ($summary === []): ?><tr><td colspan="3" class="admin-empty">Aucune anomalie recente.</td></tr><?php endif; ?>
+                <?php foreach ($summary as $row): ?><tr><td><strong><?= admin_escape((string) $row['anomaly_type']) ?></strong></td><td><?= (int) $row['count'] ?></td><td><?= admin_escape((string) $row['last_seen']) ?></td></tr><?php endforeach; ?>
+            </tbody></table></div>
+        </section>
+
+        <section class="admin-panel" id="anomaly-events">
+            <div class="admin-panel-heading"><div><h2>Evenements recents</h2><p>Dernieres anomalies remontees par l application TV.</p></div><a class="admin-button compact secondary" href="/admin/?page=anomalies">Actualiser</a></div>
+            <div class="admin-table-wrap"><table><thead><tr><th>Date</th><th>Device hash</th><th>App</th><th>Route</th><th>Type</th><th>Message</th><th>Stack trace</th><th>Contexte</th></tr></thead><tbody>
+                <?php if ($events === []): ?><tr><td colspan="8" class="admin-empty">Aucune anomalie enregistree.</td></tr><?php endif; ?>
+                <?php foreach ($events as $event): ?><tr>
+                    <td><?= admin_escape((string) $event['created_at']) ?></td>
+                    <td><small><?= admin_escape(anomaly_mask_hash($event['device_id_hash'] ?? null)) ?></small></td>
+                    <td><?= admin_escape((string) ($event['app_version'] ?: '-')) ?><small><?= admin_escape((string) $event['platform']) ?></small></td>
+                    <td><?= admin_escape((string) ($event['route'] ?: '-')) ?></td>
+                    <td><strong><?= admin_escape((string) $event['anomaly_type']) ?></strong></td>
+                    <td><small><?= admin_escape((string) ($event['message'] ?: '-')) ?></small></td>
+                    <td><small><?= admin_escape(smartvision_text_substr((string) ($event['stack_trace'] ?: '-'), 0, 220)) ?></small></td>
+                    <td><small><?= admin_escape((string) ($event['context_json'] ?: '-')) ?></small></td>
                 </tr><?php endforeach; ?>
             </tbody></table></div>
         </section>

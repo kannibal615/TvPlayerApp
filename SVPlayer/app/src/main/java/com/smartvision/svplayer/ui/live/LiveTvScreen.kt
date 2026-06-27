@@ -105,6 +105,7 @@ import com.smartvision.svplayer.data.monetization.smartVisionMediaSourceFactory
 import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.components.YoutubeLogoIcon
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
@@ -391,11 +392,11 @@ private fun LiveTvHeader(
     ) {
         LiveTvLogo()
 
-        Spacer(Modifier.width(86.dp))
+        Spacer(Modifier.width(16.dp))
 
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             tabs.forEach { tab ->
@@ -404,7 +405,13 @@ private fun LiveTvHeader(
                     onClick = { onNavigate(tab.route) },
                     selected = tab.route == currentRoute,
                     variant = if (tab.route == currentRoute) TvButtonVariant.Primary else TvButtonVariant.Text,
-                    contentPadding = PaddingValues(horizontal = 13.dp),
+                    leadingIcon = tab.icon,
+                    leadingContent = if (tab.useYoutubeLogo) {
+                        { YoutubeLogoIcon() }
+                    } else {
+                        null
+                    },
+                    contentPadding = PaddingValues(horizontal = 10.dp),
                     modifier = Modifier.height(36.dp),
                 )
             }
@@ -1235,6 +1242,9 @@ private fun ChannelRow(
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
+    val fallbackRowFocusRequester = remember { FocusRequester() }
+    val rowFocusRequester = focusRequester ?: fallbackRowFocusRequester
+    val deleteFocusRequester = remember { FocusRequester() }
     val pressed by interactionSource.collectIsPressedAsState()
     val active = selected || focusState.isFocused
     val shape = RoundedCornerShape(LiveTvDimens.ItemRadius)
@@ -1251,115 +1261,139 @@ private fun ChannelRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(LiveTvDimens.ChannelRowHeight)
-            .focusProperties {
-                left = leftFocusRequester
-                if (rightFocusRequester != null) {
-                    right = rightFocusRequester
-                }
-            }
-            .tvFocusTarget(
-                state = focusState,
-                focusRequester = focusRequester,
-                pressed = pressed,
-                focusedScale = 1.035f,
-                glowColor = SmartVisionColors.Primary,
-                cornerRadius = LiveTvDimens.ItemRadius,
-            )
-            .onFocusChanged { focus ->
-                if (focus.isFocused) {
-                    onFocused()
-                }
-            }
-            .zIndex(if (focusState.isFocused) 2f else 0f)
-            .clip(shape)
-            .background(
-                if (active) {
-                    Brush.horizontalGradient(
-                        listOf(
-                            SmartVisionColors.PrimaryDark.copy(alpha = 0.58f),
-                            SmartVisionColors.SurfaceElevated.copy(alpha = 0.94f),
-                        ),
-                    )
-                } else {
-                    Brush.verticalGradient(
-                        listOf(
-                            SmartVisionColors.SurfaceElevated.copy(alpha = 0.70f),
-                            SmartVisionColors.Surface.copy(alpha = 0.52f),
-                        ),
-                    )
-                },
-            )
-            .border(
-                BorderStroke(
-                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
-                    borderColor,
-                ),
-                shape,
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-            )
-            .focusable(interactionSource = interactionSource)
-            .padding(horizontal = 10.dp, vertical = 7.dp),
+            .height(LiveTvDimens.ChannelRowHeight),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = channel.number,
-            color = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
-            style = LiveTvItemMetaStyle,
-            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
-            maxLines = 1,
-            modifier = Modifier.width(30.dp),
-        )
-
-        ChannelLogo(
-            channel = channel,
-            active = active,
-            modifier = Modifier.size(width = 68.dp, height = 40.dp),
-        )
-
-        Spacer(Modifier.width(10.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .focusProperties {
+                    left = leftFocusRequester
+                    if (showDelete) {
+                        right = deleteFocusRequester
+                    } else if (rightFocusRequester != null) {
+                        right = rightFocusRequester
+                    }
+                }
+                .tvFocusTarget(
+                    state = focusState,
+                    focusRequester = rowFocusRequester,
+                    pressed = pressed,
+                    focusedScale = 1.035f,
+                    glowColor = SmartVisionColors.Primary,
+                    cornerRadius = LiveTvDimens.ItemRadius,
+                )
+                .onFocusChanged { focus ->
+                    if (focus.isFocused) {
+                        onFocused()
+                    }
+                }
+                .zIndex(if (focusState.isFocused) 2f else 0f)
+                .clip(shape)
+                .background(
+                    if (active) {
+                        Brush.horizontalGradient(
+                            listOf(
+                                SmartVisionColors.PrimaryDark.copy(alpha = 0.58f),
+                                SmartVisionColors.SurfaceElevated.copy(alpha = 0.94f),
+                            ),
+                        )
+                    } else {
+                        Brush.verticalGradient(
+                            listOf(
+                                SmartVisionColors.SurfaceElevated.copy(alpha = 0.70f),
+                                SmartVisionColors.Surface.copy(alpha = 0.52f),
+                            ),
+                        )
+                    },
+                )
+                .border(
+                    BorderStroke(
+                        if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                        borderColor,
+                    ),
+                    shape,
+                )
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick,
+                )
+                .focusable(interactionSource = interactionSource)
+                .padding(horizontal = 10.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = channel.name,
-                color = SmartVisionColors.TextPrimary,
-                style = LiveTvItemTitleStyle,
-                fontWeight = FontWeight.SemiBold,
+                text = channel.number,
+                color = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+                style = LiveTvItemMetaStyle,
+                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.width(30.dp),
             )
-            if (channel.program != "Direct") {
+
+            ChannelLogo(
+                channel = channel,
+                active = active,
+                modifier = Modifier.size(width = 68.dp, height = 40.dp),
+            )
+
+            Spacer(Modifier.width(10.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = channel.program,
-                    color = SmartVisionColors.TextSecondary,
-                    style = LiveTvItemMetaStyle,
+                    text = channel.name,
+                    color = SmartVisionColors.TextPrimary,
+                    style = LiveTvItemTitleStyle,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (channel.program != "Direct") {
+                    Text(
+                        text = channel.program,
+                        color = SmartVisionColors.TextSecondary,
+                        style = LiveTvItemMetaStyle,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
 
         if (showDelete) {
             Spacer(Modifier.width(8.dp))
-            HistoryDeleteButton(onClick = onDelete)
+            HistoryDeleteButton(
+                focusRequester = deleteFocusRequester,
+                leftFocusRequester = rowFocusRequester,
+                rightFocusRequester = rightFocusRequester,
+                onClick = onDelete,
+            )
         }
     }
 }
 
 @Composable
-private fun HistoryDeleteButton(onClick: () -> Unit) {
+private fun HistoryDeleteButton(
+    focusRequester: FocusRequester,
+    leftFocusRequester: FocusRequester,
+    rightFocusRequester: FocusRequester?,
+    onClick: () -> Unit,
+) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     Box(
         modifier = Modifier
             .size(34.dp)
+            .focusProperties {
+                left = leftFocusRequester
+                if (rightFocusRequester != null) right = rightFocusRequester
+            }
             .tvFocusTarget(
                 state = focusState,
+                focusRequester = focusRequester,
                 pressed = pressed,
                 focusedScale = 1.08f,
                 glowColor = SmartVisionColors.Error,

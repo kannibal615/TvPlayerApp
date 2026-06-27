@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.config.XtreamAccountManager
+import com.smartvision.svplayer.data.anomaly.AnomalyApiService
+import com.smartvision.svplayer.data.anomaly.AnomalyReporter
 import com.smartvision.svplayer.data.activation.ActivationApiService
 import com.smartvision.svplayer.data.activation.ActivationRepository
 import com.smartvision.svplayer.data.home.HomeSlidesApiService
@@ -28,6 +30,8 @@ import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.data.update.AppUpdateApiService
 import com.smartvision.svplayer.data.update.AppUpdateRepository
+import com.smartvision.svplayer.data.youtube.YoutubeApiService
+import com.smartvision.svplayer.data.youtube.YoutubeRepository
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.domain.usecase.BuildPlaybackRequestUseCase
@@ -98,6 +102,13 @@ class AppContainer(context: Context) {
     private val notificationsApi = activationRetrofit.create(NotificationsApiService::class.java)
     private val adConfigApi = activationRetrofit.create(AdConfigApiService::class.java)
     private val adsEventsApi = activationRetrofit.create(AdsEventsApiService::class.java)
+    private val anomalyApi = activationRetrofit.create(AnomalyApiService::class.java)
+    private val youtubeRetrofit = Retrofit.Builder()
+        .baseUrl("https://www.googleapis.com/youtube/v3/")
+        .client(activationOkHttpClient)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+    private val youtubeApi = youtubeRetrofit.create(YoutubeApiService::class.java)
 
     val activationRepository: ActivationRepository = ActivationRepository(
         appContext = appContext,
@@ -128,6 +139,11 @@ class AppContainer(context: Context) {
         activationRepository = activationRepository,
         api = notificationsApi,
     )
+    val anomalyReporter = AnomalyReporter(
+        appContext = appContext,
+        activationRepository = activationRepository,
+        api = anomalyApi,
+    )
 
     val xtreamRepository: XtreamRepository = XtreamRepository(
         apiClient = xtreamApiClient,
@@ -138,6 +154,12 @@ class AppContainer(context: Context) {
         favoriteDao = database.favoriteDao(),
         progressDao = database.progressDao(),
         mediaDao = database.mediaDao(),
+    )
+
+    val youtubeRepository: YoutubeRepository = YoutubeRepository(
+        api = youtubeApi,
+        dao = database.youtubeDao(),
+        apiKey = BuildConfig.YOUTUBE_API_KEY,
     )
 
     val catalogRepository: CatalogRepository = DefaultCatalogRepository(

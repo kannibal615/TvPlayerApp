@@ -43,6 +43,7 @@ import androidx.compose.ui.zIndex
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.components.YoutubeLogoIcon
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -51,6 +52,8 @@ import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 data class HomeHeaderTab(
     val label: String,
     val route: String,
+    val icon: ImageVector? = null,
+    val useYoutubeLogo: Boolean = false,
 )
 
 @Composable
@@ -73,10 +76,10 @@ fun TvHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SmartVisionLogo()
-        Spacer(Modifier.width(24.dp))
+        Spacer(Modifier.width(16.dp))
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             tabs.forEach { tab ->
@@ -85,7 +88,13 @@ fun TvHeader(
                     onClick = { onNavigate(tab.route) },
                     selected = tab.route == currentRoute,
                     variant = if (tab.route == currentRoute) TvButtonVariant.Primary else TvButtonVariant.Text,
-                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    leadingIcon = tab.icon,
+                    leadingContent = if (tab.useYoutubeLogo) {
+                        { YoutubeLogoIcon() }
+                    } else {
+                        null
+                    },
+                    contentPadding = PaddingValues(horizontal = 10.dp),
                     modifier = Modifier.height(40.dp),
                 )
             }

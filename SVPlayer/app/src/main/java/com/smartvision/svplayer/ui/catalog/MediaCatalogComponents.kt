@@ -69,6 +69,7 @@ import coil.compose.AsyncImage
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.components.YoutubeLogoIcon
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
@@ -126,11 +127,11 @@ fun MediaCatalogHeader(
     ) {
         MediaCatalogLogo()
 
-        Spacer(Modifier.width(86.dp))
+        Spacer(Modifier.width(16.dp))
 
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             tabs.forEach { tab ->
@@ -139,7 +140,13 @@ fun MediaCatalogHeader(
                     onClick = { onNavigate(tab.route) },
                     selected = tab.route == currentRoute,
                     variant = if (tab.route == currentRoute) TvButtonVariant.Primary else TvButtonVariant.Text,
-                    contentPadding = PaddingValues(horizontal = 13.dp),
+                    leadingIcon = tab.icon,
+                    leadingContent = if (tab.useYoutubeLogo) {
+                        { YoutubeLogoIcon() }
+                    } else {
+                        null
+                    },
+                    contentPadding = PaddingValues(horizontal = 10.dp),
                     modifier = Modifier.height(36.dp),
                 )
             }
@@ -266,6 +273,7 @@ private fun MediaCatalogLogo() {
 fun MediaCatalogPanel(
     title: String,
     modifier: Modifier = Modifier,
+    titleContent: @Composable (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
     shape: Shape = RoundedCornerShape(MediaCatalogDimens.PanelRadius),
     content: @Composable () -> Unit,
@@ -290,14 +298,18 @@ fun MediaCatalogPanel(
                 .height(34.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = title,
-                color = SmartVisionColors.TextPrimary,
-                style = CatalogPanelTitleStyle,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            if (titleContent != null) {
+                titleContent()
+            } else {
+                Text(
+                    text = title,
+                    color = SmartVisionColors.TextPrimary,
+                    style = CatalogPanelTitleStyle,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Spacer(Modifier.weight(1f))
             trailing?.invoke()
         }

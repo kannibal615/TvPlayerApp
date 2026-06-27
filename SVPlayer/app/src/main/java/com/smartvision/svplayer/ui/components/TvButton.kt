@@ -3,6 +3,7 @@ package com.smartvision.svplayer.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,10 +26,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
@@ -53,6 +57,7 @@ fun TvButton(
     selected: Boolean = false,
     enabled: Boolean = true,
     leadingIcon: ImageVector? = null,
+    leadingContent: (@Composable () -> Unit)? = null,
     focusRequester: FocusRequester? = null,
     contentPadding: PaddingValues = PaddingValues(horizontal = SmartVisionDimensions.InternalSpacing),
 ) {
@@ -133,14 +138,20 @@ fun TvButton(
             .padding(contentPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (leadingIcon != null) {
-            Icon(
-                imageVector = leadingIcon,
-                contentDescription = null,
-                tint = textColor,
-                modifier = Modifier.size(SmartVisionDimensions.InternalSpacing + SmartVisionDimensions.CompactSpacing),
-            )
-            Spacer(Modifier.width(SmartVisionDimensions.CompactSpacing))
+        when {
+            leadingContent != null -> {
+                leadingContent()
+                Spacer(Modifier.width(SmartVisionDimensions.CompactSpacing))
+            }
+            leadingIcon != null -> {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    tint = textColor,
+                    modifier = Modifier.size(SmartVisionDimensions.InternalSpacing + SmartVisionDimensions.CompactSpacing),
+                )
+                Spacer(Modifier.width(SmartVisionDimensions.CompactSpacing))
+            }
         }
         Text(
             text = text,
@@ -149,5 +160,22 @@ fun TvButton(
             fontWeight = if (selected || focusState.isFocused) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1,
         )
+    }
+}
+
+@Composable
+fun YoutubeLogoIcon(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier.size(width = 24.dp, height = 17.dp)) {
+        drawRoundRect(
+            color = Color(0xFFFF0033),
+            cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx()),
+        )
+        val triangle = Path().apply {
+            moveTo(size.width * 0.43f, size.height * 0.30f)
+            lineTo(size.width * 0.43f, size.height * 0.70f)
+            lineTo(size.width * 0.70f, size.height * 0.50f)
+            close()
+        }
+        drawPath(triangle, Color.White)
     }
 }

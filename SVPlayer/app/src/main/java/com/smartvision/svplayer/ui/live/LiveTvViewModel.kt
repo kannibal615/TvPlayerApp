@@ -370,21 +370,29 @@ class LiveTvViewModel(
     private fun historyChannels(): List<LiveTvChannel> =
         historyProgress.mapIndexedNotNull { index, progress ->
             val id = progress.contentId.toIntOrNull() ?: return@mapIndexedNotNull null
-            val name = progress.title ?: "Chaine $id"
+            val cachedStream = xtreamRepository.getCachedLiveStream(id)
+            val name = cachedStream?.name?.cleanedChannelName()
+                ?: progress.title?.takeUnless { it.isGeneratedLiveTitle(id) }
+                ?: "Chaine $id"
+            val categoryLabel = cachedStream?.categoryId
+                ?.let { categoryId -> xtreamRepository.getCachedCategories().firstOrNull { it.id == categoryId }?.name }
+                ?: progress.subtitle
+                ?: "Historique"
             LiveTvChannel(
                 streamId = id,
                 number = (index + 1).toString().padStart(3, '0'),
                 logoText = name.logoFallback(),
-                logoUrl = progress.imageUrl,
+                logoUrl = cachedStream?.streamIcon?.takeIf { it.isNotBlank() } ?: progress.imageUrl,
                 name = name,
                 program = "Direct",
-                genre = "Historique",
+                genre = categoryLabel,
                 timeRange = "Live",
                 progress = 0f,
                 description = "Chaine deja regardee.",
                 nextProgram = "EPG non disponible",
                 nextTimeRange = "A suivre",
-                streamUrl = xtreamRepository.buildLiveStreamUrl(id),
+                streamUrl = cachedStream?.let { xtreamRepository.buildLiveStreamUrl(it) }
+                    ?: xtreamRepository.buildLiveStreamUrl(id),
                 fallbackStreamUrl = xtreamRepository.buildLiveStreamFallbackUrl(id),
                 isFavorite = id in favoriteIds,
             )
@@ -551,6 +559,12 @@ private fun String.cleanedChannelName(): String =
         .replace(" SD", "", ignoreCase = true)
         .trim()
         .ifBlank { "Chaine TV" }
+
+private fun String.isGeneratedLiveTitle(streamId: Int): Boolean {
+    val normalized = trim()
+    return normalized.equals("Chaine $streamId", ignoreCase = true) ||
+        normalized.matches(Regex("(?i)^chaine\\s+\\d+$"))
+}
 
 private fun String.logoFallback(): String {
     val compact = replace(Regex("[^A-Za-z0-9+]"), "")

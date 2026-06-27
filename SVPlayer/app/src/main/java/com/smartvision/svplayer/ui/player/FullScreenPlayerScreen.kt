@@ -92,6 +92,7 @@ import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.ui.viewModelFactory
+import com.smartvision.svplayer.data.anomaly.AnomalyReporter
 import com.smartvision.svplayer.data.models.XtreamSeriesEpisode
 import com.smartvision.svplayer.data.monetization.IdleVastAdLoader
 import com.smartvision.svplayer.data.monetization.IdleVastCreative
@@ -386,11 +387,20 @@ fun FullScreenPlayerRoute(
         },
     )
     val playback by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(playback.streamId, playback.contentType, playback.title) {
+        container.anomalyReporter.setCurrentContext(
+            "player kind=${kind.name} contentType=${playback.contentType} streamId=${playback.streamId} title=${playback.title}",
+        )
+    }
+    DisposableEffect(Unit) {
+        onDispose { container.anomalyReporter.setCurrentContext(null) }
+    }
     FullScreenPlayerScreen(
         playback = playback,
         contentKind = kind,
         monetizationManager = container.monetizationManager,
         idleVastAdLoader = container.idleVastAdLoader,
+        anomalyReporter = container.anomalyReporter,
         adRequestTimeoutSeconds = container.adConfigProvider.current().requestTimeoutSeconds,
         onBack = onBack,
         onPlayLive = onPlayLive,
@@ -406,6 +416,7 @@ private fun FullScreenPlayerScreen(
     contentKind: FullScreenContentKind,
     monetizationManager: MonetizationManager,
     idleVastAdLoader: IdleVastAdLoader,
+    anomalyReporter: AnomalyReporter,
     adRequestTimeoutSeconds: Long,
     onBack: () -> Unit,
     onPlayLive: (Int) -> Unit,
@@ -441,6 +452,7 @@ private fun FullScreenPlayerScreen(
     var firedAdTrackingEvents by remember(playback.streamId) { mutableStateOf(emptySet<String>()) }
     var adPositionMs by remember(playback.streamId) { mutableLongStateOf(0L) }
     var adDurationMs by remember(playback.streamId) { mutableLongStateOf(0L) }
+    var exiting by remember(playback.streamId) { mutableStateOf(false) }
     val adSkipDelayMs = 20_000L
 
     val playerView = remember {
@@ -519,6 +531,31 @@ private fun FullScreenPlayerScreen(
         return true
     }
 
+    fun exitPlayer(source: String) {
+        if (exiting) return
+        exiting = true
+        anomalyReporter.reportAsync(
+            anomalyType = "PLAYER_EXIT",
+            message = "Sortie player $source",
+            context = "contentType=${playback.contentType} streamId=${playback.streamId} position=$positionMs duration=$durationMs adGate=$adGateActive",
+        )
+        runCatching {
+            if (!adGateActive) {
+                onProgressSnapshot(player.currentPosition.coerceAtLeast(0L), player.duration.validDurationMs())
+            }
+            player.pause()
+            player.stop()
+        }.onFailure { error ->
+            anomalyReporter.reportAsync(
+                anomalyType = "PLAYER_EXIT_ERROR",
+                message = error.message ?: "Erreur sortie player",
+                throwable = error,
+                context = "contentType=${playback.contentType} streamId=${playback.streamId} source=$source",
+            )
+        }
+        onBack()
+    }
+
     BackHandler {
         if (adGateActive) {
             Unit
@@ -530,7 +567,7 @@ private fun FullScreenPlayerScreen(
         } else if (overlayVisible) {
             overlayVisible = false
         } else {
-            onBack()
+            exitPlayer("back_handler")
         }
     }
 
@@ -739,6 +776,12 @@ private fun FullScreenPlayerScreen(
             }
 
             override fun onPlayerError(error: PlaybackException) {
+                anomalyReporter.reportAsync(
+                    anomalyType = "PLAYER_ERROR",
+                    message = error.message ?: error.errorCodeName,
+                    throwable = error,
+                    context = "contentType=${playback.contentType} streamId=${playback.streamId} fallbackTried=$fallbackTried adGate=$adGateActive",
+                )
                 val adRequestId = activeAdRequestId
                 if (adRequestId != null && adGateActive) {
                     coroutineScope.launch {
@@ -773,11 +816,21 @@ private fun FullScreenPlayerScreen(
         }
         player.addListener(listener)
         onDispose {
-            if (!adGateActive) {
-                onProgressSnapshot(player.currentPosition.coerceAtLeast(0L), player.duration.validDurationMs())
+            runCatching {
+                if (!adGateActive) {
+                    onProgressSnapshot(player.currentPosition.coerceAtLeast(0L), player.duration.validDurationMs())
+                }
+                player.removeListener(listener)
+                playerView.player = null
+                player.release()
+            }.onFailure { error ->
+                anomalyReporter.reportAsync(
+                    anomalyType = "PLAYER_RELEASE_ERROR",
+                    message = error.message ?: "Erreur release player",
+                    throwable = error,
+                    context = "contentType=${playback.contentType} streamId=${playback.streamId}",
+                )
             }
-            player.removeListener(listener)
-            player.release()
         }
     }
 
@@ -813,7 +866,7 @@ private fun FullScreenPlayerScreen(
                                 if (overlayVisible) {
                                     overlayVisible = false
                                 } else {
-                                    onBack()
+                                    exitPlayer("player_view_back")
                                 }
                                 true
                             }
@@ -849,7 +902,7 @@ private fun FullScreenPlayerScreen(
                             if (overlayVisible) {
                                 overlayVisible = false
                             } else {
-                                onBack()
+                                exitPlayer("player_view_back_update")
                             }
                             true
                         }

@@ -74,6 +74,7 @@ import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.update.AppUpdateDialog
 import com.smartvision.svplayer.ui.update.AppUpdateViewModel
+import com.smartvision.svplayer.ui.youtube.YoutubeScreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -106,6 +107,9 @@ fun AppNavigation(
     val activity = context as? Activity
     LaunchedEffect(activity) {
         activity?.let { container.privacyConsentManager.refreshSilently(it) }
+    }
+    LaunchedEffect(currentRoute) {
+        container.anomalyReporter.setCurrentRoute(currentRoute)
     }
     LaunchedEffect(
         activationState.activationType,
@@ -315,6 +319,21 @@ fun AppNavigation(
                 notificationBadgeCount = notificationBadgeCount,
                 onOpenSeriesDetails = { seriesId -> navController.navigate("series_detail/$seriesId") },
                 onWatchEpisode = { episodeId -> navController.navigate("episode_player/$episodeId") },
+            )
+        }
+        composable(AppRoute.Youtube.route) {
+            YoutubeScreen(
+                currentRoute = currentRoute,
+                tabs = headerTabs,
+                onNavigate = { route -> navController.navigateSingleTop(route) },
+                onSync = syncCatalog,
+                onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                onLicenseKey = { showLicensePurchaseQr = true },
+                showLicenseKey = activationState.shouldShowLicenseKey,
+                hasNewNotifications = hasNewNotifications,
+                notificationBadgeCount = notificationBadgeCount,
             )
         }
         composable(AppRoute.Settings.route) {
@@ -612,6 +631,7 @@ private enum class AppRoute(val route: String) {
     Live("live_tv"),
     Movies("movies"),
     Series("series"),
+    Youtube("youtube"),
     Settings("settings"),
     Profile("profile"),
     Notifications("notifications"),
@@ -624,6 +644,7 @@ private val headerTabs = listOf(
     HomeHeaderTab("Live TV", AppRoute.Live.route),
     HomeHeaderTab("Films", AppRoute.Movies.route),
     HomeHeaderTab("Series", AppRoute.Series.route),
+    HomeHeaderTab("YouTube", AppRoute.Youtube.route, useYoutubeLogo = true),
 )
 
 private fun activationPortalBaseUrl(): String =
