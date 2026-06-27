@@ -75,3 +75,23 @@ Erreurs a eviter :
 - ne pas auto-cliquer ou masquer une bannière/condition YouTube ;
 - ne pas rouvrir l app YouTube si le besoin est de rester dans SmartVision ;
 - ne pas remettre un fallback vers `youtube.com/watch`, car il ramene les overlays et le blocage de focus.
+
+## 2026-06-27 - Crash sortie grand player Live apres Back
+
+Probleme rencontre :
+`PROCESS_EXIT_CRASH` remontait au demarrage suivant apres sortie du grand player Live avec Back, souvent apres moins de 5 secondes de lecture.
+
+Contexte :
+Les logs anomalies pointaient vers `after_save_progress_deferred` sur `contentType=live`, sans stack Java/Kotlin. Le crash etait donc probablement une course entre navigation retour, sauvegarde historique Live courte et release Media3/Surface.
+
+Solution qui fonctionne :
+- ne pas enregistrer l historique Live si `positionMs < 5000` ;
+- sauvegarder le progres avant `onBack`, pas apres navigation ;
+- supprimer la sauvegarde doublon dans `onDispose` ;
+- detacher `PlayerView`, puis differer `player.release()` et proteger stop/release contre les doubles appels ;
+- compter `PROCESS_EXIT_CRASH`, `PROCESS_EXIT_CRASH_NATIVE` et `PROCESS_EXIT_ANR` dans le KPI admin.
+
+Erreurs a eviter :
+- ne pas forcer l historique Live a `5001 ms`, car cela cree des entrees apres une lecture trop courte ;
+- ne pas appeler `onProgressSnapshot()` apres `onBack()` ;
+- ne pas conclure qu il n y a pas crash si le compteur admin ignore `PROCESS_EXIT_*`.
