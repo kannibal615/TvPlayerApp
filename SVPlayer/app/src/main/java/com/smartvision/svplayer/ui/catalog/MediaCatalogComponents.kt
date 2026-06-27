@@ -440,6 +440,7 @@ fun CatalogMediaCard(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
     leftFocusRequester: FocusRequester? = null,
+    rightFocusRequester: FocusRequester? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -460,8 +461,11 @@ fun CatalogMediaCard(
         modifier = modifier
             .aspectRatio(MediaCatalogDimens.MediaCardAspectRatio)
             .then(
-                if (leftFocusRequester != null) {
-                    Modifier.focusProperties { left = leftFocusRequester }
+                if (leftFocusRequester != null || rightFocusRequester != null) {
+                    Modifier.focusProperties {
+                        if (leftFocusRequester != null) left = leftFocusRequester
+                        if (rightFocusRequester != null) right = rightFocusRequester
+                    }
                 } else {
                     Modifier
                 },

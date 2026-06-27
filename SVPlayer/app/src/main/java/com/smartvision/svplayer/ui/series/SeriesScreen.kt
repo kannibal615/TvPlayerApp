@@ -39,6 +39,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -362,6 +363,9 @@ private fun SeriesGrid(
                     items = visibleSeries,
                     key = { _, series -> series.seriesId },
                 ) { index, series ->
+                    val itemFocusRequester = remember(series.seriesId) { FocusRequester() }
+                    val cardFocusRequester = if (index == 0) firstSeriesFocusRequester else itemFocusRequester
+                    val deleteFocusRequester = remember(series.seriesId) { FocusRequester() }
                     Box {
                         CatalogMediaCard(
                             title = series.title,
@@ -370,15 +374,18 @@ private fun SeriesGrid(
                             fallbackText = series.title.take(2).uppercase(),
                             selected = series.seriesId == state.selectedSeriesId,
                             favorite = series.isFavorite,
-                            focusRequester = firstSeriesFocusRequester.takeIf { index == 0 },
+                            focusRequester = cardFocusRequester,
                             leftFocusRequester = selectedCategoryFocusRequester.takeIf {
                                 index % MediaCatalogDimens.MediaGridColumns == 0
                             },
+                            rightFocusRequester = deleteFocusRequester.takeIf { showHistoryDelete },
                             onFocused = { onSeriesFocused(series) },
                             onClick = { onSeriesClick(series) },
                         )
                         if (showHistoryDelete) {
                             HistoryDeleteButton(
+                                focusRequester = deleteFocusRequester,
+                                leftFocusRequester = cardFocusRequester,
                                 onClick = { onDeleteHistorySeries(series) },
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
@@ -394,15 +401,20 @@ private fun SeriesGrid(
 
 @Composable
 private fun HistoryDeleteButton(
+    focusRequester: FocusRequester,
+    leftFocusRequester: FocusRequester,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     TvButton(
         text = "",
         onClick = onClick,
+        focusRequester = focusRequester,
         leadingIcon = Icons.Default.Delete,
         variant = TvButtonVariant.Secondary,
-        modifier = modifier.size(36.dp),
+        modifier = modifier
+            .focusProperties { left = leftFocusRequester }
+            .size(36.dp),
     )
 }
 

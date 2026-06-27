@@ -31,8 +31,10 @@ class UserContentRepository(
     fun observeRecentProgress(limit: Int = 12): Flow<List<PlaybackProgressEntity>> =
         progressDao.observeRecent(limit)
 
-    fun observeHistory(contentType: String, limit: Int = 100): Flow<List<PlaybackProgressEntity>> =
-        progressDao.observeHistory(contentType, minimumPositionMs = 5_000L, limit = limit)
+    fun observeHistory(contentType: String, limit: Int = 100): Flow<List<PlaybackProgressEntity>> {
+        val minimumPositionMs = if (contentType == UserContentType.Live) -1L else 5_000L
+        return progressDao.observeHistory(contentType, minimumPositionMs = minimumPositionMs, limit = limit)
+    }
 
     suspend fun getProgress(contentType: String, contentId: Int): PlaybackProgressEntity? =
         withContext(Dispatchers.IO) {
@@ -70,7 +72,7 @@ class UserContentRepository(
         when (progress.contentType) {
             UserContentType.Live -> mediaDao.getLiveStream(id)?.let { stream ->
                 progress.copy(
-                    title = progress.title ?: stream.name,
+                    title = progress.title.takeUnless { it.isFallbackLiveTitle(id) } ?: stream.name,
                     subtitle = progress.subtitle ?: "Live TV",
                     imageUrl = progress.imageUrl ?: stream.logoUrl,
                 )
@@ -121,11 +123,16 @@ class UserContentRepository(
         imageUrl: String? = null,
         parentContentId: Int? = null,
     ) = withContext(Dispatchers.IO) {
+        val stablePositionMs = if (contentType == UserContentType.Live) {
+            positionMs.coerceAtLeast(5_001L)
+        } else {
+            positionMs.coerceAtLeast(0L)
+        }
         progressDao.upsert(
             PlaybackProgressEntity(
                 contentType = contentType,
                 contentId = contentId.toString(),
-                positionMs = positionMs.coerceAtLeast(0L),
+                positionMs = stablePositionMs,
                 durationMs = durationMs.coerceAtLeast(0L),
                 updatedAt = System.currentTimeMillis(),
                 title = title?.takeIf { it.isNotBlank() },
@@ -135,4 +142,11 @@ class UserContentRepository(
             ),
         )
     }
+}
+
+private fun String?.isFallbackLiveTitle(contentId: Int): Boolean {
+    val value = this?.trim() ?: return true
+    if (value.isBlank()) return true
+    return value.equals("Chaine $contentId", ignoreCase = true) ||
+        value.equals("Chaîne $contentId", ignoreCase = true)
 }

@@ -599,8 +599,6 @@ private fun YoutubeVideoCard(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val active = selected || focusState.isFocused
-    val isFocused = focusState.isFocused
-    var showPreview by remember(video.videoId) { mutableStateOf(false) }
     val shape = RoundedCornerShape(MediaCatalogDimens.ItemRadius)
     val borderColor by animateColorAsState(
         targetValue = when {
@@ -611,14 +609,6 @@ private fun YoutubeVideoCard(
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "youtubeVideoBorder",
     )
-
-    LaunchedEffect(isFocused, video.videoId) {
-        showPreview = false
-        if (isFocused) {
-            delay(1_000)
-            showPreview = true
-        }
-    }
 
     Box(
         modifier = modifier
@@ -684,13 +674,6 @@ private fun YoutubeVideoCard(
             }
         }
 
-        if (showPreview) {
-            YoutubeInlinePreview(
-                videoId = video.videoId,
-                modifier = Modifier.matchParentSize(),
-            )
-        }
-
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -745,18 +728,6 @@ private fun YoutubeVideoCard(
             )
         }
     }
-}
-
-@Composable
-private fun YoutubeInlinePreview(
-    videoId: String,
-    modifier: Modifier = Modifier,
-) {
-    YoutubeWebPlayer(
-        videoId = videoId,
-        mode = YoutubePlaybackMode.Preview,
-        modifier = modifier,
-    )
 }
 
 @Composable

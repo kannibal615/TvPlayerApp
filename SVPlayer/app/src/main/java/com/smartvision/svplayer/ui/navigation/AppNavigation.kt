@@ -341,7 +341,18 @@ fun AppNavigation(
         composable(AppRoute.YoutubePlayer.route) { backStackEntry ->
             YoutubePlayerScreen(
                 videoId = backStackEntry.arguments?.getString("videoId").orEmpty(),
+                currentRoute = AppRoute.Youtube.route,
+                tabs = headerTabs,
                 anomalyReporter = container.anomalyReporter,
+                onNavigate = { route -> navController.navigateSingleTop(route) },
+                onSync = syncCatalog,
+                onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                onLicenseKey = { showLicensePurchaseQr = true },
+                showLicenseKey = activationState.shouldShowLicenseKey,
+                hasNewNotifications = hasNewNotifications,
+                notificationBadgeCount = notificationBadgeCount,
                 onBack = { navController.popBackStack() },
             )
         }

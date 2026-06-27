@@ -41,6 +41,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -363,6 +364,9 @@ private fun MovieGrid(
                     items = visibleMovies,
                     key = { _, movie -> movie.streamId },
                 ) { index, movie ->
+                    val itemFocusRequester = remember(movie.streamId) { FocusRequester() }
+                    val cardFocusRequester = if (index == 0) firstMovieFocusRequester else itemFocusRequester
+                    val deleteFocusRequester = remember(movie.streamId) { FocusRequester() }
                     Box {
                         CatalogMediaCard(
                             title = movie.title,
@@ -371,15 +375,18 @@ private fun MovieGrid(
                             fallbackText = movie.title.take(2).uppercase(),
                             selected = movie.streamId == state.selectedMovieId,
                             favorite = movie.isFavorite,
-                            focusRequester = firstMovieFocusRequester.takeIf { index == 0 },
+                            focusRequester = cardFocusRequester,
                             leftFocusRequester = selectedCategoryFocusRequester.takeIf {
                                 index % MediaCatalogDimens.MediaGridColumns == 0
                             },
+                            rightFocusRequester = deleteFocusRequester.takeIf { showHistoryDelete },
                             onFocused = { onMovieFocused(movie) },
                             onClick = { onMovieClick(movie) },
                         )
                         if (showHistoryDelete) {
                             HistoryDeleteButton(
+                                focusRequester = deleteFocusRequester,
+                                leftFocusRequester = cardFocusRequester,
                                 onClick = { onDeleteHistoryMovie(movie) },
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
@@ -395,15 +402,20 @@ private fun MovieGrid(
 
 @Composable
 private fun HistoryDeleteButton(
+    focusRequester: FocusRequester,
+    leftFocusRequester: FocusRequester,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     TvButton(
         text = "",
         onClick = onClick,
+        focusRequester = focusRequester,
         leadingIcon = Icons.Default.Delete,
         variant = TvButtonVariant.Secondary,
-        modifier = modifier.size(36.dp),
+        modifier = modifier
+            .focusProperties { left = leftFocusRequester }
+            .size(36.dp),
     )
 }
 

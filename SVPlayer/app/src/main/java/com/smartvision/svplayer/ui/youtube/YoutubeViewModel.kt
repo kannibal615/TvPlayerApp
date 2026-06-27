@@ -64,6 +64,7 @@ class YoutubeViewModel(
 
     init {
         observeSearches()
+        observeRecentVideos()
         loadCategory("trending")
     }
 
@@ -129,6 +130,7 @@ class YoutubeViewModel(
     }
 
     fun selectSuggestion(suggestion: String) {
+        _uiState.update { it.copy(searchSuggestions = emptyList()) }
         submitSearch(suggestion)
     }
 
@@ -241,8 +243,25 @@ class YoutubeViewModel(
                     val recent = searches.map { it.query }
                     state.copy(
                         recentSearches = recent,
-                        searchSuggestions = buildSearchSuggestions(state.searchQuery, recent, state.categories),
+                        searchSuggestions = if (
+                            state.loading ||
+                            state.searchQuery.trim().equals(activeSearchQuery, ignoreCase = true)
+                        ) {
+                            emptyList()
+                        } else {
+                            buildSearchSuggestions(state.searchQuery, recent, state.categories)
+                        },
                     )
+                }
+            }
+        }
+    }
+
+    private fun observeRecentVideos() {
+        viewModelScope.launch {
+            repository.observeRecentVideoCount().collect { count ->
+                _uiState.update { state ->
+                    state.copy(categories = state.categories.withCategoryCount("history", count))
                 }
             }
         }

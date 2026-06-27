@@ -16,6 +16,9 @@ interface YoutubeDao {
     @Query("SELECT * FROM youtube_video_history ORDER BY updatedAt DESC LIMIT :limit")
     fun observeRecentVideos(limit: Int = 20): Flow<List<YoutubeVideoHistoryEntity>>
 
+    @Query("SELECT COUNT(*) FROM youtube_video_history")
+    fun observeRecentVideoCount(): Flow<Int>
+
     @Query("SELECT * FROM youtube_video_history ORDER BY updatedAt DESC LIMIT :limit")
     suspend fun getRecentVideos(limit: Int = 100): List<YoutubeVideoHistoryEntity>
 

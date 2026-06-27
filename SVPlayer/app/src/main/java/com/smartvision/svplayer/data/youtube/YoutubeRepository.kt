@@ -49,6 +49,8 @@ class YoutubeRepository(
 
     fun observeRecentVideos(): Flow<List<YoutubeVideoHistoryEntity>> = dao.observeRecentVideos()
 
+    fun observeRecentVideoCount(): Flow<Int> = dao.observeRecentVideoCount()
+
     suspend fun loadCategory(categoryId: String, pageToken: String? = null): YoutubePage = withContext(Dispatchers.IO) {
         val category = categories.firstOrNull { it.id == categoryId }
             ?: categories.first { it.id == "trending" }
