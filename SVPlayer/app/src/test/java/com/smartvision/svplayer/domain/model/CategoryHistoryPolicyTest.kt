@@ -27,4 +27,17 @@ class CategoryHistoryPolicyTest {
 
         assertEquals(categories, sorted)
     }
+
+    @Test
+    fun `ignores history signals for categories missing from folder list`() {
+        val categories = listOf("all", "favorites", "history", "sports", "movies")
+        val signals = listOf(
+            CategoryHistorySignal(categoryId = "missing-category", updatedAt = 100),
+            CategoryHistorySignal(categoryId = "movies", updatedAt = 50),
+        )
+
+        val sorted = categories.sortedByHistorySignals(signals) { it }
+
+        assertEquals(listOf("movies", "all", "favorites", "history", "sports"), sorted)
+    }
 }

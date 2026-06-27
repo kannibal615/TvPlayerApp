@@ -76,22 +76,47 @@ Erreurs a eviter :
 - ne pas rouvrir l app YouTube si le besoin est de rester dans SmartVision ;
 - ne pas remettre un fallback vers `youtube.com/watch`, car il ramene les overlays et le blocage de focus.
 
+## 2026-06-27 - Lecteur YouTube doit rester dans la section miniatures
+
+Probleme rencontre :
+La selection d une video YouTube ouvrait une route/ecran `youtube_player/{videoId}`, ce qui cassait la continuite de l ecran YouTube et rendait le retour moins naturel.
+
+Contexte :
+L ecran YouTube Compose contient deja le header de section avec la recherche et la grille de miniatures. Le besoin TV est de remplacer uniquement la zone miniatures par le lecteur, puis de revenir a la grille avec Back.
+
+Solution qui fonctionne :
+- garder l etat de lecture dans `YoutubeScreen` au lieu de naviguer vers une route player separee ;
+- afficher `YoutubeWebPlayer` dans le panel des miniatures, sous le meme header de recherche ;
+- intercepter Back avec `BackHandler(enabled = playingVideo != null)` pour fermer le lecteur et restaurer le focus sur la grille ;
+- masquer les controles iframe YouTube (`controls=0`, `disablekb=1`) et piloter OK/gauche/droite depuis le listener Android TV ;
+- stopper/detruire le player via `smartVisionStop` avant de detruire le WebView.
+
+Erreurs a eviter :
+- ne pas refaire une navigation `navController.navigate("youtube_player/$videoId")` depuis la grille ;
+- ne pas laisser le chargement infini de la grille actif pendant que le lecteur remplace les miniatures ;
+- ne pas remettre les controles iframe natifs, car ils recuperent mal le focus D-pad sur Android TV.
+
 ## 2026-06-27 - Crash sortie grand player Live apres Back
 
 Probleme rencontre :
-`PROCESS_EXIT_CRASH` remontait au demarrage suivant apres sortie du grand player Live avec Back, souvent apres moins de 5 secondes de lecture.
+`PROCESS_EXIT_CRASH` remontait au demarrage suivant apres sortie du grand player Live avec Back. Les reproductions fiables arrivaient surtout apres plus de 5 secondes, quand la chaine ou le film appartenait a une categorie pas encore presente dans l historique et le tri des dossiers.
 
 Contexte :
-Les logs anomalies pointaient vers `after_save_progress_deferred` sur `contentType=live`, sans stack Java/Kotlin. Le crash etait donc probablement une course entre navigation retour, sauvegarde historique Live courte et release Media3/Surface.
+Les logs anomalies pointaient vers `contentType=live`, avec des positions superieures a 5 secondes et les dernieres etapes `before_onBack`, `release_begin` ou `release_done`, sans stack Java/Kotlin. Le signal `PLAYER_PROGRESS_SAVE_DONE` ne prouvait pas que Room avait fini, car `saveProgress()` lancait un `viewModelScope.launch`. Le crash etait donc probablement une course entre sauvegarde historique Live asynchrone, refresh des categories/historique et release Media3/Surface.
 
 Solution qui fonctionne :
-- ne pas enregistrer l historique Live si `positionMs < 5000` ;
-- sauvegarder le progres avant `onBack`, pas apres navigation ;
+- garder l historique Live actif apres 5 secondes ;
+- ne pas lancer `saveProgress()` en fire-and-forget avec `viewModelScope.launch` pendant la sortie ;
+- serialiser les sauvegardes de progression avec un `Mutex` ;
+- attendre la fin reelle de la sauvegarde Room avant `onBack()` pour eviter la course avec le refresh historique/categories et le release player ;
+- tracer `PLAYER_PROGRESS_SAVE_DONE`, `PLAYER_PROGRESS_SAVE_FAILED` ou `PLAYER_PROGRESS_SAVE_SKIPPED_SHORT_LIVE` avec `streamId`, `categoryId`, position et duree ;
+- sauvegarder le progres Live/Films/Episodes avant `onBack`, pas apres navigation ;
 - supprimer la sauvegarde doublon dans `onDispose` ;
 - detacher `PlayerView`, puis differer `player.release()` et proteger stop/release contre les doubles appels ;
 - compter `PROCESS_EXIT_CRASH`, `PROCESS_EXIT_CRASH_NATIVE` et `PROCESS_EXIT_ANR` dans le KPI admin.
 
 Erreurs a eviter :
-- ne pas forcer l historique Live a `5001 ms`, car cela cree des entrees apres une lecture trop courte ;
+- ne pas supprimer l historique Live pour masquer le crash ;
+- ne pas marquer `PLAYER_PROGRESS_SAVE_DONE` avant que Room ait vraiment termine ;
 - ne pas appeler `onProgressSnapshot()` apres `onBack()` ;
 - ne pas conclure qu il n y a pas crash si le compteur admin ignore `PROCESS_EXIT_*`.

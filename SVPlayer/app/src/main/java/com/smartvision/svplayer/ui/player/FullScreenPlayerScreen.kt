@@ -117,6 +117,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.atomic.AtomicBoolean
 
 enum class FullScreenContentKind {
@@ -139,6 +141,7 @@ data class FullScreenPlayback(
     val status: String,
     val infoPills: List<String>,
     val imageUrl: String? = null,
+    val categoryId: String? = null,
     val parentContentId: Int? = null,
     val previousItem: AdjacentPlayback? = null,
     val nextItem: AdjacentPlayback? = null,
@@ -179,6 +182,7 @@ class FullScreenPlayerViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(resolvePlayback(contentId, kind, xtreamRepository))
     val uiState: StateFlow<FullScreenPlayback> = _uiState
+    private val saveProgressMutex = Mutex()
 
     init {
         viewModelScope.launch {
@@ -189,14 +193,14 @@ class FullScreenPlayerViewModel(
         }
     }
 
-    fun saveProgress(positionMs: Long, durationMs: Long) {
+    suspend fun saveProgress(positionMs: Long, durationMs: Long): Boolean {
         if (kind == FullScreenContentKind.Live && positionMs < MinimumLiveHistoryMs) {
-            return
+            return false
         }
         if (kind != FullScreenContentKind.Live && (positionMs <= 1_000L || durationMs <= 0L)) {
-            return
+            return false
         }
-        viewModelScope.launch {
+        saveProgressMutex.withLock {
             userContentRepository.savePlaybackProgress(
                 contentType = kind.storageType(),
                 contentId = contentId,
@@ -208,6 +212,7 @@ class FullScreenPlayerViewModel(
                 parentContentId = _uiState.value.parentContentId,
             )
         }
+        return true
     }
 
     private fun resolvePlayback(
@@ -243,6 +248,7 @@ class FullScreenPlayerViewModel(
                 status = "Direct",
                 infoPills = listOf("16+", "HD", "5.1"),
                 imageUrl = stream.streamIcon,
+                categoryId = stream.categoryId,
                 previousItem = previous?.let {
                     AdjacentPlayback(
                         streamId = it.streamId,
@@ -292,6 +298,7 @@ class FullScreenPlayerViewModel(
                 status = "Film",
                 infoPills = listOf("HD", movie.containerExtension.uppercase()).distinct(),
                 imageUrl = movie.posterUrl,
+                categoryId = movie.categoryId,
                 previousItem = previous?.let {
                     AdjacentPlayback(
                         streamId = it.streamId,
@@ -324,8 +331,9 @@ class FullScreenPlayerViewModel(
         xtreamRepository: XtreamRepository,
     ): FullScreenPlayback =
         xtreamRepository.getCachedEpisode(episodeId)?.let { episode ->
-            val seriesName = xtreamRepository.getCachedSeries(episode.seriesId)?.title?.cleanTitle() ?: "Series"
-            val seriesCover = xtreamRepository.getCachedSeries(episode.seriesId)?.coverUrl
+            val series = xtreamRepository.getCachedSeries(episode.seriesId)
+            val seriesName = series?.title?.cleanTitle() ?: "Series"
+            val seriesCover = series?.coverUrl
             val previousEpisode = xtreamRepository.getCachedPreviousEpisode(episodeId)
             val nextEpisode = xtreamRepository.getCachedNextEpisode(episodeId)
             FullScreenPlayback(
@@ -339,6 +347,7 @@ class FullScreenPlayerViewModel(
                 status = episode.duration ?: "Episode",
                 infoPills = listOf("HD", episode.containerExtension.uppercase()).distinct(),
                 imageUrl = seriesCover,
+                categoryId = series?.categoryId,
                 parentContentId = episode.seriesId,
                 previousItem = previousEpisode?.let {
                     AdjacentPlayback(
@@ -432,7 +441,7 @@ private fun FullScreenPlayerScreen(
     onPlayLive: (Int) -> Unit,
     onPlayMovie: (Int) -> Unit,
     onPlayEpisode: (Int) -> Unit,
-    onProgressSnapshot: (positionMs: Long, durationMs: Long) -> Unit,
+    onProgressSnapshot: suspend (positionMs: Long, durationMs: Long) -> Boolean,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -550,6 +559,7 @@ private fun FullScreenPlayerScreen(
             "elapsed=${SystemClock.elapsedRealtime()}",
             "contentType=${playback.contentType}",
             "streamId=${playback.streamId}",
+            "categoryId=${playback.categoryId ?: "none"}",
             "position=$positionMs",
             "duration=$durationMs",
             "adGate=$adGateActive",
@@ -601,34 +611,44 @@ private fun FullScreenPlayerScreen(
                 context = "contentType=${playback.contentType} streamId=${playback.streamId} source=$source",
             )
         }
-        if (!adGateActive) {
-            runCatching {
-                if (playback.contentType == UserContentType.Live && snapshotPosition < MinimumLiveHistoryMs) {
-                    reportPlayerExitStep(
-                        step = "save_skipped_short_live",
-                        extra = "source=$source snapshotPosition=$snapshotPosition snapshotDuration=$snapshotDuration",
-                        anomalyType = "PLAYER_PROGRESS_SAVE_SKIPPED_SHORT_LIVE",
+        coroutineScope.launch {
+            if (!adGateActive) {
+                runCatching {
+                    if (playback.contentType == UserContentType.Live && snapshotPosition < MinimumLiveHistoryMs) {
+                        reportPlayerExitStep(
+                            step = "save_skipped_short_live",
+                            extra = "source=$source snapshotPosition=$snapshotPosition snapshotDuration=$snapshotDuration",
+                            anomalyType = "PLAYER_PROGRESS_SAVE_SKIPPED_SHORT_LIVE",
+                        )
+                    } else {
+                        reportPlayerExitStep(
+                            step = "before_save_progress",
+                            extra = "source=$source snapshotPosition=$snapshotPosition snapshotDuration=$snapshotDuration",
+                        )
+                        val saved = onProgressSnapshot(snapshotPosition, snapshotDuration)
+                        reportPlayerExitStep(
+                            step = if (saved) "save_done" else "save_skipped_invalid",
+                            extra = "source=$source snapshotPosition=$snapshotPosition snapshotDuration=$snapshotDuration saved=$saved",
+                            anomalyType = if (saved) "PLAYER_PROGRESS_SAVE_DONE" else "PLAYER_PROGRESS_SAVE_SKIPPED_INVALID",
+                        )
+                    }
+                }.onFailure { error ->
+                    anomalyReporter.reportAsync(
+                        anomalyType = "PLAYER_EXIT_ERROR",
+                        message = error.message ?: "Erreur sauvegarde historique",
+                        throwable = error,
+                        context = "contentType=${playback.contentType} streamId=${playback.streamId} categoryId=${playback.categoryId ?: "none"} source=$source step=save_progress",
                     )
-                } else {
-                    reportPlayerExitStep("before_save_progress", "source=$source snapshotPosition=$snapshotPosition snapshotDuration=$snapshotDuration")
-                    onProgressSnapshot(snapshotPosition, snapshotDuration)
                     reportPlayerExitStep(
-                        step = "save_done",
-                        extra = "source=$source snapshotPosition=$snapshotPosition snapshotDuration=$snapshotDuration",
-                        anomalyType = "PLAYER_PROGRESS_SAVE_DONE",
+                        step = "save_failed",
+                        extra = "source=$source snapshotPosition=$snapshotPosition snapshotDuration=$snapshotDuration error=${error.javaClass.simpleName}",
+                        anomalyType = "PLAYER_PROGRESS_SAVE_FAILED",
                     )
                 }
-            }.onFailure { error ->
-                anomalyReporter.reportAsync(
-                    anomalyType = "PLAYER_EXIT_ERROR",
-                    message = error.message ?: "Erreur sauvegarde historique",
-                    throwable = error,
-                    context = "contentType=${playback.contentType} streamId=${playback.streamId} source=$source step=save_progress",
-                )
             }
+            reportPlayerExitStep("before_onBack", "source=$source")
+            onBack()
         }
-        reportPlayerExitStep("before_onBack", "source=$source")
-        onBack()
     }
 
     BackHandler {

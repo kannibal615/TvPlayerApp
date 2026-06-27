@@ -1,5 +1,6 @@
 package com.smartvision.svplayer.ui.youtube
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -77,6 +78,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
+import com.smartvision.svplayer.data.anomaly.AnomalyReporter
 import com.smartvision.svplayer.ui.catalog.CatalogCategoryRow
 import com.smartvision.svplayer.ui.catalog.CatalogEmpty
 import com.smartvision.svplayer.ui.catalog.CatalogError
@@ -107,7 +109,6 @@ fun YoutubeScreen(
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
     notificationBadgeCount: Int,
-    onOpenYoutubeVideo: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
@@ -120,12 +121,28 @@ fun YoutubeScreen(
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstVideoFocusRequester = remember { FocusRequester() }
     val searchFocusRequester = remember { FocusRequester() }
+    var playingVideo by remember { mutableStateOf<YoutubeVideoUi?>(null) }
+    var restoreVideoFocusAfterPlayer by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.categories.isNotEmpty()) {
         if (state.categories.isNotEmpty()) {
             withFrameNanos { }
             delay(120)
             selectedCategoryFocusRequester.requestFocus()
+        }
+    }
+
+    BackHandler(enabled = playingVideo != null) {
+        playingVideo = null
+        restoreVideoFocusAfterPlayer = true
+    }
+
+    LaunchedEffect(restoreVideoFocusAfterPlayer, state.videos.size) {
+        if (restoreVideoFocusAfterPlayer && playingVideo == null && state.videos.isNotEmpty()) {
+            withFrameNanos { }
+            delay(80)
+            runCatching { firstVideoFocusRequester.requestFocus() }
+            restoreVideoFocusAfterPlayer = false
         }
     }
 
@@ -187,8 +204,10 @@ fun YoutubeScreen(
                 onVideoFocused = viewModel::focusVideo,
                 onVideoClick = { video ->
                     viewModel.openYoutubeVideo(video)
-                    onOpenYoutubeVideo(video.videoId)
+                    playingVideo = video
                 },
+                playingVideo = playingVideo,
+                anomalyReporter = container.anomalyReporter,
                 onLoadMore = viewModel::loadMoreIfNeeded,
                 onRetry = viewModel::retry,
                 modifier = Modifier
@@ -247,6 +266,8 @@ private fun YoutubeVideoGrid(
     onSuggestionClick: (String) -> Unit,
     onVideoFocused: (YoutubeVideoUi) -> Unit,
     onVideoClick: (YoutubeVideoUi) -> Unit,
+    playingVideo: YoutubeVideoUi?,
+    anomalyReporter: AnomalyReporter,
     onLoadMore: (Int) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
@@ -262,7 +283,8 @@ private fun YoutubeVideoGrid(
         if (gridState.layoutInfo.totalItemsCount > 0) gridState.scrollToItem(0)
     }
 
-    LaunchedEffect(gridState, state.videos.size, state.nextPageToken) {
+    LaunchedEffect(gridState, state.videos.size, state.nextPageToken, playingVideo?.videoId) {
+        if (playingVideo != null) return@LaunchedEffect
         snapshotFlow { gridState.layoutInfo.visibleItemsInfo.maxOfOrNull { it.index } ?: 0 }
             .distinctUntilChanged()
             .collect { onLoadMore(it) }
@@ -313,6 +335,12 @@ private fun YoutubeVideoGrid(
                 state.videos.isEmpty() -> CatalogEmpty(
                     title = "Aucune video",
                     subtitle = "Selectionnez une categorie ou lancez une recherche.",
+                    modifier = Modifier.fillMaxSize(),
+                )
+
+                playingVideo != null -> YoutubeInlinePlayer(
+                    video = playingVideo,
+                    anomalyReporter = anomalyReporter,
                     modifier = Modifier.fillMaxSize(),
                 )
 
@@ -371,6 +399,37 @@ private fun YoutubeVideoGrid(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun YoutubeInlinePlayer(
+    video: YoutubeVideoUi,
+    anomalyReporter: AnomalyReporter,
+    modifier: Modifier = Modifier,
+) {
+    val safeVideoId = video.videoId.filter { it.isLetterOrDigit() || it == '_' || it == '-' }.take(32)
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(MediaCatalogDimens.ItemRadius))
+            .background(Color.Black),
+    ) {
+        if (safeVideoId.isNotBlank()) {
+            YoutubeWebPlayer(
+                videoId = safeVideoId,
+                mode = YoutubePlaybackMode.Fullscreen,
+                anomalyReporter = anomalyReporter,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Text(
+                text = "Video YouTube indisponible",
+                color = SmartVisionColors.TextPrimary,
+                style = CatalogMetaStyle.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.align(Alignment.Center),
+            )
         }
     }
 }

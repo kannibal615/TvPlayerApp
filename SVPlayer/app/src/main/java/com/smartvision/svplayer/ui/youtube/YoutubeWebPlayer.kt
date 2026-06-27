@@ -54,7 +54,7 @@ internal fun YoutubeWebPlayer(
                         videoId = safeVideoId,
                         autoplay = true,
                         muted = mode != YoutubePlaybackMode.Fullscreen,
-                        controls = mode == YoutubePlaybackMode.Fullscreen,
+                        controls = false,
                     ),
                     "text/html",
                     "utf-8",
@@ -67,6 +67,7 @@ internal fun YoutubeWebPlayer(
         },
         onRelease = { webView ->
             runCatching {
+                webView.evaluateJavascript("window.smartVisionStop && window.smartVisionStop();", null)
                 webView.stopLoading()
                 webView.loadUrl("about:blank")
                 webView.removeJavascriptInterface(JavascriptBridgeName)
@@ -86,6 +87,10 @@ private fun WebView.configureYoutubeWebView(
     setBackgroundColor(android.graphics.Color.BLACK)
     isFocusable = mode == YoutubePlaybackMode.Fullscreen
     isFocusableInTouchMode = mode == YoutubePlaybackMode.Fullscreen
+    isVerticalScrollBarEnabled = false
+    isHorizontalScrollBarEnabled = false
+    overScrollMode = View.OVER_SCROLL_NEVER
+    setLayerType(View.LAYER_TYPE_HARDWARE, null)
     if (mode == YoutubePlaybackMode.Fullscreen) {
         setOnKeyListener(YoutubeRemoteKeyListener)
     }
@@ -130,7 +135,22 @@ private fun WebView.configureYoutubeWebView(
 }
 
 private val YoutubeRemoteKeyListener = View.OnKeyListener { view, keyCode, event ->
-    if (event.action != KeyEvent.ACTION_UP || view !is WebView) return@OnKeyListener false
+    if (view !is WebView) return@OnKeyListener false
+    if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_UP) {
+        return@OnKeyListener false
+    }
+    if (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+        return@OnKeyListener true
+    }
+    val isToggleKey = keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+        keyCode == KeyEvent.KEYCODE_ENTER ||
+        keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER ||
+        keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE ||
+        keyCode == KeyEvent.KEYCODE_SPACE
+    val expectedAction = if (isToggleKey) KeyEvent.ACTION_UP else KeyEvent.ACTION_DOWN
+    if (event.action != expectedAction) return@OnKeyListener isToggleKey
+    if (isToggleKey && event.repeatCount > 0) return@OnKeyListener true
+
     val command = when (keyCode) {
         KeyEvent.KEYCODE_DPAD_CENTER,
         KeyEvent.KEYCODE_ENTER,
@@ -221,6 +241,7 @@ private fun youtubePlayerHtml(
               var player;
               var playerReady = false;
               var playerState = -1;
+              var pendingCommand = null;
               function onYouTubeIframeAPIReady() {
                 player = new YT.Player('player', {
                   width: '100%',
@@ -229,9 +250,10 @@ private fun youtubePlayerHtml(
                   playerVars: {
                     autoplay: $autoplayValue,
                     controls: $controlsValue,
-                    disablekb: 0,
+                    cc_load_policy: 0,
+                    disablekb: 1,
                     enablejsapi: 1,
-                    fs: 1,
+                    fs: 0,
                     iv_load_policy: 3,
                     modestbranding: 1,
                     playsinline: 1,
@@ -250,6 +272,7 @@ private fun youtubePlayerHtml(
                 $mutedJs
                 event.target.playVideo();
                 setTimeout(function() { event.target.playVideo(); }, 450);
+                setTimeout(function() { runPendingCommand(); }, 520);
               }
               function onPlayerStateChange(event) {
                 playerState = event.data;
@@ -262,23 +285,46 @@ private fun youtubePlayerHtml(
                 document.getElementById('player').style.display = 'none';
                 document.getElementById('error').style.display = 'grid';
               }
+              function runWhenReady(command) {
+                if (!playerReady || !player) {
+                  pendingCommand = command;
+                  return;
+                }
+                try { command(); } catch (err) { console.log('smartvision_youtube_command_error'); }
+              }
+              function runPendingCommand() {
+                if (pendingCommand) {
+                  var command = pendingCommand;
+                  pendingCommand = null;
+                  runWhenReady(command);
+                }
+              }
               window.smartVisionPlay = function() {
-                if (playerReady && player && player.playVideo) player.playVideo();
+                runWhenReady(function() { if (player.playVideo) player.playVideo(); });
               };
               window.smartVisionPause = function() {
-                if (playerReady && player && player.pauseVideo) player.pauseVideo();
+                runWhenReady(function() { if (player.pauseVideo) player.pauseVideo(); });
               };
               window.smartVisionTogglePlayback = function() {
-                if (!playerReady || !player) return;
-                if (playerState === YT.PlayerState.PLAYING) {
-                  player.pauseVideo();
-                } else {
-                  player.playVideo();
-                }
+                runWhenReady(function() {
+                  if (playerState === YT.PlayerState.PLAYING) {
+                    player.pauseVideo();
+                  } else {
+                    player.playVideo();
+                  }
+                });
               };
               window.smartVisionSeekBy = function(deltaSeconds) {
-                if (!playerReady || !player || !player.seekTo || !player.getCurrentTime) return;
-                player.seekTo(Math.max(0, player.getCurrentTime() + deltaSeconds), true);
+                runWhenReady(function() {
+                  if (!player.seekTo || !player.getCurrentTime) return;
+                  player.seekTo(Math.max(0, player.getCurrentTime() + deltaSeconds), true);
+                });
+              };
+              window.smartVisionStop = function() {
+                try {
+                  if (player && player.stopVideo) player.stopVideo();
+                  if (player && player.destroy) player.destroy();
+                } catch (err) {}
               }
             </script>
           </body>

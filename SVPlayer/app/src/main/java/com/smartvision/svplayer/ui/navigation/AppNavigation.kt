@@ -74,7 +74,6 @@ import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.update.AppUpdateDialog
 import com.smartvision.svplayer.ui.update.AppUpdateViewModel
-import com.smartvision.svplayer.ui.youtube.YoutubePlayerScreen
 import com.smartvision.svplayer.ui.youtube.YoutubeScreen
 import kotlinx.coroutines.launch
 
@@ -335,25 +334,6 @@ fun AppNavigation(
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
                 notificationBadgeCount = notificationBadgeCount,
-                onOpenYoutubeVideo = { videoId -> navController.navigate("youtube_player/$videoId") },
-            )
-        }
-        composable(AppRoute.YoutubePlayer.route) { backStackEntry ->
-            YoutubePlayerScreen(
-                videoId = backStackEntry.arguments?.getString("videoId").orEmpty(),
-                currentRoute = AppRoute.Youtube.route,
-                tabs = headerTabs,
-                anomalyReporter = container.anomalyReporter,
-                onNavigate = { route -> navController.navigateSingleTop(route) },
-                onSync = syncCatalog,
-                onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
-                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
-                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
-                onLicenseKey = { showLicensePurchaseQr = true },
-                showLicenseKey = activationState.shouldShowLicenseKey,
-                hasNewNotifications = hasNewNotifications,
-                notificationBadgeCount = notificationBadgeCount,
-                onBack = { navController.popBackStack() },
             )
         }
         composable(AppRoute.Settings.route) {
@@ -652,7 +632,6 @@ private enum class AppRoute(val route: String) {
     Movies("movies"),
     Series("series"),
     Youtube("youtube"),
-    YoutubePlayer("youtube_player/{videoId}"),
     Settings("settings"),
     Profile("profile"),
     Notifications("notifications"),
