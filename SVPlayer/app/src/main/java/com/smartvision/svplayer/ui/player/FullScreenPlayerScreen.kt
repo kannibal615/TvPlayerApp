@@ -441,7 +441,7 @@ private fun FullScreenPlayerScreen(
     var firedAdTrackingEvents by remember(playback.streamId) { mutableStateOf(emptySet<String>()) }
     var adPositionMs by remember(playback.streamId) { mutableLongStateOf(0L) }
     var adDurationMs by remember(playback.streamId) { mutableLongStateOf(0L) }
-    val adSkipDelayMs = 5_000L
+    val adSkipDelayMs = 20_000L
 
     val playerView = remember {
         PlayerView(context).apply {
@@ -1012,10 +1012,18 @@ private fun FullScreenAdOverlay(
     onSkip: () -> Unit,
 ) {
     val skipFocusRequester = remember { FocusRequester() }
-    val skipEnabled = positionMs >= skipDelayMs
+    val showSkipButton = durationMs >= skipDelayMs
+    val skipEnabled = showSkipButton && positionMs >= skipDelayMs
     val remainingMs = if (durationMs > 0L) (durationMs - positionMs).coerceAtLeast(0L) else 0L
     val skipCountdownSeconds = ((skipDelayMs - positionMs).coerceAtLeast(0L) + 999L) / 1_000L
     val timerText = if (durationMs > 0L) remainingMs.formatPlaybackTime() else "--:--"
+    val elapsedText = if (durationMs > 0L) positionMs.formatPlaybackTime() else "--:--"
+    val totalText = if (durationMs > 0L) durationMs.formatPlaybackTime() else "--:--"
+    val progress = if (durationMs > 0L) {
+        (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
 
     LaunchedEffect(skipEnabled) {
         if (skipEnabled) {
@@ -1062,19 +1070,61 @@ private fun FullScreenAdOverlay(
             )
         }
 
-        TvButton(
-            text = if (skipEnabled) "Passer" else "Passer dans ${skipCountdownSeconds.coerceAtLeast(1L)}",
-            onClick = onSkip,
-            enabled = skipEnabled,
-            leadingIcon = Icons.Default.SkipNext,
-            focusRequester = skipFocusRequester,
-            variant = if (skipEnabled) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+        Column(
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 32.dp, bottom = 30.dp)
-                .height(44.dp)
-                .width(176.dp),
-        )
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 42.dp, vertical = 30.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "$elapsedText / $totalText",
+                    color = Color.White,
+                    style = PlayerMetaStyle,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "Video publicitaire",
+                    color = SmartVisionColors.TextSecondary,
+                    style = PlayerMetaStyle,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.White.copy(alpha = 0.20f)),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progress)
+                        .fillMaxHeight()
+                        .background(Color(0xFFFFD447)),
+                )
+            }
+        }
+
+        if (showSkipButton) {
+            TvButton(
+                text = if (skipEnabled) "Passer" else "Passer dans ${skipCountdownSeconds.coerceAtLeast(1L)}",
+                onClick = onSkip,
+                enabled = skipEnabled,
+                leadingIcon = Icons.Default.SkipNext,
+                focusRequester = skipFocusRequester,
+                variant = if (skipEnabled) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 32.dp, bottom = 66.dp)
+                    .height(44.dp)
+                    .width(176.dp),
+            )
+        }
     }
 }
 

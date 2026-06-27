@@ -46,6 +46,9 @@ import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
+import com.smartvision.svplayer.domain.model.PlayerSettings
+import com.smartvision.svplayer.sync.CatalogSyncScheduler
+import com.smartvision.svplayer.sync.SyncFrequencyPolicy
 import com.smartvision.svplayer.ui.activation.ActivationScreen
 import com.smartvision.svplayer.ui.activation.ActivationViewModel
 import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
@@ -91,6 +94,9 @@ fun AppNavigation(
     )
     val activationState by activationViewModel.uiState.collectAsStateWithLifecycle()
     val appUpdateState by appUpdateViewModel.uiState.collectAsStateWithLifecycle()
+    val playerSettings by container.settingsRepository.settings.collectAsStateWithLifecycle(
+        initialValue = PlayerSettings(),
+    )
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route ?: AppRoute.Home.route
     var showExitConfirmation by remember { mutableStateOf(false) }
@@ -120,6 +126,12 @@ fun AppNavigation(
     }
 
     val xtreamAccounts by container.accountManager.accounts.collectAsStateWithLifecycle()
+    val xtreamAccountSignature = remember(xtreamAccounts) {
+        xtreamAccounts.joinToString("|") { account ->
+            "${account.id}:${account.host}:${account.username}:${account.password.hashCode()}"
+        }
+    }
+    var lastXtreamAccountSignature by remember { mutableStateOf<String?>(null) }
 
     if (!activationState.activated) {
         BackHandler {
@@ -172,16 +184,21 @@ fun AppNavigation(
         return
     }
 
-    val xtreamAccountSignature = remember(xtreamAccounts) {
-        xtreamAccounts.joinToString("|") { account ->
-            "${account.id}:${account.host}:${account.username}:${account.password.hashCode()}"
-        }
+    LaunchedEffect(playerSettings.syncFrequency) {
+        CatalogSyncScheduler.apply(context, playerSettings.syncFrequency)
     }
-    LaunchedEffect(activationState.activated, xtreamAccountSignature) {
+    LaunchedEffect(activationState.activated, xtreamAccountSignature, playerSettings.syncFrequency) {
         if (activationState.activated && xtreamAccounts.isNotEmpty()) {
-            runCatching {
-                container.xtreamRepository.clearCaches()
-                container.synchronizeCatalog()
+            val previousSignature = lastXtreamAccountSignature
+            lastXtreamAccountSignature = xtreamAccountSignature
+            val accountChanged = previousSignature != null && previousSignature != xtreamAccountSignature
+            val startupSync = previousSignature == null &&
+                SyncFrequencyPolicy.from(playerSettings.syncFrequency).runOnStartup
+            if (accountChanged || startupSync) {
+                runCatching {
+                    container.xtreamRepository.clearCaches()
+                    container.synchronizeCatalog()
+                }
             }
         }
     }
@@ -445,6 +462,7 @@ fun AppNavigation(
             title = "Passer a SmartVision Premium",
             subtitle = "Scannez ce QR code pour acheter une licence. Premium supprime les publicites et conserve l'acces pendant la duree choisie.",
             qrUrl = purchaseUrl,
+            tvCode = activationState.publicDeviceCode.ifBlank { activationState.deviceId.take(8).uppercase() },
             width = 820.dp,
             licenseCode = premiumLicenseCode,
             onLicenseCodeChange = { premiumLicenseCode = it },

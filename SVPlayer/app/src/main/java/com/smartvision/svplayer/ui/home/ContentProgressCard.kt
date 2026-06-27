@@ -18,10 +18,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -33,6 +35,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.smartvision.svplayer.data.mock.ContinueItem
@@ -49,6 +52,7 @@ fun ContentProgressCard(
     item: ContinueItem,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onFocused: () -> Unit = {},
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -59,6 +63,11 @@ fun ContentProgressCard(
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "contentCardBorder",
     )
+    val isLive = item.mediaType == "LIVE"
+
+    LaunchedEffect(focusState.isFocused) {
+        if (focusState.isFocused) onFocused()
+    }
 
     Box(
         modifier = modifier
@@ -85,9 +94,11 @@ fun ContentProgressCard(
             AsyncImage(
                 model = item.imageUrl,
                 contentDescription = null,
-                contentScale = ContentScale.Crop,
-                alignment = Alignment.TopCenter,
-                modifier = Modifier.fillMaxSize(),
+                contentScale = if (isLive) ContentScale.Fit else ContentScale.Crop,
+                alignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(if (isLive) 16.dp else 0.dp),
             )
         }
         Box(
@@ -112,6 +123,12 @@ fun ContentProgressCard(
                     ),
                 ),
         )
+        MediaTypeBadge(
+            text = item.mediaType,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(7.dp),
+        )
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -121,7 +138,7 @@ fun ContentProgressCard(
             Text(
                 text = item.title,
                 color = Color.White,
-                style = SmartVisionType.Caption,
+                style = SmartVisionType.Caption.copy(fontSize = 11.sp, lineHeight = 14.sp),
                 fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -136,7 +153,7 @@ fun ContentProgressCard(
                 Text(
                     text = item.meta,
                     color = SmartVisionColors.TextSecondary,
-                    style = SmartVisionType.Caption,
+                    style = SmartVisionType.Caption.copy(fontSize = 10.sp, lineHeight = 13.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
@@ -144,12 +161,37 @@ fun ContentProgressCard(
                 Text(
                     text = item.remaining,
                     color = SmartVisionColors.TextSecondary,
-                    style = SmartVisionType.Caption,
+                    style = SmartVisionType.Caption.copy(fontSize = 10.sp, lineHeight = 13.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun MediaTypeBadge(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    if (text.isBlank()) return
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xE60A1425))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(4.dp))
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = Color.White,
+            style = SmartVisionType.Caption.copy(fontSize = 9.sp, lineHeight = 11.sp),
+            fontWeight = FontWeight.Black,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

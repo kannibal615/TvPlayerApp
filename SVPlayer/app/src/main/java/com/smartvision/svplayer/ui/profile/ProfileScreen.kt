@@ -104,6 +104,7 @@ import com.smartvision.svplayer.data.monetization.MonetizationStatus
 import com.smartvision.svplayer.data.monetization.monetizationStatus
 import com.smartvision.svplayer.data.repository.emptyAccountProfile
 import com.smartvision.svplayer.domain.model.AccountProfile
+import com.smartvision.svplayer.domain.model.SyncStatus
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
@@ -140,6 +141,7 @@ fun ProfileRoute(
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val syncStatus by container.catalogRepository.syncStatus.collectAsStateWithLifecycle()
     val privacyOptionsRequired by container.privacyConsentManager.privacyOptionsRequired
         .collectAsStateWithLifecycle()
 
@@ -151,6 +153,7 @@ fun ProfileRoute(
 
     ProfileScreen(
         state = state,
+        syncStatus = syncStatus,
         onBack = onBack,
         onSettings = onSettings,
         onRefresh = viewModel::refresh,
@@ -182,6 +185,7 @@ fun ProfileRoute(
 @Composable
 private fun ProfileScreen(
     state: ProfileUiState,
+    syncStatus: SyncStatus,
     onBack: () -> Unit,
     onSettings: () -> Unit,
     onRefresh: () -> Unit,
@@ -198,7 +202,7 @@ private fun ProfileScreen(
     onDismissQr: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
-    var selectedSection by remember { mutableStateOf(ProfileSection.Overview) }
+    var selectedSection by remember { mutableStateOf(ProfileSection.License) }
 
     Column(
         modifier = Modifier
@@ -266,23 +270,6 @@ private fun ProfileScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 when (selectedSection) {
-                    ProfileSection.Overview -> {
-                        LicensePanel(
-                            state = state,
-                            onRefresh = onRefresh,
-                            onShowLicenseQr = onShowLicenseQr,
-                            onShowPrivacyOptions = onShowPrivacyOptions,
-                            privacyOptionsRequired = privacyOptionsRequired,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        ) {
-                            XtreamSummaryPanel(state = state, modifier = Modifier.weight(1f))
-                            DevicePanel(state = state, modifier = Modifier.weight(1f))
-                        }
-                    }
                     ProfileSection.License -> LicensePanel(
                         state = state,
                         onRefresh = onRefresh,
@@ -293,10 +280,8 @@ private fun ProfileScreen(
                     )
                     ProfileSection.Xtream -> XtreamPanel(
                         state = state,
+                        syncStatus = syncStatus,
                         onShowXtreamSetupQr = onShowXtreamSetupQr,
-                        onShowXtreamShopQr = onShowXtreamShopQr,
-                        onSelectXtreamAccount = onSelectXtreamAccount,
-                        onDeleteXtreamAccount = onDeleteXtreamAccount,
                         onSyncCatalog = onSyncCatalog,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -315,6 +300,7 @@ private fun ProfileScreen(
             title = qr.title,
             subtitle = qr.subtitle,
             qrUrl = qr.url,
+            tvCode = state.tvCode,
             code = qr.code,
             loading = qr.loading,
             error = qr.error ?: state.errorMessage,
@@ -440,7 +426,6 @@ private enum class ProfileSection(
     val label: String,
     val icon: ImageVector,
 ) {
-    Overview("Vue d'ensemble", Icons.Default.Home),
     License("Licence SmartVision", Icons.Default.Verified),
     Xtream("Identifiants Xtream", Icons.Default.CloudSync),
     Device("Appareil et catalogue", Icons.Default.Devices),
@@ -453,10 +438,8 @@ private enum class ProfileSection(
 @Composable
 private fun XtreamPanel(
     state: ProfileUiState,
+    syncStatus: SyncStatus,
     onShowXtreamSetupQr: () -> Unit,
-    onShowXtreamShopQr: () -> Unit,
-    onSelectXtreamAccount: (String) -> Unit,
-    onDeleteXtreamAccount: (String) -> Unit,
     onSyncCatalog: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -465,69 +448,45 @@ private fun XtreamPanel(
         icon = Icons.Default.CloudSync,
         modifier = modifier,
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            ProfileMetric("Compte", if (state.hasXtream) "Configure" else "Absent", Modifier.weight(1f), if (state.hasXtream) SmartVisionColors.Success else SmartVisionColors.Warning)
-            ProfileMetric("Expiration Xtream", state.xtreamExpiresAt.ifBlank { "A synchroniser" }, Modifier.weight(1f))
-        }
+        TvButton(
+            text = syncStatus.buttonLabel,
+            onClick = onSyncCatalog,
+            enabled = syncStatus !is SyncStatus.Running,
+            leadingIcon = Icons.Default.CloudSync,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(46.dp),
+        )
         Spacer(Modifier.height(10.dp))
-        ProfileInfoRow("Serveur", state.xtreamHost.ifBlank { "Aucun serveur configure" })
-        ProfileInfoRow("Utilisateur", state.xtreamUsername.ifBlank { "Non configure" })
-        ProfileInfoRow("Connexions", state.xtreamConnections.ifBlank { "Non disponible" })
-        ProfileInfoRow("Comptes locaux", state.xtreamAccounts.size.toString())
-        if (state.xtreamAccounts.isNotEmpty()) {
+        when (syncStatus) {
+            is SyncStatus.Success -> Text(
+                text = syncStatus.message,
+                color = SmartVisionColors.Success,
+                style = SmartVisionType.Caption,
+                fontWeight = FontWeight.SemiBold,
+            )
+            is SyncStatus.Error -> Text(
+                text = syncStatus.message,
+                color = SmartVisionColors.Error,
+                style = SmartVisionType.Caption,
+                fontWeight = FontWeight.SemiBold,
+            )
+            else -> Unit
+        }
+        if (state.xtreamExpiresAt.isNotBlank()) {
             Spacer(Modifier.height(10.dp))
-            state.xtreamAccounts.forEach { account ->
-                ProfileXtreamAccountRow(
-                    account = account,
-                    active = account.id == state.activeXtreamAccountId,
-                    onSelect = { onSelectXtreamAccount(account.id) },
-                    onDelete = { onDeleteXtreamAccount(account.id) },
-                )
-                Spacer(Modifier.height(8.dp))
-            }
+            ProfileInfoRow("Expiration Xtream", state.xtreamExpiresAt)
         }
         Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            TvButton(
-                text = if (state.hasXtream) "Modifier par QR" else "Configurer par QR",
-                onClick = onShowXtreamSetupQr,
-                leadingIcon = Icons.Default.QrCode2,
-                modifier = Modifier
-                    .weight(1.1f)
-                    .height(46.dp),
-            )
-            TvButton(
-                text = "Achat Xtream",
-                onClick = onShowXtreamShopQr,
-                leadingIcon = Icons.Default.ShoppingCart,
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(46.dp),
-            )
-        }
-        Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            TvButton(
-                text = "Synchroniser",
-                onClick = onSyncCatalog,
-                leadingIcon = Icons.Default.CloudSync,
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(42.dp),
-            )
-            TvButton(
-                text = "Supprimer local",
-                onClick = { onDeleteXtreamAccount(state.activeXtreamAccountId) },
-                enabled = state.activeXtreamAccountId.isNotBlank(),
-                leadingIcon = Icons.Default.Delete,
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(42.dp),
-            )
-        }
+        TvButton(
+            text = if (state.hasXtream) "Modifier par QR" else "Configurer par QR",
+            onClick = onShowXtreamSetupQr,
+            leadingIcon = Icons.Default.QrCode2,
+            variant = TvButtonVariant.Secondary,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(46.dp),
+        )
     }
 }
 
@@ -862,6 +821,7 @@ fun SmartVisionQrDialog(
     title: String,
     subtitle: String,
     qrUrl: String,
+    tvCode: String = "",
     code: String? = null,
     loading: Boolean = false,
     error: String? = null,
@@ -877,6 +837,7 @@ fun SmartVisionQrDialog(
     if (onLicenseCodeChange != null && onSubmitLicenseCode != null) {
         PremiumLicenseDialog(
             qrUrl = qrUrl,
+            tvCode = tvCode,
             loading = loading,
             error = error,
             licenseCode = licenseCode,
@@ -1058,6 +1019,7 @@ fun SmartVisionQrDialog(
 @Composable
 private fun PremiumLicenseDialog(
     qrUrl: String,
+    tvCode: String,
     loading: Boolean,
     error: String?,
     licenseCode: String,
@@ -1121,6 +1083,7 @@ private fun PremiumLicenseDialog(
                 ) {
                     PremiumQrCard(
                         qrUrl = qrUrl,
+                        tvCode = tvCode,
                         loading = loading,
                         modifier = Modifier
                             .width(336.dp)
@@ -1289,6 +1252,7 @@ private fun PremiumLicenseDialog(
 @Composable
 private fun PremiumQrCard(
     qrUrl: String,
+    tvCode: String,
     loading: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -1344,9 +1308,10 @@ private fun PremiumQrCard(
             )
             Spacer(Modifier.width(10.dp))
             Text(
-                text = "Scannez le QR code\npour acheter une licence",
+                text = "CODE TV : ${tvCode.ifBlank { "GENERATION" }}",
                 color = SmartVisionColors.TextPrimary,
                 style = SmartVisionType.Label,
+                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Start,
             )
         }

@@ -185,6 +185,7 @@ fun LiveTvScreen(
     var categorySearchQuery by remember { mutableStateOf("") }
     var contentSearchQuery by remember { mutableStateOf("") }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
+    var tvCode by remember { mutableStateOf("") }
     var premiumPurchaseUrl by remember {
         mutableStateOf(
             BuildConfig.ACTIVATION_BASE_URL.trimEnd('/') +
@@ -199,6 +200,7 @@ fun LiveTvScreen(
 
     LaunchedEffect(container.activationRepository) {
         val activation = container.activationRepository.localState.first()
+        tvCode = activation.publicDeviceCode.ifBlank { activation.deviceId.take(8).uppercase() }
         val deviceQuery = when {
             activation.publicDeviceCode.isNotBlank() -> "device=${activation.publicDeviceCode}"
             activation.deviceId.isNotBlank() -> "device_id=${activation.deviceId}"
@@ -216,6 +218,7 @@ fun LiveTvScreen(
     LaunchedEffect(container.activationRepository) {
         container.activationRepository.localState.collect { activation ->
             showFreeAdsPreview = activation.monetizationStatus() == MonetizationStatus.FREE_WITH_ADS
+            tvCode = activation.publicDeviceCode.ifBlank { activation.deviceId.take(8).uppercase() }
         }
     }
 
@@ -331,6 +334,7 @@ fun LiveTvScreen(
                     showFreeAdsPreview = showFreeAdsPreview,
                     idleAdContentUrl = state.channels.firstOrNull()?.streamUrl,
                     premiumPurchaseUrl = premiumPurchaseUrl,
+                    tvCode = tvCode,
                     idleVastAdLoader = container.idleVastAdLoader,
                     monetizationManager = container.monetizationManager,
                     firstActionFocusRequester = firstPreviewActionFocusRequester,
@@ -559,6 +563,7 @@ private fun PreviewPanel(
     showFreeAdsPreview: Boolean,
     idleAdContentUrl: String?,
     premiumPurchaseUrl: String,
+    tvCode: String,
     idleVastAdLoader: IdleVastAdLoader,
     monetizationManager: MonetizationManager,
     firstActionFocusRequester: FocusRequester,
@@ -584,6 +589,7 @@ private fun PreviewPanel(
                     Spacer(Modifier.height(10.dp))
                     PremiumPreviewQr(
                         purchaseUrl = premiumPurchaseUrl,
+                        tvCode = tvCode,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -673,6 +679,7 @@ private fun IdlePreviewSmartVisionPrompt(
 @Composable
 private fun PremiumPreviewQr(
     purchaseUrl: String,
+    tvCode: String,
     modifier: Modifier = Modifier,
 ) {
     val bitmap = remember(purchaseUrl) { createLivePreviewQrBitmap(purchaseUrl, 384) }
@@ -699,6 +706,16 @@ private fun PremiumPreviewQr(
             )
         }
         Spacer(Modifier.height(8.dp))
+        Text(
+            text = "CODE TV : ${tvCode.ifBlank { "GENERATION" }}",
+            color = SmartVisionColors.CyanAccent,
+            style = LiveTvItemTitleStyle,
+            fontWeight = FontWeight.Black,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(4.dp))
         Text(
             text = "Supprimez les pubs",
             color = SmartVisionColors.TextPrimary,

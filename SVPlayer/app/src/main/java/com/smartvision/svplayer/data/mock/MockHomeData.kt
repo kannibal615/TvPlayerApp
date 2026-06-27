@@ -37,6 +37,7 @@ data class ContinueItem(
     val progress: Float,
     val visualStyle: HomeVisualStyle,
     val imageUrl: String? = null,
+    val mediaType: String = "",
 )
 
 object HomeNavigationData {

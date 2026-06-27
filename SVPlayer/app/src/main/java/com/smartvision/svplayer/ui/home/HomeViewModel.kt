@@ -101,6 +101,7 @@ class HomeViewModel(
                         progress = 0f,
                         visualStyle = HomeVisualStyle.Cinema,
                         imageUrl = movie.posterUrl,
+                        mediaType = "FILM",
                     ),
                 )
             }
@@ -124,6 +125,7 @@ class HomeViewModel(
                         progress = 0f,
                         visualStyle = HomeVisualStyle.Series,
                         imageUrl = series.coverUrl,
+                        mediaType = "SERIE",
                     ),
                 )
             }
@@ -180,6 +182,12 @@ class HomeViewModel(
             progress = ratio.coerceIn(0f, 1f),
             visualStyle = visualStyle,
             imageUrl = imageUrl,
+            mediaType = when (progress.contentType) {
+                UserContentType.Live -> "LIVE"
+                UserContentType.Movie -> "FILM"
+                UserContentType.Episode -> "SERIE"
+                else -> "MEDIA"
+            },
         )
     }
 }

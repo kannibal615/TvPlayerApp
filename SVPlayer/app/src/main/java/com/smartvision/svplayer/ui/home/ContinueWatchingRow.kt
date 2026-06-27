@@ -19,7 +19,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowRight
@@ -29,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +44,7 @@ import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import kotlinx.coroutines.launch
 
 @Composable
 fun ContinueWatchingRow(
@@ -52,6 +55,8 @@ fun ContinueWatchingRow(
     showViewAll: Boolean = false,
     onViewAll: () -> Unit = {},
 ) {
+    val rowState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     Column(modifier = modifier) {
         Text(
             text = title,
@@ -62,14 +67,18 @@ fun ContinueWatchingRow(
         )
         Spacer(Modifier.height(6.dp))
         LazyRow(
+            state = rowState,
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            items(items, key = { it.id }) { item ->
+            itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
                 ContentProgressCard(
                     item = item,
                     onClick = { onItemClick(item) },
+                    onFocused = {
+                        scope.launch { rowState.animateScrollToItem(index) }
+                    },
                     modifier = Modifier
                         .width(SmartVisionDimensions.HomeContentCardWidth)
                         .height(SmartVisionDimensions.HomeContentCardHeight),
