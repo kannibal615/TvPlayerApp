@@ -8,6 +8,8 @@ import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.domain.model.CategoryHistorySignal
+import com.smartvision.svplayer.domain.model.sortedByHistorySignals
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -65,6 +67,7 @@ class MoviesViewModel(
     private var moviesJob: Job? = null
     private var favoriteIds: Set<Int> = emptySet()
     private var historyProgress: List<PlaybackProgressEntity> = emptyList()
+    private var historyCategorySignals: List<CategoryHistorySignal> = emptyList()
 
     init {
         observeFavorites()
@@ -91,6 +94,7 @@ class MoviesViewModel(
                         allCount = xtreamRepository.getCachedMovies().size.takeIf { it > 0 },
                         favoriteCount = favoriteIds.size,
                         historyCount = historyProgress.size,
+                        historySignals = historyCategorySignals,
                     )
                     it.copy(
                         categoriesLoading = false,
@@ -110,7 +114,8 @@ class MoviesViewModel(
     }
 
     fun selectCategory(category: MovieCategoryUi) {
-        if (_uiState.value.selectedCategoryId == category.id && _uiState.value.movies.isNotEmpty()) {
+        val current = _uiState.value
+        if (current.selectedCategoryId == category.id && (current.movies.isNotEmpty() || current.moviesLoading)) {
             return
         }
         if (category.id == FavoriteMovieCategoryId) {
@@ -158,6 +163,8 @@ class MoviesViewModel(
             loadFavoriteMovies()
         } else if (categoryId == HistoryMovieCategoryId) {
             loadHistoryMovies()
+        } else if (categoryId == AllMovieCategoryId) {
+            loadAllMovies()
         } else {
             loadMovies(categoryId)
         }
@@ -178,6 +185,7 @@ class MoviesViewModel(
                             allCount = xtreamRepository.getCachedMovies().size.takeIf { it > 0 },
                             favoriteCount = ids.size,
                             historyCount = historyProgress.size,
+                            historySignals = historyCategorySignals,
                         ),
                         movies = refreshedMovies,
                         focusedMovieId = state.focusedMovieId
@@ -195,6 +203,8 @@ class MoviesViewModel(
         viewModelScope.launch {
             userContentRepository.observeHistory(UserContentType.Movie).collect { progress ->
                 historyProgress = progress.map { userContentRepository.enrichProgress(it) }
+                    .distinctBy { it.contentId }
+                historyCategorySignals = userContentRepository.resolveCategorySignals(historyProgress)
                 _uiState.update { state ->
                     val historyMovies = historyMovies()
                     state.copy(
@@ -202,6 +212,7 @@ class MoviesViewModel(
                             allCount = xtreamRepository.getCachedMovies().size.takeIf { it > 0 },
                             favoriteCount = favoriteIds.size,
                             historyCount = historyProgress.size,
+                            historySignals = historyCategorySignals,
                         ),
                         movies = if (state.selectedCategoryId == HistoryMovieCategoryId) historyMovies else state.movies,
                         focusedMovieId = if (state.selectedCategoryId == HistoryMovieCategoryId) historyMovies.firstOrNull()?.streamId else state.focusedMovieId,
@@ -223,6 +234,7 @@ class MoviesViewModel(
                     allCount = xtreamRepository.getCachedMovies().size.takeIf { it > 0 },
                     favoriteCount = favoriteIds.size,
                     historyCount = historyProgress.size,
+                    historySignals = historyCategorySignals,
                 ),
                 movies = movies,
                 focusedMovieId = movies.firstOrNull()?.streamId,
@@ -243,6 +255,7 @@ class MoviesViewModel(
                     allCount = xtreamRepository.getCachedMovies().size.takeIf { it > 0 },
                     favoriteCount = favoriteIds.size,
                     historyCount = historyProgress.size,
+                    historySignals = historyCategorySignals,
                 ),
                 movies = movies,
                 focusedMovieId = movies.firstOrNull()?.streamId,
@@ -254,7 +267,11 @@ class MoviesViewModel(
     private fun loadAllMovies() {
         moviesJob?.cancel()
         moviesJob = viewModelScope.launch {
-            val categories = _uiState.value.categories.filterNot { it.id in SpecialMovieCategoryIds }
+            val categories = _uiState.value.categories
+                .filterNot { it.id in SpecialMovieCategoryIds }
+                .sortedByHistorySignals(historyCategorySignals) { it.id }
+            val collected = mutableListOf<MovieItemUi>()
+            val seen = mutableSetOf<Int>()
             _uiState.update {
                 it.copy(
                     moviesLoading = true,
@@ -266,13 +283,25 @@ class MoviesViewModel(
                 )
             }
             runCatching {
-                categories.flatMap { category ->
-                    xtreamRepository.getMovies(category.id).map { movie -> category.label to movie }
-                }
-                    .distinctBy { (_, movie) -> movie.streamId }
-                    .mapIndexed { index, (categoryLabel, movie) ->
-                        movie.toUiMovie(index, categoryLabel, xtreamRepository, favoriteIds)
+                categories.forEach { category ->
+                    xtreamRepository.getMovies(category.id).forEach { movie ->
+                        if (!seen.add(movie.streamId)) return@forEach
+                        collected += movie.toUiMovie(collected.size, category.label, xtreamRepository, favoriteIds)
                     }
+                    _uiState.update { state ->
+                        state.copy(
+                            categories = state.categories.withSpecialCategories(
+                                allCount = collected.size,
+                                favoriteCount = favoriteIds.size,
+                                historyCount = historyProgress.size,
+                                historySignals = historyCategorySignals,
+                            ),
+                            movies = collected.toList(),
+                            focusedMovieId = state.focusedMovieId ?: collected.firstOrNull()?.streamId,
+                        )
+                    }
+                }
+                collected.toList()
             }.onSuccess { movies ->
                 _uiState.update { state ->
                     state.copy(
@@ -281,6 +310,7 @@ class MoviesViewModel(
                             allCount = movies.size,
                             favoriteCount = favoriteIds.size,
                             historyCount = historyProgress.size,
+                            historySignals = historyCategorySignals,
                         ),
                         movies = movies,
                         focusedMovieId = movies.firstOrNull()?.streamId,
@@ -291,8 +321,8 @@ class MoviesViewModel(
                 _uiState.update {
                     it.copy(
                         moviesLoading = false,
-                        movies = emptyList(),
-                        focusedMovieId = null,
+                        movies = collected.toList(),
+                        focusedMovieId = collected.firstOrNull()?.streamId,
                         selectedMovieId = null,
                         errorMessage = error.userMessage("Impossible de charger tous les films Xtream."),
                     )
@@ -358,6 +388,7 @@ class MoviesViewModel(
                             allCount = xtreamRepository.getCachedMovies().size.takeIf { it > 0 },
                             favoriteCount = favoriteIds.size,
                             historyCount = historyProgress.size,
+                            historySignals = historyCategorySignals,
                         ),
                         movies = movies,
                         focusedMovieId = movies.firstOrNull()?.streamId,
@@ -377,6 +408,12 @@ class MoviesViewModel(
             }
         }
     }
+
+    fun deleteHistoryMovie(movie: MovieItemUi) {
+        viewModelScope.launch {
+            userContentRepository.deleteProgress(UserContentType.Movie, movie.streamId)
+        }
+    }
 }
 
 private const val FavoriteMovieCategoryId = "__favorites_movies__"
@@ -388,6 +425,7 @@ private fun List<MovieCategoryUi>.withSpecialCategories(
     allCount: Int?,
     favoriteCount: Int,
     historyCount: Int,
+    historySignals: List<CategoryHistorySignal> = emptyList(),
 ): List<MovieCategoryUi> =
     listOf(
         MovieCategoryUi(
@@ -406,6 +444,7 @@ private fun List<MovieCategoryUi>.withSpecialCategories(
             count = historyCount,
         ),
     ) + filterNot { it.id in SpecialMovieCategoryIds }
+        .sortedByHistorySignals(historySignals) { it.id }
 
 private fun XtreamMovieCategory.toUiCategory(): MovieCategoryUi =
     MovieCategoryUi(

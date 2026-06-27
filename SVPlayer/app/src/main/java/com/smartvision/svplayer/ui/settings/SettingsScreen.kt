@@ -200,16 +200,6 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .height(44.dp),
                 )
-                Spacer(Modifier.height(10.dp))
-                TvButton(
-                    text = "Synchroniser le catalogue",
-                    leadingIcon = Icons.Default.Refresh,
-                    onClick = onSyncCatalog,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
-                )
                 updateState.errorMessage?.let { message ->
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -256,15 +246,6 @@ fun SettingsScreen(
                     style = SmartVisionType.Body,
                 )
                 Spacer(Modifier.height(16.dp))
-                TvButton(
-                    text = "Synchroniser maintenant",
-                    leadingIcon = Icons.Default.Refresh,
-                    onClick = onSyncCatalog,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(46.dp),
-                )
-                Spacer(Modifier.height(10.dp))
                 TvButton(
                     text = "Verifier les mises a jour",
                     leadingIcon = Icons.Default.Refresh,
@@ -378,15 +359,6 @@ private fun SettingsMenuLayout(
                     SettingsInfoRow("Frequence actuelle", settings.syncFrequency)
                     SettingsInfoRow("Compte actif", activeAccount?.let { "${it.name} - ${it.username}" } ?: "Aucun")
                     SettingsInfoRow("Serveur actif", activeAccount?.host ?: "Non configure")
-                    Spacer(Modifier.height(14.dp))
-                    TvButton(
-                        text = "Synchroniser le catalogue",
-                        leadingIcon = Icons.Default.Refresh,
-                        onClick = onSyncCatalog,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(46.dp),
-                    )
                 }
                 SettingsSection.Updates -> {
                     SettingsInfoRow("Version installee", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")

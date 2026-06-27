@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
@@ -45,8 +46,9 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -78,6 +80,8 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -168,15 +172,18 @@ fun ProfileRoute(
         },
         privacyOptionsRequired = privacyOptionsRequired,
         onShowXtreamSetupQr = viewModel::showXtreamSetupQr,
-        onShowXtreamShopQr = viewModel::showXtreamShopQr,
-        onSelectXtreamAccount = { accountId ->
+        onSaveXtreamAccount = { account ->
+            val accountId = container.accountManager.upsert(account)
             container.accountManager.select(accountId)
             container.xtreamRepository.clearCaches()
             onSyncCatalog()
         },
         onDeleteXtreamAccount = { accountId ->
             container.accountManager.delete(accountId)
-            onSyncCatalog()
+            container.xtreamRepository.clearCaches()
+            if (container.accountManager.accounts.value.isNotEmpty()) {
+                onSyncCatalog()
+            }
         },
         onDismissQr = viewModel::dismissQr,
     )
@@ -196,8 +203,7 @@ private fun ProfileScreen(
     onShowPrivacyOptions: () -> Unit,
     privacyOptionsRequired: Boolean,
     onShowXtreamSetupQr: () -> Unit,
-    onShowXtreamShopQr: () -> Unit,
-    onSelectXtreamAccount: (String) -> Unit,
+    onSaveXtreamAccount: (XtreamAccount) -> Unit,
     onDeleteXtreamAccount: (String) -> Unit,
     onDismissQr: () -> Unit,
 ) {
@@ -283,6 +289,8 @@ private fun ProfileScreen(
                         syncStatus = syncStatus,
                         onShowXtreamSetupQr = onShowXtreamSetupQr,
                         onSyncCatalog = onSyncCatalog,
+                        onSaveXtreamAccount = onSaveXtreamAccount,
+                        onDeleteXtreamAccount = onDeleteXtreamAccount,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     ProfileSection.Device -> DevicePanel(state = state, modifier = Modifier.fillMaxWidth())
@@ -441,8 +449,15 @@ private fun XtreamPanel(
     syncStatus: SyncStatus,
     onShowXtreamSetupQr: () -> Unit,
     onSyncCatalog: () -> Unit,
+    onSaveXtreamAccount: (XtreamAccount) -> Unit,
+    onDeleteXtreamAccount: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showDetails by remember(state.activeXtreamAccount?.id) { mutableStateOf(true) }
+    var accountToEdit by remember { mutableStateOf<XtreamAccount?>(null) }
+    var accountToDelete by remember { mutableStateOf<XtreamAccount?>(null) }
+    val activeAccount = state.activeXtreamAccount
+
     ProfilePanel(
         title = "Identifiants Xtream",
         icon = Icons.Default.CloudSync,
@@ -459,6 +474,23 @@ private fun XtreamPanel(
         )
         Spacer(Modifier.height(10.dp))
         when (syncStatus) {
+            SyncStatus.Running -> {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(50)),
+                    color = SmartVisionColors.CyanAccent,
+                    trackColor = SmartVisionColors.Surface.copy(alpha = 0.84f),
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Synchronisation du catalogue Xtream en cours...",
+                    color = SmartVisionColors.CyanAccent,
+                    style = SmartVisionType.Caption,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
             is SyncStatus.Success -> Text(
                 text = syncStatus.message,
                 color = SmartVisionColors.Success,
@@ -473,6 +505,14 @@ private fun XtreamPanel(
             )
             else -> Unit
         }
+        Spacer(Modifier.height(14.dp))
+        XtreamConnectedAccountSection(
+            account = activeAccount,
+            showDetails = showDetails,
+            onToggleDetails = { showDetails = !showDetails },
+            onEdit = { account -> accountToEdit = account },
+            onDelete = { account -> accountToDelete = account },
+        )
         if (state.xtreamExpiresAt.isNotBlank()) {
             Spacer(Modifier.height(10.dp))
             ProfileInfoRow("Expiration Xtream", state.xtreamExpiresAt)
@@ -488,6 +528,309 @@ private fun XtreamPanel(
                 .height(46.dp),
         )
     }
+
+    accountToEdit?.let { account ->
+        XtreamAccountEditorDialog(
+            initial = account,
+            onDismiss = { accountToEdit = null },
+            onSave = { updated ->
+                accountToEdit = null
+                onSaveXtreamAccount(updated)
+            },
+        )
+    }
+
+    accountToDelete?.let { account ->
+        ConfirmXtreamDeleteDialog(
+            account = account,
+            onDismiss = { accountToDelete = null },
+            onConfirm = {
+                accountToDelete = null
+                onDeleteXtreamAccount(account.id)
+            },
+        )
+    }
+}
+
+@Composable
+private fun XtreamConnectedAccountSection(
+    account: XtreamAccount?,
+    showDetails: Boolean,
+    onToggleDetails: () -> Unit,
+    onEdit: (XtreamAccount) -> Unit,
+    onDelete: (XtreamAccount) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(7.dp))
+            .background(SmartVisionColors.Surface.copy(alpha = 0.64f))
+            .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.82f)), RoundedCornerShape(7.dp))
+            .padding(12.dp),
+    ) {
+        Text(
+            text = "Compte Xtream connecte",
+            color = SmartVisionColors.TextPrimary,
+            style = SmartVisionType.Label,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(9.dp))
+        if (account == null) {
+            Text(
+                text = "Aucun compte Xtream local n'est configure.",
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Caption,
+            )
+        } else {
+            if (showDetails) {
+                ProfileInfoRow("URL", account.host.ifBlank { "Non configure" })
+                ProfileInfoRow("Username", account.username.ifBlank { "Non configure" })
+                ProfileInfoRow("Password", account.password.ifBlank { "Non configure" })
+                Spacer(Modifier.height(8.dp))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                TvButton(
+                    text = if (showDetails) "Masquer" else "Voir",
+                    onClick = onToggleDetails,
+                    leadingIcon = Icons.Default.Visibility,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp),
+                )
+                TvButton(
+                    text = "Modifier",
+                    onClick = { onEdit(account) },
+                    leadingIcon = Icons.Default.Edit,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp),
+                )
+                TvButton(
+                    text = "Supprimer",
+                    onClick = { onDelete(account) },
+                    leadingIcon = Icons.Default.Delete,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun XtreamAccountEditorDialog(
+    initial: XtreamAccount,
+    onDismiss: () -> Unit,
+    onSave: (XtreamAccount) -> Unit,
+) {
+    var name by remember(initial.id) { mutableStateOf(initial.name) }
+    var host by remember(initial.id) { mutableStateOf(initial.host) }
+    var username by remember(initial.id) { mutableStateOf(initial.username) }
+    var password by remember(initial.id) { mutableStateOf(initial.password) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val nameFocusRequester = remember { FocusRequester() }
+    val hostFocusRequester = remember { FocusRequester() }
+    val usernameFocusRequester = remember { FocusRequester() }
+    val passwordFocusRequester = remember { FocusRequester() }
+    val saveFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        nameFocusRequester.requestFocus()
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .width(600.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF0A1425))
+                .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent), RoundedCornerShape(8.dp))
+                .padding(22.dp),
+        ) {
+            Text(
+                text = "Modifier le compte Xtream",
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.TitleS,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(14.dp))
+            ProfileEditTextField(
+                label = "Nom",
+                value = name,
+                onValueChange = { name = it },
+                focusRequester = nameFocusRequester,
+                nextFocusRequester = hostFocusRequester,
+            )
+            ProfileEditTextField(
+                label = "URL",
+                value = host,
+                onValueChange = { host = it },
+                focusRequester = hostFocusRequester,
+                previousFocusRequester = nameFocusRequester,
+                nextFocusRequester = usernameFocusRequester,
+            )
+            ProfileEditTextField(
+                label = "Username",
+                value = username,
+                onValueChange = { username = it },
+                focusRequester = usernameFocusRequester,
+                previousFocusRequester = hostFocusRequester,
+                nextFocusRequester = passwordFocusRequester,
+            )
+            ProfileEditTextField(
+                label = "Password",
+                value = password,
+                onValueChange = { password = it },
+                focusRequester = passwordFocusRequester,
+                previousFocusRequester = usernameFocusRequester,
+                nextFocusRequester = saveFocusRequester,
+                password = false,
+            )
+            error?.let {
+                Spacer(Modifier.height(6.dp))
+                Text(it, color = SmartVisionColors.Error, style = SmartVisionType.Caption)
+            }
+            Spacer(Modifier.height(14.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TvButton(
+                    text = "Annuler",
+                    onClick = onDismiss,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier.height(42.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                TvButton(
+                    text = "Enregistrer",
+                    onClick = {
+                        if (host.isBlank() || username.isBlank() || password.isBlank()) {
+                            error = "URL, username et password sont obligatoires."
+                        } else {
+                            onSave(
+                                initial.copy(
+                                    name = name,
+                                    host = host,
+                                    username = username,
+                                    password = password,
+                                ),
+                            )
+                        }
+                    },
+                    focusRequester = saveFocusRequester,
+                    modifier = Modifier.height(42.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConfirmXtreamDeleteDialog(
+    account: XtreamAccount,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .width(500.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF0A1425))
+                .border(BorderStroke(1.dp, SmartVisionColors.Error.copy(alpha = 0.78f)), RoundedCornerShape(8.dp))
+                .padding(22.dp),
+        ) {
+            Text(
+                text = "Supprimer ce compte Xtream ?",
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.TitleS,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = account.username.ifBlank { account.host },
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Body,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(18.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TvButton(
+                    text = "Annuler",
+                    onClick = onDismiss,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier.height(42.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                TvButton(
+                    text = "Supprimer",
+                    onClick = onConfirm,
+                    leadingIcon = Icons.Default.Delete,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier.height(42.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileEditTextField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    focusRequester: FocusRequester,
+    previousFocusRequester: FocusRequester? = null,
+    nextFocusRequester: FocusRequester? = null,
+    password: Boolean = false,
+) {
+    Text(label, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
+    Spacer(Modifier.height(5.dp))
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        textStyle = SmartVisionType.Body.copy(color = SmartVisionColors.TextPrimary),
+        cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
+        visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(42.dp)
+            .focusRequester(focusRequester)
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.DirectionDown -> {
+                        nextFocusRequester?.requestFocus()
+                        nextFocusRequester != null
+                    }
+                    Key.DirectionUp -> {
+                        previousFocusRequester?.requestFocus()
+                        previousFocusRequester != null
+                    }
+                    else -> false
+                }
+            }
+            .background(SmartVisionColors.Surface, RoundedCornerShape(6.dp))
+            .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.72f)), RoundedCornerShape(6.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        decorationBox = { innerTextField ->
+            Box(contentAlignment = Alignment.CenterStart) {
+                if (value.isBlank()) {
+                    Text(
+                        text = label,
+                        color = SmartVisionColors.TextSecondary.copy(alpha = 0.62f),
+                        style = SmartVisionType.Body,
+                    )
+                }
+                innerTextField()
+            }
+        },
+    )
+    Spacer(Modifier.height(10.dp))
 }
 
 @Composable
@@ -1624,6 +1967,8 @@ data class ProfileUiState(
     val qrDialog: ProfileQrState? = null,
 ) {
     val tvCode: String = publicDeviceCode.ifBlank { "Generation..." }
+    val activeXtreamAccount: XtreamAccount?
+        get() = xtreamAccounts.firstOrNull { it.id == activeXtreamAccountId } ?: xtreamAccounts.firstOrNull()
 }
 
 data class ProfileQrState(

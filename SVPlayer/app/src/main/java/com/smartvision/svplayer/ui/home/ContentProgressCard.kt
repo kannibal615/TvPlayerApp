@@ -176,11 +176,12 @@ private fun MediaTypeBadge(
     modifier: Modifier = Modifier,
 ) {
     if (text.isBlank()) return
+    val accent = mediaTypeBadgeAccent(text)
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(Color(0xE60A1425))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(4.dp))
+            .background(accent.copy(alpha = 0.30f))
+            .border(BorderStroke(1.dp, accent.copy(alpha = 0.86f)), RoundedCornerShape(4.dp))
             .padding(horizontal = 6.dp, vertical = 3.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -194,6 +195,14 @@ private fun MediaTypeBadge(
         )
     }
 }
+
+internal fun mediaTypeBadgeAccent(text: String): Color =
+    when (text.uppercase()) {
+        "LIVE" -> SmartVisionColors.CyanAccent
+        "FILM" -> SmartVisionColors.Warning
+        "SERIE" -> SmartVisionColors.Primary
+        else -> SmartVisionColors.TextSecondary
+    }
 
 @Composable
 private fun ProgressBar(progress: Float) {

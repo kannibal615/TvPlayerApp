@@ -9,6 +9,8 @@ import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.domain.model.CategoryHistorySignal
+import com.smartvision.svplayer.domain.model.sortedByHistorySignals
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -91,6 +93,7 @@ class SeriesViewModel(
     private var metadataJob: Job? = null
     private var favoriteIds: Set<Int> = emptySet()
     private var historyProgress: List<PlaybackProgressEntity> = emptyList()
+    private var historyCategorySignals: List<CategoryHistorySignal> = emptyList()
 
     init {
         observeFavorites()
@@ -119,6 +122,7 @@ class SeriesViewModel(
                         allCount = xtreamRepository.getCachedSeriesList().size.takeIf { it > 0 },
                         favoriteCount = favoriteIds.size,
                         historyCount = historySeries().size,
+                        historySignals = historyCategorySignals,
                     )
                     it.copy(
                         categoriesLoading = false,
@@ -138,7 +142,8 @@ class SeriesViewModel(
     }
 
     fun selectCategory(category: SeriesCategoryUi) {
-        if (_uiState.value.selectedCategoryId == category.id && _uiState.value.series.isNotEmpty()) {
+        val current = _uiState.value
+        if (current.selectedCategoryId == category.id && (current.series.isNotEmpty() || current.seriesLoading)) {
             return
         }
         if (category.id == FavoriteSeriesCategoryId) {
@@ -200,6 +205,8 @@ class SeriesViewModel(
             loadFavoriteSeries()
         } else if (categoryId == HistorySeriesCategoryId) {
             loadHistorySeries()
+        } else if (categoryId == AllSeriesCategoryId) {
+            loadAllSeries()
         } else {
             loadSeries(categoryId)
         }
@@ -220,6 +227,7 @@ class SeriesViewModel(
                             allCount = xtreamRepository.getCachedSeriesList().size.takeIf { it > 0 },
                             favoriteCount = ids.size,
                             historyCount = historySeries().size,
+                            historySignals = historyCategorySignals,
                         ),
                         series = refreshedSeries,
                         focusedSeriesId = state.focusedSeriesId
@@ -239,6 +247,8 @@ class SeriesViewModel(
         viewModelScope.launch {
             userContentRepository.observeHistory(UserContentType.Episode).collect { progress ->
                 historyProgress = progress.map { userContentRepository.enrichProgress(it) }
+                    .distinctBy { it.parentContentId ?: it.contentId }
+                historyCategorySignals = userContentRepository.resolveCategorySignals(historyProgress)
                 _uiState.update { state ->
                     val history = historySeries()
                     state.copy(
@@ -246,6 +256,7 @@ class SeriesViewModel(
                             allCount = xtreamRepository.getCachedSeriesList().size.takeIf { it > 0 },
                             favoriteCount = favoriteIds.size,
                             historyCount = history.size,
+                            historySignals = historyCategorySignals,
                         ),
                         series = if (state.selectedCategoryId == HistorySeriesCategoryId) history else state.series,
                         focusedSeriesId = if (state.selectedCategoryId == HistorySeriesCategoryId) history.firstOrNull()?.seriesId else state.focusedSeriesId,
@@ -270,6 +281,7 @@ class SeriesViewModel(
                     allCount = xtreamRepository.getCachedSeriesList().size.takeIf { it > 0 },
                     favoriteCount = favoriteIds.size,
                     historyCount = historySeries().size,
+                    historySignals = historyCategorySignals,
                 ),
                 series = series,
                 focusedSeriesId = series.firstOrNull()?.seriesId,
@@ -294,6 +306,7 @@ class SeriesViewModel(
                     allCount = xtreamRepository.getCachedSeriesList().size.takeIf { it > 0 },
                     favoriteCount = favoriteIds.size,
                     historyCount = series.size,
+                    historySignals = historyCategorySignals,
                 ),
                 series = series,
                 focusedSeriesId = series.firstOrNull()?.seriesId,
@@ -308,7 +321,11 @@ class SeriesViewModel(
         episodesJob?.cancel()
         metadataJob?.cancel()
         seriesJob = viewModelScope.launch {
-            val categories = _uiState.value.categories.filterNot { it.id in SpecialSeriesCategoryIds }
+            val categories = _uiState.value.categories
+                .filterNot { it.id in SpecialSeriesCategoryIds }
+                .sortedByHistorySignals(historyCategorySignals) { it.id }
+            val collected = mutableListOf<SeriesItemUi>()
+            val seen = mutableSetOf<Int>()
             _uiState.update {
                 it.copy(
                     seriesLoading = true,
@@ -322,13 +339,25 @@ class SeriesViewModel(
                 )
             }
             runCatching {
-                categories.flatMap { category ->
-                    xtreamRepository.getSeries(category.id).map { series -> category.label to series }
-                }
-                    .distinctBy { (_, series) -> series.seriesId }
-                    .mapIndexed { index, (categoryLabel, series) ->
-                        series.toUiSeries(index, categoryLabel, favoriteIds)
+                categories.forEach { category ->
+                    xtreamRepository.getSeries(category.id).forEach { series ->
+                        if (!seen.add(series.seriesId)) return@forEach
+                        collected += series.toUiSeries(collected.size, category.label, favoriteIds)
                     }
+                    _uiState.update { state ->
+                        state.copy(
+                            categories = state.categories.withSpecialCategories(
+                                allCount = collected.size,
+                                favoriteCount = favoriteIds.size,
+                                historyCount = historySeries().size,
+                                historySignals = historyCategorySignals,
+                            ),
+                            series = collected.toList(),
+                            focusedSeriesId = state.focusedSeriesId ?: collected.firstOrNull()?.seriesId,
+                        )
+                    }
+                }
+                collected.toList()
             }.onSuccess { series ->
                 _uiState.update { state ->
                     state.copy(
@@ -337,6 +366,7 @@ class SeriesViewModel(
                             allCount = series.size,
                             favoriteCount = favoriteIds.size,
                             historyCount = historySeries().size,
+                            historySignals = historyCategorySignals,
                         ),
                         series = series,
                         focusedSeriesId = series.firstOrNull()?.seriesId,
@@ -348,8 +378,8 @@ class SeriesViewModel(
                 _uiState.update {
                     it.copy(
                         seriesLoading = false,
-                        series = emptyList(),
-                        focusedSeriesId = null,
+                        series = collected.toList(),
+                        focusedSeriesId = collected.firstOrNull()?.seriesId,
                         selectedSeriesId = null,
                         episodes = emptyList(),
                         errorMessage = error.userMessage("Impossible de charger toutes les series Xtream."),
@@ -429,6 +459,7 @@ class SeriesViewModel(
                             allCount = xtreamRepository.getCachedSeriesList().size.takeIf { it > 0 },
                             favoriteCount = favoriteIds.size,
                             historyCount = historySeries().size,
+                            historySignals = historyCategorySignals,
                         ),
                         series = series,
                         focusedSeriesId = series.firstOrNull()?.seriesId,
@@ -508,6 +539,16 @@ class SeriesViewModel(
             }
         }
     }
+
+    fun deleteHistorySeries(series: SeriesItemUi) {
+        val progress = historyProgress.firstOrNull { item ->
+            item.parentContentId?.toIntOrNull() == series.seriesId
+        } ?: return
+        val episodeId = progress.contentId.toIntOrNull() ?: return
+        viewModelScope.launch {
+            userContentRepository.deleteProgress(UserContentType.Episode, episodeId)
+        }
+    }
 }
 
 private const val FavoriteSeriesCategoryId = "__favorites_series__"
@@ -519,6 +560,7 @@ private fun List<SeriesCategoryUi>.withSpecialCategories(
     allCount: Int?,
     favoriteCount: Int,
     historyCount: Int,
+    historySignals: List<CategoryHistorySignal> = emptyList(),
 ): List<SeriesCategoryUi> =
     listOf(
         SeriesCategoryUi(
@@ -537,6 +579,7 @@ private fun List<SeriesCategoryUi>.withSpecialCategories(
             count = historyCount,
         ),
     ) + filterNot { it.id in SpecialSeriesCategoryIds }
+        .sortedByHistorySignals(historySignals) { it.id }
 
 private fun XtreamSeriesCategory.toUiCategory(): SeriesCategoryUi =
     SeriesCategoryUi(

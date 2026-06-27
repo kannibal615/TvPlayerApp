@@ -19,4 +19,7 @@ interface ProgressDao {
 
     @Upsert
     suspend fun upsert(progress: PlaybackProgressEntity)
+
+    @Query("DELETE FROM playback_progress WHERE contentType = :contentType AND contentId = :contentId")
+    suspend fun delete(contentType: String, contentId: String)
 }

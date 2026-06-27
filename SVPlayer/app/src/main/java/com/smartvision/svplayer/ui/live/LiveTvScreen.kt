@@ -33,6 +33,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.History
@@ -76,6 +77,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -186,6 +188,7 @@ fun LiveTvScreen(
     var contentSearchQuery by remember { mutableStateOf("") }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
     var tvCode by remember { mutableStateOf("") }
+    var channelToDelete by remember { mutableStateOf<LiveTvChannel?>(null) }
     var premiumPurchaseUrl by remember {
         mutableStateOf(
             BuildConfig.ACTIVATION_BASE_URL.trimEnd('/') +
@@ -324,6 +327,8 @@ fun LiveTvScreen(
                             }
                         }
                     },
+                    showHistoryDelete = state.selectedCategory?.label == "Historique",
+                    onDeleteHistoryChannel = { channel -> channelToDelete = channel },
                     onRetry = viewModel::retryCurrentCategory,
                     modifier = Modifier
                         .weight(0.42f)
@@ -350,6 +355,18 @@ fun LiveTvScreen(
                 )
             }
         }
+    }
+
+    channelToDelete?.let { channel ->
+        ConfirmHistoryDeleteDialog(
+            title = "Supprimer cette chaine de l'historique ?",
+            itemName = channel.name,
+            onDismiss = { channelToDelete = null },
+            onConfirm = {
+                channelToDelete = null
+                viewModel.deleteHistoryChannel(channel)
+            },
+        )
     }
 }
 
@@ -479,6 +496,8 @@ private fun ChannelList(
     previewActionFocusRequester: FocusRequester?,
     onChannelFocused: (LiveTvChannel) -> Unit,
     onChannelClick: (LiveTvChannel) -> Unit,
+    showHistoryDelete: Boolean,
+    onDeleteHistoryChannel: (LiveTvChannel) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -519,12 +538,12 @@ private fun ChannelList(
         },
     ) {
         when {
-            state.channelsLoading -> LoadingState(
+            state.channelsLoading && visibleChannels.isEmpty() -> LoadingState(
                 title = "Chargement des chaines",
                 modifier = Modifier.fillMaxSize(),
             )
 
-            state.errorMessage != null -> ErrorState(
+            state.errorMessage != null && visibleChannels.isEmpty() -> ErrorState(
                 message = state.errorMessage,
                 onRetry = onRetry,
                 modifier = Modifier.fillMaxSize(),
@@ -550,6 +569,8 @@ private fun ChannelList(
                         rightFocusRequester = previewActionFocusRequester,
                         onFocused = { onChannelFocused(channel) },
                         onClick = { onChannelClick(channel) },
+                        showDelete = showHistoryDelete,
+                        onDelete = { onDeleteHistoryChannel(channel) },
                     )
                 }
             }
@@ -693,10 +714,10 @@ private fun PremiumPreviewQr(
     ) {
         Box(
             modifier = Modifier
-                .size(108.dp)
+                .size(138.dp)
                 .clip(RoundedCornerShape(7.dp))
                 .background(Color.White)
-                .padding(7.dp),
+                .padding(8.dp),
             contentAlignment = Alignment.Center,
         ) {
             Image(
@@ -709,17 +730,17 @@ private fun PremiumPreviewQr(
         Text(
             text = "CODE TV : ${tvCode.ifBlank { "GENERATION" }}",
             color = SmartVisionColors.CyanAccent,
-            style = LiveTvItemTitleStyle,
+            style = LiveTvItemTitleStyle.copy(fontSize = 18.sp, lineHeight = 21.sp),
             fontWeight = FontWeight.Black,
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(5.dp))
         Text(
             text = "Supprimez les pubs",
             color = SmartVisionColors.TextPrimary,
-            style = LiveTvItemTitleStyle,
+            style = LiveTvItemMetaStyle.copy(fontSize = 12.sp, lineHeight = 15.sp),
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             maxLines = 1,
@@ -727,7 +748,7 @@ private fun PremiumPreviewQr(
         Text(
             text = "Passez a Premium",
             color = SmartVisionColors.Primary,
-            style = LiveTvItemMetaStyle,
+            style = LiveTvItemMetaStyle.copy(fontSize = 12.sp, lineHeight = 15.sp),
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             maxLines = 1,
@@ -1209,6 +1230,8 @@ private fun ChannelRow(
     rightFocusRequester: FocusRequester?,
     onFocused: () -> Unit,
     onClick: () -> Unit,
+    showDelete: Boolean,
+    onDelete: () -> Unit,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -1320,6 +1343,90 @@ private fun ChannelRow(
             }
         }
 
+        if (showDelete) {
+            Spacer(Modifier.width(8.dp))
+            HistoryDeleteButton(onClick = onDelete)
+        }
+    }
+}
+
+@Composable
+private fun HistoryDeleteButton(onClick: () -> Unit) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .tvFocusTarget(
+                state = focusState,
+                pressed = pressed,
+                focusedScale = 1.08f,
+                glowColor = SmartVisionColors.Error,
+                cornerRadius = 6.dp,
+            )
+            .clip(RoundedCornerShape(6.dp))
+            .background(if (focusState.isFocused) SmartVisionColors.Error.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.08f))
+            .border(
+                BorderStroke(1.dp, if (focusState.isFocused) SmartVisionColors.FocusWhite else SmartVisionColors.Error.copy(alpha = 0.58f)),
+                RoundedCornerShape(6.dp),
+            )
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(interactionSource = interactionSource),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Delete,
+            contentDescription = "Supprimer de l'historique",
+            tint = SmartVisionColors.TextPrimary,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+@Composable
+private fun ConfirmHistoryDeleteDialog(
+    title: String,
+    itemName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .width(520.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF0A1425))
+                .border(BorderStroke(1.dp, SmartVisionColors.Error.copy(alpha = 0.78f)), RoundedCornerShape(8.dp))
+                .padding(22.dp),
+        ) {
+            Text(title, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = itemName,
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Body,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(18.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TvButton(
+                    text = "Annuler",
+                    onClick = onDismiss,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier.height(42.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                TvButton(
+                    text = "Supprimer",
+                    onClick = onConfirm,
+                    leadingIcon = Icons.Default.Delete,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier.height(42.dp),
+                )
+            }
+        }
     }
 }
 

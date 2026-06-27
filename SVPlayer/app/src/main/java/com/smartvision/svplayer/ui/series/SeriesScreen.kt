@@ -1,7 +1,10 @@
 package com.smartvision.svplayer.ui.series
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -18,7 +22,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Menu
@@ -31,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -38,6 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.smartvision.svplayer.core.data.LocalAppContainer
@@ -53,8 +61,11 @@ import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
+import com.smartvision.svplayer.ui.components.TvButton
+import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
 
 @Suppress("UNUSED_PARAMETER")
@@ -91,6 +102,7 @@ fun SeriesScreen(
     var inputReady by remember { mutableStateOf(false) }
     var categorySearchQuery by remember { mutableStateOf("") }
     var contentSearchQuery by remember { mutableStateOf("") }
+    var seriesToDelete by remember { mutableStateOf<SeriesItemUi?>(null) }
 
     LaunchedEffect(Unit) {
         delay(260)
@@ -192,6 +204,8 @@ fun SeriesScreen(
                             onOpenSeriesDetails(series.seriesId)
                         }
                     },
+                    showHistoryDelete = state.selectedCategory?.label == "Historique",
+                    onDeleteHistorySeries = { series -> seriesToDelete = series },
                     onRetry = viewModel::retryCurrentCategory,
                     modifier = Modifier
                         .weight(0.78f)
@@ -199,6 +213,18 @@ fun SeriesScreen(
                 )
             }
         }
+    }
+
+    seriesToDelete?.let { series ->
+        ConfirmHistoryDeleteDialog(
+            title = "Supprimer cette serie de l'historique ?",
+            itemName = series.title,
+            onDismiss = { seriesToDelete = null },
+            onConfirm = {
+                seriesToDelete = null
+                viewModel.deleteHistorySeries(series)
+            },
+        )
     }
 }
 
@@ -265,6 +291,8 @@ private fun SeriesGrid(
     onSearchQueryChange: (String) -> Unit,
     onSeriesFocused: (SeriesItemUi) -> Unit,
     onSeriesClick: (SeriesItemUi) -> Unit,
+    showHistoryDelete: Boolean,
+    onDeleteHistorySeries: (SeriesItemUi) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -305,7 +333,7 @@ private fun SeriesGrid(
         },
     ) {
         when {
-            state.seriesLoading -> CatalogLoading(
+            state.seriesLoading && visibleSeries.isEmpty() -> CatalogLoading(
                 title = "Chargement des series",
                 modifier = Modifier.fillMaxSize(),
             )
@@ -334,21 +362,84 @@ private fun SeriesGrid(
                     items = visibleSeries,
                     key = { _, series -> series.seriesId },
                 ) { index, series ->
-                    CatalogMediaCard(
-                        title = series.title,
-                        meta = seriesCardMeta(series),
-                        imageUrl = series.coverUrl,
-                        fallbackText = series.title.take(2).uppercase(),
-                        selected = series.seriesId == state.selectedSeriesId,
-                        favorite = series.isFavorite,
-                        focusRequester = firstSeriesFocusRequester.takeIf { index == 0 },
-                        leftFocusRequester = selectedCategoryFocusRequester.takeIf {
-                            index % MediaCatalogDimens.MediaGridColumns == 0
-                        },
-                        onFocused = { onSeriesFocused(series) },
-                        onClick = { onSeriesClick(series) },
-                    )
+                    Box {
+                        CatalogMediaCard(
+                            title = series.title,
+                            meta = seriesCardMeta(series),
+                            imageUrl = series.coverUrl,
+                            fallbackText = series.title.take(2).uppercase(),
+                            selected = series.seriesId == state.selectedSeriesId,
+                            favorite = series.isFavorite,
+                            focusRequester = firstSeriesFocusRequester.takeIf { index == 0 },
+                            leftFocusRequester = selectedCategoryFocusRequester.takeIf {
+                                index % MediaCatalogDimens.MediaGridColumns == 0
+                            },
+                            onFocused = { onSeriesFocused(series) },
+                            onClick = { onSeriesClick(series) },
+                        )
+                        if (showHistoryDelete) {
+                            HistoryDeleteButton(
+                                onClick = { onDeleteHistorySeries(series) },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(7.dp),
+                            )
+                        }
+                    }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryDeleteButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TvButton(
+        text = "",
+        onClick = onClick,
+        leadingIcon = Icons.Default.Delete,
+        variant = TvButtonVariant.Secondary,
+        modifier = modifier.size(36.dp),
+    )
+}
+
+@Composable
+private fun ConfirmHistoryDeleteDialog(
+    title: String,
+    itemName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .width(520.dp)
+                .background(Color(0xFF0A1425), RoundedCornerShape(8.dp))
+                .border(BorderStroke(1.dp, SmartVisionColors.Error.copy(alpha = 0.78f)), RoundedCornerShape(8.dp))
+                .padding(22.dp),
+        ) {
+            Text(title, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS)
+            Spacer(Modifier.height(10.dp))
+            Text(itemName, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Body, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(18.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TvButton(
+                    text = "Annuler",
+                    onClick = onDismiss,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier.height(42.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                TvButton(
+                    text = "Supprimer",
+                    onClick = onConfirm,
+                    leadingIcon = Icons.Default.Delete,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier.height(42.dp),
+                )
             }
         }
     }

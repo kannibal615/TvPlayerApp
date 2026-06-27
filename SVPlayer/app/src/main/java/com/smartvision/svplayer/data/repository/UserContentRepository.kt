@@ -5,6 +5,7 @@ import com.smartvision.svplayer.data.local.dao.ProgressDao
 import com.smartvision.svplayer.data.local.dao.MediaDao
 import com.smartvision.svplayer.data.local.entity.FavoriteEntity
 import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
+import com.smartvision.svplayer.domain.model.CategoryHistorySignal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -36,6 +37,31 @@ class UserContentRepository(
     suspend fun getProgress(contentType: String, contentId: Int): PlaybackProgressEntity? =
         withContext(Dispatchers.IO) {
             progressDao.get(contentType, contentId.toString())
+        }
+
+    suspend fun deleteProgress(contentType: String, contentId: Int) = withContext(Dispatchers.IO) {
+        progressDao.delete(contentType, contentId.toString())
+    }
+
+    suspend fun resolveCategorySignals(progressItems: List<PlaybackProgressEntity>): List<CategoryHistorySignal> =
+        withContext(Dispatchers.IO) {
+            progressItems.mapNotNull { progress ->
+                val contentId = progress.contentId.toIntOrNull() ?: return@mapNotNull null
+                val categoryId = when (progress.contentType) {
+                    UserContentType.Live -> mediaDao.getLiveStream(contentId)?.categoryId
+                    UserContentType.Movie -> mediaDao.getMovie(contentId)?.categoryId
+                    UserContentType.Episode -> {
+                        val seriesId = progress.parentContentId?.toIntOrNull()
+                            ?: mediaDao.getEpisode(contentId)?.seriesId
+                        seriesId?.let { mediaDao.getSeries(it)?.categoryId }
+                    }
+                    UserContentType.Series -> mediaDao.getSeries(contentId)?.categoryId
+                    else -> null
+                }
+                categoryId?.takeIf { it.isNotBlank() }?.let {
+                    CategoryHistorySignal(categoryId = it, updatedAt = progress.updatedAt)
+                }
+            }
         }
 
     suspend fun enrichProgress(progress: PlaybackProgressEntity): PlaybackProgressEntity = withContext(Dispatchers.IO) {
