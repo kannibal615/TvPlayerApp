@@ -56,3 +56,22 @@ Solution qui fonctionne :
 Erreurs a eviter :
 - ne pas diagnostiquer l endpoint comme casse avant de verifier l encodage exact du corps POST ;
 - ne pas utiliser `Set-Content -Encoding UTF8` de Windows PowerShell pour ce test JSON.
+
+## 2026-06-27 - Lecteur YouTube WebView bloque par la page complete
+
+Probleme rencontre :
+Le lecteur YouTube integre affichait une bande grise "Lire la suite" au milieu de l ecran et la telecommande ne controlait pas la video.
+
+Contexte :
+L ecran player SmartVision chargeait `youtube.com/watch` dans une WebView pour rester dans l application. Cette URL affiche la page YouTube complete, avec overlays, recommandations et elements non adaptes au focus Android TV.
+
+Solution qui fonctionne :
+- ne pas charger `youtube.com/watch` dans la WebView ;
+- charger une page HTML locale avec l IFrame Player API officielle via `loadDataWithBaseURL(...)` ;
+- piloter la lecture par `evaluateJavascript` depuis les touches TV : OK play/pause, gauche/droite seek ;
+- afficher une erreur SmartVision propre pour les codes YouTube 101/150/152.
+
+Erreurs a eviter :
+- ne pas auto-cliquer ou masquer une bannière/condition YouTube ;
+- ne pas rouvrir l app YouTube si le besoin est de rester dans SmartVision ;
+- ne pas remettre un fallback vers `youtube.com/watch`, car il ramene les overlays et le blocage de focus.

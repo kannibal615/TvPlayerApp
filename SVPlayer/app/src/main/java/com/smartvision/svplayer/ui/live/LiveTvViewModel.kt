@@ -239,7 +239,13 @@ class LiveTvViewModel(
                             historySignals = historyCategorySignals,
                         ),
                         channels = if (state.selectedCategoryId == HistoryLiveCategoryId) history else state.channels,
-                        focusedChannelId = if (state.selectedCategoryId == HistoryLiveCategoryId) history.firstOrNull()?.streamId else state.focusedChannelId,
+                        focusedChannelId = if (state.selectedCategoryId == HistoryLiveCategoryId) {
+                            state.focusedChannelId
+                                ?.takeIf { focusedId -> history.any { it.streamId == focusedId } }
+                                ?: history.firstOrNull()?.streamId
+                        } else {
+                            state.focusedChannelId
+                        },
                     )
                 }
             }
@@ -563,6 +569,8 @@ private fun String.cleanedChannelName(): String =
 private fun String.isGeneratedLiveTitle(streamId: Int): Boolean {
     val normalized = trim()
     return normalized.equals("Chaine $streamId", ignoreCase = true) ||
+        normalized.equals("Chaîne $streamId", ignoreCase = true) ||
+        normalized.equals("ChaÃ®ne $streamId", ignoreCase = true) ||
         normalized.matches(Regex("(?i)^chaine\\s+\\d+$"))
 }
 

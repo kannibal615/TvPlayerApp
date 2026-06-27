@@ -955,7 +955,13 @@ function admin_load_anomalies_admin(PDO $pdo): array
     $crashes24h = (int) $pdo->query(
         "SELECT COUNT(*) FROM app_anomaly_events
          WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)
-           AND anomaly_type IN ('UNCAUGHT_EXCEPTION', 'CRASH')"
+           AND anomaly_type IN (
+                'UNCAUGHT_EXCEPTION',
+                'CRASH',
+                'PROCESS_EXIT_CRASH',
+                'PROCESS_EXIT_CRASH_NATIVE',
+                'PROCESS_EXIT_ANR'
+           )"
     )->fetchColumn();
 
     return [

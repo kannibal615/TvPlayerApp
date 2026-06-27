@@ -1,5 +1,8 @@
 package com.smartvision.svplayer.ui.player
 
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
@@ -114,12 +117,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 
 enum class FullScreenContentKind {
     Live,
     Movie,
     Episode,
 }
+
+private const val MinimumLiveHistoryMs = 5_000L
+private const val PlayerReleaseDelayMs = 80L
 
 data class FullScreenPlayback(
     val streamId: Int,
@@ -183,6 +190,9 @@ class FullScreenPlayerViewModel(
     }
 
     fun saveProgress(positionMs: Long, durationMs: Long) {
+        if (kind == FullScreenContentKind.Live && positionMs < MinimumLiveHistoryMs) {
+            return
+        }
         if (kind != FullScreenContentKind.Live && (positionMs <= 1_000L || durationMs <= 0L)) {
             return
         }
@@ -453,6 +463,9 @@ private fun FullScreenPlayerScreen(
     var adPositionMs by remember(playback.streamId) { mutableLongStateOf(0L) }
     var adDurationMs by remember(playback.streamId) { mutableLongStateOf(0L) }
     var exiting by remember(playback.streamId) { mutableStateOf(false) }
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
+    val exitStopDone = remember(playback.streamId) { AtomicBoolean(false) }
+    val releaseScheduled = remember(playback.streamId) { AtomicBoolean(false) }
     val adSkipDelayMs = 20_000L
 
     val playerView = remember {
@@ -534,6 +547,7 @@ private fun FullScreenPlayerScreen(
     fun playerExitContext(step: String, extra: String = ""): String =
         listOf(
             "step=$step",
+            "elapsed=${SystemClock.elapsedRealtime()}",
             "contentType=${playback.contentType}",
             "streamId=${playback.streamId}",
             "position=$positionMs",
@@ -542,10 +556,14 @@ private fun FullScreenPlayerScreen(
             extra,
         ).filter { it.isNotBlank() }.joinToString(" ")
 
-    fun reportPlayerExitStep(step: String, extra: String = "") {
+    fun reportPlayerExitStep(
+        step: String,
+        extra: String = "",
+        anomalyType: String = "PLAYER_EXIT_STEP",
+    ) {
         anomalyReporter.setCurrentContext(playerExitContext(step, extra))
         anomalyReporter.reportAsync(
-            anomalyType = "PLAYER_EXIT_STEP",
+            anomalyType = anomalyType,
             message = "Player exit $step",
             context = playerExitContext(step, extra),
         )
@@ -556,18 +574,25 @@ private fun FullScreenPlayerScreen(
         exiting = true
         val snapshotPosition = player.currentPosition.coerceAtLeast(0L)
         val snapshotDuration = player.duration.validDurationMs()
+        reportPlayerExitStep(
+            step = "begin",
+            extra = "source=$source snapshotPosition=$snapshotPosition snapshotDuration=$snapshotDuration",
+            anomalyType = "PLAYER_EXIT_BEGIN",
+        )
         anomalyReporter.reportAsync(
             anomalyType = "PLAYER_EXIT",
             message = "Sortie player $source",
             context = "contentType=${playback.contentType} streamId=${playback.streamId} position=$positionMs duration=$durationMs adGate=$adGateActive",
         )
         runCatching {
-            reportPlayerExitStep("before_pause", "source=$source")
-            player.pause()
-            reportPlayerExitStep("after_pause", "source=$source")
-            reportPlayerExitStep("before_stop", "source=$source")
-            player.stop()
-            reportPlayerExitStep("after_stop", "source=$source")
+            if (exitStopDone.compareAndSet(false, true)) {
+                reportPlayerExitStep("before_pause", "source=$source")
+                player.pause()
+                reportPlayerExitStep("after_pause", "source=$source")
+                reportPlayerExitStep("before_stop", "source=$source")
+                player.stop()
+                reportPlayerExitStep("after_stop", "source=$source")
+            }
         }.onFailure { error ->
             anomalyReporter.reportAsync(
                 anomalyType = "PLAYER_EXIT_ERROR",
@@ -576,23 +601,34 @@ private fun FullScreenPlayerScreen(
                 context = "contentType=${playback.contentType} streamId=${playback.streamId} source=$source",
             )
         }
-        reportPlayerExitStep("before_onBack", "source=$source")
-        onBack()
-        reportPlayerExitStep("after_onBack", "source=$source")
         if (!adGateActive) {
             runCatching {
-                reportPlayerExitStep("before_save_progress_deferred", "source=$source snapshotPosition=$snapshotPosition snapshotDuration=$snapshotDuration")
-                onProgressSnapshot(snapshotPosition, snapshotDuration)
-                reportPlayerExitStep("after_save_progress_deferred", "source=$source snapshotPosition=$snapshotPosition snapshotDuration=$snapshotDuration")
+                if (playback.contentType == UserContentType.Live && snapshotPosition < MinimumLiveHistoryMs) {
+                    reportPlayerExitStep(
+                        step = "save_skipped_short_live",
+                        extra = "source=$source snapshotPosition=$snapshotPosition snapshotDuration=$snapshotDuration",
+                        anomalyType = "PLAYER_PROGRESS_SAVE_SKIPPED_SHORT_LIVE",
+                    )
+                } else {
+                    reportPlayerExitStep("before_save_progress", "source=$source snapshotPosition=$snapshotPosition snapshotDuration=$snapshotDuration")
+                    onProgressSnapshot(snapshotPosition, snapshotDuration)
+                    reportPlayerExitStep(
+                        step = "save_done",
+                        extra = "source=$source snapshotPosition=$snapshotPosition snapshotDuration=$snapshotDuration",
+                        anomalyType = "PLAYER_PROGRESS_SAVE_DONE",
+                    )
+                }
             }.onFailure { error ->
                 anomalyReporter.reportAsync(
                     anomalyType = "PLAYER_EXIT_ERROR",
-                    message = error.message ?: "Erreur sauvegarde historique differee",
+                    message = error.message ?: "Erreur sauvegarde historique",
                     throwable = error,
-                    context = "contentType=${playback.contentType} streamId=${playback.streamId} source=$source step=save_progress_deferred",
+                    context = "contentType=${playback.contentType} streamId=${playback.streamId} source=$source step=save_progress",
                 )
             }
         }
+        reportPlayerExitStep("before_onBack", "source=$source")
+        onBack()
     }
 
     BackHandler {
@@ -742,7 +778,7 @@ private fun FullScreenPlayerScreen(
     LaunchedEffect(player, playback.url) {
         var tick = 0
         while (true) {
-            if (!adGateActive) {
+            if (!adGateActive && !exiting) {
                 positionMs = player.currentPosition.coerceAtLeast(0L)
                 durationMs = player.duration.validDurationMs()
                 bufferedPositionMs = player.bufferedPosition.coerceAtLeast(0L)
@@ -856,27 +892,40 @@ private fun FullScreenPlayerScreen(
         player.addListener(listener)
         onDispose {
             runCatching {
-                if (!adGateActive && !exiting) {
-                    anomalyReporter.reportAsync(
-                        anomalyType = "PLAYER_EXIT_STEP",
-                        message = "Player exit dispose_save_progress",
-                        context = playerExitContext("dispose_save_progress"),
-                    )
-                    onProgressSnapshot(player.currentPosition.coerceAtLeast(0L), player.duration.validDurationMs())
-                }
+                val releaseBeginContext = playerExitContext("release_begin")
+                anomalyReporter.setCurrentContext(releaseBeginContext)
                 anomalyReporter.reportAsync(
-                    anomalyType = "PLAYER_EXIT_STEP",
-                    message = "Player exit before_release",
-                    context = playerExitContext("before_release"),
+                    anomalyType = "PLAYER_RELEASE_BEGIN",
+                    message = "Player release begin",
+                    context = releaseBeginContext,
                 )
                 player.removeListener(listener)
                 playerView.player = null
-                player.release()
-                anomalyReporter.reportAsync(
-                    anomalyType = "PLAYER_EXIT_STEP",
-                    message = "Player exit after_release",
-                    context = playerExitContext("after_release"),
-                )
+                if (releaseScheduled.compareAndSet(false, true)) {
+                    val releaseDoneContext = playerExitContext("release_done")
+                    mainHandler.postDelayed(
+                        {
+                            runCatching {
+                                player.clearVideoSurface()
+                                player.release()
+                                anomalyReporter.setCurrentContext(releaseDoneContext)
+                                anomalyReporter.reportAsync(
+                                    anomalyType = "PLAYER_RELEASE_DONE",
+                                    message = "Player release done",
+                                    context = releaseDoneContext,
+                                )
+                            }.onFailure { error ->
+                                anomalyReporter.reportAsync(
+                                    anomalyType = "PLAYER_RELEASE_ERROR",
+                                    message = error.message ?: "Erreur release player differe",
+                                    throwable = error,
+                                    context = releaseDoneContext,
+                                )
+                            }
+                        },
+                        PlayerReleaseDelayMs,
+                    )
+                }
             }.onFailure { error ->
                 anomalyReporter.reportAsync(
                     anomalyType = "PLAYER_RELEASE_ERROR",

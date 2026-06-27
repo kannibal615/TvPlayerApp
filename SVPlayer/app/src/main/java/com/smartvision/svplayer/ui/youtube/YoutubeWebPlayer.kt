@@ -2,6 +2,9 @@ package com.smartvision.svplayer.ui.youtube
 
 import android.annotation.SuppressLint
 import android.os.Build
+import android.view.KeyEvent
+import android.view.View
+import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.ConsoleMessage
@@ -45,22 +48,18 @@ internal fun YoutubeWebPlayer(
             val tag = "${mode.name}:$safeVideoId"
             if (webView.tag != tag) {
                 webView.tag = tag
-                if (mode == YoutubePlaybackMode.Fullscreen) {
-                    webView.loadUrl(youtubeWatchUrl(safeVideoId))
-                } else {
-                    webView.loadDataWithBaseURL(
-                        YoutubeBaseUrl,
-                        youtubePlayerHtml(
-                            videoId = safeVideoId,
-                            autoplay = true,
-                            muted = true,
-                            controls = false,
-                        ),
-                        "text/html",
-                        "utf-8",
-                        null,
-                    )
-                }
+                webView.loadDataWithBaseURL(
+                    YoutubePlayerOrigin,
+                    youtubePlayerHtml(
+                        videoId = safeVideoId,
+                        autoplay = true,
+                        muted = mode != YoutubePlaybackMode.Fullscreen,
+                        controls = mode == YoutubePlaybackMode.Fullscreen,
+                    ),
+                    "text/html",
+                    "utf-8",
+                    null,
+                )
             }
             if (mode == YoutubePlaybackMode.Fullscreen) {
                 webView.requestFocus()
@@ -87,6 +86,9 @@ private fun WebView.configureYoutubeWebView(
     setBackgroundColor(android.graphics.Color.BLACK)
     isFocusable = mode == YoutubePlaybackMode.Fullscreen
     isFocusableInTouchMode = mode == YoutubePlaybackMode.Fullscreen
+    if (mode == YoutubePlaybackMode.Fullscreen) {
+        setOnKeyListener(YoutubeRemoteKeyListener)
+    }
     webChromeClient = object : WebChromeClient() {
         override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
             val message = consoleMessage?.message().orEmpty()
@@ -115,12 +117,36 @@ private fun WebView.configureYoutubeWebView(
     settings.cacheMode = WebSettings.LOAD_DEFAULT
     settings.builtInZoomControls = false
     settings.displayZoomControls = false
+    CookieManager.getInstance().setAcceptCookie(true)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+    }
     settings.userAgentString = settings.userAgentString
         .replace("; wv", "")
         .replace("Version/4.0 ", "")
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
     }
+}
+
+private val YoutubeRemoteKeyListener = View.OnKeyListener { view, keyCode, event ->
+    if (event.action != KeyEvent.ACTION_UP || view !is WebView) return@OnKeyListener false
+    val command = when (keyCode) {
+        KeyEvent.KEYCODE_DPAD_CENTER,
+        KeyEvent.KEYCODE_ENTER,
+        KeyEvent.KEYCODE_NUMPAD_ENTER,
+        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+        KeyEvent.KEYCODE_SPACE -> "window.smartVisionTogglePlayback && window.smartVisionTogglePlayback();"
+        KeyEvent.KEYCODE_MEDIA_PLAY -> "window.smartVisionPlay && window.smartVisionPlay();"
+        KeyEvent.KEYCODE_MEDIA_PAUSE -> "window.smartVisionPause && window.smartVisionPause();"
+        KeyEvent.KEYCODE_DPAD_LEFT,
+        KeyEvent.KEYCODE_MEDIA_REWIND -> "window.smartVisionSeekBy && window.smartVisionSeekBy(-10);"
+        KeyEvent.KEYCODE_DPAD_RIGHT,
+        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> "window.smartVisionSeekBy && window.smartVisionSeekBy(10);"
+        else -> null
+    } ?: return@OnKeyListener false
+    view.evaluateJavascript(command, null)
+    true
 }
 
 private class YoutubePlayerBridge(
@@ -150,18 +176,13 @@ private fun youtubePlayerHtml(
     val autoplayValue = if (autoplay) 1 else 0
     val mutedJs = if (muted) "event.target.mute();" else "event.target.unMute();"
     val controlsValue = if (controls) 1 else 0
-    val bridgeErrorJs = if (controls) {
-        "if (window.$JavascriptBridgeName) { window.$JavascriptBridgeName.onPlayerError(String(event.data)); }"
-    } else {
-        ""
-    }
     return """
         <!doctype html>
         <html>
           <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
             <style>
-              html, body, #player {
+              html, body, #player, #error {
                 margin: 0;
                 width: 100%;
                 height: 100%;
@@ -179,13 +200,27 @@ private fun youtubePlayerHtml(
                 height: 100%;
                 border: 0;
               }
+              #error {
+                display: none;
+                place-items: center;
+                color: #fff;
+                font-family: sans-serif;
+                font-size: 18px;
+                font-weight: 700;
+                text-align: center;
+                padding: 32px;
+                box-sizing: border-box;
+              }
             </style>
           </head>
           <body>
             <div id="player"></div>
+            <div id="error">Cette video ne peut pas etre lue dans le lecteur integre YouTube.</div>
             <script src="https://www.youtube.com/iframe_api"></script>
             <script>
               var player;
+              var playerReady = false;
+              var playerState = -1;
               function onYouTubeIframeAPIReady() {
                 player = new YT.Player('player', {
                   width: '100%',
@@ -201,26 +236,49 @@ private fun youtubePlayerHtml(
                     modestbranding: 1,
                     playsinline: 1,
                     rel: 0,
-                    origin: '$YoutubeBaseUrl'
+                    origin: '$YoutubePlayerOrigin'
                   },
                   events: {
                     'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange,
                     'onError': onPlayerError
                   }
                 });
               }
               function onPlayerReady(event) {
+                playerReady = true;
                 $mutedJs
                 event.target.playVideo();
                 setTimeout(function() { event.target.playVideo(); }, 450);
               }
+              function onPlayerStateChange(event) {
+                playerState = event.data;
+              }
               function onPlayerError(event) {
-                if (event && (event.data === 101 || event.data === 150 || event.data === 152)) {
-                  document.body.innerHTML = '';
-                  window.location.href = '${youtubeWatchUrl(videoId)}';
-                  return;
+                var code = event ? String(event.data) : 'unknown';
+                if (window.$JavascriptBridgeName) {
+                  window.$JavascriptBridgeName.onPlayerError(code);
                 }
-                $bridgeErrorJs
+                document.getElementById('player').style.display = 'none';
+                document.getElementById('error').style.display = 'grid';
+              }
+              window.smartVisionPlay = function() {
+                if (playerReady && player && player.playVideo) player.playVideo();
+              };
+              window.smartVisionPause = function() {
+                if (playerReady && player && player.pauseVideo) player.pauseVideo();
+              };
+              window.smartVisionTogglePlayback = function() {
+                if (!playerReady || !player) return;
+                if (playerState === YT.PlayerState.PLAYING) {
+                  player.pauseVideo();
+                } else {
+                  player.playVideo();
+                }
+              };
+              window.smartVisionSeekBy = function(deltaSeconds) {
+                if (!playerReady || !player || !player.seekTo || !player.getCurrentTime) return;
+                player.seekTo(Math.max(0, player.getCurrentTime() + deltaSeconds), true);
               }
             </script>
           </body>
@@ -228,11 +286,9 @@ private fun youtubePlayerHtml(
     """.trimIndent()
 }
 
-private fun youtubeWatchUrl(videoId: String): String =
-    "https://www.youtube.com/watch?v=$videoId&autoplay=1&fs=1"
-
 private const val JavascriptBridgeName = "SmartVisionYoutube"
 private const val YoutubeBaseUrl = "https://www.youtube.com"
+private const val YoutubePlayerOrigin = "https://com.smartvision.svplayer"
 private val AllowedYoutubeHosts = setOf(
     "youtube.com",
     "youtube-nocookie.com",

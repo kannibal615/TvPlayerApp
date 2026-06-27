@@ -32,7 +32,7 @@ class UserContentRepository(
         progressDao.observeRecent(limit)
 
     fun observeHistory(contentType: String, limit: Int = 100): Flow<List<PlaybackProgressEntity>> {
-        val minimumPositionMs = if (contentType == UserContentType.Live) -1L else 5_000L
+        val minimumPositionMs = if (contentType == UserContentType.Live) 4_999L else 5_000L
         return progressDao.observeHistory(contentType, minimumPositionMs = minimumPositionMs, limit = limit)
     }
 
@@ -67,8 +67,12 @@ class UserContentRepository(
         }
 
     suspend fun enrichProgress(progress: PlaybackProgressEntity): PlaybackProgressEntity = withContext(Dispatchers.IO) {
-        if (!progress.title.isNullOrBlank() && !progress.imageUrl.isNullOrBlank()) return@withContext progress
         val id = progress.contentId.toIntOrNull() ?: return@withContext progress
+        val titleAlreadyStable = when (progress.contentType) {
+            UserContentType.Live -> !progress.title.isFallbackLiveTitle(id)
+            else -> !progress.title.isNullOrBlank()
+        }
+        if (titleAlreadyStable && !progress.imageUrl.isNullOrBlank()) return@withContext progress
         when (progress.contentType) {
             UserContentType.Live -> mediaDao.getLiveStream(id)?.let { stream ->
                 progress.copy(
@@ -123,11 +127,10 @@ class UserContentRepository(
         imageUrl: String? = null,
         parentContentId: Int? = null,
     ) = withContext(Dispatchers.IO) {
-        val stablePositionMs = if (contentType == UserContentType.Live) {
-            positionMs.coerceAtLeast(5_001L)
-        } else {
-            positionMs.coerceAtLeast(0L)
+        if (contentType == UserContentType.Live && positionMs < 5_000L) {
+            return@withContext
         }
+        val stablePositionMs = positionMs.coerceAtLeast(0L)
         progressDao.upsert(
             PlaybackProgressEntity(
                 contentType = contentType,
