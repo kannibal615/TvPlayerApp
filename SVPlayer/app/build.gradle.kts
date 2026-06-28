@@ -51,8 +51,8 @@ android {
         applicationId = "com.smartvision.svplayer"
         minSdk = 23
         targetSdk = 36
-        versionCode = 39
-        versionName = "0.1.36"
+        versionCode = 40
+        versionName = "0.1.37"
 
         buildConfigField("String", "ACTIVATION_BASE_URL", buildConfigString(activationBaseUrl()))
         buildConfigField("String", "YOUTUBE_API_KEY", buildConfigString(localAdString("YOUTUBE_API_KEY")))
@@ -107,6 +107,25 @@ android {
             buildConfigField("boolean", "DEBUG_FORCE_AD_FAILURE", "false")
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
+            isShrinkResources = false
+        }
+        create("releaseFast") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
+        create("releaseOptimized") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 
