@@ -115,7 +115,9 @@ fun AppNavigation(
         initialValue = PlayerSettings(),
     )
     val strings = smartVisionStrings(playerSettings.language)
-    val focusStyle = remember(playerSettings.focusStyle) { TvFocusStyles.fromKey(playerSettings.focusStyle) }
+    val focusStyle = remember(playerSettings.focusStyle, playerSettings.focusColor, playerSettings.focusEffect) {
+        TvFocusStyles.fromKeys(playerSettings.focusStyle, playerSettings.focusColor, playerSettings.focusEffect)
+    }
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route ?: AppRoute.Home.route
     var showExitConfirmation by remember { mutableStateOf(false) }
@@ -174,6 +176,15 @@ fun AppNavigation(
         }
         Unit
     }
+    LaunchedEffect(parentalControlAllowed, playerSettings.parentalControlEnabled, playerSettings.parentalPin, playerSettings.parentalKeywords) {
+        if (!parentalControlAllowed &&
+            (playerSettings.parentalControlEnabled || playerSettings.parentalPin.isNotBlank() || playerSettings.parentalKeywords != "adults; porn; xxx")
+        ) {
+            container.settingsRepository.resetParentalControl()
+            container.xtreamRepository.clearCaches()
+            runCatching { container.synchronizeCatalog() }
+        }
+    }
 
     if (appConfigState.consentRequired) {
         CompositionLocalProvider(LocalTvFocusStyle provides focusStyle) {
@@ -222,7 +233,7 @@ fun AppNavigation(
         }
         XtreamQrSetupPanel(
             activationRepository = container.activationRepository,
-            title = "Configurer les identifiants Xtream",
+            title = strings.configureXtreamTitle,
             onManualAccount = { account ->
                 val accountId = container.accountManager.upsert(account)
                 container.accountManager.select(accountId)
@@ -305,6 +316,7 @@ fun AppNavigation(
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
                 notificationBadgeCount = notificationBadgeCount,
+                strings = strings,
                 onContentClick = { item -> navController.navigateFromContinueItem(item) },
                 onContinueViewAll = { navController.navigate(AppRoute.ContinueWatching.route) },
                 onTrendingViewAll = { navController.navigate(AppRoute.Trending.route) },
@@ -385,7 +397,7 @@ fun AppNavigation(
         composable(AppRoute.Youtube.route) {
             if (!youtubeAllowed) {
                 LaunchedEffect(Unit) { showLicensePurchaseQr = true }
-                PlaceholderRouteScreen("YouTube Premium", "This feature requires Premium or an active trial.")
+                PlaceholderRouteScreen(strings.youtubePremiumTitle, strings.youtubePremiumSubtitle)
             } else {
                 YoutubeScreen(
                     currentRoute = currentRoute,
@@ -551,8 +563,8 @@ fun AppNavigation(
             .plus(deviceQuery)
             .plus("&plan=year_1")
         SmartVisionQrDialog(
-            title = "Passer a SmartVision Premium",
-            subtitle = "Scannez ce QR code pour acheter une licence. Premium supprime les publicites et conserve l'acces pendant la duree choisie.",
+            title = strings.premiumPurchaseTitle,
+            subtitle = strings.premiumPurchaseSubtitle,
             qrUrl = purchaseUrl,
             tvCode = activationState.publicDeviceCode.ifBlank { activationState.deviceId.take(8).uppercase() },
             width = 820.dp,
@@ -573,6 +585,7 @@ fun AppNavigation(
             update = update,
             installing = appUpdateState.installing,
             errorMessage = appUpdateState.errorMessage,
+            strings = strings,
             onInstall = { appUpdateViewModel.installUpdate(context) },
             onDismiss = appUpdateViewModel::dismiss,
         )

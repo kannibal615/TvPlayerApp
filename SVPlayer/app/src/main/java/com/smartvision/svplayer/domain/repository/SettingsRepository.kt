@@ -10,6 +10,8 @@ interface SettingsRepository {
     suspend fun setLanguage(value: String)
     suspend fun setSyncFrequency(value: String)
     suspend fun setFocusStyle(value: String)
+    suspend fun setFocusColor(value: String)
+    suspend fun setFocusEffect(value: String)
     suspend fun setAnimationsEnabled(value: Boolean)
     suspend fun setVideoRatio(value: String)
     suspend fun setBufferMode(value: String)
@@ -17,5 +19,6 @@ interface SettingsRepository {
     suspend fun setParentalControlEnabled(value: Boolean)
     suspend fun setParentalPin(value: String)
     suspend fun setParentalKeywords(value: String)
+    suspend fun resetParentalControl()
     suspend fun clearLocalData()
 }

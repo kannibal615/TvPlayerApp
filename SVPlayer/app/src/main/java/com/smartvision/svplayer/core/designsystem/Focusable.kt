@@ -2,6 +2,12 @@ package com.smartvision.svplayer.core.designsystem
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,11 +41,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
+import com.smartvision.svplayer.ui.focus.TvFocusEffect
 
 @Composable
 fun GlassPanel(
@@ -68,10 +76,19 @@ fun FocusableCard(
 ) {
     var focused by remember { mutableStateOf(false) }
     val focusStyle = LocalTvFocusStyle.current
+    val shimmer by rememberInfiniteTransition(label = "cardGoldSweep").animateFloat(
+        initialValue = -0.35f,
+        targetValue = 1.35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1700, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "cardGoldSweepProgress",
+    )
     val scale by animateFloatAsState(if (focused) focusStyle.scale.coerceAtMost(1.035f) else 1f, label = "cardScale")
     val border by animateColorAsState(
         when {
-            focused -> accent
+            focused -> focusStyle.accent
             selected -> accent.copy(alpha = 0.75f)
             else -> SVColors.Border
         },
@@ -94,13 +111,27 @@ fun FocusableCard(
             }
             .drawBehind {
                 if (focused) {
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            listOf(accent.copy(alpha = focusStyle.glowAlpha), Color.Transparent),
-                            center = Offset(size.width / 2f, size.height / 2f),
-                            radius = size.maxDimension * 0.72f,
-                        ),
-                    )
+                    if (focusStyle.effect == TvFocusEffect.NeonGlow || focusStyle.effect == TvFocusEffect.GoldSweep) {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                listOf(focusStyle.accent.copy(alpha = focusStyle.glowAlpha), Color.Transparent),
+                                center = Offset(size.width / 2f, size.height / 2f),
+                                radius = size.maxDimension * 0.72f,
+                            ),
+                        )
+                    }
+                    if (focusStyle.effect == TvFocusEffect.GoldSweep) {
+                        val travel = size.width + size.height
+                        val head = travel * shimmer
+                        drawRoundRect(
+                            brush = Brush.linearGradient(
+                                listOf(Color(0xFFFFB52E).copy(alpha = 0.65f), Color(0xFFFFF2A8), Color(0xFFFFB52E).copy(alpha = 0.65f)),
+                                start = Offset(head - size.height, 0f),
+                                end = Offset(head, size.height),
+                            ),
+                            style = Stroke(width = focusStyle.borderWidth.toPx() + 1.dp.toPx()),
+                        )
+                    }
                 }
             }
             .clip(shape)

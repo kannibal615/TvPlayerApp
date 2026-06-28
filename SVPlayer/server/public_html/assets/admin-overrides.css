@@ -1306,21 +1306,37 @@ body.admin-modal-open {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 340px;
     gap: 16px;
-    padding: 16px;
+    padding: 18px;
+    align-items: stretch;
 }
 
 .consent-admin-main,
 .consent-admin-vars {
     border: 1px solid var(--admin-line);
-    border-radius: 7px;
-    background: var(--admin-panel-2);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(16, 31, 52, .96), rgba(8, 18, 33, .96));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+.consent-admin-main {
+    padding: 16px;
+}
+
+.consent-admin-main .admin-form-grid {
+    gap: 14px;
+}
+
+.consent-admin-main textarea {
+    min-height: 360px;
+    line-height: 1.55;
+    resize: vertical;
 }
 
 .consent-admin-vars {
     display: grid;
     align-content: start;
-    gap: 10px;
-    padding: 14px;
+    gap: 12px;
+    padding: 16px;
 }
 
 .consent-admin-vars h3 {
@@ -1359,10 +1375,24 @@ body.admin-modal-open {
 
 .consent-admin-vars input:focus {
     border-color: var(--admin-cyan);
+    box-shadow: 0 0 0 3px rgba(38, 215, 255, .12);
 }
 
 .consent-admin-note {
     margin: 0 16px 12px;
+}
+
+.consent-admin-panel > .muted {
+    margin: 0 18px 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(38, 215, 255, .14);
+    border-radius: 8px;
+    background: rgba(38, 215, 255, .055);
+}
+
+.consent-admin-panel > .admin-button {
+    margin: 0 18px 18px auto;
+    display: flex;
 }
 
 @media (max-width: 980px) {

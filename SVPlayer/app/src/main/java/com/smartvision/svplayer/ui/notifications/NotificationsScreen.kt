@@ -24,8 +24,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -44,6 +46,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.notifications.AppNotification
@@ -199,7 +202,10 @@ private fun NotificationsScreen(
                             }
                         }
                         items(state.notifications, key = { it.id }) { notification ->
-                            NotificationRow(notification, onClick = {})
+                            NotificationRow(
+                                notification = notification,
+                                onClick = if (notification.isUpdateNotification()) onOpenUpdate else null,
+                            )
                         }
                     }
                 }
@@ -219,6 +225,7 @@ private fun UpdateNotificationRow(
         message = strings.updateAvailableMessage.format(update.versionName),
         createdAt = "Version ${update.versionCode}",
         priority = if (update.mandatory) "urgent" else "important",
+        leadingIcon = Icons.Default.FileDownload,
         onClick = onClick,
     )
 }
@@ -226,14 +233,15 @@ private fun UpdateNotificationRow(
 @Composable
 private fun NotificationRow(
     notification: AppNotification,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
 ) {
     NotificationCard(
         title = notification.title,
         message = notification.message,
         createdAt = notification.createdAt,
         priority = notification.priority,
-        onClick = onClick,
+        leadingIcon = if (notification.isUpdateNotification()) Icons.Default.FileDownload else null,
+        onClick = onClick ?: {},
     )
 }
 
@@ -243,6 +251,7 @@ private fun NotificationCard(
     message: String,
     createdAt: String,
     priority: String,
+    leadingIcon: ImageVector? = null,
     onClick: () -> Unit,
 ) {
     val focusState = rememberTvFocusState()
@@ -279,6 +288,14 @@ private fun NotificationCard(
             .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            if (leadingIcon != null) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    tint = if (focusState.isFocused) focusStyle.accent else SmartVisionColors.CyanAccent,
+                    modifier = Modifier.padding(end = 12.dp),
+                )
+            }
             Text(
                 text = title,
                 color = SmartVisionColors.TextPrimary,
@@ -303,6 +320,18 @@ private fun NotificationCard(
     }
 }
 
+private fun AppNotification.isUpdateNotification(): Boolean =
+    title.contains("update", ignoreCase = true) ||
+        title.contains("mise a jour", ignoreCase = true) ||
+        message.contains("install the update", ignoreCase = true) ||
+        message.contains("installer la mise a jour", ignoreCase = true)
+
+private fun AppNotification.isInstalledUpdateNotification(): Boolean {
+    if (!isUpdateNotification()) return false
+    val versionCode = Regex("\\((\\d+)\\)").find(message)?.groupValues?.getOrNull(1)?.toIntOrNull()
+    return versionCode != null && versionCode <= BuildConfig.VERSION_CODE
+}
+
 class NotificationsViewModel(
     private val repository: NotificationsRepository,
 ) : ViewModel() {
@@ -317,7 +346,7 @@ class NotificationsViewModel(
             state.update { it.copy(loading = true, errorMessage = null) }
             runCatching { repository.getNotifications() }
                 .onSuccess { snapshot ->
-                    val notifications = snapshot.notifications
+                    val notifications = snapshot.notifications.filterNot { it.isInstalledUpdateNotification() }
                     if (markSeen && notifications.isNotEmpty()) {
                         runCatching { repository.markSeen(notifications.map { it.id }) }
                         onSeen?.invoke()

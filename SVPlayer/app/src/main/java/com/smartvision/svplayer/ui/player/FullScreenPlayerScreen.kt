@@ -531,7 +531,7 @@ private fun FullScreenPlayerScreen(
         stalledRefreshCount += 1
         val resumeAt = player.currentPosition.coerceAtLeast(0L)
         anomalyReporter.reportAsync(
-            anomalyType = "PLAYER_BUFFERING_WATCHDOG_REFRESH",
+            anomalyType = "Relance buffering",
             message = "Relance automatique du flux bloque en buffering",
             context = "contentType=${playback.contentType} streamId=${playback.streamId} attempt=$stalledRefreshCount position=$resumeAt",
         )
@@ -589,6 +589,7 @@ private fun FullScreenPlayerScreen(
         extra: String = "",
         anomalyType: String = "PLAYER_EXIT_STEP",
     ) {
+        if (anomalyType in SuppressedPlayerAnomalyTypes) return
         anomalyReporter.setCurrentContext(playerExitContext(step, extra))
         anomalyReporter.reportAsync(
             anomalyType = anomalyType,
@@ -606,11 +607,6 @@ private fun FullScreenPlayerScreen(
             player.clearVideoSurface()
             player.release()
             anomalyReporter.setCurrentContext(releaseContext)
-            anomalyReporter.reportAsync(
-                anomalyType = "PLAYER_RELEASE_DONE",
-                message = "Player release done before navigation",
-                context = releaseContext,
-            )
         }.onFailure { error ->
             anomalyReporter.reportAsync(
                 anomalyType = "PLAYER_RELEASE_ERROR",
@@ -630,11 +626,6 @@ private fun FullScreenPlayerScreen(
             step = "begin",
             extra = "source=$source snapshotPosition=$snapshotPosition snapshotDuration=$snapshotDuration",
             anomalyType = "PLAYER_EXIT_BEGIN",
-        )
-        anomalyReporter.reportAsync(
-            anomalyType = "PLAYER_EXIT",
-            message = "Sortie player $source",
-            context = "contentType=${playback.contentType} streamId=${playback.streamId} position=$positionMs duration=$durationMs adGate=$adGateActive",
         )
         runCatching {
             if (exitStopDone.compareAndSet(false, true)) {
@@ -864,6 +855,11 @@ private fun FullScreenPlayerScreen(
             !exiting &&
             kotlin.math.abs(currentPosition - startPosition) < 1_500L
         if (stillStalled) {
+            anomalyReporter.reportAsync(
+                anomalyType = "buffering bloqué",
+                message = "Flux bloque en buffering",
+                context = "contentType=${playback.contentType} streamId=${playback.streamId} position=$currentPosition startPosition=$startPosition attempt=${stalledRefreshCount + 1}",
+            )
             refreshStalledPlayback()
         }
     }
@@ -987,11 +983,6 @@ private fun FullScreenPlayerScreen(
                                 player.clearVideoSurface()
                                 player.release()
                                 anomalyReporter.setCurrentContext(releaseDoneContext)
-                                anomalyReporter.reportAsync(
-                                    anomalyType = "PLAYER_RELEASE_DONE",
-                                    message = "Player release done",
-                                    context = releaseDoneContext,
-                                )
                             }.onFailure { error ->
                                 anomalyReporter.reportAsync(
                                     anomalyType = "PLAYER_RELEASE_ERROR",
@@ -1897,6 +1888,14 @@ private val overlayKeyCodes = setOf(
     AndroidKeyEvent.KEYCODE_DPAD_RIGHT,
     AndroidKeyEvent.KEYCODE_DPAD_CENTER,
     AndroidKeyEvent.KEYCODE_ENTER,
+)
+
+private val SuppressedPlayerAnomalyTypes = setOf(
+    "PLAYER_EXIT_STEP",
+    "PLAYER_EXIT",
+    "PLAYER_EXIT_BEGIN",
+    "PLAYER_RELEASE_DONE",
+    "PLAYER_PROGRESS_SAVE_DONE",
 )
 
 private val PlayerTitleStyle = TextStyle(

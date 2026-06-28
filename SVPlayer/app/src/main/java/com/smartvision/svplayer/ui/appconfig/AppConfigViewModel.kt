@@ -29,7 +29,7 @@ class AppConfigViewModel(
                 it.copy(
                     loading = false,
                     config = config,
-                    acceptedConsentVersion = acceptedVersion,
+                    acceptedConsentVersion = config.acceptedConsentVersion ?: acceptedVersion,
                 )
             }
         }

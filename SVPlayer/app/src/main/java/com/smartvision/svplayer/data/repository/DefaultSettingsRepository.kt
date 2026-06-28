@@ -22,6 +22,8 @@ class DefaultSettingsRepository(
                 language = preferences[LANGUAGE] ?: "English",
                 syncFrequency = preferences[SYNC_FREQUENCY] ?: "A chaque demarrage",
                 focusStyle = preferences[FOCUS_STYLE] ?: "Default",
+                focusColor = preferences[FOCUS_COLOR] ?: "White",
+                focusEffect = preferences[FOCUS_EFFECT] ?: "Frame",
                 animationsEnabled = preferences[ANIMATIONS] ?: true,
                 videoRatio = preferences[VIDEO_RATIO] ?: "Fit",
                 bufferMode = preferences[BUFFER_MODE] ?: "Standard",
@@ -46,6 +48,14 @@ class DefaultSettingsRepository(
 
     override suspend fun setFocusStyle(value: String) {
         dataStore.edit { it[FOCUS_STYLE] = value }
+    }
+
+    override suspend fun setFocusColor(value: String) {
+        dataStore.edit { it[FOCUS_COLOR] = value }
+    }
+
+    override suspend fun setFocusEffect(value: String) {
+        dataStore.edit { it[FOCUS_EFFECT] = value }
     }
 
     override suspend fun setAnimationsEnabled(value: Boolean) {
@@ -76,6 +86,14 @@ class DefaultSettingsRepository(
         dataStore.edit { it[PARENTAL_KEYWORDS] = value.take(500) }
     }
 
+    override suspend fun resetParentalControl() {
+        dataStore.edit {
+            it[PARENTAL_CONTROL_ENABLED] = false
+            it[PARENTAL_PIN] = ""
+            it[PARENTAL_KEYWORDS] = "adults; porn; xxx"
+        }
+    }
+
     override suspend fun clearLocalData() {
         database.clearAllTables()
     }
@@ -85,6 +103,8 @@ class DefaultSettingsRepository(
         val LANGUAGE = stringPreferencesKey("language")
         val SYNC_FREQUENCY = stringPreferencesKey("sync_frequency")
         val FOCUS_STYLE = stringPreferencesKey("focus_style")
+        val FOCUS_COLOR = stringPreferencesKey("focus_color")
+        val FOCUS_EFFECT = stringPreferencesKey("focus_effect")
         val ANIMATIONS = booleanPreferencesKey("animations_enabled")
         val VIDEO_RATIO = stringPreferencesKey("video_ratio")
         val BUFFER_MODE = stringPreferencesKey("buffer_mode")

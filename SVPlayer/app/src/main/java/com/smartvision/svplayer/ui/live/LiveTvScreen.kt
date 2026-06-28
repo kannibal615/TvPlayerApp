@@ -57,7 +57,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
@@ -420,8 +422,23 @@ private fun LiveTvHeader(
                     } else {
                         null
                     },
+                    trailingContent = if (tab.locked) {
+                        {
+                            Image(
+                                painter = painterResource(R.drawable.premium_crown),
+                                contentDescription = "Premium",
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .rotate(12f),
+                            )
+                        }
+                    } else {
+                        null
+                    },
                     contentPadding = PaddingValues(horizontal = 10.dp),
-                    modifier = Modifier.height(36.dp),
+                    modifier = Modifier
+                        .height(36.dp)
+                        .alpha(if (tab.locked) 0.16f else 1f),
                 )
             }
         }

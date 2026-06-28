@@ -74,3 +74,25 @@ Remaining after block 3:
 - Replace remaining user-visible hard-coded French text in Android Compose screens.
 - Add a repeatable i18n audit command before each release.
 - Add backend email flow for forgotten parental PIN once the account email source is confirmed in the Android activation/session model.
+
+## Block 4 - Home, update and premium visible strings
+
+Status: done locally.
+
+Completed:
+- Added English/French strings for Home continue/trending section titles.
+- Switched default Home hero slides to English-first copy.
+- Added English/French strings for the update popup title, message, install, download and later actions.
+- Added English/French strings for the Premium purchase popup and locked YouTube placeholder.
+- Added English/French labels for focus color and focus effect settings.
+- Kept English as default and French as the only alternate visible language.
+- Validated the block with the release build that produced `0.1.41 (44)`.
+
+Remaining after block 4:
+- Externalize and translate Activation screens.
+- Externalize and translate Live TV, Movies, Series, details and player overlays.
+- Externalize and translate Profile and premium purchase sub-dialogs still hard-coded in `ProfileScreen`.
+- Externalize and translate the full YouTube screen: search, categories, suggestions, player messages and errors.
+- Replace remaining user-visible hard-coded French text in Android Compose screens.
+- Add a repeatable i18n audit command before each release.
+- Add backend email flow for forgotten parental PIN once the account email source is confirmed in the Android activation/session model.

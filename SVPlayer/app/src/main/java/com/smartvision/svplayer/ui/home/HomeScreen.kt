@@ -1,5 +1,6 @@
 package com.smartvision.svplayer.ui.home
 
+import android.media.MediaPlayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,13 +21,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.mock.HomeNavigationData
+import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 
@@ -43,12 +47,14 @@ fun HomeScreen(
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
     notificationBadgeCount: Int,
+    strings: SmartVisionStrings,
     onContentClick: (ContinueItem) -> Unit,
     onContinueViewAll: () -> Unit,
     onTrendingViewAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
+    val context = LocalContext.current.applicationContext
     val viewModel: HomeViewModel = viewModel(
         factory = viewModelFactory {
             HomeViewModel(
@@ -63,6 +69,7 @@ fun HomeScreen(
     val hasContinueWatching = state.continueWatching.isNotEmpty()
 
     LaunchedEffect(Unit) {
+        playStartupChimeOnHome(context)
         viewModel.refreshSlides()
         viewModel.refreshTrending()
         withFrameNanos { }
@@ -135,7 +142,7 @@ fun HomeScreen(
             Spacer(Modifier.height(12.dp))
 
             ContinueWatchingRow(
-                title = if (hasContinueWatching) "Reprendre la lecture" else "Tendances",
+                title = if (hasContinueWatching) strings.continueWatching else strings.trending,
                 items = if (hasContinueWatching) state.continueWatching else state.trending,
                 showViewAll = true,
                 onViewAll = if (hasContinueWatching) onContinueViewAll else onTrendingViewAll,
@@ -147,7 +154,7 @@ fun HomeScreen(
                 Spacer(Modifier.height(SmartVisionDimensions.HomeTrendFoldOffset))
 
                 ContinueWatchingRow(
-                    title = "Tendances",
+                    title = strings.trending,
                     items = state.trending,
                     onItemClick = onContentClick,
                     showViewAll = true,
@@ -159,6 +166,21 @@ fun HomeScreen(
             Spacer(Modifier.height(24.dp))
         }
     }
+}
+
+private fun playStartupChimeOnHome(context: android.content.Context) {
+    if (HomeStartupSoundState.played) return
+    HomeStartupSoundState.played = true
+    runCatching {
+        MediaPlayer.create(context, R.raw.startup_chime)?.apply {
+            setOnCompletionListener { player -> player.release() }
+            start()
+        }
+    }
+}
+
+private object HomeStartupSoundState {
+    var played: Boolean = false
 }
 
 private val com.smartvision.svplayer.data.mock.HomeCategory.routeName: String

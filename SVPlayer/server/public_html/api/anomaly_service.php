@@ -37,6 +37,12 @@ function anomaly_store_event(PDO $pdo, array $payload): array
     }
 
     $anomalyType = anomaly_clean_type($payload['anomalyType'] ?? 'UNKNOWN');
+    if (in_array($anomalyType, anomaly_ignored_types(), true)) {
+        return [
+            'id' => 0,
+            'anomalyType' => $anomalyType,
+        ];
+    }
     $context = clean_optional_text($payload['context'] ?? null, 500);
 
     $statement = $pdo->prepare(
@@ -76,8 +82,23 @@ function anomaly_device_rate_limited(PDO $pdo, string $deviceHash): bool
 
 function anomaly_clean_type(mixed $value): string
 {
-    $clean = strtoupper(preg_replace('/[^A-Z0-9_]/', '', trim((string) $value)) ?: '');
+    $raw = trim((string) $value);
+    $clean = preg_replace('/[^\p{L}\p{N}_ -]/u', '', $raw);
+    if (!is_string($clean)) {
+        $clean = '';
+    }
     return $clean !== '' ? smartvision_text_substr($clean, 0, 60) : 'UNKNOWN';
+}
+
+function anomaly_ignored_types(): array
+{
+    return [
+        'PLAYER_EXIT_STEP',
+        'PLAYER_EXIT',
+        'PLAYER_EXIT_BEGIN',
+        'PLAYER_RELEASE_DONE',
+        'PLAYER_PROGRESS_SAVE_DONE',
+    ];
 }
 
 function anomaly_clean_platform(mixed $value): string

@@ -154,6 +154,8 @@ fun SettingsScreen(
             onSetLanguage = { value -> scope.launch { container.settingsRepository.setLanguage(value) } },
             onSetSyncFrequency = { value -> scope.launch { container.settingsRepository.setSyncFrequency(value) } },
             onSetFocusStyle = { value -> scope.launch { container.settingsRepository.setFocusStyle(value) } },
+            onSetFocusColor = { value -> scope.launch { container.settingsRepository.setFocusColor(value) } },
+            onSetFocusEffect = { value -> scope.launch { container.settingsRepository.setFocusEffect(value) } },
             onSetVideoRatio = { value -> scope.launch { container.settingsRepository.setVideoRatio(value) } },
             onSetAnimations = { value -> scope.launch { container.settingsRepository.setAnimationsEnabled(value) } },
             onSetRetry = { value -> scope.launch { container.settingsRepository.setRetryEnabled(value) } },
@@ -315,6 +317,8 @@ private fun SettingsMenuLayout(
     onSetLanguage: (String) -> Unit,
     onSetSyncFrequency: (String) -> Unit,
     onSetFocusStyle: (String) -> Unit,
+    onSetFocusColor: (String) -> Unit,
+    onSetFocusEffect: (String) -> Unit,
     onSetVideoRatio: (String) -> Unit,
     onSetAnimations: (Boolean) -> Unit,
     onSetRetry: (Boolean) -> Unit,
@@ -484,8 +488,28 @@ private fun SettingsMenuLayout(
                         selected = settings.focusStyle,
                         onSelected = onSetFocusStyle,
                     )
+                    SettingsChoice(
+                        label = strings.focusColor,
+                        values = listOf(
+                            SettingsOption("White", strings.focusWhite),
+                            SettingsOption("CyanNeon", strings.focusCyanNeon),
+                            SettingsOption("ElectricBlue", strings.focusElectricBlue),
+                        ),
+                        selected = settings.focusColor,
+                        onSelected = onSetFocusColor,
+                    )
+                    SettingsChoice(
+                        label = strings.focusEffect,
+                        values = listOf(
+                            SettingsOption("Frame", strings.focusFrame),
+                            SettingsOption("NeonGlow", strings.focusNeonGlow),
+                            SettingsOption("GoldSweep", strings.focusGoldSweep),
+                        ),
+                        selected = settings.focusEffect,
+                        onSelected = onSetFocusEffect,
+                    )
                     Text(
-                        text = strings.focusStyle,
+                        text = "${strings.focusStyle}: ${settings.focusStyle} | ${strings.focusColor}: ${settings.focusColor} | ${strings.focusEffect}: ${settings.focusEffect}",
                         color = SmartVisionColors.TextSecondary,
                         style = SmartVisionType.Caption,
                     )
@@ -1135,7 +1159,7 @@ private fun SettingsTextField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
-        readOnly = !editing,
+        readOnly = false,
         textStyle = SmartVisionType.Body.copy(color = SmartVisionColors.TextPrimary),
         cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
         visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,

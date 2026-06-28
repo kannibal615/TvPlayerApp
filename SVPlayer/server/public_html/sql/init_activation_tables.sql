@@ -493,6 +493,20 @@ CREATE TABLE IF NOT EXISTS app_notification_receipts (
     INDEX (seen_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS app_consent_receipts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    device_id VARCHAR(100) NULL,
+    public_device_code VARCHAR(6) NULL,
+    consent_version VARCHAR(40) NOT NULL,
+    app_version VARCHAR(50) NULL,
+    accepted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_app_consent_device (device_id),
+    UNIQUE KEY uq_app_consent_public_code (public_device_code),
+    INDEX idx_app_consent_version (consent_version),
+    INDEX idx_app_consent_accepted (accepted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS contact_messages (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(120) NOT NULL,
@@ -516,7 +530,7 @@ INSERT INTO app_settings (setting_key, setting_value) VALUES
 ('activation_duration_days', '365'),
 ('payment_mode', 'test'),
 ('support_email', 'support@smartvisions.net')
-ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
+ON DUPLICATE KEY UPDATE setting_key = VALUES(setting_key);
 
 INSERT INTO app_settings (setting_key, setting_value) VALUES
 ('gammal_payment_month_1_url', ''),

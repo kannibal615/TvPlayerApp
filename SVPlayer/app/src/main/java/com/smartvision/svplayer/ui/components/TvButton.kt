@@ -85,7 +85,7 @@ fun TvButton(
     }
     val targetBorder = when {
         variant == TvButtonVariant.Exit && focusState.isFocused -> SmartVisionColors.Error
-        focusState.isFocused -> SmartVisionColors.FocusWhite
+        focusState.isFocused -> focusStyle.accent
         selected -> SmartVisionColors.CyanAccent
         variant == TvButtonVariant.Success -> Color(0xFF28E08A)
         variant == TvButtonVariant.Danger -> Color(0xFFFF5A65)

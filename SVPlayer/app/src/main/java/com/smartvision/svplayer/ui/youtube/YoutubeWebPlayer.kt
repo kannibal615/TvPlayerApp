@@ -233,7 +233,7 @@ private fun WebView.handleYoutubeKeyCode(keyCode: Int): Boolean =
             evaluateJavascript("window.smartVisionPause && window.smartVisionPause();", null)
             true
         }
-        KeyEvent.KEYCODE_DPAD_UP,
+        KeyEvent.KEYCODE_DPAD_UP -> false
         KeyEvent.KEYCODE_DPAD_DOWN -> {
             grabYoutubeFocus()
             true

@@ -28,6 +28,7 @@ import androidx.compose.ui.window.Dialog
 import com.smartvision.svplayer.data.update.AppUpdateInfo
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 
@@ -36,6 +37,7 @@ fun AppUpdateDialog(
     update: AppUpdateInfo,
     installing: Boolean,
     errorMessage: String?,
+    strings: SmartVisionStrings,
     onInstall: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -56,14 +58,14 @@ fun AppUpdateDialog(
                 .padding(30.dp),
         ) {
             Text(
-                text = "Mise a jour disponible",
+                text = strings.updateAvailableTitle,
                 color = SmartVisionColors.TextPrimary,
                 style = SmartVisionType.TitleS,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(10.dp))
             Text(
-                text = "SmartVision ${update.versionName} est disponible. Installez cette version pour profiter des derniers correctifs.",
+                text = strings.updateDialogMessage.format(update.versionName),
                 color = SmartVisionColors.TextSecondary,
                 style = SmartVisionType.Body,
             )
@@ -89,7 +91,7 @@ fun AppUpdateDialog(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 TvButton(
-                    text = if (installing) "Telechargement..." else "Mettre a jour",
+                    text = if (installing) strings.downloadInProgress else strings.installUpdate,
                     onClick = onInstall,
                     enabled = !installing,
                     leadingIcon = Icons.Default.SystemUpdate,
@@ -99,7 +101,7 @@ fun AppUpdateDialog(
                 )
                 if (!update.mandatory) {
                     TvButton(
-                        text = "Plus tard",
+                        text = strings.later,
                         onClick = onDismiss,
                         enabled = !installing,
                         variant = TvButtonVariant.Secondary,

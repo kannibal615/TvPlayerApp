@@ -4,19 +4,29 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.smartvision.svplayer.BuildConfig
+import com.smartvision.svplayer.data.activation.ActivationRepository
 import com.smartvision.svplayer.data.monetization.MonetizationStatus
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 class AppConfigRepository(
     private val api: AppConfigApiService,
+    private val activationRepository: ActivationRepository,
     private val dataStore: DataStore<Preferences>,
 ) {
     val acceptedConsentVersion: Flow<String> =
         dataStore.data.map { it[ACCEPTED_CONSENT_VERSION].orEmpty() }
 
     suspend fun loadConfig(): AppRuntimeConfig {
-        val response = runCatching { api.getAppConfig() }.getOrNull()
+        val access = currentAccess()
+        val response = runCatching {
+            api.getAppConfig(
+                deviceId = access.deviceId,
+                publicDeviceCode = access.publicDeviceCode,
+            )
+        }.getOrNull()
         if (response?.success != true) {
             return defaultRuntimeConfig()
         }
@@ -24,10 +34,25 @@ class AppConfigRepository(
         val features = response.features
             .mapNotNull { it.toDomainOrNull() }
             .ifEmpty { defaultFeatureAccess() }
-        return AppRuntimeConfig(consent = consent, features = features)
+        return AppRuntimeConfig(
+            consent = consent,
+            features = features,
+            acceptedConsentVersion = response.acceptedConsentVersion,
+        )
     }
 
     suspend fun acceptConsent(version: String) {
+        val access = currentAccess()
+        runCatching {
+            api.acceptConsent(
+                AcceptConsentRequest(
+                    deviceId = access.deviceId,
+                    publicDeviceCode = access.publicDeviceCode,
+                    consentVersion = version,
+                    appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                )
+            )
+        }
         dataStore.edit { it[ACCEPTED_CONSENT_VERSION] = version }
     }
 
@@ -52,11 +77,21 @@ class AppConfigRepository(
     private companion object {
         val ACCEPTED_CONSENT_VERSION = stringPreferencesKey("accepted_consent_version_v2")
     }
+
+    private suspend fun currentAccess(): AppConfigDeviceAccess {
+        val createdDeviceId = activationRepository.getOrCreateDeviceId()
+        val state = activationRepository.localState.first()
+        return AppConfigDeviceAccess(
+            deviceId = state.deviceId.ifBlank { createdDeviceId },
+            publicDeviceCode = state.publicDeviceCode,
+        )
+    }
 }
 
 data class AppRuntimeConfig(
     val consent: ConsentConfig = defaultConsentConfig(),
     val features: List<FeatureAccess> = defaultFeatureAccess(),
+    val acceptedConsentVersion: String? = null,
 )
 
 data class ConsentConfig(
@@ -72,6 +107,11 @@ data class FeatureAccess(
     val premium: Boolean,
     val trial: Boolean,
     val freeAds: Boolean,
+)
+
+private data class AppConfigDeviceAccess(
+    val deviceId: String,
+    val publicDeviceCode: String,
 )
 
 private fun RemoteConsentConfig.toDomain(): ConsentConfig =

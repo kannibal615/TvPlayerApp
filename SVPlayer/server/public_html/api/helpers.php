@@ -485,6 +485,25 @@ function ensure_app_notifications_table(PDO $pdo): void
     );
 }
 
+function ensure_app_consent_receipts_table(PDO $pdo): void
+{
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS app_consent_receipts (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            device_id VARCHAR(100) NULL,
+            public_device_code VARCHAR(6) NULL,
+            consent_version VARCHAR(40) NOT NULL,
+            app_version VARCHAR(50) NULL,
+            accepted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_app_consent_device (device_id),
+            UNIQUE KEY uq_app_consent_public_code (public_device_code),
+            INDEX idx_app_consent_version (consent_version),
+            INDEX idx_app_consent_accepted (accepted_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
+}
+
 function ensure_contact_messages_table(PDO $pdo): void
 {
     $pdo->exec(

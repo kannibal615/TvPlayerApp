@@ -148,6 +148,7 @@ class AppContainer(context: Context) {
     )
     val appConfigRepository = AppConfigRepository(
         api = appConfigApi,
+        activationRepository = activationRepository,
         dataStore = appContext.appConfigDataStore,
     )
     val anomalyReporter = AnomalyReporter(

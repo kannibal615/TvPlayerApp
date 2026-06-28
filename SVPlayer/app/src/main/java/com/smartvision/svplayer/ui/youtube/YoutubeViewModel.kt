@@ -240,7 +240,7 @@ class YoutubeViewModel(
         val seed = state.playerSuggestions.getOrNull(lastVisibleIndex.coerceAtMost(state.playerSuggestions.lastIndex))
             ?: state.playerSuggestions.lastOrNull()
             ?: return
-        loadMoreSuggestionsJob?.cancel()
+        if (loadMoreSuggestionsJob?.isActive == true) return
         loadMoreSuggestionsJob = viewModelScope.launch {
             _uiState.update { it.copy(suggestionsLoading = true) }
             runCatching { repository.suggestVideos(seed.toDomain()).map { it.toUi() } }

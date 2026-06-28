@@ -308,7 +308,7 @@ private fun YoutubePlayerSuggestionsList(
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
-    LaunchedEffect(listState, state.playerSuggestions.size) {
+    LaunchedEffect(listState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
             .distinctUntilChanged()
             .collect { onLoadMoreSuggestions(it) }
@@ -545,6 +545,7 @@ private fun YoutubeVideoGrid(
                     video = playingVideo,
                     focusRequester = playerFocusRequester,
                     leftFocusRequester = firstPlayerSuggestionFocusRequester,
+                    upFocusRequester = searchFocusRequester,
                     anomalyReporter = anomalyReporter,
                     onPlayerBehavior = onPlayerBehavior,
                     modifier = Modifier.fillMaxSize(),
@@ -614,6 +615,7 @@ private fun YoutubeInlinePlayer(
     video: YoutubeVideoUi,
     focusRequester: FocusRequester,
     leftFocusRequester: FocusRequester,
+    upFocusRequester: FocusRequester,
     anomalyReporter: AnomalyReporter,
     onPlayerBehavior: (String, YoutubeVideoUi?) -> Unit,
     modifier: Modifier = Modifier,
@@ -630,13 +632,22 @@ private fun YoutubeInlinePlayer(
 
     Box(
         modifier = modifier
-            .focusProperties { left = leftFocusRequester }
+            .focusProperties {
+                left = leftFocusRequester
+                up = upFocusRequester
+            }
             .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft) {
-                    runCatching { leftFocusRequester.requestFocus() }
-                    true
-                } else {
-                    false
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.DirectionLeft -> {
+                        runCatching { leftFocusRequester.requestFocus() }
+                        true
+                    }
+                    Key.DirectionUp -> {
+                        runCatching { upFocusRequester.requestFocus() }
+                        true
+                    }
+                    else -> false
                 }
             }
             .tvFocusTarget(

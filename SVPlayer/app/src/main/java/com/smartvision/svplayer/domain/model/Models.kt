@@ -122,6 +122,8 @@ data class PlayerSettings(
     val language: String = "English",
     val syncFrequency: String = "A chaque demarrage",
     val focusStyle: String = "Default",
+    val focusColor: String = "White",
+    val focusEffect: String = "Frame",
     val animationsEnabled: Boolean = true,
     val videoRatio: String = "Fit",
     val bufferMode: String = "Standard",

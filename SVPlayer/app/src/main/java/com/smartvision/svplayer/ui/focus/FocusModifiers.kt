@@ -1,6 +1,11 @@
 package com.smartvision.svplayer.ui.focus
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.focusable
 import androidx.compose.runtime.Composable
@@ -20,8 +25,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import kotlin.math.max
@@ -46,7 +53,17 @@ fun Modifier.tvFocusTarget(
 ): Modifier = composed {
     val density = LocalDensity.current
     val style = LocalTvFocusStyle.current
+    val shimmer by rememberInfiniteTransition(label = "focusGoldSweep").animateFloat(
+        initialValue = -0.35f,
+        targetValue = 1.35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1700, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "focusGoldSweepProgress",
+    )
     val cornerRadiusPx = with(density) { cornerRadius.toPx() }
+    val borderPx = with(density) { (style.borderWidth + 1.dp).toPx() }
     val targetScale = focusedScale.takeIf { it != SmartVisionDimensions.FocusScale } ?: style.scale
     val scale by animateFloatAsState(
         targetValue = when {
@@ -72,14 +89,33 @@ fun Modifier.tvFocusTarget(
         }
         .drawBehind {
             if (state.isFocused && enabled) {
-                drawRoundRect(
+                if (style.effect == TvFocusEffect.NeonGlow || style.effect == TvFocusEffect.GoldSweep) {
+                    drawRoundRect(
                         brush = Brush.radialGradient(
-                        colors = listOf(glowColor.copy(alpha = style.glowAlpha), Color.Transparent),
-                        center = Offset(size.width / 2f, size.height / 2f),
-                        radius = max(size.width, size.height) * 0.72f,
-                    ),
-                    cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
-                )
+                            colors = listOf(style.accent.copy(alpha = style.glowAlpha), Color.Transparent),
+                            center = Offset(size.width / 2f, size.height / 2f),
+                            radius = max(size.width, size.height) * 0.72f,
+                        ),
+                        cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+                    )
+                }
+                if (style.effect == TvFocusEffect.GoldSweep) {
+                    val travel = size.width + size.height
+                    val head = travel * shimmer
+                    drawRoundRect(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFFFFB52E).copy(alpha = 0.65f),
+                                Color(0xFFFFF2A8),
+                                Color(0xFFFFB52E).copy(alpha = 0.65f),
+                            ),
+                            start = Offset(head - size.height, 0f),
+                            end = Offset(head, size.height),
+                        ),
+                        cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+                        style = Stroke(width = borderPx),
+                    )
+                }
             }
         }
         .onFocusChanged { focusState ->

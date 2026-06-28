@@ -209,7 +209,7 @@ private fun HomeHeroSlide.offerUrl(): String = when {
 }
 
 private val DefaultHomeHeroSlides = listOf(
-    HomeHeroSlide(R.drawable.home_hero_slide_1, "", "Bienvenue sur SmartVision", "Une experience IPTV fluide, premium et pensee pour Android TV.", "En savoir plus", "live_tv"),
-    HomeHeroSlide(R.drawable.home_hero_slide_2, "", "Live TV instantanee", "Retrouvez vos chaines en direct avec une navigation simple a la telecommande.", "Voir l'offre", "live_tv"),
-    HomeHeroSlide(R.drawable.home_hero_slide_3, "", "Films et series", "Explorez vos catalogues Xtream avec affiches, details et reprise de lecture.", "Decouvrir", "movies"),
+    HomeHeroSlide(R.drawable.home_hero_slide_1, "", "Welcome to SmartVision", "A smooth premium IPTV player experience built for Android TV.", "Learn more", "live_tv"),
+    HomeHeroSlide(R.drawable.home_hero_slide_2, "", "Instant Live TV", "Watch your live channels with simple remote-friendly navigation.", "View offer", "live_tv"),
+    HomeHeroSlide(R.drawable.home_hero_slide_3, "", "Movies and series", "Explore your Xtream catalogs with posters, details and resume playback.", "Discover", "movies"),
 )

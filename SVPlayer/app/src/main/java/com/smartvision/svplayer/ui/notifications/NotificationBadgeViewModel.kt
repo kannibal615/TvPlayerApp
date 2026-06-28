@@ -2,6 +2,8 @@ package com.smartvision.svplayer.ui.notifications
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.smartvision.svplayer.BuildConfig
+import com.smartvision.svplayer.data.notifications.AppNotification
 import com.smartvision.svplayer.data.notifications.NotificationsRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,10 +43,12 @@ class NotificationBadgeViewModel(
     private suspend fun refreshOnce() {
         runCatching { repository.getNotifications() }
             .onSuccess { snapshot ->
+                val visibleNotifications = snapshot.notifications.filterNot { it.isInstalledUpdateNotification() }
+                val visibleUnread = visibleNotifications.count { !it.seen }
                 state.update {
                     it.copy(
-                        unreadCount = snapshot.unreadCount,
-                        hasUnread = snapshot.unreadCount > 0,
+                        unreadCount = visibleUnread,
+                        hasUnread = visibleUnread > 0,
                     )
                 }
             }
@@ -55,3 +59,13 @@ data class NotificationBadgeUiState(
     val unreadCount: Int = 0,
     val hasUnread: Boolean = false,
 )
+
+private fun AppNotification.isInstalledUpdateNotification(): Boolean {
+    val isUpdate = title.contains("update", ignoreCase = true) ||
+        title.contains("mise a jour", ignoreCase = true) ||
+        message.contains("install the update", ignoreCase = true) ||
+        message.contains("installer la mise a jour", ignoreCase = true)
+    if (!isUpdate) return false
+    val versionCode = Regex("\\((\\d+)\\)").find(message)?.groupValues?.getOrNull(1)?.toIntOrNull()
+    return versionCode != null && versionCode <= BuildConfig.VERSION_CODE
+}

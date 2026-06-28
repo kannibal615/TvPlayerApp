@@ -6,7 +6,7 @@ require_once __DIR__ . '/config.php';
 
 apply_api_headers();
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+if (!in_array(($_SERVER['REQUEST_METHOD'] ?? ''), ['GET', 'POST'], true)) {
     json_response([
         'success' => false,
         'error' => 'Methode non autorisee.',
@@ -15,9 +15,37 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
 
 try {
     $pdo = db();
+    ensure_app_consent_receipts_table($pdo);
+    $input = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' ? read_json_input() : [];
+    $deviceId = clean_device_id($_GET['device_id'] ?? ($input['device_id'] ?? null));
+    $publicDeviceCode = clean_public_device_code($_GET['public_device_code'] ?? ($input['public_device_code'] ?? null));
+
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+        $action = (string) ($input['action'] ?? '');
+        if ($action !== 'accept_consent') {
+            json_response(['success' => false, 'error' => 'Action inconnue.'], 400);
+        }
+        $version = smartvision_text_substr(trim((string) ($input['consent_version'] ?? '')), 0, 40);
+        if ($version === '' || ($deviceId === '' && $publicDeviceCode === '')) {
+            json_response(['success' => false, 'error' => 'Consentement ou appareil manquant.'], 400);
+        }
+        app_config_store_consent_receipt(
+            $pdo,
+            $deviceId,
+            $publicDeviceCode,
+            $version,
+            smartvision_text_substr(trim((string) ($input['app_version'] ?? '')), 0, 50)
+        );
+        json_response([
+            'success' => true,
+            'accepted_consent_version' => $version,
+        ]);
+    }
+
     json_response([
         'success' => true,
         'consent' => app_config_consent($pdo),
+        'accepted_consent_version' => app_config_accepted_consent_version($pdo, $deviceId, $publicDeviceCode),
         'features' => app_config_features($pdo),
     ]);
 } catch (Throwable $exception) {
@@ -26,6 +54,53 @@ try {
         'success' => false,
         'error' => 'Configuration application indisponible.',
     ], 500);
+}
+
+function app_config_accepted_consent_version(PDO $pdo, string $deviceId, string $publicDeviceCode): ?string
+{
+    if ($deviceId === '' && $publicDeviceCode === '') {
+        return null;
+    }
+    $conditions = [];
+    $params = [];
+    if ($deviceId !== '') {
+        $conditions[] = 'device_id = :device_id';
+        $params['device_id'] = $deviceId;
+    }
+    if ($publicDeviceCode !== '') {
+        $conditions[] = 'public_device_code = :public_device_code';
+        $params['public_device_code'] = $publicDeviceCode;
+    }
+    $statement = $pdo->prepare(
+        'SELECT consent_version FROM app_consent_receipts WHERE ' . implode(' OR ', $conditions) . ' ORDER BY updated_at DESC LIMIT 1'
+    );
+    $statement->execute($params);
+    $version = $statement->fetchColumn();
+
+    return is_string($version) && $version !== '' ? $version : null;
+}
+
+function app_config_store_consent_receipt(PDO $pdo, string $deviceId, string $publicDeviceCode, string $version, string $appVersion): void
+{
+    $statement = $pdo->prepare(
+        "INSERT INTO app_consent_receipts
+            (device_id, public_device_code, consent_version, app_version, accepted_at, updated_at)
+         VALUES
+            (:device_id, :public_device_code, :consent_version, :app_version, NOW(), NOW())
+         ON DUPLICATE KEY UPDATE
+            device_id = COALESCE(VALUES(device_id), device_id),
+            public_device_code = COALESCE(VALUES(public_device_code), public_device_code),
+            consent_version = VALUES(consent_version),
+            app_version = VALUES(app_version),
+            accepted_at = NOW(),
+            updated_at = NOW()"
+    );
+    $statement->execute([
+        'device_id' => $deviceId !== '' ? $deviceId : null,
+        'public_device_code' => $publicDeviceCode !== '' ? $publicDeviceCode : null,
+        'consent_version' => $version,
+        'app_version' => $appVersion !== '' ? $appVersion : null,
+    ]);
 }
 
 function app_config_consent(PDO $pdo): array

@@ -941,9 +941,12 @@ function admin_load_ads_admin(PDO $pdo, int $periodDays): array
 function admin_load_anomalies_admin(PDO $pdo): array
 {
     anomaly_ensure_schema($pdo);
+    $ignoredTypesSql = implode(',', array_map([$pdo, 'quote'], anomaly_ignored_types()));
+    $visibleWhere = $ignoredTypesSql === '' ? '1=1' : "anomaly_type NOT IN ($ignoredTypesSql)";
     $events = $pdo->query(
         "SELECT id, device_id_hash, app_version, platform, route, anomaly_type, message, stack_trace, context_json, created_at
          FROM app_anomaly_events
+         WHERE $visibleWhere
          ORDER BY id DESC
          LIMIT 120"
     )->fetchAll();
@@ -951,15 +954,17 @@ function admin_load_anomalies_admin(PDO $pdo): array
         "SELECT anomaly_type, COUNT(*) AS count, MAX(created_at) AS last_seen
          FROM app_anomaly_events
          WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+           AND $visibleWhere
          GROUP BY anomaly_type
          ORDER BY count DESC, anomaly_type ASC"
     )->fetchAll();
     $last24h = (int) $pdo->query(
-        "SELECT COUNT(*) FROM app_anomaly_events WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)"
+        "SELECT COUNT(*) FROM app_anomaly_events WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY) AND $visibleWhere"
     )->fetchColumn();
     $crashes24h = (int) $pdo->query(
         "SELECT COUNT(*) FROM app_anomaly_events
          WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)
+           AND $visibleWhere
            AND anomaly_type IN (
                 'UNCAUGHT_EXCEPTION',
                 'CRASH',

@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
-import android.media.MediaPlayer
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -24,7 +23,6 @@ class SplashActivity : Activity() {
     private lateinit var root: FrameLayout
     private var launched = false
     private var animationStarted = false
-    private var startupPlayer: MediaPlayer? = null
     private val openHome = Runnable { launchHome() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -164,7 +162,6 @@ class SplashActivity : Activity() {
         if (launched || isFinishing) return
         launched = true
         handler.removeCallbacks(openHome)
-        playStartupChime()
         root.clearAnimation()
         root.animate().cancel()
         root.alpha = 1f
@@ -175,22 +172,7 @@ class SplashActivity : Activity() {
 
     override fun onDestroy() {
         handler.removeCallbacks(openHome)
-        startupPlayer?.release()
-        startupPlayer = null
         super.onDestroy()
-    }
-
-    private fun playStartupChime() {
-        runCatching {
-            startupPlayer?.release()
-            startupPlayer = MediaPlayer.create(this, R.raw.startup_chime)?.apply {
-                setOnCompletionListener { player ->
-                    player.release()
-                    if (startupPlayer === player) startupPlayer = null
-                }
-                start()
-            }
-        }
     }
 
     private companion object {
