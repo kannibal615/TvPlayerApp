@@ -1,8 +1,10 @@
 package com.smartvision.svplayer.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Upsert
+import com.smartvision.svplayer.data.local.entity.YoutubeBehaviorEventEntity
 import com.smartvision.svplayer.data.local.entity.YoutubeSearchEntity
 import com.smartvision.svplayer.data.local.entity.YoutubeSelectionEntity
 import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
@@ -25,6 +27,9 @@ interface YoutubeDao {
     @Query("SELECT * FROM youtube_selection WHERE id = 'last' LIMIT 1")
     suspend fun getLastSelection(): YoutubeSelectionEntity?
 
+    @Query("SELECT * FROM youtube_behavior_events WHERE syncedAt IS NULL ORDER BY createdAt ASC LIMIT :limit")
+    suspend fun getPendingBehaviorEvents(limit: Int = 40): List<YoutubeBehaviorEventEntity>
+
     @Upsert
     suspend fun upsertSearch(search: YoutubeSearchEntity)
 
@@ -33,4 +38,10 @@ interface YoutubeDao {
 
     @Upsert
     suspend fun upsertSelection(selection: YoutubeSelectionEntity)
+
+    @Insert
+    suspend fun insertBehaviorEvent(event: YoutubeBehaviorEventEntity): Long
+
+    @Query("UPDATE youtube_behavior_events SET syncedAt = :syncedAt WHERE id IN (:ids)")
+    suspend fun markBehaviorEventsSynced(ids: List<Long>, syncedAt: Long)
 }

@@ -21,12 +21,19 @@ data class YoutubeCategoryUi(
 data class YoutubeVideoUi(
     val videoId: String,
     val title: String,
+    val channelId: String?,
     val channelTitle: String,
     val description: String?,
     val thumbnailUrl: String?,
     val publishedAt: String?,
+    val viewCount: Long?,
+    val durationIso: String?,
+    val durationSeconds: Long?,
+    val categoryId: String?,
+    val tags: List<String>,
 ) {
-    val meta: String = listOfNotNull(channelTitle, publishedAt?.take(10)).joinToString(" | ")
+    val meta: String = listOfNotNull(formatViews(viewCount), channelTitle, publishedAt?.take(10)).joinToString(" | ")
+    val durationLabel: String = formatDuration(durationSeconds)
 }
 
 data class YoutubeScreenState(
@@ -43,6 +50,8 @@ data class YoutubeScreenState(
     val searchQuery: String = "",
     val recentSearches: List<String> = emptyList(),
     val searchSuggestions: List<String> = emptyList(),
+    val playerSuggestions: List<YoutubeVideoUi> = emptyList(),
+    val suggestionsLoading: Boolean = false,
 ) {
     val selectedCategory: YoutubeCategoryUi?
         get() = categories.firstOrNull { it.id == selectedCategoryId }
@@ -139,9 +148,35 @@ class YoutubeViewModel(
     }
 
     fun openYoutubeVideo(video: YoutubeVideoUi) {
-        _uiState.update { it.copy(selectedVideoId = video.videoId, focusedVideoId = video.videoId) }
+        _uiState.update {
+            it.copy(
+                selectedVideoId = video.videoId,
+                focusedVideoId = video.videoId,
+                playerSuggestions = emptyList(),
+                suggestionsLoading = true,
+            )
+        }
         viewModelScope.launch {
-            repository.recordVideoSelected(video.toDomain())
+            val domain = video.toDomain()
+            repository.recordVideoSelected(domain)
+            val suggestions = repository.suggestVideos(domain).map { it.toUi() }
+            _uiState.update {
+                it.copy(
+                    playerSuggestions = suggestions,
+                    suggestionsLoading = false,
+                )
+            }
+        }
+    }
+
+    fun closePlayerToTrending() {
+        _uiState.update { it.copy(playerSuggestions = emptyList(), suggestionsLoading = false) }
+        loadCategory("trending")
+    }
+
+    fun recordPlayerBehavior(eventType: String, video: YoutubeVideoUi?) {
+        viewModelScope.launch {
+            repository.recordBehavior(eventType, video?.toDomain())
         }
     }
 
@@ -208,6 +243,8 @@ class YoutubeViewModel(
                     videos = emptyList(),
                     focusedVideoId = null,
                     selectedVideoId = null,
+                    playerSuggestions = emptyList(),
+                    suggestionsLoading = false,
                 )
             }
             runCatching { repository.loadCategory(categoryId) }
@@ -303,21 +340,55 @@ private fun YoutubeVideo.toUi(): YoutubeVideoUi =
     YoutubeVideoUi(
         videoId = videoId,
         title = title,
+        channelId = channelId,
         channelTitle = channelTitle,
         description = description,
         thumbnailUrl = thumbnailUrl,
         publishedAt = publishedAt,
+        viewCount = viewCount,
+        durationIso = durationIso,
+        durationSeconds = durationSeconds,
+        categoryId = categoryId,
+        tags = tags,
     )
 
 private fun YoutubeVideoUi.toDomain(): YoutubeVideo =
     YoutubeVideo(
         videoId = videoId,
         title = title,
+        channelId = channelId,
         channelTitle = channelTitle,
         description = description,
         thumbnailUrl = thumbnailUrl,
         publishedAt = publishedAt,
+        viewCount = viewCount,
+        durationIso = durationIso,
+        durationSeconds = durationSeconds,
+        categoryId = categoryId,
+        tags = tags,
     )
 
 private fun Throwable.userMessage(defaultMessage: String): String =
     message?.takeIf { it.isNotBlank() } ?: defaultMessage
+
+private fun formatViews(viewCount: Long?): String? {
+    val views = viewCount ?: return null
+    return when {
+        views >= 1_000_000_000L -> "${views / 1_000_000_000L} Md vues"
+        views >= 1_000_000L -> "${views / 1_000_000L} M vues"
+        views >= 1_000L -> "${views / 1_000L} k vues"
+        else -> "$views vues"
+    }
+}
+
+private fun formatDuration(durationSeconds: Long?): String {
+    val total = durationSeconds ?: return ""
+    val hours = total / 3600L
+    val minutes = (total % 3600L) / 60L
+    val seconds = total % 60L
+    return if (hours > 0L) {
+        "%d:%02d:%02d".format(hours, minutes, seconds)
+    } else {
+        "%d:%02d".format(minutes, seconds)
+    }
+}

@@ -275,6 +275,24 @@ CREATE TABLE IF NOT EXISTS ads_events (
     INDEX idx_ads_events_device_time (device_id_hash, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS app_behavior_events (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    device_id_hash CHAR(64) NULL,
+    app_version VARCHAR(50) NULL,
+    platform ENUM('ANDROID_TV', 'FIRE_TV', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    event_type VARCHAR(40) NOT NULL,
+    video_id_hash CHAR(64) NULL,
+    channel_id VARCHAR(80) NULL,
+    category_id VARCHAR(40) NULL,
+    tags VARCHAR(500) NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_behavior_created (created_at),
+    INDEX idx_behavior_event_type (event_type),
+    INDEX idx_behavior_channel (channel_id),
+    INDEX idx_behavior_category (category_id),
+    INDEX idx_behavior_device_time (device_id_hash, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO ads_settings
     (id, ads_enabled, provider, use_test_ads, vast_production_tag_url, vast_test_tag_url,
      min_minutes_between_ads, max_ads_per_day, show_ad_before_live_stream, show_ad_before_movie,

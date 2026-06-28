@@ -3,6 +3,10 @@ package com.smartvision.svplayer.ui.movies
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +34,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Theaters
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.geometry.Offset
@@ -66,6 +72,8 @@ import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.focus.rememberTvFocusState
+import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -421,16 +429,42 @@ private fun HistoryDeleteButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    TvButton(
-        text = "",
-        onClick = onClick,
-        focusRequester = focusRequester,
-        leadingIcon = Icons.Default.Delete,
-        variant = TvButtonVariant.Secondary,
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val shape = RoundedCornerShape(7.dp)
+    Box(
         modifier = modifier
+            .size(36.dp)
             .focusProperties { left = leftFocusRequester }
-            .size(36.dp),
-    )
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                pressed = pressed,
+                focusedScale = 1.08f,
+                glowColor = SmartVisionColors.Error,
+                cornerRadius = 7.dp,
+            )
+            .clip(shape)
+            .background(if (focusState.isFocused) SmartVisionColors.Error.copy(alpha = 0.30f) else Color.Black.copy(alpha = 0.56f))
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) 2.dp else 1.dp,
+                    if (focusState.isFocused) SmartVisionColors.Error else Color.White.copy(alpha = 0.30f),
+                ),
+                shape,
+            )
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(interactionSource = interactionSource),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Delete,
+            contentDescription = "Supprimer",
+            tint = Color.White,
+            modifier = Modifier.size(22.dp),
+        )
+    }
 }
 
 @Composable

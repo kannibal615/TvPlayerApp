@@ -10,7 +10,9 @@ interface YoutubeApiService {
         @Query("key") apiKey: String,
         @Query("part") part: String = "snippet",
         @Query("type") type: String = "video",
-        @Query("q") query: String,
+        @Query("q") query: String? = null,
+        @Query("channelId") channelId: String? = null,
+        @Query("order") order: String = "relevance",
         @Query("maxResults") maxResults: Int = 50,
         @Query("safeSearch") safeSearch: String = "moderate",
         @Query("videoEmbeddable") videoEmbeddable: String = "true",
@@ -20,11 +22,19 @@ interface YoutubeApiService {
     @GET("videos")
     suspend fun mostPopularVideos(
         @Query("key") apiKey: String,
-        @Query("part") part: String = "snippet,status",
+        @Query("part") part: String = "snippet,contentDetails,statistics,status",
         @Query("chart") chart: String = "mostPopular",
         @Query("maxResults") maxResults: Int = 50,
         @Query("regionCode") regionCode: String = "FR",
         @Query("pageToken") pageToken: String? = null,
+    ): YoutubeVideosResponse
+
+    @GET("videos")
+    suspend fun videosByIds(
+        @Query("key") apiKey: String,
+        @Query("part") part: String = "snippet,contentDetails,statistics,status",
+        @Query("id") ids: String,
+        @Query("maxResults") maxResults: Int = 50,
     ): YoutubeVideosResponse
 }
 
@@ -50,6 +60,8 @@ data class YoutubeSearchIdDto(
 data class YoutubeVideoDto(
     @SerializedName("id") val id: String?,
     @SerializedName("snippet") val snippet: YoutubeSnippetDto?,
+    @SerializedName("contentDetails") val contentDetails: YoutubeContentDetailsDto? = null,
+    @SerializedName("statistics") val statistics: YoutubeStatisticsDto? = null,
     @SerializedName("status") val status: YoutubeStatusDto? = null,
 )
 
@@ -59,10 +71,21 @@ data class YoutubeStatusDto(
 
 data class YoutubeSnippetDto(
     @SerializedName("title") val title: String?,
+    @SerializedName("channelId") val channelId: String?,
     @SerializedName("channelTitle") val channelTitle: String?,
     @SerializedName("description") val description: String?,
     @SerializedName("publishedAt") val publishedAt: String?,
+    @SerializedName("categoryId") val categoryId: String?,
+    @SerializedName("tags") val tags: List<String>?,
     @SerializedName("thumbnails") val thumbnails: YoutubeThumbnailsDto?,
+)
+
+data class YoutubeContentDetailsDto(
+    @SerializedName("duration") val duration: String?,
+)
+
+data class YoutubeStatisticsDto(
+    @SerializedName("viewCount") val viewCount: String?,
 )
 
 data class YoutubeThumbnailsDto(

@@ -16,6 +16,12 @@ data class YoutubeVideoHistoryEntity(
     val channelTitle: String,
     val thumbnailUrl: String?,
     val publishedAt: String?,
+    val channelId: String?,
+    val viewCount: Long?,
+    val durationIso: String?,
+    val durationSeconds: Long?,
+    val categoryId: String?,
+    val tags: String?,
     val updatedAt: Long,
 )
 
@@ -24,4 +30,16 @@ data class YoutubeSelectionEntity(
     @PrimaryKey val id: String,
     val videoId: String?,
     val updatedAt: Long,
+)
+
+@Entity(tableName = "youtube_behavior_events")
+data class YoutubeBehaviorEventEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val eventType: String,
+    val videoIdHash: String?,
+    val channelId: String?,
+    val categoryId: String?,
+    val tags: String?,
+    val createdAt: Long,
+    val syncedAt: Long? = null,
 )

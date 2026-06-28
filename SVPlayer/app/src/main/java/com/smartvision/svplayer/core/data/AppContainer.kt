@@ -31,6 +31,8 @@ import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.data.update.AppUpdateApiService
 import com.smartvision.svplayer.data.update.AppUpdateRepository
 import com.smartvision.svplayer.data.youtube.YoutubeApiService
+import com.smartvision.svplayer.data.youtube.YoutubeBehaviorApiService
+import com.smartvision.svplayer.data.youtube.YoutubeBehaviorReporter
 import com.smartvision.svplayer.data.youtube.YoutubeRepository
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.SettingsRepository
@@ -103,6 +105,7 @@ class AppContainer(context: Context) {
     private val adConfigApi = activationRetrofit.create(AdConfigApiService::class.java)
     private val adsEventsApi = activationRetrofit.create(AdsEventsApiService::class.java)
     private val anomalyApi = activationRetrofit.create(AnomalyApiService::class.java)
+    private val youtubeBehaviorApi = activationRetrofit.create(YoutubeBehaviorApiService::class.java)
     private val youtubeRetrofit = Retrofit.Builder()
         .baseUrl("https://www.googleapis.com/youtube/v3/")
         .client(activationOkHttpClient)
@@ -156,10 +159,17 @@ class AppContainer(context: Context) {
         mediaDao = database.mediaDao(),
     )
 
+    private val youtubeBehaviorReporter = YoutubeBehaviorReporter(
+        activationRepository = activationRepository,
+        api = youtubeBehaviorApi,
+        dao = database.youtubeDao(),
+    )
+
     val youtubeRepository: YoutubeRepository = YoutubeRepository(
         api = youtubeApi,
         dao = database.youtubeDao(),
         apiKey = BuildConfig.YOUTUBE_API_KEY,
+        behaviorReporter = youtubeBehaviorReporter,
     )
 
     val catalogRepository: CatalogRepository = DefaultCatalogRepository(

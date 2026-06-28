@@ -121,17 +121,19 @@ fun YoutubeScreen(
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstVideoFocusRequester = remember { FocusRequester() }
     val playerFocusRequester = remember { FocusRequester() }
+    val firstPlayerSuggestionFocusRequester = remember { FocusRequester() }
     val searchFocusRequester = remember { FocusRequester() }
     var playingVideo by remember { mutableStateOf<YoutubeVideoUi?>(null) }
     var restoreVideoFocusAfterPlayer by remember { mutableStateOf(false) }
+    var restoreCategoryFocusAfterPlayer by remember { mutableStateOf(false) }
     val contentFocusRequester = when {
         playingVideo != null -> playerFocusRequester
         state.videos.isNotEmpty() -> firstVideoFocusRequester
         else -> null
     }
 
-    LaunchedEffect(state.categories.isNotEmpty()) {
-        if (state.categories.isNotEmpty()) {
+    LaunchedEffect(state.categories.isNotEmpty(), playingVideo?.videoId) {
+        if (state.categories.isNotEmpty() && playingVideo == null) {
             withFrameNanos { }
             delay(120)
             runCatching { selectedCategoryFocusRequester.requestFocus() }
@@ -140,7 +142,8 @@ fun YoutubeScreen(
 
     BackHandler(enabled = playingVideo != null) {
         playingVideo = null
-        restoreVideoFocusAfterPlayer = true
+        viewModel.closePlayerToTrending()
+        restoreCategoryFocusAfterPlayer = true
     }
 
     LaunchedEffect(restoreVideoFocusAfterPlayer, state.videos.size) {
@@ -149,6 +152,15 @@ fun YoutubeScreen(
             delay(80)
             runCatching { firstVideoFocusRequester.requestFocus() }
             restoreVideoFocusAfterPlayer = false
+        }
+    }
+
+    LaunchedEffect(restoreCategoryFocusAfterPlayer, state.selectedCategoryId, playingVideo) {
+        if (restoreCategoryFocusAfterPlayer && playingVideo == null && state.selectedCategoryId == "trending") {
+            withFrameNanos { }
+            delay(120)
+            runCatching { selectedCategoryFocusRequester.requestFocus() }
+            restoreCategoryFocusAfterPlayer = false
         }
     }
 
@@ -190,19 +202,37 @@ fun YoutubeScreen(
             modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.spacedBy(MediaCatalogDimens.PanelGap),
         ) {
-            YoutubeCategoryList(
-                state = state,
-                selectedCategoryFocusRequester = selectedCategoryFocusRequester,
-                contentFocusRequester = contentFocusRequester,
-                onCategory = viewModel::selectCategory,
-                modifier = Modifier
-                    .weight(0.22f)
-                    .fillMaxHeight(),
-            )
+            if (playingVideo != null) {
+                YoutubePlayerSuggestionsList(
+                    state = state,
+                    firstSuggestionFocusRequester = firstPlayerSuggestionFocusRequester,
+                    contentFocusRequester = playerFocusRequester,
+                    onSuggestionFocused = viewModel::focusVideo,
+                    onSuggestionClick = { video ->
+                        viewModel.recordPlayerBehavior("SUGGESTION_OPENED", video)
+                        viewModel.openYoutubeVideo(video)
+                        playingVideo = video
+                    },
+                    modifier = Modifier
+                        .weight(0.22f)
+                        .fillMaxHeight(),
+                )
+            } else {
+                YoutubeCategoryList(
+                    state = state,
+                    selectedCategoryFocusRequester = selectedCategoryFocusRequester,
+                    contentFocusRequester = contentFocusRequester,
+                    onCategory = viewModel::selectCategory,
+                    modifier = Modifier
+                        .weight(0.22f)
+                        .fillMaxHeight(),
+                )
+            }
             YoutubeVideoGrid(
                 state = state,
                 firstVideoFocusRequester = firstVideoFocusRequester,
                 playerFocusRequester = playerFocusRequester,
+                firstPlayerSuggestionFocusRequester = firstPlayerSuggestionFocusRequester,
                 searchFocusRequester = searchFocusRequester,
                 selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                 onSearchQueryChange = viewModel::updateSearchQuery,
@@ -215,6 +245,7 @@ fun YoutubeScreen(
                 },
                 playingVideo = playingVideo,
                 anomalyReporter = container.anomalyReporter,
+                onPlayerBehavior = viewModel::recordPlayerBehavior,
                 onLoadMore = viewModel::loadMoreIfNeeded,
                 onRetry = viewModel::retry,
                 modifier = Modifier
@@ -263,10 +294,146 @@ private fun YoutubeCategoryList(
 }
 
 @Composable
+private fun YoutubePlayerSuggestionsList(
+    state: YoutubeScreenState,
+    firstSuggestionFocusRequester: FocusRequester,
+    contentFocusRequester: FocusRequester,
+    onSuggestionFocused: (YoutubeVideoUi) -> Unit,
+    onSuggestionClick: (YoutubeVideoUi) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    MediaCatalogPanel(
+        title = "Suggestions",
+        modifier = modifier,
+        trailing = { YoutubeLogoMark() },
+    ) {
+        when {
+            state.suggestionsLoading -> CatalogLoading(
+                title = "Suggestions",
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            state.playerSuggestions.isEmpty() -> CatalogEmpty(
+                title = "Aucune suggestion",
+                subtitle = "Les tendances restent disponibles au retour.",
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
+                contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
+            ) {
+                items(state.playerSuggestions, key = { it.videoId }) { video ->
+                    val index = state.playerSuggestions.indexOf(video)
+                    YoutubePlayerSuggestionRow(
+                        video = video,
+                        focusRequester = firstSuggestionFocusRequester.takeIf { index == 0 },
+                        rightFocusRequester = contentFocusRequester,
+                        onFocused = { onSuggestionFocused(video) },
+                        onClick = { onSuggestionClick(video) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun YoutubePlayerSuggestionRow(
+    video: YoutubeVideoUi,
+    focusRequester: FocusRequester?,
+    rightFocusRequester: FocusRequester,
+    onFocused: () -> Unit,
+    onClick: () -> Unit,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val shape = RoundedCornerShape(7.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(58.dp)
+            .focusProperties { right = rightFocusRequester }
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                pressed = pressed,
+                focusedScale = 1.025f,
+                glowColor = SmartVisionColors.CyanAccent,
+                cornerRadius = 7.dp,
+            )
+            .onFocusChanged { if (it.isFocused) onFocused() }
+            .clip(shape)
+            .background(if (focusState.isFocused) SmartVisionColors.CyanAccent.copy(alpha = 0.16f) else SmartVisionColors.Surface.copy(alpha = 0.72f))
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) 2.dp else 1.dp,
+                    if (focusState.isFocused) SmartVisionColors.CyanAccent else SmartVisionColors.Border,
+                ),
+                shape,
+            )
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(interactionSource = interactionSource)
+            .padding(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(78.dp)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(5.dp))
+                .background(Color.Black),
+        ) {
+            if (!video.thumbnailUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = video.thumbnailUrl,
+                    contentDescription = video.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
+            if (video.durationLabel.isNotBlank()) {
+                Text(
+                    text = video.durationLabel,
+                    color = Color.White,
+                    style = CatalogMetaStyle,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .background(Color.Black.copy(alpha = 0.74f), RoundedCornerShape(3.dp))
+                        .padding(horizontal = 4.dp, vertical = 1.dp),
+                )
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = video.title,
+                color = SmartVisionColors.TextPrimary,
+                fontSize = 11.sp,
+                lineHeight = 13.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = video.meta,
+                color = SmartVisionColors.TextSecondary,
+                style = CatalogMetaStyle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
 private fun YoutubeVideoGrid(
     state: YoutubeScreenState,
     firstVideoFocusRequester: FocusRequester,
     playerFocusRequester: FocusRequester,
+    firstPlayerSuggestionFocusRequester: FocusRequester,
     searchFocusRequester: FocusRequester,
     selectedCategoryFocusRequester: FocusRequester,
     onSearchQueryChange: (String) -> Unit,
@@ -276,6 +443,7 @@ private fun YoutubeVideoGrid(
     onVideoClick: (YoutubeVideoUi) -> Unit,
     playingVideo: YoutubeVideoUi?,
     anomalyReporter: AnomalyReporter,
+    onPlayerBehavior: (String, YoutubeVideoUi?) -> Unit,
     onLoadMore: (Int) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
@@ -355,11 +523,12 @@ private fun YoutubeVideoGrid(
                     video = playingVideo,
                     focusRequester = playerFocusRequester,
                     anomalyReporter = anomalyReporter,
+                    onPlayerBehavior = onPlayerBehavior,
                     modifier = Modifier.fillMaxSize(),
                 )
 
                 else -> LazyVerticalGrid(
-                    columns = GridCells.Fixed(MediaCatalogDimens.MediaGridColumns),
+                    columns = GridCells.Fixed(YoutubeGridColumns),
                     state = gridState,
                     modifier = Modifier.fillMaxSize(),
                     horizontalArrangement = Arrangement.spacedBy(MediaCatalogDimens.MediaGridGap),
@@ -372,10 +541,10 @@ private fun YoutubeVideoGrid(
                             selected = video.videoId == state.selectedVideoId,
                             focusRequester = firstVideoFocusRequester.takeIf { index == 0 },
                             leftFocusRequester = selectedCategoryFocusRequester.takeIf {
-                                index % MediaCatalogDimens.MediaGridColumns == 0
+                                index % YoutubeGridColumns == 0
                             },
                             upFocusRequester = searchFocusRequester.takeIf {
-                                index < MediaCatalogDimens.MediaGridColumns
+                                index < YoutubeGridColumns
                             },
                             onFocused = { onVideoFocused(video) },
                             onClick = { onVideoClick(video) },
@@ -422,22 +591,45 @@ private fun YoutubeInlinePlayer(
     video: YoutubeVideoUi,
     focusRequester: FocusRequester,
     anomalyReporter: AnomalyReporter,
+    onPlayerBehavior: (String, YoutubeVideoUi?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val safeVideoId = video.videoId.filter { it.isLetterOrDigit() || it == '_' || it == '-' }.take(32)
+    val focusState = rememberTvFocusState()
+
+    LaunchedEffect(video.videoId) {
+        withFrameNanos { }
+        delay(120)
+        runCatching { focusRequester.requestFocus() }
+    }
 
     Box(
         modifier = modifier
-            .focusRequester(focusRequester)
-            .focusable()
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                focusedScale = 1.006f,
+                glowColor = SmartVisionColors.CyanAccent,
+                cornerRadius = MediaCatalogDimens.ItemRadius,
+            )
             .clip(RoundedCornerShape(MediaCatalogDimens.ItemRadius))
-            .background(Color.Black),
+            .background(Color.Black)
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) 3.dp else 1.dp,
+                    if (focusState.isFocused) SmartVisionColors.CyanAccent else SmartVisionColors.Border,
+                ),
+                RoundedCornerShape(MediaCatalogDimens.ItemRadius),
+            )
+            .focusable(),
     ) {
         if (safeVideoId.isNotBlank()) {
             YoutubeWebPlayer(
                 videoId = safeVideoId,
                 mode = YoutubePlaybackMode.Fullscreen,
                 anomalyReporter = anomalyReporter,
+                onPlayerReady = { onPlayerBehavior("PLAYER_READY", video) },
+                onPlaybackCompleted = { onPlayerBehavior("VIDEO_COMPLETED", video) },
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
@@ -468,7 +660,7 @@ private fun YoutubeSearchInput(
     var editing by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(7.dp)
     val borderColor by animateColorAsState(
-        targetValue = if (focused || editing) Color(0xFFFF3B3B) else SmartVisionColors.Border,
+        targetValue = if (focused || editing) SmartVisionColors.CyanAccent else SmartVisionColors.Border,
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "youtubeSearchBorder",
     )
@@ -485,7 +677,7 @@ private fun YoutubeSearchInput(
         onValueChange = onQueryChange,
         singleLine = true,
         readOnly = !editing,
-        cursorBrush = SolidColor(Color(0xFFFF3B3B)),
+        cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(
             onSearch = {
@@ -541,8 +733,21 @@ private fun YoutubeSearchInput(
                 }
             }
             .clip(shape)
-            .background(SmartVisionColors.Surface.copy(alpha = 0.86f))
+            .background(
+                if (focused || editing) {
+                    SmartVisionColors.CyanAccent.copy(alpha = 0.10f)
+                } else {
+                    SmartVisionColors.Surface.copy(alpha = 0.86f)
+                },
+            )
             .border(BorderStroke(if (focused) 2.dp else 1.dp, borderColor), shape)
+            .border(
+                BorderStroke(
+                    if (focused || editing) 5.dp else 0.dp,
+                    SmartVisionColors.CyanAccent.copy(alpha = if (focused || editing) 0.16f else 0f),
+                ),
+                shape,
+            )
             .padding(horizontal = 10.dp),
         decorationBox = { inner ->
             Row(
@@ -552,7 +757,7 @@ private fun YoutubeSearchInput(
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = null,
-                    tint = if (focused || editing) Color(0xFFFF3B3B) else SmartVisionColors.TextSecondary,
+                    tint = if (focused || editing) SmartVisionColors.CyanAccent else SmartVisionColors.TextSecondary,
                     modifier = Modifier.size(16.dp),
                 )
                 Spacer(Modifier.width(7.dp))
@@ -589,7 +794,7 @@ private fun YoutubeSuggestionsDropdown(
             .width(430.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(Color(0xF20A111F))
-            .border(BorderStroke(1.dp, Color(0xFFFF3B3B).copy(alpha = 0.58f)), RoundedCornerShape(8.dp))
+            .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent.copy(alpha = 0.58f)), RoundedCornerShape(8.dp))
             .padding(vertical = 5.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
@@ -632,12 +837,12 @@ private fun YoutubeSuggestionRow(
                 focusRequester = focusRequester,
                 pressed = pressed,
                 focusedScale = 1.02f,
-                glowColor = Color(0xFFFF3B3B),
+                glowColor = SmartVisionColors.CyanAccent,
                 cornerRadius = 6.dp,
             )
             .onFocusChanged { onSuggestionFocusChanged(it.isFocused) }
             .clip(shape)
-            .background(if (focusState.isFocused) Color(0xFFFF3B3B).copy(alpha = 0.26f) else Color.Transparent)
+            .background(if (focusState.isFocused) SmartVisionColors.CyanAccent.copy(alpha = 0.22f) else Color.Transparent)
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .focusable(interactionSource = interactionSource)
             .padding(horizontal = 10.dp),
@@ -768,15 +973,15 @@ private fun YoutubeVideoCard(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .padding(horizontal = 8.dp, vertical = 7.dp),
         ) {
             Text(
                 text = video.title,
                 color = Color.White,
-                fontSize = 11.sp,
-                lineHeight = 13.sp,
+                fontSize = 12.sp,
+                lineHeight = 14.sp,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
@@ -785,6 +990,20 @@ private fun YoutubeVideoCard(
                 style = CatalogMetaStyle,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+            )
+        }
+
+        if (video.durationLabel.isNotBlank()) {
+            Text(
+                text = video.durationLabel,
+                color = Color.White,
+                style = CatalogMetaStyle.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(7.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Black.copy(alpha = 0.78f))
+                    .padding(horizontal = 5.dp, vertical = 2.dp),
             )
         }
 
@@ -833,3 +1052,4 @@ private fun youtubeCategoryIcon(id: String): ImageVector? =
     }
 
 private const val YoutubeVideoCardAspectRatio = 16f / 9f
+private const val YoutubeGridColumns = 4

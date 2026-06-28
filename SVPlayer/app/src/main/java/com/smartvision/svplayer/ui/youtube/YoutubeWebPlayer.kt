@@ -2,7 +2,6 @@ package com.smartvision.svplayer.ui.youtube
 
 import android.annotation.SuppressLint
 import android.os.Build
-import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
@@ -36,6 +35,8 @@ internal fun YoutubeWebPlayer(
     mode: YoutubePlaybackMode,
     modifier: Modifier = Modifier,
     anomalyReporter: AnomalyReporter? = null,
+    onPlayerReady: () -> Unit = {},
+    onPlaybackCompleted: () -> Unit = {},
 ) {
     val safeVideoId = videoId.sanitizeYoutubeVideoId()
     var renderRestart by remember(safeVideoId, mode) { mutableIntStateOf(0) }
@@ -52,7 +53,13 @@ internal fun YoutubeWebPlayer(
                     )
                     if (mode == YoutubePlaybackMode.Fullscreen && anomalyReporter != null) {
                         addJavascriptInterface(
-                            YoutubePlayerBridge(anomalyReporter, safeVideoId, mode.name),
+                            YoutubePlayerBridge(
+                                anomalyReporter = anomalyReporter,
+                                videoId = safeVideoId,
+                                mode = mode.name,
+                                onPlayerReady = onPlayerReady,
+                                onPlaybackCompleted = onPlaybackCompleted,
+                            ),
                             JavascriptBridgeName,
                         )
                     }
@@ -60,15 +67,16 @@ internal fun YoutubeWebPlayer(
             },
             update = { webView ->
                 val tag = "${mode.name}:$safeVideoId"
-                if (webView.tag != tag) {
-                    webView.tag = tag
+                val currentTag = webView.tag as? YoutubeWebViewTag
+                if (currentTag?.videoKey != tag) {
+                    webView.tag = YoutubeWebViewTag(videoKey = tag)
                     webView.loadDataWithBaseURL(
                         YoutubePlayerOrigin,
                         youtubePlayerHtml(
                             videoId = safeVideoId,
                             autoplay = true,
                             muted = mode != YoutubePlaybackMode.Fullscreen,
-                            controls = false,
+                            controls = mode == YoutubePlaybackMode.Fullscreen,
                         ),
                         "text/html",
                         "utf-8",
@@ -107,9 +115,6 @@ private fun WebView.configureYoutubeWebView(
     isHorizontalScrollBarEnabled = false
     overScrollMode = View.OVER_SCROLL_NEVER
     setLayerType(View.LAYER_TYPE_HARDWARE, null)
-    if (mode == YoutubePlaybackMode.Fullscreen) {
-        setOnKeyListener(YoutubeRemoteKeyListener)
-    }
     webChromeClient = object : WebChromeClient() {
         override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
             val message = consoleMessage?.message().orEmpty()
@@ -168,46 +173,23 @@ private fun WebView.configureYoutubeWebView(
     }
 }
 
-private val YoutubeRemoteKeyListener = View.OnKeyListener { view, keyCode, event ->
-    if (view !is WebView) return@OnKeyListener false
-    if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_UP) {
-        return@OnKeyListener false
-    }
-    if (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-        return@OnKeyListener true
-    }
-    val isToggleKey = keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
-        keyCode == KeyEvent.KEYCODE_ENTER ||
-        keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER ||
-        keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE ||
-        keyCode == KeyEvent.KEYCODE_SPACE
-    val expectedAction = if (isToggleKey) KeyEvent.ACTION_UP else KeyEvent.ACTION_DOWN
-    if (event.action != expectedAction) return@OnKeyListener isToggleKey
-    if (isToggleKey && event.repeatCount > 0) return@OnKeyListener true
-
-    val command = when (keyCode) {
-        KeyEvent.KEYCODE_DPAD_CENTER,
-        KeyEvent.KEYCODE_ENTER,
-        KeyEvent.KEYCODE_NUMPAD_ENTER,
-        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
-        KeyEvent.KEYCODE_SPACE -> "window.smartVisionTogglePlayback && window.smartVisionTogglePlayback();"
-        KeyEvent.KEYCODE_MEDIA_PLAY -> "window.smartVisionPlay && window.smartVisionPlay();"
-        KeyEvent.KEYCODE_MEDIA_PAUSE -> "window.smartVisionPause && window.smartVisionPause();"
-        KeyEvent.KEYCODE_DPAD_LEFT,
-        KeyEvent.KEYCODE_MEDIA_REWIND -> "window.smartVisionSeekBy && window.smartVisionSeekBy(-10);"
-        KeyEvent.KEYCODE_DPAD_RIGHT,
-        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> "window.smartVisionSeekBy && window.smartVisionSeekBy(10);"
-        else -> null
-    } ?: return@OnKeyListener false
-    view.evaluateJavascript(command, null)
-    true
-}
-
 private class YoutubePlayerBridge(
     private val anomalyReporter: AnomalyReporter,
     private val videoId: String,
     private val mode: String,
+    private val onPlayerReady: () -> Unit,
+    private val onPlaybackCompleted: () -> Unit,
 ) {
+    @JavascriptInterface
+    fun onPlayerReady() {
+        onPlayerReady.invoke()
+    }
+
+    @JavascriptInterface
+    fun onPlaybackCompleted() {
+        onPlaybackCompleted.invoke()
+    }
+
     @JavascriptInterface
     fun onPlayerError(errorCode: String) {
         anomalyReporter.reportAsync(
@@ -230,6 +212,7 @@ private fun youtubePlayerHtml(
     val autoplayValue = if (autoplay) 1 else 0
     val mutedJs = if (muted) "event.target.mute();" else "event.target.unMute();"
     val controlsValue = if (controls) 1 else 0
+    val disableKeyboardValue = if (controls) 0 else 1
     return """
         <!doctype html>
         <html>
@@ -292,7 +275,7 @@ private fun youtubePlayerHtml(
                     autoplay: $autoplayValue,
                     controls: $controlsValue,
                     cc_load_policy: 0,
-                    disablekb: 1,
+                    disablekb: $disableKeyboardValue,
                     enablejsapi: 1,
                     fs: 0,
                     iv_load_policy: 3,
@@ -310,6 +293,9 @@ private fun youtubePlayerHtml(
               }
               function onPlayerReady(event) {
                 playerReady = true;
+                if (window.$JavascriptBridgeName) {
+                  window.$JavascriptBridgeName.onPlayerReady();
+                }
                 $mutedJs
                 event.target.playVideo();
                 setTimeout(function() { event.target.playVideo(); }, 450);
@@ -317,6 +303,9 @@ private fun youtubePlayerHtml(
               }
               function onPlayerStateChange(event) {
                 playerState = event.data;
+                if (event.data === YT.PlayerState.ENDED && window.$JavascriptBridgeName) {
+                  window.$JavascriptBridgeName.onPlaybackCompleted();
+                }
               }
               function onPlayerError(event) {
                 var code = event ? String(event.data) : 'unknown';
@@ -367,6 +356,12 @@ private fun youtubePlayerHtml(
                   if (player && player.destroy) player.destroy();
                 } catch (err) {}
               }
+              window.smartVisionSkipAd = function() {
+                try {
+                  var button = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button');
+                  if (button) button.click();
+                } catch (err) {}
+              }
             </script>
           </body>
         </html>
@@ -376,6 +371,7 @@ private fun youtubePlayerHtml(
 private const val JavascriptBridgeName = "SmartVisionYoutube"
 private const val YoutubeBaseUrl = "https://www.youtube.com"
 private const val YoutubePlayerOrigin = "https://com.smartvision.svplayer"
+private data class YoutubeWebViewTag(val videoKey: String)
 private val AllowedYoutubeHosts = setOf(
     "youtube.com",
     "youtube-nocookie.com",

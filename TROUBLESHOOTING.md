@@ -138,4 +138,22 @@ Solution qui fonctionne :
 Erreurs a eviter :
 - ne pas compter uniquement sur `onDispose` apres navigation pour liberer Media3 quand le crash arrive autour de `before_onBack` ;
 - ne pas supposer que les WebView Android TV anciens exposent toutes les API JS modernes ;
+
+## 2026-06-28 - Nouvel endpoint API app accessible en .php mais 404 sans extension
+
+Probleme rencontre :
+Le nouvel endpoint `api/app/behavior-events.php` fonctionnait en POST direct, mais `api/app/behavior-events` retournait 404 en production.
+
+Contexte :
+Les endpoints app publics utilisent des routes sans extension via `.htaccess`, par exemple `ads-config`, `ads-events`, `ads-vast` et `anomaly-events`. Ajouter seulement le fichier PHP et l upload dans `deploy_activation_phase1.ps1` ne suffit pas si la rewrite rule n existe pas en prod.
+
+Solution qui fonctionne :
+- ajouter la regle `RewriteRule ^api/app/behavior-events/?$ api/app/behavior-events.php [L,QSA]` dans `server/public_html/.htaccess` ;
+- verifier que `deploy_activation_phase1.ps1` upload bien `.htaccess` a la racine distante ;
+- redeployer serveur uniquement avec `.\scripts\deploy_activation_phase1.ps1 -SkipInstall -SkipTests -SkipApkUpload` ;
+- valider a la fois l URL sans extension et l URL `.php` si besoin de diagnostic.
+
+Erreurs a eviter :
+- ne pas conclure que le service PHP ou la table SQL sont casses avant d essayer l URL `.php` ;
+- ne pas oublier que les nouveaux fichiers API peuvent etre uploades correctement mais rester inaccessibles si `.htaccess` n est pas synchronise.
 - ne pas laisser un renderer WebView mort tuer tout le processus app.
