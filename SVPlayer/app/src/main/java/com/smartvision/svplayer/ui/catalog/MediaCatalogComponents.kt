@@ -44,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -145,19 +146,21 @@ fun MediaCatalogHeader(
                     leadingIcon = tab.icon,
                     leadingContent = if (tab.useYoutubeLogo) {
                         {
-                            Box {
-                                YoutubeLogoIcon()
-                                if (tab.locked) {
-                                    Image(
-                                        painter = painterResource(R.drawable.premium_crown),
-                                        contentDescription = "Premium",
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .offset(x = 10.dp, y = (-12).dp)
-                                            .size(19.dp),
-                                    )
-                                }
-                            }
+                            YoutubeLogoIcon()
+                        }
+                    } else {
+                        null
+                    },
+                    trailingContent = if (tab.locked) {
+                        {
+                            Image(
+                                painter = painterResource(R.drawable.premium_crown),
+                                contentDescription = "Premium",
+                                modifier = Modifier
+                                    .offset(x = 2.dp, y = (-6).dp)
+                                    .graphicsLayer { rotationZ = 12f }
+                                    .size(20.dp),
+                            )
                         }
                     } else {
                         null
@@ -165,7 +168,7 @@ fun MediaCatalogHeader(
                     contentPadding = PaddingValues(horizontal = 10.dp),
                     modifier = Modifier
                         .height(36.dp)
-                        .alpha(if (tab.locked) 0.36f else 1f),
+                        .alpha(if (tab.locked) 0.22f else 1f),
                 )
             }
         }

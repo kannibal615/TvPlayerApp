@@ -87,6 +87,7 @@ class MoviesViewModel(
             _uiState.value = MoviesScreenState(categoriesLoading = true)
             runCatching {
                 xtreamRepository.getMovieCategories().map { it.toUiCategory() }
+                    .filter { category -> playerSettings.allowsContent(category.label) }
             }.onSuccess { categories ->
                 if (categories.isEmpty()) {
                     _uiState.value = MoviesScreenState(
@@ -183,7 +184,7 @@ class MoviesViewModel(
                     playerSettings.parentalKeywords != settings.parentalKeywords
                 playerSettings = settings
                 if (changed && !_uiState.value.categoriesLoading) {
-                    retryCurrentCategory()
+                    loadCategories()
                 }
             }
         }

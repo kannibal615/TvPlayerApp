@@ -45,11 +45,13 @@ fun Modifier.tvFocusTarget(
     cornerRadius: Dp = SmartVisionDimensions.CardRadius,
 ): Modifier = composed {
     val density = LocalDensity.current
+    val style = LocalTvFocusStyle.current
     val cornerRadiusPx = with(density) { cornerRadius.toPx() }
+    val targetScale = focusedScale.takeIf { it != SmartVisionDimensions.FocusScale } ?: style.scale
     val scale by animateFloatAsState(
         targetValue = when {
             pressed && enabled -> 0.97f
-            state.isFocused && enabled -> focusedScale
+            state.isFocused && enabled -> targetScale
             else -> 1f
         },
         animationSpec = tween(durationMillis = SmartVisionDimensions.FocusAnimationMillis),
@@ -71,8 +73,8 @@ fun Modifier.tvFocusTarget(
         .drawBehind {
             if (state.isFocused && enabled) {
                 drawRoundRect(
-                    brush = Brush.radialGradient(
-                        colors = listOf(glowColor.copy(alpha = 0.34f), Color.Transparent),
+                        brush = Brush.radialGradient(
+                        colors = listOf(glowColor.copy(alpha = style.glowAlpha), Color.Transparent),
                         center = Offset(size.width / 2f, size.height / 2f),
                         radius = max(size.width, size.height) * 0.72f,
                     ),

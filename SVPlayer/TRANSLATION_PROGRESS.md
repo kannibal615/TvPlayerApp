@@ -53,3 +53,24 @@ Remaining after block 2:
 - Replace remaining user-visible hard-coded French text in Android Compose screens.
 - Add a repeatable i18n audit command before each release.
 - Add backend email flow for forgotten parental PIN once the account email source is confirmed in the Android activation/session model.
+
+## Block 3 - Personalization and notifications
+
+Status: done locally.
+
+Completed:
+- Added English/French strings for Settings > Personalization.
+- Added English/French labels for the three focus styles: Default, Soft and Compact.
+- Added English/French strings for the Notifications screen header, refresh states, empty state, load error and update notification template.
+- Kept the default language as English and the visible Settings languages as English/French only.
+- Validated the block with the release build that produced `0.1.40 (43)`.
+
+Remaining after block 3:
+- Externalize and translate Activation screens.
+- Externalize and translate Home body sections, collections and empty/loading states.
+- Externalize and translate Live TV, Movies, Series, details and player overlays.
+- Externalize and translate Profile, update dialogs and premium purchase popups.
+- Externalize and translate the full YouTube screen: search, categories, suggestions, player messages and errors.
+- Replace remaining user-visible hard-coded French text in Android Compose screens.
+- Add a repeatable i18n audit command before each release.
+- Add backend email flow for forgotten parental PIN once the account email source is confirmed in the Android activation/session model.

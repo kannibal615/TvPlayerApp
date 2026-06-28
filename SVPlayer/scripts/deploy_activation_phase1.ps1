@@ -793,6 +793,68 @@ try {
     Write-Utf8NoBomFile -Path $OutputPath -Content $content
 }
 
+function New-ReleaseNotificationFile {
+    param(
+        [string]$OutputPath,
+        [string]$Token,
+        [int]$VersionCode,
+        [string]$VersionName
+    )
+
+    $title = "Update available"
+    $message = "SmartVision $VersionName ($VersionCode) is available. Open this notification to install the update."
+    $content = @'
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/api/config.php';
+require_once __DIR__ . '/api/helpers.php';
+
+header('Content-Type: application/json; charset=utf-8');
+if (!hash_equals('__TOKEN__', (string) ($_GET['token'] ?? ''))) {
+    http_response_code(404);
+    echo json_encode(['success' => false]);
+    exit;
+}
+
+register_shutdown_function(static function (): void { @unlink(__FILE__); });
+
+try {
+    $pdo = db();
+    ensure_app_notifications_table($pdo);
+    $title = '__TITLE__';
+    $message = '__MESSAGE__';
+    $statement = $pdo->prepare(
+        "INSERT INTO app_notifications
+            (title, message, target_scope, target_value, priority, status, created_by, expires_at)
+         SELECT :title, :message, 'all', NULL, 'important', 'active', 'deploy_script', DATE_ADD(NOW(), INTERVAL 45 DAY)
+         WHERE NOT EXISTS (
+             SELECT 1 FROM app_notifications
+             WHERE title = :title_check
+               AND message = :message_check
+               AND created_by = 'deploy_script'
+               AND created_at > DATE_SUB(NOW(), INTERVAL 45 DAY)
+         )"
+    );
+    $statement->execute([
+        'title' => $title,
+        'message' => $message,
+        'title_check' => $title,
+        'message_check' => $message,
+    ]);
+    echo json_encode(['success' => true, 'inserted' => $statement->rowCount()], JSON_UNESCAPED_SLASHES);
+} catch (Throwable $exception) {
+    error_log('SmartVision release notification failed.');
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Release notification failed.']);
+}
+'@
+    $content = $content.Replace('__TOKEN__', (Escape-PhpString $Token))
+    $content = $content.Replace('__TITLE__', (Escape-PhpString $title))
+    $content = $content.Replace('__MESSAGE__', (Escape-PhpString $message))
+    Write-Utf8NoBomFile -Path $OutputPath -Content $content
+}
+
 function Test-AdsApi {
     param(
         [string]$Domain,
@@ -1122,6 +1184,16 @@ try {
         } | ConvertTo-Json | Set-Content -LiteralPath $versionManifest -Encoding UTF8
         Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/downloads" -FilePath $versionedApk
         Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/downloads" -FilePath $versionManifest
+        $releaseNotificationToken = [Guid]::NewGuid().ToString("N")
+        $releaseNotificationPath = Join-Path $tempRoot "release_notification.php"
+        New-ReleaseNotificationFile `
+            -OutputPath $releaseNotificationPath `
+            -Token $releaseNotificationToken `
+            -VersionCode $apkVersionCode `
+            -VersionName $apkVersionName
+        Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath $releaseNotificationPath
+        $releaseNotification = Invoke-RestMethod -Method Get -Uri "https://$domain/release_notification.php?token=$releaseNotificationToken"
+        Assert-ApiResult -Result $releaseNotification -Label "release_notification"
         try {
             Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/downloads" -FilePath $downloadApk
         } catch {

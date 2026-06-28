@@ -104,6 +104,7 @@ class LiveTvViewModel(
             _uiState.value = LiveTvUiState(categoriesLoading = true)
             runCatching {
                 xtreamRepository.getLiveCategories().map { it.toUiCategory() }
+                    .filter { category -> playerSettings.allowsContent(category.label) }
             }.onSuccess { categories ->
                 if (categories.isEmpty()) {
                     _uiState.value = LiveTvUiState(
@@ -207,7 +208,7 @@ class LiveTvViewModel(
                     playerSettings.parentalKeywords != settings.parentalKeywords
                 playerSettings = settings
                 if (changed && !_uiState.value.categoriesLoading) {
-                    retryCurrentCategory()
+                    loadCategories()
                 }
             }
         }

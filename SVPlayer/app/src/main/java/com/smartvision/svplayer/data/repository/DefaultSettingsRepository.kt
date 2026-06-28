@@ -21,6 +21,7 @@ class DefaultSettingsRepository(
                 displaySize = preferences[DISPLAY_SIZE] ?: "Normal",
                 language = preferences[LANGUAGE] ?: "English",
                 syncFrequency = preferences[SYNC_FREQUENCY] ?: "A chaque demarrage",
+                focusStyle = preferences[FOCUS_STYLE] ?: "Default",
                 animationsEnabled = preferences[ANIMATIONS] ?: true,
                 videoRatio = preferences[VIDEO_RATIO] ?: "Fit",
                 bufferMode = preferences[BUFFER_MODE] ?: "Standard",
@@ -41,6 +42,10 @@ class DefaultSettingsRepository(
 
     override suspend fun setSyncFrequency(value: String) {
         dataStore.edit { it[SYNC_FREQUENCY] = value }
+    }
+
+    override suspend fun setFocusStyle(value: String) {
+        dataStore.edit { it[FOCUS_STYLE] = value }
     }
 
     override suspend fun setAnimationsEnabled(value: Boolean) {
@@ -79,6 +84,7 @@ class DefaultSettingsRepository(
         val DISPLAY_SIZE = stringPreferencesKey("display_size")
         val LANGUAGE = stringPreferencesKey("language")
         val SYNC_FREQUENCY = stringPreferencesKey("sync_frequency")
+        val FOCUS_STYLE = stringPreferencesKey("focus_style")
         val ANIMATIONS = booleanPreferencesKey("animations_enabled")
         val VIDEO_RATIO = stringPreferencesKey("video_ratio")
         val BUFFER_MODE = stringPreferencesKey("buffer_mode")

@@ -121,6 +121,7 @@ data class PlayerSettings(
     val displaySize: String = "Normal",
     val language: String = "English",
     val syncFrequency: String = "A chaque demarrage",
+    val focusStyle: String = "Default",
     val animationsEnabled: Boolean = true,
     val videoRatio: String = "Fit",
     val bufferMode: String = "Standard",

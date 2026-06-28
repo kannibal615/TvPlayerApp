@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -75,11 +76,15 @@ import com.smartvision.svplayer.ui.series.SeriesScreen
 import com.smartvision.svplayer.ui.settings.SettingsScreen
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
+import com.smartvision.svplayer.ui.focus.TvFocusStyles
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.update.AppUpdateDialog
 import com.smartvision.svplayer.ui.update.AppUpdateViewModel
 import com.smartvision.svplayer.ui.youtube.YoutubeScreen
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 @Composable
@@ -110,6 +115,7 @@ fun AppNavigation(
         initialValue = PlayerSettings(),
     )
     val strings = smartVisionStrings(playerSettings.language)
+    val focusStyle = remember(playerSettings.focusStyle) { TvFocusStyles.fromKey(playerSettings.focusStyle) }
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route ?: AppRoute.Home.route
     var showExitConfirmation by remember { mutableStateOf(false) }
@@ -170,10 +176,12 @@ fun AppNavigation(
     }
 
     if (appConfigState.consentRequired) {
-        ConsentDialog(
-            consent = appConfigState.config.consent,
-            onAccept = appConfigViewModel::acceptConsent,
-        )
+        CompositionLocalProvider(LocalTvFocusStyle provides focusStyle) {
+            ConsentDialog(
+                consent = appConfigState.config.consent,
+                onAccept = appConfigViewModel::acceptConsent,
+            )
+        }
         return
     }
 
@@ -256,7 +264,10 @@ fun AppNavigation(
     }
     LaunchedEffect(activationState.activated) {
         if (activationState.activated) {
-            appUpdateViewModel.checkForUpdate()
+            while (isActive) {
+                appUpdateViewModel.checkForUpdate()
+                delay(30 * 60 * 1_000L)
+            }
         }
     }
     LaunchedEffect(showLicensePurchaseQr, activationState.shouldShowLicenseKey) {
@@ -275,6 +286,7 @@ fun AppNavigation(
     val hasNewNotifications = notificationBadgeState.hasUnread || updateNotificationCount > 0
     val notificationBadgeCount = notificationBadgeState.unreadCount + updateNotificationCount
 
+    CompositionLocalProvider(LocalTvFocusStyle provides focusStyle) {
     NavHost(
         navController = navController,
         startDestination = AppRoute.Home.route,
@@ -564,6 +576,7 @@ fun AppNavigation(
             onInstall = { appUpdateViewModel.installUpdate(context) },
             onDismiss = appUpdateViewModel::dismiss,
         )
+    }
     }
 
 }

@@ -9,6 +9,7 @@ interface SettingsRepository {
     suspend fun setDisplaySize(value: String)
     suspend fun setLanguage(value: String)
     suspend fun setSyncFrequency(value: String)
+    suspend fun setFocusStyle(value: String)
     suspend fun setAnimationsEnabled(value: Boolean)
     suspend fun setVideoRatio(value: String)
     suspend fun setBufferMode(value: String)

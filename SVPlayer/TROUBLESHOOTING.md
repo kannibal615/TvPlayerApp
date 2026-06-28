@@ -41,3 +41,22 @@ Working solution:
 Avoid next time:
 - Do not rely only on changing default arrays when production stores an older JSON setting.
 - Verify the public API output after admin/config changes, not only PHP syntax.
+
+## 2026-06-28 - Stored feature flags can override expected free_ads locks
+
+Problem:
+- The code defaults may correctly set `free_ads = false`, but production can still return `free_ads = true` when the admin-stored `app_feature_access` setting contains older or manual values.
+
+Context:
+- After deploying release `0.1.40 (43)`, `api/app_config.php` returned `free_ads = true` for `youtube` and `parental_control`.
+- This would prevent the Android lock/greyed state from applying to `free_ads` users even though the Android and PHP default code were correct.
+
+Working solution:
+- Re-save the "Gestion des fonctionnalites" admin form with only Premium and Trial enabled for YouTube and parental control.
+- Re-check:
+  `Invoke-RestMethod https://<domain>/api/app_config.php | ConvertTo-Json -Depth 10`
+- Confirm `youtube.free_ads = false` and `parental_control.free_ads = false`.
+
+Avoid next time:
+- Do not assume dynamic feature defaults are active in production after deploy.
+- Always verify the live `api/app_config.php` output before closing a release involving feature locks.

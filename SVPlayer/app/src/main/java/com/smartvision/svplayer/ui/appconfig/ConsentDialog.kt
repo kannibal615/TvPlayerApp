@@ -3,6 +3,7 @@ package com.smartvision.svplayer.ui.appconfig
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,13 +23,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import com.smartvision.svplayer.data.appconfig.ConsentConfig
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
@@ -41,6 +50,8 @@ fun ConsentDialog(
     onAccept: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val scrollFocusRequester = remember { FocusRequester() }
     val acceptFocusRequester = remember { FocusRequester() }
     val canAccept by remember {
         derivedStateOf { scrollState.maxValue == 0 || scrollState.value >= scrollState.maxValue - 8 }
@@ -49,12 +60,15 @@ fun ConsentDialog(
     LaunchedEffect(canAccept) {
         if (canAccept) runCatching { acceptFocusRequester.requestFocus() }
     }
+    LaunchedEffect(Unit) {
+        runCatching { scrollFocusRequester.requestFocus() }
+    }
 
     Dialog(onDismissRequest = {}) {
         Column(
             modifier = Modifier
-                .width(860.dp)
-                .height(620.dp)
+                .width(920.dp)
+                .height(560.dp)
                 .background(
                     Brush.verticalGradient(listOf(Color(0xFF111C2E), Color(0xFF07101F))),
                     RoundedCornerShape(12.dp),
@@ -73,9 +87,25 @@ fun ConsentDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
+                    .focusRequester(scrollFocusRequester)
+                    .onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                        val delta = when (event.key) {
+                            Key.DirectionDown -> 72
+                            Key.DirectionUp -> -72
+                            Key.PageDown -> 260
+                            Key.PageUp -> -260
+                            else -> return@onPreviewKeyEvent false
+                        }
+                        scope.launch {
+                            scrollState.animateScrollTo((scrollState.value + delta).coerceIn(0, scrollState.maxValue))
+                        }
+                        true
+                    }
                     .background(Color(0x99071221), RoundedCornerShape(8.dp))
                     .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
                     .verticalScroll(scrollState)
+                    .focusable()
                     .padding(18.dp),
             ) {
                 Text(

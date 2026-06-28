@@ -90,6 +90,7 @@ import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -318,7 +319,7 @@ private fun YoutubePlayerSuggestionsList(
         trailing = { YoutubeLogoMark() },
     ) {
         when {
-            state.suggestionsLoading -> CatalogLoading(
+            state.suggestionsLoading && state.playerSuggestions.isEmpty() -> CatalogLoading(
                 title = "Suggestions",
                 modifier = Modifier.fillMaxSize(),
             )
@@ -543,6 +544,7 @@ private fun YoutubeVideoGrid(
                 playingVideo != null -> YoutubeInlinePlayer(
                     video = playingVideo,
                     focusRequester = playerFocusRequester,
+                    leftFocusRequester = firstPlayerSuggestionFocusRequester,
                     anomalyReporter = anomalyReporter,
                     onPlayerBehavior = onPlayerBehavior,
                     modifier = Modifier.fillMaxSize(),
@@ -611,12 +613,14 @@ private fun YoutubeVideoGrid(
 private fun YoutubeInlinePlayer(
     video: YoutubeVideoUi,
     focusRequester: FocusRequester,
+    leftFocusRequester: FocusRequester,
     anomalyReporter: AnomalyReporter,
     onPlayerBehavior: (String, YoutubeVideoUi?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val safeVideoId = video.videoId.filter { it.isLetterOrDigit() || it == '_' || it == '-' }.take(32)
     val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
 
     LaunchedEffect(video.videoId) {
         withFrameNanos { }
@@ -626,6 +630,15 @@ private fun YoutubeInlinePlayer(
 
     Box(
         modifier = modifier
+            .focusProperties { left = leftFocusRequester }
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft) {
+                    runCatching { leftFocusRequester.requestFocus() }
+                    true
+                } else {
+                    false
+                }
+            }
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -637,7 +650,7 @@ private fun YoutubeInlinePlayer(
             .background(Color.Black)
             .border(
                 BorderStroke(
-                    if (focusState.isFocused) 3.dp else 1.dp,
+                    if (focusState.isFocused) focusStyle.borderWidth else 1.dp,
                     if (focusState.isFocused) SmartVisionColors.CyanAccent else SmartVisionColors.Border,
                 ),
                 RoundedCornerShape(MediaCatalogDimens.ItemRadius),

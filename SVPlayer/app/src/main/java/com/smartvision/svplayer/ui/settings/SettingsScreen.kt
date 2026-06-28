@@ -75,6 +75,8 @@ import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
+import com.smartvision.svplayer.ui.focus.TvFocusStyles
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -151,6 +153,7 @@ fun SettingsScreen(
             onSyncCatalog = onSyncCatalog,
             onSetLanguage = { value -> scope.launch { container.settingsRepository.setLanguage(value) } },
             onSetSyncFrequency = { value -> scope.launch { container.settingsRepository.setSyncFrequency(value) } },
+            onSetFocusStyle = { value -> scope.launch { container.settingsRepository.setFocusStyle(value) } },
             onSetVideoRatio = { value -> scope.launch { container.settingsRepository.setVideoRatio(value) } },
             onSetAnimations = { value -> scope.launch { container.settingsRepository.setAnimationsEnabled(value) } },
             onSetRetry = { value -> scope.launch { container.settingsRepository.setRetryEnabled(value) } },
@@ -311,6 +314,7 @@ private fun SettingsMenuLayout(
     onSyncCatalog: () -> Unit,
     onSetLanguage: (String) -> Unit,
     onSetSyncFrequency: (String) -> Unit,
+    onSetFocusStyle: (String) -> Unit,
     onSetVideoRatio: (String) -> Unit,
     onSetAnimations: (Boolean) -> Unit,
     onSetRetry: (Boolean) -> Unit,
@@ -387,7 +391,7 @@ private fun SettingsMenuLayout(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp)
-                            .alpha(if (isParental && !parentalControlAllowed) 0.46f else 1f),
+                            .alpha(if (isParental && !parentalControlAllowed) 0.28f else 1f),
                     )
                     if (isParental) {
                         Box(
@@ -406,9 +410,9 @@ private fun SettingsMenuLayout(
                                 painter = painterResource(R.drawable.premium_crown),
                                 contentDescription = "Premium",
                                 modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .offset(x = 4.dp, y = (-8).dp)
-                                    .size(23.dp),
+                                    .align(Alignment.CenterEnd)
+                                    .offset(x = (-30).dp)
+                                    .size(22.dp),
                             )
                         }
                     }
@@ -468,6 +472,23 @@ private fun SettingsMenuLayout(
                     SettingsInfoRow(strings.currentFrequency, settings.syncFrequency.localizedSyncFrequency(strings))
                     SettingsInfoRow(strings.activeAccount, activeAccount?.let { "${it.name} - ${it.username}" } ?: strings.none)
                     SettingsInfoRow(strings.activeServer, activeAccount?.host ?: strings.notConfigured)
+                }
+                SettingsSection.Personalization -> {
+                    SettingsChoice(
+                        label = strings.focusStyle,
+                        values = listOf(
+                            SettingsOption(TvFocusStyles.Default.key, strings.focusDefault),
+                            SettingsOption(TvFocusStyles.Soft.key, strings.focusSoft),
+                            SettingsOption(TvFocusStyles.Compact.key, strings.focusCompact),
+                        ),
+                        selected = settings.focusStyle,
+                        onSelected = onSetFocusStyle,
+                    )
+                    Text(
+                        text = strings.focusStyle,
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Caption,
+                    )
                 }
                 SettingsSection.Updates -> {
                     SettingsInfoRow(strings.installedVersion, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
@@ -566,7 +587,7 @@ private fun SettingsMenuLayout(
                                     text = strings.enabled,
                                     onClick = { applyParentalToggle(true) },
                                     selected = settings.parentalControlEnabled,
-                                    variant = TvButtonVariant.Success,
+                                    variant = if (settings.parentalControlEnabled) TvButtonVariant.Success else TvButtonVariant.Secondary,
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(42.dp),
@@ -575,7 +596,7 @@ private fun SettingsMenuLayout(
                                     text = strings.disabled,
                                     onClick = { applyParentalToggle(false) },
                                     selected = !settings.parentalControlEnabled,
-                                    variant = TvButtonVariant.Danger,
+                                    variant = if (settings.parentalControlEnabled) TvButtonVariant.Secondary else TvButtonVariant.Danger,
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(42.dp),
@@ -694,6 +715,7 @@ private enum class SettingsSection(
 ) {
     Preferences(Icons.Default.Settings),
     Sync(Icons.Default.CloudSync),
+    Personalization(Icons.Default.Settings),
     Updates(Icons.Default.Refresh),
     Parental(Icons.Default.Person),
     Data(Icons.Default.Delete),
@@ -702,6 +724,7 @@ private enum class SettingsSection(
 private fun SettingsSection.label(strings: SmartVisionStrings): String = when (this) {
     SettingsSection.Preferences -> strings.generalPreferences
     SettingsSection.Sync -> strings.sync
+    SettingsSection.Personalization -> strings.personalization
     SettingsSection.Updates -> strings.updates
     SettingsSection.Parental -> strings.parentalControl
     SettingsSection.Data -> strings.localData
@@ -1095,6 +1118,9 @@ private fun SettingsTextField(
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     var editing by remember { mutableStateOf(false) }
+    var focused by remember { mutableStateOf(false) }
+    val focusStyle = LocalTvFocusStyle.current
+    val shape = RoundedCornerShape(6.dp)
 
     LaunchedEffect(editing) {
         if (editing) {
@@ -1116,6 +1142,7 @@ private fun SettingsTextField(
         modifier = Modifier
             .focusRequester(focusRequester)
             .onFocusChanged {
+                focused = it.isFocused
                 if (!it.isFocused) {
                     editing = false
                     keyboardController?.hide()
@@ -1155,8 +1182,17 @@ private fun SettingsTextField(
             }
             .fillMaxWidth()
             .height(44.dp)
-            .background(SmartVisionColors.Surface, RoundedCornerShape(6.dp))
-            .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(6.dp))
+            .background(
+                if (focused || editing) SmartVisionColors.CyanAccent.copy(alpha = 0.10f) else SmartVisionColors.Surface,
+                shape,
+            )
+            .border(
+                BorderStroke(
+                    if (focused || editing) focusStyle.borderWidth else 1.dp,
+                    if (focused || editing) focusStyle.accent else SmartVisionColors.Border,
+                ),
+                shape,
+            )
             .padding(horizontal = 12.dp, vertical = 10.dp),
     )
     Spacer(Modifier.height(12.dp))

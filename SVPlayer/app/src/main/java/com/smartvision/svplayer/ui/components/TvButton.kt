@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -60,10 +61,12 @@ fun TvButton(
     enabled: Boolean = true,
     leadingIcon: ImageVector? = null,
     leadingContent: (@Composable () -> Unit)? = null,
+    trailingContent: (@Composable () -> Unit)? = null,
     focusRequester: FocusRequester? = null,
     contentPadding: PaddingValues = PaddingValues(horizontal = SmartVisionDimensions.InternalSpacing),
 ) {
     val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
     val shape = RoundedCornerShape(SmartVisionDimensions.ButtonRadius)
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
@@ -129,7 +132,7 @@ fun TvButton(
             .background(background)
             .border(
                 BorderStroke(
-                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                    if (focusState.isFocused) focusStyle.borderWidth else SmartVisionDimensions.PanelBorder,
                     border,
                 ),
                 shape,
@@ -166,6 +169,10 @@ fun TvButton(
             fontWeight = if (selected || focusState.isFocused) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1,
         )
+        if (trailingContent != null) {
+            Spacer(Modifier.width(SmartVisionDimensions.CompactSpacing))
+            trailingContent()
+        }
     }
 }
 

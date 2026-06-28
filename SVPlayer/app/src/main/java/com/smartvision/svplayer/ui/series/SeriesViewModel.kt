@@ -115,6 +115,7 @@ class SeriesViewModel(
             _uiState.value = SeriesScreenState(categoriesLoading = true)
             runCatching {
                 xtreamRepository.getSeriesCategories().map { it.toUiCategory() }
+                    .filter { category -> playerSettings.allowsContent(category.label) }
             }.onSuccess { categories ->
                 if (categories.isEmpty()) {
                     _uiState.value = SeriesScreenState(
@@ -225,7 +226,7 @@ class SeriesViewModel(
                     playerSettings.parentalKeywords != settings.parentalKeywords
                 playerSettings = settings
                 if (changed && !_uiState.value.categoriesLoading) {
-                    retryCurrentCategory()
+                    loadCategories()
                 }
             }
         }

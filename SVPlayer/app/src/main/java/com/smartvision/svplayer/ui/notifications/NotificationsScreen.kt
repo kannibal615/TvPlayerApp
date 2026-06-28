@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -48,6 +51,11 @@ import com.smartvision.svplayer.data.notifications.NotificationsRepository
 import com.smartvision.svplayer.data.update.AppUpdateInfo
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
+import com.smartvision.svplayer.ui.focus.rememberTvFocusState
+import com.smartvision.svplayer.ui.focus.tvFocusTarget
+import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
+import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,6 +72,10 @@ fun NotificationsRoute(
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
+    val settings by container.settingsRepository.settings.collectAsStateWithLifecycle(
+        initialValue = com.smartvision.svplayer.domain.model.PlayerSettings(),
+    )
+    val strings = smartVisionStrings(settings.language)
     val viewModel: NotificationsViewModel = viewModel(
         factory = viewModelFactory {
             NotificationsViewModel(container.notificationsRepository)
@@ -81,6 +93,7 @@ fun NotificationsRoute(
         onRefresh = viewModel::refresh,
         updateNotification = updateNotification,
         onOpenUpdate = onOpenUpdate,
+        strings = strings,
         modifier = modifier,
     )
 }
@@ -92,6 +105,7 @@ private fun NotificationsScreen(
     onRefresh: () -> Unit,
     updateNotification: AppUpdateInfo?,
     onOpenUpdate: () -> Unit,
+    strings: SmartVisionStrings,
     modifier: Modifier = Modifier,
 ) {
     BackHandler(onBack = onBack)
@@ -118,7 +132,7 @@ private fun NotificationsScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TvButton(
-                text = "Retour",
+                text = strings.back,
                 leadingIcon = Icons.Default.ArrowBack,
                 onClick = onBack,
                 variant = TvButtonVariant.Secondary,
@@ -129,14 +143,14 @@ private fun NotificationsScreen(
             Icon(Icons.Default.Notifications, contentDescription = null, tint = SmartVisionColors.CyanAccent)
             Spacer(Modifier.width(10.dp))
             Text(
-                text = "Notifications",
+                text = strings.notifications,
                 color = SmartVisionColors.TextPrimary,
                 style = SmartVisionType.TitleL,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.weight(1f))
             TvButton(
-                text = if (state.loading) "Actualisation..." else "Actualiser",
+                text = if (state.loading) strings.refreshing else strings.refresh,
                 leadingIcon = Icons.Default.Refresh,
                 onClick = onRefresh,
                 enabled = !state.loading,
@@ -171,7 +185,7 @@ private fun NotificationsScreen(
                 }
                 state.notifications.isEmpty() && updateNotification == null -> {
                     Text(
-                        text = "Aucune notification pour cet appareil.",
+                        text = strings.noNotifications,
                         color = SmartVisionColors.TextSecondary,
                         style = SmartVisionType.Body,
                         modifier = Modifier.align(Alignment.Center),
@@ -181,7 +195,7 @@ private fun NotificationsScreen(
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (updateNotification != null) {
                             item("app-update") {
-                                UpdateNotificationRow(updateNotification, onOpenUpdate)
+                                UpdateNotificationRow(updateNotification, onOpenUpdate, strings)
                             }
                         }
                         items(state.notifications, key = { it.id }) { notification ->
@@ -198,10 +212,11 @@ private fun NotificationsScreen(
 private fun UpdateNotificationRow(
     update: AppUpdateInfo,
     onClick: () -> Unit,
+    strings: SmartVisionStrings,
 ) {
     NotificationCard(
-        title = "Update available",
-        message = "SmartVision ${update.versionName} is available. Open this notification to install the update.",
+        title = strings.updateAvailableTitle,
+        message = strings.updateAvailableMessage.format(update.versionName),
         createdAt = "Version ${update.versionCode}",
         priority = if (update.mandatory) "urgent" else "important",
         onClick = onClick,
@@ -230,19 +245,37 @@ private fun NotificationCard(
     priority: String,
     onClick: () -> Unit,
 ) {
+    val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val shape = RoundedCornerShape(8.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF0B1728), RoundedCornerShape(8.dp))
+            .tvFocusTarget(
+                state = focusState,
+                pressed = pressed,
+                glowColor = focusStyle.accent,
+                cornerRadius = 8.dp,
+            )
+            .background(
+                if (focusState.isFocused) SmartVisionColors.CyanAccent.copy(alpha = 0.14f) else Color(0xFF0B1728),
+                shape,
+            )
             .border(
                 BorderStroke(
-                    1.dp,
-                    if (priority == "urgent") SmartVisionColors.Warning else SmartVisionColors.Border,
+                    if (focusState.isFocused) focusStyle.borderWidth else 1.dp,
+                    when {
+                        focusState.isFocused -> focusStyle.accent
+                        priority == "urgent" -> SmartVisionColors.Warning
+                        else -> SmartVisionColors.Border
+                    },
                 ),
-                RoundedCornerShape(8.dp),
+                shape,
             )
-            .clickable(onClick = onClick)
-            .focusable()
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(interactionSource = interactionSource)
             .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

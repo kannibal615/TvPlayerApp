@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 
 @Composable
 fun GlassPanel(
@@ -66,7 +67,8 @@ fun FocusableCard(
     content: @Composable (focused: Boolean) -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (focused) 1.025f else 1f, label = "cardScale")
+    val focusStyle = LocalTvFocusStyle.current
+    val scale by animateFloatAsState(if (focused) focusStyle.scale.coerceAtMost(1.035f) else 1f, label = "cardScale")
     val border by animateColorAsState(
         when {
             focused -> accent
@@ -94,7 +96,7 @@ fun FocusableCard(
                 if (focused) {
                     drawCircle(
                         brush = Brush.radialGradient(
-                            listOf(accent.copy(alpha = 0.25f), Color.Transparent),
+                            listOf(accent.copy(alpha = focusStyle.glowAlpha), Color.Transparent),
                             center = Offset(size.width / 2f, size.height / 2f),
                             radius = size.maxDimension * 0.72f,
                         ),
@@ -103,7 +105,7 @@ fun FocusableCard(
             }
             .clip(shape)
             .background(background)
-            .border(BorderStroke(if (focused) 2.dp else 1.dp, border), shape)
+            .border(BorderStroke(if (focused) focusStyle.borderWidth else 1.dp, border), shape)
             .onFocusChanged { focused = it.isFocused || it.hasFocus }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },

@@ -2593,16 +2593,13 @@ function admin_render_features_page(array $appConfigAdmin): void
             <input type="hidden" name="redirect_page" value="features">
             <input type="hidden" name="action" value="save_app_consent">
             <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
-            <section class="admin-panel">
+            <section class="admin-panel consent-admin-panel">
                 <div class="admin-panel-heading"><div><h2>Consentement TV</h2><p>Texte affiche uniquement au premier lancement ou lorsqu une nouvelle version est publiee.</p></div></div>
-                <div class="admin-form-grid">
+                <div class="consent-admin-layout"><div class="consent-admin-main"><div class="admin-form-grid">
                     <label><span>Version</span><input name="consent_version" maxlength="40" value="<?= admin_escape((string) ($appConfigAdmin['consent_version'] ?? '2026-06-28')) ?>"></label>
                     <label><span>Titre popup</span><input name="consent_title" maxlength="120" value="<?= admin_escape((string) ($appConfigAdmin['consent_title'] ?? 'Privacy Policy and Terms of Use')) ?>"></label>
-                    <?php foreach (admin_default_consent_variables() as $key => $default): ?>
-                        <label><span><?= admin_escape($key) ?></span><input name="consent_variables[<?= admin_escape($key) ?>]" maxlength="255" value="<?= admin_escape((string) ($variables[$key] ?? $default)) ?>"></label>
-                    <?php endforeach; ?>
                     <label class="ads-wide"><span>Texte complet</span><textarea name="consent_body" rows="18" maxlength="30000"><?= admin_escape((string) ($appConfigAdmin['consent_body'] ?? admin_default_consent_body())) ?></textarea></label>
-                </div>
+                </div></div><aside class="consent-admin-vars"><h3>Variables</h3><p>Utilisez <code>?NOM?</code> dans le texte. Les passages entre <code>**</code> sont affiches en gras sur la TV.</p><?php foreach (admin_default_consent_variables() as $key => $default): ?><label><span><?= admin_escape($key) ?></span><input name="consent_variables[<?= admin_escape($key) ?>]" maxlength="255" value="<?= admin_escape((string) ($variables[$key] ?? $default)) ?>"></label><?php endforeach; ?></aside></div>
                 <p class="muted">Les passages encadres par **double astérisque** sont affiches en gras dans l application TV.</p>
                 <button class="admin-button primary" type="submit">Enregistrer le consentement TV</button>
             </section>

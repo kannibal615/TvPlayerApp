@@ -211,7 +211,7 @@ private fun WebView.handleYoutubeKeyCode(keyCode: Int): Boolean =
             evaluateJavascript("window.smartVisionTogglePlayback && window.smartVisionTogglePlayback();", null)
             true
         }
-        KeyEvent.KEYCODE_DPAD_LEFT,
+        KeyEvent.KEYCODE_DPAD_LEFT -> false
         KeyEvent.KEYCODE_MEDIA_REWIND -> {
             grabYoutubeFocus()
             evaluateJavascript("window.smartVisionSeekBy && window.smartVisionSeekBy(-10);", null)
