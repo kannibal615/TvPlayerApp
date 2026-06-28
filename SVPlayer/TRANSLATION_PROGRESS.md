@@ -30,3 +30,26 @@ Remaining after block 1:
 - Decide whether older persisted French values such as `A chaque demarrage`, `Manuelle` and `Jamais` should be migrated to stable enum-like keys.
 - Add a simple i18n audit command or checklist before each release.
 - Run a release build after the next translation block to validate Kotlin/Compose changes.
+
+## Block 2 - Header and access-control texts
+
+Status: done locally.
+
+Completed:
+- Externalized and translated the main header tabs: Home, Live TV, Movies, Series and YouTube.
+- Connected header tab labels to the active app language.
+- Added English/French strings for locked premium features.
+- Added English/French strings for parental-control PIN creation, unlock, change PIN, errors and apply action.
+- Reused the i18n layer for the new parental-control dialogs and locked-feature messages.
+- Kept the default language as English and the available Settings languages as English/French only.
+- Validated the block with the release build that produced `0.1.39 (42)`.
+
+Remaining after block 2:
+- Externalize and translate Activation screens.
+- Externalize and translate Home body sections, collections and empty/loading states.
+- Externalize and translate Live TV, Movies, Series, details and player overlays.
+- Externalize and translate Profile, notifications, update dialogs and premium purchase popups.
+- Externalize and translate the full YouTube screen: search, categories, suggestions, player messages and errors.
+- Replace remaining user-visible hard-coded French text in Android Compose screens.
+- Add a repeatable i18n audit command before each release.
+- Add backend email flow for forgotten parental PIN once the account email source is confirmed in the Android activation/session model.

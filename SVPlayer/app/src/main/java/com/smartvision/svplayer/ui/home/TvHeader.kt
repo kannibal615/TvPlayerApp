@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -97,14 +96,13 @@ fun TvHeader(
                             Box {
                                 YoutubeLogoIcon()
                                 if (tab.locked) {
-                                    Icon(
-                                        imageVector = Icons.Default.WorkspacePremium,
+                                    Image(
+                                        painter = painterResource(R.drawable.premium_crown),
                                         contentDescription = "Premium",
-                                        tint = SmartVisionColors.Warning,
                                         modifier = Modifier
                                             .align(Alignment.TopEnd)
-                                            .offset(x = 7.dp, y = (-8).dp)
-                                            .size(13.dp),
+                                            .offset(x = 10.dp, y = (-12).dp)
+                                            .size(19.dp),
                                     )
                                 }
                             }
@@ -116,7 +114,7 @@ fun TvHeader(
                     contentPadding = PaddingValues(horizontal = 10.dp),
                     modifier = Modifier
                         .height(40.dp)
-                        .alpha(if (tab.locked) 0.58f else 1f),
+                        .alpha(if (tab.locked) 0.36f else 1f),
                 )
             }
         }

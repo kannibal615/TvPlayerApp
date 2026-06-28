@@ -50,7 +50,7 @@ class AppConfigRepository(
     }
 
     private companion object {
-        val ACCEPTED_CONSENT_VERSION = stringPreferencesKey("accepted_consent_version")
+        val ACCEPTED_CONSENT_VERSION = stringPreferencesKey("accepted_consent_version_v2")
     }
 }
 
@@ -120,6 +120,7 @@ private fun defaultConsentConfig(): ConsentConfig =
 private fun defaultFeatureAccess(): List<FeatureAccess> =
     listOf(
         FeatureAccess("youtube", "YouTube", premium = true, trial = true, freeAds = false),
+        FeatureAccess("parental_control", "Parental control", premium = true, trial = true, freeAds = false),
         FeatureAccess("replay", "Replay", premium = true, trial = true, freeAds = false),
         FeatureAccess("advanced_favorites", "Favoris avances", premium = true, trial = true, freeAds = false),
         FeatureAccess("multi_screen", "Multi-ecran", premium = true, trial = false, freeAds = false),

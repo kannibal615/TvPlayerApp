@@ -2,6 +2,7 @@ package com.smartvision.svplayer.ui.settings
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
@@ -16,7 +17,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -44,8 +47,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -55,12 +60,15 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.smartvision.svplayer.R
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.config.XtreamAccount
 import com.smartvision.svplayer.core.data.LocalAppContainer
@@ -81,6 +89,8 @@ fun SettingsScreen(
     updateState: AppUpdateUiState,
     onCheckForUpdate: () -> Unit,
     onSyncCatalog: () -> Unit,
+    parentalControlAllowed: Boolean = true,
+    onLockedFeature: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
@@ -148,6 +158,8 @@ fun SettingsScreen(
             onSetParentalPin = { value -> scope.launch { container.settingsRepository.setParentalPin(value) } },
             onSetParentalKeywords = { value -> scope.launch { container.settingsRepository.setParentalKeywords(value) } },
             onClearLocalData = { scope.launch { container.settingsRepository.clearLocalData() } },
+            parentalControlAllowed = parentalControlAllowed,
+            onLockedFeature = onLockedFeature,
             strings = strings,
             modifier = Modifier.fillMaxSize(),
         )
@@ -306,9 +318,44 @@ private fun SettingsMenuLayout(
     onSetParentalPin: (String) -> Unit,
     onSetParentalKeywords: (String) -> Unit,
     onClearLocalData: () -> Unit,
+    parentalControlAllowed: Boolean,
+    onLockedFeature: () -> Unit,
     strings: SmartVisionStrings,
     modifier: Modifier = Modifier,
 ) {
+    var parentalUnlocked by remember { mutableStateOf(false) }
+    var showCreatePinDialog by remember { mutableStateOf(false) }
+    var showUnlockPinDialog by remember { mutableStateOf(false) }
+    var showChangePinDialog by remember { mutableStateOf(false) }
+    var pendingParentalEnabled by remember { mutableStateOf<Boolean?>(null) }
+    var pinMessage by remember { mutableStateOf<String?>(null) }
+
+    fun openParentalSection() {
+        if (!parentalControlAllowed) {
+            onLockedFeature()
+            return
+        }
+        pinMessage = null
+        if (settings.parentalPin.isBlank()) {
+            showCreatePinDialog = true
+        } else if (!parentalUnlocked) {
+            showUnlockPinDialog = true
+        } else {
+            onSectionSelected(SettingsSection.Parental)
+        }
+    }
+
+    fun applyParentalToggle(value: Boolean) {
+        pendingParentalEnabled = value
+        showUnlockPinDialog = true
+    }
+
+    LaunchedEffect(parentalControlAllowed, settings.parentalPin) {
+        if (!parentalControlAllowed || settings.parentalPin.isBlank()) {
+            parentalUnlocked = false
+        }
+    }
+
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(18.dp),
@@ -323,16 +370,49 @@ private fun SettingsMenuLayout(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             SettingsSection.entries.forEach { section ->
-                TvButton(
-                    text = section.label(strings),
-                    leadingIcon = section.icon,
-                    selected = selectedSection == section,
-                    variant = if (selectedSection == section) TvButtonVariant.Primary else TvButtonVariant.Text,
-                    onClick = { onSectionSelected(section) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                )
+                val isParental = section == SettingsSection.Parental
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    TvButton(
+                        text = section.label(strings),
+                        leadingIcon = section.icon,
+                        selected = selectedSection == section,
+                        variant = if (selectedSection == section) TvButtonVariant.Primary else TvButtonVariant.Text,
+                        onClick = {
+                            if (isParental) {
+                                openParentalSection()
+                            } else {
+                                onSectionSelected(section)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .alpha(if (isParental && !parentalControlAllowed) 0.46f else 1f),
+                    )
+                    if (isParental) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .offset(x = (-10).dp)
+                                .size(11.dp)
+                                .background(
+                                    if (settings.parentalControlEnabled) Color(0xFF20D878) else Color(0xFFFF4B4B),
+                                    RoundedCornerShape(50),
+                                )
+                                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.72f)), RoundedCornerShape(50)),
+                        )
+                        if (!parentalControlAllowed) {
+                            Image(
+                                painter = painterResource(R.drawable.premium_crown),
+                                contentDescription = "Premium",
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 4.dp, y = (-8).dp)
+                                    .size(23.dp),
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -444,40 +524,168 @@ private fun SettingsMenuLayout(
                     )
                 }
                 SettingsSection.Parental -> {
-                    val pinFocusRequester = remember { FocusRequester() }
                     val keywordsFocusRequester = remember { FocusRequester() }
-                    SettingsChoice(
-                        label = strings.parentalControl,
-                        values = listOf(
-                            SettingsOption("enabled", strings.enabled),
-                            SettingsOption("disabled", strings.disabled),
-                        ),
-                        selected = if (settings.parentalControlEnabled) "enabled" else "disabled",
-                        onSelected = { value -> onSetParentalEnabled(value == "enabled") },
-                    )
-                    SettingsTextField(
-                        label = strings.pinCode,
-                        value = settings.parentalPin,
-                        onValueChange = onSetParentalPin,
-                        focusRequester = pinFocusRequester,
-                        nextFocusRequester = keywordsFocusRequester,
-                        password = true,
-                    )
-                    SettingsTextField(
-                        label = strings.hiddenKeywords,
-                        value = settings.parentalKeywords,
-                        onValueChange = onSetParentalKeywords,
-                        focusRequester = keywordsFocusRequester,
-                        previousFocusRequester = pinFocusRequester,
-                    )
-                    Text(
-                        text = strings.parentalHelp,
-                        color = SmartVisionColors.TextSecondary,
-                        style = SmartVisionType.Caption,
-                    )
+                    when {
+                        !parentalControlAllowed -> {
+                            Text(
+                                text = strings.lockedPremiumFeature,
+                                color = SmartVisionColors.TextSecondary,
+                                style = SmartVisionType.Body,
+                            )
+                            Spacer(Modifier.height(14.dp))
+                            TvButton(
+                                text = "Premium",
+                                onClick = onLockedFeature,
+                                variant = TvButtonVariant.Primary,
+                                modifier = Modifier.height(44.dp),
+                            )
+                        }
+
+                        !parentalUnlocked -> {
+                            Text(
+                                text = strings.unlockParentalControl,
+                                color = SmartVisionColors.TextSecondary,
+                                style = SmartVisionType.Body,
+                            )
+                            Spacer(Modifier.height(14.dp))
+                            TvButton(
+                                text = if (settings.parentalPin.isBlank()) strings.createPin else strings.enterPin,
+                                onClick = {
+                                    if (settings.parentalPin.isBlank()) showCreatePinDialog = true else showUnlockPinDialog = true
+                                },
+                                variant = TvButtonVariant.Primary,
+                                modifier = Modifier.height(44.dp),
+                            )
+                        }
+
+                        else -> {
+                            Text(strings.parentalControl, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Label)
+                            Spacer(Modifier.height(7.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TvButton(
+                                    text = strings.enabled,
+                                    onClick = { applyParentalToggle(true) },
+                                    selected = settings.parentalControlEnabled,
+                                    variant = TvButtonVariant.Success,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(42.dp),
+                                )
+                                TvButton(
+                                    text = strings.disabled,
+                                    onClick = { applyParentalToggle(false) },
+                                    selected = !settings.parentalControlEnabled,
+                                    variant = TvButtonVariant.Danger,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(42.dp),
+                                )
+                            }
+                            Spacer(Modifier.height(18.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(strings.pinCode, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    if (settings.parentalPin.isBlank()) strings.notConfigured else "****",
+                                    color = SmartVisionColors.TextPrimary,
+                                    style = SmartVisionType.Caption,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Spacer(Modifier.weight(1f))
+                                Spacer(Modifier.width(12.dp))
+                                TvButton(
+                                    text = strings.changePin,
+                                    onClick = { showChangePinDialog = true },
+                                    variant = TvButtonVariant.Secondary,
+                                    modifier = Modifier.height(40.dp),
+                                )
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            SettingsTextField(
+                                label = strings.hiddenKeywords,
+                                value = settings.parentalKeywords,
+                                onValueChange = onSetParentalKeywords,
+                                focusRequester = keywordsFocusRequester,
+                            )
+                            TvButton(
+                                text = strings.apply,
+                                onClick = onSyncCatalog,
+                                variant = TvButtonVariant.Primary,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(44.dp),
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                text = strings.parentalHelp,
+                                color = SmartVisionColors.TextSecondary,
+                                style = SmartVisionType.Caption,
+                            )
+                            pinMessage?.let { message ->
+                                Spacer(Modifier.height(8.dp))
+                                Text(message, color = SmartVisionColors.CyanAccent, style = SmartVisionType.Caption)
+                            }
+                        }
+                    }
                 }
             }
         }
+    }
+
+    if (showCreatePinDialog) {
+        ParentalCreatePinDialog(
+            strings = strings,
+            onDismiss = { showCreatePinDialog = false },
+            onCreate = { pin ->
+                onSetParentalPin(pin)
+                parentalUnlocked = true
+                showCreatePinDialog = false
+                onSectionSelected(SettingsSection.Parental)
+                pinMessage = null
+            },
+        )
+    }
+
+    if (showUnlockPinDialog) {
+        ParentalPinDialog(
+            title = strings.enterPin,
+            strings = strings,
+            onDismiss = {
+                showUnlockPinDialog = false
+                pendingParentalEnabled = null
+            },
+            onSubmit = { pin ->
+                if (pin == settings.parentalPin) {
+                    parentalUnlocked = true
+                    showUnlockPinDialog = false
+                    val pending = pendingParentalEnabled
+                    pendingParentalEnabled = null
+                    if (pending != null) {
+                        onSetParentalEnabled(pending)
+                    } else {
+                        onSectionSelected(SettingsSection.Parental)
+                    }
+                    pinMessage = null
+                    true
+                } else {
+                    pinMessage = strings.pinIncorrect
+                    false
+                }
+            },
+        )
+    }
+
+    if (showChangePinDialog) {
+        ParentalCreatePinDialog(
+            strings = strings,
+            title = strings.changePin,
+            onDismiss = { showChangePinDialog = false },
+            onCreate = { pin ->
+                onSetParentalPin(pin)
+                showChangePinDialog = false
+                pinMessage = strings.changePin
+            },
+        )
     }
 }
 
@@ -742,6 +950,140 @@ private fun AccountEditorDialog(
 }
 
 @Composable
+private fun ParentalPinDialog(
+    title: String,
+    strings: SmartVisionStrings,
+    onDismiss: () -> Unit,
+    onSubmit: (String) -> Boolean,
+) {
+    var pin by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var recoveryMessage by remember { mutableStateOf<String?>(null) }
+    val pinFocusRequester = remember { FocusRequester() }
+    val submitFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        pinFocusRequester.requestFocus()
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .width(470.dp)
+                .background(Color(0xFF0A1425), RoundedCornerShape(8.dp))
+                .border(BorderStroke(1.dp, SmartVisionColors.Primary), RoundedCornerShape(8.dp))
+                .padding(24.dp),
+        ) {
+            Text(title, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(16.dp))
+            SettingsTextField(
+                label = strings.pinCode,
+                value = pin,
+                onValueChange = { pin = it.filter(Char::isDigit).take(8) },
+                focusRequester = pinFocusRequester,
+                nextFocusRequester = submitFocusRequester,
+                password = true,
+            )
+            error?.let { Text(it, color = SmartVisionColors.Error, style = SmartVisionType.Caption) }
+            recoveryMessage?.let { Text(it, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption) }
+            Spacer(Modifier.height(12.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TvButton(text = strings.cancel, onClick = onDismiss, variant = TvButtonVariant.Secondary, modifier = Modifier.height(42.dp))
+                Spacer(Modifier.width(10.dp))
+                TvButton(
+                    text = strings.forgotPinByEmail,
+                    onClick = { recoveryMessage = strings.pinEmailUnavailable },
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier.height(42.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                TvButton(
+                    text = strings.apply,
+                    focusRequester = submitFocusRequester,
+                    onClick = {
+                        if (pin.length < 4) {
+                            error = strings.pinRequired
+                        } else if (!onSubmit(pin)) {
+                            error = strings.pinIncorrect
+                        }
+                    },
+                    modifier = Modifier.height(42.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ParentalCreatePinDialog(
+    strings: SmartVisionStrings,
+    title: String = strings.createPin,
+    onDismiss: () -> Unit,
+    onCreate: (String) -> Unit,
+) {
+    var pin by remember { mutableStateOf("") }
+    var confirmPin by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    val pinFocusRequester = remember { FocusRequester() }
+    val confirmFocusRequester = remember { FocusRequester() }
+    val saveFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        pinFocusRequester.requestFocus()
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .width(470.dp)
+                .background(Color(0xFF0A1425), RoundedCornerShape(8.dp))
+                .border(BorderStroke(1.dp, SmartVisionColors.Primary), RoundedCornerShape(8.dp))
+                .padding(24.dp),
+        ) {
+            Text(title, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(16.dp))
+            SettingsTextField(
+                label = strings.newPin,
+                value = pin,
+                onValueChange = { pin = it.filter(Char::isDigit).take(8) },
+                focusRequester = pinFocusRequester,
+                nextFocusRequester = confirmFocusRequester,
+                password = true,
+            )
+            SettingsTextField(
+                label = strings.confirmPin,
+                value = confirmPin,
+                onValueChange = { confirmPin = it.filter(Char::isDigit).take(8) },
+                focusRequester = confirmFocusRequester,
+                previousFocusRequester = pinFocusRequester,
+                nextFocusRequester = saveFocusRequester,
+                password = true,
+            )
+            error?.let { Text(it, color = SmartVisionColors.Error, style = SmartVisionType.Caption) }
+            Spacer(Modifier.height(12.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TvButton(text = strings.cancel, onClick = onDismiss, variant = TvButtonVariant.Secondary, modifier = Modifier.height(42.dp))
+                Spacer(Modifier.width(10.dp))
+                TvButton(
+                    text = strings.apply,
+                    focusRequester = saveFocusRequester,
+                    onClick = {
+                        when {
+                            pin.length < 4 -> error = strings.pinRequired
+                            pin != confirmPin -> error = strings.pinsDoNotMatch
+                            else -> onCreate(pin)
+                        }
+                    },
+                    modifier = Modifier.height(42.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun SettingsTextField(
     label: String,
     value: String,
@@ -751,25 +1093,60 @@ private fun SettingsTextField(
     nextFocusRequester: FocusRequester? = null,
     password: Boolean = false,
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var editing by remember { mutableStateOf(false) }
+
+    LaunchedEffect(editing) {
+        if (editing) {
+            runCatching { focusRequester.requestFocus() }
+            keyboardController?.show()
+        }
+    }
+
     Text(label, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
     Spacer(Modifier.height(5.dp))
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
+        readOnly = !editing,
         textStyle = SmartVisionType.Body.copy(color = SmartVisionColors.TextPrimary),
         cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
         visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
         modifier = Modifier
             .focusRequester(focusRequester)
+            .onFocusChanged {
+                if (!it.isFocused) {
+                    editing = false
+                    keyboardController?.hide()
+                }
+            }
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (event.key) {
+                    Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                        editing = true
+                        keyboardController?.show()
+                        true
+                    }
+                    Key.Back -> {
+                        if (editing) {
+                            editing = false
+                            keyboardController?.hide()
+                            true
+                        } else {
+                            false
+                        }
+                    }
                     Key.DirectionDown -> {
+                        editing = false
+                        keyboardController?.hide()
                         nextFocusRequester?.requestFocus()
                         nextFocusRequester != null
                     }
                     Key.DirectionUp -> {
+                        editing = false
+                        keyboardController?.hide()
                         previousFocusRequester?.requestFocus()
                         previousFocusRequester != null
                     }

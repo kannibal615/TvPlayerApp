@@ -55,7 +55,31 @@ function app_config_features(PDO $pdo): array
         $decoded = app_config_default_features();
     }
 
-    return $decoded;
+    return app_config_normalize_features($decoded);
+}
+
+function app_config_normalize_features(array $features): array
+{
+    $defaults = [];
+    foreach (app_config_default_features() as $feature) {
+        $defaults[(string) $feature['key']] = $feature;
+    }
+    foreach ($features as $feature) {
+        if (!is_array($feature)) {
+            continue;
+        }
+        $key = (string) ($feature['key'] ?? '');
+        if ($key === '' || !isset($defaults[$key])) {
+            continue;
+        }
+        $defaults[$key] = array_replace($defaults[$key], [
+            'premium' => (bool) ($feature['premium'] ?? false),
+            'trial' => (bool) ($feature['trial'] ?? false),
+            'free_ads' => (bool) ($feature['free_ads'] ?? false),
+        ]);
+    }
+
+    return array_values($defaults);
 }
 
 function app_config_default_features(): array
@@ -64,6 +88,13 @@ function app_config_default_features(): array
         [
             'key' => 'youtube',
             'label' => 'YouTube',
+            'premium' => true,
+            'trial' => true,
+            'free_ads' => false,
+        ],
+        [
+            'key' => 'parental_control',
+            'label' => 'Controle parental',
             'premium' => true,
             'trial' => true,
             'free_ads' => false,

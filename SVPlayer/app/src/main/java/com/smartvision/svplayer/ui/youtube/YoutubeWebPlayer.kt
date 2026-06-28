@@ -1,6 +1,7 @@
 package com.smartvision.svplayer.ui.youtube
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.os.Build
 import android.view.KeyEvent
 import android.view.View
@@ -45,7 +46,7 @@ internal fun YoutubeWebPlayer(
         AndroidView(
             modifier = modifier,
             factory = { context ->
-                WebView(context).apply {
+                YoutubeTvWebView(context).apply {
                     configureYoutubeWebView(
                         mode = mode,
                         anomalyReporter = anomalyReporter,
@@ -86,7 +87,9 @@ internal fun YoutubeWebPlayer(
                 }
                 if (mode == YoutubePlaybackMode.Fullscreen) {
                     webView.installYoutubeKeyControls()
-                    webView.postDelayed({ webView.requestFocus() }, 120)
+                    webView.postDelayed({ webView.grabYoutubeFocus() }, 80)
+                    webView.postDelayed({ webView.grabYoutubeFocus() }, 280)
+                    webView.postDelayed({ webView.grabYoutubeFocus() }, 700)
                 }
             },
             onRelease = { webView ->
@@ -113,6 +116,7 @@ private fun WebView.configureYoutubeWebView(
     setBackgroundColor(android.graphics.Color.BLACK)
     isFocusable = mode == YoutubePlaybackMode.Fullscreen
     isFocusableInTouchMode = mode == YoutubePlaybackMode.Fullscreen
+    descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
     isVerticalScrollBarEnabled = false
     isHorizontalScrollBarEnabled = false
     overScrollMode = View.OVER_SCROLL_NEVER
@@ -178,38 +182,64 @@ private fun WebView.configureYoutubeWebView(
 private fun WebView.installYoutubeKeyControls() {
     setOnKeyListener { view, keyCode, event ->
         if (event.action != KeyEvent.ACTION_DOWN) return@setOnKeyListener false
-        when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_CENTER,
-            KeyEvent.KEYCODE_ENTER,
-            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
-                evaluateJavascript("window.smartVisionTogglePlayback && window.smartVisionTogglePlayback();", null)
-                true
-            }
-            KeyEvent.KEYCODE_DPAD_LEFT,
-            KeyEvent.KEYCODE_MEDIA_REWIND -> {
-                evaluateJavascript("window.smartVisionSeekBy && window.smartVisionSeekBy(-10);", null)
-                true
-            }
-            KeyEvent.KEYCODE_DPAD_RIGHT,
-            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                evaluateJavascript("window.smartVisionSeekBy && window.smartVisionSeekBy(10);", null)
-                true
-            }
-            KeyEvent.KEYCODE_MEDIA_PLAY -> {
-                evaluateJavascript("window.smartVisionPlay && window.smartVisionPlay();", null)
-                true
-            }
-            KeyEvent.KEYCODE_MEDIA_PAUSE -> {
-                evaluateJavascript("window.smartVisionPause && window.smartVisionPause();", null)
-                true
-            }
-            else -> {
-                if (!view.hasFocus()) view.requestFocus()
-                false
-            }
-        }
+        if (!view.hasFocus()) view.requestFocus()
+        handleYoutubeKeyCode(keyCode)
     }
 }
+
+private class YoutubeTvWebView(context: Context) : WebView(context) {
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN && handleYoutubeKeyCode(event.keyCode)) {
+            return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
+}
+
+private fun WebView.grabYoutubeFocus() {
+    requestFocus()
+    requestFocusFromTouch()
+    evaluateJavascript("window.smartVisionFocusPlayer && window.smartVisionFocusPlayer();", null)
+}
+
+private fun WebView.handleYoutubeKeyCode(keyCode: Int): Boolean =
+    when (keyCode) {
+        KeyEvent.KEYCODE_DPAD_CENTER,
+        KeyEvent.KEYCODE_ENTER,
+        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+            grabYoutubeFocus()
+            evaluateJavascript("window.smartVisionTogglePlayback && window.smartVisionTogglePlayback();", null)
+            true
+        }
+        KeyEvent.KEYCODE_DPAD_LEFT,
+        KeyEvent.KEYCODE_MEDIA_REWIND -> {
+            grabYoutubeFocus()
+            evaluateJavascript("window.smartVisionSeekBy && window.smartVisionSeekBy(-10);", null)
+            true
+        }
+        KeyEvent.KEYCODE_DPAD_RIGHT,
+        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+            grabYoutubeFocus()
+            evaluateJavascript("window.smartVisionSeekBy && window.smartVisionSeekBy(10);", null)
+            true
+        }
+        KeyEvent.KEYCODE_MEDIA_PLAY -> {
+            grabYoutubeFocus()
+            evaluateJavascript("window.smartVisionPlay && window.smartVisionPlay();", null)
+            true
+        }
+        KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+            grabYoutubeFocus()
+            evaluateJavascript("window.smartVisionPause && window.smartVisionPause();", null)
+            true
+        }
+        KeyEvent.KEYCODE_DPAD_UP,
+        KeyEvent.KEYCODE_DPAD_DOWN -> {
+            grabYoutubeFocus()
+            true
+        }
+        else -> false
+    }
 
 private class YoutubePlayerBridge(
     private val anomalyReporter: AnomalyReporter,
@@ -392,6 +422,15 @@ private fun youtubePlayerHtml(
                 try {
                   if (player && player.stopVideo) player.stopVideo();
                   if (player && player.destroy) player.destroy();
+                } catch (err) {}
+              }
+              window.smartVisionFocusPlayer = function() {
+                try {
+                  document.body.tabIndex = 0;
+                  document.body.focus();
+                  window.focus();
+                  var iframe = document.querySelector('iframe');
+                  if (iframe) iframe.focus();
                 } catch (err) {}
               }
               window.smartVisionSkipAd = function() {

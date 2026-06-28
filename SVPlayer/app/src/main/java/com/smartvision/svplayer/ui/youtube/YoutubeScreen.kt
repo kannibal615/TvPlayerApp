@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -334,13 +335,17 @@ private fun YoutubePlayerSuggestionsList(
                 verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
                 contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
             ) {
-                items(state.playerSuggestions, key = { it.videoId }) { video ->
-                    val index = state.playerSuggestions.indexOf(video)
+                itemsIndexed(state.playerSuggestions, key = { _, video -> video.videoId }) { index, video ->
                     YoutubePlayerSuggestionRow(
                         video = video,
                         focusRequester = firstSuggestionFocusRequester.takeIf { index == 0 },
                         rightFocusRequester = contentFocusRequester,
-                        onFocused = { onSuggestionFocused(video) },
+                        isFirst = index == 0,
+                        isLast = index == state.playerSuggestions.lastIndex,
+                        onFocused = {
+                            onSuggestionFocused(video)
+                            if (index >= state.playerSuggestions.size - 4) onLoadMoreSuggestions(index)
+                        },
                         onClick = { onSuggestionClick(video) },
                     )
                 }
@@ -354,6 +359,8 @@ private fun YoutubePlayerSuggestionRow(
     video: YoutubeVideoUi,
     focusRequester: FocusRequester?,
     rightFocusRequester: FocusRequester,
+    isFirst: Boolean,
+    isLast: Boolean,
     onFocused: () -> Unit,
     onClick: () -> Unit,
 ) {
@@ -365,6 +372,10 @@ private fun YoutubePlayerSuggestionRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(58.dp)
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                (event.key == Key.DirectionUp && isFirst) || (event.key == Key.DirectionDown && isLast)
+            }
             .focusProperties { right = rightFocusRequester }
             .tvFocusTarget(
                 state = focusState,

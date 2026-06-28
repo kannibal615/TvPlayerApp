@@ -52,6 +52,7 @@ data class YoutubeScreenState(
     val searchSuggestions: List<String> = emptyList(),
     val playerSuggestions: List<YoutubeVideoUi> = emptyList(),
     val suggestionsLoading: Boolean = false,
+    val playerSuggestionsEndReached: Boolean = false,
 ) {
     val selectedCategory: YoutubeCategoryUi?
         get() = categories.firstOrNull { it.id == selectedCategoryId }
@@ -155,6 +156,7 @@ class YoutubeViewModel(
                 focusedVideoId = video.videoId,
                 playerSuggestions = emptyList(),
                 suggestionsLoading = true,
+                playerSuggestionsEndReached = false,
             )
         }
         viewModelScope.launch {
@@ -165,13 +167,14 @@ class YoutubeViewModel(
                 it.copy(
                     playerSuggestions = suggestions,
                     suggestionsLoading = false,
+                    playerSuggestionsEndReached = suggestions.size < 8,
                 )
             }
         }
     }
 
     fun closePlayerToTrending() {
-        _uiState.update { it.copy(playerSuggestions = emptyList(), suggestionsLoading = false) }
+        _uiState.update { it.copy(playerSuggestions = emptyList(), suggestionsLoading = false, playerSuggestionsEndReached = false) }
         loadCategory("trending")
     }
 
@@ -232,7 +235,8 @@ class YoutubeViewModel(
     fun loadMorePlayerSuggestionsIfNeeded(lastVisibleIndex: Int) {
         val state = _uiState.value
         if (lastVisibleIndex < state.playerSuggestions.size - 5) return
-        if (state.suggestionsLoading || state.playerSuggestions.isEmpty()) return
+        if (state.suggestionsLoading || state.playerSuggestions.isEmpty() || state.playerSuggestionsEndReached) return
+        if (state.playerSuggestions.size >= 60) return
         val seed = state.playerSuggestions.getOrNull(lastVisibleIndex.coerceAtMost(state.playerSuggestions.lastIndex))
             ?: state.playerSuggestions.lastOrNull()
             ?: return
@@ -242,11 +246,13 @@ class YoutubeViewModel(
             runCatching { repository.suggestVideos(seed.toDomain()).map { it.toUi() } }
                 .onSuccess { suggestions ->
                     _uiState.update { current ->
+                        val appended = (current.playerSuggestions + suggestions)
+                            .distinctBy { it.videoId }
+                            .take(60)
                         current.copy(
-                            playerSuggestions = (current.playerSuggestions + suggestions)
-                                .distinctBy { it.videoId }
-                                .take(60),
+                            playerSuggestions = appended,
                             suggestionsLoading = false,
+                            playerSuggestionsEndReached = appended.size == current.playerSuggestions.size || appended.size >= 60,
                         )
                     }
                 }
@@ -273,6 +279,7 @@ class YoutubeViewModel(
                     selectedVideoId = null,
                     playerSuggestions = emptyList(),
                     suggestionsLoading = false,
+                    playerSuggestionsEndReached = false,
                 )
             }
             runCatching { repository.loadCategory(categoryId) }

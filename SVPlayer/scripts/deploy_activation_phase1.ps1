@@ -2,7 +2,6 @@ param(
     [switch]$SkipInstall,
     [switch]$SkipTests,
     [switch]$SkipApkUpload,
-    [switch]$CommerceTestOnly,
     [string]$QaDeviceId = "",
     [string]$QaShortCode = "",
     [int]$QaActiveHoldSeconds = 0
@@ -988,17 +987,6 @@ try {
     $docRoot = Resolve-DomainDocumentRoot -BaseUrl $cpanelBaseUrl -Headers $headers -Domain $domain
     $remoteRoot = Convert-ToRemoteRelativePath -Path $docRoot -Username $cpanelUsername
     $remotePrivate = "smartvision_private"
-
-    if ($CommerceTestOnly) {
-        Test-CustomerCommerce `
-            -Domain $domain `
-            -CpanelBaseUrl $cpanelBaseUrl `
-            -Headers $headers `
-            -RemoteRoot $remoteRoot `
-            -TempRoot $tempRoot
-        Write-Host "Test commerce isole OK."
-        return
-    }
 
     Write-Host "Preparation des dossiers distants..."
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "api"

@@ -166,6 +166,8 @@ function handle_admin_action(PDO $pdo, string $action): void
         case 'send_test_email': admin_send_test_email($pdo); break;
         case 'send_admin_email': admin_send_admin_email($pdo); break;
         case 'save_app_config': admin_save_app_config($pdo); break;
+        case 'save_feature_access': admin_save_feature_access($pdo); break;
+        case 'save_app_consent': admin_save_app_consent($pdo); break;
         case 'send_notification': admin_send_notification($pdo); break;
         case 'set_notification_status': admin_set_notification_status($pdo); break;
         case 'delete_notification': admin_delete_notification($pdo); break;
@@ -1658,6 +1660,14 @@ function admin_load_app_config_admin(PDO $pdo): array
 
 function admin_save_app_config(PDO $pdo): void
 {
+    admin_save_feature_access($pdo, false);
+    admin_save_app_consent($pdo, false);
+    audit_admin_action($pdo, 'app_config_updated', 'settings', 'features');
+    set_admin_flash('success', 'Configuration application enregistree.');
+}
+
+function admin_save_feature_access(PDO $pdo, bool $withFlash = true): void
+{
     $features = [];
     foreach (admin_default_feature_access() as $feature) {
         $key = (string) $feature['key'];
@@ -1670,6 +1680,18 @@ function admin_save_app_config(PDO $pdo): void
         ];
     }
 
+    admin_save_app_settings($pdo, [
+        'app_feature_access' => json_encode($features, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    ]);
+
+    if ($withFlash) {
+        audit_admin_action($pdo, 'feature_access_updated', 'settings', 'features');
+        set_admin_flash('success', 'Disponibilite des fonctionnalites enregistree.');
+    }
+}
+
+function admin_save_app_consent(PDO $pdo, bool $withFlash = true): void
+{
     $variables = [];
     foreach (admin_default_consent_variables() as $key => $default) {
         $variables[$key] = smartvision_text_substr(trim((string) ($_POST['consent_variables'][$key] ?? $default)), 0, 255);
@@ -1680,9 +1702,18 @@ function admin_save_app_config(PDO $pdo): void
         'app_consent_title' => smartvision_text_substr(trim((string) ($_POST['consent_title'] ?? '')), 0, 120) ?: 'Privacy Policy and Terms of Use',
         'app_consent_body' => smartvision_text_substr(trim((string) ($_POST['consent_body'] ?? '')), 0, 30000) ?: admin_default_consent_body(),
         'app_consent_variables' => json_encode($variables, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-        'app_feature_access' => json_encode($features, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
     ];
 
+    admin_save_app_settings($pdo, $settings);
+
+    if ($withFlash) {
+        audit_admin_action($pdo, 'app_consent_updated', 'settings', 'features');
+        set_admin_flash('success', 'Consentement TV enregistre.');
+    }
+}
+
+function admin_save_app_settings(PDO $pdo, array $settings): void
+{
     $statement = $pdo->prepare(
         "INSERT INTO app_settings (setting_key, setting_value)
          VALUES (:setting_key, :setting_value)
@@ -1691,9 +1722,6 @@ function admin_save_app_config(PDO $pdo): void
     foreach ($settings as $key => $value) {
         $statement->execute(['setting_key' => $key, 'setting_value' => $value]);
     }
-
-    audit_admin_action($pdo, 'app_config_updated', 'settings', 'features');
-    set_admin_flash('success', 'Configuration application enregistree.');
 }
 
 function admin_default_consent_variables(): array
@@ -1710,6 +1738,7 @@ function admin_default_feature_access(): array
 {
     return [
         ['key' => 'youtube', 'label' => 'YouTube', 'premium' => true, 'trial' => true, 'free_ads' => false],
+        ['key' => 'parental_control', 'label' => 'Controle parental', 'premium' => true, 'trial' => true, 'free_ads' => false],
         ['key' => 'replay', 'label' => 'Replay', 'premium' => true, 'trial' => true, 'free_ads' => false],
         ['key' => 'advanced_favorites', 'label' => 'Favoris avances', 'premium' => true, 'trial' => true, 'free_ads' => false],
         ['key' => 'multi_screen', 'label' => 'Multi-ecran', 'premium' => true, 'trial' => false, 'free_ads' => false],
@@ -2543,7 +2572,7 @@ function admin_render_features_page(array $appConfigAdmin): void
     ?>
         <form method="post">
             <input type="hidden" name="redirect_page" value="features">
-            <input type="hidden" name="action" value="save_app_config">
+            <input type="hidden" name="action" value="save_feature_access">
             <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
 
             <section class="admin-panel">
@@ -2556,8 +2585,14 @@ function admin_render_features_page(array $appConfigAdmin): void
                         <td><label><input type="checkbox" name="feature[<?= admin_escape($key) ?>][free_ads]" value="1"<?= !empty($feature['free_ads']) ? ' checked' : '' ?>> Oui</label></td>
                     </tr><?php endforeach; ?>
                 </tbody></table></div>
+                <button class="admin-button primary" type="submit">Enregistrer les fonctionnalites</button>
             </section>
+        </form>
 
+        <form method="post">
+            <input type="hidden" name="redirect_page" value="features">
+            <input type="hidden" name="action" value="save_app_consent">
+            <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
             <section class="admin-panel">
                 <div class="admin-panel-heading"><div><h2>Consentement TV</h2><p>Texte affiche uniquement au premier lancement ou lorsqu une nouvelle version est publiee.</p></div></div>
                 <div class="admin-form-grid">
@@ -2569,7 +2604,7 @@ function admin_render_features_page(array $appConfigAdmin): void
                     <label class="ads-wide"><span>Texte complet</span><textarea name="consent_body" rows="18" maxlength="30000"><?= admin_escape((string) ($appConfigAdmin['consent_body'] ?? admin_default_consent_body())) ?></textarea></label>
                 </div>
                 <p class="muted">Les passages encadres par **double astérisque** sont affiches en gras dans l application TV.</p>
-                <button class="admin-button primary" type="submit">Enregistrer la configuration</button>
+                <button class="admin-button primary" type="submit">Enregistrer le consentement TV</button>
             </section>
         </form>
     <?php

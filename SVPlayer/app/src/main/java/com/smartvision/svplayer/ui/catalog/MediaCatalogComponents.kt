@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -40,6 +41,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -142,12 +144,28 @@ fun MediaCatalogHeader(
                     variant = if (tab.route == currentRoute) TvButtonVariant.Primary else TvButtonVariant.Text,
                     leadingIcon = tab.icon,
                     leadingContent = if (tab.useYoutubeLogo) {
-                        { YoutubeLogoIcon() }
+                        {
+                            Box {
+                                YoutubeLogoIcon()
+                                if (tab.locked) {
+                                    Image(
+                                        painter = painterResource(R.drawable.premium_crown),
+                                        contentDescription = "Premium",
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .offset(x = 10.dp, y = (-12).dp)
+                                            .size(19.dp),
+                                    )
+                                }
+                            }
+                        }
                     } else {
                         null
                     },
                     contentPadding = PaddingValues(horizontal = 10.dp),
-                    modifier = Modifier.height(36.dp),
+                    modifier = Modifier
+                        .height(36.dp)
+                        .alpha(if (tab.locked) 0.36f else 1f),
                 )
             }
         }

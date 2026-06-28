@@ -61,6 +61,8 @@ import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.HomeScreen
 import com.smartvision.svplayer.ui.home.HomeCollectionsScreen
 import com.smartvision.svplayer.ui.home.HomeCollectionKind
+import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
+import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.live.LiveTvScreen
 import com.smartvision.svplayer.ui.movies.MoviesScreen
 import com.smartvision.svplayer.ui.notifications.NotificationBadgeViewModel
@@ -107,6 +109,7 @@ fun AppNavigation(
     val playerSettings by container.settingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = PlayerSettings(),
     )
+    val strings = smartVisionStrings(playerSettings.language)
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route ?: AppRoute.Home.route
     var showExitConfirmation by remember { mutableStateOf(false) }
@@ -125,8 +128,13 @@ fun AppNavigation(
         featureKey = "youtube",
         status = monetizationStatus,
     )
-    val tabs = remember(youtubeAllowed) {
-        headerTabs.map { tab ->
+    val parentalControlAllowed = container.appConfigRepository.isFeatureAllowed(
+        config = appConfigState.config,
+        featureKey = "parental_control",
+        status = monetizationStatus,
+    )
+    val tabs = remember(youtubeAllowed, strings) {
+        headerTabs(strings).map { tab ->
             if (tab.route == AppRoute.Youtube.route) tab.copy(locked = !youtubeAllowed) else tab
         }
     }
@@ -161,6 +169,14 @@ fun AppNavigation(
         Unit
     }
 
+    if (appConfigState.consentRequired) {
+        ConsentDialog(
+            consent = appConfigState.config.consent,
+            onAccept = appConfigViewModel::acceptConsent,
+        )
+        return
+    }
+
     val xtreamAccounts by container.accountManager.accounts.collectAsStateWithLifecycle()
     val xtreamAccountSignature = remember(xtreamAccounts) {
         xtreamAccounts.joinToString("|") { account ->
@@ -170,13 +186,6 @@ fun AppNavigation(
     var lastXtreamAccountSignature by remember { mutableStateOf<String?>(null) }
 
     if (!activationState.activated) {
-        if (appConfigState.consentRequired) {
-            ConsentDialog(
-                consent = appConfigState.config.consent,
-                onAccept = appConfigViewModel::acceptConsent,
-            )
-            return
-        }
         BackHandler {
             showExitConfirmation = true
         }
@@ -387,6 +396,8 @@ fun AppNavigation(
                 updateState = appUpdateState,
                 onCheckForUpdate = appUpdateViewModel::checkForUpdate,
                 onSyncCatalog = syncCatalog,
+                parentalControlAllowed = parentalControlAllowed,
+                onLockedFeature = { showLicensePurchaseQr = true },
             )
         }
         composable(AppRoute.Notifications.route) {
@@ -689,12 +700,12 @@ private enum class AppRoute(val route: String) {
     Trending("trending"),
 }
 
-private val headerTabs = listOf(
-    HomeHeaderTab("Accueil", AppRoute.Home.route),
-    HomeHeaderTab("Live TV", AppRoute.Live.route),
-    HomeHeaderTab("Films", AppRoute.Movies.route),
-    HomeHeaderTab("Series", AppRoute.Series.route),
-    HomeHeaderTab("YouTube", AppRoute.Youtube.route, useYoutubeLogo = true),
+private fun headerTabs(strings: SmartVisionStrings) = listOf(
+    HomeHeaderTab(strings.home, AppRoute.Home.route),
+    HomeHeaderTab(strings.liveTv, AppRoute.Live.route),
+    HomeHeaderTab(strings.movies, AppRoute.Movies.route),
+    HomeHeaderTab(strings.series, AppRoute.Series.route),
+    HomeHeaderTab(strings.youtube, AppRoute.Youtube.route, useYoutubeLogo = true),
 )
 
 private fun activationPortalBaseUrl(): String =

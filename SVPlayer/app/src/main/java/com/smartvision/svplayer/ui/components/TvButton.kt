@@ -45,6 +45,8 @@ enum class TvButtonVariant {
     Secondary,
     Tertiary,
     Text,
+    Success,
+    Danger,
     Exit,
 }
 
@@ -72,6 +74,8 @@ fun TvButton(
         variant == TvButtonVariant.Exit && focusState.isFocused -> SmartVisionColors.Error
         variant == TvButtonVariant.Exit -> SmartVisionColors.Primary
         focusState.isFocused -> SmartVisionColors.SurfaceElevated
+        variant == TvButtonVariant.Success -> Color(0xFF0E8F55)
+        variant == TvButtonVariant.Danger -> Color(0xFFB3262F)
         variant == TvButtonVariant.Primary -> SmartVisionColors.Primary
         variant == TvButtonVariant.Secondary -> SmartVisionColors.SurfaceElevated
         else -> SmartVisionColors.Surface.copy(alpha = 0.54f)
@@ -80,13 +84,15 @@ fun TvButton(
         variant == TvButtonVariant.Exit && focusState.isFocused -> SmartVisionColors.Error
         focusState.isFocused -> SmartVisionColors.FocusWhite
         selected -> SmartVisionColors.CyanAccent
+        variant == TvButtonVariant.Success -> Color(0xFF28E08A)
+        variant == TvButtonVariant.Danger -> Color(0xFFFF5A65)
         variant == TvButtonVariant.Primary -> SmartVisionColors.Primary
         variant == TvButtonVariant.Text -> Color.Transparent
         else -> SmartVisionColors.Border
     }
     val targetTextColor = when {
         !enabled -> SmartVisionColors.TextSecondary.copy(alpha = 0.52f)
-        (variant == TvButtonVariant.Primary || variant == TvButtonVariant.Exit) && !focusState.isFocused -> Color.White
+        (variant == TvButtonVariant.Primary || variant == TvButtonVariant.Exit || variant == TvButtonVariant.Success || variant == TvButtonVariant.Danger) && !focusState.isFocused -> Color.White
         focusState.isFocused || selected -> SmartVisionColors.TextPrimary
         else -> SmartVisionColors.TextSecondary
     }
