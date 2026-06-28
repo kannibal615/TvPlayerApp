@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.smartvision.svplayer.data.mock.ContinueItem
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -58,8 +59,9 @@ fun ContentProgressCard(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val shape = RoundedCornerShape(SmartVisionDimensions.HomeContentRadius)
+    val focusStyle = LocalTvFocusStyle.current
     val border by animateColorAsState(
-        targetValue = if (focusState.isFocused) SmartVisionColors.FocusWhite else SmartVisionColors.Border.copy(alpha = 0.78f),
+        targetValue = if (focusState.isFocused) focusStyle.accent else SmartVisionColors.Border.copy(alpha = 0.78f),
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "contentCardBorder",
     )
@@ -81,7 +83,7 @@ fun ContentProgressCard(
             )
             .clip(shape)
             .background(SmartVisionColors.Surface)
-            .border(BorderStroke(if (focusState.isFocused) 2.dp else 1.dp, border), shape)
+            .border(BorderStroke(if (focusState.isFocused) focusStyle.borderWidth else 1.dp, border), shape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,

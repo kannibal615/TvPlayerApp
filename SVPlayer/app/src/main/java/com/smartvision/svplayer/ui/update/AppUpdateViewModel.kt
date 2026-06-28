@@ -17,23 +17,31 @@ class AppUpdateViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AppUpdateUiState())
     val uiState: StateFlow<AppUpdateUiState> = _uiState.asStateFlow()
+    private var revealDialogAfterCheck = false
 
-    fun checkForUpdate() {
-        if (_uiState.value.checking) return
+    fun checkForUpdate(revealDialog: Boolean = false) {
+        if (_uiState.value.checking) {
+            if (revealDialog) revealDialogAfterCheck = true
+            return
+        }
         viewModelScope.launch {
+            if (revealDialog) revealDialogAfterCheck = true
             _uiState.update { it.copy(checking = true, errorMessage = null) }
             runCatching { repository.checkForUpdate() }
                 .onSuccess { update ->
                     _uiState.update {
+                        val shouldReveal = revealDialogAfterCheck || revealDialog
+                        revealDialogAfterCheck = false
                         it.copy(
                             checking = false,
                             update = update,
-                            dismissedVersionCode = null,
+                            dismissedVersionCode = if (shouldReveal || update?.mandatory == true) null else it.dismissedVersionCode,
                             checkedOnce = true,
                         )
                     }
                 }
                 .onFailure { error ->
+                    revealDialogAfterCheck = false
                     _uiState.update {
                         it.copy(
                             checking = false,
@@ -42,6 +50,14 @@ class AppUpdateViewModel(
                         )
                     }
                 }
+        }
+    }
+
+    fun openFromNotification() {
+        if (_uiState.value.update != null) {
+            showUpdateDialog()
+        } else {
+            checkForUpdate(revealDialog = true)
         }
     }
 

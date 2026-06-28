@@ -39,6 +39,7 @@ import androidx.compose.ui.window.Dialog
 import com.smartvision.svplayer.core.config.XtreamAccount
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 
@@ -130,6 +131,7 @@ private fun SetupField(
     val keyboardController = LocalSoftwareKeyboardController.current
     var editing by remember { mutableStateOf(false) }
     var focused by remember { mutableStateOf(false) }
+    val focusStyle = LocalTvFocusStyle.current
     LaunchedEffect(editing) {
         if (editing) {
             focusRequester.requestFocus()
@@ -178,8 +180,8 @@ private fun SetupField(
             .background(SmartVisionColors.Surface, RoundedCornerShape(6.dp))
             .border(
                 BorderStroke(
-                    if (focused || editing) 2.dp else 1.dp,
-                    if (focused || editing) SmartVisionColors.CyanAccent else SmartVisionColors.Border,
+                    if (focused || editing) focusStyle.borderWidth else 1.dp,
+                    if (focused || editing) focusStyle.accent else SmartVisionColors.Border,
                 ),
                 RoundedCornerShape(6.dp),
             )

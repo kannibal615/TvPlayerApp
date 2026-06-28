@@ -67,6 +67,24 @@ Goal:
 - Verified release notification id `7` in the standard notifications API.
 - Corrected and verified production feature flags so YouTube and parental control are locked for `free_ads`.
 - Documented temporary PHP maintenance pitfalls in `TROUBLESHOOTING.md`.
+- Started the next 2026-06-28 correction block requested after release `0.1.42 (45)`.
+- Made update-notification clicks robust: no automatic Home pop, force update check when local update state is not loaded, then reveal the update popup.
+- Replaced the Live TV specific header with the shared main `TvHeader`.
+- Removed remaining hard-coded white focus borders from Home category cards, Continue/Trending cards and view-all buttons.
+- Removed remaining hard-coded focus borders from Live TV categories, channel rows and preview/history action buttons.
+- Connected premium popup buttons and Xtream setup fields to the configured focus color/width.
+- Improved YouTube search-history visibility so suggestions hide after selection and after focus leaves the search area.
+- Added localized Home collection labels for `View all`, `Best movies` and `Best series`.
+- Updated `TRANSLATION_PROGRESS.md` with Block 6.
+- Incremented local release to `0.1.43 (46)`.
+- Built release `0.1.43 (46)` successfully.
+- Deployed release `0.1.43 (46)` to production.
+- Verified production update manifest: `versionCode 46`, `versionName 0.1.43`, APK `smartvision-tv-v46-c96c3003.apk`.
+- Verified versioned and stable APK SHA256: `c96c300379843674aefbb1746879f231315a5a3bf2aea5153b869b46aefbbfc1`.
+- Verified release notification id `8` in the standard notifications API.
+- Corrected and verified production feature flags so YouTube and parental control remain locked for `free_ads`.
+- Verified no temporary `sv_fix_feature_flags*` script remains in `public_html/api`.
+- Documented standalone API maintenance script `config.php` include requirement in `TROUBLESHOOTING.md`.
 
 ## In progress
 - None.

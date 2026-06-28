@@ -116,3 +116,22 @@ Remaining after block 5:
 - Replace remaining user-visible hard-coded French text in Android Compose screens.
 - Add a repeatable i18n audit command before each release.
 - Add backend email flow for forgotten parental PIN once the account email source is confirmed in the Android activation/session model.
+
+## Block 6 - Home collections and update notification pass
+
+Status: done locally.
+
+Completed:
+- Added English/French strings for Home collection "View all".
+- Added English/French strings for Best movies and Best series collection sections.
+- Connected the Home collection screen to localized Back, Continue watching, Trending, Live TV, Movies and Series labels.
+- Kept English as the default language and French as the only alternate visible language.
+- Validated the block with the release build that produced `0.1.43 (46)`.
+
+Remaining after block 6:
+- Externalize and translate Activation screens.
+- Externalize and translate Live TV, Movies, Series, details and player overlays.
+- Externalize and translate Profile and premium purchase sub-dialogs still hard-coded in `ProfileScreen`.
+- Replace remaining user-visible hard-coded French text in Android Compose screens.
+- Add a repeatable i18n audit command before each release.
+- Add backend email flow for forgotten parental PIN once the account email source is confirmed in the Android activation/session model.

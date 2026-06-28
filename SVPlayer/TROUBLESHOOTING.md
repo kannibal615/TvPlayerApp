@@ -83,3 +83,23 @@ Avoid next time:
 - Do not use `Set-Content -Encoding UTF8` for PHP files that start with `declare(strict_types=1);`, because a BOM can break PHP strict types.
 - Do not use `$Host` as a local PowerShell variable.
 - Do not assume cPanel has `Fileman/delete_files`; prefer self-deleting scripts.
+
+## 2026-06-28 - Temporary API maintenance script missing db()
+
+Problem:
+- A temporary PHP maintenance script uploaded under `public_html/api` returned HTTP 500 with `Call to undefined function db()`.
+
+Context:
+- The script required only `api/helpers.php`.
+- In this backend, `db()` is declared in `api/config.php`, while `helpers.php` only uses it indirectly in normal API entrypoints after config has already been loaded.
+
+Working solution:
+- Include config before helpers in temporary API scripts:
+  `require_once __DIR__ . '/config.php';`
+  `require_once __DIR__ . '/helpers.php';`
+- Validate generated PHP locally with `php -l` before upload.
+- If PowerShell hides the HTTP 500 body, call the temporary URL with `curl.exe -i` to see the JSON error body.
+
+Avoid next time:
+- Do not assume `helpers.php` is enough for standalone maintenance scripts.
+- Keep the self-delete shutdown hook, but use `curl.exe -i` during diagnosis so the response body is visible before the file deletes itself.

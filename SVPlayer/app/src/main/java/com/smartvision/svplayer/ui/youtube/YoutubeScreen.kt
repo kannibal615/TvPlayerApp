@@ -417,12 +417,12 @@ private fun YoutubePlayerSuggestionRow(
                 focusRequester = focusRequester,
                 pressed = pressed,
                 focusedScale = 1.025f,
-                glowColor = SmartVisionColors.CyanAccent,
+                glowColor = focusStyle.accent,
                 cornerRadius = 7.dp,
             )
             .onFocusChanged { if (it.isFocused) onFocused() }
             .clip(shape)
-            .background(if (focusState.isFocused) SmartVisionColors.CyanAccent.copy(alpha = 0.16f) else SmartVisionColors.Surface.copy(alpha = 0.72f))
+            .background(if (focusState.isFocused) focusStyle.accent.copy(alpha = 0.16f) else SmartVisionColors.Surface.copy(alpha = 0.72f))
             .border(
                 BorderStroke(
                     if (focusState.isFocused) focusStyle.borderWidth else 1.dp,
@@ -509,7 +509,9 @@ private fun YoutubeVideoGrid(
     val firstSuggestionFocusRequester = remember { FocusRequester() }
     var searchFocused by remember { mutableStateOf(false) }
     var suggestionsFocused by remember { mutableStateOf(false) }
-    val showSuggestions = (searchFocused || suggestionsFocused || state.searchQuery.isNotBlank()) &&
+    var suppressSuggestionsAfterSelection by remember { mutableStateOf(false) }
+    val showSuggestions = !suppressSuggestionsAfterSelection &&
+        (searchFocused || suggestionsFocused) &&
         state.searchSuggestions.isNotEmpty()
     val isVideoGridVisible = playingVideo == null && state.videos.isNotEmpty()
     val contentDownFocusRequester = when {
@@ -541,9 +543,15 @@ private fun YoutubeVideoGrid(
                     showSuggestions -> firstSuggestionFocusRequester
                     else -> contentDownFocusRequester
                 },
-                onQueryChange = onSearchQueryChange,
+                onQueryChange = {
+                    suppressSuggestionsAfterSelection = false
+                    onSearchQueryChange(it)
+                },
                 onSubmit = onSearchSubmit,
-                onFocusChanged = { searchFocused = it },
+                onFocusChanged = {
+                    searchFocused = it
+                    if (it) suppressSuggestionsAfterSelection = false
+                },
                 onSelected = { onSearchQueryChange(state.searchQuery) },
                 modifier = Modifier.width(430.dp),
             )
@@ -620,7 +628,11 @@ private fun YoutubeVideoGrid(
                 firstSuggestionFocusRequester = firstSuggestionFocusRequester,
                 upFocusRequester = searchFocusRequester,
                 downFocusRequester = contentDownFocusRequester,
-                onSuggestionClick = onSuggestionClick,
+                onSuggestionClick = {
+                    suppressSuggestionsAfterSelection = true
+                    suggestionsFocused = false
+                    onSuggestionClick(it)
+                },
                 onSuggestionFocusChanged = { suggestionsFocused = it },
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -693,7 +705,7 @@ private fun YoutubeInlinePlayer(
                 state = focusState,
                 focusRequester = focusRequester,
                 focusedScale = 1.006f,
-                glowColor = SmartVisionColors.CyanAccent,
+                glowColor = focusStyle.accent,
                 cornerRadius = MediaCatalogDimens.ItemRadius,
             )
             .clip(RoundedCornerShape(MediaCatalogDimens.ItemRadius))
@@ -872,12 +884,13 @@ private fun YoutubeSuggestionsDropdown(
 ) {
     if (suggestions.isEmpty()) return
     val visibleSuggestions = suggestions.take(5)
+    val focusStyle = LocalTvFocusStyle.current
     Column(
         modifier = modifier
             .width(430.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(Color(0xF20A111F))
-            .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent.copy(alpha = 0.58f)), RoundedCornerShape(8.dp))
+            .border(BorderStroke(1.dp, focusStyle.accent.copy(alpha = 0.58f)), RoundedCornerShape(8.dp))
             .padding(vertical = 5.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
@@ -921,7 +934,7 @@ private fun YoutubeSuggestionRow(
                 focusRequester = focusRequester,
                 pressed = pressed,
                 focusedScale = 1.02f,
-                glowColor = SmartVisionColors.CyanAccent,
+                glowColor = focusStyle.accent,
                 cornerRadius = 6.dp,
             )
             .onFocusChanged { onSuggestionFocusChanged(it.isFocused) }

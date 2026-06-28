@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.smartvision.svplayer.data.mock.ContinueItem
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -53,6 +54,7 @@ fun ContinueWatchingRow(
     onItemClick: (ContinueItem) -> Unit,
     modifier: Modifier = Modifier,
     showViewAll: Boolean = false,
+    viewAllText: String = "View all",
     onViewAll: () -> Unit = {},
 ) {
     val rowState = rememberLazyListState()
@@ -87,6 +89,7 @@ fun ContinueWatchingRow(
             if (showViewAll) {
                 item(key = "view_all_$title") {
                     ViewAllButton(
+                        text = viewAllText,
                         onClick = onViewAll,
                         modifier = Modifier
                             .width(78.dp)
@@ -107,6 +110,7 @@ private fun RowChevronButton(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val shape = RoundedCornerShape(SmartVisionDimensions.HomeContentRadius)
+    val focusStyle = LocalTvFocusStyle.current
 
     Box(
         modifier = modifier
@@ -121,7 +125,10 @@ private fun RowChevronButton(
             .clip(shape)
             .background(SmartVisionColors.SurfaceElevated.copy(alpha = 0.8f))
             .border(
-                BorderStroke(if (focusState.isFocused) 2.dp else 1.dp, if (focusState.isFocused) Color.White else SmartVisionColors.Border),
+                BorderStroke(
+                    if (focusState.isFocused) focusStyle.borderWidth else 1.dp,
+                    if (focusState.isFocused) focusStyle.accent else SmartVisionColors.Border,
+                ),
                 shape,
             )
             .clickable(
@@ -143,6 +150,7 @@ private fun RowChevronButton(
 
 @Composable
 private fun ViewAllButton(
+    text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -150,6 +158,7 @@ private fun ViewAllButton(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val shape = RoundedCornerShape(SmartVisionDimensions.HomeContentRadius)
+    val focusStyle = LocalTvFocusStyle.current
 
     Column(
         modifier = modifier
@@ -164,7 +173,10 @@ private fun ViewAllButton(
             .clip(shape)
             .background(SmartVisionColors.SurfaceElevated.copy(alpha = 0.82f))
             .border(
-                BorderStroke(if (focusState.isFocused) 2.dp else 1.dp, if (focusState.isFocused) Color.White else SmartVisionColors.Border),
+                BorderStroke(
+                    if (focusState.isFocused) focusStyle.borderWidth else 1.dp,
+                    if (focusState.isFocused) focusStyle.accent else SmartVisionColors.Border,
+                ),
                 shape,
             )
             .clickable(
@@ -185,7 +197,7 @@ private fun ViewAllButton(
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "Voir tout",
+            text = text,
             color = SmartVisionColors.TextSecondary,
             style = SmartVisionType.Caption,
             fontWeight = FontWeight.SemiBold,

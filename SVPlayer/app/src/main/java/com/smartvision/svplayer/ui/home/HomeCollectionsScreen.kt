@@ -28,8 +28,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
+import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 
@@ -62,15 +64,17 @@ fun HomeCollectionsScreen(
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val settings by container.settingsRepository.settings.collectAsStateWithLifecycle(initialValue = PlayerSettings())
+    val strings = smartVisionStrings(settings.language)
     val sections = when (kind) {
         HomeCollectionKind.ContinueWatching -> listOf(
-            CollectionSection("Live TV", state.continueWatching.filter { it.id.startsWith("live:") }),
-            CollectionSection("Films", state.continueWatching.filter { it.id.startsWith("movie:") }),
-            CollectionSection("Series", state.continueWatching.filter { it.id.startsWith("episode:") }),
+            CollectionSection(strings.liveTv, state.continueWatching.filter { it.id.startsWith("live:") }),
+            CollectionSection(strings.movies, state.continueWatching.filter { it.id.startsWith("movie:") }),
+            CollectionSection(strings.series, state.continueWatching.filter { it.id.startsWith("episode:") }),
         )
         HomeCollectionKind.Trending -> listOf(
-            CollectionSection("Meilleurs films", state.trending.filter { it.id.startsWith("movie:") }),
-            CollectionSection("Meilleures series", state.trending.filter { it.id.startsWith("series:") }),
+            CollectionSection(strings.bestMovies, state.trending.filter { it.id.startsWith("movie:") }),
+            CollectionSection(strings.bestSeries, state.trending.filter { it.id.startsWith("series:") }),
         )
     }
 
@@ -96,7 +100,7 @@ fun HomeCollectionsScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TvButton(
-                text = "Retour",
+                text = strings.back,
                 leadingIcon = Icons.Default.ArrowBack,
                 onClick = onBack,
                 variant = TvButtonVariant.Secondary,
@@ -104,7 +108,7 @@ fun HomeCollectionsScreen(
             )
             Spacer(Modifier.weight(1f))
             Text(
-                text = if (kind == HomeCollectionKind.ContinueWatching) "Reprendre la lecture" else "Tendances",
+                text = if (kind == HomeCollectionKind.ContinueWatching) strings.continueWatching else strings.trending,
                 color = SmartVisionColors.TextPrimary,
                 style = SmartVisionType.TitleL,
                 fontWeight = FontWeight.Bold,

@@ -145,6 +145,7 @@ fun HomeScreen(
                 title = if (hasContinueWatching) strings.continueWatching else strings.trending,
                 items = if (hasContinueWatching) state.continueWatching else state.trending,
                 showViewAll = true,
+                viewAllText = strings.viewAll,
                 onViewAll = if (hasContinueWatching) onContinueViewAll else onTrendingViewAll,
                 onItemClick = onContentClick,
                 modifier = Modifier.fillMaxWidth(),
@@ -158,6 +159,7 @@ fun HomeScreen(
                     items = state.trending,
                     onItemClick = onContentClick,
                     showViewAll = true,
+                    viewAllText = strings.viewAll,
                     onViewAll = onTrendingViewAll,
                     modifier = Modifier.fillMaxWidth(),
                 )

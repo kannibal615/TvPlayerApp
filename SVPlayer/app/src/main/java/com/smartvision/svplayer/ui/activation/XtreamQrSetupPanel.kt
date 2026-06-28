@@ -78,6 +78,7 @@ import com.smartvision.svplayer.data.activation.ActivationRepository
 import com.smartvision.svplayer.data.activation.ActivationSession
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
@@ -382,8 +383,9 @@ private fun XtreamField(
     var editing by remember { mutableStateOf(false) }
     var containerFocused by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(7.dp)
+    val focusStyle = LocalTvFocusStyle.current
     val borderColor = if (editing || containerFocused) {
-        SmartVisionColors.CyanAccent
+        focusStyle.accent
     } else {
         Color(0xFF2C4A71)
     }
@@ -427,7 +429,7 @@ private fun XtreamField(
             .focusable(enabled = !editing)
             .clip(shape)
             .background(Color(0xFF050D1A).copy(alpha = 0.82f))
-            .border(BorderStroke(1.dp, borderColor), shape)
+            .border(BorderStroke(if (editing || containerFocused) focusStyle.borderWidth else 1.dp, borderColor), shape)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

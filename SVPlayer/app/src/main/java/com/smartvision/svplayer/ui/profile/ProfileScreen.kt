@@ -1695,8 +1695,9 @@ private fun PremiumDialogButton(
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(10.dp)
+    val focusStyle = LocalTvFocusStyle.current
     val borderColor = when {
-        focusState.isFocused -> SmartVisionColors.FocusWhite
+        focusState.isFocused -> focusStyle.accent
         primary -> SmartVisionColors.CyanAccent
         else -> Color(0xFF344761)
     }
@@ -1707,7 +1708,7 @@ private fun PremiumDialogButton(
                 state = focusState,
                 focusRequester = focusRequester,
                 enabled = enabled,
-                glowColor = SmartVisionColors.CyanAccent,
+                glowColor = focusStyle.accent,
                 cornerRadius = 10.dp,
             )
             .clip(shape)
@@ -1724,7 +1725,7 @@ private fun PremiumDialogButton(
                     Brush.verticalGradient(listOf(Color(0xFF0B172A), Color(0xFF07101D)))
                 },
             )
-            .border(BorderStroke(if (focusState.isFocused) 2.dp else 1.dp, borderColor), shape)
+            .border(BorderStroke(if (focusState.isFocused) focusStyle.borderWidth else 1.dp, borderColor), shape)
             .clickable(
                 enabled = enabled,
                 interactionSource = interactionSource,
@@ -1762,21 +1763,22 @@ private fun PremiumCloseButton(
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(12.dp)
+    val focusStyle = LocalTvFocusStyle.current
 
     Box(
         modifier = modifier
             .size(42.dp)
             .tvFocusTarget(
                 state = focusState,
-                glowColor = SmartVisionColors.CyanAccent,
+                glowColor = focusStyle.accent,
                 cornerRadius = 12.dp,
             )
             .clip(shape)
             .background(Color(0xFF0B1728))
             .border(
                 BorderStroke(
-                    if (focusState.isFocused) 2.dp else 1.dp,
-                    if (focusState.isFocused) SmartVisionColors.FocusWhite else Color(0xFF263B56),
+                    if (focusState.isFocused) focusStyle.borderWidth else 1.dp,
+                    if (focusState.isFocused) focusStyle.accent else Color(0xFF263B56),
                 ),
                 shape,
             )

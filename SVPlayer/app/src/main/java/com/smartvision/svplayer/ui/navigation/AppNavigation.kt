@@ -437,7 +437,7 @@ fun AppNavigation(
             SettingsScreen(
                 onBack = { navController.popBackStack() },
                 updateState = appUpdateState,
-                onCheckForUpdate = appUpdateViewModel::checkForUpdate,
+                onCheckForUpdate = { appUpdateViewModel.checkForUpdate(revealDialog = true) },
                 onSyncCatalog = syncCatalog,
                 parentalControlAllowed = parentalControlAllowed,
                 onLockedFeature = { showLicensePurchaseQr = true },
@@ -449,8 +449,7 @@ fun AppNavigation(
                 onNotificationsSeen = notificationBadgeViewModel::clearUnread,
                 updateNotification = appUpdateState.update,
                 onOpenUpdate = {
-                    appUpdateViewModel.showUpdateDialog()
-                    navController.popBackStack()
+                    appUpdateViewModel.openFromNotification()
                 },
             )
         }

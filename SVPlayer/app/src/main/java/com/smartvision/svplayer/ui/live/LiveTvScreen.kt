@@ -57,9 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
@@ -107,12 +105,12 @@ import com.smartvision.svplayer.data.monetization.smartVisionMediaSourceFactory
 import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
-import com.smartvision.svplayer.ui.components.YoutubeLogoIcon
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
-import com.smartvision.svplayer.ui.home.HeaderControls
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
+import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -262,7 +260,7 @@ fun LiveTvScreen(
             .padding(horizontal = LiveTvDimens.ScreenPadding)
             .padding(top = LiveTvDimens.TopPadding, bottom = LiveTvDimens.BottomPadding),
     ) {
-        LiveTvHeader(
+        TvHeader(
             currentRoute = currentRoute,
             tabs = tabs,
             onNavigate = onNavigate,
@@ -380,91 +378,6 @@ fun LiveTvScreen(
             },
         )
     }
-}
-
-@Composable
-private fun LiveTvHeader(
-    currentRoute: String,
-    tabs: List<HomeHeaderTab>,
-    onNavigate: (String) -> Unit,
-    onSync: () -> Unit,
-    onSettings: () -> Unit,
-    onProfile: () -> Unit,
-    onNotifications: () -> Unit,
-    onLicenseKey: () -> Unit,
-    showLicenseKey: Boolean,
-    hasNewNotifications: Boolean,
-    notificationBadgeCount: Int,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.height(LiveTvDimens.HeaderHeight),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        LiveTvLogo()
-
-        Spacer(Modifier.width(16.dp))
-
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            tabs.forEach { tab ->
-                TvButton(
-                    text = tab.label,
-                    onClick = { onNavigate(tab.route) },
-                    selected = tab.route == currentRoute,
-                    variant = if (tab.route == currentRoute) TvButtonVariant.Primary else TvButtonVariant.Text,
-                    leadingIcon = tab.icon,
-                    leadingContent = if (tab.useYoutubeLogo) {
-                        { YoutubeLogoIcon() }
-                    } else {
-                        null
-                    },
-                    trailingContent = if (tab.locked) {
-                        {
-                            Image(
-                                painter = painterResource(R.drawable.premium_crown),
-                                contentDescription = "Premium",
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .rotate(12f),
-                            )
-                        }
-                    } else {
-                        null
-                    },
-                    contentPadding = PaddingValues(horizontal = 10.dp),
-                    modifier = Modifier
-                        .height(36.dp)
-                        .alpha(if (tab.locked) 0.16f else 1f),
-                )
-            }
-        }
-
-        HeaderControls(
-            onNotifications = onNotifications,
-            onLicenseKey = onLicenseKey,
-            onProfile = onProfile,
-            onSettings = onSettings,
-            showLicenseKey = showLicenseKey,
-            hasNewNotifications = hasNewNotifications,
-            notificationBadgeCount = notificationBadgeCount,
-        )
-    }
-}
-
-@Composable
-private fun LiveTvLogo() {
-    Image(
-        painter = painterResource(R.drawable.smartvision_logo_wide),
-        contentDescription = "SmartVision IPTV Player",
-        contentScale = ContentScale.Fit,
-        modifier = Modifier
-            .width(190.dp)
-            .fillMaxHeight(),
-    )
 }
 
 @Composable
@@ -1083,6 +996,7 @@ private fun PreviewActionButton(
     val pressed by interactionSource.collectIsPressedAsState()
     val shape = RoundedCornerShape(LiveTvDimens.ItemRadius)
     val active = focusState.isFocused || selected
+    val focusStyle = LocalTvFocusStyle.current
     val backgroundColor by animateColorAsState(
         targetValue = when {
             primary -> SmartVisionColors.Primary
@@ -1094,7 +1008,7 @@ private fun PreviewActionButton(
     )
     val borderColor by animateColorAsState(
         targetValue = when {
-            focusState.isFocused -> SmartVisionColors.FocusWhite
+            focusState.isFocused -> focusStyle.accent
             selected -> SmartVisionColors.Primary
             else -> SmartVisionColors.Border
         },
@@ -1122,7 +1036,7 @@ private fun PreviewActionButton(
             .background(backgroundColor)
             .border(
                 BorderStroke(
-                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                    if (focusState.isFocused) focusStyle.borderWidth else SmartVisionDimensions.PanelBorder,
                     borderColor,
                 ),
                 shape,
@@ -1168,9 +1082,10 @@ private fun CategoryRow(
     val pressed by interactionSource.collectIsPressedAsState()
     val active = selected || focusState.isFocused
     val shape = RoundedCornerShape(LiveTvDimens.ItemRadius)
+    val focusStyle = LocalTvFocusStyle.current
     val borderColor by animateColorAsState(
         targetValue = when {
-            focusState.isFocused -> SmartVisionColors.FocusWhite
+            focusState.isFocused -> focusStyle.accent
             selected -> SmartVisionColors.Primary
             else -> SmartVisionColors.Border
         },
@@ -1218,7 +1133,7 @@ private fun CategoryRow(
             )
             .border(
                 BorderStroke(
-                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                    if (focusState.isFocused) focusStyle.borderWidth else SmartVisionDimensions.PanelBorder,
                     borderColor,
                 ),
                 shape,
@@ -1280,9 +1195,10 @@ private fun ChannelRow(
     val pressed by interactionSource.collectIsPressedAsState()
     val active = selected || focusState.isFocused
     val shape = RoundedCornerShape(LiveTvDimens.ItemRadius)
+    val focusStyle = LocalTvFocusStyle.current
     val borderColor by animateColorAsState(
         targetValue = when {
-            focusState.isFocused -> SmartVisionColors.FocusWhite
+            focusState.isFocused -> focusStyle.accent
             selected -> SmartVisionColors.Primary
             else -> SmartVisionColors.Border
         },
@@ -1342,7 +1258,7 @@ private fun ChannelRow(
                 )
                 .border(
                     BorderStroke(
-                        if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                        if (focusState.isFocused) focusStyle.borderWidth else SmartVisionDimensions.PanelBorder,
                         borderColor,
                     ),
                     shape,
@@ -1416,6 +1332,7 @@ private fun HistoryDeleteButton(
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
+    val focusStyle = LocalTvFocusStyle.current
     Box(
         modifier = Modifier
             .size(34.dp)
@@ -1434,7 +1351,10 @@ private fun HistoryDeleteButton(
             .clip(RoundedCornerShape(6.dp))
             .background(if (focusState.isFocused) SmartVisionColors.Error.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.08f))
             .border(
-                BorderStroke(1.dp, if (focusState.isFocused) SmartVisionColors.FocusWhite else SmartVisionColors.Error.copy(alpha = 0.58f)),
+                BorderStroke(
+                    if (focusState.isFocused) focusStyle.borderWidth else 1.dp,
+                    if (focusState.isFocused) focusStyle.accent else SmartVisionColors.Error.copy(alpha = 0.58f),
+                ),
                 RoundedCornerShape(6.dp),
             )
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
