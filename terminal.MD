@@ -73,6 +73,7 @@ Lancer un autre port:
 Déploiement complet en prod:
 
 ```powershell
+cd SVPlayer
 .\scripts\deploy_activation_phase1.ps1
 ```
 
