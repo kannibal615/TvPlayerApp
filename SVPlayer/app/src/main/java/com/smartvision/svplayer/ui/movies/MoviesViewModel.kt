@@ -9,7 +9,10 @@ import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.domain.model.CategoryHistorySignal
+import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.model.sortedByHistorySignals
+import com.smartvision.svplayer.domain.repository.SettingsRepository
+import com.smartvision.svplayer.ui.settings.allowsContent
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -60,6 +63,7 @@ data class MoviesScreenState(
 class MoviesViewModel(
     private val xtreamRepository: XtreamRepository,
     private val userContentRepository: UserContentRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MoviesScreenState())
     val uiState: StateFlow<MoviesScreenState> = _uiState.asStateFlow()
@@ -68,8 +72,10 @@ class MoviesViewModel(
     private var favoriteIds: Set<Int> = emptySet()
     private var historyProgress: List<PlaybackProgressEntity> = emptyList()
     private var historyCategorySignals: List<CategoryHistorySignal> = emptyList()
+    private var playerSettings = PlayerSettings()
 
     init {
+        observeSettings()
         observeFavorites()
         observeHistory()
         loadCategories()
@@ -167,6 +173,19 @@ class MoviesViewModel(
             loadAllMovies()
         } else {
             loadMovies(categoryId)
+        }
+    }
+
+    private fun observeSettings() {
+        viewModelScope.launch {
+            settingsRepository.settings.collect { settings ->
+                val changed = playerSettings.parentalControlEnabled != settings.parentalControlEnabled ||
+                    playerSettings.parentalKeywords != settings.parentalKeywords
+                playerSettings = settings
+                if (changed && !_uiState.value.categoriesLoading) {
+                    retryCurrentCategory()
+                }
+            }
         }
     }
 
@@ -286,6 +305,7 @@ class MoviesViewModel(
                 categories.forEach { category ->
                     xtreamRepository.getMovies(category.id).forEach { movie ->
                         if (!seen.add(movie.streamId)) return@forEach
+                        if (!playerSettings.allowsContent(movie.title, movie.rating, category.label)) return@forEach
                         collected += movie.toUiMovie(collected.size, category.label, xtreamRepository, favoriteIds)
                     }
                     _uiState.update { state ->
@@ -334,6 +354,7 @@ class MoviesViewModel(
     private fun historyMovies(): List<MovieItemUi> =
         historyProgress.mapIndexedNotNull { index, progress ->
             val id = progress.contentId.toIntOrNull() ?: return@mapIndexedNotNull null
+            if (!playerSettings.allowsContent(progress.title, progress.subtitle)) return@mapIndexedNotNull null
             MovieItemUi(
                 streamId = id,
                 number = (index + 1).toString().padStart(3, '0'),
@@ -351,6 +372,12 @@ class MoviesViewModel(
     private fun favoriteMovies(): List<MovieItemUi> =
         xtreamRepository.getCachedMovies()
             .filter { it.streamId in favoriteIds }
+            .filter { movie ->
+                val categoryLabel = xtreamRepository.getCachedMovieCategories()
+                    .firstOrNull { category -> category.id == movie.categoryId }
+                    ?.name
+                playerSettings.allowsContent(movie.title, movie.rating, categoryLabel)
+            }
             .sortedBy { it.title }
             .mapIndexed { index, movie ->
                 val categoryLabel = xtreamRepository.getCachedMovieCategories()
@@ -375,7 +402,9 @@ class MoviesViewModel(
                 )
             }
             runCatching {
-                xtreamRepository.getMovies(categoryId).mapIndexed { index, movie ->
+                xtreamRepository.getMovies(categoryId)
+                    .filter { movie -> playerSettings.allowsContent(movie.title, movie.rating, categoryLabel) }
+                    .mapIndexed { index, movie ->
                     movie.toUiMovie(index, categoryLabel, xtreamRepository, favoriteIds)
                 }
             }.onSuccess { movies ->

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -54,6 +56,7 @@ data class HomeHeaderTab(
     val route: String,
     val icon: ImageVector? = null,
     val useYoutubeLogo: Boolean = false,
+    val locked: Boolean = false,
 )
 
 @Composable
@@ -90,12 +93,30 @@ fun TvHeader(
                     variant = if (tab.route == currentRoute) TvButtonVariant.Primary else TvButtonVariant.Text,
                     leadingIcon = tab.icon,
                     leadingContent = if (tab.useYoutubeLogo) {
-                        { YoutubeLogoIcon() }
+                        {
+                            Box {
+                                YoutubeLogoIcon()
+                                if (tab.locked) {
+                                    Icon(
+                                        imageVector = Icons.Default.WorkspacePremium,
+                                        contentDescription = "Premium",
+                                        tint = SmartVisionColors.Warning,
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .offset(x = 7.dp, y = (-8).dp)
+                                            .size(13.dp),
+                                    )
+                                }
+                            }
+                        }
                     } else {
                         null
                     },
+                    enabled = true,
                     contentPadding = PaddingValues(horizontal = 10.dp),
-                    modifier = Modifier.height(40.dp),
+                    modifier = Modifier
+                        .height(40.dp)
+                        .alpha(if (tab.locked) 0.58f else 1f),
                 )
             }
         }

@@ -101,6 +101,7 @@ fun SeriesScreen(
             SeriesViewModel(
                 xtreamRepository = container.xtreamRepository,
                 userContentRepository = container.userContentRepository,
+                settingsRepository = container.settingsRepository,
             )
         },
     )

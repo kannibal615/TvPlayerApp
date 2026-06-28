@@ -455,6 +455,7 @@ private fun FullScreenPlayerScreen(
     var buffering by remember { mutableStateOf(true) }
     var errorText by remember { mutableStateOf<String?>(null) }
     var fallbackTried by remember(playback.url) { mutableStateOf(false) }
+    var stalledRefreshCount by remember(playback.url) { mutableIntStateOf(0) }
     var positionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(0L) }
     var bufferedPositionMs by remember { mutableLongStateOf(0L) }
@@ -523,6 +524,23 @@ private fun FullScreenPlayerScreen(
 
     fun prepareContentWithoutAd() {
         prepareMedia(MediaItem.fromUri(playback.url))
+    }
+
+    fun refreshStalledPlayback() {
+        if (adGateActive || exiting || stalledRefreshCount >= 2) return
+        stalledRefreshCount += 1
+        val resumeAt = player.currentPosition.coerceAtLeast(0L)
+        anomalyReporter.reportAsync(
+            anomalyType = "PLAYER_BUFFERING_WATCHDOG_REFRESH",
+            message = "Relance automatique du flux bloque en buffering",
+            context = "contentType=${playback.contentType} streamId=${playback.streamId} attempt=$stalledRefreshCount position=$resumeAt",
+        )
+        player.stop()
+        player.prepare()
+        if (resumeAt > 0L && player.duration.validDurationMs() > 0L) {
+            player.seekTo(resumeAt)
+        }
+        player.playWhenReady = true
     }
 
     fun playAdjacent(item: AdjacentPlayback?) {
@@ -836,6 +854,20 @@ private fun FullScreenPlayerScreen(
         }
     }
 
+    LaunchedEffect(buffering, playback.url, adGateActive, exiting) {
+        if (!buffering || adGateActive || exiting) return@LaunchedEffect
+        val startPosition = player.currentPosition.coerceAtLeast(0L)
+        delay(12_000L)
+        val currentPosition = player.currentPosition.coerceAtLeast(0L)
+        val stillStalled = buffering &&
+            !adGateActive &&
+            !exiting &&
+            kotlin.math.abs(currentPosition - startPosition) < 1_500L
+        if (stillStalled) {
+            refreshStalledPlayback()
+        }
+    }
+
     DisposableEffect(player) {
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(isPlayingValue: Boolean) {
@@ -860,6 +892,7 @@ private fun FullScreenPlayerScreen(
                 buffering = playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE
                 if (playbackState == Player.STATE_READY) {
                     errorText = null
+                    stalledRefreshCount = 0
                 }
                 if (playbackState == Player.STATE_ENDED && adGateActive) {
                     buffering = true

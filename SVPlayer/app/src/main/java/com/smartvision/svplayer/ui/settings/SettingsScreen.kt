@@ -141,6 +141,9 @@ fun SettingsScreen(
             onSetVideoRatio = { value -> scope.launch { container.settingsRepository.setVideoRatio(value) } },
             onSetAnimations = { value -> scope.launch { container.settingsRepository.setAnimationsEnabled(value) } },
             onSetRetry = { value -> scope.launch { container.settingsRepository.setRetryEnabled(value) } },
+            onSetParentalEnabled = { value -> scope.launch { container.settingsRepository.setParentalControlEnabled(value) } },
+            onSetParentalPin = { value -> scope.launch { container.settingsRepository.setParentalPin(value) } },
+            onSetParentalKeywords = { value -> scope.launch { container.settingsRepository.setParentalKeywords(value) } },
             onClearLocalData = { scope.launch { container.settingsRepository.clearLocalData() } },
             modifier = Modifier.fillMaxSize(),
         )
@@ -286,6 +289,9 @@ private fun SettingsMenuLayout(
     onSetVideoRatio: (String) -> Unit,
     onSetAnimations: (Boolean) -> Unit,
     onSetRetry: (Boolean) -> Unit,
+    onSetParentalEnabled: (Boolean) -> Unit,
+    onSetParentalPin: (String) -> Unit,
+    onSetParentalKeywords: (String) -> Unit,
     onClearLocalData: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -326,7 +332,7 @@ private fun SettingsMenuLayout(
                 SettingsSection.Preferences -> {
                     SettingsChoice(
                         label = "Langue",
-                        values = listOf("Francais", "English", "Espanol", "Arabe"),
+                        values = listOf("English", "Francais"),
                         selected = settings.language,
                         onSelected = onSetLanguage,
                     )
@@ -414,6 +420,36 @@ private fun SettingsMenuLayout(
                             .height(44.dp),
                     )
                 }
+                SettingsSection.Parental -> {
+                    val pinFocusRequester = remember { FocusRequester() }
+                    val keywordsFocusRequester = remember { FocusRequester() }
+                    SettingsChoice(
+                        label = "Controle parental",
+                        values = listOf("Active", "Desactive"),
+                        selected = if (settings.parentalControlEnabled) "Active" else "Desactive",
+                        onSelected = { value -> onSetParentalEnabled(value == "Active") },
+                    )
+                    SettingsTextField(
+                        label = "Code PIN",
+                        value = settings.parentalPin,
+                        onValueChange = onSetParentalPin,
+                        focusRequester = pinFocusRequester,
+                        nextFocusRequester = keywordsFocusRequester,
+                        password = true,
+                    )
+                    SettingsTextField(
+                        label = "Mots cles masques",
+                        value = settings.parentalKeywords,
+                        onValueChange = onSetParentalKeywords,
+                        focusRequester = keywordsFocusRequester,
+                        previousFocusRequester = pinFocusRequester,
+                    )
+                    Text(
+                        text = "Separez les mots par virgule, point-virgule ou retour a la ligne. Le filtrage s applique aux titres, descriptions et categories Live, Films et Series.",
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Caption,
+                    )
+                }
             }
         }
     }
@@ -426,6 +462,7 @@ private enum class SettingsSection(
     Preferences("Preferences generales", Icons.Default.Settings),
     Sync("Synchronisation", Icons.Default.CloudSync),
     Updates("Mises a jour", Icons.Default.Refresh),
+    Parental("Controle parental", Icons.Default.Person),
     Data("Donnees locales", Icons.Default.Delete),
 }
 

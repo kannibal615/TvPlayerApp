@@ -72,6 +72,10 @@ class AppUpdateViewModel(
         _uiState.update { it.copy(dismissedVersionCode = update.versionCode) }
     }
 
+    fun showUpdateDialog() {
+        _uiState.update { it.copy(dismissedVersionCode = null) }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
     }

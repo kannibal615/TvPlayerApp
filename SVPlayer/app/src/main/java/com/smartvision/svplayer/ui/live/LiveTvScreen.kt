@@ -176,6 +176,7 @@ fun LiveTvScreen(
             LiveTvViewModel(
                 xtreamRepository = container.xtreamRepository,
                 userContentRepository = container.userContentRepository,
+                settingsRepository = container.settingsRepository,
             )
         },
     )

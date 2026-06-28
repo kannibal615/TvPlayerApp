@@ -19,12 +19,15 @@ class DefaultSettingsRepository(
         dataStore.data.map { preferences ->
             PlayerSettings(
                 displaySize = preferences[DISPLAY_SIZE] ?: "Normal",
-                language = preferences[LANGUAGE] ?: "Francais",
+                language = preferences[LANGUAGE] ?: "English",
                 syncFrequency = preferences[SYNC_FREQUENCY] ?: "A chaque demarrage",
                 animationsEnabled = preferences[ANIMATIONS] ?: true,
                 videoRatio = preferences[VIDEO_RATIO] ?: "Fit",
                 bufferMode = preferences[BUFFER_MODE] ?: "Standard",
                 retryEnabled = preferences[RETRY] ?: true,
+                parentalControlEnabled = preferences[PARENTAL_CONTROL_ENABLED] ?: false,
+                parentalPin = preferences[PARENTAL_PIN] ?: "",
+                parentalKeywords = preferences[PARENTAL_KEYWORDS] ?: "adults; porn; xxx",
             )
         }
 
@@ -56,6 +59,18 @@ class DefaultSettingsRepository(
         dataStore.edit { it[RETRY] = value }
     }
 
+    override suspend fun setParentalControlEnabled(value: Boolean) {
+        dataStore.edit { it[PARENTAL_CONTROL_ENABLED] = value }
+    }
+
+    override suspend fun setParentalPin(value: String) {
+        dataStore.edit { it[PARENTAL_PIN] = value.filter(Char::isDigit).take(8) }
+    }
+
+    override suspend fun setParentalKeywords(value: String) {
+        dataStore.edit { it[PARENTAL_KEYWORDS] = value.take(500) }
+    }
+
     override suspend fun clearLocalData() {
         database.clearAllTables()
     }
@@ -68,5 +83,8 @@ class DefaultSettingsRepository(
         val VIDEO_RATIO = stringPreferencesKey("video_ratio")
         val BUFFER_MODE = stringPreferencesKey("buffer_mode")
         val RETRY = booleanPreferencesKey("retry_enabled")
+        val PARENTAL_CONTROL_ENABLED = booleanPreferencesKey("parental_control_enabled")
+        val PARENTAL_PIN = stringPreferencesKey("parental_pin")
+        val PARENTAL_KEYWORDS = stringPreferencesKey("parental_keywords")
     }
 }

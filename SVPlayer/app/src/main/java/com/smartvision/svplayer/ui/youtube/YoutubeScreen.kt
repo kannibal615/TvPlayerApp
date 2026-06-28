@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -213,6 +214,7 @@ fun YoutubeScreen(
                         viewModel.openYoutubeVideo(video)
                         playingVideo = video
                     },
+                    onLoadMoreSuggestions = viewModel::loadMorePlayerSuggestionsIfNeeded,
                     modifier = Modifier
                         .weight(0.22f)
                         .fillMaxHeight(),
@@ -300,8 +302,15 @@ private fun YoutubePlayerSuggestionsList(
     contentFocusRequester: FocusRequester,
     onSuggestionFocused: (YoutubeVideoUi) -> Unit,
     onSuggestionClick: (YoutubeVideoUi) -> Unit,
+    onLoadMoreSuggestions: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val listState = rememberLazyListState()
+    LaunchedEffect(listState, state.playerSuggestions.size) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+            .distinctUntilChanged()
+            .collect { onLoadMoreSuggestions(it) }
+    }
     MediaCatalogPanel(
         title = "Suggestions",
         modifier = modifier,
@@ -320,6 +329,7 @@ private fun YoutubePlayerSuggestionsList(
             )
 
             else -> LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
                 contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),

@@ -46,12 +46,15 @@ import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
+import com.smartvision.svplayer.data.monetization.resolveMonetizationStatus
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.sync.CatalogSyncScheduler
 import com.smartvision.svplayer.sync.SyncFrequencyPolicy
 import com.smartvision.svplayer.ui.activation.ActivationScreen
 import com.smartvision.svplayer.ui.activation.ActivationViewModel
 import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
+import com.smartvision.svplayer.ui.appconfig.AppConfigViewModel
+import com.smartvision.svplayer.ui.appconfig.ConsentDialog
 import com.smartvision.svplayer.ui.detail.MovieDetailRoute
 import com.smartvision.svplayer.ui.detail.SeriesDetailRoute
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
@@ -93,8 +96,14 @@ fun AppNavigation(
             AppUpdateViewModel(container.appUpdateRepository)
         },
     )
+    val appConfigViewModel: AppConfigViewModel = viewModel(
+        factory = viewModelFactory {
+            AppConfigViewModel(container.appConfigRepository)
+        },
+    )
     val activationState by activationViewModel.uiState.collectAsStateWithLifecycle()
     val appUpdateState by appUpdateViewModel.uiState.collectAsStateWithLifecycle()
+    val appConfigState by appConfigViewModel.uiState.collectAsStateWithLifecycle()
     val playerSettings by container.settingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = PlayerSettings(),
     )
@@ -105,6 +114,29 @@ fun AppNavigation(
     var premiumLicenseCode by remember { mutableStateOf("") }
     val context = LocalContext.current
     val activity = context as? Activity
+    val monetizationStatus = resolveMonetizationStatus(
+        activationType = activationState.activationType,
+        licenseStatus = activationState.licenseStatus,
+        trialStatus = activationState.trialStatus,
+        freeWithAdsStatus = activationState.freeWithAdsStatus,
+    )
+    val youtubeAllowed = container.appConfigRepository.isFeatureAllowed(
+        config = appConfigState.config,
+        featureKey = "youtube",
+        status = monetizationStatus,
+    )
+    val tabs = remember(youtubeAllowed) {
+        headerTabs.map { tab ->
+            if (tab.route == AppRoute.Youtube.route) tab.copy(locked = !youtubeAllowed) else tab
+        }
+    }
+    val navigateFromHeader: (String) -> Unit = { route ->
+        if (route == AppRoute.Youtube.route && !youtubeAllowed) {
+            showLicensePurchaseQr = true
+        } else {
+            navController.navigateSingleTop(route)
+        }
+    }
     LaunchedEffect(activity) {
         activity?.let { container.privacyConsentManager.refreshSilently(it) }
     }
@@ -138,6 +170,13 @@ fun AppNavigation(
     var lastXtreamAccountSignature by remember { mutableStateOf<String?>(null) }
 
     if (!activationState.activated) {
+        if (appConfigState.consentRequired) {
+            ConsentDialog(
+                consent = appConfigState.config.consent,
+                onAccept = appConfigViewModel::acceptConsent,
+            )
+            return
+        }
         BackHandler {
             showExitConfirmation = true
         }
@@ -223,8 +262,9 @@ fun AppNavigation(
         },
     )
     val notificationBadgeState by notificationBadgeViewModel.uiState.collectAsStateWithLifecycle()
-    val hasNewNotifications = notificationBadgeState.hasUnread
-    val notificationBadgeCount = notificationBadgeState.unreadCount
+    val updateNotificationCount = if (appUpdateState.update != null) 1 else 0
+    val hasNewNotifications = notificationBadgeState.hasUnread || updateNotificationCount > 0
+    val notificationBadgeCount = notificationBadgeState.unreadCount + updateNotificationCount
 
     NavHost(
         navController = navController,
@@ -234,8 +274,8 @@ fun AppNavigation(
         composable(AppRoute.Home.route) {
             HomeScreen(
                 currentRoute = currentRoute,
-                tabs = headerTabs,
-                onNavigate = { route -> navController.navigateSingleTop(route) },
+                tabs = tabs,
+                onNavigate = navigateFromHeader,
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
@@ -274,8 +314,8 @@ fun AppNavigation(
         composable(AppRoute.Live.route) {
             LiveTvScreen(
                 currentRoute = currentRoute,
-                tabs = headerTabs,
-                onNavigate = { route -> navController.navigateSingleTop(route) },
+                tabs = tabs,
+                onNavigate = navigateFromHeader,
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
@@ -290,8 +330,8 @@ fun AppNavigation(
         composable(AppRoute.Movies.route) {
             MoviesScreen(
                 currentRoute = currentRoute,
-                tabs = headerTabs,
-                onNavigate = { route -> navController.navigateSingleTop(route) },
+                tabs = tabs,
+                onNavigate = navigateFromHeader,
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
@@ -307,8 +347,8 @@ fun AppNavigation(
         composable(AppRoute.Series.route) {
             SeriesScreen(
                 currentRoute = currentRoute,
-                tabs = headerTabs,
-                onNavigate = { route -> navController.navigateSingleTop(route) },
+                tabs = tabs,
+                onNavigate = navigateFromHeader,
                 onSync = syncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
@@ -322,19 +362,24 @@ fun AppNavigation(
             )
         }
         composable(AppRoute.Youtube.route) {
-            YoutubeScreen(
-                currentRoute = currentRoute,
-                tabs = headerTabs,
-                onNavigate = { route -> navController.navigateSingleTop(route) },
-                onSync = syncCatalog,
-                onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
-                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
-                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
-                onLicenseKey = { showLicensePurchaseQr = true },
-                showLicenseKey = activationState.shouldShowLicenseKey,
-                hasNewNotifications = hasNewNotifications,
-                notificationBadgeCount = notificationBadgeCount,
-            )
+            if (!youtubeAllowed) {
+                LaunchedEffect(Unit) { showLicensePurchaseQr = true }
+                PlaceholderRouteScreen("YouTube Premium", "This feature requires Premium or an active trial.")
+            } else {
+                YoutubeScreen(
+                    currentRoute = currentRoute,
+                    tabs = tabs,
+                    onNavigate = navigateFromHeader,
+                    onSync = syncCatalog,
+                    onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                    onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                    onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                    onLicenseKey = { showLicensePurchaseQr = true },
+                    showLicenseKey = activationState.shouldShowLicenseKey,
+                    hasNewNotifications = hasNewNotifications,
+                    notificationBadgeCount = notificationBadgeCount,
+                )
+            }
         }
         composable(AppRoute.Settings.route) {
             SettingsScreen(
@@ -348,6 +393,11 @@ fun AppNavigation(
             NotificationsRoute(
                 onBack = { navController.popBackStack() },
                 onNotificationsSeen = notificationBadgeViewModel::clearUnread,
+                updateNotification = appUpdateState.update,
+                onOpenUpdate = {
+                    appUpdateViewModel.showUpdateDialog()
+                    navController.popBackStack()
+                },
             )
         }
         composable("player/{channelId}") { entry ->
@@ -392,8 +442,8 @@ fun AppNavigation(
                 MovieDetailRoute(
                     movieId = movieId,
                     currentRoute = AppRoute.Movies.route,
-                    tabs = headerTabs,
-                    onNavigate = { route -> navController.navigateSingleTop(route) },
+                    tabs = tabs,
+                    onNavigate = navigateFromHeader,
                     onSync = syncCatalog,
                     onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                     onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
@@ -431,8 +481,8 @@ fun AppNavigation(
                 SeriesDetailRoute(
                     seriesId = seriesId,
                     currentRoute = AppRoute.Series.route,
-                    tabs = headerTabs,
-                    onNavigate = { route -> navController.navigateSingleTop(route) },
+                    tabs = tabs,
+                    onNavigate = navigateFromHeader,
                     onSync = syncCatalog,
                     onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                     onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },

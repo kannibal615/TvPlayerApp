@@ -10,7 +10,10 @@ import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.domain.model.CategoryHistorySignal
+import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.model.sortedByHistorySignals
+import com.smartvision.svplayer.domain.repository.SettingsRepository
+import com.smartvision.svplayer.ui.settings.allowsContent
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -84,6 +87,7 @@ data class SeriesScreenState(
 class SeriesViewModel(
     private val xtreamRepository: XtreamRepository,
     private val userContentRepository: UserContentRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SeriesScreenState())
     val uiState: StateFlow<SeriesScreenState> = _uiState.asStateFlow()
@@ -94,8 +98,10 @@ class SeriesViewModel(
     private var favoriteIds: Set<Int> = emptySet()
     private var historyProgress: List<PlaybackProgressEntity> = emptyList()
     private var historyCategorySignals: List<CategoryHistorySignal> = emptyList()
+    private var playerSettings = PlayerSettings()
 
     init {
+        observeSettings()
         observeFavorites()
         observeHistory()
         loadCategories()
@@ -209,6 +215,19 @@ class SeriesViewModel(
             loadAllSeries()
         } else {
             loadSeries(categoryId)
+        }
+    }
+
+    private fun observeSettings() {
+        viewModelScope.launch {
+            settingsRepository.settings.collect { settings ->
+                val changed = playerSettings.parentalControlEnabled != settings.parentalControlEnabled ||
+                    playerSettings.parentalKeywords != settings.parentalKeywords
+                playerSettings = settings
+                if (changed && !_uiState.value.categoriesLoading) {
+                    retryCurrentCategory()
+                }
+            }
         }
     }
 
@@ -342,6 +361,7 @@ class SeriesViewModel(
                 categories.forEach { category ->
                     xtreamRepository.getSeries(category.id).forEach { series ->
                         if (!seen.add(series.seriesId)) return@forEach
+                        if (!playerSettings.allowsContent(series.title, series.plot, series.genre, category.label)) return@forEach
                         collected += series.toUiSeries(collected.size, category.label, favoriteIds)
                     }
                     _uiState.update { state ->
@@ -400,10 +420,14 @@ class SeriesViewModel(
             }
             .distinctBy { it.first }
             .mapIndexed { index, (seriesId, progress, _) ->
+                val title = progress.title ?: "Serie $seriesId"
+                if (!playerSettings.allowsContent(title, progress.subtitle)) {
+                    return@mapIndexed null
+                }
                 SeriesItemUi(
                     seriesId = seriesId,
                     number = (index + 1).toString().padStart(3, '0'),
-                    title = progress.title ?: "Serie $seriesId",
+                    title = title,
                     coverUrl = progress.imageUrl,
                     categoryLabel = "Historique",
                     plot = null,
@@ -415,10 +439,17 @@ class SeriesViewModel(
                 )
             }
             .toList()
+            .filterNotNull()
 
     private fun favoriteSeries(): List<SeriesItemUi> =
         xtreamRepository.getCachedSeriesList()
             .filter { it.seriesId in favoriteIds }
+            .filter { series ->
+                val categoryLabel = xtreamRepository.getCachedSeriesCategories()
+                    .firstOrNull { category -> category.id == series.categoryId }
+                    ?.name
+                playerSettings.allowsContent(series.title, series.plot, series.genre, categoryLabel)
+            }
             .sortedBy { it.title }
             .mapIndexed { index, series ->
                 val categoryLabel = xtreamRepository.getCachedSeriesCategories()
@@ -446,7 +477,9 @@ class SeriesViewModel(
                 )
             }
             runCatching {
-                xtreamRepository.getSeries(categoryId).mapIndexed { index, series ->
+                xtreamRepository.getSeries(categoryId)
+                    .filter { series -> playerSettings.allowsContent(series.title, series.plot, series.genre, categoryLabel) }
+                    .mapIndexed { index, series ->
                     series.toUiSeries(index, categoryLabel, favoriteIds)
                 }
             }.onSuccess { series ->
@@ -518,7 +551,9 @@ class SeriesViewModel(
         episodesJob = viewModelScope.launch {
             _uiState.update { it.copy(episodesLoading = true) }
             runCatching {
-                xtreamRepository.getSeriesEpisodes(seriesId).map { episode ->
+                xtreamRepository.getSeriesEpisodes(seriesId)
+                    .filter { episode -> playerSettings.allowsContent(episode.title, episode.plot) }
+                    .map { episode ->
                     episode.toUiEpisode(xtreamRepository)
                 }
             }.onSuccess { episodes ->

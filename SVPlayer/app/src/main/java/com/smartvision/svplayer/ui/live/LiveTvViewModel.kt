@@ -9,7 +9,10 @@ import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.domain.model.CategoryHistorySignal
+import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.model.sortedByHistorySignals
+import com.smartvision.svplayer.domain.repository.SettingsRepository
+import com.smartvision.svplayer.ui.settings.allowsContent
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -77,6 +80,7 @@ data class LiveTvUiState(
 class LiveTvViewModel(
     private val xtreamRepository: XtreamRepository,
     private val userContentRepository: UserContentRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(LiveTvUiState())
     val uiState: StateFlow<LiveTvUiState> = _uiState.asStateFlow()
@@ -85,8 +89,10 @@ class LiveTvViewModel(
     private var favoriteIds: Set<Int> = emptySet()
     private var historyProgress: List<PlaybackProgressEntity> = emptyList()
     private var historyCategorySignals: List<CategoryHistorySignal> = emptyList()
+    private var playerSettings = PlayerSettings()
 
     init {
+        observeSettings()
         observeFavorites()
         observeHistory()
         loadCategories()
@@ -191,6 +197,19 @@ class LiveTvViewModel(
             loadAllChannels()
         } else {
             loadChannels(categoryId)
+        }
+    }
+
+    private fun observeSettings() {
+        viewModelScope.launch {
+            settingsRepository.settings.collect { settings ->
+                val changed = playerSettings.parentalControlEnabled != settings.parentalControlEnabled ||
+                    playerSettings.parentalKeywords != settings.parentalKeywords
+                playerSettings = settings
+                if (changed && !_uiState.value.categoriesLoading) {
+                    retryCurrentCategory()
+                }
+            }
         }
     }
 
@@ -317,6 +336,7 @@ class LiveTvViewModel(
                 categories.forEach { category ->
                     xtreamRepository.getLiveStreams(category.id).forEach { stream ->
                         if (!seen.add(stream.streamId)) return@forEach
+                        if (!playerSettings.allowsContent(stream.name, category.label)) return@forEach
                         collected += stream.toUiChannel(
                             index = collected.size,
                             categoryLabel = category.label,
@@ -384,6 +404,9 @@ class LiveTvViewModel(
                 ?.let { categoryId -> xtreamRepository.getCachedCategories().firstOrNull { it.id == categoryId }?.name }
                 ?: progress.subtitle
                 ?: "Historique"
+            if (!playerSettings.allowsContent(name, categoryLabel, progress.title, progress.subtitle)) {
+                return@mapIndexedNotNull null
+            }
             LiveTvChannel(
                 streamId = id,
                 number = (index + 1).toString().padStart(3, '0'),
@@ -407,6 +430,12 @@ class LiveTvViewModel(
     private fun favoriteChannels(): List<LiveTvChannel> =
         xtreamRepository.getCachedLiveStreams()
             .filter { it.streamId in favoriteIds }
+            .filter { stream ->
+                val categoryLabel = xtreamRepository.getCachedCategories()
+                    .firstOrNull { category -> category.id == stream.categoryId }
+                    ?.name
+                playerSettings.allowsContent(stream.name, categoryLabel)
+            }
             .sortedBy { it.name }
             .mapIndexed { index, stream ->
                 val categoryLabel = xtreamRepository.getCachedCategories()
@@ -437,7 +466,9 @@ class LiveTvViewModel(
             }
 
             runCatching {
-                xtreamRepository.getLiveStreams(categoryId).mapIndexed { index, stream ->
+                xtreamRepository.getLiveStreams(categoryId)
+                    .filter { stream -> playerSettings.allowsContent(stream.name, categoryLabel) }
+                    .mapIndexed { index, stream ->
                     stream.toUiChannel(
                         index = index,
                         categoryLabel = categoryLabel,

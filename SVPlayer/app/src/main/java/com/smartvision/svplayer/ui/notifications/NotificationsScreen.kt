@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +45,7 @@ import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.notifications.AppNotification
 import com.smartvision.svplayer.data.notifications.NotificationsRepository
+import com.smartvision.svplayer.data.update.AppUpdateInfo
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -56,6 +59,8 @@ import kotlinx.coroutines.launch
 fun NotificationsRoute(
     onBack: () -> Unit,
     onNotificationsSeen: () -> Unit,
+    updateNotification: AppUpdateInfo? = null,
+    onOpenUpdate: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
@@ -74,6 +79,8 @@ fun NotificationsRoute(
         state = state,
         onBack = onBack,
         onRefresh = viewModel::refresh,
+        updateNotification = updateNotification,
+        onOpenUpdate = onOpenUpdate,
         modifier = modifier,
     )
 }
@@ -83,6 +90,8 @@ private fun NotificationsScreen(
     state: NotificationsUiState,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
+    updateNotification: AppUpdateInfo?,
+    onOpenUpdate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BackHandler(onBack = onBack)
@@ -146,7 +155,7 @@ private fun NotificationsScreen(
                 .padding(20.dp),
         ) {
             when {
-                state.loading && state.notifications.isEmpty() -> {
+                state.loading && state.notifications.isEmpty() && updateNotification == null -> {
                     CircularProgressIndicator(
                         color = SmartVisionColors.CyanAccent,
                         modifier = Modifier.align(Alignment.Center),
@@ -160,7 +169,7 @@ private fun NotificationsScreen(
                         modifier = Modifier.align(Alignment.Center),
                     )
                 }
-                state.notifications.isEmpty() -> {
+                state.notifications.isEmpty() && updateNotification == null -> {
                     Text(
                         text = "Aucune notification pour cet appareil.",
                         color = SmartVisionColors.TextSecondary,
@@ -170,8 +179,13 @@ private fun NotificationsScreen(
                 }
                 else -> {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (updateNotification != null) {
+                            item("app-update") {
+                                UpdateNotificationRow(updateNotification, onOpenUpdate)
+                            }
+                        }
                         items(state.notifications, key = { it.id }) { notification ->
-                            NotificationRow(notification)
+                            NotificationRow(notification, onClick = {})
                         }
                     }
                 }
@@ -181,7 +195,41 @@ private fun NotificationsScreen(
 }
 
 @Composable
-private fun NotificationRow(notification: AppNotification) {
+private fun UpdateNotificationRow(
+    update: AppUpdateInfo,
+    onClick: () -> Unit,
+) {
+    NotificationCard(
+        title = "Update available",
+        message = "SmartVision ${update.versionName} is available. Open this notification to install the update.",
+        createdAt = "Version ${update.versionCode}",
+        priority = if (update.mandatory) "urgent" else "important",
+        onClick = onClick,
+    )
+}
+
+@Composable
+private fun NotificationRow(
+    notification: AppNotification,
+    onClick: () -> Unit,
+) {
+    NotificationCard(
+        title = notification.title,
+        message = notification.message,
+        createdAt = notification.createdAt,
+        priority = notification.priority,
+        onClick = onClick,
+    )
+}
+
+@Composable
+private fun NotificationCard(
+    title: String,
+    message: String,
+    createdAt: String,
+    priority: String,
+    onClick: () -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -189,15 +237,17 @@ private fun NotificationRow(notification: AppNotification) {
             .border(
                 BorderStroke(
                     1.dp,
-                    if (notification.priority == "urgent") SmartVisionColors.Warning else SmartVisionColors.Border,
+                    if (priority == "urgent") SmartVisionColors.Warning else SmartVisionColors.Border,
                 ),
                 RoundedCornerShape(8.dp),
             )
+            .clickable(onClick = onClick)
+            .focusable()
             .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = notification.title,
+                text = title,
                 color = SmartVisionColors.TextPrimary,
                 style = SmartVisionType.TitleS,
                 fontWeight = FontWeight.Bold,
@@ -206,14 +256,14 @@ private fun NotificationRow(notification: AppNotification) {
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = notification.createdAt,
+                text = createdAt,
                 color = SmartVisionColors.TextSecondary,
                 style = SmartVisionType.Caption,
             )
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            text = notification.message,
+            text = message,
             color = SmartVisionColors.TextSecondary,
             style = SmartVisionType.Body,
         )

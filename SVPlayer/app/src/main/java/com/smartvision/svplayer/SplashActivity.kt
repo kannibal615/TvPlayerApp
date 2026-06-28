@@ -4,6 +4,9 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioTrack
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -17,6 +20,8 @@ import android.view.animation.Animation
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import kotlin.math.PI
+import kotlin.math.sin
 
 class SplashActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
@@ -162,6 +167,7 @@ class SplashActivity : Activity() {
         if (launched || isFinishing) return
         launched = true
         handler.removeCallbacks(openHome)
+        playStartupChime()
         root.clearAnimation()
         root.animate().cancel()
         root.alpha = 1f
@@ -173,6 +179,46 @@ class SplashActivity : Activity() {
     override fun onDestroy() {
         handler.removeCallbacks(openHome)
         super.onDestroy()
+    }
+
+    private fun playStartupChime() {
+        Thread {
+            runCatching {
+                val sampleRate = 44_100
+                val durationMs = 420
+                val sampleCount = sampleRate * durationMs / 1_000
+                val samples = ShortArray(sampleCount)
+                for (index in samples.indices) {
+                    val t = index.toDouble() / sampleRate.toDouble()
+                    val fadeIn = (index / (sampleRate * 0.04)).coerceIn(0.0, 1.0)
+                    val fadeOut = ((samples.size - index) / (sampleRate * 0.16)).coerceIn(0.0, 1.0)
+                    val envelope = fadeIn * fadeOut * 0.22
+                    val first = sin(2.0 * PI * 587.33 * t)
+                    val second = sin(2.0 * PI * 783.99 * t)
+                    samples[index] = ((first * 0.55 + second * 0.45) * envelope * Short.MAX_VALUE).toInt().toShort()
+                }
+                val track = AudioTrack.Builder()
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build(),
+                    )
+                    .setAudioFormat(
+                        AudioFormat.Builder()
+                            .setSampleRate(sampleRate)
+                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                            .build(),
+                    )
+                    .setBufferSizeInBytes(samples.size * 2)
+                    .build()
+                track.play()
+                track.write(samples, 0, samples.size)
+                track.stop()
+                track.release()
+            }
+        }.start()
     }
 
     private companion object {

@@ -90,6 +90,7 @@ $emailAdmin = admin_load_email_admin($pdo);
 $adsPeriod = ads_period_days($_GET['ads_period'] ?? 1);
 $adsAdmin = $page === 'ads' ? admin_load_ads_admin($pdo, $adsPeriod) : [];
 $anomaliesAdmin = $page === 'anomalies' ? admin_load_anomalies_admin($pdo) : [];
+$appConfigAdmin = $page === 'features' ? admin_load_app_config_admin($pdo) : [];
 $flash = consume_admin_flash();
 $generatedCode = $_SESSION['generated_activation_code'] ?? null;
 if (is_string($generatedCode)) {
@@ -122,6 +123,7 @@ render_admin_dashboard(
     $emailAdmin,
     $adsAdmin,
     $anomaliesAdmin,
+    $appConfigAdmin,
     $flash,
     $generatedCode,
     $query,
@@ -131,7 +133,7 @@ render_admin_dashboard(
 function admin_current_page(mixed $page): string
 {
     $page = is_string($page) ? $page : 'overview';
-    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'payments', 'emails', 'ads', 'anomalies', 'devices', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
+    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'payments', 'emails', 'ads', 'anomalies', 'features', 'devices', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
         ? $page
         : 'overview';
 }
@@ -163,6 +165,7 @@ function handle_admin_action(PDO $pdo, string $action): void
         case 'save_email_template': admin_save_email_template($pdo); break;
         case 'send_test_email': admin_send_test_email($pdo); break;
         case 'send_admin_email': admin_send_admin_email($pdo); break;
+        case 'save_app_config': admin_save_app_config($pdo); break;
         case 'send_notification': admin_send_notification($pdo); break;
         case 'set_notification_status': admin_set_notification_status($pdo); break;
         case 'delete_notification': admin_delete_notification($pdo); break;
@@ -1630,6 +1633,123 @@ function admin_load_notifications(PDO $pdo): array
     )->fetchAll();
 }
 
+function admin_load_app_config_admin(PDO $pdo): array
+{
+    $featuresJson = (string) get_setting($pdo, 'app_feature_access', '');
+    $features = json_decode($featuresJson, true);
+    if (!is_array($features)) {
+        $features = admin_default_feature_access();
+    }
+
+    $variablesJson = (string) get_setting($pdo, 'app_consent_variables', '{}');
+    $variables = json_decode($variablesJson, true);
+    if (!is_array($variables)) {
+        $variables = admin_default_consent_variables();
+    }
+
+    return [
+        'consent_version' => (string) get_setting($pdo, 'app_consent_version', '2026-06-28'),
+        'consent_title' => (string) get_setting($pdo, 'app_consent_title', 'Privacy Policy and Terms of Use'),
+        'consent_body' => (string) get_setting($pdo, 'app_consent_body', admin_default_consent_body()),
+        'consent_variables' => array_replace(admin_default_consent_variables(), $variables),
+        'features' => admin_normalize_feature_access($features),
+    ];
+}
+
+function admin_save_app_config(PDO $pdo): void
+{
+    $features = [];
+    foreach (admin_default_feature_access() as $feature) {
+        $key = (string) $feature['key'];
+        $features[] = [
+            'key' => $key,
+            'label' => (string) $feature['label'],
+            'premium' => isset($_POST['feature'][$key]['premium']),
+            'trial' => isset($_POST['feature'][$key]['trial']),
+            'free_ads' => isset($_POST['feature'][$key]['free_ads']),
+        ];
+    }
+
+    $variables = [];
+    foreach (admin_default_consent_variables() as $key => $default) {
+        $variables[$key] = smartvision_text_substr(trim((string) ($_POST['consent_variables'][$key] ?? $default)), 0, 255);
+    }
+
+    $settings = [
+        'app_consent_version' => smartvision_text_substr(trim((string) ($_POST['consent_version'] ?? '')), 0, 40) ?: gmdate('Y-m-d'),
+        'app_consent_title' => smartvision_text_substr(trim((string) ($_POST['consent_title'] ?? '')), 0, 120) ?: 'Privacy Policy and Terms of Use',
+        'app_consent_body' => smartvision_text_substr(trim((string) ($_POST['consent_body'] ?? '')), 0, 30000) ?: admin_default_consent_body(),
+        'app_consent_variables' => json_encode($variables, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'app_feature_access' => json_encode($features, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    ];
+
+    $statement = $pdo->prepare(
+        "INSERT INTO app_settings (setting_key, setting_value)
+         VALUES (:setting_key, :setting_value)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)"
+    );
+    foreach ($settings as $key => $value) {
+        $statement->execute(['setting_key' => $key, 'setting_value' => $value]);
+    }
+
+    audit_admin_action($pdo, 'app_config_updated', 'settings', 'features');
+    set_admin_flash('success', 'Configuration application enregistree.');
+}
+
+function admin_default_consent_variables(): array
+{
+    return [
+        'app_name' => 'SmartVision Player',
+        'company' => 'ONETECCOM',
+        'site' => 'smartvisions.net',
+        'support_email' => 'support@smartvisions.net',
+    ];
+}
+
+function admin_default_feature_access(): array
+{
+    return [
+        ['key' => 'youtube', 'label' => 'YouTube', 'premium' => true, 'trial' => true, 'free_ads' => false],
+        ['key' => 'replay', 'label' => 'Replay', 'premium' => true, 'trial' => true, 'free_ads' => false],
+        ['key' => 'advanced_favorites', 'label' => 'Favoris avances', 'premium' => true, 'trial' => true, 'free_ads' => false],
+        ['key' => 'multi_screen', 'label' => 'Multi-ecran', 'premium' => true, 'trial' => false, 'free_ads' => false],
+        ['key' => 'local_cache', 'label' => 'Telechargement ou cache local', 'premium' => true, 'trial' => false, 'free_ads' => false],
+    ];
+}
+
+function admin_normalize_feature_access(array $features): array
+{
+    $defaults = [];
+    foreach (admin_default_feature_access() as $feature) {
+        $defaults[(string) $feature['key']] = $feature;
+    }
+    foreach ($features as $feature) {
+        if (!is_array($feature)) {
+            continue;
+        }
+        $key = (string) ($feature['key'] ?? '');
+        if ($key === '' || !isset($defaults[$key])) {
+            continue;
+        }
+        $defaults[$key] = array_replace($defaults[$key], [
+            'premium' => !empty($feature['premium']),
+            'trial' => !empty($feature['trial']),
+            'free_ads' => !empty($feature['free_ads']),
+        ]);
+    }
+
+    return array_values($defaults);
+}
+
+function admin_default_consent_body(): string
+{
+    return "**SmartVision Player** is a commercial IPTV media player developed and operated by **ONETECCOM**.\n\n"
+        . "**SmartVision Player does not provide IPTV content, TV channels, movies, series, IPTV subscriptions or playlists.**\n\n"
+        . "Users are solely responsible for the content, links, playlists and Xtream credentials they add. "
+        . "A SmartVision Player licence gives access only to the application or specific playback features. "
+        . "For questions about licences, payments or support, contact **support@smartvisions.net**.";
+}
+
 function admin_load_contact_messages(PDO $pdo, string $query): array
 {
     ensure_contact_messages_table($pdo);
@@ -1731,6 +1851,7 @@ function render_admin_dashboard(
     array $emailAdmin,
     array $adsAdmin,
     array $anomaliesAdmin,
+    array $appConfigAdmin,
     ?array $flash,
     ?array $generatedCode,
     string $query,
@@ -1746,6 +1867,7 @@ function render_admin_dashboard(
         'emails' => ['Emails', 'Configuration SMTP, templates transactionnels et journal des envois.'],
         'ads' => ['Publicites', 'Gestion des publicites video du player SmartVision.'],
         'anomalies' => ['Anomalies', 'Crashs et erreurs remontes par les applications TV.'],
+        'features' => ['Fonctionnalites', 'Droits par type de licence et consentement TV.'],
         'devices' => ['Appareils', 'TV associees, essais, licences et configuration Xtream.'],
         'notifications' => ['Notifications', 'Messages envoyes vers toutes les TV ou vers des cibles precises.'],
         'messages' => ['Messages clients', 'Demandes envoyees depuis le formulaire de contact.'],
@@ -1789,6 +1911,7 @@ function render_admin_dashboard(
 
         <?php if ($page === 'ads'): admin_render_ads_page($adsAdmin); endif; ?>
         <?php if ($page === 'anomalies'): admin_render_anomalies_page($anomaliesAdmin); endif; ?>
+        <?php if ($page === 'features'): admin_render_features_page($appConfigAdmin); endif; ?>
 
         <?php if ($page === 'orders'): ?>
         <section class="admin-panel" id="orders"><div class="admin-panel-heading"><div><h2>Commandes recentes</h2><p><?= count($orders) ?> resultat(s)</p></div><form class="admin-filter-row" method="get"><input type="hidden" name="page" value="orders"><input type="hidden" name="q" value="<?= admin_escape($query) ?>"><label>Statut<select name="order_status"><option value="">Tous</option><?php foreach (['pending', 'paid', 'cancelled'] as $statusOption): ?><option value="<?= admin_escape($statusOption) ?>"<?= ($_GET['order_status'] ?? '') === $statusOption ? ' selected' : '' ?>><?= admin_escape($statusOption) ?></option><?php endforeach; ?></select></label><button class="admin-button compact secondary" type="submit">Filtrer</button></form></div><div class="admin-table-wrap"><table><thead><tr><th><?= admin_sort_link('orders', 'Reference', 'reference', $query) ?></th><th><?= admin_sort_link('orders', 'Client', 'client', $query) ?></th><th><?= admin_sort_link('orders', 'Plan', 'plan', $query) ?></th><th><?= admin_sort_link('orders', 'Montant', 'amount', $query) ?></th><th><?= admin_sort_link('orders', 'Paiement', 'payment', $query) ?></th><th>Licence</th><th><?= admin_sort_link('orders', 'Date', 'date', $query) ?></th><th>Actions</th></tr></thead><tbody>
@@ -2410,6 +2533,45 @@ function admin_render_anomalies_page(array $anomaliesAdmin): void
                 </tr><?php endforeach; ?>
             </tbody></table></div>
         </section>
+    <?php
+}
+
+function admin_render_features_page(array $appConfigAdmin): void
+{
+    $features = $appConfigAdmin['features'] ?? admin_default_feature_access();
+    $variables = $appConfigAdmin['consent_variables'] ?? admin_default_consent_variables();
+    ?>
+        <form method="post">
+            <input type="hidden" name="redirect_page" value="features">
+            <input type="hidden" name="action" value="save_app_config">
+            <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+
+            <section class="admin-panel">
+                <div class="admin-panel-heading"><div><h2>Gestion des fonctionnalites</h2><p>Disponibilite dynamique selon le type de licence utilisateur.</p></div></div>
+                <div class="admin-table-wrap"><table><thead><tr><th>Fonctionnalite</th><th>Premium</th><th>Essai gratuit 7 jours</th><th>Free Ads</th></tr></thead><tbody>
+                    <?php foreach ($features as $feature): $key = (string) $feature['key']; ?><tr>
+                        <td><strong><?= admin_escape((string) $feature['label']) ?></strong><small><?= admin_escape($key) ?></small></td>
+                        <td><label><input type="checkbox" name="feature[<?= admin_escape($key) ?>][premium]" value="1"<?= !empty($feature['premium']) ? ' checked' : '' ?>> Oui</label></td>
+                        <td><label><input type="checkbox" name="feature[<?= admin_escape($key) ?>][trial]" value="1"<?= !empty($feature['trial']) ? ' checked' : '' ?>> Oui</label></td>
+                        <td><label><input type="checkbox" name="feature[<?= admin_escape($key) ?>][free_ads]" value="1"<?= !empty($feature['free_ads']) ? ' checked' : '' ?>> Oui</label></td>
+                    </tr><?php endforeach; ?>
+                </tbody></table></div>
+            </section>
+
+            <section class="admin-panel">
+                <div class="admin-panel-heading"><div><h2>Consentement TV</h2><p>Texte affiche uniquement au premier lancement ou lorsqu une nouvelle version est publiee.</p></div></div>
+                <div class="admin-form-grid">
+                    <label><span>Version</span><input name="consent_version" maxlength="40" value="<?= admin_escape((string) ($appConfigAdmin['consent_version'] ?? '2026-06-28')) ?>"></label>
+                    <label><span>Titre popup</span><input name="consent_title" maxlength="120" value="<?= admin_escape((string) ($appConfigAdmin['consent_title'] ?? 'Privacy Policy and Terms of Use')) ?>"></label>
+                    <?php foreach (admin_default_consent_variables() as $key => $default): ?>
+                        <label><span><?= admin_escape($key) ?></span><input name="consent_variables[<?= admin_escape($key) ?>]" maxlength="255" value="<?= admin_escape((string) ($variables[$key] ?? $default)) ?>"></label>
+                    <?php endforeach; ?>
+                    <label class="ads-wide"><span>Texte complet</span><textarea name="consent_body" rows="18" maxlength="30000"><?= admin_escape((string) ($appConfigAdmin['consent_body'] ?? admin_default_consent_body())) ?></textarea></label>
+                </div>
+                <p class="muted">Les passages encadres par **double astérisque** sont affiches en gras dans l application TV.</p>
+                <button class="admin-button primary" type="submit">Enregistrer la configuration</button>
+            </section>
+        </form>
     <?php
 }
 

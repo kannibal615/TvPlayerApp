@@ -102,6 +102,7 @@ fun MoviesScreen(
             MoviesViewModel(
                 xtreamRepository = container.xtreamRepository,
                 userContentRepository = container.userContentRepository,
+                settingsRepository = container.settingsRepository,
             )
         },
     )

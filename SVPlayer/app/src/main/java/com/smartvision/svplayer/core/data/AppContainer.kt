@@ -8,6 +8,8 @@ import com.smartvision.svplayer.data.anomaly.AnomalyApiService
 import com.smartvision.svplayer.data.anomaly.AnomalyReporter
 import com.smartvision.svplayer.data.activation.ActivationApiService
 import com.smartvision.svplayer.data.activation.ActivationRepository
+import com.smartvision.svplayer.data.appconfig.AppConfigApiService
+import com.smartvision.svplayer.data.appconfig.AppConfigRepository
 import com.smartvision.svplayer.data.home.HomeSlidesApiService
 import com.smartvision.svplayer.data.home.HomeSlidesRepository
 import com.smartvision.svplayer.data.local.SVDatabase
@@ -49,6 +51,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 private val Context.settingsDataStore by preferencesDataStore(name = "svplayer_settings")
 private val Context.activationDataStore by preferencesDataStore(name = "smartvision_activation")
 private val Context.monetizationDataStore by preferencesDataStore(name = "smartvision_monetization")
+private val Context.appConfigDataStore by preferencesDataStore(name = "smartvision_app_config")
 
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
@@ -102,6 +105,7 @@ class AppContainer(context: Context) {
     private val appUpdateApi = activationRetrofit.create(AppUpdateApiService::class.java)
     private val homeSlidesApi = activationRetrofit.create(HomeSlidesApiService::class.java)
     private val notificationsApi = activationRetrofit.create(NotificationsApiService::class.java)
+    private val appConfigApi = activationRetrofit.create(AppConfigApiService::class.java)
     private val adConfigApi = activationRetrofit.create(AdConfigApiService::class.java)
     private val adsEventsApi = activationRetrofit.create(AdsEventsApiService::class.java)
     private val anomalyApi = activationRetrofit.create(AnomalyApiService::class.java)
@@ -141,6 +145,10 @@ class AppContainer(context: Context) {
     val notificationsRepository = NotificationsRepository(
         activationRepository = activationRepository,
         api = notificationsApi,
+    )
+    val appConfigRepository = AppConfigRepository(
+        api = appConfigApi,
+        dataStore = appContext.appConfigDataStore,
     )
     val anomalyReporter = AnomalyReporter(
         appContext = appContext,

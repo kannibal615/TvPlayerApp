@@ -69,6 +69,7 @@ class YoutubeViewModel(
 
     private var loadJob: Job? = null
     private var loadMoreJob: Job? = null
+    private var loadMoreSuggestionsJob: Job? = null
     private var activeSearchQuery: String? = null
 
     init {
@@ -224,6 +225,33 @@ class YoutubeViewModel(
                             errorMessage = error.userMessage("Chargement YouTube impossible."),
                         )
                     }
+                }
+        }
+    }
+
+    fun loadMorePlayerSuggestionsIfNeeded(lastVisibleIndex: Int) {
+        val state = _uiState.value
+        if (lastVisibleIndex < state.playerSuggestions.size - 5) return
+        if (state.suggestionsLoading || state.playerSuggestions.isEmpty()) return
+        val seed = state.playerSuggestions.getOrNull(lastVisibleIndex.coerceAtMost(state.playerSuggestions.lastIndex))
+            ?: state.playerSuggestions.lastOrNull()
+            ?: return
+        loadMoreSuggestionsJob?.cancel()
+        loadMoreSuggestionsJob = viewModelScope.launch {
+            _uiState.update { it.copy(suggestionsLoading = true) }
+            runCatching { repository.suggestVideos(seed.toDomain()).map { it.toUi() } }
+                .onSuccess { suggestions ->
+                    _uiState.update { current ->
+                        current.copy(
+                            playerSuggestions = (current.playerSuggestions + suggestions)
+                                .distinctBy { it.videoId }
+                                .take(60),
+                            suggestionsLoading = false,
+                        )
+                    }
+                }
+                .onFailure {
+                    _uiState.update { it.copy(suggestionsLoading = false) }
                 }
         }
     }

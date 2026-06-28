@@ -2,6 +2,7 @@ package com.smartvision.svplayer.ui.youtube
 
 import android.annotation.SuppressLint
 import android.os.Build
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
@@ -84,7 +85,8 @@ internal fun YoutubeWebPlayer(
                     )
                 }
                 if (mode == YoutubePlaybackMode.Fullscreen) {
-                    webView.requestFocus()
+                    webView.installYoutubeKeyControls()
+                    webView.postDelayed({ webView.requestFocus() }, 120)
                 }
             },
             onRelease = { webView ->
@@ -170,6 +172,42 @@ private fun WebView.configureYoutubeWebView(
         .replace("Version/4.0 ", "")
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+    }
+}
+
+private fun WebView.installYoutubeKeyControls() {
+    setOnKeyListener { view, keyCode, event ->
+        if (event.action != KeyEvent.ACTION_DOWN) return@setOnKeyListener false
+        when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_CENTER,
+            KeyEvent.KEYCODE_ENTER,
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                evaluateJavascript("window.smartVisionTogglePlayback && window.smartVisionTogglePlayback();", null)
+                true
+            }
+            KeyEvent.KEYCODE_DPAD_LEFT,
+            KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                evaluateJavascript("window.smartVisionSeekBy && window.smartVisionSeekBy(-10);", null)
+                true
+            }
+            KeyEvent.KEYCODE_DPAD_RIGHT,
+            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                evaluateJavascript("window.smartVisionSeekBy && window.smartVisionSeekBy(10);", null)
+                true
+            }
+            KeyEvent.KEYCODE_MEDIA_PLAY -> {
+                evaluateJavascript("window.smartVisionPlay && window.smartVisionPlay();", null)
+                true
+            }
+            KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                evaluateJavascript("window.smartVisionPause && window.smartVisionPause();", null)
+                true
+            }
+            else -> {
+                if (!view.hasFocus()) view.requestFocus()
+                false
+            }
+        }
     }
 }
 

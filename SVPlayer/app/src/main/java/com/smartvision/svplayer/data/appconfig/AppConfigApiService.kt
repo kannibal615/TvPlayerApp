@@ -1,0 +1,31 @@
+package com.smartvision.svplayer.data.appconfig
+
+import com.google.gson.annotations.SerializedName
+import retrofit2.http.GET
+
+interface AppConfigApiService {
+    @GET("api/app_config.php")
+    suspend fun getAppConfig(): AppConfigResponse
+}
+
+data class AppConfigResponse(
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("consent") val consent: RemoteConsentConfig? = null,
+    @SerializedName("features") val features: List<RemoteFeatureAccess> = emptyList(),
+    @SerializedName("error") val error: String? = null,
+)
+
+data class RemoteConsentConfig(
+    @SerializedName("version") val version: String? = null,
+    @SerializedName("title") val title: String? = null,
+    @SerializedName("body") val body: String? = null,
+    @SerializedName("variables") val variables: Map<String, String> = emptyMap(),
+)
+
+data class RemoteFeatureAccess(
+    @SerializedName("key") val key: String = "",
+    @SerializedName("label") val label: String = "",
+    @SerializedName("premium") val premium: Boolean = false,
+    @SerializedName("trial") val trial: Boolean = false,
+    @SerializedName("free_ads") val freeAds: Boolean = false,
+)
