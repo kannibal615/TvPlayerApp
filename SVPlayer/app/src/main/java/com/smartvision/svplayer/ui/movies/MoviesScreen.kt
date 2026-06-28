@@ -111,11 +111,19 @@ fun MoviesScreen(
         inputReady = true
     }
 
-    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty()) {
-        if (accounts.isNotEmpty() && !state.categoriesLoading) {
+    val selectedCategoryVisible = state.categories.any { category ->
+        category.id == state.selectedCategoryId &&
+            (categorySearchQuery.isBlank() || category.label.contains(categorySearchQuery, ignoreCase = true))
+    }
+    val categoryFocusTargetAvailable = selectedCategoryVisible || state.categories.any { category ->
+        categorySearchQuery.isBlank() || category.label.contains(categorySearchQuery, ignoreCase = true)
+    }
+
+    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), categoryFocusTargetAvailable) {
+        if (accounts.isNotEmpty() && !state.categoriesLoading && categoryFocusTargetAvailable) {
             withFrameNanos { }
             delay(120)
-            selectedCategoryFocusRequester.requestFocus()
+            runCatching { selectedCategoryFocusRequester.requestFocus() }
         }
     }
 
@@ -241,6 +249,12 @@ private fun MovieCategoryList(
     onCategory: (MovieCategoryUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val visibleCategories = state.categories.filter {
+        searchQuery.isBlank() || it.label.contains(searchQuery, ignoreCase = true)
+    }
+    val focusCategoryId = visibleCategories.firstOrNull { it.id == state.selectedCategoryId }?.id
+        ?: visibleCategories.firstOrNull()?.id
+
     MediaCatalogPanel(
         title = "Categories",
         modifier = modifier,
@@ -259,7 +273,7 @@ private fun MovieCategoryList(
             contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
         ) {
             items(
-                state.categories.filter { searchQuery.isBlank() || it.label.contains(searchQuery, ignoreCase = true) },
+                visibleCategories,
                 key = { it.id },
             ) { category ->
                 CatalogCategoryRow(
@@ -267,7 +281,7 @@ private fun MovieCategoryList(
                     count = category.count,
                     icon = movieCategoryIcon(category.label),
                     selected = category.id == state.selectedCategoryId,
-                    focusRequester = if (category.id == state.selectedCategoryId) {
+                    focusRequester = if (category.id == focusCategoryId) {
                         selectedCategoryFocusRequester
                     } else {
                         null

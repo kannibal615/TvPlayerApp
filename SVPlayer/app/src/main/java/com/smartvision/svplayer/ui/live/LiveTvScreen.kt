@@ -226,11 +226,19 @@ fun LiveTvScreen(
         }
     }
 
-    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty()) {
-        if (accounts.isNotEmpty() && !state.categoriesLoading) {
+    val selectedCategoryVisible = state.categories.any { category ->
+        category.id == state.selectedCategoryId &&
+            (categorySearchQuery.isBlank() || category.label.contains(categorySearchQuery, ignoreCase = true))
+    }
+    val categoryFocusTargetAvailable = selectedCategoryVisible || state.categories.any { category ->
+        categorySearchQuery.isBlank() || category.label.contains(categorySearchQuery, ignoreCase = true)
+    }
+
+    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), categoryFocusTargetAvailable) {
+        if (accounts.isNotEmpty() && !state.categoriesLoading && categoryFocusTargetAvailable) {
             withFrameNanos { }
             delay(120)
-            selectedCategoryFocusRequester.requestFocus()
+            runCatching { selectedCategoryFocusRequester.requestFocus() }
         }
     }
 
@@ -452,6 +460,12 @@ private fun CategoryList(
     onCategory: (LiveTvCategory) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val visibleCategories = state.categories.filter {
+        searchQuery.isBlank() || it.label.contains(searchQuery, ignoreCase = true)
+    }
+    val focusCategoryId = visibleCategories.firstOrNull { it.id == state.selectedCategoryId }?.id
+        ?: visibleCategories.firstOrNull()?.id
+
     LiveTvPanel(
         title = "Categories",
         modifier = modifier,
@@ -470,13 +484,13 @@ private fun CategoryList(
             contentPadding = PaddingValues(bottom = LiveTvDimens.ListGap),
         ) {
             items(
-                state.categories.filter { searchQuery.isBlank() || it.label.contains(searchQuery, ignoreCase = true) },
+                visibleCategories,
                 key = { it.id },
             ) { category ->
                 CategoryRow(
                     category = category,
                     selected = category.id == state.selectedCategoryId,
-                    focusRequester = if (category.id == state.selectedCategoryId) {
+                    focusRequester = if (category.id == focusCategoryId) {
                         selectedCategoryFocusRequester
                     } else {
                         null

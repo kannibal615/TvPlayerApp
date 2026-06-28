@@ -120,15 +120,21 @@ fun YoutubeScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstVideoFocusRequester = remember { FocusRequester() }
+    val playerFocusRequester = remember { FocusRequester() }
     val searchFocusRequester = remember { FocusRequester() }
     var playingVideo by remember { mutableStateOf<YoutubeVideoUi?>(null) }
     var restoreVideoFocusAfterPlayer by remember { mutableStateOf(false) }
+    val contentFocusRequester = when {
+        playingVideo != null -> playerFocusRequester
+        state.videos.isNotEmpty() -> firstVideoFocusRequester
+        else -> null
+    }
 
     LaunchedEffect(state.categories.isNotEmpty()) {
         if (state.categories.isNotEmpty()) {
             withFrameNanos { }
             delay(120)
-            selectedCategoryFocusRequester.requestFocus()
+            runCatching { selectedCategoryFocusRequester.requestFocus() }
         }
     }
 
@@ -187,7 +193,7 @@ fun YoutubeScreen(
             YoutubeCategoryList(
                 state = state,
                 selectedCategoryFocusRequester = selectedCategoryFocusRequester,
-                firstVideoFocusRequester = firstVideoFocusRequester,
+                contentFocusRequester = contentFocusRequester,
                 onCategory = viewModel::selectCategory,
                 modifier = Modifier
                     .weight(0.22f)
@@ -196,6 +202,7 @@ fun YoutubeScreen(
             YoutubeVideoGrid(
                 state = state,
                 firstVideoFocusRequester = firstVideoFocusRequester,
+                playerFocusRequester = playerFocusRequester,
                 searchFocusRequester = searchFocusRequester,
                 selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                 onSearchQueryChange = viewModel::updateSearchQuery,
@@ -222,7 +229,7 @@ fun YoutubeScreen(
 private fun YoutubeCategoryList(
     state: YoutubeScreenState,
     selectedCategoryFocusRequester: FocusRequester,
-    firstVideoFocusRequester: FocusRequester,
+    contentFocusRequester: FocusRequester?,
     onCategory: (YoutubeCategoryUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -247,7 +254,7 @@ private fun YoutubeCategoryList(
                     } else {
                         null
                     },
-                    rightFocusRequester = firstVideoFocusRequester.takeIf { state.videos.isNotEmpty() },
+                    rightFocusRequester = contentFocusRequester,
                     onClick = { onCategory(category) },
                 )
             }
@@ -259,6 +266,7 @@ private fun YoutubeCategoryList(
 private fun YoutubeVideoGrid(
     state: YoutubeScreenState,
     firstVideoFocusRequester: FocusRequester,
+    playerFocusRequester: FocusRequester,
     searchFocusRequester: FocusRequester,
     selectedCategoryFocusRequester: FocusRequester,
     onSearchQueryChange: (String) -> Unit,
@@ -278,6 +286,12 @@ private fun YoutubeVideoGrid(
     var suggestionsFocused by remember { mutableStateOf(false) }
     val showSuggestions = (searchFocused || suggestionsFocused || state.searchQuery.isNotBlank()) &&
         state.searchSuggestions.isNotEmpty()
+    val isVideoGridVisible = playingVideo == null && state.videos.isNotEmpty()
+    val contentDownFocusRequester = when {
+        playingVideo != null -> playerFocusRequester
+        isVideoGridVisible -> firstVideoFocusRequester
+        else -> null
+    }
 
     LaunchedEffect(state.selectedCategoryId) {
         if (gridState.layoutInfo.totalItemsCount > 0) gridState.scrollToItem(0)
@@ -299,8 +313,7 @@ private fun YoutubeVideoGrid(
                 focusRequester = searchFocusRequester,
                 downFocusRequester = when {
                     showSuggestions -> firstSuggestionFocusRequester
-                    state.videos.isNotEmpty() -> firstVideoFocusRequester
-                    else -> null
+                    else -> contentDownFocusRequester
                 },
                 onQueryChange = onSearchQueryChange,
                 onSubmit = onSearchSubmit,
@@ -340,6 +353,7 @@ private fun YoutubeVideoGrid(
 
                 playingVideo != null -> YoutubeInlinePlayer(
                     video = playingVideo,
+                    focusRequester = playerFocusRequester,
                     anomalyReporter = anomalyReporter,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -374,7 +388,7 @@ private fun YoutubeVideoGrid(
                 suggestions = if (showSuggestions) state.searchSuggestions else emptyList(),
                 firstSuggestionFocusRequester = firstSuggestionFocusRequester,
                 upFocusRequester = searchFocusRequester,
-                downFocusRequester = firstVideoFocusRequester.takeIf { state.videos.isNotEmpty() },
+                downFocusRequester = contentDownFocusRequester,
                 onSuggestionClick = onSuggestionClick,
                 onSuggestionFocusChanged = { suggestionsFocused = it },
                 modifier = Modifier
@@ -406,6 +420,7 @@ private fun YoutubeVideoGrid(
 @Composable
 private fun YoutubeInlinePlayer(
     video: YoutubeVideoUi,
+    focusRequester: FocusRequester,
     anomalyReporter: AnomalyReporter,
     modifier: Modifier = Modifier,
 ) {
@@ -413,6 +428,8 @@ private fun YoutubeInlinePlayer(
 
     Box(
         modifier = modifier
+            .focusRequester(focusRequester)
+            .focusable()
             .clip(RoundedCornerShape(MediaCatalogDimens.ItemRadius))
             .background(Color.Black),
     ) {
@@ -458,7 +475,7 @@ private fun YoutubeSearchInput(
 
     LaunchedEffect(editing) {
         if (editing) {
-            inputFocusRequester.requestFocus()
+            runCatching { inputFocusRequester.requestFocus() }
             keyboardController?.show()
         }
     }
