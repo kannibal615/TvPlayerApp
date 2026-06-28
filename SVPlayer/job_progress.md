@@ -85,6 +85,25 @@ Goal:
 - Corrected and verified production feature flags so YouTube and parental control remain locked for `free_ads`.
 - Verified no temporary `sv_fix_feature_flags*` script remains in `public_html/api`.
 - Documented standalone API maintenance script `config.php` include requirement in `TROUBLESHOOTING.md`.
+- Completed the post-release `0.1.43 (46)` correction block.
+- Confirmed Settings language options remain limited to `English` and `Francais`, with default `English`.
+- Continued translation progress with Block 7 in `TRANSLATION_PROGRESS.md`.
+- Added `Focus background` personalization with transparent blue default, transparent gold and transparent white.
+- Persisted the focus background setting and combined it with focus style, color and effect.
+- Applied configured focus background/accent to common TV buttons, cards, notifications, Settings fields, Xtream fields, catalog search, YouTube search, Profile edit fields and premium/license code fields.
+- Replaced the premium popup license-code field cyan focus with configured focus accent/background.
+- Reworked admin > Fonctionnalites > Consentement TV markup and CSS into a stable two-column modern admin layout.
+- Bumped release to `0.1.44 (47)`.
+- PHP lint passed for `server/public_html/admin/index.php` and `server/public_html/api/app_config.php`.
+- First release build attempt failed because `BlueFocusBackground` was referenced before initialization; fixed by moving focus constants before style instances.
+- Built release `0.1.44 (47)` successfully.
+- Verified local APK signature v1/v2 and local SHA256 `3a49dd2fea3f7f5a76f765244d49d15f8da06d0650ca47ea767abfff0ca92c49`.
+- Deployed release `0.1.44 (47)` to production.
+- Verified production update endpoint and manifest for `versionCode 47`, `versionName 0.1.44`, APK `smartvision-tv-v47-3a49dd2f.apk`.
+- Verified versioned and stable APK SHA256 match the local release hash.
+- Verified release notification id `9` in the standard notifications API.
+- Corrected and verified production feature flags so YouTube and parental control remain locked for `free_ads`.
+- Verified ads config and VAST endpoint after deploy.
 
 ## In progress
 - None.
@@ -98,3 +117,6 @@ Goal:
   - Manual TV validation: Firestick text entry no longer flickers in Hidden keywords and other text fields.
   - Manual TV validation: configured focus color/effect on header icons, Home cards, catalog cards/lists and YouTube.
   - Manual TV validation: YouTube left-from-player focuses first visible suggestion after scroll, up goes to search, and ended video opens next suggestion.
+  - Manual TV validation: premium popup code field uses configured focus background/style instead of cyan.
+  - Manual TV validation: Focus background options combine correctly with existing focus style/color/effect on buttons, menus and text fields.
+  - Admin visual validation: Consentement TV layout in Fonctionnalites is coherent with the rest of the admin panel.

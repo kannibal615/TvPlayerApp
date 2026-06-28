@@ -269,7 +269,7 @@ private fun NotificationCard(
                 cornerRadius = 8.dp,
             )
             .background(
-                if (focusState.isFocused) SmartVisionColors.CyanAccent.copy(alpha = 0.14f) else Color(0xFF0B1728),
+                if (focusState.isFocused) focusStyle.background else Color(0xFF0B1728),
                 shape,
             )
             .border(

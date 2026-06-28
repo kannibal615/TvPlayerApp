@@ -807,7 +807,7 @@ private fun ProfileEditTextField(
         readOnly = !editing,
         singleLine = true,
         textStyle = SmartVisionType.Body.copy(color = SmartVisionColors.TextPrimary),
-        cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
+        cursorBrush = SolidColor(focusStyle.accent),
         visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
         modifier = Modifier
             .fillMaxWidth()
@@ -852,7 +852,10 @@ private fun ProfileEditTextField(
                     else -> false
                 }
             }
-            .background(SmartVisionColors.Surface, RoundedCornerShape(6.dp))
+            .background(
+                if (focused || editing) focusStyle.background else SmartVisionColors.Surface,
+                RoundedCornerShape(6.dp),
+            )
             .border(
                 BorderStroke(
                     if (focused) focusStyle.borderWidth else 1.dp,
@@ -1397,6 +1400,7 @@ private fun PremiumLicenseDialog(
     val keyboardController = LocalSoftwareKeyboardController.current
     var editing by remember { mutableStateOf(false) }
     var fieldFocused by remember { mutableStateOf(false) }
+    val focusStyle = LocalTvFocusStyle.current
 
     LaunchedEffect(Unit) {
         fieldFocusRequester.requestFocus()
@@ -1528,12 +1532,18 @@ private fun PremiumLicenseDialog(
                                 }
                                 .focusable(enabled = !editing)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(Color(0xFF030B18).copy(alpha = 0.92f))
+                                .background(
+                                    if (fieldFocused || editing) {
+                                        focusStyle.background
+                                    } else {
+                                        Color(0xFF030B18).copy(alpha = 0.92f)
+                                    },
+                                )
                                 .border(
                                     BorderStroke(
-                                        if (fieldFocused || editing) 2.dp else 1.dp,
+                                        if (fieldFocused || editing) focusStyle.borderWidth else 1.dp,
                                         if (fieldFocused || editing) {
-                                            SmartVisionColors.CyanAccent
+                                            focusStyle.accent
                                         } else {
                                             SmartVisionColors.Primary
                                         },
@@ -1552,7 +1562,7 @@ private fun PremiumLicenseDialog(
                                     color = SmartVisionColors.TextPrimary,
                                     fontWeight = FontWeight.SemiBold,
                                 ),
-                                cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
+                                cursorBrush = SolidColor(focusStyle.accent),
                                 modifier = Modifier
                                     .weight(1f)
                                     .focusRequester(inputFocusRequester)

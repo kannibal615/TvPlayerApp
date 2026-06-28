@@ -76,7 +76,7 @@ fun TvButton(
         selected -> SmartVisionColors.Primary.copy(alpha = 0.34f)
         variant == TvButtonVariant.Exit && focusState.isFocused -> SmartVisionColors.Error
         variant == TvButtonVariant.Exit -> SmartVisionColors.Primary
-        focusState.isFocused -> SmartVisionColors.SurfaceElevated
+        focusState.isFocused -> focusStyle.background
         variant == TvButtonVariant.Success -> Color(0xFF0E8F55)
         variant == TvButtonVariant.Danger -> Color(0xFFB3262F)
         variant == TvButtonVariant.Primary -> SmartVisionColors.Primary

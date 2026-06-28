@@ -156,6 +156,7 @@ fun SettingsScreen(
             onSetFocusStyle = { value -> scope.launch { container.settingsRepository.setFocusStyle(value) } },
             onSetFocusColor = { value -> scope.launch { container.settingsRepository.setFocusColor(value) } },
             onSetFocusEffect = { value -> scope.launch { container.settingsRepository.setFocusEffect(value) } },
+            onSetFocusBackground = { value -> scope.launch { container.settingsRepository.setFocusBackground(value) } },
             onSetVideoRatio = { value -> scope.launch { container.settingsRepository.setVideoRatio(value) } },
             onSetAnimations = { value -> scope.launch { container.settingsRepository.setAnimationsEnabled(value) } },
             onSetRetry = { value -> scope.launch { container.settingsRepository.setRetryEnabled(value) } },
@@ -319,6 +320,7 @@ private fun SettingsMenuLayout(
     onSetFocusStyle: (String) -> Unit,
     onSetFocusColor: (String) -> Unit,
     onSetFocusEffect: (String) -> Unit,
+    onSetFocusBackground: (String) -> Unit,
     onSetVideoRatio: (String) -> Unit,
     onSetAnimations: (Boolean) -> Unit,
     onSetRetry: (Boolean) -> Unit,
@@ -508,8 +510,18 @@ private fun SettingsMenuLayout(
                         selected = settings.focusEffect,
                         onSelected = onSetFocusEffect,
                     )
+                    SettingsChoice(
+                        label = strings.focusBackground,
+                        values = listOf(
+                            SettingsOption("BlueTransparent", strings.focusBackgroundBlue),
+                            SettingsOption("GoldTransparent", strings.focusBackgroundGold),
+                            SettingsOption("WhiteTransparent", strings.focusBackgroundWhite),
+                        ),
+                        selected = settings.focusBackground,
+                        onSelected = onSetFocusBackground,
+                    )
                     Text(
-                        text = "${strings.focusStyle}: ${settings.focusStyle} | ${strings.focusColor}: ${settings.focusColor} | ${strings.focusEffect}: ${settings.focusEffect}",
+                        text = "${strings.focusStyle}: ${settings.focusStyle} | ${strings.focusColor}: ${settings.focusColor} | ${strings.focusEffect}: ${settings.focusEffect} | ${strings.focusBackground}: ${settings.focusBackground}",
                         color = SmartVisionColors.TextSecondary,
                         style = SmartVisionType.Caption,
                     )
@@ -1171,7 +1183,7 @@ private fun SettingsTextField(
         singleLine = true,
         readOnly = !editing,
         textStyle = SmartVisionType.Body.copy(color = SmartVisionColors.TextPrimary),
-        cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
+        cursorBrush = SolidColor(focusStyle.accent),
         visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
         modifier = Modifier
             .focusRequester(focusRequester)
@@ -1217,7 +1229,7 @@ private fun SettingsTextField(
             .fillMaxWidth()
             .height(44.dp)
             .background(
-                if (focused || editing) focusStyle.accent.copy(alpha = 0.10f) else SmartVisionColors.Surface,
+                if (focused || editing) focusStyle.background else SmartVisionColors.Surface,
                 shape,
             )
             .border(

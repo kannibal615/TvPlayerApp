@@ -144,7 +144,7 @@ private fun SetupField(
         singleLine = true,
         readOnly = !editing,
         textStyle = SmartVisionType.Body.copy(color = SmartVisionColors.TextPrimary),
-        cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
+        cursorBrush = SolidColor(focusStyle.accent),
         visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
         modifier = modifier
             .fillMaxWidth()
@@ -177,7 +177,10 @@ private fun SetupField(
                     else -> false
                 }
             }
-            .background(SmartVisionColors.Surface, RoundedCornerShape(6.dp))
+            .background(
+                if (focused || editing) focusStyle.background else SmartVisionColors.Surface,
+                RoundedCornerShape(6.dp),
+            )
             .border(
                 BorderStroke(
                     if (focused || editing) focusStyle.borderWidth else 1.dp,

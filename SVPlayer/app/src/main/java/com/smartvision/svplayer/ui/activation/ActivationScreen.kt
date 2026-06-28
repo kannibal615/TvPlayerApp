@@ -81,6 +81,7 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 
@@ -598,8 +599,9 @@ private fun LicenseInput(
     var editing by remember { mutableStateOf(false) }
     var containerFocused by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(7.dp)
+    val focusStyle = LocalTvFocusStyle.current
     val borderColor = if (editing || containerFocused) {
-        SmartVisionColors.CyanAccent
+        focusStyle.accent
     } else {
         SmartVisionColors.Primary.copy(alpha = 0.72f)
     }
@@ -635,8 +637,14 @@ private fun LicenseInput(
             }
             .focusable(enabled = enabled && !editing)
             .clip(shape)
-            .background(Color(0xFF050D1A).copy(alpha = 0.82f))
-            .border(BorderStroke(1.dp, borderColor), shape)
+            .background(
+                if (editing || containerFocused) {
+                    focusStyle.background
+                } else {
+                    Color(0xFF050D1A).copy(alpha = 0.82f)
+                },
+            )
+            .border(BorderStroke(if (editing || containerFocused) focusStyle.borderWidth else 1.dp, borderColor), shape)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -652,7 +660,7 @@ private fun LicenseInput(
                 color = SmartVisionColors.TextPrimary,
                 fontWeight = FontWeight.SemiBold,
             ),
-            cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
+            cursorBrush = SolidColor(focusStyle.accent),
             modifier = Modifier
                 .weight(1f)
                 .focusRequester(fieldFocusRequester)

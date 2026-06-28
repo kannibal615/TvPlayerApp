@@ -135,3 +135,22 @@ Remaining after block 6:
 - Replace remaining user-visible hard-coded French text in Android Compose screens.
 - Add a repeatable i18n audit command before each release.
 - Add backend email flow for forgotten parental PIN once the account email source is confirmed in the Android activation/session model.
+
+## Block 7 - Focus background and personalization strings
+
+Status: done locally and deployed in release `0.1.44 (47)`.
+
+Completed:
+- Kept Settings language choices limited to `English` and `Francais`, with `English` still the default.
+- Added English/French strings for the new `Focus background` personalization setting.
+- Added the three focus background labels: transparent blue, transparent gold and transparent white.
+- Connected focus background selection to the existing focus style, color and effect settings.
+- Continued the incremental translation work without reintroducing Spanish or Arabic language choices.
+
+Remaining after block 7:
+- Externalize and translate Activation screens.
+- Externalize and translate Live TV, Movies, Series, details and player overlays.
+- Externalize and translate Profile and premium purchase sub-dialogs still hard-coded in `ProfileScreen`.
+- Replace remaining user-visible hard-coded French text in Android Compose screens.
+- Add a repeatable i18n audit command before each release.
+- Add backend email flow for forgotten parental PIN once the account email source is confirmed in the Android activation/session model.

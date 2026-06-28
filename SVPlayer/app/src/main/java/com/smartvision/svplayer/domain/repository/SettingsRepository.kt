@@ -12,6 +12,7 @@ interface SettingsRepository {
     suspend fun setFocusStyle(value: String)
     suspend fun setFocusColor(value: String)
     suspend fun setFocusEffect(value: String)
+    suspend fun setFocusBackground(value: String)
     suspend fun setAnimationsEnabled(value: Boolean)
     suspend fun setVideoRatio(value: String)
     suspend fun setBufferMode(value: String)

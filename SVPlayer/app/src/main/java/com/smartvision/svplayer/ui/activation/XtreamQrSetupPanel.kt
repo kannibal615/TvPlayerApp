@@ -428,7 +428,13 @@ private fun XtreamField(
             }
             .focusable(enabled = !editing)
             .clip(shape)
-            .background(Color(0xFF050D1A).copy(alpha = 0.82f))
+            .background(
+                if (editing || containerFocused) {
+                    focusStyle.background
+                } else {
+                    Color(0xFF050D1A).copy(alpha = 0.82f)
+                },
+            )
             .border(BorderStroke(if (editing || containerFocused) focusStyle.borderWidth else 1.dp, borderColor), shape)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -441,7 +447,7 @@ private fun XtreamField(
             enabled = editing,
             singleLine = true,
             textStyle = SmartVisionType.Body.copy(color = SmartVisionColors.TextPrimary),
-            cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
+            cursorBrush = SolidColor(focusStyle.accent),
             visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
             modifier = Modifier
                 .weight(1f)

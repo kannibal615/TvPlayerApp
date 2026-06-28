@@ -119,8 +119,18 @@ fun AppNavigation(
         initialValue = PlayerSettings(),
     )
     val strings = smartVisionStrings(playerSettings.language)
-    val focusStyle = remember(playerSettings.focusStyle, playerSettings.focusColor, playerSettings.focusEffect) {
-        TvFocusStyles.fromKeys(playerSettings.focusStyle, playerSettings.focusColor, playerSettings.focusEffect)
+    val focusStyle = remember(
+        playerSettings.focusStyle,
+        playerSettings.focusColor,
+        playerSettings.focusEffect,
+        playerSettings.focusBackground,
+    ) {
+        TvFocusStyles.fromKeys(
+            playerSettings.focusStyle,
+            playerSettings.focusColor,
+            playerSettings.focusEffect,
+            playerSettings.focusBackground,
+        )
     }
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route ?: AppRoute.Home.route

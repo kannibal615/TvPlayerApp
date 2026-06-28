@@ -68,7 +68,11 @@ fun TvCard(
         label = "tvCardBorder",
     )
     val topAccent by animateColorAsState(
-        targetValue = if (focusState.isFocused || selected) accent else SmartVisionColors.SurfaceElevated,
+        targetValue = when {
+            focusState.isFocused -> focusStyle.background
+            selected -> accent.copy(alpha = 0.26f)
+            else -> SmartVisionColors.SurfaceElevated
+        },
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "tvCardAccent",
     )
@@ -87,7 +91,7 @@ fun TvCard(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        topAccent.copy(alpha = 0.26f),
+                        topAccent,
                         SmartVisionColors.SurfaceElevated.copy(alpha = 0.84f),
                         SmartVisionColors.Surface.copy(alpha = 0.98f),
                     ),

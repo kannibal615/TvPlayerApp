@@ -97,7 +97,7 @@ fun FocusableCard(
     val background by animateColorAsState(
         when {
             selected -> accent.copy(alpha = 0.17f)
-            focused -> SVColors.SurfaceLight.copy(alpha = 0.92f)
+            focused -> focusStyle.background
             else -> SVColors.Surface.copy(alpha = 0.78f)
         },
         label = "cardBackground",

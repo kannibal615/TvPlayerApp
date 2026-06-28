@@ -1852,7 +1852,7 @@ function render_admin_login(?string $error): void
 {
     $configured = admin_auth_is_configured();
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=6"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=7"></head>
 <body class="admin-login-body"><main class="admin-login-panel">
     <a class="admin-brand" href="/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
     <h1>Administration</h1><p>Commandes, licences et appareils SmartVision.</p>
@@ -1911,7 +1911,7 @@ function render_admin_dashboard(
     ];
     $heading = $pages[$page] ?? $pages['overview'];
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=6"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=7"></head>
 <body class="admin-body">
 <aside class="admin-sidebar">
     <a class="admin-brand" href="/admin/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
@@ -2600,11 +2600,22 @@ function admin_render_features_page(array $appConfigAdmin): void
             <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
             <section class="admin-panel consent-admin-panel">
                 <div class="admin-panel-heading"><div><h2>Consentement TV</h2><p>Texte affiche uniquement au premier lancement ou lorsqu une nouvelle version est publiee.</p></div></div>
-                <div class="consent-admin-layout"><div class="consent-admin-main"><div class="admin-form-grid">
-                    <label><span>Version</span><input name="consent_version" maxlength="40" value="<?= admin_escape((string) ($appConfigAdmin['consent_version'] ?? '2026-06-28')) ?>"></label>
-                    <label><span>Titre popup</span><input name="consent_title" maxlength="120" value="<?= admin_escape((string) ($appConfigAdmin['consent_title'] ?? 'Privacy Policy and Terms of Use')) ?>"></label>
-                    <label class="ads-wide"><span>Texte complet</span><textarea name="consent_body" rows="18" maxlength="30000"><?= admin_escape((string) ($appConfigAdmin['consent_body'] ?? admin_default_consent_body())) ?></textarea></label>
-                </div></div><aside class="consent-admin-vars"><h3>Variables</h3><p>Utilisez <code>?NOM?</code> dans le texte. Les passages entre <code>**</code> sont affiches en gras sur la TV.</p><?php foreach (admin_default_consent_variables() as $key => $default): ?><label><span><?= admin_escape($key) ?></span><input name="consent_variables[<?= admin_escape($key) ?>]" maxlength="255" value="<?= admin_escape((string) ($variables[$key] ?? $default)) ?>"></label><?php endforeach; ?></aside></div>
+                <div class="consent-admin-layout">
+                    <div class="consent-admin-main">
+                        <div class="consent-meta-row">
+                            <label><span>Version</span><input name="consent_version" maxlength="40" value="<?= admin_escape((string) ($appConfigAdmin['consent_version'] ?? '2026-06-28')) ?>"></label>
+                            <label><span>Titre popup</span><input name="consent_title" maxlength="120" value="<?= admin_escape((string) ($appConfigAdmin['consent_title'] ?? 'Privacy Policy and Terms of Use')) ?>"></label>
+                        </div>
+                        <label class="consent-body-field"><span>Texte complet</span><textarea name="consent_body" rows="18" maxlength="30000"><?= admin_escape((string) ($appConfigAdmin['consent_body'] ?? admin_default_consent_body())) ?></textarea></label>
+                    </div>
+                    <aside class="consent-admin-vars">
+                        <h3>Variables</h3>
+                        <p>Utilisez <code>?NOM?</code> dans le texte. Les passages entre <code>**</code> sont affiches en gras sur la TV.</p>
+                        <?php foreach (admin_default_consent_variables() as $key => $default): ?>
+                            <label><span><?= admin_escape($key) ?></span><input name="consent_variables[<?= admin_escape($key) ?>]" maxlength="255" value="<?= admin_escape((string) ($variables[$key] ?? $default)) ?>"></label>
+                        <?php endforeach; ?>
+                    </aside>
+                </div>
                 <p class="muted">Les passages encadres par **double astérisque** sont affiches en gras dans l application TV.</p>
                 <button class="admin-button primary" type="submit">Enregistrer le consentement TV</button>
             </section>

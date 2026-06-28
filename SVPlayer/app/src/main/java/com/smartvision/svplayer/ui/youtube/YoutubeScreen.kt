@@ -776,7 +776,7 @@ private fun YoutubeSearchInput(
         onValueChange = onQueryChange,
         singleLine = true,
         readOnly = !editing,
-        cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
+        cursorBrush = SolidColor(focusStyle.accent),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(
             onSearch = {
@@ -837,7 +837,7 @@ private fun YoutubeSearchInput(
             .clip(shape)
             .background(
                 if (focused || editing) {
-                    focusStyle.accent.copy(alpha = 0.10f)
+                    focusStyle.background
                 } else {
                     SmartVisionColors.Surface.copy(alpha = 0.86f)
                 },

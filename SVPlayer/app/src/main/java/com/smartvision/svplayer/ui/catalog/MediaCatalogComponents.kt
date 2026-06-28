@@ -217,7 +217,7 @@ fun CatalogSearchField(
         onValueChange = onQueryChange,
         singleLine = true,
         readOnly = !editing,
-        cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
+        cursorBrush = SolidColor(focusStyle.accent),
         textStyle = CatalogMetaStyle.copy(color = SmartVisionColors.TextPrimary),
         modifier = modifier
             .height(34.dp)
@@ -246,7 +246,9 @@ fun CatalogSearchField(
                 }
             }
             .clip(shape)
-            .background(SmartVisionColors.Surface.copy(alpha = 0.86f))
+            .background(
+                if (focused || editing) focusStyle.background else SmartVisionColors.Surface.copy(alpha = 0.86f),
+            )
             .border(
                 BorderStroke(if (focused) focusStyle.borderWidth else 1.dp, borderColor),
                 shape,

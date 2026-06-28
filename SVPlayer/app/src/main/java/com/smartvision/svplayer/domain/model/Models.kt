@@ -124,6 +124,7 @@ data class PlayerSettings(
     val focusStyle: String = "Default",
     val focusColor: String = "White",
     val focusEffect: String = "Frame",
+    val focusBackground: String = "BlueTransparent",
     val animationsEnabled: Boolean = true,
     val videoRatio: String = "Fit",
     val bufferMode: String = "Standard",

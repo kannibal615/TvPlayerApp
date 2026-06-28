@@ -13,6 +13,7 @@ data class TvFocusStyle(
     val borderWidth: Dp,
     val glowAlpha: Float,
     val accent: Color,
+    val background: Color,
     val effect: TvFocusEffect = TvFocusEffect.Frame,
 )
 
@@ -23,6 +24,11 @@ enum class TvFocusEffect {
 }
 
 object TvFocusStyles {
+    private val GoldAccent = Color(0xFFFFC84A)
+    private val BlueFocusBackground = Color(0xFF1B65FF).copy(alpha = 0.20f)
+    private val GoldFocusBackground = Color(0xFFFFC84A).copy(alpha = 0.22f)
+    private val WhiteFocusBackground = Color.White.copy(alpha = 0.18f)
+
     val Default = TvFocusStyle(
         key = "Default",
         label = "Default",
@@ -30,6 +36,7 @@ object TvFocusStyles {
         borderWidth = 2.dp,
         glowAlpha = 0.18f,
         accent = SmartVisionColors.FocusWhite,
+        background = BlueFocusBackground,
     )
     val Soft = TvFocusStyle(
         key = "Soft",
@@ -38,6 +45,7 @@ object TvFocusStyles {
         borderWidth = 2.dp,
         glowAlpha = 0.22f,
         accent = Color(0xFF7DE7FF),
+        background = BlueFocusBackground,
     )
     val Compact = TvFocusStyle(
         key = "Compact",
@@ -46,6 +54,7 @@ object TvFocusStyles {
         borderWidth = 1.dp,
         glowAlpha = 0.12f,
         accent = SmartVisionColors.FocusWhite,
+        background = BlueFocusBackground,
     )
 
     val All = listOf(Default, Soft, Compact)
@@ -53,7 +62,12 @@ object TvFocusStyles {
     fun fromKey(key: String?): TvFocusStyle =
         All.firstOrNull { it.key.equals(key, ignoreCase = true) } ?: Default
 
-    fun fromKeys(styleKey: String?, colorKey: String?, effectKey: String?): TvFocusStyle {
+    fun fromKeys(
+        styleKey: String?,
+        colorKey: String?,
+        effectKey: String?,
+        backgroundKey: String? = null,
+    ): TvFocusStyle {
         val base = fromKey(styleKey)
         val effect = when {
             effectKey.equals("NeonGlow", ignoreCase = true) -> TvFocusEffect.NeonGlow
@@ -66,8 +80,14 @@ object TvFocusStyles {
             colorKey.equals("ElectricBlue", ignoreCase = true) -> Color(0xFF2F6BFF)
             else -> SmartVisionColors.FocusWhite
         }
+        val background = when {
+            backgroundKey.equals("GoldTransparent", ignoreCase = true) -> GoldFocusBackground
+            backgroundKey.equals("WhiteTransparent", ignoreCase = true) -> WhiteFocusBackground
+            else -> BlueFocusBackground
+        }
         return base.copy(
             accent = color,
+            background = background,
             effect = effect,
             glowAlpha = when (effect) {
                 TvFocusEffect.Frame -> 0.10f
@@ -79,8 +99,7 @@ object TvFocusStyles {
 
     val FocusColors = listOf("White", "CyanNeon", "ElectricBlue")
     val FocusEffects = listOf("Frame", "NeonGlow", "GoldSweep")
-
-    private val GoldAccent = Color(0xFFFFC84A)
+    val FocusBackgrounds = listOf("BlueTransparent", "GoldTransparent", "WhiteTransparent")
 }
 
 val LocalTvFocusStyle = staticCompositionLocalOf { TvFocusStyles.Default }

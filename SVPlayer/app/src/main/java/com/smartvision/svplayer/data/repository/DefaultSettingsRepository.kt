@@ -24,6 +24,7 @@ class DefaultSettingsRepository(
                 focusStyle = preferences[FOCUS_STYLE] ?: "Default",
                 focusColor = preferences[FOCUS_COLOR] ?: "White",
                 focusEffect = preferences[FOCUS_EFFECT] ?: "Frame",
+                focusBackground = preferences[FOCUS_BACKGROUND] ?: "BlueTransparent",
                 animationsEnabled = preferences[ANIMATIONS] ?: true,
                 videoRatio = preferences[VIDEO_RATIO] ?: "Fit",
                 bufferMode = preferences[BUFFER_MODE] ?: "Standard",
@@ -56,6 +57,10 @@ class DefaultSettingsRepository(
 
     override suspend fun setFocusEffect(value: String) {
         dataStore.edit { it[FOCUS_EFFECT] = value }
+    }
+
+    override suspend fun setFocusBackground(value: String) {
+        dataStore.edit { it[FOCUS_BACKGROUND] = value }
     }
 
     override suspend fun setAnimationsEnabled(value: Boolean) {
@@ -105,6 +110,7 @@ class DefaultSettingsRepository(
         val FOCUS_STYLE = stringPreferencesKey("focus_style")
         val FOCUS_COLOR = stringPreferencesKey("focus_color")
         val FOCUS_EFFECT = stringPreferencesKey("focus_effect")
+        val FOCUS_BACKGROUND = stringPreferencesKey("focus_background")
         val ANIMATIONS = booleanPreferencesKey("animations_enabled")
         val VIDEO_RATIO = stringPreferencesKey("video_ratio")
         val BUFFER_MODE = stringPreferencesKey("buffer_mode")
