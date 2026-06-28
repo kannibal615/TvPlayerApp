@@ -74,14 +74,14 @@ fun ConsentDialog(
     Dialog(onDismissRequest = {}) {
         Column(
             modifier = Modifier
-                .width(1000.dp)
+                .width(1080.dp)
                 .height(500.dp)
                 .background(
                     Brush.verticalGradient(listOf(Color(0xFF111C2E), Color(0xFF07101F))),
                     RoundedCornerShape(12.dp),
                 )
                 .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.55f)), RoundedCornerShape(12.dp))
-                .padding(26.dp),
+                .padding(20.dp),
         ) {
             Text(
                 text = consent.title,
@@ -118,7 +118,7 @@ fun ConsentDialog(
                         .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
                         .verticalScroll(scrollState)
                         .focusable()
-                        .padding(18.dp),
+                        .padding(12.dp),
                 ) {
                     Text(
                         text = consent.body.applyConsentVariables(consent.variables).toBoldAnnotatedString(),

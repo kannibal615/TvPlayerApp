@@ -110,6 +110,15 @@ data class SmartVisionStrings(
     val youtubePremiumSubtitle: String,
     val premiumPurchaseTitle: String,
     val premiumPurchaseSubtitle: String,
+    val youtubeCategories: String,
+    val youtubeSuggestions: String,
+    val youtubeVideosLoaded: String,
+    val youtubeLoading: String,
+    val youtubeNoVideo: String,
+    val youtubeNoVideoSubtitle: String,
+    val youtubeSearchPlaceholder: String,
+    val youtubeLoadingMore: String,
+    val youtubeVideoUnavailable: String,
 )
 
 private val englishStrings = SmartVisionStrings(
@@ -215,6 +224,15 @@ private val englishStrings = SmartVisionStrings(
     youtubePremiumSubtitle = "This feature requires Premium or an active trial.",
     premiumPurchaseTitle = "Upgrade to SmartVision Premium",
     premiumPurchaseSubtitle = "Scan this QR code to buy a licence. Premium removes ads and keeps access active for the selected duration.",
+    youtubeCategories = "Categories",
+    youtubeSuggestions = "Suggestions",
+    youtubeVideosLoaded = "%d videos loaded",
+    youtubeLoading = "Loading YouTube",
+    youtubeNoVideo = "No video",
+    youtubeNoVideoSubtitle = "Select a category or start a search.",
+    youtubeSearchPlaceholder = "Search on YouTube",
+    youtubeLoadingMore = "Loading...",
+    youtubeVideoUnavailable = "YouTube video unavailable",
 )
 
 private val frenchStrings = SmartVisionStrings(
@@ -320,4 +338,13 @@ private val frenchStrings = SmartVisionStrings(
     youtubePremiumSubtitle = "Cette fonctionnalite necessite Premium ou un essai actif.",
     premiumPurchaseTitle = "Passer a SmartVision Premium",
     premiumPurchaseSubtitle = "Scannez ce QR code pour acheter une licence. Premium supprime les publicites et conserve l'acces pendant la duree choisie.",
+    youtubeCategories = "Categories",
+    youtubeSuggestions = "Suggestions",
+    youtubeVideosLoaded = "%d videos chargees",
+    youtubeLoading = "Chargement YouTube",
+    youtubeNoVideo = "Aucune video",
+    youtubeNoVideoSubtitle = "Selectionnez une categorie ou lancez une recherche.",
+    youtubeSearchPlaceholder = "Rechercher sur YouTube",
+    youtubeLoadingMore = "Chargement...",
+    youtubeVideoUnavailable = "Video YouTube indisponible",
 )

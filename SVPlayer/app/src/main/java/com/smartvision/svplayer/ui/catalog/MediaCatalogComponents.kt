@@ -73,6 +73,7 @@ import com.smartvision.svplayer.R
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.YoutubeLogoIcon
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
@@ -196,9 +197,10 @@ fun CatalogSearchField(
     var editing by remember { mutableStateOf(false) }
     val inputFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusStyle = LocalTvFocusStyle.current
     val shape = RoundedCornerShape(7.dp)
     val borderColor by animateColorAsState(
-        targetValue = if (focused) SmartVisionColors.CyanAccent else SmartVisionColors.Border,
+        targetValue = if (focused) focusStyle.accent else SmartVisionColors.Border,
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "catalogSearchBorder",
     )
@@ -246,7 +248,7 @@ fun CatalogSearchField(
             .clip(shape)
             .background(SmartVisionColors.Surface.copy(alpha = 0.86f))
             .border(
-                BorderStroke(if (focused) 2.dp else 1.dp, borderColor),
+                BorderStroke(if (focused) focusStyle.borderWidth else 1.dp, borderColor),
                 shape,
             )
             .padding(horizontal = 10.dp),
@@ -258,7 +260,7 @@ fun CatalogSearchField(
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = null,
-                    tint = if (focused) SmartVisionColors.CyanAccent else SmartVisionColors.TextSecondary,
+                    tint = if (focused) focusStyle.accent else SmartVisionColors.TextSecondary,
                     modifier = Modifier.size(16.dp),
                 )
                 Spacer(Modifier.width(7.dp))
@@ -357,9 +359,10 @@ fun CatalogCategoryRow(
     val pressed by interactionSource.collectIsPressedAsState()
     val active = selected || focusState.isFocused
     val shape = RoundedCornerShape(MediaCatalogDimens.ItemRadius)
+    val focusStyle = LocalTvFocusStyle.current
     val borderColor by animateColorAsState(
         targetValue = when {
-            focusState.isFocused -> SmartVisionColors.FocusWhite
+            focusState.isFocused -> focusStyle.accent
             selected -> SmartVisionColors.Primary
             else -> SmartVisionColors.Border
         },
@@ -407,7 +410,7 @@ fun CatalogCategoryRow(
             )
             .border(
                 BorderStroke(
-                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                    if (focusState.isFocused) focusStyle.borderWidth else SmartVisionDimensions.PanelBorder,
                     borderColor,
                 ),
                 shape,
@@ -468,9 +471,10 @@ fun CatalogMediaCard(
     val pressed by interactionSource.collectIsPressedAsState()
     val active = selected || focusState.isFocused
     val shape = RoundedCornerShape(MediaCatalogDimens.ItemRadius)
+    val focusStyle = LocalTvFocusStyle.current
     val borderColor by animateColorAsState(
         targetValue = when {
-            focusState.isFocused -> SmartVisionColors.FocusWhite
+            focusState.isFocused -> focusStyle.accent
             selected -> SmartVisionColors.Primary
             else -> SmartVisionColors.Border.copy(alpha = 0.72f)
         },
@@ -507,7 +511,7 @@ fun CatalogMediaCard(
             .background(SmartVisionColors.SurfaceElevated)
             .border(
                 BorderStroke(
-                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                    if (focusState.isFocused) focusStyle.borderWidth else SmartVisionDimensions.PanelBorder,
                     borderColor,
                 ),
                 shape,
@@ -623,9 +627,10 @@ fun CatalogContentRow(
     val pressed by interactionSource.collectIsPressedAsState()
     val active = selected || focusState.isFocused
     val shape = RoundedCornerShape(MediaCatalogDimens.ItemRadius)
+    val focusStyle = LocalTvFocusStyle.current
     val borderColor by animateColorAsState(
         targetValue = when {
-            focusState.isFocused -> SmartVisionColors.FocusWhite
+            focusState.isFocused -> focusStyle.accent
             selected -> SmartVisionColors.Primary
             else -> SmartVisionColors.Border
         },
@@ -678,7 +683,7 @@ fun CatalogContentRow(
             )
             .border(
                 BorderStroke(
-                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                    if (focusState.isFocused) focusStyle.borderWidth else SmartVisionDimensions.PanelBorder,
                     borderColor,
                 ),
                 shape,
@@ -862,6 +867,7 @@ fun CatalogActionButton(
     val pressed by interactionSource.collectIsPressedAsState()
     val shape = RoundedCornerShape(MediaCatalogDimens.ItemRadius)
     val active = focusState.isFocused || selected
+    val focusStyle = LocalTvFocusStyle.current
     val backgroundColor by animateColorAsState(
         targetValue = when {
             primary -> SmartVisionColors.Primary
@@ -873,7 +879,7 @@ fun CatalogActionButton(
     )
     val borderColor by animateColorAsState(
         targetValue = when {
-            focusState.isFocused -> SmartVisionColors.FocusWhite
+            focusState.isFocused -> focusStyle.accent
             selected -> SmartVisionColors.Primary
             else -> SmartVisionColors.Border
         },
@@ -896,7 +902,7 @@ fun CatalogActionButton(
             .background(backgroundColor)
             .border(
                 BorderStroke(
-                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                    if (focusState.isFocused) focusStyle.borderWidth else SmartVisionDimensions.PanelBorder,
                     borderColor,
                 ),
                 shape,

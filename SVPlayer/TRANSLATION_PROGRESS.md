@@ -96,3 +96,23 @@ Remaining after block 4:
 - Replace remaining user-visible hard-coded French text in Android Compose screens.
 - Add a repeatable i18n audit command before each release.
 - Add backend email flow for forgotten parental PIN once the account email source is confirmed in the Android activation/session model.
+
+## Block 5 - YouTube visible strings and text-field focus pass
+
+Status: done locally.
+
+Completed:
+- Added English/French strings for YouTube categories and suggestions panel titles.
+- Added English/French strings for the YouTube search placeholder.
+- Added English/French strings for YouTube loading, empty state, loaded-video counter and unavailable-video message.
+- Connected YouTube screen strings to the active app language, with English still the default language and French the only alternate visible language.
+- Kept the translation work incremental while also correcting YouTube focus behavior in the same block.
+- Validated the block with the release build that produced `0.1.42 (45)`.
+
+Remaining after block 5:
+- Externalize and translate Activation screens.
+- Externalize and translate Live TV, Movies, Series, details and player overlays.
+- Externalize and translate Profile and premium purchase sub-dialogs still hard-coded in `ProfileScreen`.
+- Replace remaining user-visible hard-coded French text in Android Compose screens.
+- Add a repeatable i18n audit command before each release.
+- Add backend email flow for forgotten parental PIN once the account email source is confirmed in the Android activation/session model.

@@ -112,6 +112,7 @@ import com.smartvision.svplayer.domain.model.SyncStatus
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -790,6 +791,7 @@ private fun ProfileEditTextField(
     val keyboardController = LocalSoftwareKeyboardController.current
     var editing by remember { mutableStateOf(false) }
     var focused by remember { mutableStateOf(false) }
+    val focusStyle = LocalTvFocusStyle.current
 
     LaunchedEffect(editing) {
         if (editing) {
@@ -853,8 +855,8 @@ private fun ProfileEditTextField(
             .background(SmartVisionColors.Surface, RoundedCornerShape(6.dp))
             .border(
                 BorderStroke(
-                    if (focused) 2.dp else 1.dp,
-                    if (editing || focused) SmartVisionColors.CyanAccent else SmartVisionColors.Primary.copy(alpha = 0.72f),
+                    if (focused) focusStyle.borderWidth else 1.dp,
+                    if (editing || focused) focusStyle.accent else SmartVisionColors.Primary.copy(alpha = 0.72f),
                 ),
                 RoundedCornerShape(6.dp),
             )

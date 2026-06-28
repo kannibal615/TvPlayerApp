@@ -46,6 +46,7 @@ import com.smartvision.svplayer.R
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.YoutubeLogoIcon
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -189,6 +190,7 @@ private fun HeaderIconButton(
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
+    val focusStyle = LocalTvFocusStyle.current
     val shape = RoundedCornerShape(10.dp)
 
     Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
@@ -205,9 +207,9 @@ private fun HeaderIconButton(
                 .background(if (focusState.isFocused) SmartVisionColors.SurfaceElevated else Color(0xB8121B2D))
                 .border(
                     BorderStroke(
-                        if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                        if (focusState.isFocused) focusStyle.borderWidth else SmartVisionDimensions.PanelBorder,
                         when {
-                            focusState.isFocused -> SmartVisionColors.FocusWhite
+                            focusState.isFocused -> focusStyle.accent
                             accent != SmartVisionColors.Primary -> accent.copy(alpha = 0.58f)
                             else -> SmartVisionColors.Border
                         },

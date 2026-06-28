@@ -60,3 +60,26 @@ Working solution:
 Avoid next time:
 - Do not assume dynamic feature defaults are active in production after deploy.
 - Always verify the live `api/app_config.php` output before closing a release involving feature locks.
+
+## 2026-06-28 - Temporary PHP maintenance scripts on cPanel
+
+Problem:
+- A temporary PHP script can fail or be unreachable because of local file encoding or PowerShell string expansion.
+- cPanel `Fileman/delete_files` is not available on this host, so cleanup cannot rely on that function.
+
+Context:
+- Used for one-off production DB maintenance after deployment, such as correcting `app_feature_access`.
+- PowerShell `$Host` is a reserved variable name.
+- In a double-quoted PowerShell URL, write `${name}?token=${token}` instead of `$name?token=$token`.
+
+Working solution:
+- Write temporary PHP files with UTF-8 without BOM:
+  `[IO.File]::WriteAllText($tmp, $php, [Text.UTF8Encoding]::new($false))`
+- Upload with cPanel `Fileman/upload_files` to `public_html/api`.
+- Make the PHP script self-delete in `finally { @unlink(__FILE__); }`.
+- If cleanup is needed and the token is lost, overwrite the same filename with a small self-deleting cleanup script and call it once.
+
+Avoid next time:
+- Do not use `Set-Content -Encoding UTF8` for PHP files that start with `declare(strict_types=1);`, because a BOM can break PHP strict types.
+- Do not use `$Host` as a local PowerShell variable.
+- Do not assume cPanel has `Fileman/delete_files`; prefer self-deleting scripts.

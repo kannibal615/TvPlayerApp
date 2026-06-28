@@ -1143,8 +1143,15 @@ private fun SettingsTextField(
     val keyboardController = LocalSoftwareKeyboardController.current
     var editing by remember { mutableStateOf(false) }
     var focused by remember { mutableStateOf(false) }
+    var localValue by remember { mutableStateOf(value) }
     val focusStyle = LocalTvFocusStyle.current
     val shape = RoundedCornerShape(6.dp)
+
+    LaunchedEffect(value, editing) {
+        if (!editing && localValue != value) {
+            localValue = value
+        }
+    }
 
     LaunchedEffect(editing) {
         if (editing) {
@@ -1156,10 +1163,13 @@ private fun SettingsTextField(
     Text(label, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
     Spacer(Modifier.height(5.dp))
     BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
+        value = localValue,
+        onValueChange = { next ->
+            localValue = next
+            onValueChange(next)
+        },
         singleLine = true,
-        readOnly = false,
+        readOnly = !editing,
         textStyle = SmartVisionType.Body.copy(color = SmartVisionColors.TextPrimary),
         cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
         visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
@@ -1207,7 +1217,7 @@ private fun SettingsTextField(
             .fillMaxWidth()
             .height(44.dp)
             .background(
-                if (focused || editing) SmartVisionColors.CyanAccent.copy(alpha = 0.10f) else SmartVisionColors.Surface,
+                if (focused || editing) focusStyle.accent.copy(alpha = 0.10f) else SmartVisionColors.Surface,
                 shape,
             )
             .border(

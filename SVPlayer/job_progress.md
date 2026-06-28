@@ -48,6 +48,25 @@ Goal:
 - Verified versioned and stable APK SHA256: `ad821399d5e089fd93fd76367ad018df6322e5ca8d350a5251a88dbceb4a162f`.
 - Verified release notification id `6` in the standard notifications API.
 - Corrected production feature flags so YouTube and parental control are locked for `free_ads`.
+- Started the next 2026-06-28 correction block requested after release `0.1.41 (44)`.
+- Added splash background behind the consent popup, widened the popup and reduced text-container padding.
+- Guarded parental-control reset so it only runs after app config loading and app activation, when the feature is unavailable for the active licence.
+- Restored select-first/OK-to-edit behavior for Settings text fields and added a local input buffer to stabilize Firestick keyboard entry.
+- Applied the same select-first text-field convention to the legacy Xtream setup dialog.
+- Propagated configured focus color/width to reusable cards, header icon buttons, catalog rows/cards/actions and YouTube rows/cards/search/player.
+- Improved YouTube player left navigation so it targets the first visible suggestion after scrolling.
+- Added automatic YouTube playback chaining from the completed video to the next available suggestion.
+- Added a YouTube translation block for categories, suggestions, search placeholder, loading/empty states, loaded count and unavailable-video message.
+- Incremented local release to `0.1.42 (45)`.
+- Built release `0.1.42 (45)` successfully.
+- Verified local release metadata and APK SHA256 `A43E5102B841549204F20B985EDB6993CF1511D0D935D716270D6A14B44C1C61`.
+- Updated `TRANSLATION_PROGRESS.md` with Block 5.
+- Deployed release `0.1.42 (45)` to production.
+- Verified production update manifest: `versionCode 45`, `versionName 0.1.42`, APK `smartvision-tv-v45-a43e5102.apk`.
+- Verified versioned and stable APK SHA256: `a43e5102b841549204f20b985edb6993cf1511d0d935d716270d6a14b44c1c61`.
+- Verified release notification id `7` in the standard notifications API.
+- Corrected and verified production feature flags so YouTube and parental control are locked for `free_ads`.
+- Documented temporary PHP maintenance pitfalls in `TROUBLESHOOTING.md`.
 
 ## In progress
 - None.
@@ -55,3 +74,9 @@ Goal:
 ## Remaining
 - Manual TV validation: focus style selection, consent D-pad scroll, YouTube player left/right focus, parental PIN popups, splash sound.
 - Manual TV validation: new focus color/effect combinations, update notification click, consent server reacceptance after version change, buffering watchdog anomaly logs.
+- Current block remaining:
+  - Manual TV validation: consent splash background and popup dimensions.
+  - Manual TV validation: parental settings persist after app restart and reset only when feature becomes unavailable for the active licence.
+  - Manual TV validation: Firestick text entry no longer flickers in Hidden keywords and other text fields.
+  - Manual TV validation: configured focus color/effect on header icons, Home cards, catalog cards/lists and YouTube.
+  - Manual TV validation: YouTube left-from-player focuses first visible suggestion after scroll, up goes to search, and ended video opens next suggestion.

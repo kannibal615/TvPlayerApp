@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.zIndex
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -55,10 +56,11 @@ fun TvCard(
     val shape = RoundedCornerShape(SmartVisionDimensions.CardRadius)
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
+    val focusStyle = LocalTvFocusStyle.current
 
     val border by animateColorAsState(
         targetValue = when {
-            focusState.isFocused -> SmartVisionColors.FocusWhite
+            focusState.isFocused -> focusStyle.accent
             selected -> accent
             else -> SmartVisionColors.Border
         },
@@ -93,7 +95,7 @@ fun TvCard(
             )
             .border(
                 BorderStroke(
-                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                    if (focusState.isFocused) focusStyle.borderWidth else SmartVisionDimensions.PanelBorder,
                     border,
                 ),
                 shape,

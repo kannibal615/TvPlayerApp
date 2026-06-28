@@ -2,8 +2,9 @@ package com.smartvision.svplayer.ui.navigation
 
 import android.app.Activity
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,7 +32,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -44,6 +47,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.smartvision.svplayer.BuildConfig
+import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
@@ -176,8 +180,10 @@ fun AppNavigation(
         }
         Unit
     }
-    LaunchedEffect(parentalControlAllowed, playerSettings.parentalControlEnabled, playerSettings.parentalPin, playerSettings.parentalKeywords) {
-        if (!parentalControlAllowed &&
+    LaunchedEffect(activationState.activated, appConfigState.loading, parentalControlAllowed, playerSettings.parentalControlEnabled, playerSettings.parentalPin, playerSettings.parentalKeywords) {
+        if (!appConfigState.loading &&
+            activationState.activated &&
+            !parentalControlAllowed &&
             (playerSettings.parentalControlEnabled || playerSettings.parentalPin.isNotBlank() || playerSettings.parentalKeywords != "adults; porn; xxx")
         ) {
             container.settingsRepository.resetParentalControl()
@@ -188,10 +194,23 @@ fun AppNavigation(
 
     if (appConfigState.consentRequired) {
         CompositionLocalProvider(LocalTvFocusStyle provides focusStyle) {
-            ConsentDialog(
-                consent = appConfigState.config.consent,
-                onAccept = appConfigViewModel::acceptConsent,
-            )
+            Box(Modifier.fillMaxSize()) {
+                Image(
+                    painter = painterResource(R.drawable.smartvision_splash_bg),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0x99020714)),
+                )
+                ConsentDialog(
+                    consent = appConfigState.config.consent,
+                    onAccept = appConfigViewModel::acceptConsent,
+                )
+            }
         }
         return
     }
