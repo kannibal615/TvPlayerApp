@@ -96,6 +96,7 @@ import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
+import com.smartvision.svplayer.data.behavior.BehaviorContent
 import com.smartvision.svplayer.data.monetization.IdleVastAdLoader
 import com.smartvision.svplayer.data.monetization.IdleVastCreative
 import com.smartvision.svplayer.data.monetization.MonetizationStatus
@@ -185,6 +186,7 @@ fun LiveTvScreen(
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstChannelFocusRequester = remember { FocusRequester() }
     val firstPreviewActionFocusRequester = remember { FocusRequester() }
+    val behaviorScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
     var categorySearchQuery by remember { mutableStateOf("") }
     var contentSearchQuery by remember { mutableStateOf("") }
@@ -312,6 +314,19 @@ fun LiveTvScreen(
                     contentSearchQuery = contentSearchQuery,
                     onCategory = { category ->
                         if (inputReady) {
+                            container.behaviorReporter.reportAsync(
+                                behaviorScope,
+                                "CATEGORY_OPENED",
+                                BehaviorContent(
+                                    contentType = "LIVE_TV",
+                                    contentId = category.id,
+                                    title = category.label,
+                                    categoryId = category.id,
+                                    categoryLabel = category.label,
+                                    sourceScreen = "LIVE",
+                                    engagementScore = 30,
+                                ),
+                            )
                             viewModel.selectCategory(category)
                         }
                     },
@@ -333,6 +348,11 @@ fun LiveTvScreen(
                         if (inputReady) {
                             val openFullPlayer = viewModel.activateChannel(channel)
                             if (openFullPlayer) {
+                                container.behaviorReporter.reportAsync(
+                                    behaviorScope,
+                                    "CONTENT_OPENED",
+                                    channel.toBehaviorContent(state.selectedCategory?.label),
+                                )
                                 onWatch(channel.streamId)
                             }
                         }
@@ -355,10 +375,26 @@ fun LiveTvScreen(
                     firstActionFocusRequester = firstPreviewActionFocusRequester,
                     onWatch = {
                         if (inputReady) {
-                            state.selectedChannel?.streamId?.let(onWatch)
+                            state.selectedChannel?.let { channel ->
+                                container.behaviorReporter.reportAsync(
+                                    behaviorScope,
+                                    "CONTENT_OPENED",
+                                    channel.toBehaviorContent(state.selectedCategory?.label),
+                                )
+                                onWatch(channel.streamId)
+                            }
                         }
                     },
-                    onFavorite = { state.selectedChannel?.let(viewModel::toggleFavorite) },
+                    onFavorite = {
+                        state.selectedChannel?.let { channel ->
+                            container.behaviorReporter.reportAsync(
+                                behaviorScope,
+                                if (channel.isFavorite) "FAVORITE_REMOVED" else "FAVORITE_ADDED",
+                                channel.toBehaviorContent(state.selectedCategory?.label),
+                            )
+                            viewModel.toggleFavorite(channel)
+                        }
+                    },
                     modifier = Modifier
                         .weight(0.34f)
                         .fillMaxHeight(),
@@ -2000,3 +2036,15 @@ private object LiveTvDimens {
     val CategoryRowHeight = 42.dp
     val ChannelRowHeight = 46.dp
 }
+
+private fun LiveTvChannel.toBehaviorContent(categoryLabel: String?): BehaviorContent =
+    BehaviorContent(
+        contentType = "LIVE_TV",
+        contentId = streamId.toString(),
+        title = name,
+        categoryLabel = categoryLabel,
+        sourceScreen = "LIVE",
+        engagementScore = 45,
+        tags = listOfNotNull("live", if (isFavorite) "favorite" else null),
+        context = mapOf("number" to number.toString()),
+    )

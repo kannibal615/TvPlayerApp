@@ -1,6 +1,6 @@
 # Android Architecture, Build et Release
 
-Derniere mise a jour: 2026-06-29.
+Derniere mise a jour: 2026-06-30.
 
 ## 1. Objectif
 
@@ -10,7 +10,7 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
 
-Gradle local constate le 2026-06-29:
+Gradle local constate le 2026-06-30:
 - `versionCode = 53`
 - `versionName = "0.1.50"`
 - `compileSdk = 36`
@@ -38,7 +38,7 @@ Points d'entree:
 
 Build:
 - `.\gradlew.bat assembleRelease`
-- timeout 15 minutes minimum pour release;
+- timeout 20 minutes minimum pour release;
 - pas de `compileDebugKotlin` ni `testDebugUnitTest` avant release sauf demande explicite.
 
 Deploy:
@@ -123,4 +123,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-06-29: migration vers documentation specialisee.
-- 2026-06-29: ajout de la regle release: bypass debug/test et timeout 15 minutes.
+- 2026-06-29: ajout de la regle release: bypass debug/test et timeout 20 minutes.

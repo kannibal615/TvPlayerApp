@@ -15,11 +15,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 }
 
 try {
-    $stored = behavior_store_event(db(), read_json_input());
+    $stored = behavior_store_events(db(), read_json_input());
     json_response([
         'success' => true,
-        'event_id' => $stored['id'],
-        'event_type' => $stored['eventType'],
+        'stored_count' => $stored['count'],
+        'events' => $stored['events'],
     ]);
 } catch (InvalidArgumentException $exception) {
     json_response([

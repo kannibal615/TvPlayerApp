@@ -6,6 +6,12 @@ require_once dirname(__DIR__) . '/api/commerce.php';
 require_once dirname(__DIR__) . '/api/mail_service.php';
 require_once dirname(__DIR__) . '/api/ads_service.php';
 require_once dirname(__DIR__) . '/api/anomaly_service.php';
+$behaviorService = dirname(__DIR__) . '/api/behavior_service.php';
+if (is_file($behaviorService)) {
+    require_once $behaviorService;
+} else {
+    error_log('SmartVision behavior service missing.');
+}
 $deviceDiagnosticsService = dirname(__DIR__) . '/api/device_diagnostics_service.php';
 if (is_file($deviceDiagnosticsService)) {
     require_once $deviceDiagnosticsService;
@@ -39,6 +45,9 @@ sv_mail_ensure_schema($pdo);
 commerce_ensure_payment_schema($pdo);
 ads_ensure_schema($pdo);
 anomaly_ensure_schema($pdo);
+if (function_exists('behavior_ensure_schema')) {
+    behavior_ensure_schema($pdo);
+}
 $page = admin_current_page($_POST['redirect_page'] ?? $_GET['page'] ?? 'overview');
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (!verify_csrf($_POST['csrf_token'] ?? null)) {
@@ -96,6 +105,7 @@ $emailAdmin = admin_load_email_admin($pdo);
 $adsPeriod = ads_period_days($_GET['ads_period'] ?? 1);
 $adsAdmin = $page === 'ads' ? admin_load_ads_admin($pdo, $adsPeriod) : [];
 $anomaliesAdmin = $page === 'anomalies' ? admin_load_anomalies_admin($pdo) : [];
+$behaviorAdmin = $page === 'segments' ? admin_load_behavior_admin($pdo) : [];
 $appConfigAdmin = $page === 'features' ? admin_load_app_config_admin($pdo) : [];
 $diagnosticsAdmin = $page === 'diagnostics' ? admin_load_diagnostics_admin($pdo) : [];
 $flash = consume_admin_flash();
@@ -130,6 +140,7 @@ render_admin_dashboard(
     $emailAdmin,
     $adsAdmin,
     $anomaliesAdmin,
+    $behaviorAdmin,
     $appConfigAdmin,
     $diagnosticsAdmin,
     $flash,
@@ -141,7 +152,7 @@ render_admin_dashboard(
 function admin_current_page(mixed $page): string
 {
     $page = is_string($page) ? $page : 'overview';
-    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'payments', 'emails', 'ads', 'anomalies', 'features', 'devices', 'diagnostics', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
+    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'payments', 'emails', 'ads', 'segments', 'anomalies', 'features', 'devices', 'diagnostics', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
         ? $page
         : 'overview';
 }
@@ -1551,6 +1562,7 @@ function admin_load_devices(PDO $pdo, string $query, int $page = 1): array
             (string) $row['device_id'],
             (string) ($row['public_device_code'] ?? '')
         );
+        $row['behavior'] = admin_load_device_behavior($pdo, (string) $row['device_id']);
     }
     unset($row);
 
@@ -1558,6 +1570,46 @@ function admin_load_devices(PDO $pdo, string $query, int $page = 1): array
         'rows' => $rows,
         'pagination' => admin_pagination($page, $perPage, $total, 'devices_page'),
     ];
+}
+
+function admin_load_device_behavior(PDO $pdo, string $deviceId): array
+{
+    if (!function_exists('behavior_admin_device_analysis') || $deviceId === '') {
+        return [];
+    }
+    try {
+        return behavior_admin_device_analysis($pdo, $deviceId);
+    } catch (Throwable $exception) {
+        error_log('SmartVision admin behavior device analysis failed.');
+        return [];
+    }
+}
+
+function admin_load_behavior_admin(PDO $pdo): array
+{
+    if (!function_exists('behavior_admin_dashboard')) {
+        return [
+            'available' => false,
+            'message' => 'Service comportement non deploye.',
+            'summary' => [],
+            'segments' => [],
+            'content' => [],
+            'recent_events' => [],
+        ];
+    }
+    try {
+        return behavior_admin_dashboard($pdo);
+    } catch (Throwable $exception) {
+        error_log('SmartVision admin behavior dashboard failed.');
+        return [
+            'available' => false,
+            'message' => 'Analyse comportementale indisponible.',
+            'summary' => [],
+            'segments' => [],
+            'content' => [],
+            'recent_events' => [],
+        ];
+    }
 }
 
 function admin_load_device_diagnostics(PDO $pdo, string $deviceId, string $publicDeviceCode = ''): array
@@ -1986,6 +2038,7 @@ function render_admin_dashboard(
     array $emailAdmin,
     array $adsAdmin,
     array $anomaliesAdmin,
+    array $behaviorAdmin,
     array $appConfigAdmin,
     array $diagnosticsAdmin,
     ?array $flash,
@@ -2002,6 +2055,7 @@ function render_admin_dashboard(
         'payments' => ['Paiements', 'Packs Gammal Tech et transactions en attente de validation.'],
         'emails' => ['Emails', 'Configuration SMTP, templates transactionnels et journal des envois.'],
         'ads' => ['Publicites', 'Gestion des publicites video du player SmartVision.'],
+        'segments' => ['Segmentation', 'Analyse comportementale et segments utilisateurs pour ciblage publicitaire.'],
         'anomalies' => ['Anomalies', 'Crashs et erreurs remontes par les applications TV.'],
         'features' => ['Fonctionnalites', 'Droits par type de licence et consentement TV.'],
         'devices' => ['Appareils', 'TV associees, essais, licences et configuration Xtream.'],
@@ -2047,6 +2101,7 @@ function render_admin_dashboard(
         <?php endif; ?>
 
         <?php if ($page === 'ads'): admin_render_ads_page($adsAdmin); endif; ?>
+        <?php if ($page === 'segments'): admin_render_behavior_segments_page($behaviorAdmin); endif; ?>
         <?php if ($page === 'anomalies'): admin_render_anomalies_page($anomaliesAdmin); endif; ?>
         <?php if ($page === 'features'): admin_render_features_page($appConfigAdmin); endif; ?>
         <?php if ($page === 'diagnostics'): admin_render_diagnostics_page($diagnosticsAdmin); endif; ?>
@@ -2674,6 +2729,63 @@ function admin_render_anomalies_page(array $anomaliesAdmin): void
     <?php
 }
 
+function admin_render_behavior_segments_page(array $behaviorAdmin): void
+{
+    $available = (bool) ($behaviorAdmin['available'] ?? false);
+    $message = (string) ($behaviorAdmin['message'] ?? '');
+    $summary = is_array($behaviorAdmin['summary'] ?? null) ? $behaviorAdmin['summary'] : [];
+    $segments = is_array($behaviorAdmin['segments'] ?? null) ? $behaviorAdmin['segments'] : [];
+    $content = is_array($behaviorAdmin['content'] ?? null) ? $behaviorAdmin['content'] : [];
+    $recentEvents = is_array($behaviorAdmin['recent_events'] ?? null) ? $behaviorAdmin['recent_events'] : [];
+    ?>
+    <section class="admin-kpis behavior-kpis" aria-label="Segmentation utilisateurs">
+        <?= admin_kpi('Evenements tracking', number_format((int) ($summary['total_events'] ?? 0), 0, ',', ' '), 'blue') ?>
+        <?= admin_kpi('Appareils trackes', number_format((int) ($summary['tracked_devices'] ?? 0), 0, ',', ' '), 'cyan') ?>
+        <?= admin_kpi('Actifs 7 jours', number_format((int) ($summary['active_7d'] ?? 0), 0, ',', ' '), 'green') ?>
+        <?= admin_kpi('Engagement moyen', number_format((float) ($summary['avg_engagement'] ?? 0), 1, ',', ' ') . ' / 100', 'orange') ?>
+    </section>
+    <?php if (!$available): ?><div class="admin-notice error"><?= admin_escape($message ?: 'Segmentation indisponible.') ?></div><?php endif; ?>
+    <div class="behavior-dashboard-grid">
+        <section class="admin-panel behavior-panel">
+            <div class="admin-panel-heading"><div><h2>Segments actifs</h2><p>Segments deduits automatiquement des usages 30 jours.</p></div><a class="admin-button compact secondary" href="/admin/?page=segments">Actualiser</a></div>
+            <div class="admin-table-wrap"><table><thead><tr><th>Segment</th><th>Groupe</th><th>Appareils</th><th>Score moyen</th><th>Dernier signal</th></tr></thead><tbody>
+                <?php if ($segments === []): ?><tr><td colspan="5" class="admin-empty">Aucun segment calcule pour le moment.</td></tr><?php endif; ?>
+                <?php foreach ($segments as $segment): ?><tr>
+                    <td><strong><?= admin_escape((string) ($segment['segment_label'] ?? '-')) ?></strong><small><?= admin_escape((string) ($segment['segment_key'] ?? '-')) ?></small></td>
+                    <td><span class="admin-state <?= admin_escape(strtolower((string) ($segment['segment_group'] ?? 'content'))) ?>"><?= admin_escape((string) ($segment['segment_group'] ?? '-')) ?></span></td>
+                    <td><?= number_format((int) ($segment['devices'] ?? 0), 0, ',', ' ') ?></td>
+                    <td><?= admin_escape((string) ($segment['avg_score'] ?? '0')) ?></td>
+                    <td><?= admin_escape((string) ($segment['last_seen_at'] ?? '-')) ?></td>
+                </tr><?php endforeach; ?>
+            </tbody></table></div>
+        </section>
+        <section class="admin-panel behavior-panel">
+            <div class="admin-panel-heading"><div><h2>Types de contenus</h2><p>Repartition des signaux sur les 30 derniers jours.</p></div></div>
+            <ul class="behavior-breakdown-list">
+                <?php if ($content === []): ?><li class="muted">Aucun contenu tracke.</li><?php endif; ?>
+                <?php foreach ($content as $row): ?><li><span><?= admin_escape((string) ($row['content_type'] ?? 'UNKNOWN')) ?></span><strong><?= number_format((int) ($row['events'] ?? 0), 0, ',', ' ') ?></strong><small><?= number_format((int) ($row['devices'] ?? 0), 0, ',', ' ') ?> appareil(s)</small></li><?php endforeach; ?>
+            </ul>
+        </section>
+    </div>
+    <section class="admin-panel">
+        <div class="admin-panel-heading"><div><h2>Evenements comportementaux recents</h2><p>Derniers signaux recus depuis les applications TV.</p></div></div>
+        <div class="admin-table-wrap"><table><thead><tr><th>Date</th><th>Event</th><th>Contenu</th><th>Categorie</th><th>Source</th><th>Plateforme</th><th>App</th><th>Engagement</th></tr></thead><tbody>
+            <?php if ($recentEvents === []): ?><tr><td colspan="8" class="admin-empty">Aucun evenement recent.</td></tr><?php endif; ?>
+            <?php foreach ($recentEvents as $event): ?><tr>
+                <td><?= admin_escape((string) ($event['created_at'] ?? '-')) ?></td>
+                <td><strong><?= admin_escape((string) ($event['event_type'] ?? '-')) ?></strong></td>
+                <td><?= admin_escape((string) ($event['content_type'] ?? '-')) ?></td>
+                <td><?= admin_escape((string) ($event['category_label'] ?? '-')) ?></td>
+                <td><?= admin_escape((string) ($event['source_screen'] ?? '-')) ?></td>
+                <td><?= admin_escape((string) ($event['platform'] ?? '-')) ?></td>
+                <td><?= admin_escape((string) ($event['app_version'] ?? '-')) ?></td>
+                <td><?= admin_escape((string) ($event['engagement_score'] ?? '-')) ?></td>
+            </tr><?php endforeach; ?>
+        </tbody></table></div>
+    </section>
+    <?php
+}
+
 function admin_render_diagnostics_page(array $diagnosticsAdmin): void
 {
     $rows = $diagnosticsAdmin['rows'] ?? [];
@@ -2944,6 +3056,11 @@ function admin_render_device_modal(array $device): void
 {
     $deviceId = (string) $device['device_id'];
     $modalId = 'device-modal-' . preg_replace('/[^a-zA-Z0-9_-]/', '-', $deviceId);
+    $behavior = is_array($device['behavior'] ?? null) ? $device['behavior'] : [];
+    $segments = is_array($behavior['segments'] ?? null) ? $behavior['segments'] : [];
+    $recentEvents = is_array($behavior['recent_events'] ?? null) ? $behavior['recent_events'] : [];
+    $contentBreakdown = is_array($behavior['content_breakdown'] ?? null) ? $behavior['content_breakdown'] : [];
+    $categoryBreakdown = is_array($behavior['category_breakdown'] ?? null) ? $behavior['category_breakdown'] : [];
     ?><div class="admin-modal" id="<?= admin_escape($modalId) ?>" role="dialog" aria-modal="true" aria-labelledby="<?= admin_escape($modalId) ?>-title" hidden>
         <div class="admin-modal-backdrop" data-modal-close></div>
         <section class="admin-modal-card">
@@ -2951,25 +3068,82 @@ function admin_render_device_modal(array $device): void
                 <div><h2 id="<?= admin_escape($modalId) ?>-title"><?= admin_escape($device['public_device_code'] ?: '------') ?> - <?= admin_escape($device['device_name'] ?: 'Android TV') ?></h2><p class="mono"><?= admin_escape($deviceId) ?></p></div>
                 <button type="button" class="admin-modal-close" data-modal-close>Fermer</button>
             </header>
-            <div class="admin-detail-grid">
-                <div><span>Etat</span><strong><span class="admin-state <?= admin_escape($device['status']) ?>"><?= admin_escape($device['status']) ?></span></strong></div>
-                <div><span>Licence</span><strong><?= admin_escape($device['license_status'] ?: '-') ?></strong></div>
-                <div><span>Xtream</span><strong><?= admin_escape($device['xtream_status'] ?: '-') ?></strong></div>
-                <div><span>Ad views</span><strong><?= number_format((int) ($device['ad_views'] ?? 0), 0, ',', ' ') ?></strong></div>
-                <div><span>Derniere pub vue</span><strong><?= admin_escape($device['last_ad_view_at'] ?: '-') ?></strong></div>
-                <div><span>App version</span><strong><?= admin_escape($device['app_version'] ?: '-') ?></strong></div>
-                <div><span>Premiere vue</span><strong><?= admin_escape($device['first_seen_at'] ?: $device['created_at'] ?: '-') ?></strong></div>
-                <div><span>Derniere activite</span><strong><?= admin_escape($device['last_seen_at'] ?: '-') ?></strong></div>
-                <div><span>Expiration</span><strong><?= admin_escape($device['expires_at'] ?: '-') ?></strong></div>
-                <div><span>Pays / UA</span><strong><?= admin_escape($device['country_code'] ?: 'N/D') ?> / <?= admin_escape($device['last_user_agent'] ? 'present' : '-') ?></strong></div>
+            <nav class="admin-modal-tabs" aria-label="Details appareil">
+                <button type="button" class="active" data-tab-target="<?= admin_escape($modalId) ?>-summary">Synthese</button>
+                <button type="button" data-tab-target="<?= admin_escape($modalId) ?>-tracking">Tracking</button>
+                <button type="button" data-tab-target="<?= admin_escape($modalId) ?>-analysis">Analyse</button>
+                <button type="button" data-tab-target="<?= admin_escape($modalId) ?>-diagnostics">Diagnostics</button>
+                <button type="button" data-tab-target="<?= admin_escape($modalId) ?>-history">Historique</button>
+            </nav>
+            <div class="admin-tab-panel active" id="<?= admin_escape($modalId) ?>-summary">
+                <div class="admin-detail-grid">
+                    <div><span>Etat</span><strong><span class="admin-state <?= admin_escape($device['status']) ?>"><?= admin_escape($device['status']) ?></span></strong></div>
+                    <div><span>Licence</span><strong><?= admin_escape($device['license_status'] ?: '-') ?></strong></div>
+                    <div><span>Xtream</span><strong><?= admin_escape($device['xtream_status'] ?: '-') ?></strong></div>
+                    <div><span>Ad views</span><strong><?= number_format((int) ($device['ad_views'] ?? 0), 0, ',', ' ') ?></strong></div>
+                    <div><span>Derniere pub vue</span><strong><?= admin_escape($device['last_ad_view_at'] ?: '-') ?></strong></div>
+                    <div><span>App version</span><strong><?= admin_escape($device['app_version'] ?: '-') ?></strong></div>
+                    <div><span>Premiere vue</span><strong><?= admin_escape($device['first_seen_at'] ?: $device['created_at'] ?: '-') ?></strong></div>
+                    <div><span>Derniere activite</span><strong><?= admin_escape($device['last_seen_at'] ?: '-') ?></strong></div>
+                    <div><span>Expiration</span><strong><?= admin_escape($device['expires_at'] ?: '-') ?></strong></div>
+                    <div><span>Pays / UA</span><strong><?= admin_escape($device['country_code'] ?: 'N/D') ?> / <?= admin_escape($device['last_user_agent'] ? 'present' : '-') ?></strong></div>
+                </div>
+                <div class="admin-modal-columns single-row">
+                    <section><h3>Activation actuelle</h3><ul class="admin-detail-list"><li><strong><?= admin_escape($device['activation_type'] ?: '-') ?></strong><span>Code <?= admin_escape($device['activation_code'] ?: '-') ?> - type <?= admin_escape($device['license_type'] ?: '-') ?></span><small>Duree <?= admin_escape((string) ($device['duration_days'] ?: '-')) ?> jours - playlist <?= (int) $device['playlist_configured'] === 1 ? 'configuree' : 'absente' ?></small></li></ul></section>
+                </div>
             </div>
-            <div class="admin-modal-columns">
-                <section><h3>Activation actuelle</h3><ul class="admin-detail-list"><li><strong><?= admin_escape($device['activation_type'] ?: '-') ?></strong><span>Code <?= admin_escape($device['activation_code'] ?: '-') ?> - type <?= admin_escape($device['license_type'] ?: '-') ?></span><small>Duree <?= admin_escape((string) ($device['duration_days'] ?: '-')) ?> jours - playlist <?= (int) $device['playlist_configured'] === 1 ? 'configuree' : 'absente' ?></small></li></ul></section>
-                <?= admin_render_device_diagnostics((array) ($device['diagnostics'] ?? []), $device) ?>
-                <section><h3>Historique</h3><?php if (($device['history'] ?? []) === []): ?><p class="muted">Aucun historique.</p><?php endif; ?><ul class="admin-detail-list"><?php foreach (($device['history'] ?? []) as $history): ?><li><strong><?= admin_escape($history['activation_type'] ?: '-') ?> - <?= admin_escape($history['status'] ?: '-') ?></strong><span>Code <?= admin_escape($history['code_hint'] ?: '-') ?> / <?= admin_escape($history['license_type'] ?: '-') ?></span><small><?= admin_escape($history['starts_at'] ?: $history['created_at'] ?: '-') ?> -> <?= admin_escape($history['expires_at'] ?: '-') ?></small></li><?php endforeach; ?></ul></section>
+            <div class="admin-tab-panel" id="<?= admin_escape($modalId) ?>-tracking">
+                <div class="admin-detail-grid">
+                    <div><span>Evenements 30j</span><strong><?= number_format((int) ($behavior['total_events'] ?? 0), 0, ',', ' ') ?></strong></div>
+                    <div><span>Jours actifs</span><strong><?= number_format((int) ($behavior['active_days'] ?? 0), 0, ',', ' ') ?></strong></div>
+                    <div><span>Lectures</span><strong><?= number_format((int) ($behavior['playback_starts'] ?? 0), 0, ',', ' ') ?></strong></div>
+                    <div><span>Termines</span><strong><?= number_format((int) ($behavior['playback_completed'] ?? 0), 0, ',', ' ') ?></strong></div>
+                    <div><span>Favoris</span><strong><?= number_format((int) ($behavior['favorite_events'] ?? 0), 0, ',', ' ') ?></strong></div>
+                    <div><span>Recherches</span><strong><?= number_format((int) ($behavior['searches'] ?? 0), 0, ',', ' ') ?></strong></div>
+                    <div><span>Engagement</span><strong><?= number_format((float) ($behavior['avg_engagement'] ?? 0), 1, ',', ' ') ?> / 100</strong></div>
+                    <div><span>Dernier event</span><strong><?= admin_escape((string) ($behavior['last_event_at'] ?? '-')) ?></strong></div>
+                </div>
+                <div class="admin-modal-columns">
+                    <section><h3>Contenus consommes</h3><?= admin_render_behavior_breakdown($contentBreakdown) ?></section>
+                    <section><h3>Categories detectees</h3><?= admin_render_behavior_breakdown($categoryBreakdown) ?></section>
+                </div>
+                <section class="device-tracking-events"><h3>Evenements recents</h3><div class="admin-table-wrap"><table><thead><tr><th>Date</th><th>Event</th><th>Contenu</th><th>Categorie</th><th>Source</th><th>Score</th></tr></thead><tbody>
+                    <?php if ($recentEvents === []): ?><tr><td colspan="6" class="admin-empty">Aucun tracking recu.</td></tr><?php endif; ?>
+                    <?php foreach ($recentEvents as $event): ?><tr><td><?= admin_escape((string) ($event['created_at'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['event_type'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['content_type'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['category_label'] ?? $event['category_id'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['source_screen'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['engagement_score'] ?? '-')) ?></td></tr><?php endforeach; ?>
+                </tbody></table></div></section>
+            </div>
+            <div class="admin-tab-panel" id="<?= admin_escape($modalId) ?>-analysis">
+                <div class="behavior-segment-grid">
+                    <?php if ($segments === []): ?><p class="muted">Aucun segment comportemental calcule pour cet appareil.</p><?php endif; ?>
+                    <?php foreach ($segments as $segment): ?><article class="behavior-segment-card">
+                        <span><?= admin_escape((string) ($segment['segment_group'] ?? '-')) ?></span>
+                        <strong><?= admin_escape((string) ($segment['segment_label'] ?? '-')) ?></strong>
+                        <meter min="0" max="100" value="<?= (int) ($segment['score'] ?? 0) ?>"></meter>
+                        <small>Score <?= (int) ($segment['score'] ?? 0) ?> - confiance <?= (int) ($segment['confidence'] ?? 0) ?></small>
+                        <p><?= admin_escape((string) ($segment['evidence'] ?? '')) ?></p>
+                    </article><?php endforeach; ?>
+                </div>
+            </div>
+            <div class="admin-tab-panel" id="<?= admin_escape($modalId) ?>-diagnostics">
+                <div class="admin-modal-columns single-row"><?= admin_render_device_diagnostics((array) ($device['diagnostics'] ?? []), $device) ?></div>
+            </div>
+            <div class="admin-tab-panel" id="<?= admin_escape($modalId) ?>-history">
+                <div class="admin-modal-columns single-row">
+                    <section><h3>Historique</h3><?php if (($device['history'] ?? []) === []): ?><p class="muted">Aucun historique.</p><?php endif; ?><ul class="admin-detail-list"><?php foreach (($device['history'] ?? []) as $history): ?><li><strong><?= admin_escape($history['activation_type'] ?: '-') ?> - <?= admin_escape($history['status'] ?: '-') ?></strong><span>Code <?= admin_escape($history['code_hint'] ?: '-') ?> / <?= admin_escape($history['license_type'] ?: '-') ?></span><small><?= admin_escape($history['starts_at'] ?: $history['created_at'] ?: '-') ?> -> <?= admin_escape($history['expires_at'] ?: '-') ?></small></li><?php endforeach; ?></ul></section>
+                </div>
             </div>
         </section>
     </div><?php
+}
+
+function admin_render_behavior_breakdown(array $rows): string
+{
+    if ($rows === []) {
+        return '<p class="muted">Aucune donnee.</p>';
+    }
+    ob_start();
+    ?><ul class="behavior-breakdown-list compact"><?php foreach ($rows as $row): ?><li><span><?= admin_escape((string) ($row['label'] ?? 'UNKNOWN')) ?></span><strong><?= number_format((int) ($row['count'] ?? 0), 0, ',', ' ') ?></strong></li><?php endforeach; ?></ul><?php
+    return (string) ob_get_clean();
 }
 
 function admin_render_device_diagnostics(array $diagnostics, array $device): string

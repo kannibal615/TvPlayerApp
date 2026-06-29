@@ -8,7 +8,7 @@ Ce fichier est le point d'entree court pour les agents IA. Lire ce fichier avant
 
 SmartVision / SVPlayer est une application Android TV native Kotlin/Compose pour lire les contenus Xtream configures par l'utilisateur. Le projet contient aussi un backend PHP/MySQL sur `smartvisions.net`, un site public, un espace compte, un panel admin, des API d'activation, des API de configuration, de tracking et de mise a jour APK.
 
-Etat technique constate le 2026-06-29:
+Etat technique constate le 2026-06-30:
 - applicationId: `com.smartvision.svplayer`
 - version locale Gradle: `0.1.50` / `versionCode 53`
 - entree TV: `SplashActivity -> MainActivity -> ui/navigation/AppNavigation.kt`
@@ -36,12 +36,15 @@ Lire les fichiers suivants si la demande concerne:
 - reprise de projet
 - methode agent IA
 - documentation
+- auto-amelioration
+- drift documentaire
 - definition de termine
 - sources a lire avant intervention
 
 Fichiers detailles:
 - `docs/ai-knowledge/PROJECT_OVERVIEW.md`
 - `docs/ai-knowledge/AGENT_WORKFLOW.md`
+- `docs/ai-knowledge/CONTINUOUS_IMPROVEMENT.md`
 - `docs/ai-knowledge/LEGACY_SOURCES.md`
 
 Dependances:
@@ -132,6 +135,8 @@ Lire les fichiers suivants si la demande concerne:
 - FocusRequester
 - navigation telecommande
 - Home
+- continue_watching
+- trending
 - Live TV layout
 - Movies grid
 - Series grid
@@ -283,6 +288,7 @@ Fichiers detailles:
 - `docs/ai-knowledge/LEGACY_SOURCES.md`
 - `docs/ai-knowledge/MIGRATION_REPORT.md`
 - `docs/ai-knowledge/KNOWLEDGE_SYSTEM_TEST_REPORT.md`
+- `docs/ai-knowledge/CONTINUOUS_IMPROVEMENT.md`
 - `docs/ai-knowledge/decisions/2026-06-29-ai-knowledge-router.md`
 - `docs/ai-knowledge/decisions/2026-06-29-native-tv-player.md`
 - `docs/ai-knowledge/decisions/2026-06-29-documentation-update-policy.md`

@@ -79,6 +79,20 @@
         button.addEventListener('click', () => closeModal(button.closest('.admin-modal')));
     });
 
+    document.querySelectorAll('[data-tab-target]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const modal = button.closest('.admin-modal');
+            const target = document.getElementById(button.dataset.tabTarget || '');
+            if (!modal || !target) return;
+            modal.querySelectorAll('[data-tab-target]').forEach((tab) => {
+                tab.classList.toggle('active', tab === button);
+            });
+            modal.querySelectorAll('.admin-tab-panel').forEach((panel) => {
+                panel.classList.toggle('active', panel === target);
+            });
+        });
+    });
+
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
             document.querySelectorAll('.admin-modal:not([hidden])').forEach(closeModal);

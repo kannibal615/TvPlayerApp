@@ -10,15 +10,15 @@ Documenter les modes d'acces monetises, le consentement TV, les feature flags, l
 
 L'application distingue premium, essai, essai expire et gratuit avec pubs. Les fonctionnalites peuvent etre autorisees selon le statut via `api/app_config.php`. Le mode gratuit avec pubs utilise une logique player-only avec configuration distante et fallback de lecture si la pub echoue.
 
-Le tracking couvre:
+Le tracking actuellement implemente couvre:
 - pub: `ads_events`;
-- comportement: `app_behavior_events`;
+- comportement YouTube: `app_behavior_events`;
 - anomalies: endpoint `api/app/anomaly-events.php`;
 - diagnostics device: `api/app/device-diagnostics.php`;
 - consentement TV: `app_consent_receipts`.
 
 Spec d'evolution:
-- `docs/ai-knowledge/features/user-behavior-segmentation-ads-v1.md` formalise la V1 de tracking comportemental, segmentation utilisateur et ciblage publicitaire.
+- `docs/ai-knowledge/features/user-behavior-segmentation-ads-v1.md` formalise une cible future V1 de tracking comportemental generique, segmentation utilisateur et ciblage publicitaire. Elle ne doit pas etre lue comme une implementation deja complete.
 
 ## 3. Workflow utilisateur
 
@@ -80,12 +80,19 @@ Backend:
 Endpoints:
 - `GET api/app_config.php`
 - `POST api/app_config.php` pour consent receipt
-- `GET api/app/ads-config.php`
-- `GET api/app/ads-vast.php`
-- `POST api/app/ads-events.php`
-- `POST api/app/anomaly-events.php`
-- `POST api/app/behavior-events.php`
-- `POST api/app/device-diagnostics.php`
+- Android appelle `GET api/app/ads-config`, reecrit vers `api/app/ads-config.php`
+- `vastTagUrl` expose par ads-config pointe vers `api/app/ads-vast`, reecrit vers `api/app/ads-vast.php`
+- Android appelle `POST api/app/ads-events`, reecrit vers `api/app/ads-events.php`
+- Android appelle `POST api/app/anomaly-events`, reecrit vers `api/app/anomaly-events.php`
+- Android appelle `POST api/app/behavior-events`, reecrit vers `api/app/behavior-events.php`
+- Android appelle actuellement `POST api/app/device-diagnostics.php` directement
+
+Evenements comportementaux actuellement acceptes cote serveur:
+- `VIDEO_OPENED`
+- `PLAYER_READY`
+- `PLAY_PAUSE`
+- `VIDEO_COMPLETED`
+- `SUGGESTION_OPENED`
 
 Tables ou settings:
 - `app_settings`
@@ -144,3 +151,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: ajout des mots-cles `ads-vast`, `app_feature_access`, `behavior-events`, `anomaly-events`.
 - 2026-06-30: ajout de la spec V1 segmentation utilisateur et ciblage publicitaire.
+- 2026-06-30: clarification etat actuel vs cible future, routes extensionless et exception `device-diagnostics.php`.

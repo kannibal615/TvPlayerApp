@@ -1,6 +1,6 @@
 # SmartVision Project Overview
 
-Derniere mise a jour: 2026-06-29.
+Derniere mise a jour: 2026-06-30.
 
 ## 1. Objectif
 
@@ -42,6 +42,8 @@ Routes actives principales:
 - `settings`
 - `profile`
 - `notifications`
+- `continue_watching`
+- `trending`
 - `player/{channelId}`
 - `movie_player/{movieId}`
 - `movie_detail/{movieId}`
@@ -50,7 +52,7 @@ Routes actives principales:
 
 ## 5. Etat local constate
 
-Lu dans `app/build.gradle.kts` le 2026-06-29:
+Lu dans `app/build.gradle.kts` le 2026-06-30:
 - `compileSdk = 36`
 - `minSdk = 23`
 - `targetSdk = 36`

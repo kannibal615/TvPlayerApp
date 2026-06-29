@@ -1,6 +1,6 @@
 # Activation, Licence, Essai et Xtream
 
-Derniere mise a jour: 2026-06-29.
+Derniere mise a jour: 2026-06-30.
 
 ## 1. Objectif
 
@@ -145,3 +145,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: version Gradle locale constatee `0.1.50` / `53`; verifier avant release.
+- 2026-06-30: flux `trial_pending_xtream` et endpoints activation reverifies contre le code.

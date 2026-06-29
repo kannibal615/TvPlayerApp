@@ -1,12 +1,14 @@
-# Spec V1 - Tracking Comportemental, Segmentation Utilisateur et Ciblage Publicitaire
+# Spec cible V1 - Tracking Comportemental, Segmentation Utilisateur et Ciblage Publicitaire
 
 Derniere mise a jour: 2026-06-30.
 
 ## 1. Objectif
 
-Construire une V1 simple et fiable pour comprendre les comportements utilisateurs dans SmartVision, produire des segments exploitables par le futur systeme publicitaire et garder une approche privacy-first.
+Construire une cible V1 simple et fiable pour comprendre les comportements utilisateurs dans SmartVision, produire des segments exploitables par le futur systeme publicitaire et garder une approche privacy-first.
 
 La V1 ne doit pas faire de machine learning. Elle doit collecter des evenements normalises, agreger des signaux par appareil, calculer des segments par regles et exposer ces segments au backend publicitaire.
+
+Important: ce document est une specification future. L'etat reel actuel est limite au tracking pub, anomalies, diagnostics et comportement YouTube.
 
 ## 2. Etat actuel
 
@@ -18,6 +20,13 @@ Deja en place:
 - historique local YouTube avec video, channel, category, tags et duree;
 - historique local de lecture, favoris, progression, categories Live/Films/Series;
 - donnees device: pays, version app, statut licence, essai, free_ads, xtream_status.
+
+Evenements comportementaux actuellement acceptes par `behavior_service.php`:
+- `VIDEO_OPENED`;
+- `PLAYER_READY`;
+- `PLAY_PAUSE`;
+- `VIDEO_COMPLETED`;
+- `SUGGESTION_OPENED`.
 
 Limites actuelles:
 - `app_behavior_events` est centre sur YouTube;
@@ -364,4 +373,3 @@ Ne pas faire en V1:
 - Quels segments sont autorises pour le ciblage publicitaire des le lancement ?
 - Le consentement actuel couvre-t-il explicitement la personnalisation publicitaire ?
 - Quelle duree de retention doit etre appliquee en production ?
-

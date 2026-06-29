@@ -10,6 +10,8 @@ import com.smartvision.svplayer.data.activation.ActivationApiService
 import com.smartvision.svplayer.data.activation.ActivationRepository
 import com.smartvision.svplayer.data.appconfig.AppConfigApiService
 import com.smartvision.svplayer.data.appconfig.AppConfigRepository
+import com.smartvision.svplayer.data.behavior.BehaviorApiService
+import com.smartvision.svplayer.data.behavior.BehaviorReporter
 import com.smartvision.svplayer.data.home.HomeSlidesApiService
 import com.smartvision.svplayer.data.home.HomeSlidesRepository
 import com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsApiService
@@ -113,6 +115,7 @@ class AppContainer(context: Context) {
     private val adsEventsApi = activationRetrofit.create(AdsEventsApiService::class.java)
     private val anomalyApi = activationRetrofit.create(AnomalyApiService::class.java)
     private val deviceDiagnosticsApi = activationRetrofit.create(DeviceDiagnosticsApiService::class.java)
+    private val behaviorApi = activationRetrofit.create(BehaviorApiService::class.java)
     private val youtubeBehaviorApi = activationRetrofit.create(YoutubeBehaviorApiService::class.java)
     private val youtubeRetrofit = Retrofit.Builder()
         .baseUrl("https://www.googleapis.com/youtube/v3/")
@@ -166,6 +169,10 @@ class AppContainer(context: Context) {
         activationRepository = activationRepository,
         api = deviceDiagnosticsApi,
         stateStore = startupStateStore,
+    )
+    val behaviorReporter = BehaviorReporter(
+        activationRepository = activationRepository,
+        api = behaviorApi,
     )
 
     val xtreamRepository: XtreamRepository = XtreamRepository(

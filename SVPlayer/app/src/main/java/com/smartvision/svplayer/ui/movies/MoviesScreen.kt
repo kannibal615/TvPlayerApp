@@ -41,6 +41,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -59,6 +60,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
+import com.smartvision.svplayer.data.behavior.BehaviorContent
 import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
 import com.smartvision.svplayer.ui.catalog.CatalogCategoryRow
 import com.smartvision.svplayer.ui.catalog.CatalogEmpty
@@ -110,6 +112,7 @@ fun MoviesScreen(
     val accounts by container.accountManager.accounts.collectAsStateWithLifecycle()
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstMovieFocusRequester = remember { FocusRequester() }
+    val behaviorScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
     var categorySearchQuery by remember { mutableStateOf("") }
     var contentSearchQuery by remember { mutableStateOf("") }
@@ -204,7 +207,22 @@ fun MoviesScreen(
                     onSearchQueryChange = { categorySearchQuery = it },
                     contentSearchQuery = contentSearchQuery,
                     onCategory = { category ->
-                        if (inputReady) viewModel.selectCategory(category)
+                        if (inputReady) {
+                            container.behaviorReporter.reportAsync(
+                                behaviorScope,
+                                "CATEGORY_OPENED",
+                                BehaviorContent(
+                                    contentType = "MOVIE",
+                                    contentId = category.id,
+                                    title = category.label,
+                                    categoryId = category.id,
+                                    categoryLabel = category.label,
+                                    sourceScreen = "MOVIES",
+                                    engagementScore = 30,
+                                ),
+                            )
+                            viewModel.selectCategory(category)
+                        }
                     },
                     modifier = Modifier
                         .weight(0.22f)
@@ -219,6 +237,11 @@ fun MoviesScreen(
                     onMovieFocused = viewModel::focusMovie,
                     onMovieClick = { movie ->
                         if (inputReady) {
+                            container.behaviorReporter.reportAsync(
+                                behaviorScope,
+                                "CONTENT_OPENED",
+                                movie.toBehaviorContent(),
+                            )
                             viewModel.activateMovie(movie)
                             onOpenMovieDetails(movie.streamId)
                         }
@@ -246,6 +269,18 @@ fun MoviesScreen(
         )
     }
 }
+
+private fun MovieItemUi.toBehaviorContent(): BehaviorContent =
+    BehaviorContent(
+        contentType = "MOVIE",
+        contentId = streamId.toString(),
+        title = title,
+        categoryLabel = categoryLabel,
+        sourceScreen = "MOVIES",
+        engagementScore = 40,
+        tags = listOfNotNull(containerExtension, year, rating, if (isFavorite) "favorite" else null),
+        context = mapOf("number" to number),
+    )
 
 @Composable
 private fun MovieCategoryList(

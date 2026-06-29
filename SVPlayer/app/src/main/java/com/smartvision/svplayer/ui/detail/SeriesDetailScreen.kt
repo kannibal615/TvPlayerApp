@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +56,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
+import com.smartvision.svplayer.data.behavior.BehaviorContent
 import com.smartvision.svplayer.data.models.XtreamSeriesDetails
 import com.smartvision.svplayer.data.models.XtreamSeriesEpisode
 import com.smartvision.svplayer.data.repository.UserContentRepository
@@ -224,6 +226,13 @@ fun SeriesDetailRoute(
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val behaviorScope = rememberCoroutineScope()
+    LaunchedEffect(state.seriesId, state.categoryLabel) {
+        container.behaviorReporter.report(
+            "CONTENT_OPENED",
+            state.toBehaviorContent("DETAIL"),
+        )
+    }
     SeriesDetailScreen(
         state = state,
         currentRoute = currentRoute,
@@ -239,8 +248,22 @@ fun SeriesDetailRoute(
         notificationBadgeCount = notificationBadgeCount,
         onRetry = viewModel::loadDetails,
         onSeason = viewModel::selectSeason,
-        onFavorite = viewModel::toggleFavorite,
-        onWatchEpisode = onWatchEpisode,
+        onFavorite = {
+            container.behaviorReporter.reportAsync(
+                behaviorScope,
+                if (state.isFavorite) "FAVORITE_REMOVED" else "FAVORITE_ADDED",
+                state.toBehaviorContent("DETAIL"),
+            )
+            viewModel.toggleFavorite()
+        },
+        onWatchEpisode = { episodeId ->
+            container.behaviorReporter.reportAsync(
+                behaviorScope,
+                "PLAYBACK_STARTED",
+                state.toBehaviorContent("DETAIL", episodeId),
+            )
+            onWatchEpisode(episodeId)
+        },
         modifier = modifier,
     )
 }
@@ -729,6 +752,23 @@ private fun XtreamSeriesEpisode.toDetailEpisode(): SeriesDetailEpisodeUi =
         title = title.cleanSeriesTitle(),
         duration = duration,
         plot = plot,
+    )
+
+private fun SeriesDetailUiState.toBehaviorContent(sourceScreen: String, episodeId: Int? = null): BehaviorContent =
+    BehaviorContent(
+        contentType = if (episodeId == null) "SERIES" else "EPISODE",
+        contentId = (episodeId ?: seriesId).toString(),
+        title = title,
+        categoryLabel = categoryLabel,
+        durationSeconds = episodeRunTime?.toLongOrNull()?.times(60),
+        engagementScore = if (loading) 25 else 45,
+        sourceScreen = sourceScreen,
+        tags = listOfNotNull(genre, year, "episodes_${episodes.size}"),
+        context = mapOf(
+            "series_id" to seriesId.toString(),
+            "season" to selectedSeason.toString(),
+            "rating" to (rating ?: "-"),
+        ),
     )
 
 private fun String.cleanSeriesTitle(): String =

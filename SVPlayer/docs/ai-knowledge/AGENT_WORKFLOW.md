@@ -1,6 +1,6 @@
 # Agent Workflow
 
-Derniere mise a jour: 2026-06-29.
+Derniere mise a jour: 2026-06-30.
 
 ## 1. Objectif
 
@@ -17,7 +17,8 @@ Definir la procedure obligatoire pour les futures interventions Codex sur SmartV
 7. Tester si possible et selon la demande.
 8. Mettre a jour les fichiers MD concernes.
 9. Ajouter une entree courte dans `docs/ai-knowledge/worklog/AI_CHANGELOG.md`.
-10. Signaler toute documentation insuffisante, obsolete ou contradictoire.
+10. Appliquer la boucle `docs/ai-knowledge/CONTINUOUS_IMPROVEMENT.md` si un ecart doc/code est trouve.
+11. Signaler toute documentation insuffisante, obsolete ou contradictoire.
 
 ## 3. Regles de lecture legacy
 
@@ -87,3 +88,19 @@ Ne jamais afficher:
 - tokens temporaires encore valides.
 
 Les docs doivent decrire les cles attendues sans valeur reelle.
+
+## 9. Auto-amelioration du Knowledge System
+
+Apres chaque intervention, verifier rapidement:
+- le root a-t-il route vers le bon domaine ?
+- le MD specialise contenait-il une information fausse, incomplete ou trop vague ?
+- un fichier de code important manquait-il dans la liste ?
+- une spec future a-t-elle ete confondue avec l'etat actuel ?
+
+Si oui:
+- corriger le MD specialise;
+- ajouter une entree courte dans `worklog/AI_CHANGELOG.md`;
+- creer une decision seulement si le choix est structurant;
+- marquer `A_VERIFIER` quand la preuve code/prod manque.
+
+Pour les audits plus larges, lire `docs/ai-knowledge/CONTINUOUS_IMPROVEMENT.md`.

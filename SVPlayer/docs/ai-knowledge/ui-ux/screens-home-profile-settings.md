@@ -1,6 +1,6 @@
 # Ecrans Home, Catalogues, Profile, Settings et YouTube
 
-Derniere mise a jour: 2026-06-29.
+Derniere mise a jour: 2026-06-30.
 
 ## 1. Objectif
 
@@ -13,6 +13,7 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 ## 3. Workflow utilisateur
 
 - Home: hero, cartes Live/Movies/Series, continue watching, tendances, notifications/profil/settings.
+- Home routes secondaires: `continue_watching` et `trending` via `HomeCollectionsScreen`.
 - Live TV: categories, chaines, apercu puis plein ecran.
 - Movies: grille de films, detail, lecture.
 - Series: grille, detail, saisons/episodes, lecture episode.
@@ -38,6 +39,8 @@ Etat:
 ## 5. Ecrans concernes
 
 - `HomeScreen.kt`
+- `HomeCollectionsScreen.kt`
+- `ContinueWatchingRow.kt`
 - `LiveTvScreen.kt`
 - `MoviesScreen.kt`
 - `SeriesScreen.kt`
@@ -119,3 +122,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: ajout du domaine YouTube et notifications dans le routage UI.
+- 2026-06-30: ajout des routes `continue_watching` et `trending`.

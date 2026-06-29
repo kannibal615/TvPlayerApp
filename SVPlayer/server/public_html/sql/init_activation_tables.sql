@@ -284,13 +284,77 @@ CREATE TABLE IF NOT EXISTS app_behavior_events (
     video_id_hash CHAR(64) NULL,
     channel_id VARCHAR(80) NULL,
     category_id VARCHAR(40) NULL,
+    category_label VARCHAR(120) NULL,
     tags VARCHAR(500) NULL,
+    content_type ENUM('LIVE_TV', 'MOVIE', 'SERIES', 'EPISODE', 'YOUTUBE', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    content_id_hash CHAR(64) NULL,
+    content_title_hash CHAR(64) NULL,
+    content_country VARCHAR(16) NULL,
+    content_language VARCHAR(16) NULL,
+    duration_seconds INT UNSIGNED NULL,
+    position_seconds INT UNSIGNED NULL,
+    engagement_score TINYINT UNSIGNED NULL,
+    source_screen VARCHAR(40) NULL,
+    context_json TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_behavior_created (created_at),
     INDEX idx_behavior_event_type (event_type),
     INDEX idx_behavior_channel (channel_id),
     INDEX idx_behavior_category (category_id),
+    INDEX idx_behavior_content_type (content_type),
+    INDEX idx_behavior_source (source_screen),
     INDEX idx_behavior_device_time (device_id_hash, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_type ENUM('LIVE_TV', 'MOVIE', 'SERIES', 'EPISODE', 'YOUTUBE', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN' AFTER tags;
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_id_hash CHAR(64) NULL AFTER content_type;
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_title_hash CHAR(64) NULL AFTER content_id_hash;
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS category_label VARCHAR(120) NULL AFTER category_id;
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_country VARCHAR(16) NULL AFTER category_label;
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_language VARCHAR(16) NULL AFTER content_country;
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS duration_seconds INT UNSIGNED NULL AFTER content_language;
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS position_seconds INT UNSIGNED NULL AFTER duration_seconds;
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS engagement_score TINYINT UNSIGNED NULL AFTER position_seconds;
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS source_screen VARCHAR(40) NULL AFTER engagement_score;
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS context_json TEXT NULL AFTER source_screen;
+
+CREATE TABLE IF NOT EXISTS user_behavior_daily (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    device_id_hash CHAR(64) NOT NULL,
+    activity_date DATE NOT NULL,
+    content_type ENUM('LIVE_TV', 'MOVIE', 'SERIES', 'EPISODE', 'YOUTUBE', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    events_count INT UNSIGNED NOT NULL DEFAULT 0,
+    playback_count INT UNSIGNED NOT NULL DEFAULT 0,
+    completed_count INT UNSIGNED NOT NULL DEFAULT 0,
+    favorite_count INT UNSIGNED NOT NULL DEFAULT 0,
+    total_duration_seconds BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    avg_engagement_score DECIMAL(5,2) NOT NULL DEFAULT 0,
+    top_category_id VARCHAR(40) NULL,
+    top_category_label VARCHAR(120) NULL,
+    top_tags VARCHAR(500) NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_behavior_daily_device_type_day (device_id_hash, activity_date, content_type),
+    INDEX idx_behavior_daily_date (activity_date),
+    INDEX idx_behavior_daily_type (content_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS user_segments (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    device_id_hash CHAR(64) NOT NULL,
+    segment_key VARCHAR(80) NOT NULL,
+    segment_label VARCHAR(120) NOT NULL,
+    segment_group ENUM('CONTENT', 'ENGAGEMENT', 'LANGUAGE', 'COUNTRY', 'ADS', 'RISK') NOT NULL DEFAULT 'CONTENT',
+    score TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    confidence TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    evidence VARCHAR(500) NULL,
+    first_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NULL,
+    UNIQUE KEY uq_user_segments_device_key (device_id_hash, segment_key),
+    INDEX idx_user_segments_key (segment_key),
+    INDEX idx_user_segments_group (segment_group),
+    INDEX idx_user_segments_score (score),
+    INDEX idx_user_segments_last_seen (last_seen_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO ads_settings

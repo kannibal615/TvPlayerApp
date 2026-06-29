@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +46,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
+import com.smartvision.svplayer.data.behavior.BehaviorContent
 import com.smartvision.svplayer.data.models.XtreamMovieDetails
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
@@ -177,6 +179,13 @@ fun MovieDetailRoute(
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val behaviorScope = rememberCoroutineScope()
+    LaunchedEffect(state.movieId, state.categoryLabel) {
+        container.behaviorReporter.report(
+            "CONTENT_OPENED",
+            state.toBehaviorContent("DETAIL"),
+        )
+    }
     MovieDetailScreen(
         state = state,
         currentRoute = currentRoute,
@@ -191,8 +200,18 @@ fun MovieDetailRoute(
         hasNewNotifications = hasNewNotifications,
         notificationBadgeCount = notificationBadgeCount,
         onRetry = viewModel::loadDetails,
-        onWatchMovie = { onWatchMovie(state.movieId) },
-        onFavorite = viewModel::toggleFavorite,
+        onWatchMovie = {
+            container.behaviorReporter.reportAsync(behaviorScope, "PLAYBACK_STARTED", state.toBehaviorContent("DETAIL"))
+            onWatchMovie(state.movieId)
+        },
+        onFavorite = {
+            container.behaviorReporter.reportAsync(
+                behaviorScope,
+                if (state.isFavorite) "FAVORITE_REMOVED" else "FAVORITE_ADDED",
+                state.toBehaviorContent("DETAIL"),
+            )
+            viewModel.toggleFavorite()
+        },
         modifier = modifier,
     )
 }
@@ -466,6 +485,19 @@ private fun XtreamMovieDetails.toUiState(
         extension = containerExtension,
         isFavorite = isFavorite,
         loading = false,
+    )
+
+private fun MovieDetailUiState.toBehaviorContent(sourceScreen: String): BehaviorContent =
+    BehaviorContent(
+        contentType = "MOVIE",
+        contentId = movieId.toString(),
+        title = title,
+        categoryLabel = categoryLabel,
+        durationSeconds = duration?.toLongOrNull(),
+        engagementScore = if (loading) 25 else 45,
+        sourceScreen = sourceScreen,
+        tags = listOfNotNull(genre, extension, year),
+        context = mapOf("rating" to (rating ?: "-")),
     )
 
 private fun String.cleanDetailTitle(): String =

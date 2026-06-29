@@ -438,6 +438,43 @@ Fichiers MD a mettre a jour apres intervention:
 - Aucune correction structurelle bloquante.
 - Ajouter plus tard un fichier dedie SQL si le schema backend devient un sujet frequent.
 
+## Passe de verification code - 2026-06-30
+
+Resultat:
+- coherence globale confirmee contre le code actuel;
+- `versionCode 53`, `versionName 0.1.50`, SDK 36/23 et JDK 21 confirmes dans Gradle;
+- `trial_pending_xtream`, finalisation apres compte Xtream et endpoints activation confirmes dans Android;
+- routes `continue_watching` et `trending` ajoutees a la documentation apres verification dans `AppNavigation.kt`;
+- endpoints `api/app/*` clarifies: plusieurs routes Android sont sans `.php` et reecrites par `.htaccess`; `device-diagnostics.php` reste appele directement;
+- tracking comportemental clarifie: implementation actuelle centree YouTube, spec V1 segmentation marquee comme cible future.
+
+Corrections documentaires appliquees:
+- ajout de `CONTINUOUS_IMPROVEMENT.md`;
+- ajout du protocole d'auto-amelioration dans `AGENT_WORKFLOW.md`;
+- ajout des routes Home secondaires dans `PROJECT_OVERVIEW.md` et `screens-home-profile-settings.md`;
+- clarification etat actuel vs cible future dans monetisation/tracking;
+- clarification routes extensionless vs fichiers PHP dans backend/deploy.
+
+## Estimation tokens ancien vs nouveau systeme
+
+Hypothese:
+- estimation moyenne pour une demande SmartVision standard avant modification code;
+- hors logs de build longs et hors recherche prod live.
+
+Ancien systeme:
+- lecture probable: `AGENTS.md`, `PROJECT_NOTES.md`, parfois `TROUBLESHOOTING.md` et trackers;
+- cout moyen estime: 12k a 25k tokens avant action utile;
+- risque: sections obsoletes et domaines melanges.
+
+Nouveau Knowledge System:
+- lecture probable: `ROOT.md` + 1 a 3 fichiers specialises;
+- cout moyen estime: 3k a 8k tokens avant action utile;
+- economie estimee: environ 55% a 75% de tokens selon la demande.
+
+Verdict performance:
+- nouveau systeme meilleur pour routage, precision et cout tokens;
+- ancien systeme conserve une valeur historique mais n'est plus le meilleur point d'entree.
+
 ## Conclusion
 
 Le nouveau systeme reduit fortement la lecture inutile et route mieux Codex vers les fichiers de code utiles. Il reste volontairement compact; les fichiers legacy ne servent plus qu'en secours.

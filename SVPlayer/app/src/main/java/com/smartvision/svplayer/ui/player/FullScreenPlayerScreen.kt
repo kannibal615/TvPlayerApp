@@ -96,6 +96,8 @@ import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.anomaly.AnomalyReporter
+import com.smartvision.svplayer.data.behavior.BehaviorContent
+import com.smartvision.svplayer.data.behavior.BehaviorReporter
 import com.smartvision.svplayer.data.models.XtreamSeriesEpisode
 import com.smartvision.svplayer.data.monetization.IdleVastAdLoader
 import com.smartvision.svplayer.data.monetization.IdleVastCreative
@@ -420,6 +422,7 @@ fun FullScreenPlayerRoute(
         monetizationManager = container.monetizationManager,
         idleVastAdLoader = container.idleVastAdLoader,
         anomalyReporter = container.anomalyReporter,
+        behaviorReporter = container.behaviorReporter,
         adRequestTimeoutSeconds = container.adConfigProvider.current().requestTimeoutSeconds,
         onBack = onBack,
         onPlayLive = onPlayLive,
@@ -436,6 +439,7 @@ private fun FullScreenPlayerScreen(
     monetizationManager: MonetizationManager,
     idleVastAdLoader: IdleVastAdLoader,
     anomalyReporter: AnomalyReporter,
+    behaviorReporter: BehaviorReporter,
     adRequestTimeoutSeconds: Long,
     onBack: () -> Unit,
     onPlayLive: (Int) -> Unit,
@@ -473,6 +477,8 @@ private fun FullScreenPlayerScreen(
     var adPositionMs by remember(playback.streamId) { mutableLongStateOf(0L) }
     var adDurationMs by remember(playback.streamId) { mutableLongStateOf(0L) }
     var exiting by remember(playback.streamId) { mutableStateOf(false) }
+    var playbackStartedReported by remember(playback.streamId) { mutableStateOf(false) }
+    var playbackCompletedReported by remember(playback.streamId) { mutableStateOf(false) }
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
     val exitStopDone = remember(playback.streamId) { AtomicBoolean(false) }
     val releaseScheduled = remember(playback.streamId) { AtomicBoolean(false) }
@@ -584,6 +590,37 @@ private fun FullScreenPlayerScreen(
             extra,
         ).filter { it.isNotBlank() }.joinToString(" ")
 
+    fun behaviorContent(
+        source: String,
+        position: Long = positionMs,
+        duration: Long = durationMs,
+    ): BehaviorContent {
+        val durationSeconds = duration.validDurationMs().takeIf { it > 0L }?.div(1_000L)
+        val positionSeconds = position.coerceAtLeast(0L).div(1_000L)
+        val score = when {
+            durationSeconds != null && durationSeconds > 0 -> ((positionSeconds.toDouble() / durationSeconds.toDouble()) * 100).toInt().coerceIn(0, 100)
+            playback.contentType == UserContentType.Live && position >= MinimumLiveHistoryMs -> 55
+            else -> 25
+        }
+        return BehaviorContent(
+            contentType = playback.contentType.toBehaviorContentType(),
+            contentId = playback.streamId.toString(),
+            title = playback.title,
+            categoryId = playback.categoryId,
+            categoryLabel = playback.subtitle,
+            durationSeconds = durationSeconds,
+            positionSeconds = positionSeconds,
+            engagementScore = score,
+            sourceScreen = "PLAYER",
+            tags = playback.infoPills + playback.badge + playback.status,
+            context = mapOf(
+                "source" to source,
+                "kind" to contentKind.name,
+                "badge" to playback.badge,
+            ),
+        )
+    }
+
     fun reportPlayerExitStep(
         step: String,
         extra: String = "",
@@ -645,6 +682,11 @@ private fun FullScreenPlayerScreen(
             )
         }
         coroutineScope.launch {
+            behaviorReporter.reportAsync(
+                coroutineScope,
+                "PLAYBACK_PROGRESS",
+                behaviorContent(source = source, position = snapshotPosition, duration = snapshotDuration),
+            )
             if (!adGateActive) {
                 runCatching {
                     if (playback.contentType == UserContentType.Live && snapshotPosition < MinimumLiveHistoryMs) {
@@ -889,6 +931,10 @@ private fun FullScreenPlayerScreen(
                 if (playbackState == Player.STATE_READY) {
                     errorText = null
                     stalledRefreshCount = 0
+                    if (!adGateActive && !playbackStartedReported) {
+                        playbackStartedReported = true
+                        behaviorReporter.reportAsync(coroutineScope, "PLAYBACK_STARTED", behaviorContent("ready"))
+                    }
                 }
                 if (playbackState == Player.STATE_ENDED && adGateActive) {
                     buffering = true
@@ -899,6 +945,10 @@ private fun FullScreenPlayerScreen(
                     nextEpisodeCountdown = 3
                     overlayVisible = true
                     activeMenu = PlayerOverlayMenu.None
+                }
+                if (playbackState == Player.STATE_ENDED && !adGateActive && !playbackCompletedReported) {
+                    playbackCompletedReported = true
+                    behaviorReporter.reportAsync(coroutineScope, "PLAYBACK_COMPLETED", behaviorContent("ended", player.currentPosition, player.duration))
                 }
             }
 
@@ -931,6 +981,7 @@ private fun FullScreenPlayerScreen(
                     throwable = error,
                     context = "contentType=${playback.contentType} streamId=${playback.streamId} fallbackTried=$fallbackTried adGate=$adGateActive",
                 )
+                behaviorReporter.reportAsync(coroutineScope, "PLAYER_ERROR", behaviorContent("error"))
                 val adRequestId = activeAdRequestId
                 if (adRequestId != null && adGateActive) {
                     coroutineScope.launch {
@@ -1942,6 +1993,15 @@ private fun FullScreenContentKind.toPlayerContentType(): PlayerContentType =
         FullScreenContentKind.Live -> PlayerContentType.LIVE_TV
         FullScreenContentKind.Movie -> PlayerContentType.MOVIE
         FullScreenContentKind.Episode -> PlayerContentType.SERIES
+    }
+
+private fun String.toBehaviorContentType(): String =
+    when (this) {
+        UserContentType.Live -> "LIVE_TV"
+        UserContentType.Movie -> "MOVIE"
+        UserContentType.Episode -> "EPISODE"
+        UserContentType.Series -> "SERIES"
+        else -> "UNKNOWN"
     }
 
 private fun Long.validDurationMs(): Long =

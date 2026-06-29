@@ -1,6 +1,6 @@
 # Backend, Admin, API et Deploiement
 
-Derniere mise a jour: 2026-06-29.
+Derniere mise a jour: 2026-06-30.
 
 ## 1. Objectif
 
@@ -88,6 +88,12 @@ Endpoints importants:
 - `api/app/behavior-events.php`
 - `api/app/device-diagnostics.php`
 
+Note routes `api/app/*`:
+- Android appelle plusieurs routes sans `.php` (`api/app/ads-config`, `api/app/behavior-events`, etc.).
+- `.htaccess` reecrit ces routes extensionless vers les fichiers PHP correspondants.
+- Exception actuelle: `DeviceDiagnosticsApiService` appelle `api/app/device-diagnostics.php` directement.
+- Le script de deploy upload les fichiers `.php`; Retrofit doit rester coherent avec la route declaree.
+
 Tables/settings a surveiller:
 - devices/licences/activation sessions selon schema SQL;
 - `app_settings`;
@@ -146,3 +152,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: ajout de la regle "nouveau PHP = ajout deploy script".
+- 2026-06-30: clarification des rewrites `.htaccess` pour `api/app/*` et exception `device-diagnostics.php`.
