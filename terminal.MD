@@ -9,6 +9,9 @@ vers versionCode = 49 et versionName = "0.1.46".
 Build release exécuté avec:
 .\gradlew.bat --% :app:assembleRelease --no-daemon --console=plain -Dkotlin.compiler.execution.strategy=in-process
 
+.\gradlew.bat --% :app:assembleRelease --console=rich
+
+
 Déploiement prod exécuté avec:
 .\scripts\deploy_activation_phase1.ps1 -SkipInstall -SkipTests
 

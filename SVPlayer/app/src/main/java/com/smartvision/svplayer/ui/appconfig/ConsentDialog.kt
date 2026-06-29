@@ -65,12 +65,13 @@ import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
-import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @Composable
 fun ConsentDialog(
@@ -218,8 +219,12 @@ private fun ConsentHeader() {
     fontSize = 30.sp,
     lineHeight = 34.sp,
     fontWeight = FontWeight.ExtraBold,
-    fontFamily = FontFamily(Font(R.font.montserrat_extra_bold)),
-    letterSpacing = (-0.8).sp,
+fontFamily = FontFamily(
+    Font(
+        resId = R.font.montserrat_extra_bold,
+        weight = FontWeight.ExtraBold
+    )
+),    letterSpacing = (-0.8).sp,
     shadow = Shadow(
         color = Color.Black.copy(alpha = 0.65f),
         offset = Offset(2f, 3f),
