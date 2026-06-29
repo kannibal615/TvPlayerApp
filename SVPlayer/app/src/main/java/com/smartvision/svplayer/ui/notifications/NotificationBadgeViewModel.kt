@@ -43,7 +43,11 @@ class NotificationBadgeViewModel(
     private suspend fun refreshOnce() {
         runCatching { repository.getNotifications() }
             .onSuccess { snapshot ->
-                val visibleNotifications = snapshot.notifications.filterNot { it.isInstalledUpdateNotification() }
+                val installedUpdateNotifications = snapshot.notifications.filter { it.isInstalledUpdateNotification() }
+                if (installedUpdateNotifications.isNotEmpty()) {
+                    runCatching { repository.markSeen(installedUpdateNotifications.map { it.id }) }
+                }
+                val visibleNotifications = snapshot.notifications - installedUpdateNotifications.toSet()
                 val visibleUnread = visibleNotifications.count { !it.seen }
                 state.update {
                     it.copy(

@@ -1,5 +1,6 @@
 package com.smartvision.svplayer.data.repository
 
+import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -8,19 +9,25 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.smartvision.svplayer.data.local.SVDatabase
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.repository.SettingsRepository
+import com.smartvision.svplayer.startup.StartupStateStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class DefaultSettingsRepository(
+    context: Context,
     private val dataStore: DataStore<Preferences>,
     private val database: SVDatabase,
 ) : SettingsRepository {
+    private val startupStateStore = StartupStateStore(context)
+
     override val settings: Flow<PlayerSettings> =
         dataStore.data.map { preferences ->
             PlayerSettings(
                 displaySize = preferences[DISPLAY_SIZE] ?: "Normal",
                 language = preferences[LANGUAGE] ?: "English",
                 syncFrequency = preferences[SYNC_FREQUENCY] ?: "A chaque demarrage",
+                autostartEnabled = preferences[AUTOSTART_ENABLED] ?: startupStateStore.isAutostartEnabled(),
+                backgroundSyncEnabled = preferences[BACKGROUND_SYNC_ENABLED] ?: startupStateStore.isBackgroundSyncEnabled(),
                 focusStyle = preferences[FOCUS_STYLE] ?: "Default",
                 focusColor = preferences[FOCUS_COLOR] ?: "White",
                 focusEffect = preferences[FOCUS_EFFECT] ?: "Frame",
@@ -45,6 +52,16 @@ class DefaultSettingsRepository(
 
     override suspend fun setSyncFrequency(value: String) {
         dataStore.edit { it[SYNC_FREQUENCY] = value }
+    }
+
+    override suspend fun setAutostartEnabled(value: Boolean) {
+        startupStateStore.setAutostartEnabled(value)
+        dataStore.edit { it[AUTOSTART_ENABLED] = value }
+    }
+
+    override suspend fun setBackgroundSyncEnabled(value: Boolean) {
+        startupStateStore.setBackgroundSyncEnabled(value)
+        dataStore.edit { it[BACKGROUND_SYNC_ENABLED] = value }
     }
 
     override suspend fun setFocusStyle(value: String) {
@@ -107,6 +124,8 @@ class DefaultSettingsRepository(
         val DISPLAY_SIZE = stringPreferencesKey("display_size")
         val LANGUAGE = stringPreferencesKey("language")
         val SYNC_FREQUENCY = stringPreferencesKey("sync_frequency")
+        val AUTOSTART_ENABLED = booleanPreferencesKey("autostart_enabled")
+        val BACKGROUND_SYNC_ENABLED = booleanPreferencesKey("background_sync_enabled")
         val FOCUS_STYLE = stringPreferencesKey("focus_style")
         val FOCUS_COLOR = stringPreferencesKey("focus_color")
         val FOCUS_EFFECT = stringPreferencesKey("focus_effect")

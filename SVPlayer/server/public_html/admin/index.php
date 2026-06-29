@@ -6,6 +6,12 @@ require_once dirname(__DIR__) . '/api/commerce.php';
 require_once dirname(__DIR__) . '/api/mail_service.php';
 require_once dirname(__DIR__) . '/api/ads_service.php';
 require_once dirname(__DIR__) . '/api/anomaly_service.php';
+$deviceDiagnosticsService = dirname(__DIR__) . '/api/device_diagnostics_service.php';
+if (is_file($deviceDiagnosticsService)) {
+    require_once $deviceDiagnosticsService;
+} else {
+    error_log('SmartVision device diagnostics service missing.');
+}
 
 $loginError = null;
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'login') {
@@ -91,6 +97,7 @@ $adsPeriod = ads_period_days($_GET['ads_period'] ?? 1);
 $adsAdmin = $page === 'ads' ? admin_load_ads_admin($pdo, $adsPeriod) : [];
 $anomaliesAdmin = $page === 'anomalies' ? admin_load_anomalies_admin($pdo) : [];
 $appConfigAdmin = $page === 'features' ? admin_load_app_config_admin($pdo) : [];
+$diagnosticsAdmin = $page === 'diagnostics' ? admin_load_diagnostics_admin($pdo) : [];
 $flash = consume_admin_flash();
 $generatedCode = $_SESSION['generated_activation_code'] ?? null;
 if (is_string($generatedCode)) {
@@ -124,6 +131,7 @@ render_admin_dashboard(
     $adsAdmin,
     $anomaliesAdmin,
     $appConfigAdmin,
+    $diagnosticsAdmin,
     $flash,
     $generatedCode,
     $query,
@@ -133,7 +141,7 @@ render_admin_dashboard(
 function admin_current_page(mixed $page): string
 {
     $page = is_string($page) ? $page : 'overview';
-    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'payments', 'emails', 'ads', 'anomalies', 'features', 'devices', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
+    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'payments', 'emails', 'ads', 'anomalies', 'features', 'devices', 'diagnostics', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
         ? $page
         : 'overview';
 }
@@ -1538,12 +1546,105 @@ function admin_load_devices(PDO $pdo, string $query, int $page = 1): array
     foreach ($rows as &$row) {
         $row['activation_code'] = decrypt_private_value($row['code_ciphertext'] ?? null) ?: ($row['code_hint'] ?? null);
         $row['history'] = admin_load_device_history($pdo, (string) $row['device_id']);
+        $row['diagnostics'] = admin_load_device_diagnostics(
+            $pdo,
+            (string) $row['device_id'],
+            (string) ($row['public_device_code'] ?? '')
+        );
     }
     unset($row);
 
     return [
         'rows' => $rows,
         'pagination' => admin_pagination($page, $perPage, $total, 'devices_page'),
+    ];
+}
+
+function admin_load_device_diagnostics(PDO $pdo, string $deviceId, string $publicDeviceCode = ''): array
+{
+    if (!function_exists('device_diagnostics_load_by_device')) {
+        return [];
+    }
+    try {
+        return device_diagnostics_load_by_device($pdo, $deviceId, $publicDeviceCode);
+    } catch (Throwable $exception) {
+        error_log('SmartVision admin device diagnostics lookup failed.');
+        return [];
+    }
+}
+
+function admin_load_diagnostics_admin(PDO $pdo): array
+{
+    if (!function_exists('device_diagnostics_ensure_schema')) {
+        return [
+            'available' => false,
+            'message' => 'Service diagnostics non deploye.',
+            'rows' => [],
+        ];
+    }
+
+    try {
+        device_diagnostics_ensure_schema($pdo);
+        $statement = $pdo->query(
+            "SELECT dd.device_id, dd.public_device_code, dd.diagnostic_type, dd.app_version,
+                    dd.android_version, dd.device_model, dd.payload_json, dd.updated_at,
+                    d.device_name, d.status AS device_status, d.license_status,
+                    d.license_type, d.last_seen_at
+             FROM app_device_diagnostics dd
+             LEFT JOIN devices d
+                ON d.device_id = dd.device_id
+                OR (dd.public_device_code IS NOT NULL AND dd.public_device_code <> '' AND d.public_device_code = dd.public_device_code)
+             ORDER BY dd.updated_at DESC
+             LIMIT 300"
+        );
+    } catch (Throwable $exception) {
+        error_log('SmartVision admin diagnostics page failed.');
+        return [
+            'available' => false,
+            'message' => 'Diagnostics indisponibles pour le moment.',
+            'rows' => [],
+        ];
+    }
+
+    $devices = [];
+    foreach ($statement->fetchAll() as $row) {
+        $deviceId = (string) ($row['device_id'] ?? '');
+        $publicCode = (string) ($row['public_device_code'] ?? '');
+        $key = $deviceId !== '' ? 'id:' . $deviceId : 'code:' . $publicCode;
+        if ($key === 'code:') {
+            continue;
+        }
+        if (!isset($devices[$key])) {
+            $devices[$key] = [
+                'device_id' => $deviceId,
+                'public_device_code' => $publicCode,
+                'device_name' => $row['device_name'] ?: $row['device_model'] ?: 'Android TV',
+                'device_status' => $row['device_status'] ?? null,
+                'license_status' => $row['license_status'] ?? null,
+                'license_type' => $row['license_type'] ?? null,
+                'last_seen_at' => $row['last_seen_at'] ?? null,
+                'latest_at' => $row['updated_at'] ?? null,
+                'diagnostics' => [],
+            ];
+        }
+        $type = (string) ($row['diagnostic_type'] ?? '');
+        if ($type === '' || isset($devices[$key]['diagnostics'][$type])) {
+            continue;
+        }
+        $payload = json_decode((string) ($row['payload_json'] ?? '{}'), true);
+        $devices[$key]['diagnostics'][$type] = [
+            'app_version' => $row['app_version'] ?? null,
+            'android_version' => $row['android_version'] ?? null,
+            'device_model' => $row['device_model'] ?? null,
+            'updated_at' => $row['updated_at'] ?? null,
+            'payload' => is_array($payload) ? $payload : [],
+        ];
+    }
+
+    return [
+        'available' => true,
+        'message' => '',
+        'rows' => array_values($devices),
     ];
 }
 
@@ -1886,6 +1987,7 @@ function render_admin_dashboard(
     array $adsAdmin,
     array $anomaliesAdmin,
     array $appConfigAdmin,
+    array $diagnosticsAdmin,
     ?array $flash,
     ?array $generatedCode,
     string $query,
@@ -1903,6 +2005,7 @@ function render_admin_dashboard(
         'anomalies' => ['Anomalies', 'Crashs et erreurs remontes par les applications TV.'],
         'features' => ['Fonctionnalites', 'Droits par type de licence et consentement TV.'],
         'devices' => ['Appareils', 'TV associees, essais, licences et configuration Xtream.'],
+        'diagnostics' => ['Diagnostics', 'Autostart, sync arriere-plan et etat des applications TV.'],
         'notifications' => ['Notifications', 'Messages envoyes vers toutes les TV ou vers des cibles precises.'],
         'messages' => ['Messages clients', 'Demandes envoyees depuis le formulaire de contact.'],
         'slides' => ['Slides Home', 'Emplacements publicitaires prives visibles sur la Home.'],
@@ -1946,6 +2049,7 @@ function render_admin_dashboard(
         <?php if ($page === 'ads'): admin_render_ads_page($adsAdmin); endif; ?>
         <?php if ($page === 'anomalies'): admin_render_anomalies_page($anomaliesAdmin); endif; ?>
         <?php if ($page === 'features'): admin_render_features_page($appConfigAdmin); endif; ?>
+        <?php if ($page === 'diagnostics'): admin_render_diagnostics_page($diagnosticsAdmin); endif; ?>
 
         <?php if ($page === 'orders'): ?>
         <section class="admin-panel" id="orders"><div class="admin-panel-heading"><div><h2>Commandes recentes</h2><p><?= count($orders) ?> resultat(s)</p></div><form class="admin-filter-row" method="get"><input type="hidden" name="page" value="orders"><input type="hidden" name="q" value="<?= admin_escape($query) ?>"><label>Statut<select name="order_status"><option value="">Tous</option><?php foreach (['pending', 'paid', 'cancelled'] as $statusOption): ?><option value="<?= admin_escape($statusOption) ?>"<?= ($_GET['order_status'] ?? '') === $statusOption ? ' selected' : '' ?>><?= admin_escape($statusOption) ?></option><?php endforeach; ?></select></label><button class="admin-button compact secondary" type="submit">Filtrer</button></form></div><div class="admin-table-wrap"><table><thead><tr><th><?= admin_sort_link('orders', 'Reference', 'reference', $query) ?></th><th><?= admin_sort_link('orders', 'Client', 'client', $query) ?></th><th><?= admin_sort_link('orders', 'Plan', 'plan', $query) ?></th><th><?= admin_sort_link('orders', 'Montant', 'amount', $query) ?></th><th><?= admin_sort_link('orders', 'Paiement', 'payment', $query) ?></th><th>Licence</th><th><?= admin_sort_link('orders', 'Date', 'date', $query) ?></th><th>Actions</th></tr></thead><tbody>
@@ -2570,6 +2674,61 @@ function admin_render_anomalies_page(array $anomaliesAdmin): void
     <?php
 }
 
+function admin_render_diagnostics_page(array $diagnosticsAdmin): void
+{
+    $rows = $diagnosticsAdmin['rows'] ?? [];
+    $available = (bool) ($diagnosticsAdmin['available'] ?? false);
+    $message = (string) ($diagnosticsAdmin['message'] ?? '');
+    $withAutostart = 0;
+    $withAutoSync = 0;
+    $withErrors = 0;
+    foreach ($rows as $row) {
+        $autostart = $row['diagnostics']['autostart']['payload'] ?? [];
+        $autoSync = $row['diagnostics']['auto_sync']['payload'] ?? [];
+        if ($autostart !== []) {
+            $withAutostart++;
+        }
+        if ($autoSync !== []) {
+            $withAutoSync++;
+        }
+        if (!empty($autostart['last_error']) || !empty($autoSync['last_error'])) {
+            $withErrors++;
+        }
+    }
+    ?>
+        <section class="admin-kpis" aria-label="Diagnostics">
+            <?= admin_kpi('TV remontees', count($rows), 'cyan') ?>
+            <?= admin_kpi('Autostart', $withAutostart, 'blue') ?>
+            <?= admin_kpi('Auto sync', $withAutoSync, 'green') ?>
+            <?= admin_kpi('Avec erreur', $withErrors, $withErrors > 0 ? 'orange' : 'green') ?>
+        </section>
+
+        <section class="admin-panel" id="diagnostics">
+            <div class="admin-panel-heading"><div><h2>Diagnostics appareils</h2><p>Derniers etats autostart et synchronisation arriere-plan recus par les TV.</p></div><a class="admin-button compact secondary" href="/admin/?page=diagnostics">Actualiser</a></div>
+            <?php if (!$available): ?><p class="admin-empty"><?= admin_escape($message !== '' ? $message : 'Diagnostics indisponibles.') ?></p><?php endif; ?>
+            <div class="admin-table-wrap"><table><thead><tr><th>Appareil</th><th>Licence</th><th>Autostart</th><th>Auto sync</th><th>Plateforme</th><th>Dernier signal</th><th>Erreurs</th></tr></thead><tbody>
+                <?php if ($rows === []): ?><tr><td colspan="7" class="admin-empty">Aucun diagnostic recu pour le moment.</td></tr><?php endif; ?>
+                <?php foreach ($rows as $row):
+                    $autostartDiag = $row['diagnostics']['autostart'] ?? [];
+                    $autoSyncDiag = $row['diagnostics']['auto_sync'] ?? [];
+                    $autostart = is_array($autostartDiag['payload'] ?? null) ? $autostartDiag['payload'] : [];
+                    $autoSync = is_array($autoSyncDiag['payload'] ?? null) ? $autoSyncDiag['payload'] : [];
+                    $autoSyncSize = isset($autoSync['last_size_kb']) ? (string) $autoSync['last_size_kb'] . ' KB' : 'N/D';
+                    $errors = trim((string) ($autostart['last_error'] ?? '') . ' ' . (string) ($autoSync['last_error'] ?? ''));
+                ?><tr>
+                    <td><strong><?= admin_escape((string) ($row['public_device_code'] ?: '------')) ?></strong><small><?= admin_escape((string) ($row['device_name'] ?: 'Android TV')) ?></small><small class="mono"><?= admin_escape((string) ($row['device_id'] ?: '-')) ?></small></td>
+                    <td><?= admin_escape((string) ($row['license_type'] ?: $row['license_status'] ?: '-')) ?><small><?= admin_escape((string) ($row['device_status'] ?: '-')) ?></small></td>
+                    <td><span class="admin-state <?= !empty($autostart['enabled']) ? 'active' : 'disabled' ?>"><?= !empty($autostart['enabled']) ? 'Active' : 'Off' ?></span><small>Source <?= admin_escape((string) ($autostart['last_source'] ?? '-')) ?> / essais <?= admin_escape((string) ($autostart['attempts_this_boot'] ?? '-')) ?></small><small><?= admin_escape((string) ($autostartDiag['updated_at'] ?? '-')) ?></small></td>
+                    <td><span class="admin-state <?= (($autoSync['last_result'] ?? '') === 'success') ? 'active' : 'pending' ?>"><?= admin_escape((string) ($autoSync['last_result'] ?? '-')) ?></span><small>Source <?= admin_escape((string) ($autoSync['last_source'] ?? '-')) ?> / <?= admin_escape((string) ($autoSync['last_duration_ms'] ?? '-')) ?> ms</small><small>Taille <?= admin_escape($autoSyncSize) ?></small></td>
+                    <td><?= admin_escape((string) ($autostartDiag['device_model'] ?? $autoSyncDiag['device_model'] ?? '-')) ?><small>Android <?= admin_escape((string) ($autostartDiag['android_version'] ?? $autoSyncDiag['android_version'] ?? '-')) ?></small><small>APK <?= admin_escape((string) ($autostartDiag['app_version'] ?? $autoSyncDiag['app_version'] ?? '-')) ?></small></td>
+                    <td><?= admin_escape((string) ($row['latest_at'] ?? '-')) ?><small>Activite <?= admin_escape((string) ($row['last_seen_at'] ?? '-')) ?></small></td>
+                    <td><small><?= admin_escape($errors !== '' ? smartvision_text_substr($errors, 0, 220) : '-') ?></small></td>
+                </tr><?php endforeach; ?>
+            </tbody></table></div>
+        </section>
+    <?php
+}
+
 function admin_render_features_page(array $appConfigAdmin): void
 {
     $features = $appConfigAdmin['features'] ?? admin_default_feature_access();
@@ -2806,8 +2965,23 @@ function admin_render_device_modal(array $device): void
             </div>
             <div class="admin-modal-columns">
                 <section><h3>Activation actuelle</h3><ul class="admin-detail-list"><li><strong><?= admin_escape($device['activation_type'] ?: '-') ?></strong><span>Code <?= admin_escape($device['activation_code'] ?: '-') ?> - type <?= admin_escape($device['license_type'] ?: '-') ?></span><small>Duree <?= admin_escape((string) ($device['duration_days'] ?: '-')) ?> jours - playlist <?= (int) $device['playlist_configured'] === 1 ? 'configuree' : 'absente' ?></small></li></ul></section>
+                <?= admin_render_device_diagnostics((array) ($device['diagnostics'] ?? []), $device) ?>
                 <section><h3>Historique</h3><?php if (($device['history'] ?? []) === []): ?><p class="muted">Aucun historique.</p><?php endif; ?><ul class="admin-detail-list"><?php foreach (($device['history'] ?? []) as $history): ?><li><strong><?= admin_escape($history['activation_type'] ?: '-') ?> - <?= admin_escape($history['status'] ?: '-') ?></strong><span>Code <?= admin_escape($history['code_hint'] ?: '-') ?> / <?= admin_escape($history['license_type'] ?: '-') ?></span><small><?= admin_escape($history['starts_at'] ?: $history['created_at'] ?: '-') ?> -> <?= admin_escape($history['expires_at'] ?: '-') ?></small></li><?php endforeach; ?></ul></section>
             </div>
         </section>
     </div><?php
+}
+
+function admin_render_device_diagnostics(array $diagnostics, array $device): string
+{
+    $autostart = is_array($diagnostics['autostart']['payload'] ?? null) ? $diagnostics['autostart']['payload'] : [];
+    $autoSync = is_array($diagnostics['auto_sync']['payload'] ?? null) ? $diagnostics['auto_sync']['payload'] : [];
+    ob_start();
+    ?>
+    <section><h3>Diagnostics</h3><ul class="admin-detail-list">
+        <li><strong>Autostart</strong><span>TV code <?= admin_escape((string) ($device['public_device_code'] ?: '-')) ?> / licence <?= admin_escape((string) ($device['license_type'] ?: $device['license_status'] ?: '-')) ?></span><small>Modele <?= admin_escape((string) ($diagnostics['autostart']['device_model'] ?? $diagnostics['auto_sync']['device_model'] ?? $device['device_name'] ?? 'Android TV')) ?> - Android <?= admin_escape((string) ($diagnostics['autostart']['android_version'] ?? $diagnostics['auto_sync']['android_version'] ?? '-')) ?> - APK <?= admin_escape((string) ($diagnostics['autostart']['app_version'] ?? $diagnostics['auto_sync']['app_version'] ?? $device['app_version'] ?? '-')) ?></small><small>Option <?= !empty($autostart['enabled']) ? 'activee' : 'desactivee' ?> - source <?= admin_escape((string) ($autostart['last_source'] ?? '-')) ?> - tentatives <?= admin_escape((string) ($autostart['attempts_this_boot'] ?? '-')) ?></small><small>Derniere tentative <?= admin_escape((string) ($diagnostics['autostart']['updated_at'] ?? '-')) ?> - boot <?= !empty($autostart['boot_completed']) ? 'termine' : 'en attente' ?> - erreur <?= admin_escape((string) ($autostart['last_error'] ?? '-')) ?></small></li>
+        <li><strong>Auto sync</strong><span>Option <?= !empty($autoSync['enabled']) ? 'activee' : 'desactivee' ?> - source <?= admin_escape((string) ($autoSync['last_source'] ?? '-')) ?> - resultat <?= admin_escape((string) ($autoSync['last_result'] ?? '-')) ?></span><small>Derniere sync <?= admin_escape((string) ($diagnostics['auto_sync']['updated_at'] ?? '-')) ?> - duree <?= admin_escape((string) ($autoSync['last_duration_ms'] ?? '-')) ?> ms - taille <?= isset($autoSync['last_size_kb']) ? admin_escape((string) $autoSync['last_size_kb']) . ' KB' : 'N/D' ?></small><small>Erreur <?= admin_escape((string) ($autoSync['last_error'] ?? '-')) ?></small></li>
+    </ul></section>
+    <?php
+    return (string) ob_get_clean();
 }

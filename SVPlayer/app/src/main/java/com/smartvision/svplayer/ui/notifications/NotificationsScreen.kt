@@ -346,9 +346,16 @@ class NotificationsViewModel(
             state.update { it.copy(loading = true, errorMessage = null) }
             runCatching { repository.getNotifications() }
                 .onSuccess { snapshot ->
-                    val notifications = snapshot.notifications.filterNot { it.isInstalledUpdateNotification() }
-                    if (markSeen && notifications.isNotEmpty()) {
-                        runCatching { repository.markSeen(notifications.map { it.id }) }
+                    val installedUpdateNotifications = snapshot.notifications.filter { it.isInstalledUpdateNotification() }
+                    val notifications = snapshot.notifications - installedUpdateNotifications.toSet()
+                    val seenIds = buildList {
+                        addAll(installedUpdateNotifications.map { it.id })
+                        if (markSeen) {
+                            addAll(notifications.map { it.id })
+                        }
+                    }
+                    if (seenIds.isNotEmpty()) {
+                        runCatching { repository.markSeen(seenIds) }
                         onSeen?.invoke()
                     }
                     state.update {

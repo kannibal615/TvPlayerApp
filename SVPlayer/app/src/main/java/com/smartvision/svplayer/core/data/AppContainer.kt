@@ -12,6 +12,8 @@ import com.smartvision.svplayer.data.appconfig.AppConfigApiService
 import com.smartvision.svplayer.data.appconfig.AppConfigRepository
 import com.smartvision.svplayer.data.home.HomeSlidesApiService
 import com.smartvision.svplayer.data.home.HomeSlidesRepository
+import com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsApiService
+import com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter
 import com.smartvision.svplayer.data.local.SVDatabase
 import com.smartvision.svplayer.data.monetization.MonetizationManager
 import com.smartvision.svplayer.data.monetization.MonetizationStore
@@ -42,6 +44,7 @@ import com.smartvision.svplayer.domain.usecase.BuildPlaybackRequestUseCase
 import com.smartvision.svplayer.domain.usecase.SavePlaybackProgressUseCase
 import com.smartvision.svplayer.domain.usecase.SynchronizeCatalogUseCase
 import com.smartvision.svplayer.domain.usecase.ToggleFavoriteUseCase
+import com.smartvision.svplayer.startup.StartupStateStore
 import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -109,6 +112,7 @@ class AppContainer(context: Context) {
     private val adConfigApi = activationRetrofit.create(AdConfigApiService::class.java)
     private val adsEventsApi = activationRetrofit.create(AdsEventsApiService::class.java)
     private val anomalyApi = activationRetrofit.create(AnomalyApiService::class.java)
+    private val deviceDiagnosticsApi = activationRetrofit.create(DeviceDiagnosticsApiService::class.java)
     private val youtubeBehaviorApi = activationRetrofit.create(YoutubeBehaviorApiService::class.java)
     private val youtubeRetrofit = Retrofit.Builder()
         .baseUrl("https://www.googleapis.com/youtube/v3/")
@@ -156,6 +160,13 @@ class AppContainer(context: Context) {
         activationRepository = activationRepository,
         api = anomalyApi,
     )
+    private val startupStateStore = StartupStateStore(appContext)
+    val deviceDiagnosticsReporter = DeviceDiagnosticsReporter(
+        appContext = appContext,
+        activationRepository = activationRepository,
+        api = deviceDiagnosticsApi,
+        stateStore = startupStateStore,
+    )
 
     val xtreamRepository: XtreamRepository = XtreamRepository(
         apiClient = xtreamApiClient,
@@ -192,9 +203,10 @@ class AppContainer(context: Context) {
         progressDao = database.progressDao(),
         syncStateDao = database.syncStateDao(),
     )
+    val syncStateDao = database.syncStateDao()
 
     val settingsRepository: SettingsRepository =
-        DefaultSettingsRepository(appContext.settingsDataStore, database)
+        DefaultSettingsRepository(appContext, appContext.settingsDataStore, database)
 
     val synchronizeCatalog = SynchronizeCatalogUseCase(catalogRepository)
     val toggleFavorite = ToggleFavoriteUseCase(catalogRepository)

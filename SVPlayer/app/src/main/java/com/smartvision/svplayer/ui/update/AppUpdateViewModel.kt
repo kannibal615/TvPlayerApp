@@ -54,11 +54,7 @@ class AppUpdateViewModel(
     }
 
     fun openFromNotification() {
-        if (_uiState.value.update != null) {
-            showUpdateDialog()
-        } else {
-            checkForUpdate(revealDialog = true)
-        }
+        checkForUpdate(revealDialog = true)
     }
 
     fun installUpdate(context: Context) {

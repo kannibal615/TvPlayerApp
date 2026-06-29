@@ -94,6 +94,9 @@ function notification_visible_rows(PDO $pdo, array $deviceTargets, array $associ
     $visible = [];
 
     foreach ($rows as $row) {
+        if (notification_is_release_update($row)) {
+            continue;
+        }
         if (!notification_matches_target($row, $deviceTargets, $associatedTargets)) {
             continue;
         }
@@ -101,6 +104,16 @@ function notification_visible_rows(PDO $pdo, array $deviceTargets, array $associ
     }
 
     return $visible;
+}
+
+function notification_is_release_update(array $row): bool
+{
+    $title = strtolower((string) ($row['title'] ?? ''));
+    $message = strtolower((string) ($row['message'] ?? ''));
+
+    return str_contains($title, 'update available')
+        && str_contains($message, 'smartvision')
+        && str_contains($message, 'install the update');
 }
 
 function notification_seen_lookup(PDO $pdo, string $deviceId, array $notificationIds): array

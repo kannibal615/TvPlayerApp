@@ -121,6 +121,8 @@ data class PlayerSettings(
     val displaySize: String = "Normal",
     val language: String = "English",
     val syncFrequency: String = "A chaque demarrage",
+    val autostartEnabled: Boolean = true,
+    val backgroundSyncEnabled: Boolean = true,
     val focusStyle: String = "Default",
     val focusColor: String = "White",
     val focusEffect: String = "Frame",

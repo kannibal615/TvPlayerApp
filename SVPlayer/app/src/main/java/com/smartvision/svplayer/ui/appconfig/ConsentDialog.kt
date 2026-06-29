@@ -86,9 +86,6 @@ fun ConsentDialog(
         derivedStateOf { scrollState.maxValue == 0 || scrollState.value >= scrollState.maxValue - 8 }
     }
 
-    LaunchedEffect(canAccept) {
-        if (canAccept) runCatching { acceptFocusRequester.requestFocus() }
-    }
     LaunchedEffect(Unit) {
         runCatching { scrollFocusRequester.requestFocus() }
     }
@@ -132,10 +129,14 @@ fun ConsentDialog(
                 ConsentLegalPanel(
                     scrollState = scrollState,
                     scrollFocusRequester = scrollFocusRequester,
+                    canAccept = canAccept,
                     onScrollKey = { delta ->
                         scope.launch {
                             scrollState.animateScrollTo((scrollState.value + delta).coerceIn(0, scrollState.maxValue))
                         }
+                    },
+                    onMoveToAccept = {
+                        runCatching { acceptFocusRequester.requestFocus() }
                     },
                     body = consent.body.applyConsentVariables(consent.variables),
                     modifier = Modifier
@@ -147,6 +148,12 @@ fun ConsentDialog(
                     ConsentBottomActions(
                     canAccept = canAccept,
                     focusRequester = acceptFocusRequester.takeIf { canAccept },
+                    onMoveToScroll = {
+                        scope.launch {
+                            runCatching { scrollFocusRequester.requestFocus() }
+                            scrollState.animateScrollTo((scrollState.maxValue - 72).coerceAtLeast(0))
+                        }
+                    },
                     onClick = onAccept,
                 )
             }
@@ -251,7 +258,9 @@ private fun ConsentHeader() {
 private fun ConsentLegalPanel(
     scrollState: androidx.compose.foundation.ScrollState,
     scrollFocusRequester: FocusRequester,
+    canAccept: Boolean,
     onScrollKey: (Int) -> Unit,
+    onMoveToAccept: () -> Unit,
     body: String,
     modifier: Modifier = Modifier,
 ) {
@@ -268,14 +277,19 @@ private fun ConsentLegalPanel(
                     .focusRequester(scrollFocusRequester)
                     .onPreviewKeyEvent { event ->
                         if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                        val delta = when (event.key) {
-                            Key.DirectionDown -> 72
-                            Key.DirectionUp -> -72
-                            Key.PageDown -> 260
-                            Key.PageUp -> -260
+                        when (event.key) {
+                            Key.DirectionDown -> {
+                                if (canAccept && scrollState.value >= scrollState.maxValue - 8) {
+                                    onMoveToAccept()
+                                } else {
+                                    onScrollKey(72)
+                                }
+                            }
+                            Key.DirectionUp -> onScrollKey(-72)
+                            Key.PageDown -> onScrollKey(260)
+                            Key.PageUp -> onScrollKey(-260)
                             else -> return@onPreviewKeyEvent false
                         }
-                        onScrollKey(delta)
                         true
                     }
                     .verticalScroll(scrollState)
@@ -292,7 +306,7 @@ private fun ConsentLegalPanel(
                 Text(
                     text = body.toBoldAnnotatedString(),
                     color = SmartVisionColors.TextSecondary,
-                    style = SmartVisionType.Body.copy(fontSize = 12.sp, lineHeight = 16.sp),
+                    style = SmartVisionType.Body.copy(fontSize = 10.sp, lineHeight = 16.sp),
                 )
             }
             ConsentScrollbar(scrollState = scrollState)
@@ -304,6 +318,7 @@ private fun ConsentLegalPanel(
 private fun ConsentBottomActions(
     canAccept: Boolean,
     focusRequester: FocusRequester?,
+    onMoveToScroll: () -> Unit,
     onClick: () -> Unit,
 ) {
     Row(
@@ -316,6 +331,7 @@ private fun ConsentBottomActions(
         ConsentAcceptButton(
             enabled = canAccept,
             focusRequester = focusRequester,
+            onMoveToScroll = onMoveToScroll,
             onClick = onClick,
         )
 
@@ -323,7 +339,7 @@ private fun ConsentBottomActions(
 
         Text(
             text = if (canAccept) {
-                
+                ""
             } else {
                 "Scroll to the bottom..."
             },
@@ -345,6 +361,7 @@ private fun ConsentBottomActions(
 private fun ConsentAcceptButton(
     enabled: Boolean,
     focusRequester: FocusRequester?,
+    onMoveToScroll: () -> Unit,
     onClick: () -> Unit,
 ) {
     val focusState = rememberTvFocusState()
@@ -395,6 +412,14 @@ private fun ConsentAcceptButton(
                 indication = null,
                 onClick = onClick,
             )
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionUp) {
+                    onMoveToScroll()
+                    true
+                } else {
+                    false
+                }
+            }
             .focusable(enabled = enabled, interactionSource = interactionSource)
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.Center,

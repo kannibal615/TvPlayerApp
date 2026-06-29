@@ -60,6 +60,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -82,6 +83,7 @@ import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.update.AppUpdateUiState
+import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import java.util.UUID
 import kotlinx.coroutines.launch
 
@@ -96,6 +98,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
+    val context = LocalContext.current
     val accounts by container.accountManager.accounts.collectAsStateWithLifecycle()
     val activeAccountId by container.accountManager.activeAccountId.collectAsStateWithLifecycle()
     val activeAccount = accounts.firstOrNull { it.id == activeAccountId } ?: accounts.firstOrNull()
@@ -153,6 +156,13 @@ fun SettingsScreen(
             onSyncCatalog = onSyncCatalog,
             onSetLanguage = { value -> scope.launch { container.settingsRepository.setLanguage(value) } },
             onSetSyncFrequency = { value -> scope.launch { container.settingsRepository.setSyncFrequency(value) } },
+            onSetAutostartEnabled = { value -> scope.launch { container.settingsRepository.setAutostartEnabled(value) } },
+            onSetBackgroundSyncEnabled = { value ->
+                scope.launch {
+                    container.settingsRepository.setBackgroundSyncEnabled(value)
+                    BackgroundSyncScheduler.applyPeriodicSync(context, value)
+                }
+            },
             onSetFocusStyle = { value -> scope.launch { container.settingsRepository.setFocusStyle(value) } },
             onSetFocusColor = { value -> scope.launch { container.settingsRepository.setFocusColor(value) } },
             onSetFocusEffect = { value -> scope.launch { container.settingsRepository.setFocusEffect(value) } },
@@ -317,6 +327,8 @@ private fun SettingsMenuLayout(
     onSyncCatalog: () -> Unit,
     onSetLanguage: (String) -> Unit,
     onSetSyncFrequency: (String) -> Unit,
+    onSetAutostartEnabled: (Boolean) -> Unit,
+    onSetBackgroundSyncEnabled: (Boolean) -> Unit,
     onSetFocusStyle: (String) -> Unit,
     onSetFocusColor: (String) -> Unit,
     onSetFocusEffect: (String) -> Unit,
@@ -469,6 +481,24 @@ private fun SettingsMenuLayout(
                     )
                 }
                 SettingsSection.Sync -> {
+                    SettingsChoice(
+                        label = strings.launchOnStartup,
+                        values = listOf(
+                            SettingsOption("enabled", strings.enabled),
+                            SettingsOption("disabled", strings.disabled),
+                        ),
+                        selected = if (settings.autostartEnabled) "enabled" else "disabled",
+                        onSelected = { value -> onSetAutostartEnabled(value == "enabled") },
+                    )
+                    SettingsChoice(
+                        label = strings.backgroundSync,
+                        values = listOf(
+                            SettingsOption("enabled", strings.enabled),
+                            SettingsOption("disabled", strings.disabled),
+                        ),
+                        selected = if (settings.backgroundSyncEnabled) "enabled" else "disabled",
+                        onSelected = { value -> onSetBackgroundSyncEnabled(value == "enabled") },
+                    )
                     SettingsChoice(
                         label = strings.automaticSync,
                         values = syncFrequencyOptions(strings),

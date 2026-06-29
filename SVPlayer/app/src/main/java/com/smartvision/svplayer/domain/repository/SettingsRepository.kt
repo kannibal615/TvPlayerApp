@@ -9,6 +9,8 @@ interface SettingsRepository {
     suspend fun setDisplaySize(value: String)
     suspend fun setLanguage(value: String)
     suspend fun setSyncFrequency(value: String)
+    suspend fun setAutostartEnabled(value: Boolean)
+    suspend fun setBackgroundSyncEnabled(value: Boolean)
     suspend fun setFocusStyle(value: String)
     suspend fun setFocusColor(value: String)
     suspend fun setFocusEffect(value: String)

@@ -53,6 +53,7 @@ import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.monetization.resolveMonetizationStatus
 import com.smartvision.svplayer.domain.model.PlayerSettings
+import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import com.smartvision.svplayer.sync.CatalogSyncScheduler
 import com.smartvision.svplayer.sync.SyncFrequencyPolicy
 import com.smartvision.svplayer.ui.activation.ActivationScreen
@@ -293,6 +294,9 @@ fun AppNavigation(
 
     LaunchedEffect(playerSettings.syncFrequency) {
         CatalogSyncScheduler.apply(context, playerSettings.syncFrequency)
+    }
+    LaunchedEffect(playerSettings.backgroundSyncEnabled) {
+        BackgroundSyncScheduler.applyPeriodicSync(context, playerSettings.backgroundSyncEnabled)
     }
     LaunchedEffect(activationState.activated, xtreamAccountSignature, playerSettings.syncFrequency) {
         if (activationState.activated && xtreamAccounts.isNotEmpty()) {

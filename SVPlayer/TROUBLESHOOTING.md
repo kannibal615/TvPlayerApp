@@ -1,5 +1,27 @@
 # Troubleshooting
 
+## 2026-06-29 - Admin HTTP 500 after adding a new PHP service
+
+Problem:
+- The production admin panel can return HTTP 500 when `admin/index.php` requires a new PHP service file that was not uploaded by the deployment script.
+
+Context:
+- Device diagnostics added `api/device_diagnostics_service.php` and `api/app/device-diagnostics.php`.
+- `scripts/deploy_activation_phase1.ps1` uploads PHP files explicitly, so new files must be added to its upload list.
+- Admin startup should not depend on optional diagnostics schema creation.
+
+Working solution:
+- Make the admin diagnostics service include optional and wrap diagnostics reads in `try/catch`.
+- Add new diagnostics files to `scripts/deploy_activation_phase1.ps1`.
+- Validate with:
+  `php -l server/public_html/admin/index.php`
+  `php -l server/public_html/api/device_diagnostics_service.php`
+  `php -l server/public_html/api/app/device-diagnostics.php`
+
+Avoid next time:
+- Do not assume new PHP files are deployed automatically by the release script.
+- Do not let optional admin widgets create schema or throw unhandled errors during admin page boot.
+
 ## 2026-06-28 - Release Gradle timeout while build continues
 
 Problem:
