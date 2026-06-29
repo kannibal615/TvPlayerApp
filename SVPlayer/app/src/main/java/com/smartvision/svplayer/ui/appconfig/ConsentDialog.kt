@@ -121,14 +121,14 @@ fun ConsentDialog(
                                 Color(0xEE06101F),
                             ),
                         ),
-                        RoundedCornerShape(10.dp),
+                        RoundedCornerShape(15.dp),
                     )
-                    .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.55f)), RoundedCornerShape(10.dp))
+                    .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.55f)), RoundedCornerShape(15.dp))
                     .padding(horizontal = 34.dp, vertical = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 ConsentHeader()
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(10.dp))
                 ConsentLegalPanel(
                     scrollState = scrollState,
                     scrollFocusRequester = scrollFocusRequester,
@@ -165,22 +165,31 @@ private fun ConsentHeader() {
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp),
+                .height(45.dp),
         ) {
             Text(
     text = buildAnnotatedString {
+        pushStyle(
+            SpanStyle(
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 28.sp
+            )
+        )
         append("Welcome to ")
+        pop()
 
         pushStyle(
             SpanStyle(
                 brush = Brush.linearGradient(
                     colors = listOf(
                         Color(0xFFFFFFFF),
-                        Color(0xFFEAF2FF),
-                        Color(0xFFFFFFFF)
+                        Color(0xFFF2F6FF),
+                        Color(0xFFE7EEFB)
                     )
                 ),
-                fontWeight = FontWeight.ExtraBold
+                fontWeight = FontWeight.Bold,
+                fontSize = 28.sp
             )
         )
         append("Smart")
@@ -190,12 +199,13 @@ private fun ConsentHeader() {
             SpanStyle(
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        Color(0xFF22F2FF),
-                        Color(0xFF058DFF),
-                        Color(0xFF005CFF)
+                        Color(0xFF20E8FF),
+                        Color(0xFF0A9DFF),
+                        Color(0xFF006BFF)
                     )
                 ),
-                fontWeight = FontWeight.ExtraBold
+                fontWeight = FontWeight.Bold,
+                fontSize = 28.sp
             )
         )
         append("Vision")
@@ -203,34 +213,25 @@ private fun ConsentHeader() {
 
         pushStyle(
             SpanStyle(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFFFFFFFF),
-                        Color(0xFFEAF2FF)
-                    )
-                ),
-                fontWeight = FontWeight.ExtraBold
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 22.sp
             )
         )
         append(" Player")
         pop()
     },
     style = TextStyle(
-    fontSize = 30.sp,
-    lineHeight = 34.sp,
-    fontWeight = FontWeight.ExtraBold,
-fontFamily = FontFamily(
-    Font(
-        resId = R.font.montserrat_extra_bold,
-        weight = FontWeight.ExtraBold
-    )
-),    letterSpacing = (-0.8).sp,
-    shadow = Shadow(
-        color = Color.Black.copy(alpha = 0.65f),
-        offset = Offset(2f, 3f),
-        blurRadius = 6f
-    )
-),
+        fontSize = 28.sp,
+        lineHeight = 30.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-0.3).sp,
+        shadow = Shadow(
+            color = Color.Black.copy(alpha = 0.35f),
+            offset = Offset(1.2f, 1.8f),
+            blurRadius = 3.5f
+        )
+    ),
     textAlign = TextAlign.Center,
     modifier = Modifier.fillMaxWidth(),
 )
@@ -239,7 +240,7 @@ fontFamily = FontFamily(
         Text(
             text = "To continue, please review and accept our Privacy Policy and Terms of Use.",
             color = SmartVisionColors.TextSecondary,
-            style = SmartVisionType.Body.copy(fontSize = 15.sp, lineHeight = 20.sp),
+            style = SmartVisionType.Body.copy(fontSize = 13.sp, lineHeight = 20.sp),
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -256,8 +257,8 @@ private fun ConsentLegalPanel(
 ) {
     Box(
         modifier = modifier
-            .background(Color(0xAA06101F), RoundedCornerShape(20.dp))
-            .border(BorderStroke(1.dp, Color(0xFF1E4E86).copy(alpha = 0.65f)), RoundedCornerShape(20.dp)),
+            .background(Color(0xAA06101F), RoundedCornerShape(15.dp))
+            .border(BorderStroke(1.dp, Color(0xFF1E4E86).copy(alpha = 0.65f)), RoundedCornerShape(15.dp)),
     ) {
         Row(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -279,15 +280,15 @@ private fun ConsentLegalPanel(
                     }
                     .verticalScroll(scrollState)
                     .focusable()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
             ) {
                 Text(
                     text = "PRIVACY POLICY AND TERMS OF USE",
-                    color = SmartVisionColors.CyanAccent,
-                    style = SmartVisionType.Body.copy(fontSize = 13.sp, lineHeight = 18.sp),
+                    color = SmartVisionColors.TextSecondary,
+                    style = SmartVisionType.Body.copy(fontSize = 13.sp, lineHeight = 16.sp),
                     fontWeight = FontWeight.SemiBold,
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(10.dp))
                 Text(
                     text = body.toBoldAnnotatedString(),
                     color = SmartVisionColors.TextSecondary,
@@ -322,9 +323,9 @@ private fun ConsentBottomActions(
 
         Text(
             text = if (canAccept) {
-                "You can now accept."
+                
             } else {
-                "Scroll to the bottom to enable Accept."
+                "Scroll to the bottom..."
             },
             color = if (canAccept) {
                 SmartVisionColors.CyanAccent
@@ -395,7 +396,7 @@ private fun ConsentAcceptButton(
                 onClick = onClick,
             )
             .focusable(enabled = enabled, interactionSource = interactionSource)
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -409,9 +410,9 @@ private fun ConsentAcceptButton(
             Spacer(Modifier.width(10.dp))
         }
         Text(
-            text = "Accept & Continue",
+            text = "Accept",
             color = if (enabled) Color.White else SmartVisionColors.TextSecondary.copy(alpha = 0.72f),
-            style = SmartVisionType.Label.copy(fontSize = 13.sp, lineHeight = 17.sp),
+            style = SmartVisionType.Label.copy(fontSize = 15.sp, lineHeight = 18.sp),
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
         )
