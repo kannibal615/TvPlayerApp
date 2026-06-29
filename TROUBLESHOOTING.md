@@ -176,3 +176,23 @@ Erreurs a eviter :
 - ne pas conclure que le service PHP ou la table SQL sont casses avant d essayer l URL `.php` ;
 - ne pas oublier que les nouveaux fichiers API peuvent etre uploades correctement mais rester inaccessibles si `.htaccess` n est pas synchronise.
 - ne pas laisser un renderer WebView mort tuer tout le processus app.
+
+## 2026-06-29 - Formulaire compte Activer une TV et code appareil 6 caracteres
+
+Probleme rencontre :
+Le formulaire compte `Activer une TV` affichait un placeholder de type `ABCD-EFGH` et redirigeait vers `/activate/?code=FPB538`, mais la page `/activate/` cherchait uniquement ce code dans `activation_sessions.short_code`. Le code affiche par l app Android TV est en realite le `devices.public_device_code` a 6 caracteres.
+
+Contexte :
+L app enregistre l appareil via `api/devices/register.php`, stocke `publicDeviceCode`, puis l ecran Android affiche cet identifiant public. L ancien flux web `/activate/` et les APIs `validate_activation.php` / `start_trial.php` restent bases sur une session `activation_sessions.short_code`.
+
+Solution qui fonctionne :
+- accepter sur `/activate/` un code public TV de 6 caracteres ;
+- resoudre ce code via `devices.public_device_code` ;
+- creer ou reutiliser une session web temporaire `activation_sessions.short_code` pour garder les APIs existantes compatibles ;
+- afficher le code public saisi a l utilisateur, mais envoyer le `short_code` de session en champ cache ;
+- mettre le formulaire compte en coherence avec le placeholder `A1B2C3`.
+
+Erreurs a eviter :
+- ne pas confondre `public_device_code` avec `activation_sessions.short_code` ;
+- ne pas tronquer un code plus long en 6 caracteres pour le chercher comme code public ;
+- ne pas changer les endpoints d activation existants si une session web temporaire suffit.

@@ -572,9 +572,9 @@ $sectionTitles = [
                 </div>
                 <form action="/activate/" method="get" class="activation-mini-form">
                     <div class="field">
-                        <label for="dashboard-tv-code">Code appareil</label>
-                        <input id="dashboard-tv-code" name="code" type="text" minlength="6" maxlength="20" autocomplete="one-time-code" placeholder="ABCD-EFGH">
-                        <small>Le code appareil est visible sur l’écran d’activation de l’application.</small>
+                        <label for="dashboard-tv-code">Code TV</label>
+                        <input id="dashboard-tv-code" name="code" type="text" minlength="6" maxlength="20" autocomplete="one-time-code" placeholder="A1B2C3" required>
+                        <small>Le code TV à 6 caractères est visible sur l’écran d’activation de l’application.</small>
                     </div>
                     <button class="button button-primary" type="submit">Activer cet appareil</button>
                 </form>

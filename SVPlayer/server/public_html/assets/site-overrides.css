@@ -372,6 +372,18 @@ body {
     font-size: clamp(34px, 4.6vw, 56px);
 }
 
+.premium-title {
+    display: flex;
+    justify-content: center;
+    margin-inline: auto;
+}
+
+.premium-title-image {
+    width: min(100%, 980px);
+    height: auto;
+    object-fit: contain;
+}
+
 .price-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -711,6 +723,44 @@ footer {
 .activation-card form .button {
     width: 100%;
     margin-top: 18px;
+}
+
+.activation-license-button,
+.activation-buy-button {
+    width: 100%;
+    min-height: 52px;
+    margin-top: 18px;
+}
+
+.activation-license-button {
+    border-color: rgba(63, 255, 167, .95);
+    background: linear-gradient(135deg, #30ff9d 0%, #00e676 100%);
+    color: #02110a;
+    box-shadow: 0 0 0 1px rgba(63, 255, 167, .24), 0 0 28px rgba(48, 255, 157, .32), 0 12px 32px rgba(0, 230, 118, .22);
+}
+
+.activation-license-button:hover,
+.activation-license-button:focus-visible {
+    background: linear-gradient(135deg, #5cffb3 0%, #16ff86 100%);
+    box-shadow: 0 0 0 3px rgba(63, 255, 167, .24), 0 0 36px rgba(48, 255, 157, .45), 0 16px 36px rgba(0, 230, 118, .28);
+}
+
+.activation-license-button:disabled {
+    cursor: wait;
+    opacity: .72;
+}
+
+.activation-buy-button {
+    border-color: rgba(0, 212, 255, .9);
+    background: linear-gradient(135deg, #1687ff 0%, #00d4ff 100%);
+    color: #ffffff;
+    box-shadow: 0 0 0 1px rgba(0, 212, 255, .22), 0 0 28px rgba(0, 212, 255, .3), 0 12px 32px rgba(22, 135, 255, .2);
+}
+
+.activation-buy-button:hover,
+.activation-buy-button:focus-visible {
+    background: linear-gradient(135deg, #2c94ff 0%, #18e0ff 100%);
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, .2), 0 0 36px rgba(0, 212, 255, .42), 0 16px 36px rgba(22, 135, 255, .26);
 }
 
 .field input,

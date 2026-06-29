@@ -120,27 +120,7 @@ class ActivationViewModel(
 
     fun startTrial() {
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    activationBusy = true,
-                    checking = false,
-                    errorMessage = null,
-                    statusLabel = "Demarrage de l essai gratuit...",
-                )
-            }
-            runCatching { repository.startTrial() }
-                .onSuccess { status -> applyAccessStatus(status) }
-                .onFailure { error ->
-                    _uiState.update {
-                        it.copy(
-                            activationBusy = false,
-                            checking = false,
-                            showFreeWithAdsChoice = false,
-                            errorMessage = error.userMessage("L essai gratuit n est pas disponible."),
-                            statusLabel = "Essai gratuit indisponible",
-                        )
-                    }
-                }
+            startTrialFromUserAction()
         }
     }
 
@@ -222,8 +202,62 @@ class ActivationViewModel(
                 return@launch
             }
 
-            startPassivePolling()
+            startTrialAutomatically()
         }
+    }
+
+    private suspend fun startTrialFromUserAction() {
+        _uiState.update {
+            it.copy(
+                activationBusy = true,
+                checking = false,
+                errorMessage = null,
+                statusLabel = "Demarrage de l essai gratuit...",
+            )
+        }
+        runCatching { repository.startTrial() }
+            .onSuccess { status -> applyAccessStatus(status) }
+            .onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        activationBusy = false,
+                        checking = false,
+                        showFreeWithAdsChoice = false,
+                        errorMessage = error.userMessage("L essai gratuit n est pas disponible."),
+                        statusLabel = "Essai gratuit indisponible",
+                    )
+                }
+            }
+    }
+
+    private suspend fun startTrialAutomatically() {
+        _uiState.update {
+            it.copy(
+                checking = true,
+                creatingSession = false,
+                polling = false,
+                activationBusy = true,
+                showFreeWithAdsChoice = false,
+                errorMessage = null,
+                statusLabel = "Preparation de l essai gratuit...",
+            )
+        }
+        runCatching { repository.startTrial() }
+            .onSuccess { status -> applyAccessStatus(status) }
+            .onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        checking = true,
+                        creatingSession = false,
+                        polling = false,
+                        activationBusy = false,
+                        activated = false,
+                        showFreeWithAdsChoice = false,
+                        errorMessage = error.userMessage("Impossible de preparer l essai gratuit."),
+                        statusLabel = "Essai gratuit indisponible",
+                    )
+                }
+            }
     }
 
     private suspend fun createSessionAndStartPolling() {

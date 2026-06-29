@@ -52,7 +52,7 @@ sv_send_site_headers();
     <meta name="description" content="SmartVision IPTV Player est un lecteur Android TV légal, rapide et moderne. Téléchargement gratuit, licence premium optionnelle et aucun contenu inclus.">
     <title>SmartVision IPTV Player | Lecteur Android TV légal</title>
     <link rel="stylesheet" href="/assets/site.css?v=5">
-    <link rel="stylesheet" href="/assets/site-overrides.css?v=5">
+    <link rel="stylesheet" href="/assets/site-overrides.css?v=7">
     <link rel="stylesheet" href="/assets/mobile.css?v=5">
 </head>
 <body class="home-page">
@@ -95,7 +95,9 @@ sv_send_site_headers();
 
     <section class="premium-section band" >
         <div class="section-heading compact">
-            <h2>SmartVision Premium</h2>
+            <h2 class="premium-title">
+                <img class="premium-title-image" src="/assets/images/smartvision-premium-title.png?v=1" alt="SmartVision Premium">
+            </h2>
             <p>Premium supprime la publicité et débloque plus de fonctionnalités du lecteur. La licence concerne uniquement le logiciel SmartVision, jamais un accès à des chaînes ou catalogues tiers.</p>
         </div>
         <div class="price-grid" id="tarifs">

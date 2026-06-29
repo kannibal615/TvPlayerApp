@@ -232,6 +232,12 @@ fun AppNavigation(
         }
     }
     var lastXtreamAccountSignature by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(activationState.activationType, xtreamAccountSignature) {
+        if (activationState.activationType == "trial_pending_xtream" && xtreamAccounts.isNotEmpty()) {
+            runCatching { container.activationRepository.finalizeTrialAfterPlaylistConfigured() }
+            activationViewModel.checkNow()
+        }
+    }
 
     if (!activationState.activated) {
         BackHandler {
@@ -271,6 +277,7 @@ fun AppNavigation(
                 container.synchronizeCatalog()
                 if (activationState.activationType == "trial_pending_xtream") {
                     runCatching { container.activationRepository.finalizeTrialAfterPlaylistConfigured() }
+                    activationViewModel.checkNow()
                 }
             },
             modifier = Modifier.fillMaxSize(),
