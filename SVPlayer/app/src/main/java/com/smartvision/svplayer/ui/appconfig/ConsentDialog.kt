@@ -67,6 +67,10 @@ import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun ConsentDialog(
@@ -116,14 +120,14 @@ fun ConsentDialog(
                                 Color(0xEE06101F),
                             ),
                         ),
-                        RoundedCornerShape(30.dp),
+                        RoundedCornerShape(10.dp),
                     )
-                    .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.55f)), RoundedCornerShape(30.dp))
-                    .padding(horizontal = 34.dp, vertical = 18.dp),
+                    .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.55f)), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 34.dp, vertical = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 ConsentHeader()
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(12.dp))
                 ConsentLegalPanel(
                     scrollState = scrollState,
                     scrollFocusRequester = scrollFocusRequester,
@@ -160,26 +164,73 @@ private fun ConsentHeader() {
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(58.dp),
+                .height(50.dp),
         ) {
             Text(
-                text = buildAnnotatedString {
-                append("Welcome to ")
-                append("Smart")
-                pushStyle(SpanStyle(color = SmartVisionColors.CyanAccent))
-                append("Vision")
-                pop()
-                append(" Player")
-                },
-                color = SmartVisionColors.TextPrimary,
-                fontSize = 30.sp,
-                lineHeight = 36.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-                )
+    text = buildAnnotatedString {
+        append("Welcome to ")
+
+        pushStyle(
+            SpanStyle(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFFFFFFFF),
+                        Color(0xFFEAF2FF),
+                        Color(0xFFFFFFFF)
+                    )
+                ),
+                fontWeight = FontWeight.ExtraBold
+            )
+        )
+        append("Smart")
+        pop()
+
+        pushStyle(
+            SpanStyle(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFF22F2FF),
+                        Color(0xFF058DFF),
+                        Color(0xFF005CFF)
+                    )
+                ),
+                fontWeight = FontWeight.ExtraBold
+            )
+        )
+        append("Vision")
+        pop()
+
+        pushStyle(
+            SpanStyle(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFFFFFFFF),
+                        Color(0xFFEAF2FF)
+                    )
+                ),
+                fontWeight = FontWeight.ExtraBold
+            )
+        )
+        append(" Player")
+        pop()
+    },
+    style = TextStyle(
+    fontSize = 30.sp,
+    lineHeight = 34.sp,
+    fontWeight = FontWeight.ExtraBold,
+    fontFamily = FontFamily(Font(R.font.montserrat_extra_bold)),
+    letterSpacing = (-0.8).sp,
+    shadow = Shadow(
+        color = Color.Black.copy(alpha = 0.65f),
+        offset = Offset(2f, 3f),
+        blurRadius = 6f
+    )
+),
+    textAlign = TextAlign.Center,
+    modifier = Modifier.fillMaxWidth(),
+)
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(2.dp))
         Text(
             text = "To continue, please review and accept our Privacy Policy and Terms of Use.",
             color = SmartVisionColors.TextSecondary,
@@ -223,7 +274,7 @@ private fun ConsentLegalPanel(
                     }
                     .verticalScroll(scrollState)
                     .focusable()
-                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
             ) {
                 Text(
                     text = "PRIVACY POLICY AND TERMS OF USE",
@@ -318,7 +369,7 @@ private fun ConsentAcceptButton(
 
     Row(
         modifier = Modifier
-            .width(190.dp)
+            .width(170.dp)
             .height(40.dp)
             .tvFocusTarget(
                 state = focusState,
@@ -327,7 +378,7 @@ private fun ConsentAcceptButton(
                 pressed = pressed,
                 focusedScale = 1.035f,
                 glowColor = SmartVisionColors.CyanAccent,
-                cornerRadius = 12.dp,
+                cornerRadius = 10.dp,
             )
             .clip(shape)
             .background(background)

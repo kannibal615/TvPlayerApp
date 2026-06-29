@@ -98,7 +98,12 @@ sv_send_site_headers();
             <h2 class="premium-title">
                 <img class="premium-title-image" src="/assets/images/smartvision-premium-title.png?v=1" alt="SmartVision Premium">
             </h2>
-            <p>Premium supprime la publicité et débloque plus de fonctionnalités du lecteur. La licence concerne uniquement le logiciel SmartVision, jamais un accès à des chaînes ou catalogues tiers.</p>
+            <p>Passez à SmartVision Premium et profitez d’une expérience IPTV plus fluide, plus confortable et sans publicité sur votre Android TV. 
+                La version Premium débloque davantage de fonctionnalités du lecteur SmartVision, améliore l’utilisation au quotidien et offre une expérience plus agréable. 
+                Vous restez libre d’ajouter vos propres playlists M3U, OTT, identifiants Xtream ou sources autorisées.
+            </p>
+            <br>
+            <strong>Obtenez votre licence Premium dès maintenant</strong>
         </div>
         <div class="price-grid" id="tarifs">
             <?php foreach ($planUi as $key => $ui): ?>
