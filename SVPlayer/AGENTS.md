@@ -1,6 +1,6 @@
 # AGENTS.md - SmartVision / SVPlayer
 
-Ce fichier sert de briefing rapide pour tout agent IA qui reprend le projet. Lire aussi `PROJECT_NOTES.md` pour le detail complet.
+Ce fichier est conserve comme briefing legacy. Pour toute nouvelle intervention, lire d'abord `docs/ai-knowledge/ROOT.md`, puis uniquement les fichiers specialises indiques par ce routeur. Lire `PROJECT_NOTES.md` seulement si une information manque dans le nouveau systeme.
 
 ## Objectif produit
 
@@ -448,4 +448,4 @@ SVPlayer/home-implemented-qa.png
 
 Ils apparaitront en `D` tant qu'un commit ne retire pas ces artefacts du depot. Ne pas restaurer ces fichiers sauf demande explicite.
 
-`AGENTS.md` et `PROJECT_NOTES.md` sont les fichiers de documentation de reference.
+`AGENTS.md` et `PROJECT_NOTES.md` restent des sources legacy. La reference de routage active est `docs/ai-knowledge/ROOT.md`.

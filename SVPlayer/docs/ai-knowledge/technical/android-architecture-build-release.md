@@ -1,0 +1,126 @@
+# Android Architecture, Build et Release
+
+Derniere mise a jour: 2026-06-29.
+
+## 1. Objectif
+
+Documenter l'architecture Android active, les points d'entree techniques, le build release, la signature et les controles avant publication.
+
+## 2. Fonctionnement actuel
+
+L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
+
+Gradle local constate le 2026-06-29:
+- `versionCode = 53`
+- `versionName = "0.1.50"`
+- `compileSdk = 36`
+- `targetSdk = 36`
+- `minSdk = 23`
+- release standard sans minify/shrink
+- `releaseOptimized` avec minify/shrink
+
+## 3. Workflow utilisateur
+
+Ce domaine n'est pas directement visible sauf:
+- update in-app;
+- installation APK;
+- lancement TV;
+- comportement si build instable ou version update mal publiee.
+
+## 4. Workflow technique
+
+Points d'entree:
+- `SplashActivity.kt`
+- `MainActivity.kt`
+- `SVPlayerApplication.kt`
+- `AppNavigation.kt`
+- `AppContainer.kt`
+
+Build:
+- `.\gradlew.bat assembleRelease`
+- timeout 15 minutes minimum pour release;
+- pas de `compileDebugKotlin` ni `testDebugUnitTest` avant release sauf demande explicite.
+
+Deploy:
+- le script `scripts/deploy_activation_phase1.ps1` n'assemble pas l'APK;
+- il upload l'APK deja genere si `app/build/outputs/apk/release/app-release.apk` existe.
+
+## 5. Ecrans concernes
+
+- Splash
+- MainActivity
+- Update dialog
+- Notifications release
+
+## 6. Fichiers de code concernes
+
+- `app/build.gradle.kts`
+- `build.gradle.kts`
+- `settings.gradle.kts`
+- `gradle/wrapper/*`
+- `app/src/main/AndroidManifest.xml`
+- `app/src/main/java/com/smartvision/svplayer/SplashActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/MainActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/SVPlayerApplication.kt`
+- `app/src/main/java/com/smartvision/svplayer/core/data/AppContainer.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/update/*`
+- `scripts/deploy_activation_phase1.ps1`
+
+## 7. Donnees / API / Backend / Admin
+
+Update public:
+- `api/app_update.php`
+- `downloads/smartvision-tv.version.json`
+- `downloads/smartvision-tv-v{versionCode}-{hash}.apk`
+- `downloads/smartvision-tv.apk`
+
+Artefacts locaux:
+- `app/build/outputs/apk/release/app-release.apk`
+- `app/build/outputs/apk/release/output-metadata.json`
+- `app/build/reports/profile/` si profiling Gradle.
+
+## 8. Dependances
+
+- Backend/admin/deploy pour publication APK.
+- Activation/config si update oriente vers notifications.
+- Troubleshooting pour timeout Gradle.
+
+## 9. Regles a ne pas casser
+
+- Toujours incrementer `versionCode` avant une nouvelle release publiee.
+- Ne pas considerer une release terminee tant que l'APK n'est pas publie et verifie.
+- Ne pas relancer un build apres timeout sans verifier Java/Gradle et artefacts.
+- Ne pas exposer les secrets de signature.
+- Ne pas activer minify/shrink sur le release urgent sans investigation separee.
+- Garder `releaseOptimized` comme chemin distinct si optimisation lourde.
+
+## 10. Problemes connus
+
+- `assembleRelease` peut continuer apres timeout.
+- Le cache CDN peut servir l'APK stable ancien; verifier avec cache-buster ou APK versionne.
+- `PROJECT_NOTES.md` peut contenir des versions obsoletes.
+- Java par defaut peut ne pas etre JDK 21.
+
+## 11. Quand lire ce fichier ?
+
+Lire ce fichier si la demande concerne:
+- build;
+- release;
+- assembleRelease;
+- Gradle;
+- versionCode;
+- update APK;
+- signature;
+- AndroidManifest;
+- AppContainer;
+- architecture Android.
+
+Ne pas lire ce fichier si la demande concerne uniquement:
+- contenu PHP admin sans APK;
+- UX sans build;
+- simulation documentaire non executable.
+
+## 12. Historique court
+
+- 2026-06-29: migration vers documentation specialisee.
+- 2026-06-29: ajout de la regle release: bypass debug/test et timeout 15 minutes.

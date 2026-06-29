@@ -1,0 +1,89 @@
+# Agent Workflow
+
+Derniere mise a jour: 2026-06-29.
+
+## 1. Objectif
+
+Definir la procedure obligatoire pour les futures interventions Codex sur SmartVision afin de limiter les lectures inutiles, garder la documentation a jour et eviter les regressions.
+
+## 2. Workflow standard
+
+1. Lire `docs/ai-knowledge/ROOT.md`.
+2. Comprendre la demande utilisateur.
+3. Identifier les domaines concernes avec les mots-cles du root.
+4. Lire uniquement les fichiers MD specialises utiles.
+5. Lire uniquement les fichiers de code necessaires.
+6. Appliquer la correction ou la modification demandee.
+7. Tester si possible et selon la demande.
+8. Mettre a jour les fichiers MD concernes.
+9. Ajouter une entree courte dans `docs/ai-knowledge/worklog/AI_CHANGELOG.md`.
+10. Signaler toute documentation insuffisante, obsolete ou contradictoire.
+
+## 3. Regles de lecture legacy
+
+Ne pas lire `PROJECT_NOTES.md` ou `AGENTS.md` par defaut. Les utiliser seulement si:
+- le root et les fichiers specialises ne suffisent pas;
+- une information historique est necessaire;
+- une ancienne procedure doit etre comparee;
+- un conflit documentaire doit etre tranche.
+
+`TROUBLESHOOTING.md` doit etre consulte avant de refaire une longue recherche sur une erreur deja rencontree.
+
+## 4. Mise a jour documentaire obligatoire
+
+Apres toute intervention future, verifier:
+- fonctionnalite changee;
+- workflow utilisateur change;
+- regle metier changee;
+- dependance changee;
+- ecran change;
+- endpoint, table ou parametre admin change;
+- fichier MD specialise a mettre a jour;
+- decision structurante a documenter.
+
+Si oui:
+- mettre a jour le ou les fichiers concernes;
+- ajouter un changelog court;
+- creer une decision si le choix empeche une future mauvaise direction;
+- documenter les erreurs reutilisables dans `TROUBLESHOOTING.md`.
+
+## 5. Release Android
+
+Quand l'utilisateur demande une release:
+- verifier le `versionCode` live et local si necessaire;
+- incrementer `versionCode` avant de produire un nouvel APK si une release est demandee;
+- bypass automatiquement `compileDebugKotlin` et `testDebugUnitTest`;
+- lancer directement `.\gradlew.bat assembleRelease`;
+- utiliser un timeout de 15 minutes minimum;
+- si le build timeout, verifier les processus Java/Gradle et les artefacts avant de relancer;
+- publier avec `scripts/deploy_activation_phase1.ps1 -SkipInstall` sauf consigne contraire;
+- verifier `api/app_update.php`, `downloads/smartvision-tv.version.json`, APK versionne et stable URL cache-busted.
+
+## 6. Tests selon domaine
+
+- Documentation only: verifier existence, liens et coherence des MD; ne pas build.
+- PHP: `php -l` sur les fichiers touches, puis test endpoint si deploiement demande.
+- Android code: build approprie; pour release, pas de debug build sauf demande explicite.
+- UI TV: installer sur `SmartVision_TV_720p_Light` seulement si demande ou si validation UI requise.
+- Production: ne pas deployer sans demande explicite.
+
+## 7. Erreurs recurrentes
+
+Avant plusieurs essais:
+- lire le message exact;
+- chercher dans `TROUBLESHOOTING.md`;
+- appliquer la correction la plus simple;
+- ne pas repeter la meme commande sans changement d'approche;
+- ajouter une note si la solution est reutilisable.
+
+## 8. Secrets et securite
+
+Ne jamais afficher:
+- contenu de `local.properties`;
+- cle cPanel;
+- identifiants MySQL;
+- mots de passe Xtream;
+- keystore ou mots de passe de signature;
+- tokens temporaires encore valides.
+
+Les docs doivent decrire les cles attendues sans valeur reelle.
