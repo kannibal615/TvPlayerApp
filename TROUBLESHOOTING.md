@@ -1,5 +1,24 @@
 # Troubleshooting
 
+## 2026-06-30 - Boutons overlay YouTube Compose sans action
+
+Probleme rencontre :
+Les boutons du bandeau bas YouTube etaient focusables visuellement mais OK/Enter ne declenchait aucune action. Next et plein ecran semblaient seulement redonner le focus au bouton Play/Pause, et le focus pouvait repartir vers les suggestions au lieu de rester dans le bandeau.
+
+Contexte :
+Player YouTube SmartVision avec WebView YouTube IFrame API et overlay Compose custom. Le bandeau bas avait un `onPreviewKeyEvent` parent et les boutons avaient leurs propres handlers DPAD.
+
+Solution qui fonctionne :
+- ne jamais consommer `DirectionCenter`, `Enter` ou `NumPadEnter` dans le conteneur parent du bandeau ;
+- laisser chaque bouton intercepter OK/Enter et appeler directement son `onClick` ;
+- garder le routage gauche/droite manuel dans les boutons pour borner le focus dans le bandeau ;
+- desactiver la reprise de focus automatique du WebView quand l overlay Compose gere les controles, tout en gardant les commandes `evaluateJavascript`.
+
+Erreurs a eviter :
+- ne pas ajouter un handler OK/Enter sur le parent du bandeau, car il passe avant les boutons ;
+- ne pas laisser le WebView appeler `requestFocus()` automatiquement pendant que les controles Compose sont visibles ;
+- ne pas diagnostiquer uniquement le style visuel du focus : verifier aussi qui consomme l evenement clavier.
+
 ## 2026-06-28 - Build release depasse 20 minutes avec R8/shrink actives
 
 Probleme rencontre :

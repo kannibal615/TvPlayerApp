@@ -43,6 +43,7 @@ internal fun YoutubeWebPlayer(
     mode: YoutubePlaybackMode,
     command: YoutubePlayerCommand? = null,
     commandSerial: Int = 0,
+    keyboardControlsEnabled: Boolean = true,
     modifier: Modifier = Modifier,
     anomalyReporter: AnomalyReporter? = null,
     onPlayerReady: () -> Unit = {},
@@ -59,6 +60,7 @@ internal fun YoutubeWebPlayer(
                 YoutubeTvWebView(context).apply {
                     configureYoutubeWebView(
                         mode = mode,
+                        keyboardControlsEnabled = keyboardControlsEnabled,
                         anomalyReporter = anomalyReporter,
                         videoId = safeVideoId,
                         onRenderProcessGone = { renderRestart += 1 },
@@ -96,15 +98,19 @@ internal fun YoutubeWebPlayer(
                         null,
                     )
                 }
-                if (mode == YoutubePlaybackMode.Fullscreen) {
+                if (mode == YoutubePlaybackMode.Fullscreen && keyboardControlsEnabled) {
                     webView.installYoutubeKeyControls()
+                }
+                if (mode == YoutubePlaybackMode.Fullscreen) {
                     if (command != null && commandSerial > 0 && commandSerial != handledCommandSerial) {
                         handledCommandSerial = commandSerial
                         webView.evaluateJavascript(command.javascriptCall(), null)
                     }
-                    webView.postDelayed({ webView.grabYoutubeFocus() }, 80)
-                    webView.postDelayed({ webView.grabYoutubeFocus() }, 280)
-                    webView.postDelayed({ webView.grabYoutubeFocus() }, 700)
+                    if (keyboardControlsEnabled) {
+                        webView.postDelayed({ webView.grabYoutubeFocus() }, 80)
+                        webView.postDelayed({ webView.grabYoutubeFocus() }, 280)
+                        webView.postDelayed({ webView.grabYoutubeFocus() }, 700)
+                    }
                 }
             },
             onRelease = { webView ->
@@ -124,13 +130,14 @@ internal fun YoutubeWebPlayer(
 @SuppressLint("SetJavaScriptEnabled")
 private fun WebView.configureYoutubeWebView(
     mode: YoutubePlaybackMode,
+    keyboardControlsEnabled: Boolean,
     anomalyReporter: AnomalyReporter?,
     videoId: String,
     onRenderProcessGone: () -> Unit,
 ) {
     setBackgroundColor(android.graphics.Color.BLACK)
-    isFocusable = mode == YoutubePlaybackMode.Fullscreen
-    isFocusableInTouchMode = mode == YoutubePlaybackMode.Fullscreen
+    isFocusable = mode == YoutubePlaybackMode.Fullscreen && keyboardControlsEnabled
+    isFocusableInTouchMode = mode == YoutubePlaybackMode.Fullscreen && keyboardControlsEnabled
     descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
     isVerticalScrollBarEnabled = false
     isHorizontalScrollBarEnabled = false

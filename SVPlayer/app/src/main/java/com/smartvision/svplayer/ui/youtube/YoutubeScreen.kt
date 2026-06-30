@@ -863,6 +863,7 @@ private fun YoutubeInlinePlayer(
                 mode = YoutubePlaybackMode.Fullscreen,
                 command = command,
                 commandSerial = commandSerial,
+                keyboardControlsEnabled = false,
                 anomalyReporter = anomalyReporter,
                 onPlaybackStateChanged = { playing ->
                     isPlaying = playing
@@ -1024,10 +1025,6 @@ private fun YoutubePlayerControlBar(
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (event.key) {
-                    Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
-                        requestPlayFocus()
-                        true
-                    }
                     Key.DirectionUp, Key.Back -> {
                         onDismiss()
                         true

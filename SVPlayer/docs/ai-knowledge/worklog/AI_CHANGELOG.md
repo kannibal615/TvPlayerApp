@@ -1,5 +1,25 @@
 # AI Changelog
 
+## 2026-06-30 - Release Android 0.1.58 versionCode 61
+
+Type:
+- android
+- ui
+- release
+- deploy
+
+Resume:
+- Bump Android de `0.1.57 (60)` vers `0.1.58 (61)`.
+- Correction critique des controles YouTube: le bandeau parent ne consomme plus OK/Enter avant les boutons.
+- Correction focus YouTube: le WebView ne reprend plus automatiquement le focus quand l'overlay SmartVision Compose controle la lecture.
+- Conservation du routage DPAD gauche/droite dans les boutons et des commandes JS play/pause.
+
+Fichiers concernes:
+- `app/build.gradle.kts`
+- `app/src/main/java/com/smartvision/svplayer/ui/youtube/YoutubeScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/youtube/YoutubeWebPlayer.kt`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+
 ## 2026-06-30 - Release Android 0.1.57 versionCode 60
 
 Type:
