@@ -57,9 +57,9 @@ class SplashActivity : Activity() {
         }
         val displayWidth = resources.displayMetrics.widthPixels
         val displayHeight = resources.displayMetrics.heightPixels
-        val logoWidth = (displayWidth * 0.34f).toInt()
+        val logoWidth = (displayWidth * 0.54f).toInt()
         val logoHeight = (logoWidth * LogoAspectRatio).toInt()
-        val progressWidth = (displayWidth * 0.18f).toInt()
+        val progressWidth = (displayWidth * 0.33f).toInt()
 
         val logo = ImageView(this).apply {
             setImageResource(R.drawable.smartvision_logo_wide)

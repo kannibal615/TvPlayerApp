@@ -129,7 +129,7 @@ import kotlinx.coroutines.launch
 fun ProfileRoute(
     onBack: () -> Unit,
     onSettings: () -> Unit,
-    onSyncCatalog: () -> Unit,
+    onSyncCatalog: suspend () -> Result<Unit>,
     onActivationChanged: () -> Unit,
 ) {
     val container = LocalAppContainer.current
@@ -177,13 +177,13 @@ fun ProfileRoute(
             val accountId = container.accountManager.upsert(account)
             container.accountManager.select(accountId)
             container.xtreamRepository.clearCaches()
-            onSyncCatalog()
+            scope.launch { onSyncCatalog() }
         },
         onDeleteXtreamAccount = { accountId ->
             container.accountManager.delete(accountId)
             container.xtreamRepository.clearCaches()
             if (container.accountManager.accounts.value.isNotEmpty()) {
-                onSyncCatalog()
+                scope.launch { onSyncCatalog() }
             }
         },
         onDismissQr = viewModel::dismissQr,
@@ -197,7 +197,7 @@ private fun ProfileScreen(
     onBack: () -> Unit,
     onSettings: () -> Unit,
     onRefresh: () -> Unit,
-    onSyncCatalog: () -> Unit,
+    onSyncCatalog: suspend () -> Result<Unit>,
     onShowLicenseQr: () -> Unit,
     onLicenseCodeChange: (String) -> Unit,
     onActivateLicense: () -> Unit,
@@ -210,6 +210,21 @@ private fun ProfileScreen(
 ) {
     BackHandler(onBack = onBack)
     var selectedSection by remember { mutableStateOf(ProfileSection.License) }
+    var showXtreamSyncDialog by remember { mutableStateOf(false) }
+    var pendingFocusSection by remember { mutableStateOf<ProfileSection?>(null) }
+    val xtreamSectionFocusRequester = remember { FocusRequester() }
+    val deviceSectionFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(pendingFocusSection, showXtreamSyncDialog) {
+        if (!showXtreamSyncDialog) {
+            when (pendingFocusSection) {
+                ProfileSection.Xtream -> xtreamSectionFocusRequester.requestFocus()
+                ProfileSection.Device -> deviceSectionFocusRequester.requestFocus()
+                else -> Unit
+            }
+            pendingFocusSection = null
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -262,6 +277,11 @@ private fun ProfileScreen(
                                 selectedSection = section
                             }
                         },
+                        focusRequester = when (section) {
+                            ProfileSection.Xtream -> xtreamSectionFocusRequester
+                            ProfileSection.Device -> deviceSectionFocusRequester
+                            else -> null
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
@@ -289,7 +309,7 @@ private fun ProfileScreen(
                         state = state,
                         syncStatus = syncStatus,
                         onShowXtreamSetupQr = onShowXtreamSetupQr,
-                        onSyncCatalog = onSyncCatalog,
+                        onOpenSyncDialog = { showXtreamSyncDialog = true },
                         onSaveXtreamAccount = onSaveXtreamAccount,
                         onDeleteXtreamAccount = onDeleteXtreamAccount,
                         modifier = Modifier.fillMaxWidth(),
@@ -318,6 +338,24 @@ private fun ProfileScreen(
             onSubmitLicenseCode = if (qr.allowsLicenseEntry) onActivateLicense else null,
             submittingLicense = state.submittingLicense,
             onDismiss = onDismissQr,
+        )
+    }
+
+    if (showXtreamSyncDialog) {
+        XtreamSynchronizationDialog(
+            state = state,
+            syncStatus = syncStatus,
+            onStartSync = onSyncCatalog,
+            onCancel = {
+                showXtreamSyncDialog = false
+                selectedSection = ProfileSection.Xtream
+                pendingFocusSection = ProfileSection.Xtream
+            },
+            onReturn = {
+                showXtreamSyncDialog = false
+                selectedSection = ProfileSection.Device
+                pendingFocusSection = ProfileSection.Device
+            },
         )
     }
 }
@@ -449,7 +487,7 @@ private fun XtreamPanel(
     state: ProfileUiState,
     syncStatus: SyncStatus,
     onShowXtreamSetupQr: () -> Unit,
-    onSyncCatalog: () -> Unit,
+    onOpenSyncDialog: () -> Unit,
     onSaveXtreamAccount: (XtreamAccount) -> Unit,
     onDeleteXtreamAccount: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -466,12 +504,19 @@ private fun XtreamPanel(
     ) {
         TvButton(
             text = syncStatus.buttonLabel,
-            onClick = onSyncCatalog,
+            onClick = onOpenSyncDialog,
             enabled = syncStatus !is SyncStatus.Running,
             leadingIcon = Icons.Default.CloudSync,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(46.dp),
+        )
+        Text(
+            text = "Derniere synchronisation : ${state.account.lastSync ?: "Jamais"}",
+            color = SmartVisionColors.TextSecondary,
+            style = SmartVisionType.Caption,
+            textAlign = TextAlign.End,
+            modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(10.dp))
         when (syncStatus) {
@@ -557,6 +602,301 @@ private fun XtreamPanel(
         )
     }
 }
+
+private enum class XtreamSyncDialogPhase {
+    Confirmation,
+    Running,
+    Success,
+    Error,
+}
+
+@Composable
+private fun XtreamSynchronizationDialog(
+    state: ProfileUiState,
+    syncStatus: SyncStatus,
+    onStartSync: suspend () -> Result<Unit>,
+    onCancel: () -> Unit,
+    onReturn: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val startFocusRequester = remember { FocusRequester() }
+    val returnFocusRequester = remember { FocusRequester() }
+    var phase by remember { mutableStateOf(XtreamSyncDialogPhase.Confirmation) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val blocking = phase == XtreamSyncDialogPhase.Running
+    val account = state.activeXtreamAccount
+    val progress = syncStatus.catalogProgressOrDefault(state.account)
+    val showProgress = phase != XtreamSyncDialogPhase.Confirmation
+
+    fun closeAllowed() {
+        if (phase == XtreamSyncDialogPhase.Confirmation) onCancel() else onReturn()
+    }
+
+    BackHandler(enabled = true) {
+        if (!blocking) closeAllowed()
+    }
+    LaunchedEffect(Unit) {
+        startFocusRequester.requestFocus()
+    }
+    LaunchedEffect(phase) {
+        if (phase == XtreamSyncDialogPhase.Success || phase == XtreamSyncDialogPhase.Error) {
+            returnFocusRequester.requestFocus()
+        }
+    }
+
+    Dialog(
+        onDismissRequest = { if (!blocking) closeAllowed() },
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .width(860.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFA071629),
+                            Color(0xF5050B16),
+                        ),
+                    ),
+                )
+                .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent.copy(alpha = 0.62f)), RoundedCornerShape(8.dp))
+                .onPreviewKeyEvent { blocking }
+                .padding(22.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Icon(
+                    imageVector = Icons.Default.CloudSync,
+                    contentDescription = null,
+                    tint = SmartVisionColors.CyanAccent,
+                    modifier = Modifier.size(26.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Synchronisation Xtream",
+                        color = SmartVisionColors.TextPrimary,
+                        style = SmartVisionType.TitleS,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = "Controlez les donnees catalogue avant de lancer la mise a jour.",
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Caption,
+                    )
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                XtreamSyncCountCard(
+                    title = "Live TV",
+                    progress = progress.live,
+                    showProgress = showProgress,
+                    modifier = Modifier.weight(1f),
+                )
+                XtreamSyncCountCard(
+                    title = "Films",
+                    progress = progress.movies,
+                    showProgress = showProgress,
+                    modifier = Modifier.weight(1f),
+                )
+                XtreamSyncCountCard(
+                    title = "Series",
+                    progress = progress.series,
+                    showProgress = showProgress,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Spacer(Modifier.height(18.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(SmartVisionColors.Surface.copy(alpha = 0.48f))
+                    .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.72f)), RoundedCornerShape(7.dp))
+                    .padding(14.dp),
+            ) {
+                SyncDialogInfoRow("Code TV", state.tvCode)
+                SyncDialogInfoRow("Url Xtream", account?.host?.ifBlank { state.xtreamHost } ?: state.xtreamHost.ifBlank { "Non configure" })
+                SyncDialogInfoRow("Username", account?.username?.ifBlank { state.xtreamUsername } ?: state.xtreamUsername.ifBlank { "Non configure" })
+                SyncDialogInfoRow("Password", if (account?.password.isNullOrBlank()) "********" else "********")
+                SyncDialogInfoRow("Derniere synchro", state.account.lastSync ?: "Jamais")
+            }
+            if (phase == XtreamSyncDialogPhase.Success) {
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    text = syncStatus.successMessageOrDefault(),
+                    color = SmartVisionColors.Success,
+                    style = SmartVisionType.Label,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(SmartVisionColors.Success.copy(alpha = 0.14f))
+                        .border(BorderStroke(1.dp, SmartVisionColors.Success.copy(alpha = 0.58f)), RoundedCornerShape(7.dp))
+                        .padding(vertical = 10.dp),
+                )
+            }
+            if (phase == XtreamSyncDialogPhase.Error) {
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    text = errorMessage ?: syncStatus.errorMessageOrDefault(),
+                    color = SmartVisionColors.Error,
+                    style = SmartVisionType.Label,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(SmartVisionColors.Error.copy(alpha = 0.14f))
+                        .border(BorderStroke(1.dp, SmartVisionColors.Error.copy(alpha = 0.58f)), RoundedCornerShape(7.dp))
+                        .padding(vertical = 10.dp),
+                )
+            }
+            Spacer(Modifier.height(18.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                TvButton(
+                    text = if (phase == XtreamSyncDialogPhase.Confirmation) "Annuler" else "Retour",
+                    onClick = { if (!blocking) closeAllowed() },
+                    enabled = !blocking,
+                    leadingIcon = Icons.Default.ArrowBack,
+                    focusRequester = returnFocusRequester,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .width(210.dp)
+                        .height(44.dp),
+                )
+                TvButton(
+                    text = if (blocking) "Synchronisation encours" else "Lancer la synchronisation",
+                    onClick = {
+                        if (phase == XtreamSyncDialogPhase.Confirmation) {
+                            phase = XtreamSyncDialogPhase.Running
+                            errorMessage = null
+                            scope.launch {
+                                val result = onStartSync()
+                                phase = if (result.isSuccess) {
+                                    XtreamSyncDialogPhase.Success
+                                } else {
+                                    errorMessage = result.exceptionOrNull()?.message ?: "Synchronisation impossible"
+                                    XtreamSyncDialogPhase.Error
+                                }
+                            }
+                        }
+                    },
+                    enabled = phase == XtreamSyncDialogPhase.Confirmation && state.hasXtream,
+                    leadingIcon = if (blocking) null else Icons.Default.CloudSync,
+                    leadingContent = if (blocking) {
+                        {
+                            CircularProgressIndicator(
+                                color = SmartVisionColors.CyanAccent,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    } else {
+                        null
+                    },
+                    focusRequester = startFocusRequester,
+                    modifier = Modifier
+                        .width(286.dp)
+                        .height(44.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun XtreamSyncCountCard(
+    title: String,
+    progress: SyncStatus.SyncSectionProgress,
+    showProgress: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val valueColor = if (progress.completed) Color(0xFF7CFFB2) else SmartVisionColors.TextPrimary
+    Column(
+        modifier = modifier
+            .height(118.dp)
+            .clip(RoundedCornerShape(7.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        SmartVisionColors.Primary.copy(alpha = 0.24f),
+                        SmartVisionColors.Surface.copy(alpha = 0.70f),
+                    ),
+                ),
+            )
+            .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent.copy(alpha = 0.38f)), RoundedCornerShape(7.dp))
+            .padding(12.dp),
+    ) {
+        Text(title, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1)
+        Spacer(Modifier.height(5.dp))
+        Text(
+            text = progress.currentItems.toString(),
+            color = valueColor,
+            style = SmartVisionType.TitleS,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+        Spacer(Modifier.weight(1f))
+        if (showProgress) {
+            LinearProgressIndicator(
+                progress = { progress.fraction },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(5.dp)
+                    .clip(RoundedCornerShape(50)),
+                color = if (progress.completed) Color(0xFF7CFFB2) else SmartVisionColors.CyanAccent,
+                trackColor = Color.White.copy(alpha = 0.10f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SyncDialogInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(26.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("$label :", color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1)
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = value,
+            color = SmartVisionColors.TextPrimary,
+            style = SmartVisionType.Caption,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+private fun SyncStatus.catalogProgressOrDefault(account: AccountProfile): SyncStatus.CatalogProgress =
+    when (this) {
+        is SyncStatus.Running -> catalogProgress
+        is SyncStatus.Success -> catalogProgress
+        is SyncStatus.Error -> catalogProgress
+        SyncStatus.Idle -> SyncStatus.CatalogProgress(
+            live = SyncStatus.SyncSectionProgress(currentItems = account.liveCount, previousItems = account.liveCount),
+            movies = SyncStatus.SyncSectionProgress(currentItems = account.movieCount, previousItems = account.movieCount),
+            series = SyncStatus.SyncSectionProgress(currentItems = account.seriesCount, previousItems = account.seriesCount),
+        )
+    }
+
+private fun SyncStatus.successMessageOrDefault(): String =
+    (this as? SyncStatus.Success)?.message ?: "Synchronisation terminee avec succes."
+
+private fun SyncStatus.errorMessageOrDefault(): String =
+    (this as? SyncStatus.Error)?.message ?: "Synchronisation impossible."
 
 @Composable
 private fun XtreamConnectedAccountSection(

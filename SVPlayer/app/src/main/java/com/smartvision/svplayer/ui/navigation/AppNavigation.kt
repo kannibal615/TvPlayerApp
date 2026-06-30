@@ -143,7 +143,7 @@ fun AppNavigation(
     var showXtreamSetupDialog by remember { mutableStateOf(false) }
     var premiumLicenseCode by remember { mutableStateOf("") }
     val xtreamConnectionState by container.xtreamConnectionManager.state.collectAsStateWithLifecycle()
-    val xtreamCatalogBlocked = xtreamConnectionState.blocksCatalog || xtreamConnectionState.checking
+    val xtreamCatalogBlocked = xtreamConnectionState.blocksCatalogForNavigation
     val context = LocalContext.current
     val activity = context as? Activity
     val monetizationStatus = resolveMonetizationStatus(
@@ -199,18 +199,21 @@ fun AppNavigation(
     ) {
         container.monetizationManager.synchronizeStatus()
     }
-    val syncCatalog = {
-        scope.launch {
-            val connection = container.xtreamConnectionManager.verifyQuick("manual_sync")
-            if (!connection.isConnected) {
-                showXtreamConnectionDialog = connection.blocksCatalog
-                return@launch
-            }
+    val syncCatalog: suspend () -> Result<Unit> = {
+        val connection = container.xtreamConnectionManager.verifyQuick("manual_sync")
+        if (!connection.isConnected) {
+            showXtreamConnectionDialog = connection.blocksCatalog
+            Result.failure(IllegalStateException("Connexion Xtream indisponible"))
+        } else {
             runCatching {
                 container.xtreamRepository.clearCaches()
+                container.catalogRepository.invalidateLocalCatalogCache()
                 container.synchronizeCatalog().getOrThrow()
             }
         }
+    }
+    val launchSyncCatalog = {
+        scope.launch { syncCatalog() }
         Unit
     }
     LaunchedEffect(activationState.activated, appConfigState.loading, parentalControlAllowed, playerSettings.parentalControlEnabled, playerSettings.parentalPin, playerSettings.parentalKeywords) {
@@ -221,6 +224,7 @@ fun AppNavigation(
         ) {
             container.settingsRepository.resetParentalControl()
             container.xtreamRepository.clearCaches()
+            container.catalogRepository.invalidateLocalCatalogCache()
             runCatching { container.synchronizeCatalog() }
         }
     }
@@ -296,6 +300,7 @@ fun AppNavigation(
                 val accountId = container.accountManager.upsert(account)
                 container.accountManager.select(accountId)
                 container.xtreamRepository.clearCaches()
+                container.catalogRepository.invalidateLocalCatalogCache()
                 container.xtreamRepository.getLiveCategories()
                 container.synchronizeCatalog()
                 if (activationState.activationType == "trial_pending_xtream") {
@@ -330,15 +335,17 @@ fun AppNavigation(
                 SyncFrequencyPolicy.from(playerSettings.syncFrequency).runOnStartup
             val shouldVerifyXtream = accountChanged || firstAccountCheck || startupSync
             val shouldSyncCatalog = accountChanged || startupSync
-            if (shouldVerifyXtream) {
+            val startupAlreadyHandled = firstAccountCheck && container.xtreamConnectionManager.hasFreshConnectedState()
+            if (shouldVerifyXtream && !startupAlreadyHandled) {
                 val connection = container.xtreamConnectionManager.verifyQuick("startup")
                 if (!connection.isConnected) {
-                    showXtreamConnectionDialog = connection.blocksCatalog
+                    showXtreamConnectionDialog = connection.blocksCatalogForNavigation
                     return@LaunchedEffect
                 }
                 if (shouldSyncCatalog) {
                     runCatching {
                         container.xtreamRepository.clearCaches()
+                        container.catalogRepository.invalidateLocalCatalogCache()
                         container.synchronizeCatalog().getOrThrow()
                     }
                 }
@@ -392,7 +399,7 @@ fun AppNavigation(
                 currentRoute = currentRoute,
                 tabs = tabs,
                 onNavigate = navigateFromHeader,
-                onSync = syncCatalog,
+                onSync = launchSyncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
                 onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
@@ -452,7 +459,7 @@ fun AppNavigation(
                 currentRoute = currentRoute,
                 tabs = tabs,
                 onNavigate = navigateFromHeader,
-                onSync = syncCatalog,
+                onSync = launchSyncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
                 onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
@@ -471,7 +478,7 @@ fun AppNavigation(
                 currentRoute = currentRoute,
                 tabs = tabs,
                 onNavigate = navigateFromHeader,
-                onSync = syncCatalog,
+                onSync = launchSyncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
                 onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
@@ -491,7 +498,7 @@ fun AppNavigation(
                 currentRoute = currentRoute,
                 tabs = tabs,
                 onNavigate = navigateFromHeader,
-                onSync = syncCatalog,
+                onSync = launchSyncCatalog,
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
                 onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
@@ -512,7 +519,7 @@ fun AppNavigation(
                     currentRoute = currentRoute,
                     tabs = tabs,
                     onNavigate = navigateFromHeader,
-                    onSync = syncCatalog,
+                    onSync = launchSyncCatalog,
                     onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                     onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
                     onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
@@ -528,7 +535,7 @@ fun AppNavigation(
                 onBack = { navController.popBackStack() },
                 updateState = appUpdateState,
                 onCheckForUpdate = { appUpdateViewModel.checkForUpdate(revealDialog = true) },
-                onSyncCatalog = syncCatalog,
+                onSyncCatalog = launchSyncCatalog,
                 parentalControlAllowed = parentalControlAllowed,
                 onLockedFeature = { showLicensePurchaseQr = true },
             )
@@ -596,7 +603,7 @@ fun AppNavigation(
                     currentRoute = AppRoute.Movies.route,
                     tabs = tabs,
                     onNavigate = navigateFromHeader,
-                    onSync = syncCatalog,
+                    onSync = launchSyncCatalog,
                     onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                     onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
                     onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
@@ -641,7 +648,7 @@ fun AppNavigation(
                     currentRoute = AppRoute.Series.route,
                     tabs = tabs,
                     onNavigate = navigateFromHeader,
-                    onSync = syncCatalog,
+                    onSync = launchSyncCatalog,
                     onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                     onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
                     onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
@@ -736,6 +743,7 @@ fun AppNavigation(
                         val accountId = container.accountManager.upsert(account)
                         container.accountManager.select(accountId)
                         container.xtreamRepository.clearCaches()
+                        container.catalogRepository.invalidateLocalCatalogCache()
                         val connection = container.xtreamConnectionManager.verifyQuick("credentials_edit")
                         if (connection.isConnected) {
                             showXtreamSetupDialog = false

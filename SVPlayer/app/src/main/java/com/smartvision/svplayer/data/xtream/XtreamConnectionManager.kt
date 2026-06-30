@@ -42,6 +42,7 @@ data class XtreamConnectionState(
             status == XtreamConnectionStatus.INVALID_CREDENTIALS ||
             status == XtreamConnectionStatus.INVALID_RESPONSE ||
             status == XtreamConnectionStatus.UNKNOWN_ERROR
+    val blocksCatalogForNavigation: Boolean = blocksCatalog || (checking && !isConnected)
 
     val shouldRetryInBackground: Boolean = status == XtreamConnectionStatus.NETWORK_ERROR
 }
@@ -61,6 +62,7 @@ class XtreamConnectionManager(
 
     private val _alertRequests = MutableSharedFlow<Unit>(replay = 1, extraBufferCapacity = 1)
     val alertRequests: SharedFlow<Unit> = _alertRequests
+    private var lastConnectedAccountSignature: String = ""
 
     suspend fun verifyQuick(source: String): XtreamConnectionState = withContext(Dispatchers.IO) {
         val credentials = accountManager.current()
@@ -117,8 +119,10 @@ class XtreamConnectionManager(
 
         _state.value = checked
         if (checked.isConnected) {
+            lastConnectedAccountSignature = credentials.connectionSignature()
             notifier.clear()
         } else if (checked.blocksCatalog) {
+            lastConnectedAccountSignature = ""
             reportFailureIfNeeded(checked, source)
             notifier.showIssue()
             if (source == "splash" || source == "startup") {
@@ -126,6 +130,13 @@ class XtreamConnectionManager(
             }
         }
         checked
+    }
+
+    fun hasFreshConnectedState(maxAgeMillis: Long = FRESH_CONNECTED_WINDOW_MS): Boolean {
+        val current = _state.value
+        if (!current.isConnected || current.checking || current.checkedAt <= 0L) return false
+        if (System.currentTimeMillis() - current.checkedAt > maxAgeMillis) return false
+        return lastConnectedAccountSignature == accountManager.current().connectionSignature()
     }
 
     fun requestAlert() {
@@ -221,10 +232,14 @@ class XtreamConnectionManager(
     private companion object {
         const val QUICK_CHECK_TIMEOUT_MS = 8_000L
         const val ANOMALY_DEDUP_WINDOW_MS = 15 * 60 * 1_000L
+        const val FRESH_CONNECTED_WINDOW_MS = 30_000L
         const val KEY_LAST_ANOMALY = "last_anomaly_key"
         const val KEY_LAST_ANOMALY_AT = "last_anomaly_at"
     }
 }
+
+private fun com.smartvision.svplayer.core.config.XtreamCredentials.connectionSignature(): String =
+    "${normalizedHost}|$username|${password.hashCode()}"
 
 private class InvalidXtreamCredentialsException(message: String) : RuntimeException(message)
 private class InvalidXtreamResponseException(message: String) : RuntimeException(message)

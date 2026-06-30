@@ -1,5 +1,65 @@
 # AI Changelog
 
+## 2026-06-30 - Popup manuel de synchronisation Xtream dans Profil
+
+Type:
+- android
+- ui
+- catalogue
+- documentation
+
+Resume:
+- Profil > Identifiants Xtream affiche maintenant la derniere synchronisation sous le bouton Synchroniser.
+- Le bouton ouvre un popup dedie avec cards Live TV / Films / Series, infos compte masquees et focus initial sur Lancer la synchronisation.
+- Pendant `SyncStatus.Running`, le popup bloque Back/D-pad, desactive les boutons, affiche un loader et met a jour compteurs/progress bars par section.
+- Apres succes ou erreur, le focus passe sur Retour; la fermeture ouvre Appareil et catalogue et y remet le focus.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/domain/model/Models.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/profile/ProfileScreen.kt`
+
+## 2026-06-30 - Splash unique, gating Xtream sans flicker et cache catalogue local
+
+Type:
+- android
+- ui
+- performance
+- documentation
+
+Resume:
+- Splash natif agrandi pour garder un seul visuel de chargement pendant les statuts startup.
+- `ActivationViewModel` conserve l'acces local actif pendant le refresh serveur afin d'eviter un second loader Compose apres le splash.
+- `CONNECTED + checking` ne bloque plus Home/Header; les overlays Xtream restent reserves aux etats inconnus ou en erreur.
+- `XtreamConnectionManager` expose une validation connectee recente pour eviter une verification startup immediate en double apres le splash.
+- Ajout d'un cache memoire de snapshots catalogue locaux reutilise par Live TV, Movies et Series pour reduire les loaders lors des retours d'ecran.
+- Ajout de tests unitaires pour le gating Xtream et l'invalidation du cache catalogue.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/SplashActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/xtream/XtreamConnectionManager.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/LocalCatalogSnapshotCache.kt`
+- `app/src/main/java/com/smartvision/svplayer/domain/repository/CatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/activation/ActivationViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/LiveTvViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/movies/MoviesViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/series/SeriesViewModel.kt`
+
 ## 2026-06-30 - Correction detection Xtream avec ancien cache local
 
 Type:

@@ -6,9 +6,11 @@ cd SVPlayer
 .\gradlew.bat --% :app:assembleRelease --console=rich
 
 # verification N° version
+cd SVPlayer
 .\scripts\guard_release_version.ps1 -RequireBuildMetadata
 
 # Déploiement serveur
+cd SVPlayer
 .\scripts\deploy_activation_phase1.ps1 -SkipInstall -SkipTests
 
 # ###########################################################################

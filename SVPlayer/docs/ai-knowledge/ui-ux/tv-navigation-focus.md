@@ -42,6 +42,7 @@ Fichiers centraux:
 Attention:
 - Un `FocusRequester` peut crasher si demande de focus avant initialisation ou apres disparition du composable.
 - Les handlers D-pad doivent tenir compte des surfaces visibles.
+- Le popup manuel Profil > Identifiants Xtream bloque Back/D-pad uniquement pendant `SyncStatus.Running`; a la fin ou en erreur, le focus va sur `Retour`.
 
 ## 5. Ecrans concernes
 
@@ -141,3 +142,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: correction overlay YouTube: le conteneur player ne traite DPAD/OK que lorsqu'il a lui-meme le focus; si un bouton du bandeau est focus, les touches doivent etre laissees au bouton.
 - 2026-06-30: amelioration overlay YouTube: affichage seulement au demarrage reel de lecture, auto-hide 7s, progress bar, bouton reload, previous via historique et retour full screen vers mini lecteur avec reprise de position.
 - 2026-06-30: performance/UX YouTube: WebView conserve entre videos avec `loadVideoById`, queue autoplay maintenue autour de 20 suggestions, qualite cible `medium`, bouton retour fullscreen masque avec l'overlay et popup parametres sans stopper la lecture.
+- 2026-06-30: ajout popup de synchronisation Xtream avec focus initial sur lancement, blocage telecommande pendant synchro active et retour focus vers Appareil et catalogue apres fermeture.

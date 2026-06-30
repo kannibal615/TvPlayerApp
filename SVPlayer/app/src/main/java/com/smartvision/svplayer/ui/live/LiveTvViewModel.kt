@@ -14,6 +14,7 @@ import com.smartvision.svplayer.domain.model.LiveChannel as LocalLiveChannel
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.model.sortedByHistorySignals
 import com.smartvision.svplayer.domain.repository.CatalogRepository
+import com.smartvision.svplayer.domain.repository.LocalCatalogSnapshot
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
 import kotlinx.coroutines.Job
@@ -21,7 +22,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -102,42 +102,23 @@ class LiveTvViewModel(
         observeSettings()
         observeFavorites()
         observeHistory()
-        loadCategories()
+        if (!restoreCachedCatalog()) {
+            loadCategories()
+        }
     }
 
     fun loadCategories() {
         channelsJob?.cancel()
         viewModelScope.launch {
+            catalogRepository.getCachedLiveCatalogSnapshot()?.let { snapshot ->
+                applyCatalogSnapshot(snapshot)
+                return@launch
+            }
             _uiState.value = LiveTvUiState(categoriesLoading = true)
             runCatching {
-                localCategories = catalogRepository.observeLiveCategories().first()
-                localChannels = catalogRepository.observeLiveChannels(null).first()
-                localCategories.map { it.toUiCategory() }
-                    .filter { category -> playerSettings.allowsContent(category.label) }
-            }.onSuccess { categories ->
-                if (categories.isEmpty()) {
-                    _uiState.value = LiveTvUiState(
-                        categoriesLoading = false,
-                        errorMessage = "Aucune categorie Live TV retournee par Xtream.",
-                    )
-                    return@onSuccess
-                }
-
-                _uiState.update {
-                    val visibleCategories = categories.withSpecialCategories(
-                        allCount = localChannels.size.takeIf { it > 0 },
-                        favoriteCount = favoriteIds.size,
-                        historyCount = historyProgress.size,
-                        historySignals = historyCategorySignals,
-                    )
-                    it.copy(
-                        categoriesLoading = false,
-                        errorMessage = null,
-                        categories = visibleCategories,
-                        selectedCategoryId = HistoryLiveCategoryId,
-                    )
-                }
-                loadHistoryChannels()
+                catalogRepository.getLiveCatalogSnapshot()
+            }.onSuccess { snapshot ->
+                applyCatalogSnapshot(snapshot)
             }.onFailure { error ->
                 _uiState.value = LiveTvUiState(
                     categoriesLoading = false,
@@ -145,6 +126,42 @@ class LiveTvViewModel(
                 )
             }
         }
+    }
+
+    private fun restoreCachedCatalog(): Boolean {
+        val snapshot = catalogRepository.getCachedLiveCatalogSnapshot() ?: return false
+        applyCatalogSnapshot(snapshot)
+        return true
+    }
+
+    private fun applyCatalogSnapshot(snapshot: LocalCatalogSnapshot<LocalLiveChannel>) {
+        localCategories = snapshot.categories
+        localChannels = snapshot.items
+        val categories = localCategories.map { it.toUiCategory() }
+            .filter { category -> playerSettings.allowsContent(category.label) }
+        if (categories.isEmpty()) {
+            _uiState.value = LiveTvUiState(
+                categoriesLoading = false,
+                errorMessage = "Aucune categorie Live TV retournee par Xtream.",
+            )
+            return
+        }
+
+        _uiState.update {
+            val visibleCategories = categories.withSpecialCategories(
+                allCount = localChannels.size.takeIf { it > 0 },
+                favoriteCount = favoriteIds.size,
+                historyCount = historyProgress.size,
+                historySignals = historyCategorySignals,
+            )
+            it.copy(
+                categoriesLoading = false,
+                errorMessage = null,
+                categories = visibleCategories,
+                selectedCategoryId = HistoryLiveCategoryId,
+            )
+        }
+        loadHistoryChannels()
     }
 
     fun selectCategory(category: LiveTvCategory) {

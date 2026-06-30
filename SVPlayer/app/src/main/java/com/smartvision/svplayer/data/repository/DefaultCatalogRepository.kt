@@ -23,11 +23,13 @@ import com.smartvision.svplayer.domain.model.PlaybackRequest
 import com.smartvision.svplayer.domain.model.SyncStatus
 import com.smartvision.svplayer.domain.model.TvSeries
 import com.smartvision.svplayer.domain.repository.CatalogRepository
+import com.smartvision.svplayer.domain.repository.LocalCatalogSnapshot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
@@ -44,6 +46,7 @@ class DefaultCatalogRepository(
 ) : CatalogRepository {
     private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     override val syncStatus: StateFlow<SyncStatus> = _syncStatus
+    private val localCatalogSnapshotCache = LocalCatalogSnapshotCache()
 
     override fun observeLiveCategories(): Flow<List<Category>> =
         combine(
@@ -119,6 +122,46 @@ class DefaultCatalogRepository(
             ) ?: emptyAccountProfile()
         }
 
+    override fun getCachedLiveCatalogSnapshot(): LocalCatalogSnapshot<LiveChannel>? =
+        localCatalogSnapshotCache.getLive()
+
+    override fun getCachedMovieCatalogSnapshot(): LocalCatalogSnapshot<Movie>? =
+        localCatalogSnapshotCache.getMovies()
+
+    override fun getCachedSeriesCatalogSnapshot(): LocalCatalogSnapshot<TvSeries>? =
+        localCatalogSnapshotCache.getSeries()
+
+    override suspend fun getLiveCatalogSnapshot(): LocalCatalogSnapshot<LiveChannel> = withContext(Dispatchers.IO) {
+        getCachedLiveCatalogSnapshot()?.let { return@withContext it }
+        val snapshot = LocalCatalogSnapshot(
+            categories = observeLiveCategories().first(),
+            items = observeLiveChannels(null).first(),
+        )
+        localCatalogSnapshotCache.putLive(snapshot)
+    }
+
+    override suspend fun getMovieCatalogSnapshot(): LocalCatalogSnapshot<Movie> = withContext(Dispatchers.IO) {
+        getCachedMovieCatalogSnapshot()?.let { return@withContext it }
+        val snapshot = LocalCatalogSnapshot(
+            categories = observeMovieCategories().first(),
+            items = observeMovies(null).first(),
+        )
+        localCatalogSnapshotCache.putMovies(snapshot)
+    }
+
+    override suspend fun getSeriesCatalogSnapshot(): LocalCatalogSnapshot<TvSeries> = withContext(Dispatchers.IO) {
+        getCachedSeriesCatalogSnapshot()?.let { return@withContext it }
+        val snapshot = LocalCatalogSnapshot(
+            categories = observeSeriesCategories().first(),
+            items = observeSeries(null).first(),
+        )
+        localCatalogSnapshotCache.putSeries(snapshot)
+    }
+
+    override fun invalidateLocalCatalogCache() {
+        localCatalogSnapshotCache.invalidate()
+    }
+
     override suspend fun synchronize(): Result<Unit> = withContext(Dispatchers.IO) {
         val credentials = credentialsProvider.current()
         if (!credentials.isConfigured) {
@@ -127,7 +170,25 @@ class DefaultCatalogRepository(
             return@withContext Result.failure(IllegalStateException(message))
         }
 
-        _syncStatus.value = SyncStatus.Running()
+        val previousCatalogProgress = SyncStatus.CatalogProgress(
+            live = SyncStatus.SyncSectionProgress(previousItems = mediaDao.observeLiveStreams().first().size),
+            movies = SyncStatus.SyncSectionProgress(previousItems = mediaDao.observeMovies().first().size),
+            series = SyncStatus.SyncSectionProgress(previousItems = mediaDao.observeSeries().first().size),
+        )
+        var liveItems = 0
+        var movieItems = 0
+        var seriesItems = 0
+        var liveCompleted = false
+        var moviesCompleted = false
+        var seriesCompleted = false
+        fun currentCatalogProgress(): SyncStatus.CatalogProgress =
+            SyncStatus.CatalogProgress(
+                live = previousCatalogProgress.live.copy(currentItems = liveItems, completed = liveCompleted),
+                movies = previousCatalogProgress.movies.copy(currentItems = movieItems, completed = moviesCompleted),
+                series = previousCatalogProgress.series.copy(currentItems = seriesItems, completed = seriesCompleted),
+            )
+
+        _syncStatus.value = SyncStatus.Running(catalogProgress = previousCatalogProgress)
         try {
             val now = System.currentTimeMillis()
             var completedItems = 0
@@ -139,6 +200,7 @@ class DefaultCatalogRepository(
                     message = message,
                     completedItems = completedItems,
                     totalItems = totalItems,
+                    catalogProgress = currentCatalogProgress(),
                 )
             }
 
@@ -150,16 +212,22 @@ class DefaultCatalogRepository(
             profileDao.upsert(account.toProfileEntity(credentials, now))
 
             val liveStreams = api.getLiveStreams(credentials.username, credentials.password)
+            liveItems = liveStreams.size
+            liveCompleted = true
             updateProgress("Telechargement des chaines Live TV...", fetched = liveStreams.size, remainingSteps = 3)
 
             val movieCategories = api.getCategories(credentials.username, credentials.password, "get_vod_categories")
             updateProgress("Telechargement des categories Films...", fetched = movieCategories.size, remainingSteps = 2)
             val movies = api.getMovies(credentials.username, credentials.password)
+            movieItems = movies.size
+            moviesCompleted = true
             updateProgress("Telechargement des films...", fetched = movies.size, remainingSteps = 1)
 
             val seriesCategories = api.getCategories(credentials.username, credentials.password, "get_series_categories")
             updateProgress("Telechargement des categories Series...", fetched = seriesCategories.size, remainingSteps = 1)
             val series = api.getSeries(credentials.username, credentials.password)
+            seriesItems = series.size
+            seriesCompleted = true
             updateProgress("Telechargement des series...", fetched = series.size, remainingSteps = 0)
 
             categoryDao.deleteByType(MediaSection.Live.storageName)
@@ -185,7 +253,11 @@ class DefaultCatalogRepository(
                     message = "Synchronisation terminee",
                 ),
             )
-            _syncStatus.value = SyncStatus.Success("Synchronisation terminee")
+            invalidateLocalCatalogCache()
+            _syncStatus.value = SyncStatus.Success(
+                message = "Synchronisation terminee",
+                catalogProgress = currentCatalogProgress(),
+            )
             Result.success(Unit)
         } catch (error: Exception) {
             syncStateDao.upsert(
@@ -196,7 +268,10 @@ class DefaultCatalogRepository(
                     message = "Erreur reseau",
                 ),
             )
-            _syncStatus.value = SyncStatus.Error("Erreur reseau")
+            _syncStatus.value = SyncStatus.Error(
+                message = "Erreur reseau",
+                catalogProgress = currentCatalogProgress(),
+            )
             Result.failure(error)
         }
     }

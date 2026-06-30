@@ -164,10 +164,17 @@ class ActivationViewModel(
         viewModelScope.launch {
             val localPublicCode = repository.getOrCreateLocalPublicCode()
             val cached = repository.localState.first()
+            val cachedMonetization = cached.monetizationStatus()
+            val cachedHasAccess =
+                cached.activated &&
+                    ActivationStatus.fromValue(cached.status) == ActivationStatus.Active &&
+                    cachedMonetization.hasRuntimeAccess()
             _uiState.update {
                 it.copy(
-                    checking = true,
-                    activated = false,
+                    checking = !cachedHasAccess,
+                    activated = cachedHasAccess,
+                    activationBusy = false,
+                    blocked = false,
                     deviceId = cached.deviceId,
                     publicDeviceCode = cached.publicDeviceCode.ifBlank { localPublicCode },
                     expiresAt = cached.expiresAt.orEmpty(),
@@ -178,19 +185,36 @@ class ActivationViewModel(
                     playlistConfigured = cached.playlistConfigured,
                     showFreeWithAdsChoice = false,
                     errorMessage = null,
-                    statusLabel = "Initialisation de l appareil...",
+                    statusLabel = if (cachedHasAccess) {
+                        cachedMonetization.accessStatusLabel()
+                    } else {
+                        "Initialisation de l appareil..."
+                    },
                 )
             }
 
             val registration = runCatching { repository.registerDevice() }
                 .onFailure { error ->
-                    _uiState.update {
-                        it.copy(
-                            checking = false,
-                            activated = false,
-                            errorMessage = error.userMessage("Connexion impossible. Verifiez votre reseau."),
-                            statusLabel = "Connexion impossible",
-                        )
+                    if (cachedHasAccess) {
+                        _uiState.update {
+                            it.copy(
+                                checking = false,
+                                activated = true,
+                                activationBusy = false,
+                                blocked = false,
+                                errorMessage = null,
+                                statusLabel = cachedMonetization.accessStatusLabel(),
+                            )
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                checking = false,
+                                activated = false,
+                                errorMessage = error.userMessage("Connexion impossible. Verifiez votre reseau."),
+                                statusLabel = "Connexion impossible",
+                            )
+                        }
                     }
                 }
                 .getOrNull()
@@ -429,11 +453,7 @@ class ActivationViewModel(
                         playlistConfigured = status.playlistConfigured,
                         showFreeWithAdsChoice = false,
                         errorMessage = null,
-                        statusLabel = if (monetizationStatus == MonetizationStatus.FREE_WITH_ADS) {
-                            "Mode gratuit avec pubs"
-                        } else {
-                            "Activation validee"
-                        },
+                        statusLabel = monetizationStatus.accessStatusLabel(),
                     )
                 }
                 return true
@@ -471,6 +491,18 @@ class ActivationViewModel(
         super.onCleared()
     }
 }
+
+private fun MonetizationStatus?.hasRuntimeAccess(): Boolean =
+    this == MonetizationStatus.PREMIUM_ACTIVE ||
+        this == MonetizationStatus.TRIAL_ACTIVE ||
+        this == MonetizationStatus.FREE_WITH_ADS
+
+private fun MonetizationStatus?.accessStatusLabel(): String =
+    if (this == MonetizationStatus.FREE_WITH_ADS) {
+        "Mode gratuit avec pubs"
+    } else {
+        "Activation validee"
+    }
 
 private fun ActivationUiState.withSession(session: ActivationSession): ActivationUiState =
     copy(

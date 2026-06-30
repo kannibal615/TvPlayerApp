@@ -104,16 +104,49 @@ data class PlaybackRequest(
 
 sealed interface SyncStatus {
     data object Idle : SyncStatus
+    data class SyncSectionProgress(
+        val currentItems: Int = 0,
+        val previousItems: Int = 0,
+        val completed: Boolean = false,
+    ) {
+        val percent: Int
+            get() = when {
+                completed -> 100
+                previousItems > 0 -> ((currentItems.toFloat() / previousItems.toFloat()) * 100)
+                    .toInt()
+                    .coerceIn(0, 99)
+                currentItems > 0 -> 70
+                else -> 0
+            }
+
+        val fraction: Float
+            get() = percent.toFloat() / 100f
+    }
+
+    data class CatalogProgress(
+        val live: SyncSectionProgress = SyncSectionProgress(),
+        val movies: SyncSectionProgress = SyncSectionProgress(),
+        val series: SyncSectionProgress = SyncSectionProgress(),
+    )
+
     data class Running(
         val message: String = "Telechargement de la playlist...",
         val completedItems: Int = 0,
         val totalItems: Int = 0,
+        val catalogProgress: CatalogProgress = CatalogProgress(),
     ) : SyncStatus {
         val percent: Int =
             if (totalItems > 0) ((completedItems.toFloat() / totalItems.toFloat()) * 100).toInt().coerceIn(0, 100) else 0
     }
-    data class Success(val message: String) : SyncStatus
-    data class Error(val message: String) : SyncStatus
+    data class Success(
+        val message: String,
+        val catalogProgress: CatalogProgress = CatalogProgress(),
+    ) : SyncStatus
+
+    data class Error(
+        val message: String,
+        val catalogProgress: CatalogProgress = CatalogProgress(),
+    ) : SyncStatus
 
     val buttonLabel: String
         get() = when (this) {

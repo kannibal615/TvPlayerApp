@@ -14,6 +14,7 @@ import com.smartvision.svplayer.domain.model.Movie
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.model.sortedByHistorySignals
 import com.smartvision.svplayer.domain.repository.CatalogRepository
+import com.smartvision.svplayer.domain.repository.LocalCatalogSnapshot
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
 import kotlinx.coroutines.Job
@@ -21,7 +22,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -85,41 +85,23 @@ class MoviesViewModel(
         observeSettings()
         observeFavorites()
         observeHistory()
-        loadCategories()
+        if (!restoreCachedCatalog()) {
+            loadCategories()
+        }
     }
 
     fun loadCategories() {
         moviesJob?.cancel()
         viewModelScope.launch {
+            catalogRepository.getCachedMovieCatalogSnapshot()?.let { snapshot ->
+                applyCatalogSnapshot(snapshot)
+                return@launch
+            }
             _uiState.value = MoviesScreenState(categoriesLoading = true)
             runCatching {
-                localCategories = catalogRepository.observeMovieCategories().first()
-                localMovies = catalogRepository.observeMovies(null).first()
-                localCategories.map { it.toUiCategory() }
-                    .filter { category -> playerSettings.allowsContent(category.label) }
-            }.onSuccess { categories ->
-                if (categories.isEmpty()) {
-                    _uiState.value = MoviesScreenState(
-                        categoriesLoading = false,
-                        errorMessage = "Aucune categorie Films retournee par Xtream.",
-                    )
-                    return@onSuccess
-                }
-                _uiState.update {
-                    val visibleCategories = categories.withSpecialCategories(
-                        allCount = localMovies.size.takeIf { it > 0 },
-                        favoriteCount = favoriteIds.size,
-                        historyCount = historyProgress.size,
-                        historySignals = historyCategorySignals,
-                    )
-                    it.copy(
-                        categoriesLoading = false,
-                        categories = visibleCategories,
-                        selectedCategoryId = HistoryMovieCategoryId,
-                        errorMessage = null,
-                    )
-                }
-                loadHistoryMovies()
+                catalogRepository.getMovieCatalogSnapshot()
+            }.onSuccess { snapshot ->
+                applyCatalogSnapshot(snapshot)
             }.onFailure { error ->
                 _uiState.value = MoviesScreenState(
                     categoriesLoading = false,
@@ -127,6 +109,41 @@ class MoviesViewModel(
                 )
             }
         }
+    }
+
+    private fun restoreCachedCatalog(): Boolean {
+        val snapshot = catalogRepository.getCachedMovieCatalogSnapshot() ?: return false
+        applyCatalogSnapshot(snapshot)
+        return true
+    }
+
+    private fun applyCatalogSnapshot(snapshot: LocalCatalogSnapshot<Movie>) {
+        localCategories = snapshot.categories
+        localMovies = snapshot.items
+        val categories = localCategories.map { it.toUiCategory() }
+            .filter { category -> playerSettings.allowsContent(category.label) }
+        if (categories.isEmpty()) {
+            _uiState.value = MoviesScreenState(
+                categoriesLoading = false,
+                errorMessage = "Aucune categorie Films retournee par Xtream.",
+            )
+            return
+        }
+        _uiState.update {
+            val visibleCategories = categories.withSpecialCategories(
+                allCount = localMovies.size.takeIf { it > 0 },
+                favoriteCount = favoriteIds.size,
+                historyCount = historyProgress.size,
+                historySignals = historyCategorySignals,
+            )
+            it.copy(
+                categoriesLoading = false,
+                categories = visibleCategories,
+                selectedCategoryId = HistoryMovieCategoryId,
+                errorMessage = null,
+            )
+        }
+        loadHistoryMovies()
     }
 
     fun selectCategory(category: MovieCategoryUi) {

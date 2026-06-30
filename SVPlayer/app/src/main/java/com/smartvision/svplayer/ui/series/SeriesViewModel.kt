@@ -16,6 +16,7 @@ import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.model.TvSeries
 import com.smartvision.svplayer.domain.model.sortedByHistorySignals
 import com.smartvision.svplayer.domain.repository.CatalogRepository
+import com.smartvision.svplayer.domain.repository.LocalCatalogSnapshot
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
 import kotlinx.coroutines.Job
@@ -25,7 +26,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -112,7 +112,9 @@ class SeriesViewModel(
         observeSettings()
         observeFavorites()
         observeHistory()
-        loadCategories()
+        if (!restoreCachedCatalog()) {
+            loadCategories()
+        }
     }
 
     fun loadCategories() {
@@ -120,35 +122,15 @@ class SeriesViewModel(
         episodesJob?.cancel()
         metadataJob?.cancel()
         viewModelScope.launch {
+            catalogRepository.getCachedSeriesCatalogSnapshot()?.let { snapshot ->
+                applyCatalogSnapshot(snapshot)
+                return@launch
+            }
             _uiState.value = SeriesScreenState(categoriesLoading = true)
             runCatching {
-                localCategories = catalogRepository.observeSeriesCategories().first()
-                localSeries = catalogRepository.observeSeries(null).first()
-                localCategories.map { it.toUiCategory() }
-                    .filter { category -> playerSettings.allowsContent(category.label) }
-            }.onSuccess { categories ->
-                if (categories.isEmpty()) {
-                    _uiState.value = SeriesScreenState(
-                        categoriesLoading = false,
-                        errorMessage = "Aucune categorie Series retournee par Xtream.",
-                    )
-                    return@onSuccess
-                }
-                _uiState.update {
-                    val visibleCategories = categories.withSpecialCategories(
-                        allCount = localSeries.size.takeIf { it > 0 },
-                        favoriteCount = favoriteIds.size,
-                        historyCount = historySeries().size,
-                        historySignals = historyCategorySignals,
-                    )
-                    it.copy(
-                        categoriesLoading = false,
-                        categories = visibleCategories,
-                        selectedCategoryId = HistorySeriesCategoryId,
-                        errorMessage = null,
-                    )
-                }
-                loadHistorySeries()
+                catalogRepository.getSeriesCatalogSnapshot()
+            }.onSuccess { snapshot ->
+                applyCatalogSnapshot(snapshot)
             }.onFailure { error ->
                 _uiState.value = SeriesScreenState(
                     categoriesLoading = false,
@@ -156,6 +138,41 @@ class SeriesViewModel(
                 )
             }
         }
+    }
+
+    private fun restoreCachedCatalog(): Boolean {
+        val snapshot = catalogRepository.getCachedSeriesCatalogSnapshot() ?: return false
+        applyCatalogSnapshot(snapshot)
+        return true
+    }
+
+    private fun applyCatalogSnapshot(snapshot: LocalCatalogSnapshot<TvSeries>) {
+        localCategories = snapshot.categories
+        localSeries = snapshot.items
+        val categories = localCategories.map { it.toUiCategory() }
+            .filter { category -> playerSettings.allowsContent(category.label) }
+        if (categories.isEmpty()) {
+            _uiState.value = SeriesScreenState(
+                categoriesLoading = false,
+                errorMessage = "Aucune categorie Series retournee par Xtream.",
+            )
+            return
+        }
+        _uiState.update {
+            val visibleCategories = categories.withSpecialCategories(
+                allCount = localSeries.size.takeIf { it > 0 },
+                favoriteCount = favoriteIds.size,
+                historyCount = historySeries().size,
+                historySignals = historyCategorySignals,
+            )
+            it.copy(
+                categoriesLoading = false,
+                categories = visibleCategories,
+                selectedCategoryId = HistorySeriesCategoryId,
+                errorMessage = null,
+            )
+        }
+        loadHistorySeries()
     }
 
     fun selectCategory(category: SeriesCategoryUi) {
