@@ -8,6 +8,7 @@ import androidx.work.Data
 import androidx.work.WorkerParameters
 import com.smartvision.svplayer.SVPlayerApplication
 import com.smartvision.svplayer.core.data.AppContainer
+import com.smartvision.svplayer.data.xtream.XtreamConnectionStatus
 import kotlinx.coroutines.flow.first
 
 class PlaylistSyncWorker(
@@ -52,6 +53,16 @@ class PlaylistSyncWorker(
         if (!container.accountManager.current().isConfigured) {
             log(source, "skipped", startedAt, null, "missing_xtream_credentials")
             return Result.success()
+        }
+
+        val connection = container.xtreamConnectionManager.verifyQuick("autosync_${source.name.lowercase()}")
+        if (!connection.isConnected) {
+            log(source, "error", startedAt, null, connection.status.name)
+            return if (connection.status == XtreamConnectionStatus.NETWORK_ERROR) {
+                Result.retry()
+            } else {
+                Result.success()
+            }
         }
 
         val lastSyncAt = runCatching { container.syncStateDao.get()?.lastSync }.getOrNull()

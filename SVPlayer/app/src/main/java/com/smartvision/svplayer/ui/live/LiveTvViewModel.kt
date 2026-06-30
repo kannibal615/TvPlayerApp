@@ -8,9 +8,12 @@ import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.domain.model.Category
 import com.smartvision.svplayer.domain.model.CategoryHistorySignal
+import com.smartvision.svplayer.domain.model.LiveChannel as LocalLiveChannel
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.model.sortedByHistorySignals
+import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
 import kotlinx.coroutines.Job
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -79,6 +83,7 @@ data class LiveTvUiState(
 
 class LiveTvViewModel(
     private val xtreamRepository: XtreamRepository,
+    private val catalogRepository: CatalogRepository,
     private val userContentRepository: UserContentRepository,
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
@@ -90,6 +95,8 @@ class LiveTvViewModel(
     private var historyProgress: List<PlaybackProgressEntity> = emptyList()
     private var historyCategorySignals: List<CategoryHistorySignal> = emptyList()
     private var playerSettings = PlayerSettings()
+    private var localCategories: List<Category> = emptyList()
+    private var localChannels: List<LocalLiveChannel> = emptyList()
 
     init {
         observeSettings()
@@ -103,7 +110,9 @@ class LiveTvViewModel(
         viewModelScope.launch {
             _uiState.value = LiveTvUiState(categoriesLoading = true)
             runCatching {
-                xtreamRepository.getLiveCategories().map { it.toUiCategory() }
+                localCategories = catalogRepository.observeLiveCategories().first()
+                localChannels = catalogRepository.observeLiveChannels(null).first()
+                localCategories.map { it.toUiCategory() }
                     .filter { category -> playerSettings.allowsContent(category.label) }
             }.onSuccess { categories ->
                 if (categories.isEmpty()) {
@@ -116,7 +125,7 @@ class LiveTvViewModel(
 
                 _uiState.update {
                     val visibleCategories = categories.withSpecialCategories(
-                        allCount = xtreamRepository.getCachedLiveStreams().size.takeIf { it > 0 },
+                        allCount = localChannels.size.takeIf { it > 0 },
                         favoriteCount = favoriteIds.size,
                         historyCount = historyProgress.size,
                         historySignals = historyCategorySignals,
@@ -226,7 +235,7 @@ class LiveTvViewModel(
                     }
                     state.copy(
                         categories = state.categories.withSpecialCategories(
-                            allCount = xtreamRepository.getCachedLiveStreams().size.takeIf { it > 0 },
+                            allCount = localChannels.size.takeIf { it > 0 },
                             favoriteCount = ids.size,
                             historyCount = historyProgress.size,
                             historySignals = historyCategorySignals,
@@ -253,7 +262,7 @@ class LiveTvViewModel(
                     val history = historyChannels()
                     state.copy(
                         categories = state.categories.withSpecialCategories(
-                            allCount = xtreamRepository.getCachedLiveStreams().size.takeIf { it > 0 },
+                            allCount = localChannels.size.takeIf { it > 0 },
                             favoriteCount = favoriteIds.size,
                             historyCount = history.size,
                             historySignals = historyCategorySignals,
@@ -281,7 +290,7 @@ class LiveTvViewModel(
                 errorMessage = null,
                 selectedCategoryId = FavoriteLiveCategoryId,
                 categories = state.categories.withSpecialCategories(
-                    allCount = xtreamRepository.getCachedLiveStreams().size.takeIf { it > 0 },
+                    allCount = localChannels.size.takeIf { it > 0 },
                     favoriteCount = favoriteIds.size,
                     historyCount = historyProgress.size,
                     historySignals = historyCategorySignals,
@@ -302,7 +311,7 @@ class LiveTvViewModel(
                 errorMessage = null,
                 selectedCategoryId = HistoryLiveCategoryId,
                 categories = state.categories.withSpecialCategories(
-                    allCount = xtreamRepository.getCachedLiveStreams().size.takeIf { it > 0 },
+                    allCount = localChannels.size.takeIf { it > 0 },
                     favoriteCount = favoriteIds.size,
                     historyCount = channels.size,
                     historySignals = historyCategorySignals,
@@ -335,7 +344,7 @@ class LiveTvViewModel(
 
             runCatching {
                 categories.forEach { category ->
-                    xtreamRepository.getLiveStreams(category.id).forEach { stream ->
+                    localChannels.filter { it.categoryId == category.id }.forEach { stream ->
                         if (!seen.add(stream.streamId)) return@forEach
                         if (!playerSettings.allowsContent(stream.name, category.label)) return@forEach
                         collected += stream.toUiChannel(
@@ -397,12 +406,12 @@ class LiveTvViewModel(
     private fun historyChannels(): List<LiveTvChannel> =
         historyProgress.mapIndexedNotNull { index, progress ->
             val id = progress.contentId.toIntOrNull() ?: return@mapIndexedNotNull null
-            val cachedStream = xtreamRepository.getCachedLiveStream(id)
+            val cachedStream = localChannels.firstOrNull { it.streamId == id }
             val name = cachedStream?.name?.cleanedChannelName()
                 ?: progress.title?.takeUnless { it.isGeneratedLiveTitle(id) }
                 ?: "Chaine $id"
             val categoryLabel = cachedStream?.categoryId
-                ?.let { categoryId -> xtreamRepository.getCachedCategories().firstOrNull { it.id == categoryId }?.name }
+                ?.let { categoryId -> localCategories.firstOrNull { it.id == categoryId }?.name }
                 ?: progress.subtitle
                 ?: "Historique"
             if (!playerSettings.allowsContent(name, categoryLabel, progress.title, progress.subtitle)) {
@@ -412,7 +421,7 @@ class LiveTvViewModel(
                 streamId = id,
                 number = (index + 1).toString().padStart(3, '0'),
                 logoText = name.logoFallback(),
-                logoUrl = cachedStream?.streamIcon?.takeIf { it.isNotBlank() } ?: progress.imageUrl,
+                logoUrl = cachedStream?.logoUrl?.takeIf { it.isNotBlank() } ?: progress.imageUrl,
                 name = name,
                 program = "Direct",
                 genre = categoryLabel,
@@ -421,25 +430,24 @@ class LiveTvViewModel(
                 description = "Chaine deja regardee.",
                 nextProgram = "EPG non disponible",
                 nextTimeRange = "A suivre",
-                streamUrl = cachedStream?.let { xtreamRepository.buildLiveStreamUrl(it) }
-                    ?: xtreamRepository.buildLiveStreamUrl(id),
+                streamUrl = xtreamRepository.buildLiveStreamUrl(id),
                 fallbackStreamUrl = xtreamRepository.buildLiveStreamFallbackUrl(id),
                 isFavorite = id in favoriteIds,
             )
         }
 
     private fun favoriteChannels(): List<LiveTvChannel> =
-        xtreamRepository.getCachedLiveStreams()
+        localChannels
             .filter { it.streamId in favoriteIds }
             .filter { stream ->
-                val categoryLabel = xtreamRepository.getCachedCategories()
+                val categoryLabel = localCategories
                     .firstOrNull { category -> category.id == stream.categoryId }
                     ?.name
                 playerSettings.allowsContent(stream.name, categoryLabel)
             }
             .sortedBy { it.name }
             .mapIndexed { index, stream ->
-                val categoryLabel = xtreamRepository.getCachedCategories()
+                val categoryLabel = localCategories
                     .firstOrNull { it.id == stream.categoryId }
                     ?.name
                     ?: "Favoris"
@@ -467,7 +475,7 @@ class LiveTvViewModel(
             }
 
             runCatching {
-                xtreamRepository.getLiveStreams(categoryId)
+                localChannels.filter { it.categoryId == categoryId }
                     .filter { stream -> playerSettings.allowsContent(stream.name, categoryLabel) }
                     .mapIndexed { index, stream ->
                     stream.toUiChannel(
@@ -482,7 +490,7 @@ class LiveTvViewModel(
                     val refreshedCategories = state.categories.map { category ->
                         if (category.id == categoryId) category.copy(count = channels.size) else category
                     }.withSpecialCategories(
-                        allCount = xtreamRepository.getCachedLiveStreams().size.takeIf { it > 0 },
+                            allCount = localChannels.size.takeIf { it > 0 },
                         favoriteCount = favoriteIds.size,
                         historyCount = historyProgress.size,
                         historySignals = historyCategorySignals,
@@ -543,6 +551,14 @@ private fun List<LiveTvCategory>.withSpecialCategories(
     ) + filterNot { it.id in SpecialLiveCategoryIds }
         .sortedByHistorySignals(historySignals) { it.id }
 
+private fun Category.toUiCategory(): LiveTvCategory =
+    LiveTvCategory(
+        id = id,
+        label = name,
+        count = count,
+        kind = name.categoryKind(),
+    )
+
 private fun XtreamLiveCategory.toUiCategory(): LiveTvCategory =
     LiveTvCategory(
         id = id,
@@ -572,6 +588,32 @@ private fun XtreamLiveStream.toUiChannel(
         nextProgram = "EPG non disponible",
         nextTimeRange = "A suivre",
         streamUrl = xtreamRepository.buildLiveStreamUrl(this),
+        fallbackStreamUrl = xtreamRepository.buildLiveStreamFallbackUrl(streamId),
+        isFavorite = streamId in favoriteIds,
+    )
+}
+
+private fun LocalLiveChannel.toUiChannel(
+    index: Int,
+    categoryLabel: String,
+    xtreamRepository: XtreamRepository,
+    favoriteIds: Set<Int>,
+): LiveTvChannel {
+    val displayName = name.cleanedChannelName()
+    return LiveTvChannel(
+        streamId = streamId,
+        number = (number.takeIf { it > 0 } ?: (index + 1)).toString().padStart(3, '0'),
+        logoText = displayName.logoFallback(),
+        logoUrl = logoUrl,
+        name = displayName,
+        program = currentProgram ?: "Direct",
+        genre = categoryLabel,
+        timeRange = timeRange ?: "Live",
+        progress = 0f,
+        description = "Chaine issue de la derniere synchronisation locale.",
+        nextProgram = "EPG non disponible",
+        nextTimeRange = "A suivre",
+        streamUrl = xtreamRepository.buildLiveStreamUrl(streamId),
         fallbackStreamUrl = xtreamRepository.buildLiveStreamFallbackUrl(streamId),
         isFavorite = streamId in favoriteIds,
     )

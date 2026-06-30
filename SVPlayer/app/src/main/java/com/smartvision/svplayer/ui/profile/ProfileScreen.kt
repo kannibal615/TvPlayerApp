@@ -475,8 +475,9 @@ private fun XtreamPanel(
         )
         Spacer(Modifier.height(10.dp))
         when (syncStatus) {
-            SyncStatus.Running -> {
+            is SyncStatus.Running -> {
                 LinearProgressIndicator(
+                    progress = { if (syncStatus.totalItems > 0) syncStatus.completedItems.toFloat() / syncStatus.totalItems.toFloat() else 0f },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(4.dp)
@@ -486,7 +487,11 @@ private fun XtreamPanel(
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "Synchronisation du catalogue Xtream en cours...",
+                    text = if (syncStatus.totalItems > 0) {
+                        "${syncStatus.message} ${syncStatus.completedItems} / ${syncStatus.totalItems} elements (${syncStatus.percent}%)"
+                    } else {
+                        syncStatus.message
+                    },
                     color = SmartVisionColors.CyanAccent,
                     style = SmartVisionType.Caption,
                     fontWeight = FontWeight.SemiBold,

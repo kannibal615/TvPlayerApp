@@ -7,6 +7,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.Gravity
 import android.view.View
 import android.view.ViewTreeObserver
@@ -17,9 +18,20 @@ import android.view.animation.Animation
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.TextView
+import com.smartvision.svplayer.sync.SyncFrequencyPolicy
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class SplashActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
+    private val splashScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var root: FrameLayout
     private var launched = false
     private var animationStarted = false
@@ -78,6 +90,14 @@ class SplashActivity : Activity() {
                 ),
             )
         }
+        val statusText = TextView(this).apply {
+            text = "Initialisation de l'application..."
+            setTextColor(Color.argb(220, 219, 234, 254))
+            textSize = 13f
+            gravity = Gravity.CENTER
+            alpha = 0f
+            includeFontPadding = false
+        }
         val logoGroup = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -94,6 +114,13 @@ class SplashActivity : Activity() {
                 LinearLayout.LayoutParams(progressWidth, (displayHeight * 0.008f).toInt().coerceAtLeast(5)).apply {
                     gravity = Gravity.CENTER_HORIZONTAL
                     topMargin = (displayHeight * 0.018f).toInt()
+                },
+            )
+            addView(
+                statusText,
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    gravity = Gravity.CENTER_HORIZONTAL
+                    topMargin = (displayHeight * 0.014f).toInt()
                 },
             )
         }
@@ -121,14 +148,14 @@ class SplashActivity : Activity() {
                     if (root.viewTreeObserver.isAlive) {
                         root.viewTreeObserver.removeOnPreDrawListener(this)
                     }
-                    root.post { startSplashAnimation(logoGroup, progressTrack, progressFill) }
+                    root.post { startSplashAnimation(logoGroup, progressTrack, progressFill, statusText) }
                     return true
                 }
             },
         )
     }
 
-    private fun startSplashAnimation(logoGroup: View, progressTrack: View, progressFill: View) {
+    private fun startSplashAnimation(logoGroup: View, progressTrack: View, progressFill: View, statusText: TextView) {
         if (animationStarted || launched || isFinishing) return
         animationStarted = true
         logoGroup.startAnimation(
@@ -147,6 +174,11 @@ class SplashActivity : Activity() {
                     .setDuration(LoadingFadeMillis)
                     .setInterpolator(AccelerateDecelerateInterpolator())
                     .start()
+                statusText.animate()
+                    .alpha(1f)
+                    .setDuration(LoadingFadeMillis)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .start()
                 progressFill.animate()
                     .scaleX(1f)
                     .setDuration(SplashDurationMillis - LoadingRevealDelayMillis)
@@ -155,7 +187,40 @@ class SplashActivity : Activity() {
             },
             LoadingRevealDelayMillis,
         )
-        handler.postDelayed(openHome, SplashDurationMillis)
+        splashScope.launch {
+            runStartupChecks(statusText)
+        }
+    }
+
+    private suspend fun runStartupChecks(statusText: TextView) {
+        val startedAt = SystemClock.elapsedRealtime()
+        val container = (application as SVPlayerApplication).appContainer
+        runCatching {
+            statusText.text = "Verification du statut appareil..."
+            runCatching { container.activationRepository.checkStatus() }
+            statusText.text = "Verification de la connexion Xtream..."
+            val connection = container.xtreamConnectionManager.verifyQuick("splash")
+            if (connection.isConnected && shouldRunStartupCatalogSync(container)) {
+                statusText.text = "Telechargement de la playlist..."
+                container.xtreamRepository.clearCaches()
+                container.synchronizeCatalog()
+            }
+        }
+        val elapsed = SystemClock.elapsedRealtime() - startedAt
+        if (elapsed < SplashDurationMillis) {
+            delay(SplashDurationMillis - elapsed)
+        }
+        launchHome()
+    }
+
+    private suspend fun shouldRunStartupCatalogSync(container: com.smartvision.svplayer.core.data.AppContainer): Boolean {
+        if (!container.accountManager.current().isConfigured) return false
+        val settings = container.settingsRepository.settings.first()
+        val policy = SyncFrequencyPolicy.from(settings.syncFrequency)
+        if (policy.runOnStartup) return true
+        val repeatHours = policy.repeatHours ?: return false
+        val lastSync = container.syncStateDao.get()?.lastSync ?: return true
+        return System.currentTimeMillis() - lastSync >= TimeUnit.HOURS.toMillis(repeatHours)
     }
 
     private fun launchHome() {
@@ -172,6 +237,7 @@ class SplashActivity : Activity() {
 
     override fun onDestroy() {
         handler.removeCallbacks(openHome)
+        splashScope.cancel()
         super.onDestroy()
     }
 

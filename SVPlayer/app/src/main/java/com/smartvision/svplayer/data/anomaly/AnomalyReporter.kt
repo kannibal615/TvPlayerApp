@@ -32,6 +32,7 @@ interface AnomalyApiService {
 
 data class AnomalyEventRequest(
     @SerializedName("deviceId") val deviceId: String,
+    @SerializedName("publicDeviceCode") val publicDeviceCode: String?,
     @SerializedName("appVersion") val appVersion: String,
     @SerializedName("platform") val platform: String = "ANDROID_TV",
     @SerializedName("route") val route: String?,
@@ -185,13 +186,15 @@ class AnomalyReporter(
         stackTrace: String?,
         context: String?,
     ): AnomalyEventRequest? {
-        val storedDeviceId = activationRepository.localState.first().deviceId
+        val localState = activationRepository.localState.first()
+        val storedDeviceId = localState.deviceId
         val deviceId = storedDeviceId.ifBlank {
             runCatching { activationRepository.getOrCreateDeviceId() }.getOrDefault("")
         }
         if (deviceId.isBlank()) return null
         return AnomalyEventRequest(
             deviceId = deviceId,
+            publicDeviceCode = localState.publicDeviceCode.takeIf { it.isNotBlank() },
             appVersion = BuildConfig.VERSION_NAME,
             route = currentRoute?.take(120),
             anomalyType = anomalyType.take(60),

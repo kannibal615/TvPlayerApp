@@ -176,6 +176,7 @@ fun LiveTvScreen(
         factory = viewModelFactory {
             LiveTvViewModel(
                 xtreamRepository = container.xtreamRepository,
+                catalogRepository = container.catalogRepository,
                 userContentRepository = container.userContentRepository,
                 settingsRepository = container.settingsRepository,
             )

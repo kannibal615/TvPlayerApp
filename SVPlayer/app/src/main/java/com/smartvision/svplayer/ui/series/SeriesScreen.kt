@@ -102,6 +102,7 @@ fun SeriesScreen(
         factory = viewModelFactory {
             SeriesViewModel(
                 xtreamRepository = container.xtreamRepository,
+                catalogRepository = container.catalogRepository,
                 userContentRepository = container.userContentRepository,
                 settingsRepository = container.settingsRepository,
             )

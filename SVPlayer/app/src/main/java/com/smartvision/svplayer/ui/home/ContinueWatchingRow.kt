@@ -56,6 +56,8 @@ fun ContinueWatchingRow(
     showViewAll: Boolean = false,
     viewAllText: String = "View all",
     onViewAll: () -> Unit = {},
+    blocked: Boolean = false,
+    onBlockedClick: () -> Unit = {},
 ) {
     val rowState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -77,10 +79,11 @@ fun ContinueWatchingRow(
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
                 ContentProgressCard(
                     item = item,
-                    onClick = { onItemClick(item) },
+                    onClick = { if (blocked) onBlockedClick() else onItemClick(item) },
                     onFocused = {
                         scope.launch { rowState.animateScrollToItem(index) }
                     },
+                    blocked = blocked,
                     modifier = Modifier
                         .width(SmartVisionDimensions.HomeContentCardWidth)
                         .height(SmartVisionDimensions.HomeContentCardHeight),
@@ -90,7 +93,7 @@ fun ContinueWatchingRow(
                 item(key = "view_all_$title") {
                     ViewAllButton(
                         text = viewAllText,
-                        onClick = onViewAll,
+                        onClick = { if (blocked) onBlockedClick() else onViewAll() },
                         modifier = Modifier
                             .width(78.dp)
                             .height(SmartVisionDimensions.HomeContentCardHeight),

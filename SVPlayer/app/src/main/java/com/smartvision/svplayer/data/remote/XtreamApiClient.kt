@@ -2,6 +2,7 @@ package com.smartvision.svplayer.data.remote
 
 import com.smartvision.svplayer.core.config.XtreamCredentials
 import com.smartvision.svplayer.core.config.XtreamCredentialsProvider
+import com.smartvision.svplayer.data.remote.dto.XtreamAccountDto
 import com.smartvision.svplayer.data.remote.dto.XtreamCategoryDto
 import com.smartvision.svplayer.data.remote.dto.XtreamLiveStreamDto
 import com.smartvision.svplayer.data.remote.dto.XtreamMovieDto
@@ -15,6 +16,14 @@ class XtreamApiClient(
     private val api: XtreamApiService,
     private val credentialsProvider: XtreamCredentialsProvider,
 ) {
+    suspend fun getAccount(): XtreamAccountDto = withContext(Dispatchers.IO) {
+        val credentials = configuredCredentials()
+        api.getAccount(
+            username = credentials.username,
+            password = credentials.password,
+        )
+    }
+
     suspend fun getLiveCategories(): List<XtreamCategoryDto> = withContext(Dispatchers.IO) {
         val credentials = configuredCredentials()
         api.getCategories(

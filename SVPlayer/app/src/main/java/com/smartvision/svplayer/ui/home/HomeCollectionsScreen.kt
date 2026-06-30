@@ -58,7 +58,7 @@ fun HomeCollectionsScreen(
         factory = viewModelFactory {
             HomeViewModel(
                 container.userContentRepository,
-                container.xtreamRepository,
+                container.catalogRepository,
                 container.homeSlidesRepository,
             )
         },

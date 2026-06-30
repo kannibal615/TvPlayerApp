@@ -1,5 +1,74 @@
 # AI Changelog
 
+## 2026-06-30 - Correction detection Xtream avec ancien cache local
+
+Type:
+- android
+- diagnostic
+- documentation
+
+Resume:
+- Diagnostic du cas TV `LAUU9M`: le serveur Xtream de test timeout sur `player_api.php`, donc l'app devait detecter une erreur reseau.
+- Correction du splash: lecture de `device_status.php` avant verification Xtream pour importer la playlist serveur la plus recente avant de tester.
+- Correction navigation: verification Xtream obligatoire au premier affichage actif, sans forcer une resynchronisation catalogue si elle n'est pas due.
+- Correction UI: etat `checking` considere bloquant et routes detail/player bloquees si Xtream est indisponible.
+- Correction lecteur: un buffering persistant ne reste plus en spinner infini; il met l'etat Xtream en erreur, affiche un message et envoie `XTREAM_FAILED`.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/features/monetization-consent-tracking.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+- `TROUBLESHOOTING.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/SplashActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/xtream/XtreamConnectionManager.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/player/FullScreenPlayerScreen.kt`
+
+## 2026-06-30 - Diagnostics admin et gating Xtream startup
+
+Type:
+- fonctionnalite
+- backend
+- android
+- documentation
+
+Resume:
+- Refonte de `Diagnostics` admin en onglets Synthese, AutoSync, Anomalies App, Info Serveur et Journal.
+- Ajout d'un etat Xtream central avec verification rapide au splash, classification des erreurs, popup TV, notification locale et anti-doublon d'anomalies.
+- Blocage Home/Header des entrees Live TV / Movies / Series et des reprises de lecture quand Xtream est indisponible.
+- Navigation catalogue basculee vers les donnees locales Room via `CatalogRepository`.
+- Synchronisation complete durcie: verification Xtream avant sync, progression `SyncStatus.Running`, remplacement local apres recuperation complete des reponses principales.
+- AutoSync retente automatiquement seulement les erreurs reseau.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/features/monetization-consent-tracking.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/technical/backend-admin-api-deploy.md`
+- `docs/ai-knowledge/decisions/2026-06-30-xtream-startup-gating-local-catalog.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/SplashActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/MainActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/core/data/AppContainer.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/xtream/*`
+- `app/src/main/java/com/smartvision/svplayer/data/remote/XtreamApiClient.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/*`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/*`
+- `app/src/main/java/com/smartvision/svplayer/ui/movies/*`
+- `app/src/main/java/com/smartvision/svplayer/ui/series/*`
+- `server/public_html/admin/index.php`
+- `server/public_html/api/anomaly_service.php`
+- `server/public_html/sql/init_activation_tables.sql`
+
 ## 2026-06-30 - Release Android 0.1.61 versionCode 64
 
 Type:
@@ -386,3 +455,26 @@ Fichiers MD mis a jour:
 
 Fichiers code concernes:
 - aucun
+# 2026-06-30 - Release prod 0.1.62 / versionCode 65
+
+Type:
+- release
+- deploy
+- documentation
+
+Resume:
+- Incrementation Android de `0.1.61` / `64` vers `0.1.62` / `65`.
+- Build `:app:assembleRelease` reussi et publication prod app + serveur.
+- Alignement du test admin du script de deploy sur le menu `Diagnostics` apres centralisation de Journal dans Diagnostics.
+- Verification publique du manifeste, du version gate `app_update.php`, du hash APK versionne, de `app_config.php` et de la route `api/app/behavior-events`.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/technical/backend-admin-api-deploy.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+- `TROUBLESHOOTING.md`
+
+Fichiers code concernes:
+- `app/build.gradle.kts`
+- `scripts/deploy_activation_phase1.ps1`

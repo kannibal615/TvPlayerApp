@@ -36,6 +36,7 @@ import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.data.update.AppUpdateApiService
 import com.smartvision.svplayer.data.update.AppUpdateRepository
+import com.smartvision.svplayer.data.xtream.XtreamConnectionManager
 import com.smartvision.svplayer.data.youtube.YoutubeApiService
 import com.smartvision.svplayer.data.youtube.YoutubeBehaviorApiService
 import com.smartvision.svplayer.data.youtube.YoutubeBehaviorReporter
@@ -162,6 +163,12 @@ class AppContainer(context: Context) {
         appContext = appContext,
         activationRepository = activationRepository,
         api = anomalyApi,
+    )
+    val xtreamConnectionManager = XtreamConnectionManager(
+        context = appContext,
+        accountManager = accountManager,
+        apiClient = xtreamApiClient,
+        anomalyReporter = anomalyReporter,
     )
     private val startupStateStore = StartupStateStore(appContext)
     val deviceDiagnosticsReporter = DeviceDiagnosticsReporter(

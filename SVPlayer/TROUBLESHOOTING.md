@@ -144,3 +144,50 @@ Working solution:
 Avoid next time:
 - Do not assume `helpers.php` is enough for standalone maintenance scripts.
 - Keep the self-delete shutdown hook, but use `curl.exe -i` during diagnosis so the response body is visible before the file deletes itself.
+## 2026-06-30 - Xtream KO non detecte si ancien cache local existe
+
+Problem:
+- Sur TV avec code public `LAUU9M`, un compte Xtream serveur timeout, mais l'app affichait encore l'ancien catalogue Room et n'affichait pas d'alerte.
+- L'ouverture d'un media restait en loading infini et aucune anomalie Xtream n'arrivait dans l'admin.
+
+Context:
+- La TV peut garder un ancien compte Xtream local et un ancien catalogue Room.
+- Le compte configure cote portail/backend peut avoir change apres la derniere synchronisation.
+
+Cause probable:
+- Le splash testait `XtreamAccountManager.current()` avant de relire `device_status.php`; il pouvait donc tester l'ancien compte local au lieu de la playlist backend la plus recente.
+- `AppNavigation` ne lancait pas toujours `verifyQuick("startup")` si la derniere sync etait recente.
+- Les routes player/detail pouvaient etre atteintes depuis cache local si l'etat Xtream etait encore `UNKNOWN`.
+- Le lecteur traitait un flux bloque en buffering comme un probleme player relancable, pas comme une indisponibilite Xtream globale.
+
+Working solution:
+- Dans `SplashActivity`, appeler `activationRepository.checkStatus()` avant `xtreamConnectionManager.verifyQuick("splash")`.
+- Dans `AppNavigation`, verifier Xtream au premier affichage actif meme sans synchro due, mais ne synchroniser que si la politique l'exige ou si le compte change.
+- Traiter `xtreamConnectionState.checking` comme bloquant pour les catalogues.
+- Bloquer les routes profondes `player/*`, `movie_player/*`, `movie_detail/*`, `episode_player/*`, `series_detail/*` si Xtream est indisponible.
+- Dans `FullScreenPlayerScreen`, apres buffering persistant, appeler `xtreamConnectionManager.markPlaybackUnavailable(...)`, afficher `Connexion Xtream indisponible` et envoyer une anomalie `XTREAM_FAILED`.
+
+Avoid next time:
+- Ne jamais supposer qu'une sync recente dispense du test de connexion Xtream.
+- Ne pas valider uniquement Home/Header; tester aussi l'ouverture directe d'un media depuis un cache local ancien.
+- Ne pas laisser un spinner player sans limite quand le flux media ne demarre jamais.
+
+## 2026-06-30 - Deploy admin test failed after Diagnostics navigation refactor
+
+Problem:
+- `scripts/deploy_activation_phase1.ps1 -SkipInstall` uploaded server files and APK, then stopped during `Tests administration...` with `Connexion admin echouee.`
+
+Context:
+- Admin Diagnostics had been refactored to centralize `Synthese`, `AutoSync`, `Anomalies App`, `Info Serveur` and `Journal`.
+- The deploy test still expected a separate `Journal` marker on the dashboard after login.
+
+Cause probable:
+- The admin login was valid, but the test marker was stale after the sidebar/navigation change.
+
+Working solution:
+- Update `Test-AdminPanel` in `scripts/deploy_activation_phase1.ps1` to check for `Diagnostics` instead of the old separate `Journal` marker.
+- Re-run server deploy/tests with `.\scripts\deploy_activation_phase1.ps1 -SkipInstall -SkipApkUpload` if the APK and manifest were already published, to avoid creating a duplicate release notification.
+
+Avoid next time:
+- When admin navigation changes, update deploy smoke-test markers in the same change.
+- After a partial deploy stop, check `downloads/smartvision-tv.version.json` before re-running APK upload.

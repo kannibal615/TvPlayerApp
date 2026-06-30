@@ -20,6 +20,8 @@ Flux observe:
 - configuration Xtream via `api/create_playlist_setup_session.php` puis portail `/xtream/`;
 - recuperation de `playlist_config` dans `device_status.php`;
 - creation locale du compte Xtream et synchro catalogue.
+- verification rapide Xtream au demarrage via `XtreamConnectionManager` avant synchro globale; en cas d'erreur, Home reste accessible mais les sections catalogue sont bloquees.
+- au splash, `device_status.php` doit etre relu avant `XtreamConnectionManager.verifyQuick()` afin d'importer la derniere playlist configuree cote serveur avant le test, meme si un ancien compte local et un ancien catalogue Room existent deja.
 
 ## 3. Workflow utilisateur
 
@@ -40,6 +42,8 @@ Android:
 - `data/activation/ActivationRepository.kt`
 - `data/activation/ActivationApiService.kt`
 - `core/config/XtreamAccountManager.kt`
+- `data/xtream/XtreamConnectionManager.kt`
+- `data/xtream/XtreamConnectionNotifier.kt`
 - `ui/navigation/AppNavigation.kt`
 
 Backend:
@@ -60,6 +64,7 @@ Backend:
 - Activation TV
 - Home si licence ou essai donne acces
 - Live TV / Movies / Series en cas de QR Xtream
+- Home + popup alerte Xtream si compte configure mais indisponible
 - Profil pour statut licence, device, compte Xtream
 - Portail web activation / account / xtream
 
@@ -71,6 +76,8 @@ Backend:
 - `app/src/main/java/com/smartvision/svplayer/data/activation/ActivationRepository.kt`
 - `app/src/main/java/com/smartvision/svplayer/data/activation/ActivationApiService.kt`
 - `app/src/main/java/com/smartvision/svplayer/core/config/XtreamAccountManager.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/xtream/XtreamConnectionManager.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/xtream/XtreamConnectionNotifier.kt`
 - `server/public_html/api/*activation*.php`
 - `server/public_html/api/devices/*.php`
 - `server/public_html/api/licenses/activate.php`
@@ -116,6 +123,8 @@ Admin:
 - Preserver l'ecran essai expire, achat licence et gratuit avec pubs.
 - Ne pas changer le sens de `activation_type` sans mettre a jour Android et backend.
 - Toujours verifier les retours publics si changement backend.
+- L'alerte Xtream doit masquer les mots de passe et ne remonter au backend que serveur, type d'erreur, message court, detail technique non secret, code TV et version app.
+- Ne pas tester seulement l'ancien compte local au demarrage: rafraichir le statut backend avant le controle Xtream pour detecter une playlist remplacee depuis le portail web.
 
 ## 10. Problemes connus
 
@@ -146,3 +155,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: version Gradle locale constatee `0.1.50` / `53`; verifier avant release.
 - 2026-06-30: flux `trial_pending_xtream` et endpoints activation reverifies contre le code.
+- 2026-06-30: ajout etat Xtream central et popup/notification locale quand le serveur utilisateur est indisponible.
+- 2026-06-30: correction du controle de demarrage Xtream: rafraichissement `device_status.php` avant verification et controle obligatoire au premier affichage actif, meme si la derniere synchro est recente.

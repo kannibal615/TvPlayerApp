@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Theaters
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -152,7 +153,16 @@ fun MediaCatalogHeader(
                     } else {
                         null
                     },
-                    trailingContent = if (tab.locked) {
+                    trailingContent = if (tab.warning) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Indisponible",
+                                tint = SmartVisionColors.Warning,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    } else if (tab.locked) {
                         {
                             Image(
                                 painter = painterResource(R.drawable.premium_crown),
@@ -169,7 +179,7 @@ fun MediaCatalogHeader(
                     contentPadding = PaddingValues(horizontal = 10.dp),
                     modifier = Modifier
                         .height(36.dp)
-                        .alpha(if (tab.locked) 0.22f else 1f),
+                        .alpha(if (tab.locked || tab.warning) 0.42f else 1f),
                 )
             }
         }

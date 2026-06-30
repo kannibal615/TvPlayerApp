@@ -947,7 +947,7 @@ function Test-AdminPanel {
             username = $Username
             password = $Password
         }
-        if ($dashboard.Content -notmatch "Administration" -or $dashboard.Content -notmatch "Licences" -or $dashboard.Content -notmatch "Journal") {
+        if ($dashboard.Content -notmatch "Administration" -or $dashboard.Content -notmatch "Licences" -or $dashboard.Content -notmatch "Diagnostics") {
             throw "Connexion admin echouee."
         }
         $licensesPage = Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Get -Uri "${baseUrl}?page=licenses"

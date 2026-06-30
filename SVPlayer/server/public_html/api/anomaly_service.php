@@ -7,6 +7,7 @@ function anomaly_ensure_schema(PDO $pdo): void
         "CREATE TABLE IF NOT EXISTS app_anomaly_events (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             device_id_hash CHAR(64) NULL,
+            public_device_code VARCHAR(40) NULL,
             app_version VARCHAR(50) NULL,
             platform ENUM('ANDROID_TV', 'FIRE_TV', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
             route VARCHAR(120) NULL,
@@ -18,9 +19,14 @@ function anomaly_ensure_schema(PDO $pdo): void
             INDEX idx_anomaly_created (created_at),
             INDEX idx_anomaly_type (anomaly_type),
             INDEX idx_anomaly_route (route),
+            INDEX idx_anomaly_public_code (public_device_code),
             INDEX idx_anomaly_device_time (device_id_hash, created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
+    if (!anomaly_column_exists($pdo, 'app_anomaly_events', 'public_device_code')) {
+        $pdo->exec("ALTER TABLE app_anomaly_events ADD COLUMN public_device_code VARCHAR(40) NULL AFTER device_id_hash");
+        $pdo->exec("ALTER TABLE app_anomaly_events ADD INDEX idx_anomaly_public_code (public_device_code)");
+    }
 }
 
 function anomaly_store_event(PDO $pdo, array $payload): array
@@ -44,15 +50,17 @@ function anomaly_store_event(PDO $pdo, array $payload): array
         ];
     }
     $context = clean_optional_text($payload['context'] ?? null, 500);
+    $publicDeviceCode = clean_optional_text($payload['publicDeviceCode'] ?? null, 40);
 
     $statement = $pdo->prepare(
         "INSERT INTO app_anomaly_events
-            (device_id_hash, app_version, platform, route, anomaly_type, message, stack_trace, context_json, created_at)
+            (device_id_hash, public_device_code, app_version, platform, route, anomaly_type, message, stack_trace, context_json, created_at)
          VALUES
-            (:device_id_hash, :app_version, :platform, :route, :anomaly_type, :message, :stack_trace, :context_json, NOW())"
+            (:device_id_hash, :public_device_code, :app_version, :platform, :route, :anomaly_type, :message, :stack_trace, :context_json, NOW())"
     );
     $statement->execute([
         'device_id_hash' => $deviceHash,
+        'public_device_code' => $publicDeviceCode,
         'app_version' => clean_optional_text($payload['appVersion'] ?? null, 50),
         'platform' => anomaly_clean_platform($payload['platform'] ?? 'UNKNOWN'),
         'route' => clean_optional_text($payload['route'] ?? null, 120),
@@ -78,6 +86,23 @@ function anomaly_device_rate_limited(PDO $pdo, string $deviceHash): bool
     $statement->execute(['device_id_hash' => $deviceHash]);
 
     return (int) $statement->fetchColumn() > 120;
+}
+
+function anomaly_column_exists(PDO $pdo, string $table, string $column): bool
+{
+    $statement = $pdo->prepare(
+        "SELECT COUNT(*)
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = :table_name
+           AND COLUMN_NAME = :column_name"
+    );
+    $statement->execute([
+        'table_name' => $table,
+        'column_name' => $column,
+    ]);
+
+    return (int) $statement->fetchColumn() > 0;
 }
 
 function anomaly_clean_type(mixed $value): string

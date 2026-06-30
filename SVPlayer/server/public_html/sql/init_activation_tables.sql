@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS admin_audit_logs (
 CREATE TABLE IF NOT EXISTS app_anomaly_events (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     device_id_hash CHAR(64) NULL,
+    public_device_code VARCHAR(40) NULL,
     app_version VARCHAR(50) NULL,
     platform ENUM('ANDROID_TV', 'FIRE_TV', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
     route VARCHAR(120) NULL,
@@ -117,6 +118,7 @@ CREATE TABLE IF NOT EXISTS app_anomaly_events (
     INDEX idx_anomaly_created (created_at),
     INDEX idx_anomaly_type (anomaly_type),
     INDEX idx_anomaly_route (route),
+    INDEX idx_anomaly_public_code (public_device_code),
     INDEX idx_anomaly_device_time (device_id_hash, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

@@ -8,11 +8,12 @@ Cartographier les principaux ecrans utilisateur et les chemins de code pour orie
 
 ## 2. Fonctionnement actuel
 
-Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header principal expose Home, Live TV, Movies, Series et YouTube. Le bouton licence apparait selon le statut. Les ecrans de contenu affichent un QR Xtream si aucun compte n'est configure.
+Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header principal expose Home, Live TV, Movies, Series et YouTube. Le bouton licence apparait selon le statut. Les ecrans de contenu affichent un QR Xtream si aucun compte n'est configure. Si un compte Xtream existe mais que la verification rapide echoue, Home reste accessible et les entrees Live TV / Movies / Series sont bloquees par popup et overlay. Pendant une verification Xtream en cours, les entrees catalogue sont aussi traitees comme bloquees pour eviter d'ouvrir un ancien cache local avant le resultat du test.
 
 ## 3. Workflow utilisateur
 
 - Home: hero, cartes Live/Movies/Series, continue watching, tendances, notifications/profil/settings.
+- Home affiche un overlay "Connexion indisponible" sur les cartes et reprises de lecture quand Xtream est indisponible.
 - Home routes secondaires: `continue_watching` et `trending` via `HomeCollectionsScreen`.
 - Live TV: categories, chaines, apercu puis plein ecran.
 - Movies: grille de films, detail, lecture.
@@ -55,6 +56,7 @@ Etat:
 
 - `ui/navigation/AppNavigation.kt`
 - `ui/home/*`
+- `data/xtream/XtreamConnectionManager.kt`
 - `ui/live/*`
 - `ui/movies/*`
 - `ui/series/*`
@@ -88,6 +90,8 @@ Sources:
 ## 9. Regles a ne pas casser
 
 - Les sections contenu doivent garder le fallback QR Xtream si aucun compte.
+- Si Xtream est indisponible, ne pas ouvrir Live TV / Movies / Series depuis Home ou Header; afficher le popup "Connexion Xtream indisponible".
+- Si Xtream est indisponible ou en verification, ne pas ouvrir non plus les routes profondes `player/*`, `movie_player/*`, `movie_detail/*`, `episode_player/*` et `series_detail/*`.
 - Le header doit rester coherent entre ecrans.
 - YouTube lock doit respecter `app_config`.
 - Settings langue visible limitee a English et Francais, English par defaut.
@@ -129,3 +133,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: ajout des routes `continue_watching` et `trending`.
 - 2026-06-30: clarification politique langue English par defaut / Francais secondaire et popup update non automatique.
 - 2026-06-30: YouTube enrichi avec favoris visibles dans le header, bouton parametres persistant, nettoyage historiques/favoris et suggestions consommees dynamiquement.
+- 2026-06-30: Home/Header ajoutent l'etat bloque Xtream avec overlay et popup d'alerte.
+- 2026-06-30: extension du blocage Xtream aux routes detail/player et a l'etat verification en cours.

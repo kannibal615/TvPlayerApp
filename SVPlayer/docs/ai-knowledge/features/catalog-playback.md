@@ -12,6 +12,8 @@ SmartVision charge les contenus depuis le compte Xtream de l'utilisateur. Les do
 
 Les ecrans actifs sont routes par `ui/navigation/AppNavigation.kt`. Ne pas modifier une ancienne architecture sans verifier qu'elle est importee par la navigation active.
 
+Depuis le 2026-06-30, la navigation Home / Live TV / Movies / Series ne doit plus declencher de telechargement Xtream global ni charger les categories depuis le reseau. Ces ecrans lisent le catalogue local Room via `CatalogRepository`. Les appels reseau Xtream sont limites aux controles rapides de disponibilite et aux synchronisations catalogue autorisees.
+
 ## 3. Workflow utilisateur
 
 - Live TV: categories a gauche, chaines, apercu/mini player; OK lance l'apercu, OK sur la meme chaine ouvre le plein ecran.
@@ -19,6 +21,8 @@ Les ecrans actifs sont routes par `ui/navigation/AppNavigation.kt`. Ne pas modif
 - Series: categories conservees, detail serie avec saisons/episodes, puis lecteur episode.
 - Favoris et Historiques sont des categories speciales.
 - Si aucun compte Xtream n'est configure, l'utilisateur voit un QR de configuration.
+- Si la verification Xtream de demarrage echoue, Home reste accessible mais Live TV / Movies / Series et les reprises de lecture sont bloques avec popup et overlay.
+- Si une route lecteur est atteinte malgre un ancien cache local, un buffering persistant doit etre converti en etat Xtream indisponible, message utilisateur et anomalie; le spinner ne doit pas tourner indefiniment.
 
 ## 4. Workflow technique
 
@@ -28,6 +32,7 @@ Xtream:
 - `DefaultCatalogRepository.kt` consolide remote/cache.
 - `SynchronizeCatalogUseCase` declenche la synchro.
 - `XtreamUrlFactory.kt` construit les URL de lecture.
+- `data/xtream/XtreamConnectionManager.kt` centralise l'etat connecte / erreur reseau / identifiants invalides / reponse invalide.
 
 Room:
 - `SVDatabase.kt` version 4.
@@ -65,6 +70,8 @@ Playback:
 - `domain/model/CategoryHistoryPolicy.kt`
 - `sync/SyncWorker.kt`
 - `startup/PlaylistSyncWorker.kt`
+- `data/xtream/XtreamConnectionManager.kt`
+- `data/xtream/XtreamConnectionNotifier.kt`
 
 ## 7. Donnees / API / Backend / Admin
 
@@ -99,6 +106,11 @@ URL de lecture:
 - Pour Live TV, ne pas sauvegarder la progression comme VOD.
 - Garder les categories speciales Favoris/Historiques coherentes.
 - Ne pas bloquer l'affichage si du contenu partiel est deja disponible.
+- Ne pas remplacer les tables locales tant que toutes les reponses principales de synchronisation n'ont pas ete recuperees avec succes.
+- Ne pas lancer de synchronisation globale pendant la navigation Home / Live TV / Movies / Series / categories / listes.
+- AutoSync et sync manuelle doivent verifier Xtream avant de synchroniser; seules les erreurs reseau sont retentees automatiquement.
+- La verification de connexion Xtream est obligatoire au premier affichage actif, mais ne doit pas forcer une resynchronisation globale si la politique de frequence ne la demande pas.
+- Les routes player/detail doivent aussi respecter le blocage Xtream; ne pas compter uniquement sur Home/Header pour bloquer l'acces.
 
 ## 10. Problemes connus
 
@@ -132,3 +144,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-29: documentation des routes `player`, `movie_player`, `episode_player`, `series_detail`.
 - 2026-06-30: refonte overlay player Live/Films/Series vers le modele glassmorphism TV premium, sans modifier le rendu video Media3.
 - 2026-06-30: ajustement overlay player: categorie retiree du bandeau haut, bandeaux plus compacts, bleu plus transparent, bordure/glow neon plus visible.
+- 2026-06-30: ajout verification Xtream rapide au demarrage, gating Home/Header, anomalies/notification locale, navigation catalogue locale-only et synchro staging avant remplacement local.
+- 2026-06-30: correction cache ancien + serveur Xtream KO: controle backend puis Xtream au demarrage, routes player/detail bloquees, buffering persistant transforme en anomalie `XTREAM_FAILED`.

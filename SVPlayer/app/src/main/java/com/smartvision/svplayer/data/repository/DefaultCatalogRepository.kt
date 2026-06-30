@@ -127,28 +127,51 @@ class DefaultCatalogRepository(
             return@withContext Result.failure(IllegalStateException(message))
         }
 
-        _syncStatus.value = SyncStatus.Running
+        _syncStatus.value = SyncStatus.Running()
         try {
             val now = System.currentTimeMillis()
+            var completedItems = 0
+            var totalItems = 6
+            fun updateProgress(message: String, fetched: Int = 0, remainingSteps: Int = 0) {
+                completedItems += fetched
+                totalItems = maxOf(totalItems, completedItems + remainingSteps)
+                _syncStatus.value = SyncStatus.Running(
+                    message = message,
+                    completedItems = completedItems,
+                    totalItems = totalItems,
+                )
+            }
+
             val account = api.getAccount(credentials.username, credentials.password)
-            profileDao.upsert(account.toProfileEntity(credentials, now))
+            updateProgress("Verification du compte Xtream...", fetched = 1, remainingSteps = 5)
 
             val liveCategories = api.getCategories(credentials.username, credentials.password, "get_live_categories")
+            updateProgress("Telechargement des categories Live TV...", fetched = liveCategories.size, remainingSteps = 4)
+            profileDao.upsert(account.toProfileEntity(credentials, now))
+
             val liveStreams = api.getLiveStreams(credentials.username, credentials.password)
+            updateProgress("Telechargement des chaines Live TV...", fetched = liveStreams.size, remainingSteps = 3)
+
+            val movieCategories = api.getCategories(credentials.username, credentials.password, "get_vod_categories")
+            updateProgress("Telechargement des categories Films...", fetched = movieCategories.size, remainingSteps = 2)
+            val movies = api.getMovies(credentials.username, credentials.password)
+            updateProgress("Telechargement des films...", fetched = movies.size, remainingSteps = 1)
+
+            val seriesCategories = api.getCategories(credentials.username, credentials.password, "get_series_categories")
+            updateProgress("Telechargement des categories Series...", fetched = seriesCategories.size, remainingSteps = 1)
+            val series = api.getSeries(credentials.username, credentials.password)
+            updateProgress("Telechargement des series...", fetched = series.size, remainingSteps = 0)
+
             categoryDao.deleteByType(MediaSection.Live.storageName)
             categoryDao.upsertAll(liveCategories.mapNotNull { it.toEntity(MediaSection.Live) })
             mediaDao.clearLiveStreams()
             mediaDao.upsertLiveStreams(liveStreams.mapNotNull { it.toEntity() })
 
-            val movieCategories = api.getCategories(credentials.username, credentials.password, "get_vod_categories")
-            val movies = api.getMovies(credentials.username, credentials.password)
             categoryDao.deleteByType(MediaSection.Movies.storageName)
             categoryDao.upsertAll(movieCategories.mapNotNull { it.toEntity(MediaSection.Movies) })
             mediaDao.clearMovies()
             mediaDao.upsertMovies(movies.mapNotNull { it.toEntity() })
 
-            val seriesCategories = api.getCategories(credentials.username, credentials.password, "get_series_categories")
-            val series = api.getSeries(credentials.username, credentials.password)
             categoryDao.deleteByType(MediaSection.Series.storageName)
             categoryDao.upsertAll(seriesCategories.mapNotNull { it.toEntity(MediaSection.Series) })
             mediaDao.clearSeries()
@@ -188,30 +211,7 @@ class DefaultCatalogRepository(
     }
 
     override suspend fun getSeriesEpisodes(seriesId: Int): List<Episode> = withContext(Dispatchers.IO) {
-        val local = mediaDao.getEpisodes(seriesId)
-        if (local.isNotEmpty()) return@withContext local.map { it.toDomain() }
-
-        val credentials = credentialsProvider.current()
-        if (credentials.isConfigured) {
-            runCatching {
-                val remote = api.getSeriesInfo(
-                    username = credentials.username,
-                    password = credentials.password,
-                    seriesId = seriesId,
-                )
-                val entities = remote.episodes.orEmpty().flatMap { (season, episodes) ->
-                    val seasonNumber = season.toIntOrNull() ?: 0
-                    episodes.mapNotNull { it.toEntity(seriesId, seasonNumber) }
-                }
-                if (entities.isNotEmpty()) {
-                    mediaDao.deleteEpisodes(seriesId)
-                    mediaDao.upsertEpisodes(entities)
-                }
-                entities.map { it.toDomain() }
-            }.getOrDefault(emptyList())
-        } else {
-            emptyList()
-        }
+        mediaDao.getEpisodes(seriesId).map { it.toDomain() }
     }
 
     override suspend fun buildPlaybackRequest(kind: PlaybackKind, id: String): PlaybackRequest? =

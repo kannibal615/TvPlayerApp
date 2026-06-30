@@ -48,6 +48,8 @@ fun HomeScreen(
     hasNewNotifications: Boolean,
     notificationBadgeCount: Int,
     strings: SmartVisionStrings,
+    xtreamCatalogBlocked: Boolean,
+    onXtreamBlocked: () -> Unit,
     onContentClick: (ContinueItem) -> Unit,
     onContinueViewAll: () -> Unit,
     onTrendingViewAll: () -> Unit,
@@ -59,7 +61,7 @@ fun HomeScreen(
         factory = viewModelFactory {
             HomeViewModel(
                 userContentRepository = container.userContentRepository,
-                xtreamRepository = container.xtreamRepository,
+                catalogRepository = container.catalogRepository,
                 homeSlidesRepository = container.homeSlidesRepository,
             )
         },
@@ -117,7 +119,13 @@ fun HomeScreen(
         ) {
             HomeHeroBanner(
                 remoteSlides = state.slides,
-                onNavigate = onNavigate,
+                onNavigate = { route ->
+                    if (xtreamCatalogBlocked && route.isHomeXtreamRoute()) {
+                        onXtreamBlocked()
+                    } else {
+                        onNavigate(route)
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -132,7 +140,10 @@ fun HomeScreen(
                 HomeNavigationData.categories.forEach { category ->
                     HomeCategoryCard(
                         category = category,
-                        onClick = { onNavigate(category.routeName) },
+                        onClick = {
+                            if (xtreamCatalogBlocked) onXtreamBlocked() else onNavigate(category.routeName)
+                        },
+                        blocked = xtreamCatalogBlocked,
                         focusRequester = if (category.id == "live") liveFocusRequester else null,
                         modifier = Modifier.weight(1f),
                     )
@@ -148,6 +159,8 @@ fun HomeScreen(
                 viewAllText = strings.viewAll,
                 onViewAll = if (hasContinueWatching) onContinueViewAll else onTrendingViewAll,
                 onItemClick = onContentClick,
+                blocked = xtreamCatalogBlocked,
+                onBlockedClick = onXtreamBlocked,
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -161,6 +174,8 @@ fun HomeScreen(
                     showViewAll = true,
                     viewAllText = strings.viewAll,
                     onViewAll = onTrendingViewAll,
+                    blocked = xtreamCatalogBlocked,
+                    onBlockedClick = onXtreamBlocked,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -191,3 +206,6 @@ private val com.smartvision.svplayer.data.mock.HomeCategory.routeName: String
         "movies" -> "movies"
         else -> "series"
     }
+
+private fun String.isHomeXtreamRoute(): Boolean =
+    this == "live_tv" || this == "movies" || this == "series"

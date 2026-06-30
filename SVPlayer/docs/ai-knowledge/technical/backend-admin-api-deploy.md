@@ -18,6 +18,7 @@ Le script de deploiement upload les fichiers explicitement. Tout nouveau fichier
 - Account: achat/prolongation, configuration Xtream, verification email.
 - Activate/Xtream: parcours QR depuis TV.
 - Admin: gestion fonctionnalites, consentement, pubs, codes, notifications, diagnostics.
+- Admin Diagnostics centralise maintenant Synthese, AutoSync, Anomalies App, Info Serveur et Journal dans `server/public_html/admin/index.php`.
 - App: consomme les endpoints activation, config, update, ads, tracking.
 
 ## 4. Workflow technique
@@ -107,6 +108,7 @@ Tables/settings a surveiller:
 - `ads_settings`;
 - `ads_events`;
 - `app_behavior_events`.
+- `app_anomaly_events.public_device_code` pour afficher le code TV dans Diagnostics > Anomalies App.
 
 ## 8. Dependances
 
@@ -124,10 +126,12 @@ Tables/settings a surveiller:
 - Les erreurs SQL brutes ne doivent pas etre renvoyees au public.
 - Les scripts temporaires cPanel doivent etre self-delete et inclure `config.php` avant `helpers.php` si `db()` est requis.
 - Verifier l'API publique apres changement de config prod.
+- Si un nouveau champ est ajoute a une table existante, le service correspondant doit assurer une migration additive fail-safe avant lecture admin.
 
 ## 10. Problemes connus
 
 - Admin HTTP 500 possible si service PHP requis non uploade.
+- Le test admin du deploy doit suivre la navigation courante: apres la centralisation de Journal dans Diagnostics, le marqueur attendu au login est `Diagnostics`, pas un menu `Journal` separe.
 - Feature flags stockes en prod peuvent rester anciens.
 - cPanel peut ne pas offrir `Fileman/delete_files`; preferer self-delete.
 - Encodage UTF-8 avec BOM peut casser `declare(strict_types=1);`.
@@ -159,3 +163,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-29: ajout de la regle "nouveau PHP = ajout deploy script".
 - 2026-06-30: clarification des rewrites `.htaccess` pour `api/app/*` et exception `device-diagnostics.php`.
 - 2026-06-30: ajout de la regle "nouveau build release livrable = deploy backend obligatoire".
+- 2026-06-30: refonte admin Diagnostics en onglets et ajout migration additive `app_anomaly_events.public_device_code`.
+- 2026-06-30: alignement du test admin `deploy_activation_phase1.ps1` sur la navigation Diagnostics apres suppression du menu Journal separe.

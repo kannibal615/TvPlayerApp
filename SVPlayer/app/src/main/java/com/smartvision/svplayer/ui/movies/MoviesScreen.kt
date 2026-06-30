@@ -103,6 +103,7 @@ fun MoviesScreen(
         factory = viewModelFactory {
             MoviesViewModel(
                 xtreamRepository = container.xtreamRepository,
+                catalogRepository = container.catalogRepository,
                 userContentRepository = container.userContentRepository,
                 settingsRepository = container.settingsRepository,
             )

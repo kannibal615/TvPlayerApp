@@ -104,7 +104,7 @@ $gammalWebhookEvents = commerce_load_gammal_webhook_events($pdo);
 $emailAdmin = admin_load_email_admin($pdo);
 $adsPeriod = ads_period_days($_GET['ads_period'] ?? 1);
 $adsAdmin = $page === 'ads' ? admin_load_ads_admin($pdo, $adsPeriod) : [];
-$anomaliesAdmin = $page === 'anomalies' ? admin_load_anomalies_admin($pdo) : [];
+$anomaliesAdmin = in_array($page, ['anomalies', 'diagnostics'], true) ? admin_load_anomalies_admin($pdo) : [];
 $behaviorAdmin = $page === 'segments' ? admin_load_behavior_admin($pdo) : [];
 $appConfigAdmin = $page === 'features' ? admin_load_app_config_admin($pdo) : [];
 $diagnosticsAdmin = $page === 'diagnostics' ? admin_load_diagnostics_admin($pdo) : [];
@@ -978,7 +978,7 @@ function admin_load_anomalies_admin(PDO $pdo): array
     $ignoredTypesSql = implode(',', array_map([$pdo, 'quote'], anomaly_ignored_types()));
     $visibleWhere = $ignoredTypesSql === '' ? '1=1' : "anomaly_type NOT IN ($ignoredTypesSql)";
     $events = $pdo->query(
-        "SELECT id, device_id_hash, app_version, platform, route, anomaly_type, message, stack_trace, context_json, created_at
+        "SELECT id, device_id_hash, public_device_code, app_version, platform, route, anomaly_type, message, stack_trace, context_json, created_at
          FROM app_anomaly_events
          WHERE $visibleWhere
          ORDER BY id DESC
@@ -1007,12 +1007,19 @@ function admin_load_anomalies_admin(PDO $pdo): array
                 'PROCESS_EXIT_ANR'
            )"
     )->fetchColumn();
+    $processExitCrashes24h = (int) $pdo->query(
+        "SELECT COUNT(*) FROM app_anomaly_events
+         WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)
+           AND $visibleWhere
+           AND anomaly_type = 'PROCESS_EXIT_CRASH'"
+    )->fetchColumn();
 
     return [
         'events' => $events,
         'summary' => $summaryRows,
         'last24h' => $last24h,
         'crashes24h' => $crashes24h,
+        'processExitCrashes24h' => $processExitCrashes24h,
     ];
 }
 
@@ -2076,15 +2083,12 @@ function render_admin_dashboard(
         'emails' => ['Emails', 'Configuration SMTP, templates transactionnels et journal des envois.'],
         'ads' => ['Publicites', 'Gestion des publicites video du player SmartVision.'],
         'segments' => ['Segmentation', 'Analyse comportementale et segments utilisateurs pour ciblage publicitaire.'],
-        'anomalies' => ['Anomalies', 'Crashs et erreurs remontes par les applications TV.'],
         'features' => ['Fonctionnalites', 'Droits par type de licence et consentement TV.'],
         'devices' => ['Appareils', 'TV associees, essais, licences et configuration Xtream.'],
-        'diagnostics' => ['Diagnostics', 'Autostart, sync arriere-plan et etat des applications TV.'],
+        'diagnostics' => ['Diagnostics', 'Synthese, AutoSync, anomalies app, serveur et journal.'],
         'notifications' => ['Notifications', 'Messages envoyes vers toutes les TV ou vers des cibles precises.'],
         'messages' => ['Messages clients', 'Demandes envoyees depuis le formulaire de contact.'],
         'slides' => ['Slides Home', 'Emplacements publicitaires prives visibles sur la Home.'],
-        'server' => ['Serveur', 'Statistiques techniques, ressources cPanel et signaux de charge.'],
-        'audit' => ['Journal', 'Dernieres actions administrateur.'],
     ];
     $heading = $pages[$page] ?? $pages['overview'];
     ?><!doctype html>
@@ -2124,7 +2128,7 @@ function render_admin_dashboard(
         <?php if ($page === 'segments'): admin_render_behavior_segments_page($behaviorAdmin); endif; ?>
         <?php if ($page === 'anomalies'): admin_render_anomalies_page($anomaliesAdmin); endif; ?>
         <?php if ($page === 'features'): admin_render_features_page($appConfigAdmin); endif; ?>
-        <?php if ($page === 'diagnostics'): admin_render_diagnostics_page($diagnosticsAdmin); endif; ?>
+        <?php if ($page === 'diagnostics'): admin_render_diagnostics_page($diagnosticsAdmin, $anomaliesAdmin, $serverStats, $auditLogs, $stats); endif; ?>
 
         <?php if ($page === 'orders'): ?>
         <section class="admin-panel" id="orders"><div class="admin-panel-heading"><div><h2>Commandes recentes</h2><p><?= count($orders) ?> resultat(s)</p></div><form class="admin-filter-row" method="get"><input type="hidden" name="page" value="orders"><input type="hidden" name="q" value="<?= admin_escape($query) ?>"><label>Statut<select name="order_status"><option value="">Tous</option><?php foreach (['pending', 'paid', 'cancelled'] as $statusOption): ?><option value="<?= admin_escape($statusOption) ?>"<?= ($_GET['order_status'] ?? '') === $statusOption ? ' selected' : '' ?>><?= admin_escape($statusOption) ?></option><?php endforeach; ?></select></label><button class="admin-button compact secondary" type="submit">Filtrer</button></form></div><div class="admin-table-wrap"><table><thead><tr><th><?= admin_sort_link('orders', 'Reference', 'reference', $query) ?></th><th><?= admin_sort_link('orders', 'Client', 'client', $query) ?></th><th><?= admin_sort_link('orders', 'Plan', 'plan', $query) ?></th><th><?= admin_sort_link('orders', 'Montant', 'amount', $query) ?></th><th><?= admin_sort_link('orders', 'Paiement', 'payment', $query) ?></th><th>Licence</th><th><?= admin_sort_link('orders', 'Date', 'date', $query) ?></th><th>Actions</th></tr></thead><tbody>
@@ -2846,7 +2850,7 @@ function admin_render_behavior_segments_page(array $behaviorAdmin): void
     <?php
 }
 
-function admin_render_diagnostics_page(array $diagnosticsAdmin): void
+function admin_render_diagnostics_page(array $diagnosticsAdmin, array $anomaliesAdmin, array $serverStats, array $auditLogs, array $stats): void
 {
     $rows = $diagnosticsAdmin['rows'] ?? [];
     $available = (bool) ($diagnosticsAdmin['available'] ?? false);
@@ -2854,6 +2858,10 @@ function admin_render_diagnostics_page(array $diagnosticsAdmin): void
     $withAutostart = 0;
     $withAutoSync = 0;
     $withErrors = 0;
+    $autoSyncSuccess = 0;
+    $autoSyncFailure = 0;
+    $autostartSuccess = 0;
+    $autostartFailure = 0;
     foreach ($rows as $row) {
         $autostart = $row['diagnostics']['autostart']['payload'] ?? [];
         $autoSync = $row['diagnostics']['auto_sync']['payload'] ?? [];
@@ -2866,39 +2874,168 @@ function admin_render_diagnostics_page(array $diagnosticsAdmin): void
         if (!empty($autostart['last_error']) || !empty($autoSync['last_error'])) {
             $withErrors++;
         }
+        if (($autoSync['last_result'] ?? '') === 'success') {
+            $autoSyncSuccess++;
+        } elseif (($autoSync['last_result'] ?? '') === 'error' || !empty($autoSync['last_error'])) {
+            $autoSyncFailure++;
+        }
+        if (!empty($autostart['boot_completed']) && empty($autostart['last_error'])) {
+            $autostartSuccess++;
+        } elseif (!empty($autostart['last_error'])) {
+            $autostartFailure++;
+        }
     }
+    $events = $anomaliesAdmin['events'] ?? [];
+    $summary = $anomaliesAdmin['summary'] ?? [];
+    $disk = admin_find_cpanel_metric($serverStats, 'diskusage');
+    $globalState = $withErrors > 0 || (int) ($anomaliesAdmin['last24h'] ?? 0) > 0 ? 'A surveiller' : 'OK';
+    $backendState = (($serverStats['database']['version'] ?? '') !== 'Non disponible') ? 'OK' : 'A verifier';
     ?>
-        <section class="admin-kpis" aria-label="Diagnostics">
-            <?= admin_kpi('TV remontees', count($rows), 'cyan') ?>
-            <?= admin_kpi('Autostart', $withAutostart, 'blue') ?>
-            <?= admin_kpi('Auto sync', $withAutoSync, 'green') ?>
-            <?= admin_kpi('Avec erreur', $withErrors, $withErrors > 0 ? 'orange' : 'green') ?>
-        </section>
+        <div data-tab-scope>
+            <nav class="behavior-tabs" aria-label="Diagnostics">
+                <button type="button" class="active" data-tab-target="diagnostics-tab-summary">Synthese</button>
+                <button type="button" data-tab-target="diagnostics-tab-autosync">AutoSync</button>
+                <button type="button" data-tab-target="diagnostics-tab-anomalies">Anomalies App</button>
+                <button type="button" data-tab-target="diagnostics-tab-server">Info Serveur</button>
+                <button type="button" data-tab-target="diagnostics-tab-journal">Journal</button>
+            </nav>
 
-        <section class="admin-panel" id="diagnostics">
-            <div class="admin-panel-heading"><div><h2>Diagnostics appareils</h2><p>Derniers etats autostart et synchronisation arriere-plan recus par les TV.</p></div><a class="admin-button compact secondary" href="/admin/?page=diagnostics">Actualiser</a></div>
-            <?php if (!$available): ?><p class="admin-empty"><?= admin_escape($message !== '' ? $message : 'Diagnostics indisponibles.') ?></p><?php endif; ?>
-            <div class="admin-table-wrap"><table><thead><tr><th>Appareil</th><th>Licence</th><th>Autostart</th><th>Auto sync</th><th>Plateforme</th><th>Dernier signal</th><th>Erreurs</th></tr></thead><tbody>
-                <?php if ($rows === []): ?><tr><td colspan="7" class="admin-empty">Aucun diagnostic recu pour le moment.</td></tr><?php endif; ?>
-                <?php foreach ($rows as $row):
-                    $autostartDiag = $row['diagnostics']['autostart'] ?? [];
-                    $autoSyncDiag = $row['diagnostics']['auto_sync'] ?? [];
-                    $autostart = is_array($autostartDiag['payload'] ?? null) ? $autostartDiag['payload'] : [];
-                    $autoSync = is_array($autoSyncDiag['payload'] ?? null) ? $autoSyncDiag['payload'] : [];
-                    $autoSyncSize = isset($autoSync['last_size_kb']) ? (string) $autoSync['last_size_kb'] . ' KB' : 'N/D';
-                    $errors = trim((string) ($autostart['last_error'] ?? '') . ' ' . (string) ($autoSync['last_error'] ?? ''));
-                ?><tr>
-                    <td><strong><?= admin_escape((string) ($row['public_device_code'] ?: '------')) ?></strong><small><?= admin_escape((string) ($row['device_name'] ?: 'Android TV')) ?></small><small class="mono"><?= admin_escape((string) ($row['device_id'] ?: '-')) ?></small></td>
-                    <td><?= admin_escape((string) ($row['license_type'] ?: $row['license_status'] ?: '-')) ?><small><?= admin_escape((string) ($row['device_status'] ?: '-')) ?></small></td>
-                    <td><span class="admin-state <?= !empty($autostart['enabled']) ? 'active' : 'disabled' ?>"><?= !empty($autostart['enabled']) ? 'Active' : 'Off' ?></span><small>Source <?= admin_escape((string) ($autostart['last_source'] ?? '-')) ?> / essais <?= admin_escape((string) ($autostart['attempts_this_boot'] ?? '-')) ?></small><small><?= admin_escape((string) ($autostartDiag['updated_at'] ?? '-')) ?></small></td>
-                    <td><span class="admin-state <?= (($autoSync['last_result'] ?? '') === 'success') ? 'active' : 'pending' ?>"><?= admin_escape((string) ($autoSync['last_result'] ?? '-')) ?></span><small>Source <?= admin_escape((string) ($autoSync['last_source'] ?? '-')) ?> / <?= admin_escape((string) ($autoSync['last_duration_ms'] ?? '-')) ?> ms</small><small>Taille <?= admin_escape($autoSyncSize) ?></small></td>
-                    <td><?= admin_escape((string) ($autostartDiag['device_model'] ?? $autoSyncDiag['device_model'] ?? '-')) ?><small>Android <?= admin_escape((string) ($autostartDiag['android_version'] ?? $autoSyncDiag['android_version'] ?? '-')) ?></small><small>APK <?= admin_escape((string) ($autostartDiag['app_version'] ?? $autoSyncDiag['app_version'] ?? '-')) ?></small></td>
-                    <td><?= admin_escape((string) ($row['latest_at'] ?? '-')) ?><small>Activite <?= admin_escape((string) ($row['last_seen_at'] ?? '-')) ?></small></td>
-                    <td><small><?= admin_escape($errors !== '' ? smartvision_text_substr($errors, 0, 220) : '-') ?></small></td>
-                </tr><?php endforeach; ?>
-            </tbody></table></div>
-        </section>
+            <section class="admin-tab-panel active" id="diagnostics-tab-summary">
+                <section class="admin-kpis" aria-label="Synthese diagnostics">
+                    <?= admin_kpi('Etat application', $globalState, $globalState === 'OK' ? 'green' : 'orange') ?>
+                    <?= admin_kpi('Backend', $backendState, $backendState === 'OK' ? 'green' : 'orange') ?>
+                    <?= admin_kpi('Taille base', $serverStats['database']['size'] ?? 'N/D', 'green') ?>
+                    <?= admin_kpi('Disk usage', $disk ? (string) ($disk['percent'] !== null ? number_format((float) $disk['percent'], 1, ',', ' ') . ' %' : ($disk['value'] ?? 'N/D')) : 'N/D', 'cyan') ?>
+                    <?= admin_kpi('Appareils actifs', (int) ($stats['active_devices'] ?? 0), 'green') ?>
+                    <?= admin_kpi('Anomalies 24h', (int) ($anomaliesAdmin['last24h'] ?? 0), 'orange') ?>
+                    <?= admin_kpi('PROCESS_EXIT_CRASH', (int) ($anomaliesAdmin['processExitCrashes24h'] ?? 0), ((int) ($anomaliesAdmin['processExitCrashes24h'] ?? 0)) > 0 ? 'red' : 'green') ?>
+                </section>
+                <section class="admin-panel">
+                    <div class="admin-panel-heading"><div><h2>Vue globale</h2><p>Indicateurs consolides depuis diagnostics device, anomalies et serveur.</p></div><a class="admin-button compact secondary" href="/admin/?page=diagnostics">Actualiser</a></div>
+                    <div class="server-metric-list">
+                        <div><span>TV remontees</span><strong><?= count($rows) ?></strong></div>
+                        <div><span>Diagnostics avec erreur</span><strong><?= $withErrors ?></strong></div>
+                        <div><span>AutoSync suivis</span><strong><?= $withAutoSync ?></strong></div>
+                        <div><span>Autostart suivis</span><strong><?= $withAutostart ?></strong></div>
+                        <div><span>Disk usage</span><strong><?= $disk ? admin_escape((string) ($disk['value'] ?? 'N/D')) . ' / ' . admin_escape((string) ($disk['max'] ?? 'N/D')) : 'N/D' ?></strong></div>
+                        <div><span>Derniere lecture serveur</span><strong><?= admin_escape((string) ($serverStats['generated_at'] ?? '-')) ?> UTC</strong></div>
+                    </div>
+                </section>
+            </section>
+
+            <section class="admin-tab-panel" id="diagnostics-tab-autosync" hidden>
+                <section class="admin-kpis" aria-label="AutoSync">
+                    <?= admin_kpi('AutoSync OK', $autoSyncSuccess, 'green') ?>
+                    <?= admin_kpi('AutoSync echecs', $autoSyncFailure, $autoSyncFailure > 0 ? 'orange' : 'green') ?>
+                    <?= admin_kpi('Autostart OK', $autostartSuccess, 'green') ?>
+                    <?= admin_kpi('Autostart echecs', $autostartFailure, $autostartFailure > 0 ? 'orange' : 'green') ?>
+                </section>
+                <section class="admin-panel" id="diagnostics">
+                    <div class="admin-panel-heading"><div><h2>AutoSync & AutoStart</h2><p>Derniers etats autostart et synchronisation arriere-plan recus par les TV.</p></div></div>
+                    <?php if (!$available): ?><p class="admin-empty"><?= admin_escape($message !== '' ? $message : 'Diagnostics indisponibles.') ?></p><?php endif; ?>
+                    <div class="admin-table-wrap"><table><thead><tr><th>Appareil</th><th>Licence</th><th>Autostart</th><th>AutoSync</th><th>Plateforme</th><th>Dernier signal</th><th>Erreurs</th></tr></thead><tbody>
+                        <?php if ($rows === []): ?><tr><td colspan="7" class="admin-empty">Aucun diagnostic recu pour le moment.</td></tr><?php endif; ?>
+                        <?php foreach ($rows as $row):
+                            $autostartDiag = $row['diagnostics']['autostart'] ?? [];
+                            $autoSyncDiag = $row['diagnostics']['auto_sync'] ?? [];
+                            $autostart = is_array($autostartDiag['payload'] ?? null) ? $autostartDiag['payload'] : [];
+                            $autoSync = is_array($autoSyncDiag['payload'] ?? null) ? $autoSyncDiag['payload'] : [];
+                            $autoSyncSize = isset($autoSync['last_size_kb']) ? (string) $autoSync['last_size_kb'] . ' KB' : 'N/D';
+                            $errors = trim((string) ($autostart['last_error'] ?? '') . ' ' . (string) ($autoSync['last_error'] ?? ''));
+                        ?><tr>
+                            <td><strong><?= admin_escape((string) ($row['public_device_code'] ?: '------')) ?></strong><small><?= admin_escape((string) ($row['device_name'] ?: 'Android TV')) ?></small><small class="mono"><?= admin_escape((string) ($row['device_id'] ?: '-')) ?></small></td>
+                            <td><?= admin_escape((string) ($row['license_type'] ?: $row['license_status'] ?: '-')) ?><small><?= admin_escape((string) ($row['device_status'] ?: '-')) ?></small></td>
+                            <td><span class="admin-state <?= !empty($autostart['enabled']) ? 'active' : 'disabled' ?>"><?= !empty($autostart['enabled']) ? 'Active' : 'Off' ?></span><small>Source <?= admin_escape((string) ($autostart['last_source'] ?? '-')) ?> / essais <?= admin_escape((string) ($autostart['attempts_this_boot'] ?? '-')) ?></small><small><?= admin_escape((string) ($autostartDiag['updated_at'] ?? '-')) ?></small></td>
+                            <td><span class="admin-state <?= (($autoSync['last_result'] ?? '') === 'success') ? 'active' : 'pending' ?>"><?= admin_escape((string) ($autoSync['last_result'] ?? '-')) ?></span><small>Source <?= admin_escape((string) ($autoSync['last_source'] ?? '-')) ?> / <?= admin_escape((string) ($autoSync['last_duration_ms'] ?? '-')) ?> ms</small><small>Taille <?= admin_escape($autoSyncSize) ?></small></td>
+                            <td><?= admin_escape((string) ($autostartDiag['device_model'] ?? $autoSyncDiag['device_model'] ?? '-')) ?><small>Android <?= admin_escape((string) ($autostartDiag['android_version'] ?? $autoSyncDiag['android_version'] ?? '-')) ?></small><small>APK <?= admin_escape((string) ($autostartDiag['app_version'] ?? $autoSyncDiag['app_version'] ?? '-')) ?></small></td>
+                            <td><?= admin_escape((string) ($row['latest_at'] ?? '-')) ?><small>Activite <?= admin_escape((string) ($row['last_seen_at'] ?? '-')) ?></small></td>
+                            <td><small><?= admin_escape($errors !== '' ? smartvision_text_substr($errors, 0, 220) : '-') ?></small></td>
+                        </tr><?php endforeach; ?>
+                    </tbody></table></div>
+                </section>
+            </section>
+
+            <section class="admin-tab-panel" id="diagnostics-tab-anomalies" hidden>
+                <section class="admin-kpis" aria-label="Anomalies App">
+                    <?= admin_kpi('Anomalies 24h', (int) ($anomaliesAdmin['last24h'] ?? 0), 'orange') ?>
+                    <?= admin_kpi('Crashs 24h', (int) ($anomaliesAdmin['crashes24h'] ?? 0), 'red') ?>
+                    <?= admin_kpi('Types 7 jours', count($summary), 'cyan') ?>
+                </section>
+                <section class="admin-panel">
+                    <div class="admin-panel-heading"><div><h2>Anomalies App</h2><p>Problemes Xtream, synchronisation, crashes, buffering et autres signaux remontes par les applications.</p></div></div>
+                    <div class="admin-table-wrap"><table><thead><tr><th>Date</th><th>Code TV</th><th>Type</th><th>Niveau</th><th>Message</th><th>Detail technique</th><th>Version app</th></tr></thead><tbody>
+                        <?php if ($events === []): ?><tr><td colspan="7" class="admin-empty">Aucune anomalie enregistree.</td></tr><?php endif; ?>
+                        <?php foreach ($events as $event): $level = admin_anomaly_level((string) ($event['anomaly_type'] ?? ''), (string) ($event['message'] ?? '')); ?><tr>
+                            <td><?= admin_escape((string) ($event['created_at'] ?? '-')) ?></td>
+                            <td><strong><?= admin_escape((string) ($event['public_device_code'] ?: '------')) ?></strong><small><?= admin_escape(anomaly_mask_hash($event['device_id_hash'] ?? null)) ?></small></td>
+                            <td><strong><?= admin_escape((string) ($event['anomaly_type'] ?? '-')) ?></strong></td>
+                            <td><span class="admin-state <?= admin_escape($level) ?>"><?= admin_escape($level) ?></span></td>
+                            <td><small><?= admin_escape((string) ($event['message'] ?: '-')) ?></small></td>
+                            <td><small><?= admin_escape(smartvision_text_substr(trim((string) ($event['stack_trace'] ?: '') . ' ' . (string) ($event['context_json'] ?: '')) ?: '-', 0, 260)) ?></small></td>
+                            <td><?= admin_escape((string) ($event['app_version'] ?: '-')) ?><small><?= admin_escape((string) ($event['platform'] ?? '-')) ?></small></td>
+                        </tr><?php endforeach; ?>
+                    </tbody></table></div>
+                </section>
+            </section>
+
+            <section class="admin-tab-panel" id="diagnostics-tab-server" hidden>
+                <section class="admin-kpis server-kpis" aria-label="Info serveur">
+                    <?= admin_kpi('PHP', $serverStats['php']['version'] ?? 'N/D', 'blue') ?>
+                    <?= admin_kpi('MySQL/MariaDB', $serverStats['database']['version'] ?? 'N/D', 'cyan') ?>
+                    <?= admin_kpi('Taille base', $serverStats['database']['size'] ?? 'N/D', 'green') ?>
+                    <?= admin_kpi('Appareils actifs', $serverStats['database']['active_devices'] ?? 0, 'green') ?>
+                    <?= admin_kpi('cPanel', !empty($serverStats['cpanel']['ok']) ? 'Connecte' : 'A verifier', !empty($serverStats['cpanel']['ok']) ? 'cyan' : 'orange') ?>
+                </section>
+                <div class="server-dashboard-grid">
+                    <section class="admin-panel server-panel"><div class="admin-panel-heading"><div><h2>Runtime backend</h2><p>Etat API, base de donnees et runtime PHP.</p></div></div><div class="server-metric-list">
+                        <div><span>Memoire PHP</span><strong><?= admin_escape((string) ($serverStats['php']['memory_limit'] ?? 'N/D')) ?></strong></div>
+                        <div><span>Upload max</span><strong><?= admin_escape((string) ($serverStats['php']['upload_max_filesize'] ?? 'N/D')) ?></strong></div>
+                        <div><span>Execution max</span><strong><?= admin_escape((string) ($serverStats['php']['max_execution_time'] ?? 'N/D')) ?>s</strong></div>
+                        <div><span>OPcache</span><strong><?= admin_escape((string) ($serverStats['php']['opcache'] ?? 'N/D')) ?></strong></div>
+                        <div><span>Sessions attente</span><strong><?= (int) ($serverStats['database']['pending_sessions'] ?? 0) ?></strong></div>
+                        <div><span>Etat API cPanel</span><strong><?= admin_escape((string) ($serverStats['cpanel']['message'] ?? 'N/D')) ?></strong></div>
+                    </div></section>
+                    <section class="admin-panel server-panel"><div class="admin-panel-heading"><div><h2>Ressources serveur</h2><p>Utilisation, limite et pourcentage cPanel.</p></div></div><div class="admin-table-wrap"><table><thead><tr><th>Ressource</th><th>Utilisation</th><th>Limite</th><th>%</th></tr></thead><tbody>
+                        <?php if (($serverStats['cpanel']['metrics'] ?? []) === []): ?><tr><td colspan="4" class="admin-empty"><?= admin_escape((string) ($serverStats['cpanel']['message'] ?? 'Aucune metrique cPanel disponible.')) ?></td></tr><?php endif; ?>
+                        <?php foreach (($serverStats['cpanel']['metrics'] ?? []) as $metric): ?><tr><td><strong><?= admin_escape((string) ($metric['label'] ?? 'Metric')) ?></strong><small><?= admin_escape((string) ($metric['id'] ?? '-')) ?></small></td><td><?= admin_escape((string) ($metric['value'] ?? 'N/D')) ?></td><td><?= admin_escape((string) ($metric['max'] ?? 'N/D')) ?></td><td><?= array_key_exists('percent', $metric) && $metric['percent'] !== null ? admin_escape(number_format((float) $metric['percent'], 1, ',', ' ') . ' %') : '-' ?></td></tr><?php endforeach; ?>
+                    </tbody></table></div></section>
+                </div>
+            </section>
+
+            <section class="admin-tab-panel" id="diagnostics-tab-journal" hidden>
+                <section class="admin-panel" id="audit"><div class="admin-panel-heading"><div><h2>Journal</h2><p>Dernieres actions admin et evenements backend importants.</p></div></div><div class="admin-table-wrap"><table><thead><tr><th>Date</th><th>Action</th><th>Cible</th></tr></thead><tbody>
+                    <?php if ($auditLogs === []): ?><tr><td colspan="3" class="admin-empty">Aucune action admin recente.</td></tr><?php endif; ?>
+                    <?php foreach ($auditLogs as $log): ?><tr><td><?= admin_escape($log['created_at']) ?></td><td><?= admin_escape($log['action']) ?><small><?= admin_escape($log['admin_username']) ?></small></td><td><?= admin_escape(trim((string) $log['target_type'] . ' ' . (string) $log['target_id'])) ?></td></tr><?php endforeach; ?>
+                </tbody></table></div></section>
+            </section>
+        </div>
     <?php
+}
+
+function admin_find_cpanel_metric(array $serverStats, string $needle): ?array
+{
+    foreach (($serverStats['cpanel']['metrics'] ?? []) as $metric) {
+        $id = strtolower((string) ($metric['id'] ?? ''));
+        $label = strtolower((string) ($metric['label'] ?? ''));
+        if ($id === strtolower($needle) || str_contains($id, strtolower($needle)) || str_contains($label, strtolower($needle))) {
+            return is_array($metric) ? $metric : null;
+        }
+    }
+
+    return null;
+}
+
+function admin_anomaly_level(string $type, string $message): string
+{
+    $value = strtoupper($type . ' ' . $message);
+    if (str_contains($value, 'CRASH') || str_contains($value, 'ERROR') || str_contains($value, 'FAILED')) {
+        return 'error';
+    }
+    if (str_contains($value, 'WARNING') || str_contains($value, 'TIMEOUT') || str_contains($value, 'NETWORK')) {
+        return 'warning';
+    }
+
+    return 'info';
 }
 
 function admin_render_features_page(array $appConfigAdmin): void

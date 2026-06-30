@@ -104,14 +104,21 @@ data class PlaybackRequest(
 
 sealed interface SyncStatus {
     data object Idle : SyncStatus
-    data object Running : SyncStatus
+    data class Running(
+        val message: String = "Telechargement de la playlist...",
+        val completedItems: Int = 0,
+        val totalItems: Int = 0,
+    ) : SyncStatus {
+        val percent: Int =
+            if (totalItems > 0) ((completedItems.toFloat() / totalItems.toFloat()) * 100).toInt().coerceIn(0, 100) else 0
+    }
     data class Success(val message: String) : SyncStatus
     data class Error(val message: String) : SyncStatus
 
     val buttonLabel: String
         get() = when (this) {
             Idle -> "Synchroniser"
-            Running -> "Synchronisation..."
+            is Running -> "Synchronisation..."
             is Success -> "Synchroniser"
             is Error -> "Synchroniser"
         }

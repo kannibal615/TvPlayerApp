@@ -7,16 +7,17 @@ import com.smartvision.svplayer.data.home.HomeSlide
 import com.smartvision.svplayer.data.home.HomeSlidesRepository
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.mock.HomeVisualStyle
-import com.smartvision.svplayer.data.models.XtreamMovieStream
-import com.smartvision.svplayer.data.models.XtreamSeriesStream
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
-import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.domain.model.Movie
+import com.smartvision.svplayer.domain.model.TvSeries
+import com.smartvision.svplayer.domain.repository.CatalogRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -29,7 +30,7 @@ data class HomeUiState(
 
 class HomeViewModel(
     private val userContentRepository: UserContentRepository,
-    private val xtreamRepository: XtreamRepository,
+    private val catalogRepository: CatalogRepository,
     private val homeSlidesRepository: HomeSlidesRepository,
 ) : ViewModel() {
     private val trending = MutableStateFlow<List<ContinueItem>>(emptyList())
@@ -84,10 +85,8 @@ class HomeViewModel(
     }
 
     private suspend fun loadTrendingMovies(): List<ScoredTrend> {
-        val categories = xtreamRepository.getMovieCategories()
-        return categories.movieTrendingCandidates().flatMap { category ->
-            xtreamRepository.getMovies(category.id).take(60)
-        }.distinctBy { it.streamId }
+        return catalogRepository.observeMovies(null).first()
+            .distinctBy { it.streamId }
             .shuffled()
             .take(12)
             .map { movie ->
@@ -108,10 +107,8 @@ class HomeViewModel(
     }
 
     private suspend fun loadTrendingSeries(): List<ScoredTrend> {
-        val categories = xtreamRepository.getSeriesCategories()
-        return categories.seriesTrendingCandidates().flatMap { category ->
-            xtreamRepository.getSeries(category.id).take(60)
-        }.distinctBy { it.seriesId }
+        return catalogRepository.observeSeries(null).first()
+            .distinctBy { it.seriesId }
             .shuffled()
             .take(12)
             .map { series ->
@@ -121,10 +118,10 @@ class HomeViewModel(
                         id = "series:${series.seriesId}",
                         title = series.title.cleanHistoryTitle(),
                         meta = "Serie${series.rating?.let { "  |  $it/10" }.orEmpty()}",
-                        remaining = series.releaseDate?.take(4) ?: "Tendance",
+                        remaining = series.year?.take(4) ?: "Tendance",
                         progress = 0f,
                         visualStyle = HomeVisualStyle.Series,
-                        imageUrl = series.coverUrl,
+                        imageUrl = series.posterUrl,
                         mediaType = "SERIE",
                     ),
                 )
@@ -142,35 +139,16 @@ class HomeViewModel(
             else -> HomeVisualStyle.Mystery
         }
         val title = progress.title?.cleanHistoryTitle() ?: when (progress.contentType) {
-            UserContentType.Live -> xtreamRepository.getCachedLiveStream(id)?.name?.cleanHistoryTitle()
-                ?: "Chaine $id"
-            UserContentType.Movie -> xtreamRepository.getCachedMovie(id)?.title?.cleanHistoryTitle()
-                ?: "Film $id"
-            UserContentType.Episode -> {
-                val episode = xtreamRepository.getCachedEpisode(id)
-                val seriesTitle = episode?.seriesId?.let { xtreamRepository.getCachedSeries(it)?.title }
-                seriesTitle?.cleanHistoryTitle()
-                    ?: episode?.title?.cleanHistoryTitle()
-                    ?: "Episode $id"
-            }
+            UserContentType.Live -> "Chaine $id"
+            UserContentType.Movie -> "Film $id"
+            UserContentType.Episode -> "Episode $id"
             else -> return null
         }
-        val imageUrl = progress.imageUrl?.takeIf { it.isNotBlank() } ?: when (progress.contentType) {
-            UserContentType.Live -> xtreamRepository.getCachedLiveStream(id)?.streamIcon
-            UserContentType.Movie -> xtreamRepository.getCachedMovie(id)?.posterUrl
-            UserContentType.Episode -> {
-                val seriesId = progress.parentContentId?.toIntOrNull()
-                    ?: xtreamRepository.getCachedEpisode(id)?.seriesId
-                seriesId?.let { xtreamRepository.getCachedSeries(it)?.coverUrl }
-            }
-            else -> null
-        }?.takeIf { it.isNotBlank() }
+        val imageUrl = progress.imageUrl?.takeIf { it.isNotBlank() }
         val meta = progress.subtitle?.take(36) ?: when (progress.contentType) {
             UserContentType.Live -> "Live TV"
             UserContentType.Movie -> "Film"
-            UserContentType.Episode -> xtreamRepository.getCachedEpisode(id)?.let {
-                "S${it.seasonNumber} E${it.episodeNumber}"
-            } ?: "Serie"
+            UserContentType.Episode -> "Serie"
             else -> "Media"
         }
         val ratio = if (duration > 0L) position.toFloat() / duration.toFloat() else 0f
@@ -201,12 +179,6 @@ private fun historyGroupingKey(progress: PlaybackProgressEntity): String =
 
 private data class ScoredTrend(val score: Float, val item: ContinueItem)
 
-private fun List<com.smartvision.svplayer.data.models.XtreamMovieCategory>.movieTrendingCandidates() =
-    sortedByDescending { it.name.trendCategoryScore() }.take(2)
-
-private fun List<com.smartvision.svplayer.data.models.XtreamSeriesCategory>.seriesTrendingCandidates() =
-    sortedByDescending { it.name.trendCategoryScore() }.take(2)
-
 private fun String.trendCategoryScore(): Int {
     val value = lowercase()
     return when {
@@ -216,12 +188,12 @@ private fun String.trendCategoryScore(): Int {
     }
 }
 
-private fun movieTrendScore(movie: XtreamMovieStream): Float =
-    movie.rating.toRating() * 10f + (movie.added?.toLongOrNull()?.rem(10_000_000L) ?: 0L) / 10_000_000f
+private fun movieTrendScore(movie: Movie): Float =
+    movie.rating.toRating() * 10f + movie.categoryName.trendCategoryScore()
 
-private fun seriesTrendScore(series: XtreamSeriesStream): Float {
-    val year = series.releaseDate?.take(4)?.toIntOrNull() ?: 0
-    return series.rating.toRating() * 10f + (year - 2000).coerceAtLeast(0) / 100f
+private fun seriesTrendScore(series: TvSeries): Float {
+    val year = series.year?.take(4)?.toIntOrNull() ?: 0
+    return series.rating.toRating() * 10f + series.categoryName.trendCategoryScore() + (year - 2000).coerceAtLeast(0) / 100f
 }
 
 private fun String?.toRating(): Float =

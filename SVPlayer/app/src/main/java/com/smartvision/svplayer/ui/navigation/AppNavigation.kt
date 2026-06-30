@@ -52,6 +52,7 @@ import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.monetization.resolveMonetizationStatus
+import com.smartvision.svplayer.data.xtream.XtreamConnectionState
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import com.smartvision.svplayer.sync.CatalogSyncScheduler
@@ -89,6 +90,7 @@ import com.smartvision.svplayer.ui.update.AppUpdateDialog
 import com.smartvision.svplayer.ui.update.AppUpdateViewModel
 import com.smartvision.svplayer.ui.youtube.YoutubeScreen
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -137,7 +139,11 @@ fun AppNavigation(
     val currentRoute = backStack?.destination?.route ?: AppRoute.Home.route
     var showExitConfirmation by remember { mutableStateOf(false) }
     var showLicensePurchaseQr by remember { mutableStateOf(false) }
+    var showXtreamConnectionDialog by remember { mutableStateOf(false) }
+    var showXtreamSetupDialog by remember { mutableStateOf(false) }
     var premiumLicenseCode by remember { mutableStateOf("") }
+    val xtreamConnectionState by container.xtreamConnectionManager.state.collectAsStateWithLifecycle()
+    val xtreamCatalogBlocked = xtreamConnectionState.blocksCatalog || xtreamConnectionState.checking
     val context = LocalContext.current
     val activity = context as? Activity
     val monetizationStatus = resolveMonetizationStatus(
@@ -156,13 +162,19 @@ fun AppNavigation(
         featureKey = "parental_control",
         status = monetizationStatus,
     )
-    val tabs = remember(youtubeAllowed, strings) {
+    val tabs = remember(youtubeAllowed, strings, xtreamCatalogBlocked) {
         headerTabs(strings).map { tab ->
-            if (tab.route == AppRoute.Youtube.route) tab.copy(locked = !youtubeAllowed) else tab
+            when {
+                tab.route == AppRoute.Youtube.route -> tab.copy(locked = !youtubeAllowed)
+                tab.route.isXtreamCatalogRoute() -> tab.copy(warning = xtreamCatalogBlocked)
+                else -> tab
+            }
         }
     }
     val navigateFromHeader: (String) -> Unit = { route ->
-        if (route == AppRoute.Youtube.route && !youtubeAllowed) {
+        if (route.isXtreamCatalogRoute() && xtreamCatalogBlocked) {
+            showXtreamConnectionDialog = true
+        } else if (route == AppRoute.Youtube.route && !youtubeAllowed) {
             showLicensePurchaseQr = true
         } else {
             navController.navigateSingleTop(route)
@@ -174,6 +186,11 @@ fun AppNavigation(
     LaunchedEffect(currentRoute) {
         container.anomalyReporter.setCurrentRoute(currentRoute)
     }
+    LaunchedEffect(Unit) {
+        container.xtreamConnectionManager.alertRequests.collect {
+            showXtreamConnectionDialog = true
+        }
+    }
     LaunchedEffect(
         activationState.activationType,
         activationState.licenseStatus,
@@ -184,9 +201,14 @@ fun AppNavigation(
     }
     val syncCatalog = {
         scope.launch {
+            val connection = container.xtreamConnectionManager.verifyQuick("manual_sync")
+            if (!connection.isConnected) {
+                showXtreamConnectionDialog = connection.blocksCatalog
+                return@launch
+            }
             runCatching {
                 container.xtreamRepository.clearCaches()
-                container.synchronizeCatalog()
+                container.synchronizeCatalog().getOrThrow()
             }
         }
         Unit
@@ -303,12 +325,34 @@ fun AppNavigation(
             val previousSignature = lastXtreamAccountSignature
             lastXtreamAccountSignature = xtreamAccountSignature
             val accountChanged = previousSignature != null && previousSignature != xtreamAccountSignature
-            val startupSync = previousSignature == null &&
+            val firstAccountCheck = previousSignature == null
+            val startupSync = firstAccountCheck &&
                 SyncFrequencyPolicy.from(playerSettings.syncFrequency).runOnStartup
-            if (accountChanged || startupSync) {
-                runCatching {
-                    container.xtreamRepository.clearCaches()
-                    container.synchronizeCatalog()
+            val shouldVerifyXtream = accountChanged || firstAccountCheck || startupSync
+            val shouldSyncCatalog = accountChanged || startupSync
+            if (shouldVerifyXtream) {
+                val connection = container.xtreamConnectionManager.verifyQuick("startup")
+                if (!connection.isConnected) {
+                    showXtreamConnectionDialog = connection.blocksCatalog
+                    return@LaunchedEffect
+                }
+                if (shouldSyncCatalog) {
+                    runCatching {
+                        container.xtreamRepository.clearCaches()
+                        container.synchronizeCatalog().getOrThrow()
+                    }
+                }
+            }
+        }
+    }
+    LaunchedEffect(activationState.activated, xtreamAccountSignature, xtreamConnectionState.status) {
+        if (activationState.activated && xtreamAccounts.isNotEmpty() && xtreamConnectionState.shouldRetryInBackground) {
+            while (isActive && container.xtreamConnectionManager.state.value.shouldRetryInBackground) {
+                delay(60_000L)
+                val connection = container.xtreamConnectionManager.verifyQuick("background_retry")
+                if (connection.isConnected) {
+                    showXtreamConnectionDialog = false
+                    break
                 }
             }
         }
@@ -357,9 +401,21 @@ fun AppNavigation(
                 hasNewNotifications = hasNewNotifications,
                 notificationBadgeCount = notificationBadgeCount,
                 strings = strings,
-                onContentClick = { item -> navController.navigateFromContinueItem(item) },
-                onContinueViewAll = { navController.navigate(AppRoute.ContinueWatching.route) },
-                onTrendingViewAll = { navController.navigate(AppRoute.Trending.route) },
+                xtreamCatalogBlocked = xtreamCatalogBlocked,
+                onXtreamBlocked = { showXtreamConnectionDialog = true },
+                onContentClick = { item ->
+                    if (xtreamCatalogBlocked) {
+                        showXtreamConnectionDialog = true
+                    } else {
+                        navController.navigateFromContinueItem(item)
+                    }
+                },
+                onContinueViewAll = {
+                    if (xtreamCatalogBlocked) showXtreamConnectionDialog = true else navController.navigate(AppRoute.ContinueWatching.route)
+                },
+                onTrendingViewAll = {
+                    if (xtreamCatalogBlocked) showXtreamConnectionDialog = true else navController.navigate(AppRoute.Trending.route)
+                },
             )
         }
         composable(AppRoute.Profile.route) {
@@ -374,18 +430,25 @@ fun AppNavigation(
             HomeCollectionsScreen(
                 kind = HomeCollectionKind.ContinueWatching,
                 onBack = { navController.popBackStack() },
-                onItemClick = { item -> navController.navigateFromContinueItem(item) },
+                onItemClick = { item ->
+                    if (xtreamCatalogBlocked) showXtreamConnectionDialog = true else navController.navigateFromContinueItem(item)
+                },
             )
         }
         composable(AppRoute.Trending.route) {
             HomeCollectionsScreen(
                 kind = HomeCollectionKind.Trending,
                 onBack = { navController.popBackStack() },
-                onItemClick = { item -> navController.navigateFromContinueItem(item) },
+                onItemClick = { item ->
+                    if (xtreamCatalogBlocked) showXtreamConnectionDialog = true else navController.navigateFromContinueItem(item)
+                },
             )
         }
         composable(AppRoute.Live.route) {
-            LiveTvScreen(
+            if (xtreamCatalogBlocked) {
+                LaunchedEffect(Unit) { showXtreamConnectionDialog = true }
+                PlaceholderRouteScreen("Live TV", "Connexion Xtream indisponible.")
+            } else LiveTvScreen(
                 currentRoute = currentRoute,
                 tabs = tabs,
                 onNavigate = navigateFromHeader,
@@ -401,7 +464,10 @@ fun AppNavigation(
             )
         }
         composable(AppRoute.Movies.route) {
-            MoviesScreen(
+            if (xtreamCatalogBlocked) {
+                LaunchedEffect(Unit) { showXtreamConnectionDialog = true }
+                PlaceholderRouteScreen("Movies", "Connexion Xtream indisponible.")
+            } else MoviesScreen(
                 currentRoute = currentRoute,
                 tabs = tabs,
                 onNavigate = navigateFromHeader,
@@ -418,7 +484,10 @@ fun AppNavigation(
             )
         }
         composable(AppRoute.Series.route) {
-            SeriesScreen(
+            if (xtreamCatalogBlocked) {
+                LaunchedEffect(Unit) { showXtreamConnectionDialog = true }
+                PlaceholderRouteScreen("Series", "Connexion Xtream indisponible.")
+            } else SeriesScreen(
                 currentRoute = currentRoute,
                 tabs = tabs,
                 onNavigate = navigateFromHeader,
@@ -476,7 +545,10 @@ fun AppNavigation(
         }
         composable("player/{channelId}") { entry ->
             val channelId = entry.arguments?.getString("channelId")?.toIntOrNull()
-            if (channelId == null) {
+            if (xtreamCatalogBlocked) {
+                LaunchedEffect(Unit) { showXtreamConnectionDialog = true }
+                PlaceholderRouteScreen("Lecture live", "Connexion Xtream indisponible.")
+            } else if (channelId == null) {
                 PlaceholderRouteScreen("Lecture live", "Chaine introuvable.")
             } else {
                 FullScreenPlayerRoute(
@@ -493,7 +565,10 @@ fun AppNavigation(
         }
         composable("movie_player/{movieId}") { entry ->
             val movieId = entry.arguments?.getString("movieId")?.toIntOrNull()
-            if (movieId == null) {
+            if (xtreamCatalogBlocked) {
+                LaunchedEffect(Unit) { showXtreamConnectionDialog = true }
+                PlaceholderRouteScreen("Lecture film", "Connexion Xtream indisponible.")
+            } else if (movieId == null) {
                 PlaceholderRouteScreen("Lecture film", "Film introuvable.")
             } else {
                 FullScreenPlayerRoute(
@@ -510,7 +585,10 @@ fun AppNavigation(
         }
         composable("movie_detail/{movieId}") { entry ->
             val movieId = entry.arguments?.getString("movieId")?.toIntOrNull()
-            if (movieId == null) {
+            if (xtreamCatalogBlocked) {
+                LaunchedEffect(Unit) { showXtreamConnectionDialog = true }
+                PlaceholderRouteScreen("Detail film", "Connexion Xtream indisponible.")
+            } else if (movieId == null) {
                 PlaceholderRouteScreen("Detail film", "Film introuvable.")
             } else {
                 MovieDetailRoute(
@@ -532,7 +610,10 @@ fun AppNavigation(
         }
         composable("episode_player/{episodeId}") { entry ->
             val episodeId = entry.arguments?.getString("episodeId")?.toIntOrNull()
-            if (episodeId == null) {
+            if (xtreamCatalogBlocked) {
+                LaunchedEffect(Unit) { showXtreamConnectionDialog = true }
+                PlaceholderRouteScreen("Lecture serie", "Connexion Xtream indisponible.")
+            } else if (episodeId == null) {
                 PlaceholderRouteScreen("Lecture serie", "Episode introuvable.")
             } else {
                 FullScreenPlayerRoute(
@@ -549,7 +630,10 @@ fun AppNavigation(
         }
         composable("series_detail/{seriesId}") { entry ->
             val seriesId = entry.arguments?.getString("seriesId")?.toIntOrNull()
-            if (seriesId == null) {
+            if (xtreamCatalogBlocked) {
+                LaunchedEffect(Unit) { showXtreamConnectionDialog = true }
+                PlaceholderRouteScreen("Detail serie", "Connexion Xtream indisponible.")
+            } else if (seriesId == null) {
                 PlaceholderRouteScreen("Detail serie", "Serie introuvable.")
             } else {
                 SeriesDetailRoute(
@@ -618,6 +702,55 @@ fun AppNavigation(
         )
     }
 
+    if (showXtreamConnectionDialog) {
+        XtreamConnectionAlertDialog(
+            state = xtreamConnectionState,
+            onEditCredentials = {
+                showXtreamSetupDialog = true
+            },
+            onRetry = {
+                scope.launch {
+                    val connection = container.xtreamConnectionManager.verifyQuick("user_retry")
+                    if (connection.isConnected) {
+                        showXtreamConnectionDialog = false
+                    }
+                }
+            },
+            onContinue = {
+                showXtreamConnectionDialog = false
+            },
+        )
+    }
+
+    if (showXtreamSetupDialog) {
+        Dialog(onDismissRequest = { showXtreamSetupDialog = false }) {
+            Box(
+                modifier = Modifier
+                    .width(1100.dp)
+                    .height(640.dp),
+            ) {
+                XtreamQrSetupPanel(
+                    activationRepository = container.activationRepository,
+                    title = strings.configureXtreamTitle,
+                    onManualAccount = { account ->
+                        val accountId = container.accountManager.upsert(account)
+                        container.accountManager.select(accountId)
+                        container.xtreamRepository.clearCaches()
+                        val connection = container.xtreamConnectionManager.verifyQuick("credentials_edit")
+                        if (connection.isConnected) {
+                            showXtreamSetupDialog = false
+                            showXtreamConnectionDialog = false
+                            container.synchronizeCatalog().getOrThrow()
+                        } else {
+                            throw IllegalStateException(connection.message)
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+    }
+
     val update = appUpdateState.update
     if (update != null && appUpdateState.shouldShowDialog) {
         AppUpdateDialog(
@@ -631,6 +764,90 @@ fun AppNavigation(
     }
     }
 
+}
+
+@Composable
+private fun XtreamConnectionAlertDialog(
+    state: XtreamConnectionState,
+    onEditCredentials: () -> Unit,
+    onRetry: () -> Unit,
+    onContinue: () -> Unit,
+) {
+    val retryFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        retryFocusRequester.requestFocus()
+    }
+
+    Dialog(onDismissRequest = onContinue) {
+        Column(
+            modifier = Modifier
+                .width(720.dp)
+                .background(
+                    Brush.verticalGradient(listOf(Color(0xFF142033), Color(0xFF07101D))),
+                    RoundedCornerShape(16.dp),
+                )
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)), RoundedCornerShape(16.dp))
+                .padding(horizontal = 34.dp, vertical = 30.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "Connexion Xtream indisponible",
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.TitleS,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = "L'application n'arrive pas a se connecter au serveur Xtream associe a votre compte. Vos chaines, films et series sont temporairement indisponibles. Vous pouvez modifier vos identifiants, reessayer la connexion ou continuer sur l'application.",
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Body,
+                textAlign = TextAlign.Center,
+            )
+            if (state.message.isNotBlank()) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = state.message,
+                    color = SmartVisionColors.Warning,
+                    style = SmartVisionType.Caption,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Spacer(Modifier.height(24.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TvButton(
+                    text = "Modifier les identifiants",
+                    onClick = onEditCredentials,
+                    variant = TvButtonVariant.Secondary,
+                    contentPadding = PaddingValues(horizontal = 18.dp),
+                    modifier = Modifier.height(44.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                TvButton(
+                    text = if (state.checking) "Verification..." else "Reessayer la connexion",
+                    onClick = onRetry,
+                    enabled = !state.checking,
+                    focusRequester = retryFocusRequester,
+                    contentPadding = PaddingValues(horizontal = 18.dp),
+                    modifier = Modifier.height(44.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                TvButton(
+                    text = "Aller sur l'application",
+                    onClick = onContinue,
+                    variant = TvButtonVariant.Text,
+                    contentPadding = PaddingValues(horizontal = 18.dp),
+                    modifier = Modifier.height(44.dp),
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -751,6 +968,9 @@ private fun NavHostController.navigateFromContinueItem(item: ContinueItem) {
         "series" -> navigate("series_detail/$id")
     }
 }
+
+private fun String.isXtreamCatalogRoute(): Boolean =
+    this == AppRoute.Live.route || this == AppRoute.Movies.route || this == AppRoute.Series.route
 
 private enum class AppRoute(val route: String) {
     Home("home"),

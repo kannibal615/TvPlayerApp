@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -58,6 +59,7 @@ data class HomeHeaderTab(
     val icon: ImageVector? = null,
     val useYoutubeLogo: Boolean = false,
     val locked: Boolean = false,
+    val warning: Boolean = false,
 )
 
 @Composable
@@ -100,7 +102,16 @@ fun TvHeader(
                     } else {
                         null
                     },
-                    trailingContent = if (tab.locked) {
+                    trailingContent = if (tab.warning) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Indisponible",
+                                tint = SmartVisionColors.Warning,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    } else if (tab.locked) {
                         {
                             Image(
                                 painter = painterResource(R.drawable.premium_crown),
@@ -118,7 +129,7 @@ fun TvHeader(
                     contentPadding = PaddingValues(horizontal = 10.dp),
                     modifier = Modifier
                         .height(40.dp)
-                        .alpha(if (tab.locked) 0.22f else 1f),
+                        .alpha(if (tab.locked || tab.warning) 0.42f else 1f),
                 )
             }
         }

@@ -13,6 +13,7 @@ import androidx.work.Constraints
 import androidx.work.BackoffPolicy
 import com.smartvision.svplayer.SVPlayerApplication
 import com.smartvision.svplayer.core.data.AppContainer
+import com.smartvision.svplayer.data.xtream.XtreamConnectionStatus
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +28,13 @@ class SyncWorker(
         val container = (applicationContext as? SVPlayerApplication)?.appContainer
             ?: AppContainer(applicationContext)
         return runCatching {
+            val connection = container.xtreamConnectionManager.verifyQuick("manual_or_periodic_sync")
+            if (!connection.isConnected) {
+                if (connection.status == XtreamConnectionStatus.NETWORK_ERROR) {
+                    throw IllegalStateException(connection.message)
+                }
+                return Result.success()
+            }
             container.xtreamRepository.clearCaches()
             container.synchronizeCatalog()
         }.fold(

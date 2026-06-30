@@ -108,6 +108,7 @@ import com.smartvision.svplayer.data.monetization.smartVisionMediaSourceFactory
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.data.xtream.XtreamConnectionManager
 import com.smartvision.svplayer.domain.model.PlaybackKind
 import com.smartvision.svplayer.domain.usecase.BuildPlaybackRequestUseCase
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
@@ -443,6 +444,7 @@ fun FullScreenPlayerRoute(
         monetizationManager = container.monetizationManager,
         idleVastAdLoader = container.idleVastAdLoader,
         anomalyReporter = container.anomalyReporter,
+        xtreamConnectionManager = container.xtreamConnectionManager,
         behaviorReporter = container.behaviorReporter,
         adRequestTimeoutSeconds = container.adConfigProvider.current().requestTimeoutSeconds,
         onBack = onBack,
@@ -460,6 +462,7 @@ private fun FullScreenPlayerScreen(
     monetizationManager: MonetizationManager,
     idleVastAdLoader: IdleVastAdLoader,
     anomalyReporter: AnomalyReporter,
+    xtreamConnectionManager: XtreamConnectionManager,
     behaviorReporter: BehaviorReporter,
     adRequestTimeoutSeconds: Long,
     onBack: () -> Unit,
@@ -553,11 +556,23 @@ private fun FullScreenPlayerScreen(
     }
 
     fun refreshStalledPlayback() {
-        if (adGateActive || exiting || stalledRefreshCount >= 2) return
+        if (adGateActive || exiting) return
+        if (stalledRefreshCount >= 2) {
+            buffering = false
+            errorText = "Connexion Xtream indisponible"
+            showOverlay(requestPlayFocus = true)
+            xtreamConnectionManager.markPlaybackUnavailable(
+                source = "player_buffering",
+                contentType = playback.contentType,
+                streamId = playback.streamId,
+                detail = "Flux bloque en buffering apres ${stalledRefreshCount + 1} tentatives",
+            )
+            return
+        }
         stalledRefreshCount += 1
         val resumeAt = player.currentPosition.coerceAtLeast(0L)
         anomalyReporter.reportAsync(
-            anomalyType = "Relance buffering",
+            anomalyType = "PLAYER_BUFFERING_RETRY",
             message = "Relance automatique du flux bloque en buffering",
             context = "contentType=${playback.contentType} streamId=${playback.streamId} attempt=$stalledRefreshCount position=$resumeAt",
         )
@@ -911,7 +926,7 @@ private fun FullScreenPlayerScreen(
             kotlin.math.abs(currentPosition - startPosition) < 1_500L
         if (stillStalled) {
             anomalyReporter.reportAsync(
-                anomalyType = "buffering bloqué",
+                anomalyType = "PLAYER_BUFFERING_STALLED",
                 message = "Flux bloque en buffering",
                 context = "contentType=${playback.contentType} streamId=${playback.streamId} position=$currentPosition startPosition=$startPosition attempt=${stalledRefreshCount + 1}",
             )

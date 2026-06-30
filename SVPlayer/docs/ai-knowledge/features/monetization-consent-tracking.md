@@ -19,6 +19,8 @@ Le tracking actuellement implemente couvre:
 - diagnostics device: `api/app/device-diagnostics.php`;
 - consentement TV: `app_consent_receipts`.
 
+Depuis le 2026-06-30, les erreurs de connexion Xtream sont remontees comme anomalies `XTREAM_FAILED` avec anti-doublon cote Android. Le payload inclut le code TV public quand disponible, la version app, le type d'erreur et un contexte non secret.
+
 Segmentation:
 - `docs/ai-knowledge/features/user-behavior-segmentation-ads-v1.md` decrit maintenant la V1 en cours: tracking contenu consomme, interpretation region/pays/langue/interets et dashboard admin Segmentation.
 
@@ -40,6 +42,7 @@ Android:
 - `data/appconfig/AppConfigRepository.kt`
 - `ui/appconfig/ConsentDialog.kt`
 - `data/anomaly/AnomalyReporter.kt`
+- `data/xtream/XtreamConnectionManager.kt`
 - `data/diagnostics/DeviceDiagnosticsReporter.kt`
 - `data/behavior/BehaviorReporter.kt`
 
@@ -114,6 +117,7 @@ Tables ou settings:
 - `app_behavior_events`
 - `user_behavior_daily`
 - `user_segments`
+- `app_anomaly_events.public_device_code`
 
 ## 8. Dependances
 
@@ -130,6 +134,8 @@ Tables ou settings:
 - Les feature flags prod stockes peuvent override les defaults: verifier `api/app_config.php`.
 - Ne pas rendre l'admin dependent d'un service optionnel qui peut faire HTTP 500.
 - Garder les evenements rates limites pour eviter le bruit.
+- Garder l'anti-doublon Xtream cote Android pour eviter les boucles d'anomalies identiques.
+- Un flux media bloque en buffering doit remonter une anomalie Xtream non secrete (`XTREAM_FAILED`) en plus des evenements player techniques, afin que le panel admin affiche le probleme par code TV.
 - Ne pas stocker de nouveaux evenements comportementaux avec `content_type = UNKNOWN`; les lignes UNKNOWN sont purgees par le service comportement.
 - Les segments region/pays/langue/interets doivent rester explicables par evidence textuelle nettoyee, pas par modele opaque.
 
@@ -168,3 +174,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: ajout de la spec V1 segmentation utilisateur et ciblage publicitaire.
 - 2026-06-30: clarification etat actuel vs cible future, routes extensionless et exception `device-diagnostics.php`.
 - 2026-06-30: mise a jour etat actuel apres implementation segmentation admin et inference region/pays/langue/interets.
+- 2026-06-30: anomalies Xtream `XTREAM_FAILED` ajoutees avec code TV public et classification simple.
+- 2026-06-30: les blocages buffering du lecteur Xtream basculent maintenant l'etat connexion en erreur et declenchent une anomalie `XTREAM_FAILED`.
