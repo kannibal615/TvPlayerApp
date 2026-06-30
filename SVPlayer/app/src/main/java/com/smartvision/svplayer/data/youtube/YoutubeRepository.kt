@@ -1,11 +1,14 @@
 package com.smartvision.svplayer.data.youtube
 
 import com.smartvision.svplayer.data.local.dao.YoutubeDao
+import com.smartvision.svplayer.data.local.dao.FavoriteDao
+import com.smartvision.svplayer.data.local.entity.FavoriteEntity
 import com.smartvision.svplayer.data.local.entity.YoutubeSearchEntity
 import com.smartvision.svplayer.data.local.entity.YoutubeSelectionEntity
 import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 data class YoutubeCategory(
@@ -37,11 +40,13 @@ data class YoutubePage(
 class YoutubeRepository(
     private val api: YoutubeApiService,
     private val dao: YoutubeDao,
+    private val favoriteDao: FavoriteDao,
     private val apiKey: String,
     private val behaviorReporter: YoutubeBehaviorReporter,
 ) {
     val categories: List<YoutubeCategory> = listOf(
         YoutubeCategory("history", "Historique", ""),
+        YoutubeCategory("favorites", "Favorites", ""),
         YoutubeCategory("trending", "Tendances", ""),
         YoutubeCategory("music", "Musique", "musique"),
         YoutubeCategory("sport", "Sport", "sport"),
@@ -56,7 +61,13 @@ class YoutubeRepository(
 
     fun observeRecentVideos(): Flow<List<YoutubeVideoHistoryEntity>> = dao.observeRecentVideos()
 
+    fun observeRecentVideoItems(): Flow<List<YoutubeVideo>> = dao.observeRecentVideos().map { videos ->
+        videos.map { it.toVideo() }
+    }
+
     fun observeRecentVideoCount(): Flow<Int> = dao.observeRecentVideoCount()
+
+    fun observeFavoriteIds(): Flow<List<FavoriteEntity>> = favoriteDao.observeByType(YoutubeFavoriteContentType)
 
     suspend fun loadCategory(categoryId: String, pageToken: String? = null): YoutubePage = withContext(Dispatchers.IO) {
         val category = categories.firstOrNull { it.id == categoryId }
@@ -64,6 +75,10 @@ class YoutubeRepository(
         when (category.id) {
             "history" -> YoutubePage(
                 videos = dao.getRecentVideos().map { it.toVideo() },
+                nextPageToken = null,
+            )
+            "favorites" -> YoutubePage(
+                videos = favoriteVideos(),
                 nextPageToken = null,
             )
             "trending" -> {
@@ -132,6 +147,21 @@ class YoutubeRepository(
         behaviorReporter.report(eventType, video, sourceScreen)
     }
 
+    suspend fun toggleFavorite(video: YoutubeVideo) = withContext(Dispatchers.IO) {
+        val existing = favoriteDao.get(YoutubeFavoriteContentType, video.videoId)
+        if (existing == null) {
+            favoriteDao.upsert(FavoriteEntity(YoutubeFavoriteContentType, video.videoId, System.currentTimeMillis()))
+        } else {
+            favoriteDao.delete(YoutubeFavoriteContentType, video.videoId)
+        }
+    }
+
+    suspend fun previousFromHistory(currentVideoId: String): YoutubeVideo? = withContext(Dispatchers.IO) {
+        val history = dao.getRecentVideos(limit = 100).map { it.toVideo() }
+        val currentIndex = history.indexOfFirst { it.videoId == currentVideoId }
+        history.getOrNull(currentIndex + 1)
+    }
+
     suspend fun suggestVideos(video: YoutubeVideo): List<YoutubeVideo> = withContext(Dispatchers.IO) {
         ensureApiKey()
         val sameChannel = video.channelId
@@ -178,6 +208,20 @@ class YoutubeRepository(
             runCatching { searchPage(query, pageToken = pageToken, recordSearch = false) }
                 .getOrElse { popularVideos(pageToken) }
         }
+    }
+
+    private suspend fun favoriteVideos(): List<YoutubeVideo> {
+        val favoriteIds = favoriteDao.getByType(YoutubeFavoriteContentType)
+            .sortedByDescending { it.createdAt }
+            .map { it.contentId }
+        if (favoriteIds.isEmpty()) return emptyList()
+        val historyById = dao.getRecentVideos(limit = 500).map { it.toVideo() }.associateBy { it.videoId }
+        val missingById = favoriteIds
+            .filterNot { it in historyById }
+            .takeIf { it.isNotEmpty() }
+            ?.let { ids -> runCatching { enrichVideos(ids) }.getOrDefault(emptyList()).associateBy { it.videoId } }
+            .orEmpty()
+        return favoriteIds.mapNotNull { historyById[it] ?: missingById[it] }
     }
 
     private suspend fun popularVideos(pageToken: String?): YoutubePage {
@@ -289,3 +333,5 @@ private fun String.htmlClean(): String =
         .replace("&#39;", "'")
         .replace("&lt;", "<")
         .replace("&gt;", ">")
+
+private const val YoutubeFavoriteContentType = "youtube"

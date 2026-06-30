@@ -14,6 +14,9 @@ interface FavoriteDao {
     @Query("SELECT * FROM favorites WHERE contentType = :contentType ORDER BY createdAt DESC")
     fun observeByType(contentType: String): Flow<List<FavoriteEntity>>
 
+    @Query("SELECT * FROM favorites WHERE contentType = :contentType ORDER BY createdAt DESC")
+    suspend fun getByType(contentType: String): List<FavoriteEntity>
+
     @Upsert
     suspend fun upsert(favorite: FavoriteEntity)
 

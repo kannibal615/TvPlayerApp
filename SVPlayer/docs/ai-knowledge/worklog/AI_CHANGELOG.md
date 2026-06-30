@@ -1,5 +1,48 @@
 # AI Changelog
 
+## 2026-06-30 - Release Android 0.1.60 versionCode 63
+
+Type:
+- android
+- ui
+- youtube
+- release
+- deploy
+
+Resume:
+- Bump Android de `0.1.59 (62)` vers `0.1.60 (63)`.
+- YouTube mini/fullscreen: le bandeau ne s'affiche plus a l'ouverture, seulement quand la lecture demarre reellement, puis auto-hide apres 7 secondes d'inactivite.
+- Ajout progress bar non focusable, bouton reload, previous base sur l'historique, bouton retour plein ecran vers le mini lecteur et reprise de position lors des transitions mini/fullscreen.
+- Ecran YouTube: favoris locaux, dossier Favoris entre History et Trending, bouton coeur dans le header, suggestions recherche limitees a 3, miniatures allegees hors focus et animation "now playing" sur la video en cours.
+
+Fichiers concernes:
+- `app/build.gradle.kts`
+- `app/src/main/java/com/smartvision/svplayer/ui/youtube/YoutubeScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/youtube/YoutubeViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/youtube/YoutubeWebPlayer.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/youtube/YoutubeRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/dao/FavoriteDao.kt`
+- `app/src/main/java/com/smartvision/svplayer/core/data/AppContainer.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/i18n/SmartVisionStrings.kt`
+
+## 2026-06-30 - Release Android 0.1.59 versionCode 62
+
+Type:
+- android
+- ui
+- release
+- deploy
+
+Resume:
+- Bump Android de `0.1.58 (61)` vers `0.1.59 (62)`.
+- Correction definitive des boutons du bandeau YouTube: le conteneur player ne consomme plus DPAD/OK quand un bouton du bandeau est focus.
+- Le focus gauche/droite reste borne dans le bandeau et OK/Enter atteint maintenant le handler du bouton focus.
+
+Fichiers concernes:
+- `app/build.gradle.kts`
+- `app/src/main/java/com/smartvision/svplayer/ui/youtube/YoutubeScreen.kt`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+
 ## 2026-06-30 - Release Android 0.1.58 versionCode 61
 
 Type:

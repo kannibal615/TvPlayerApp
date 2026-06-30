@@ -2,7 +2,11 @@ package com.smartvision.svplayer.ui.youtube
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -41,11 +45,15 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -146,8 +154,11 @@ fun YoutubeScreen(
     val firstPlayerSuggestionFocusRequester = remember { FocusRequester() }
     val visiblePlayerSuggestionFocusRequester = remember { FocusRequester() }
     val searchFocusRequester = remember { FocusRequester() }
+    val miniPlayerBackFocusRequester = remember { FocusRequester() }
+    val favoriteFocusRequester = remember { FocusRequester() }
     var playingVideo by remember { mutableStateOf<YoutubeVideoUi?>(null) }
     var youtubeFullScreen by remember { mutableStateOf(false) }
+    var youtubeResumeSeconds by remember { mutableStateOf(0.0) }
     var completedVideoId by remember { mutableStateOf<String?>(null) }
     var pendingAutoAdvanceFromVideoId by remember { mutableStateOf<String?>(null) }
     var restoreVideoFocusAfterPlayer by remember { mutableStateOf(false) }
@@ -167,15 +178,22 @@ fun YoutubeScreen(
     }
 
     BackHandler(enabled = playingVideo != null) {
-        youtubeFullScreen = false
-        playingVideo = null
-        viewModel.closePlayerToTrending()
-        restoreCategoryFocusAfterPlayer = true
+        if (youtubeFullScreen) {
+            youtubeFullScreen = false
+            runCatching { playerFocusRequester.requestFocus() }
+        } else {
+            youtubeFullScreen = false
+            playingVideo = null
+            youtubeResumeSeconds = 0.0
+            viewModel.closePlayerToTrending()
+            restoreCategoryFocusAfterPlayer = true
+        }
     }
 
     fun openYoutubeVideo(video: YoutubeVideoUi, sourceScreen: String) {
         completedVideoId = null
         pendingAutoAdvanceFromVideoId = null
+        youtubeResumeSeconds = 0.0
         viewModel.openYoutubeVideo(video, sourceScreen)
         playingVideo = video
     }
@@ -188,8 +206,29 @@ fun YoutubeScreen(
 
     fun previousYoutubeVideo(current: YoutubeVideoUi?): YoutubeVideoUi? {
         val currentId = current?.videoId ?: return null
+        val historyIndex = state.recentVideos.indexOfFirst { it.videoId == currentId }
+        state.recentVideos.getOrNull(historyIndex + 1)?.let { return it }
         val index = state.videos.indexOfFirst { it.videoId == currentId }
         return state.videos.getOrNull(index - 1)
+    }
+
+    fun openPreviousYoutubeVideo() {
+        val current = playingVideo ?: return
+        previousYoutubeVideo(current)?.let {
+            openYoutubeVideo(it, "PREVIOUS")
+            return
+        }
+        viewModel.previousFromHistory(current.videoId) { previous ->
+            previous?.let { openYoutubeVideo(it, "PREVIOUS") }
+        }
+    }
+
+    fun closeMiniPlayer() {
+        youtubeFullScreen = false
+        playingVideo = null
+        youtubeResumeSeconds = 0.0
+        viewModel.closePlayerToTrending()
+        restoreCategoryFocusAfterPlayer = true
     }
 
     LaunchedEffect(pendingAutoAdvanceFromVideoId, state.playerSuggestions.size, playingVideo?.videoId) {
@@ -227,8 +266,11 @@ fun YoutubeScreen(
             strings = strings,
             focusRequester = playerFocusRequester,
             leftFocusRequester = visiblePlayerSuggestionFocusRequester,
-            upFocusRequester = searchFocusRequester,
+            rightFocusRequester = favoriteFocusRequester,
+            upFocusRequester = miniPlayerBackFocusRequester,
             anomalyReporter = container.anomalyReporter,
+            initialStartSeconds = youtubeResumeSeconds,
+            onProgress = { position, _ -> youtubeResumeSeconds = position },
             onPlayerBehavior = { eventType, video ->
                 if (eventType == "VIDEO_COMPLETED" && video != null && completedVideoId != video.videoId) {
                     completedVideoId = video.videoId
@@ -241,12 +283,18 @@ fun YoutubeScreen(
                 }
             },
             onPreviousVideo = {
-                previousYoutubeVideo(playingVideo)?.let { openYoutubeVideo(it, "PREVIOUS") }
+                openPreviousYoutubeVideo()
+            },
+            onReloadVideo = {
+                youtubeResumeSeconds = 0.0
             },
             onNextVideo = {
                 nextYoutubeVideo(playingVideo)?.let { openYoutubeVideo(it, "NEXT") }
             },
             onToggleFullScreen = { youtubeFullScreen = false },
+            onBackToInline = {
+                youtubeFullScreen = false
+            },
             fullScreen = true,
             modifier = Modifier.fillMaxSize(),
         )
@@ -295,9 +343,11 @@ fun YoutubeScreen(
                 YoutubePlayerSuggestionsList(
                     state = state,
                     strings = strings,
+                    playingVideo = playingVideo,
                     firstSuggestionFocusRequester = firstPlayerSuggestionFocusRequester,
                     visibleSuggestionFocusRequester = visiblePlayerSuggestionFocusRequester,
                     contentFocusRequester = playerFocusRequester,
+                    upFocusRequester = searchFocusRequester,
                     onSuggestionFocused = viewModel::focusVideo,
                     onSuggestionClick = { video ->
                         viewModel.recordPlayerBehavior("SUGGESTION_OPENED", video, "SUGGESTION")
@@ -336,7 +386,15 @@ fun YoutubeScreen(
                     openYoutubeVideo(video, viewModel.currentBehaviorSource())
                 },
                 playingVideo = playingVideo,
+                favoriteVideo = playingVideo ?: state.videos.firstOrNull { it.videoId == state.focusedVideoId },
+                favoriteVideoIds = state.favoriteVideoIds,
+                miniPlayerBackFocusRequester = miniPlayerBackFocusRequester,
+                favoriteFocusRequester = favoriteFocusRequester,
+                onCloseMiniPlayer = ::closeMiniPlayer,
+                onToggleFavorite = viewModel::toggleFavorite,
                 anomalyReporter = container.anomalyReporter,
+                initialStartSeconds = youtubeResumeSeconds,
+                onPlayerProgress = { position, _ -> youtubeResumeSeconds = position },
                 onPlayerBehavior = { eventType, video ->
                     if (eventType == "VIDEO_COMPLETED" && video != null && playingVideo?.videoId == video.videoId && completedVideoId != video.videoId) {
                         completedVideoId = video.videoId
@@ -349,7 +407,10 @@ fun YoutubeScreen(
                     }
                 },
                 onPreviousVideo = {
-                    previousYoutubeVideo(playingVideo)?.let { openYoutubeVideo(it, "PREVIOUS") }
+                    openPreviousYoutubeVideo()
+                },
+                onReloadVideo = {
+                    youtubeResumeSeconds = 0.0
                 },
                 onNextVideo = {
                     nextYoutubeVideo(playingVideo)?.let { openYoutubeVideo(it, "NEXT") }
@@ -407,9 +468,11 @@ private fun YoutubeCategoryList(
 private fun YoutubePlayerSuggestionsList(
     state: YoutubeScreenState,
     strings: SmartVisionStrings,
+    playingVideo: YoutubeVideoUi?,
     firstSuggestionFocusRequester: FocusRequester,
     visibleSuggestionFocusRequester: FocusRequester,
     contentFocusRequester: FocusRequester,
+    upFocusRequester: FocusRequester,
     onSuggestionFocused: (YoutubeVideoUi) -> Unit,
     onSuggestionClick: (YoutubeVideoUi) -> Unit,
     onLoadMoreSuggestions: (Int) -> Unit,
@@ -417,6 +480,9 @@ private fun YoutubePlayerSuggestionsList(
 ) {
     val listState = rememberLazyListState()
     var firstVisibleIndex by remember { mutableStateOf(0) }
+    val displaySuggestions = remember(playingVideo?.videoId, state.playerSuggestions) {
+        listOfNotNull(playingVideo) + state.playerSuggestions.filter { it.videoId != playingVideo?.videoId }
+    }
     LaunchedEffect(listState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
             .distinctUntilChanged()
@@ -438,7 +504,7 @@ private fun YoutubePlayerSuggestionsList(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            state.playerSuggestions.isEmpty() -> CatalogEmpty(
+            displaySuggestions.isEmpty() -> CatalogEmpty(
                 title = strings.youtubeNoVideo,
                 subtitle = strings.youtubeNoVideoSubtitle,
                 modifier = Modifier.fillMaxSize(),
@@ -450,7 +516,7 @@ private fun YoutubePlayerSuggestionsList(
                 verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
                 contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
             ) {
-                itemsIndexed(state.playerSuggestions, key = { _, video -> video.videoId }) { index, video ->
+                itemsIndexed(displaySuggestions, key = { _, video -> video.videoId }) { index, video ->
                     YoutubePlayerSuggestionRow(
                         video = video,
                         focusRequester = when {
@@ -459,11 +525,13 @@ private fun YoutubePlayerSuggestionsList(
                             else -> null
                         },
                         rightFocusRequester = contentFocusRequester,
+                        upFocusRequester = upFocusRequester.takeIf { index == 0 },
+                        isCurrent = video.videoId == playingVideo?.videoId,
                         isFirst = index == 0,
-                        isLast = index == state.playerSuggestions.lastIndex,
+                        isLast = index == displaySuggestions.lastIndex,
                         onFocused = {
                             onSuggestionFocused(video)
-                            if (index >= state.playerSuggestions.size - 4) onLoadMoreSuggestions(index)
+                            if (index >= displaySuggestions.size - 4) onLoadMoreSuggestions(index)
                         },
                         onClick = { onSuggestionClick(video) },
                     )
@@ -478,6 +546,8 @@ private fun YoutubePlayerSuggestionRow(
     video: YoutubeVideoUi,
     focusRequester: FocusRequester?,
     rightFocusRequester: FocusRequester,
+    upFocusRequester: FocusRequester?,
+    isCurrent: Boolean,
     isFirst: Boolean,
     isLast: Boolean,
     onFocused: () -> Unit,
@@ -494,9 +564,12 @@ private fun YoutubePlayerSuggestionRow(
             .height(58.dp)
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                (event.key == Key.DirectionUp && isFirst) || (event.key == Key.DirectionDown && isLast)
+                event.key == Key.DirectionDown && isLast
             }
-            .focusProperties { right = rightFocusRequester }
+            .focusProperties {
+                right = rightFocusRequester
+                if (upFocusRequester != null) up = upFocusRequester
+            }
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -546,6 +619,15 @@ private fun YoutubePlayerSuggestionRow(
                         .padding(horizontal = 4.dp, vertical = 1.dp),
                 )
             }
+            if (isCurrent) {
+                YoutubeNowPlayingBars(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(Color.Black.copy(alpha = 0.56f))
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                )
+            }
         }
         Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -584,9 +666,18 @@ private fun YoutubeVideoGrid(
     onVideoFocused: (YoutubeVideoUi) -> Unit,
     onVideoClick: (YoutubeVideoUi) -> Unit,
     playingVideo: YoutubeVideoUi?,
+    favoriteVideo: YoutubeVideoUi?,
+    favoriteVideoIds: Set<String>,
+    miniPlayerBackFocusRequester: FocusRequester,
+    favoriteFocusRequester: FocusRequester,
+    onCloseMiniPlayer: () -> Unit,
+    onToggleFavorite: (YoutubeVideoUi) -> Unit,
     anomalyReporter: AnomalyReporter,
+    initialStartSeconds: Double,
+    onPlayerProgress: (Double, Double) -> Unit,
     onPlayerBehavior: (String, YoutubeVideoUi?) -> Unit,
     onPreviousVideo: () -> Unit,
+    onReloadVideo: () -> Unit,
     onNextVideo: () -> Unit,
     onToggleFullScreen: () -> Unit,
     onLoadMore: (Int) -> Unit,
@@ -623,34 +714,55 @@ private fun YoutubeVideoGrid(
         title = "",
         modifier = modifier,
         titleContent = {
-            YoutubeSearchInput(
-                query = state.searchQuery,
-                placeholder = strings.youtubeSearchPlaceholder,
-                focusRequester = searchFocusRequester,
-                downFocusRequester = when {
-                    showSuggestions -> firstSuggestionFocusRequester
-                    else -> contentDownFocusRequester
-                },
-                onQueryChange = {
-                    suppressSuggestionsAfterSelection = false
-                    onSearchQueryChange(it)
-                },
-                onSubmit = onSearchSubmit,
-                onFocusChanged = {
-                    searchFocused = it
-                    if (it) suppressSuggestionsAfterSelection = false
-                },
-                onSelected = { onSearchQueryChange(state.searchQuery) },
-                modifier = Modifier.width(430.dp),
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (playingVideo != null) {
+                    YoutubeHeaderIconButton(
+                        icon = Icons.Default.ArrowBack,
+                        contentDescription = strings.back,
+                        focusRequester = miniPlayerBackFocusRequester,
+                        rightFocusRequester = searchFocusRequester,
+                        onClick = onCloseMiniPlayer,
+                    )
+                    Spacer(Modifier.width(10.dp))
+                }
+                if (playingVideo != null) {
+                    Spacer(Modifier.weight(0.7f))
+                }
+                YoutubeSearchInput(
+                    query = state.searchQuery,
+                    placeholder = strings.youtubeSearchPlaceholder,
+                    focusRequester = searchFocusRequester,
+                    downFocusRequester = when {
+                        showSuggestions -> firstSuggestionFocusRequester
+                        else -> contentDownFocusRequester
+                    },
+                    onQueryChange = {
+                        suppressSuggestionsAfterSelection = false
+                        onSearchQueryChange(it)
+                    },
+                    onSubmit = onSearchSubmit,
+                    onFocusChanged = {
+                        searchFocused = it
+                        if (it) suppressSuggestionsAfterSelection = false
+                    },
+                    onSelected = { onSearchQueryChange(state.searchQuery) },
+                    modifier = Modifier.width(430.dp),
+                )
+                Spacer(Modifier.weight(1f))
+            }
         },
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = if (state.videos.isNotEmpty()) strings.youtubeVideosLoaded.format(state.videos.size) else "YouTube",
-                    color = SmartVisionColors.TextSecondary,
-                    style = CatalogMetaStyle,
-                    maxLines = 1,
+                YoutubeFavoriteButton(
+                    selected = favoriteVideo?.videoId?.let { it in favoriteVideoIds } == true,
+                    enabled = favoriteVideo != null,
+                    focusRequester = favoriteFocusRequester,
+                    leftFocusRequester = if (playingVideo != null) playerFocusRequester else searchFocusRequester,
+                    label = strings.youtubeFavorite,
+                    onClick = { favoriteVideo?.let(onToggleFavorite) },
                 )
             }
         },
@@ -679,12 +791,17 @@ private fun YoutubeVideoGrid(
                     strings = strings,
                     focusRequester = playerFocusRequester,
                     leftFocusRequester = playerSuggestionFocusRequester,
-                    upFocusRequester = searchFocusRequester,
+                    rightFocusRequester = favoriteFocusRequester,
+                    upFocusRequester = miniPlayerBackFocusRequester,
                     anomalyReporter = anomalyReporter,
+                    initialStartSeconds = initialStartSeconds,
+                    onProgress = onPlayerProgress,
                     onPlayerBehavior = onPlayerBehavior,
                     onPreviousVideo = onPreviousVideo,
+                    onReloadVideo = onReloadVideo,
                     onNextVideo = onNextVideo,
                     onToggleFullScreen = onToggleFullScreen,
+                    onBackToInline = {},
                     fullScreen = false,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -758,12 +875,17 @@ private fun YoutubeInlinePlayer(
     strings: SmartVisionStrings,
     focusRequester: FocusRequester,
     leftFocusRequester: FocusRequester,
+    rightFocusRequester: FocusRequester,
     upFocusRequester: FocusRequester,
     anomalyReporter: AnomalyReporter,
+    initialStartSeconds: Double,
+    onProgress: (Double, Double) -> Unit,
     onPlayerBehavior: (String, YoutubeVideoUi?) -> Unit,
     onPreviousVideo: () -> Unit,
+    onReloadVideo: () -> Unit,
     onNextVideo: () -> Unit,
     onToggleFullScreen: () -> Unit,
+    onBackToInline: () -> Unit,
     fullScreen: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -771,30 +893,37 @@ private fun YoutubeInlinePlayer(
     val focusState = rememberTvFocusState()
     val focusStyle = LocalTvFocusStyle.current
     val playPauseFocusRequester = remember { FocusRequester() }
-    var controlsVisible by remember(video.videoId) { mutableStateOf(true) }
+    var controlsVisible by remember(video.videoId, fullScreen) { mutableStateOf(false) }
     var command by remember(video.videoId) { mutableStateOf<YoutubePlayerCommand?>(null) }
     var commandSerial by remember(video.videoId) { mutableStateOf(0) }
     var isPlaying by remember(video.videoId) { mutableStateOf(false) }
+    var hasStarted by remember(video.videoId) { mutableStateOf(false) }
     var controlsHaveFocus by remember(video.videoId) { mutableStateOf(false) }
+    var playerContainerHasFocus by remember(video.videoId) { mutableStateOf(false) }
+    var progressPosition by remember(video.videoId) { mutableStateOf(initialStartSeconds) }
+    var progressDuration by remember(video.videoId) { mutableStateOf(0.0) }
+    var controlsActivitySerial by remember(video.videoId, fullScreen) { mutableStateOf(0) }
     val controlsOffset by animateDpAsState(
-        targetValue = if (controlsVisible) 0.dp else 108.dp,
+        targetValue = if (controlsVisible) 0.dp else 150.dp,
         animationSpec = tween(260),
         label = "youtubeControlsOffset",
     )
 
+    fun showControls() {
+        controlsVisible = true
+        controlsActivitySerial += 1
+    }
+
     fun sendCommand(nextCommand: YoutubePlayerCommand) {
         command = nextCommand
         commandSerial += 1
-        controlsVisible = true
+        showControls()
     }
 
     LaunchedEffect(video.videoId) {
-        controlsVisible = true
         withFrameNanos { }
         delay(120)
         runCatching { focusRequester.requestFocus() }
-        delay(2_000)
-        controlsVisible = false
     }
 
     LaunchedEffect(controlsVisible) {
@@ -802,10 +931,16 @@ private fun YoutubeInlinePlayer(
             withFrameNanos { }
             delay(50)
             runCatching { playPauseFocusRequester.requestFocus() }
-        } else if (controlsHaveFocus) {
+        } else if (controlsHaveFocus || !playerContainerHasFocus) {
             controlsHaveFocus = false
             runCatching { focusRequester.requestFocus() }
         }
+    }
+
+    LaunchedEffect(controlsVisible, controlsActivitySerial) {
+        if (!controlsVisible) return@LaunchedEffect
+        delay(7_000)
+        controlsVisible = false
     }
 
     fun hideControlsToPlayer() {
@@ -822,14 +957,19 @@ private fun YoutubeInlinePlayer(
             }
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                if (!playerContainerHasFocus) return@onPreviewKeyEvent false
                 when (event.key) {
                     Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.DirectionDown -> {
-                        controlsVisible = true
+                        showControls()
                         runCatching { playPauseFocusRequester.requestFocus() }
                         true
                     }
                     Key.DirectionLeft -> {
                         runCatching { leftFocusRequester.requestFocus() }
+                        true
+                    }
+                    Key.DirectionRight -> {
+                        runCatching { rightFocusRequester.requestFocus() }
                         true
                     }
                     Key.DirectionUp -> {
@@ -839,6 +979,7 @@ private fun YoutubeInlinePlayer(
                     else -> false
                 }
             }
+            .onFocusChanged { playerContainerHasFocus = it.isFocused }
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -864,50 +1005,72 @@ private fun YoutubeInlinePlayer(
                 command = command,
                 commandSerial = commandSerial,
                 keyboardControlsEnabled = false,
+                initialStartSeconds = initialStartSeconds,
                 anomalyReporter = anomalyReporter,
                 onPlaybackStateChanged = { playing ->
                     isPlaying = playing
-                    if (playing) controlsVisible = true
+                    if (playing && !hasStarted) {
+                        hasStarted = true
+                        showControls()
+                    }
+                },
+                onPlaybackProgress = { position, duration ->
+                    progressPosition = position
+                    progressDuration = duration
+                    onProgress(position, duration)
                 },
                 onPlaybackCompleted = { onPlayerBehavior("VIDEO_COMPLETED", video) },
                 modifier = Modifier.fillMaxSize(),
             )
             if (fullScreen) {
-                YoutubePlayerTopBar(
-                    title = video.title,
-                    meta = video.meta.ifBlank { "YouTube" },
-                    rightText = video.durationLabel,
-                    offsetY = -controlsOffset,
+                YoutubeHeaderIconButton(
+                    icon = Icons.Default.ArrowBack,
+                    contentDescription = strings.back,
+                    focusRequester = upFocusRequester,
+                    downFocusRequester = focusRequester,
+                    onClick = onBackToInline,
                     modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(start = 24.dp, end = 24.dp, top = 18.dp),
+                        .align(Alignment.TopStart)
+                        .padding(start = 28.dp, top = 24.dp),
                 )
             }
             YoutubePlayerControlBar(
+                strings = strings,
                 isPlaying = isPlaying,
                 fullScreen = fullScreen,
                 enabled = controlsVisible,
+                progressPosition = progressPosition,
+                progressDuration = progressDuration,
                 focusRequester = playPauseFocusRequester,
                 offsetY = controlsOffset,
                 playerFocusRequester = focusRequester,
                 onFocusChanged = { controlsHaveFocus = it },
+                onUserActivity = ::showControls,
                 onDismiss = ::hideControlsToPlayer,
                 onPrevious = {
-                    controlsVisible = true
+                    showControls()
                     onPreviousVideo()
                 },
-                onPlayPause = { sendCommand(YoutubePlayerCommand.TogglePlayback) },
+                onReload = {
+                    progressPosition = 0.0
+                    onReloadVideo()
+                    sendCommand(YoutubePlayerCommand.Reload)
+                },
+                onPlayPause = {
+                    isPlaying = !isPlaying
+                    sendCommand(YoutubePlayerCommand.TogglePlayback)
+                },
                 onNext = {
-                    controlsVisible = true
+                    showControls()
                     onNextVideo()
                 },
                 onToggleFullScreen = {
-                    controlsVisible = true
+                    showControls()
                     onToggleFullScreen()
                 },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(start = 30.dp, end = 30.dp, bottom = if (fullScreen) 24.dp else 18.dp),
+                    .padding(start = 30.dp, end = 30.dp, bottom = if (fullScreen) 24.dp else 14.dp),
             )
         } else {
             Text(
@@ -988,20 +1151,26 @@ private fun YoutubePlayerTopBar(
 
 @Composable
 private fun YoutubePlayerControlBar(
+    strings: SmartVisionStrings,
     isPlaying: Boolean,
     fullScreen: Boolean,
     enabled: Boolean,
+    progressPosition: Double,
+    progressDuration: Double,
     focusRequester: FocusRequester,
     offsetY: Dp,
     playerFocusRequester: FocusRequester,
     onFocusChanged: (Boolean) -> Unit,
+    onUserActivity: () -> Unit,
     onDismiss: () -> Unit,
     onPrevious: () -> Unit,
+    onReload: () -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onToggleFullScreen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val reloadFocusRequester = remember { FocusRequester() }
     val previousFocusRequester = remember { FocusRequester() }
     val nextFocusRequester = remember { FocusRequester() }
     val fullScreenFocusRequester = remember { FocusRequester() }
@@ -1010,20 +1179,13 @@ private fun YoutubePlayerControlBar(
         runCatching { focusRequester.requestFocus() }
     }
 
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(104.dp)
             .offset(y = offsetY)
-            .background(YoutubePlayerNeonBlue.copy(alpha = 0.12f), YoutubePlayerGlassShape)
-            .border(BorderStroke(2.dp, YoutubePlayerGlassGlowBorder), YoutubePlayerGlassShape)
-            .padding(1.dp)
-            .clip(YoutubePlayerGlassShape)
-            .background(YoutubePlayerGlassBackground)
-            .border(BorderStroke(2.dp, YoutubePlayerGlassBorder), YoutubePlayerGlassShape)
-            .padding(horizontal = 28.dp, vertical = 10.dp)
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                onUserActivity()
                 when (event.key) {
                     Key.DirectionUp, Key.Back -> {
                         onDismiss()
@@ -1033,66 +1195,107 @@ private fun YoutubePlayerControlBar(
                     else -> false
                 }
             },
-        horizontalArrangement = Arrangement.spacedBy(44.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        YoutubeControlButton(
-            label = "Previous",
-            icon = Icons.Default.SkipPrevious,
-            onClick = onPrevious,
-            enabled = enabled,
-            focusRequester = previousFocusRequester,
-            leftFocusRequester = previousFocusRequester,
-            rightFocusRequester = focusRequester,
-            upFocusRequester = playerFocusRequester,
-            onLeft = { runCatching { previousFocusRequester.requestFocus() } },
-            onRight = { requestPlayFocus() },
-            onDismiss = onDismiss,
-            onFocusChanged = onFocusChanged,
+        YoutubeProgressBar(
+            position = progressPosition,
+            duration = progressDuration,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp),
         )
-        YoutubeControlButton(
-            label = if (isPlaying) "Pause" else "Play",
-            icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-            onClick = onPlayPause,
-            enabled = enabled,
-            focusRequester = focusRequester,
-            leftFocusRequester = previousFocusRequester,
-            rightFocusRequester = nextFocusRequester,
-            upFocusRequester = playerFocusRequester,
-            onLeft = { runCatching { previousFocusRequester.requestFocus() } },
-            onRight = { runCatching { nextFocusRequester.requestFocus() } },
-            onDismiss = onDismiss,
-            onFocusChanged = onFocusChanged,
-            primary = true,
-        )
-        YoutubeControlButton(
-            label = "Next",
-            icon = Icons.Default.SkipNext,
-            onClick = onNext,
-            enabled = enabled,
-            focusRequester = nextFocusRequester,
-            leftFocusRequester = focusRequester,
-            rightFocusRequester = fullScreenFocusRequester,
-            upFocusRequester = playerFocusRequester,
-            onLeft = { requestPlayFocus() },
-            onRight = { runCatching { fullScreenFocusRequester.requestFocus() } },
-            onDismiss = onDismiss,
-            onFocusChanged = onFocusChanged,
-        )
-        YoutubeControlButton(
-            label = if (fullScreen) "Exit full screen" else "Full screen",
-            icon = if (fullScreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-            onClick = onToggleFullScreen,
-            enabled = enabled,
-            focusRequester = fullScreenFocusRequester,
-            leftFocusRequester = nextFocusRequester,
-            rightFocusRequester = fullScreenFocusRequester,
-            upFocusRequester = playerFocusRequester,
-            onLeft = { runCatching { nextFocusRequester.requestFocus() } },
-            onRight = { runCatching { fullScreenFocusRequester.requestFocus() } },
-            onDismiss = onDismiss,
-            onFocusChanged = onFocusChanged,
-        )
+        Spacer(Modifier.height(7.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp)
+                .background(YoutubePlayerNeonBlue.copy(alpha = 0.08f), YoutubePlayerGlassShape)
+                .border(BorderStroke(2.dp, YoutubePlayerGlassGlowBorder), YoutubePlayerGlassShape)
+                .padding(1.dp)
+                .clip(YoutubePlayerGlassShape)
+                .background(YoutubePlayerGlassBackground)
+                .border(BorderStroke(2.dp, YoutubePlayerGlassBorder), YoutubePlayerGlassShape)
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(34.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            YoutubeControlButton(
+                label = strings.refresh,
+                icon = Icons.Default.Refresh,
+                onClick = onReload,
+                enabled = enabled,
+                focusRequester = reloadFocusRequester,
+                leftFocusRequester = reloadFocusRequester,
+                rightFocusRequester = previousFocusRequester,
+                upFocusRequester = playerFocusRequester,
+                onLeft = { runCatching { reloadFocusRequester.requestFocus() } },
+                onRight = { runCatching { previousFocusRequester.requestFocus() } },
+                onDismiss = onDismiss,
+                onUserActivity = onUserActivity,
+                onFocusChanged = onFocusChanged,
+            )
+            YoutubeControlButton(
+                label = "Previous",
+                icon = Icons.Default.SkipPrevious,
+                onClick = onPrevious,
+                enabled = enabled,
+                focusRequester = previousFocusRequester,
+                leftFocusRequester = reloadFocusRequester,
+                rightFocusRequester = focusRequester,
+                upFocusRequester = playerFocusRequester,
+                onLeft = { runCatching { reloadFocusRequester.requestFocus() } },
+                onRight = { requestPlayFocus() },
+                onDismiss = onDismiss,
+                onUserActivity = onUserActivity,
+                onFocusChanged = onFocusChanged,
+            )
+            YoutubeControlButton(
+                label = if (isPlaying) "Pause" else "Play",
+                icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                onClick = onPlayPause,
+                enabled = enabled,
+                focusRequester = focusRequester,
+                leftFocusRequester = previousFocusRequester,
+                rightFocusRequester = nextFocusRequester,
+                upFocusRequester = playerFocusRequester,
+                onLeft = { runCatching { previousFocusRequester.requestFocus() } },
+                onRight = { runCatching { nextFocusRequester.requestFocus() } },
+                onDismiss = onDismiss,
+                onUserActivity = onUserActivity,
+                onFocusChanged = onFocusChanged,
+                primary = true,
+            )
+            YoutubeControlButton(
+                label = "Next",
+                icon = Icons.Default.SkipNext,
+                onClick = onNext,
+                enabled = enabled,
+                focusRequester = nextFocusRequester,
+                leftFocusRequester = focusRequester,
+                rightFocusRequester = fullScreenFocusRequester,
+                upFocusRequester = playerFocusRequester,
+                onLeft = { requestPlayFocus() },
+                onRight = { runCatching { fullScreenFocusRequester.requestFocus() } },
+                onDismiss = onDismiss,
+                onUserActivity = onUserActivity,
+                onFocusChanged = onFocusChanged,
+            )
+            YoutubeControlButton(
+                label = if (fullScreen) "Exit full screen" else "Full screen",
+                icon = if (fullScreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                onClick = onToggleFullScreen,
+                enabled = enabled,
+                focusRequester = fullScreenFocusRequester,
+                leftFocusRequester = nextFocusRequester,
+                rightFocusRequester = fullScreenFocusRequester,
+                upFocusRequester = playerFocusRequester,
+                onLeft = { runCatching { nextFocusRequester.requestFocus() } },
+                onRight = { runCatching { fullScreenFocusRequester.requestFocus() } },
+                onDismiss = onDismiss,
+                onUserActivity = onUserActivity,
+                onFocusChanged = onFocusChanged,
+            )
+        }
     }
 }
 
@@ -1109,6 +1312,7 @@ private fun YoutubeControlButton(
     onLeft: () -> Unit,
     onRight: () -> Unit,
     onDismiss: () -> Unit,
+    onUserActivity: () -> Unit,
     onFocusChanged: (Boolean) -> Unit,
     primary: Boolean = false,
 ) {
@@ -1116,12 +1320,12 @@ private fun YoutubeControlButton(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val focusStyle = LocalTvFocusStyle.current
-    val circleSize = if (primary) 78.dp else 58.dp
-    val outerSize = circleSize + if (primary) 18.dp else 14.dp
+    val circleSize = if (primary) 58.dp else 46.dp
+    val outerSize = circleSize + if (primary) 12.dp else 10.dp
     Column(
         modifier = Modifier
-            .width(if (primary) 96.dp else 76.dp)
-            .height(if (primary) 96.dp else 76.dp)
+            .width(if (primary) 74.dp else 58.dp)
+            .height(if (primary) 68.dp else 56.dp)
             .focusProperties {
                 leftFocusRequester?.let { left = it }
                 rightFocusRequester?.let { right = it }
@@ -1130,6 +1334,7 @@ private fun YoutubeControlButton(
             .onFocusChanged { onFocusChanged(it.isFocused) }
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                onUserActivity()
                 when (event.key) {
                     Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
                         if (enabled) onClick()
@@ -1157,7 +1362,7 @@ private fun YoutubeControlButton(
                 enabled = enabled,
                 pressed = pressed,
                 focusedScale = if (primary) 1.08f else 1.04f,
-                glowColor = YoutubePlayerNeonBlue,
+                glowColor = focusStyle.accent,
                 cornerRadius = 50.dp,
             )
             .clickable(
@@ -1174,7 +1379,7 @@ private fun YoutubeControlButton(
             modifier = Modifier
                 .size(outerSize)
                 .background(
-                    if (focusState.isFocused) YoutubePlayerNeonBlue.copy(alpha = 0.30f) else Color.Transparent,
+                    if (focusState.isFocused) focusStyle.background else Color.Transparent,
                     CircleShape,
                 )
                 .padding(if (focusState.isFocused) 7.dp else 5.dp),
@@ -1186,16 +1391,16 @@ private fun YoutubeControlButton(
                     .clip(CircleShape)
                     .background(
                         when {
-                            primary && focusState.isFocused -> YoutubePlayerNeonBlue.copy(alpha = 0.34f)
-                            primary -> YoutubePlayerButtonBackground.copy(alpha = 0.74f)
-                            focusState.isFocused -> YoutubePlayerNeonBlue.copy(alpha = 0.24f)
-                            else -> YoutubePlayerButtonBackground.copy(alpha = 0.62f)
+                            primary && focusState.isFocused -> focusStyle.background.copy(alpha = 0.92f)
+                            primary -> YoutubePlayerButtonBackground.copy(alpha = 0.80f)
+                            focusState.isFocused -> focusStyle.background.copy(alpha = 0.82f)
+                            else -> YoutubePlayerButtonBackground.copy(alpha = 0.72f)
                         },
                     )
                     .border(
                         BorderStroke(
-                            if (focusState.isFocused || primary) 2.5.dp else 1.5.dp,
-                            if (focusState.isFocused || primary) YoutubePlayerNeonBlue else Color.White.copy(alpha = 0.28f),
+                            if (focusState.isFocused) focusStyle.borderWidth else 1.5.dp,
+                            if (focusState.isFocused) focusStyle.accent else Color.White.copy(alpha = 0.30f),
                         ),
                         CircleShape,
                     ),
@@ -1205,10 +1410,137 @@ private fun YoutubeControlButton(
                     imageVector = icon,
                     contentDescription = label,
                     tint = Color.White,
-                    modifier = Modifier.size(if (primary) 32.dp else 24.dp),
+                    modifier = Modifier.size(if (primary) 28.dp else 21.dp),
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun YoutubeProgressBar(
+    position: Double,
+    duration: Double,
+    modifier: Modifier = Modifier,
+) {
+    val fraction = if (duration > 0.0) {
+        (position / duration).coerceIn(0.0, 1.0).toFloat()
+    } else {
+        0f
+    }
+    Box(
+        modifier = modifier
+            .height(5.dp)
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = 0.22f)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(fraction)
+                .background(YoutubePlayerNeonBlue),
+        )
+    }
+}
+
+@Composable
+private fun YoutubeHeaderIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    focusRequester: FocusRequester? = null,
+    leftFocusRequester: FocusRequester? = null,
+    rightFocusRequester: FocusRequester? = null,
+    downFocusRequester: FocusRequester? = null,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val focusStyle = LocalTvFocusStyle.current
+    Box(
+        modifier = modifier
+            .size(34.dp)
+            .focusProperties {
+                if (leftFocusRequester != null) left = leftFocusRequester
+                if (rightFocusRequester != null) right = rightFocusRequester
+                if (downFocusRequester != null) down = downFocusRequester
+            }
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                pressed = pressed,
+                focusedScale = 1.05f,
+                glowColor = focusStyle.accent,
+                cornerRadius = 50.dp,
+            )
+            .clip(CircleShape)
+            .background(if (focusState.isFocused) focusStyle.background else SmartVisionColors.Surface.copy(alpha = 0.82f))
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) focusStyle.borderWidth else 1.dp,
+                    if (focusState.isFocused) focusStyle.accent else SmartVisionColors.Border,
+                ),
+                CircleShape,
+            )
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(interactionSource = interactionSource),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = Color.White,
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+@Composable
+private fun YoutubeFavoriteButton(
+    selected: Boolean,
+    enabled: Boolean,
+    focusRequester: FocusRequester,
+    leftFocusRequester: FocusRequester,
+    label: String,
+    onClick: () -> Unit,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val focusStyle = LocalTvFocusStyle.current
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .focusProperties { left = leftFocusRequester }
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                enabled = enabled,
+                pressed = pressed,
+                focusedScale = 1.05f,
+                glowColor = focusStyle.accent,
+                cornerRadius = 50.dp,
+            )
+            .clip(CircleShape)
+            .background(if (focusState.isFocused) focusStyle.background else SmartVisionColors.Surface.copy(alpha = 0.82f))
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) focusStyle.borderWidth else 1.dp,
+                    if (focusState.isFocused) focusStyle.accent else Color.White.copy(alpha = 0.56f),
+                ),
+                CircleShape,
+            )
+            .clickable(enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(enabled = enabled, interactionSource = interactionSource),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = if (selected) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+            contentDescription = label,
+            tint = if (selected) Color(0xFFFF3B5F) else Color.White,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 
@@ -1388,7 +1720,7 @@ private fun YoutubeSuggestionsDropdown(
     modifier: Modifier = Modifier,
 ) {
     if (suggestions.isEmpty()) return
-    val visibleSuggestions = suggestions.take(5)
+    val visibleSuggestions = suggestions.take(3)
     val focusStyle = LocalTvFocusStyle.current
     Column(
         modifier = modifier
@@ -1481,7 +1813,6 @@ private fun YoutubeVideoCard(
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val active = selected || focusState.isFocused
     val shape = RoundedCornerShape(MediaCatalogDimens.ItemRadius)
     val focusStyle = LocalTvFocusStyle.current
     val borderColor by animateColorAsState(
@@ -1587,16 +1918,18 @@ private fun YoutubeVideoCard(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = video.meta,
-                color = Color.White.copy(alpha = 0.72f),
-                style = CatalogMetaStyle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            if (focusState.isFocused) {
+                Text(
+                    text = video.meta,
+                    color = Color.White.copy(alpha = 0.72f),
+                    style = CatalogMetaStyle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
 
-        if (video.durationLabel.isNotBlank()) {
+        if (focusState.isFocused && video.durationLabel.isNotBlank()) {
             Text(
                 text = video.durationLabel,
                 color = Color.White,
@@ -1610,20 +1943,22 @@ private fun YoutubeVideoCard(
             )
         }
 
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(34.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Color.Black.copy(alpha = if (active) 0.58f else 0.34f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(24.dp),
-            )
+        if (focusState.isFocused) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.Black.copy(alpha = 0.58f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
     }
 }
@@ -1646,9 +1981,48 @@ private fun YoutubeLogoMark(modifier: Modifier = Modifier) {
     }
 }
 
+@Composable
+private fun YoutubeNowPlayingBars(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "youtubeNowPlaying")
+    val first by transition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(520), RepeatMode.Reverse),
+        label = "youtubeNowPlayingFirst",
+    )
+    val second by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.42f,
+        animationSpec = infiniteRepeatable(tween(640), RepeatMode.Reverse),
+        label = "youtubeNowPlayingSecond",
+    )
+    val third by transition.animateFloat(
+        initialValue = 0.48f,
+        targetValue = 0.92f,
+        animationSpec = infiniteRepeatable(tween(460), RepeatMode.Reverse),
+        label = "youtubeNowPlayingThird",
+    )
+    Row(
+        modifier = modifier.height(22.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        listOf(first, second, third).forEach { scale ->
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height((18f * scale).dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(YoutubePlayerNeonBlue),
+            )
+        }
+    }
+}
+
 private fun youtubeCategoryIcon(id: String): ImageVector? =
     when (id) {
         "history" -> Icons.Default.Menu
+        "favorites" -> Icons.Default.Favorite
         "trending" -> Icons.Default.PlayArrow
         else -> null
     }
@@ -1656,6 +2030,7 @@ private fun youtubeCategoryIcon(id: String): ImageVector? =
 private fun YoutubeCategoryUi.localizedLabel(strings: SmartVisionStrings): String =
     when (id) {
         "history" -> strings.youtubeCategoryHistory
+        "favorites" -> strings.youtubeCategoryFavorites
         "trending" -> strings.trending
         "music" -> strings.youtubeCategoryMusic
         "sport" -> strings.youtubeCategorySport

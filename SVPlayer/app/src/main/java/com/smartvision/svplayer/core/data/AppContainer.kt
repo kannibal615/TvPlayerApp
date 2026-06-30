@@ -195,6 +195,7 @@ class AppContainer(context: Context) {
     val youtubeRepository: YoutubeRepository = YoutubeRepository(
         api = youtubeApi,
         dao = database.youtubeDao(),
+        favoriteDao = database.favoriteDao(),
         apiKey = BuildConfig.YOUTUBE_API_KEY,
         behaviorReporter = youtubeBehaviorReporter,
     )

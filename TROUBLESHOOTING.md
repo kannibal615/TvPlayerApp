@@ -10,14 +10,21 @@ Player YouTube SmartVision avec WebView YouTube IFrame API et overlay Compose cu
 
 Solution qui fonctionne :
 - ne jamais consommer `DirectionCenter`, `Enter` ou `NumPadEnter` dans le conteneur parent du bandeau ;
+- ne jamais consommer `DirectionLeft`, `DirectionUp` ou OK dans le conteneur parent du player quand un bouton enfant du bandeau a le focus ;
+- faire traiter les touches du conteneur player uniquement si ce conteneur a lui-meme le focus, pas si un enfant a le focus ;
 - laisser chaque bouton intercepter OK/Enter et appeler directement son `onClick` ;
 - garder le routage gauche/droite manuel dans les boutons pour borner le focus dans le bandeau ;
 - desactiver la reprise de focus automatique du WebView quand l overlay Compose gere les controles, tout en gardant les commandes `evaluateJavascript`.
+- pour l affichage du bandeau, initialiser `controlsVisible=false`, attendre le premier etat YouTube `PLAYING`, puis masquer completement avec un offset superieur a la hauteur du bandeau ;
+- l auto-hide ne doit pas dependre de la perte de focus: incrementer un compteur d activite DPAD/clic et masquer apres 7 secondes sans activite, meme si un bouton garde le focus ;
+- pour les transitions mini/fullscreen, conserver la position lue via bridge JavaScript et passer une position initiale au nouveau WebView pour reprendre sans repartir du debut.
 
 Erreurs a eviter :
 - ne pas ajouter un handler OK/Enter sur le parent du bandeau, car il passe avant les boutons ;
+- ne pas ajouter un handler gauche/haut/OK sur le parent du player sans verifier `FocusState.isFocused`; `hasFocus` inclut les boutons enfants et vole leurs touches ;
 - ne pas laisser le WebView appeler `requestFocus()` automatiquement pendant que les controles Compose sont visibles ;
 - ne pas diagnostiquer uniquement le style visuel du focus : verifier aussi qui consomme l evenement clavier.
+- ne pas afficher le bandeau des l ouverture du player: cela cree un double affichage ouverture puis demarrage reel.
 
 ## 2026-06-28 - Build release depasse 20 minutes avec R8/shrink actives
 

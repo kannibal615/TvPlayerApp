@@ -34,6 +34,7 @@ internal enum class YoutubePlayerCommand {
     TogglePlayback,
     Play,
     Pause,
+    Reload,
 }
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -44,10 +45,12 @@ internal fun YoutubeWebPlayer(
     command: YoutubePlayerCommand? = null,
     commandSerial: Int = 0,
     keyboardControlsEnabled: Boolean = true,
+    initialStartSeconds: Double = 0.0,
     modifier: Modifier = Modifier,
     anomalyReporter: AnomalyReporter? = null,
     onPlayerReady: () -> Unit = {},
     onPlaybackStateChanged: (Boolean) -> Unit = {},
+    onPlaybackProgress: (Double, Double) -> Unit = { _, _ -> },
     onPlaybackCompleted: () -> Unit = {},
 ) {
     val safeVideoId = videoId.sanitizeYoutubeVideoId()
@@ -73,6 +76,7 @@ internal fun YoutubeWebPlayer(
                                 mode = mode.name,
                                 onPlayerReady = onPlayerReady,
                                 onPlaybackStateChanged = onPlaybackStateChanged,
+                                onPlaybackProgress = onPlaybackProgress,
                                 onPlaybackCompleted = onPlaybackCompleted,
                             ),
                             JavascriptBridgeName,
@@ -92,6 +96,7 @@ internal fun YoutubeWebPlayer(
                             autoplay = true,
                             muted = mode != YoutubePlaybackMode.Fullscreen,
                             controls = false,
+                            initialStartSeconds = initialStartSeconds,
                         ),
                         "text/html",
                         "utf-8",
@@ -269,6 +274,7 @@ private class YoutubePlayerBridge(
     private val mode: String,
     private val onPlayerReady: () -> Unit,
     private val onPlaybackStateChanged: (Boolean) -> Unit,
+    private val onPlaybackProgress: (Double, Double) -> Unit,
     private val onPlaybackCompleted: () -> Unit,
 ) {
     @JavascriptInterface
@@ -287,6 +293,11 @@ private class YoutubePlayerBridge(
     }
 
     @JavascriptInterface
+    fun onPlaybackProgress(currentSeconds: Double, durationSeconds: Double) {
+        onPlaybackProgress.invoke(currentSeconds, durationSeconds)
+    }
+
+    @JavascriptInterface
     fun onPlayerError(errorCode: String) {
         anomalyReporter.reportAsync(
             anomalyType = "YOUTUBE_PLAYER_ERROR",
@@ -301,6 +312,7 @@ private fun YoutubePlayerCommand.javascriptCall(): String =
         YoutubePlayerCommand.TogglePlayback -> "window.smartVisionTogglePlayback && window.smartVisionTogglePlayback();"
         YoutubePlayerCommand.Play -> "window.smartVisionPlay && window.smartVisionPlay();"
         YoutubePlayerCommand.Pause -> "window.smartVisionPause && window.smartVisionPause();"
+        YoutubePlayerCommand.Reload -> "window.smartVisionReload && window.smartVisionReload();"
     }
 
 private fun String.sanitizeYoutubeVideoId(): String =
@@ -311,11 +323,13 @@ private fun youtubePlayerHtml(
     autoplay: Boolean,
     muted: Boolean,
     controls: Boolean,
+    initialStartSeconds: Double,
 ): String {
     val autoplayValue = if (autoplay) 1 else 0
     val mutedJs = if (muted) "event.target.mute();" else "event.target.unMute();"
     val controlsValue = if (controls) 1 else 0
     val disableKeyboardValue = if (controls) 0 else 1
+    val startValue = initialStartSeconds.toInt().coerceAtLeast(0)
     return """
         <!doctype html>
         <html>
@@ -401,9 +415,13 @@ private fun youtubePlayerHtml(
                   window.$JavascriptBridgeName.onPlayerReady();
                 }
                 $mutedJs
+                if ($startValue > 1 && event.target.seekTo) {
+                  event.target.seekTo($startValue, true);
+                }
                 event.target.playVideo();
                 setTimeout(function() { event.target.playVideo(); }, 450);
                 setTimeout(function() { runPendingCommand(); }, 520);
+                setInterval(reportPlaybackProgress, 1000);
               }
               function onPlayerStateChange(event) {
                 playerState = event.data;
@@ -440,6 +458,12 @@ private fun youtubePlayerHtml(
                   runWhenReady(command);
                 }
               }
+              function reportPlaybackProgress() {
+                if (!player || !player.getCurrentTime || !player.getDuration || !window.$JavascriptBridgeName) return;
+                try {
+                  window.$JavascriptBridgeName.onPlaybackProgress(player.getCurrentTime(), player.getDuration());
+                } catch (err) {}
+              }
               window.smartVisionPlay = function() {
                 runWhenReady(function() { if (player.playVideo) player.playVideo(); });
               };
@@ -459,6 +483,12 @@ private fun youtubePlayerHtml(
                 runWhenReady(function() {
                   if (!player.seekTo || !player.getCurrentTime) return;
                   player.seekTo(Math.max(0, player.getCurrentTime() + deltaSeconds), true);
+                });
+              };
+              window.smartVisionReload = function() {
+                runWhenReady(function() {
+                  if (player.seekTo) player.seekTo(0, true);
+                  if (player.playVideo) player.playVideo();
                 });
               };
               window.smartVisionStop = function() {

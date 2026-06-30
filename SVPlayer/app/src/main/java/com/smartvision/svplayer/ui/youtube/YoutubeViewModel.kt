@@ -51,6 +51,8 @@ data class YoutubeScreenState(
     val recentSearches: List<String> = emptyList(),
     val searchSuggestions: List<String> = emptyList(),
     val playerSuggestions: List<YoutubeVideoUi> = emptyList(),
+    val recentVideos: List<YoutubeVideoUi> = emptyList(),
+    val favoriteVideoIds: Set<String> = emptySet(),
     val suggestionsLoading: Boolean = false,
     val playerSuggestionsEndReached: Boolean = false,
 ) {
@@ -76,6 +78,7 @@ class YoutubeViewModel(
     init {
         observeSearches()
         observeRecentVideos()
+        observeFavoriteVideos()
         loadCategory("trending")
     }
 
@@ -187,6 +190,18 @@ class YoutubeViewModel(
     fun recordPlayerBehavior(eventType: String, video: YoutubeVideoUi?, sourceScreen: String) {
         viewModelScope.launch {
             repository.recordBehavior(eventType, video?.toDomain(), sourceScreen)
+        }
+    }
+
+    fun toggleFavorite(video: YoutubeVideoUi) {
+        viewModelScope.launch {
+            repository.toggleFavorite(video.toDomain())
+        }
+    }
+
+    fun previousFromHistory(currentVideoId: String, onResolved: (YoutubeVideoUi?) -> Unit) {
+        viewModelScope.launch {
+            onResolved(repository.previousFromHistory(currentVideoId)?.toUi())
         }
     }
 
@@ -318,6 +333,7 @@ class YoutubeViewModel(
         when (_uiState.value.selectedCategoryId) {
             "search" -> "SEARCH"
             "history" -> "HISTORY"
+            "favorites" -> "FAVORITES"
             "trending" -> "TRENDING"
             "music" -> "MUSIC"
             "sport" -> "SPORT"
@@ -352,9 +368,26 @@ class YoutubeViewModel(
 
     private fun observeRecentVideos() {
         viewModelScope.launch {
-            repository.observeRecentVideoCount().collect { count ->
+            repository.observeRecentVideoItems().collect { videos ->
                 _uiState.update { state ->
-                    state.copy(categories = state.categories.withCategoryCount("history", count))
+                    state.copy(
+                        recentVideos = videos.map { it.toUi() },
+                        categories = state.categories.withCategoryCount("history", videos.size),
+                    )
+                }
+            }
+        }
+    }
+
+    private fun observeFavoriteVideos() {
+        viewModelScope.launch {
+            repository.observeFavoriteIds().collect { favorites ->
+                val ids = favorites.map { it.contentId }.toSet()
+                _uiState.update { state ->
+                    state.copy(
+                        favoriteVideoIds = ids,
+                        categories = state.categories.withCategoryCount("favorites", ids.size),
+                    )
                 }
             }
         }
@@ -375,11 +408,11 @@ private fun buildSearchSuggestions(
         .filter { it.isNotBlank() }
         .distinctBy { it.lowercase() }
     return if (clean.isBlank()) {
-        recentSearches.take(5)
+        recentSearches.take(3)
     } else {
         candidates
             .filter { it.contains(clean, ignoreCase = true) }
-            .take(5)
+            .take(3)
     }
 }
 
