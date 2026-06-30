@@ -25,16 +25,15 @@ Deja en place:
 - inference backend des regions, pays, langues et centres d'interet depuis `category_label`, `content_title` et `tags`;
 - normalisation admin des types licence comportementaux en `free_ads`, `trial_demo`, `premium`;
 - diagnostics admin autostart/auto-sync via `app_device_diagnostics`;
-- historique local YouTube avec video, channel, category, tags et duree;
+- historique local YouTube avec video, channel, category, tags, duree, source de lancement et champs comportementaux enrichis;
 - historique local de lecture, favoris, progression, categories Live/Films/Series;
 - donnees device: pays, version app, statut licence, essai, free_ads, xtream_status.
 
 Evenements comportementaux actuellement acceptes par `behavior_service.php`:
 - `VIDEO_OPENED`;
-- `PLAYER_READY`;
 - `PLAY_PAUSE`;
 - `VIDEO_COMPLETED`;
-- `SUGGESTION_OPENED`.
+- `SUGGESTION_OPENED`;
 - `CONTENT_OPENED`;
 - `PLAYBACK_PROGRESS`;
 - `PLAYBACK_COMPLETED`;
@@ -46,6 +45,7 @@ Evenements comportementaux actuellement acceptes par `behavior_service.php`:
 Evenements explicitement retires du tracking comportemental:
 - `CATEGORY_OPENED`;
 - `PLAYBACK_STARTED`.
+- `PLAYER_READY`.
 
 Limites actuelles:
 - le ciblage publicitaire ne consomme pas encore `user_segments`;
@@ -89,6 +89,8 @@ Metadonnees exploitables:
 - position et pourcentage de completion;
 - tags YouTube normalises;
 - channel_id YouTube;
+- source YouTube de lancement: `SEARCH`, `SUGGESTION`, `HISTORY`, `TRENDING`, `MUSIC`, `SPORT`, `GAMING`, `NEWS`, `DOCUMENTARIES`, `KIDS`, `AUTOPLAY`, `PREVIOUS`, `NEXT`;
+- categorie YouTube interpretee depuis titre, description, tags ou categoryId YouTube: `music`, `news`, `sports`, `tutorial`, `kids`, `cinema`, `documentaries`, `gaming`, `technology`, etc.;
 - statut utilisateur: premium, trial, free_ads, expired;
 - version app, plateforme, pays device.
 

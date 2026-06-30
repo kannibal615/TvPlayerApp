@@ -106,7 +106,7 @@ class YoutubeRepository(
         )
     }
 
-    suspend fun recordVideoSelected(video: YoutubeVideo) = withContext(Dispatchers.IO) {
+    suspend fun recordVideoSelected(video: YoutubeVideo, sourceScreen: String) = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         dao.upsertVideo(
             YoutubeVideoHistoryEntity(
@@ -125,11 +125,11 @@ class YoutubeRepository(
             ),
         )
         dao.upsertSelection(YoutubeSelectionEntity(id = "last", videoId = video.videoId, updatedAt = now))
-        behaviorReporter.report("VIDEO_OPENED", video)
+        behaviorReporter.report("VIDEO_OPENED", video, sourceScreen)
     }
 
-    suspend fun recordBehavior(eventType: String, video: YoutubeVideo?) = withContext(Dispatchers.IO) {
-        behaviorReporter.report(eventType, video)
+    suspend fun recordBehavior(eventType: String, video: YoutubeVideo?, sourceScreen: String = "YOUTUBE") = withContext(Dispatchers.IO) {
+        behaviorReporter.report(eventType, video, sourceScreen)
     }
 
     suspend fun suggestVideos(video: YoutubeVideo): List<YoutubeVideo> = withContext(Dispatchers.IO) {

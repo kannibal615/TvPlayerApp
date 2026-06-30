@@ -129,6 +129,13 @@ data class SmartVisionStrings(
     val youtubeSearchPlaceholder: String,
     val youtubeLoadingMore: String,
     val youtubeVideoUnavailable: String,
+    val youtubeCategoryHistory: String,
+    val youtubeCategoryMusic: String,
+    val youtubeCategorySport: String,
+    val youtubeCategoryGaming: String,
+    val youtubeCategoryNews: String,
+    val youtubeCategoryDocumentaries: String,
+    val youtubeCategoryKids: String,
 )
 
 private val englishStrings = SmartVisionStrings(
@@ -253,6 +260,13 @@ private val englishStrings = SmartVisionStrings(
     youtubeSearchPlaceholder = "Search on YouTube",
     youtubeLoadingMore = "Loading...",
     youtubeVideoUnavailable = "YouTube video unavailable",
+    youtubeCategoryHistory = "History",
+    youtubeCategoryMusic = "Music",
+    youtubeCategorySport = "Sport",
+    youtubeCategoryGaming = "Gaming",
+    youtubeCategoryNews = "News",
+    youtubeCategoryDocumentaries = "Documentaries",
+    youtubeCategoryKids = "Kids",
 )
 
 private val frenchStrings = SmartVisionStrings(
@@ -377,4 +391,11 @@ private val frenchStrings = SmartVisionStrings(
     youtubeSearchPlaceholder = "Rechercher sur YouTube",
     youtubeLoadingMore = "Chargement...",
     youtubeVideoUnavailable = "Video YouTube indisponible",
+    youtubeCategoryHistory = "Historique",
+    youtubeCategoryMusic = "Musique",
+    youtubeCategorySport = "Sport",
+    youtubeCategoryGaming = "Gaming",
+    youtubeCategoryNews = "Actualites",
+    youtubeCategoryDocumentaries = "Documentaires",
+    youtubeCategoryKids = "Enfants",
 )

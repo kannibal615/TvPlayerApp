@@ -1,5 +1,35 @@
 # AI Changelog
 
+## 2026-06-30 - Release Android 0.1.55 versionCode 58
+
+Type:
+- android
+- backend
+- admin
+- release
+- deploy
+
+Resume:
+- Bump Android de `0.1.54 (57)` vers `0.1.55 (58)`.
+- Enrichissement du tracking YouTube: titre video dans `Media`, source de lancement, categorie interpretee depuis titre/description/tags/categoryId, duree et score engagement.
+- Suppression de `PLAYER_READY` du tracking accepte cote app et API; conservation de `VIDEO_OPENED` et deduplication `VIDEO_COMPLETED`.
+- Amelioration autoplay YouTube: si les suggestions arrivent apres la fin de lecture, la video suivante est lancee des disponibilite.
+- Ajout d'un player YouTube plein ecran applicatif avec bandeau de controles SmartVision et controles iframe YouTube masques.
+- Traduction incrementale YouTube: categories visibles anglais/francais, anglais par defaut.
+- Correction affichage categorie admin pour eviter les codes numeriques YouTube et afficher une categorie exploitable.
+
+Fichiers concernes:
+- `app/build.gradle.kts`
+- `app/src/main/java/com/smartvision/svplayer/data/local/SVDatabase.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/entity/YoutubeEntities.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/youtube/YoutubeBehaviorReporter.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/youtube/YoutubeRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/i18n/SmartVisionStrings.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/youtube/YoutubeScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/youtube/YoutubeViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/youtube/YoutubeWebPlayer.kt`
+- `server/public_html/api/behavior_service.php`
+
 ## 2026-06-30 - Release Android 0.1.54 versionCode 57
 
 Type:

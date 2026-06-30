@@ -152,6 +152,6 @@ class BehaviorReporter(
 
     private companion object {
         const val TAG = "SmartVisionBehavior"
-        val IgnoredEventTypes = setOf("CATEGORY_OPENED", "PLAYBACK_STARTED")
+        val IgnoredEventTypes = setOf("CATEGORY_OPENED", "PLAYBACK_STARTED", "PLAYER_READY")
     }
 }

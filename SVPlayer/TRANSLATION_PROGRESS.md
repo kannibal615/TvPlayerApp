@@ -114,6 +114,15 @@ Remaining after block 5:
 - Externalize and translate Live TV, Movies, Series, details and player overlays.
 - Externalize and translate Profile and premium purchase sub-dialogs still hard-coded in `ProfileScreen`.
 - Replace remaining user-visible hard-coded French text in Android Compose screens.
+
+## Block 6 - YouTube category labels and player controls
+
+Status: done locally.
+
+Completed:
+- Added English/French strings for visible YouTube category labels: history, music, sport, gaming, news, documentaries and kids.
+- Reused existing English/French strings for Trending and Movies.
+- Added the new YouTube control overlay with English accessibility labels; the official default UI language remains English and French remains the second available language.
 - Add a repeatable i18n audit command before each release.
 - Add backend email flow for forgotten parental PIN once the account email source is confirmed in the Android activation/session model.
 

@@ -129,7 +129,6 @@ function behavior_allowed_event_types(): array
 {
     return [
         'VIDEO_OPENED',
-        'PLAYER_READY',
         'PLAY_PAUSE',
         'VIDEO_COMPLETED',
         'SUGGESTION_OPENED',
@@ -146,7 +145,7 @@ function behavior_allowed_event_types(): array
 function behavior_tracked_events_sql(?string $alias = null): string
 {
     $prefix = $alias !== null && $alias !== '' ? $alias . '.' : '';
-    return $prefix . "event_type NOT IN ('CATEGORY_OPENED', 'PLAYBACK_STARTED')";
+    return $prefix . "event_type NOT IN ('CATEGORY_OPENED', 'PLAYBACK_STARTED', 'PLAYER_READY')";
 }
 
 function behavior_allowed_content_types(): array
@@ -201,6 +200,7 @@ function behavior_store_event(PDO $pdo, array $payload): array
     $contentTitle = clean_optional_text($payload['contentTitle'] ?? $payload['title'] ?? behavior_context_value($payload['context'] ?? null, ['title', 'media', 'channel']), 180);
     $categoryLabel = clean_optional_text($payload['categoryLabel'] ?? null, 120);
     $inference = behavior_infer_content_context($categoryLabel, $contentTitle, $tags);
+    $categoryLabel = behavior_effective_category_label($contentType, $categoryLabel, (string) ($payload['categoryId'] ?? ''), $inference['interests']);
     $contentCountry = behavior_clean_id($payload['country'] ?? null, 16) ?: $inference['country'];
     $contentRegion = $inference['region'];
     $contentLanguage = behavior_clean_id($payload['language'] ?? null, 16) ?: $inference['language'];
@@ -242,7 +242,7 @@ function behavior_store_event(PDO $pdo, array $payload): array
         'duration_seconds' => $durationSeconds,
         'position_seconds' => $positionSeconds,
         'engagement_score' => $engagementScore,
-        'source_screen' => behavior_clean_enum($payload['sourceScreen'] ?? 'UNKNOWN', ['HOME', 'LIVE', 'MOVIES', 'SERIES', 'DETAIL', 'PLAYER', 'YOUTUBE', 'SEARCH', 'UNKNOWN'], 'UNKNOWN'),
+        'source_screen' => behavior_clean_enum($payload['sourceScreen'] ?? 'UNKNOWN', ['HOME', 'LIVE', 'MOVIES', 'SERIES', 'DETAIL', 'PLAYER', 'YOUTUBE', 'SEARCH', 'SUGGESTION', 'HISTORY', 'TRENDING', 'MUSIC', 'SPORT', 'GAMING', 'NEWS', 'DOCUMENTARIES', 'KIDS', 'AUTOPLAY', 'PREVIOUS', 'NEXT', 'UNKNOWN'], 'UNKNOWN'),
         'context_json' => behavior_clean_context($payload['context'] ?? null),
     ]);
 
@@ -270,6 +270,30 @@ function behavior_device_rate_limited(PDO $pdo, string $deviceHash): bool
 function behavior_legacy_content_type(array $payload): string
 {
     return isset($payload['videoIdHash']) ? 'YOUTUBE' : 'UNKNOWN';
+}
+
+function behavior_effective_category_label(string $contentType, ?string $categoryLabel, string $categoryId, ?string $interests): ?string
+{
+    $label = trim((string) $categoryLabel);
+    if ($contentType !== 'YOUTUBE') {
+        return $label !== '' ? $label : null;
+    }
+    if ($label !== '' && !preg_match('/^\d+$/', $label)) {
+        return $label;
+    }
+    $firstInterest = trim(strtok((string) $interests, ',') ?: '');
+    if ($firstInterest !== '') {
+        return substr($firstInterest, 0, 120);
+    }
+    return match (trim($categoryId)) {
+        '10' => 'music',
+        '17' => 'sports',
+        '20' => 'gaming',
+        '24' => 'entertainment',
+        '25' => 'news',
+        '26', '27', '28' => 'tutorial',
+        default => 'youtube',
+    };
 }
 
 function behavior_clean_enum(mixed $value, array $allowed, string $default): string
@@ -491,7 +515,7 @@ function behavior_update_daily(PDO $pdo, string $deviceHash, string $contentType
             UTC_DATE(),
             content_type,
             COUNT(*),
-            SUM(event_type IN ('PLAYBACK_PROGRESS', 'PLAYER_READY')),
+            SUM(event_type = 'PLAYBACK_PROGRESS'),
             SUM(event_type IN ('PLAYBACK_COMPLETED', 'VIDEO_COMPLETED')),
             SUM(event_type IN ('FAVORITE_ADDED', 'FAVORITE_REMOVED')),
             COALESCE(SUM(duration_seconds), 0),
@@ -539,7 +563,7 @@ function behavior_device_summary(PDO $pdo, string $deviceHash, int $days = 30): 
             SUM(content_type = 'MOVIE') AS movie_events,
             SUM(content_type IN ('SERIES', 'EPISODE')) AS series_events,
             SUM(content_type = 'YOUTUBE') AS youtube_events,
-            SUM(event_type IN ('PLAYBACK_PROGRESS', 'PLAYER_READY')) AS playback_starts,
+            SUM(event_type = 'PLAYBACK_PROGRESS') AS playback_starts,
             SUM(event_type IN ('PLAYBACK_COMPLETED', 'VIDEO_COMPLETED')) AS playback_completed,
             SUM(event_type = 'SEARCH_PERFORMED') AS searches,
             SUM(event_type IN ('FAVORITE_ADDED', 'FAVORITE_REMOVED')) AS favorite_events,
@@ -807,7 +831,13 @@ function behavior_load_device_segments(PDO $pdo, string $deviceHash): array
 function behavior_recent_device_events(PDO $pdo, string $deviceHash): array
 {
     $statement = $pdo->prepare(
-        "SELECT event_type, content_type, category_id, category_label, content_title, content_language, content_country,
+        "SELECT event_type, content_type, category_id,
+                CASE
+                    WHEN content_type = 'YOUTUBE' AND (category_label IS NULL OR category_label = '' OR category_label REGEXP '^[0-9]+$') THEN COALESCE(NULLIF(SUBSTRING_INDEX(interest_tags, ',', 1), ''), 'youtube')
+                    WHEN category_label IS NULL OR category_label = '' OR category_label REGEXP '^[0-9]+$' THEN NULL
+                    ELSE category_label
+                END AS category_label,
+                content_title, content_language, content_country,
                 content_region, interest_tags, duration_seconds, position_seconds, engagement_score, source_screen, tags, created_at
          FROM app_behavior_events
          WHERE device_id_hash = :device_id_hash
@@ -860,7 +890,13 @@ function behavior_admin_dashboard(PDO $pdo): array
                     WHEN a.activation_type IN ('trial_demo', 'trial_pending_xtream') OR d.trial_status IN ('active', 'pending_xtream') OR c.license_type = 'trial' THEN 'trial_demo'
                     ELSE 'premium'
                 END AS license_type,
-                e.event_type, e.content_type, e.source_screen, e.category_label, e.content_title,
+                e.event_type, e.content_type, e.source_screen,
+                CASE
+                    WHEN e.content_type = 'YOUTUBE' AND (e.category_label IS NULL OR e.category_label = '' OR e.category_label REGEXP '^[0-9]+$') THEN COALESCE(NULLIF(SUBSTRING_INDEX(e.interest_tags, ',', 1), ''), 'youtube')
+                    WHEN e.category_label IS NULL OR e.category_label = '' OR e.category_label REGEXP '^[0-9]+$' THEN NULL
+                    ELSE e.category_label
+                END AS category_label,
+                e.content_title,
                 e.platform, e.app_version, e.engagement_score
          FROM app_behavior_events e
          LEFT JOIN devices d ON e.device_id_hash = SHA2(d.device_id, 256)

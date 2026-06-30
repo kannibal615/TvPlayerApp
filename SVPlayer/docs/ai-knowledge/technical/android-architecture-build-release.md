@@ -11,8 +11,8 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
 
 Gradle local constate le 2026-06-30:
-- `versionCode = 57`
-- `versionName = "0.1.54"`
+- `versionCode = 58`
+- `versionName = "0.1.55"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -38,7 +38,7 @@ Points d'entree:
 
 Build:
 - `.\gradlew.bat assembleRelease`
-- timeout 20 minutes minimum pour release;
+- timeout 15 minutes minimum pour release;
 - pas de `compileDebugKotlin` ni `testDebugUnitTest` avant release sauf demande explicite.
 - avant le build, verifier que `versionCode` est strictement superieur a la prod et aux appareils ADB connectes avec `.\scripts\guard_release_version.ps1`;
 - apres le build, relancer `.\scripts\guard_release_version.ps1 -RequireBuildMetadata` pour verifier `output-metadata.json`.
@@ -128,9 +128,10 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-06-29: migration vers documentation specialisee.
-- 2026-06-29: ajout de la regle release: bypass debug/test et timeout 20 minutes.
+- 2026-06-29: ajout de la regle release: bypass debug/test et timeout release 15 minutes.
 - 2026-06-30: ajout du garde-fou `scripts/guard_release_version.ps1` et de la regle deploy backend apres build release.
 - 2026-06-30: release publiee `0.1.51` / `versionCode 54`.
 - 2026-06-30: release publiee `0.1.52` / `versionCode 55`.
 - 2026-06-30: release publiee `0.1.53` / `versionCode 56`.
 - 2026-06-30: release publiee `0.1.54` / `versionCode 57`.
+- 2026-06-30: release publiee `0.1.55` / `versionCode 58`.

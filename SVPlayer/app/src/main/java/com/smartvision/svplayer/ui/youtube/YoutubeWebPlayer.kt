@@ -30,18 +30,28 @@ internal enum class YoutubePlaybackMode {
     Fullscreen,
 }
 
+internal enum class YoutubePlayerCommand {
+    TogglePlayback,
+    Play,
+    Pause,
+}
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 internal fun YoutubeWebPlayer(
     videoId: String,
     mode: YoutubePlaybackMode,
+    command: YoutubePlayerCommand? = null,
+    commandSerial: Int = 0,
     modifier: Modifier = Modifier,
     anomalyReporter: AnomalyReporter? = null,
     onPlayerReady: () -> Unit = {},
+    onPlaybackStateChanged: (Boolean) -> Unit = {},
     onPlaybackCompleted: () -> Unit = {},
 ) {
     val safeVideoId = videoId.sanitizeYoutubeVideoId()
     var renderRestart by remember(safeVideoId, mode) { mutableIntStateOf(0) }
+    var handledCommandSerial by remember(safeVideoId, mode) { mutableIntStateOf(0) }
     key(renderRestart) {
         AndroidView(
             modifier = modifier,
@@ -60,6 +70,7 @@ internal fun YoutubeWebPlayer(
                                 videoId = safeVideoId,
                                 mode = mode.name,
                                 onPlayerReady = onPlayerReady,
+                                onPlaybackStateChanged = onPlaybackStateChanged,
                                 onPlaybackCompleted = onPlaybackCompleted,
                             ),
                             JavascriptBridgeName,
@@ -78,7 +89,7 @@ internal fun YoutubeWebPlayer(
                             videoId = safeVideoId,
                             autoplay = true,
                             muted = mode != YoutubePlaybackMode.Fullscreen,
-                            controls = mode == YoutubePlaybackMode.Fullscreen,
+                            controls = false,
                         ),
                         "text/html",
                         "utf-8",
@@ -87,6 +98,10 @@ internal fun YoutubeWebPlayer(
                 }
                 if (mode == YoutubePlaybackMode.Fullscreen) {
                     webView.installYoutubeKeyControls()
+                    if (command != null && commandSerial > 0 && commandSerial != handledCommandSerial) {
+                        handledCommandSerial = commandSerial
+                        webView.evaluateJavascript(command.javascriptCall(), null)
+                    }
                     webView.postDelayed({ webView.grabYoutubeFocus() }, 80)
                     webView.postDelayed({ webView.grabYoutubeFocus() }, 280)
                     webView.postDelayed({ webView.grabYoutubeFocus() }, 700)
@@ -246,6 +261,7 @@ private class YoutubePlayerBridge(
     private val videoId: String,
     private val mode: String,
     private val onPlayerReady: () -> Unit,
+    private val onPlaybackStateChanged: (Boolean) -> Unit,
     private val onPlaybackCompleted: () -> Unit,
 ) {
     @JavascriptInterface
@@ -259,6 +275,11 @@ private class YoutubePlayerBridge(
     }
 
     @JavascriptInterface
+    fun onPlaybackStateChanged(isPlaying: Boolean) {
+        onPlaybackStateChanged.invoke(isPlaying)
+    }
+
+    @JavascriptInterface
     fun onPlayerError(errorCode: String) {
         anomalyReporter.reportAsync(
             anomalyType = "YOUTUBE_PLAYER_ERROR",
@@ -267,6 +288,13 @@ private class YoutubePlayerBridge(
         )
     }
 }
+
+private fun YoutubePlayerCommand.javascriptCall(): String =
+    when (this) {
+        YoutubePlayerCommand.TogglePlayback -> "window.smartVisionTogglePlayback && window.smartVisionTogglePlayback();"
+        YoutubePlayerCommand.Play -> "window.smartVisionPlay && window.smartVisionPlay();"
+        YoutubePlayerCommand.Pause -> "window.smartVisionPause && window.smartVisionPause();"
+    }
 
 private fun String.sanitizeYoutubeVideoId(): String =
     filter { it.isLetterOrDigit() || it == '_' || it == '-' }.take(32)
@@ -334,6 +362,7 @@ private fun youtubePlayerHtml(
               var playerReady = false;
               var playerState = -1;
               var pendingCommand = null;
+              var completedSent = false;
               function onYouTubeIframeAPIReady() {
                 player = new YT.Player('player', {
                   width: '100%',
@@ -371,8 +400,15 @@ private fun youtubePlayerHtml(
               }
               function onPlayerStateChange(event) {
                 playerState = event.data;
-                if (event.data === YT.PlayerState.ENDED && window.$JavascriptBridgeName) {
+                if (window.$JavascriptBridgeName) {
+                  window.$JavascriptBridgeName.onPlaybackStateChanged(event.data === YT.PlayerState.PLAYING);
+                }
+                if (event.data === YT.PlayerState.ENDED && window.$JavascriptBridgeName && !completedSent) {
+                  completedSent = true;
                   window.$JavascriptBridgeName.onPlaybackCompleted();
+                }
+                if (event.data !== YT.PlayerState.ENDED) {
+                  completedSent = false;
                 }
               }
               function onPlayerError(event) {

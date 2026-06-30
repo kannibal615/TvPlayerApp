@@ -149,7 +149,7 @@ class YoutubeViewModel(
         _uiState.update { it.copy(focusedVideoId = video.videoId) }
     }
 
-    fun openYoutubeVideo(video: YoutubeVideoUi) {
+    fun openYoutubeVideo(video: YoutubeVideoUi, sourceScreen: String = currentBehaviorSource()) {
         _uiState.update {
             it.copy(
                 selectedVideoId = video.videoId,
@@ -161,7 +161,7 @@ class YoutubeViewModel(
         }
         viewModelScope.launch {
             val domain = video.toDomain()
-            repository.recordVideoSelected(domain)
+            repository.recordVideoSelected(domain, sourceScreen)
             val suggestions = repository.suggestVideos(domain).map { it.toUi() }
             _uiState.update {
                 it.copy(
@@ -180,7 +180,13 @@ class YoutubeViewModel(
 
     fun recordPlayerBehavior(eventType: String, video: YoutubeVideoUi?) {
         viewModelScope.launch {
-            repository.recordBehavior(eventType, video?.toDomain())
+            repository.recordBehavior(eventType, video?.toDomain(), "YOUTUBE")
+        }
+    }
+
+    fun recordPlayerBehavior(eventType: String, video: YoutubeVideoUi?, sourceScreen: String) {
+        viewModelScope.launch {
+            repository.recordBehavior(eventType, video?.toDomain(), sourceScreen)
         }
     }
 
@@ -307,6 +313,21 @@ class YoutubeViewModel(
                 }
         }
     }
+
+    fun currentBehaviorSource(): String =
+        when (_uiState.value.selectedCategoryId) {
+            "search" -> "SEARCH"
+            "history" -> "HISTORY"
+            "trending" -> "TRENDING"
+            "music" -> "MUSIC"
+            "sport" -> "SPORT"
+            "gaming" -> "GAMING"
+            "news" -> "NEWS"
+            "movies" -> "MOVIES"
+            "documentaries" -> "DOCUMENTARIES"
+            "kids" -> "KIDS"
+            else -> "YOUTUBE"
+        }
 
     private fun observeSearches() {
         viewModelScope.launch {
