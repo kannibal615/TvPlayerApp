@@ -1,5 +1,24 @@
 # Troubleshooting
 
+## 2026-06-30 - Release rebuilt with an already published versionCode
+
+Problem:
+- A local `assembleRelease` generated `0.1.50 (53)` while production and the test TV could already have `versionCode 53`.
+
+Context:
+- `app/build.gradle.kts` still had `versionCode = 53` and `versionName = "0.1.50"`.
+- `downloads/smartvision-tv.version.json` and `api/app_update.php` already advertised `0.1.50 (53)`.
+- Gradle does not auto-increment Android versions; rebuilding only regenerates an APK with the same version metadata.
+
+Working solution:
+- Before any release build, bump `app/build.gradle.kts` to a strictly higher `versionCode`.
+- Run `.\scripts\guard_release_version.ps1` before and after `assembleRelease`.
+- After a livrable release build, deploy backend with `scripts/deploy_activation_phase1.ps1` so update manifests and server files are synchronized.
+
+Avoid next time:
+- Do not call a rebuilt APK "new release" until `output-metadata.json` shows a versionCode greater than production and test devices.
+- Do not deploy or test upgrade flow with a reused `versionCode`.
+
 ## 2026-06-29 - Admin HTTP 500 after adding a new PHP service
 
 Problem:

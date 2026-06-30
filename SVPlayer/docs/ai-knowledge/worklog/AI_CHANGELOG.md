@@ -1,5 +1,43 @@
 # AI Changelog
 
+## 2026-06-30 - Release Android 0.1.51 versionCode 54
+
+Type:
+- release
+- deploy
+
+Resume:
+- Bump Android de `0.1.50 (53)` vers `0.1.51 (54)`.
+- Build release direct via `:app:assembleRelease`.
+- Validation du garde-fou version avant et apres build.
+- Deploiement backend/APK via `scripts/deploy_activation_phase1.ps1 -SkipInstall`.
+- Verification publique de `api/app_update.php`, `downloads/smartvision-tv.version.json`, APK versionne et APK stable.
+
+Fichiers concernes:
+- `app/build.gradle.kts`
+- `app/build/outputs/apk/release/output-metadata.json`
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+
+## 2026-06-30 - Garde-fou version release et regle deploy backend
+
+Type:
+- tooling
+- documentation
+
+Resume:
+- Ajout de `scripts/guard_release_version.ps1` pour comparer `versionCode` local, metadata APK, manifests production et appareils ADB connectes.
+- Documentation de la cause du conflit `0.1.50 (53)`: numero deja publie et regenere localement sans increment.
+- Ajout de la regle Knowledge System: apres chaque nouveau build release livrable, deployer le backend.
+
+Fichiers concernes:
+- `scripts/guard_release_version.ps1`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/technical/backend-admin-api-deploy.md`
+- `docs/ai-knowledge/AGENT_WORKFLOW.md`
+- `docs/ai-knowledge/ROOT.md`
+- `TROUBLESHOOTING.md`
+
 ## 2026-06-30 - Implementation tracking comportemental et segmentation admin
 
 Type:

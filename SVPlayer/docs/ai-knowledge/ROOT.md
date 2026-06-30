@@ -10,7 +10,7 @@ SmartVision / SVPlayer est une application Android TV native Kotlin/Compose pour
 
 Etat technique constate le 2026-06-30:
 - applicationId: `com.smartvision.svplayer`
-- version locale Gradle: `0.1.50` / `versionCode 53`
+- version locale Gradle: `0.1.51` / `versionCode 54`
 - entree TV: `SplashActivity -> MainActivity -> ui/navigation/AppNavigation.kt`
 - lecture video: AndroidX Media3 ExoPlayer natif
 - backend local: `server/public_html/`
@@ -271,6 +271,7 @@ Ne pas lire par defaut si la demande concerne uniquement:
 
 Statut rapide:
 - pour une release, bypass `compileDebugKotlin` et `testDebugUnitTest`; lancer directement `assembleRelease` avec timeout 15 min.
+- avant/apres build release, utiliser `scripts/guard_release_version.ps1`; apres un nouveau build release livrable, deployer aussi le backend avec `scripts/deploy_activation_phase1.ps1`.
 
 ## Decisions, legacy et rapports
 

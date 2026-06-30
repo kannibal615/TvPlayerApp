@@ -11,8 +11,8 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
 
 Gradle local constate le 2026-06-30:
-- `versionCode = 53`
-- `versionName = "0.1.50"`
+- `versionCode = 54`
+- `versionName = "0.1.51"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -40,10 +40,13 @@ Build:
 - `.\gradlew.bat assembleRelease`
 - timeout 20 minutes minimum pour release;
 - pas de `compileDebugKotlin` ni `testDebugUnitTest` avant release sauf demande explicite.
+- avant le build, verifier que `versionCode` est strictement superieur a la prod et aux appareils ADB connectes avec `.\scripts\guard_release_version.ps1`;
+- apres le build, relancer `.\scripts\guard_release_version.ps1 -RequireBuildMetadata` pour verifier `output-metadata.json`.
 
 Deploy:
 - le script `scripts/deploy_activation_phase1.ps1` n'assemble pas l'APK;
 - il upload l'APK deja genere si `app/build/outputs/apk/release/app-release.apk` existe.
+- apres chaque nouveau build APK release destine a etre livre, deployer aussi le backend avec `scripts/deploy_activation_phase1.ps1` afin de publier APK, manifeste, notification et fichiers PHP/CSS/JS associes.
 
 ## 5. Ecrans concernes
 
@@ -88,7 +91,9 @@ Artefacts locaux:
 ## 9. Regles a ne pas casser
 
 - Toujours incrementer `versionCode` avant une nouvelle release publiee.
+- Ne jamais reutiliser un `versionCode` deja publie ou installe sur une TV de test; `guard_release_version.ps1` doit bloquer ce cas.
 - Ne pas considerer une release terminee tant que l'APK n'est pas publie et verifie.
+- Ne pas separer un build APK livrable du deploy backend: le backend doit etre redeploye apres chaque nouveau build release sauf demande explicite de build local uniquement.
 - Ne pas relancer un build apres timeout sans verifier Java/Gradle et artefacts.
 - Ne pas exposer les secrets de signature.
 - Ne pas activer minify/shrink sur le release urgent sans investigation separee.
@@ -124,3 +129,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: ajout de la regle release: bypass debug/test et timeout 20 minutes.
+- 2026-06-30: ajout du garde-fou `scripts/guard_release_version.ps1` et de la regle deploy backend apres build release.
+- 2026-06-30: release publiee `0.1.51` / `versionCode 54`.

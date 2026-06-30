@@ -37,6 +37,10 @@ Deploy:
 - cree une notification de release;
 - execute les tests publics sauf `-SkipTests`.
 
+Regle release:
+- apres chaque nouveau build Android release destine a etre livre, executer le deploy backend avec `scripts/deploy_activation_phase1.ps1` pour synchroniser le manifeste update, l'APK versionne, l'APK stable, la notification release et les fichiers serveur;
+- ne pas publier un APK seul si des changements PHP/admin/API accompagnent la release.
+
 ## 5. Ecrans concernes
 
 - Site public
@@ -115,6 +119,7 @@ Tables/settings a surveiller:
 
 - Ne jamais afficher les secrets de `local.properties`.
 - Tout nouveau PHP sous `api` doit etre ajoute au script de deploy.
+- Chaque nouveau build APK release livrable doit etre suivi d'un deploy backend, sauf si l'utilisateur demande explicitement un build local non publie.
 - Les services optionnels admin doivent etre fail-safe.
 - Les erreurs SQL brutes ne doivent pas etre renvoyees au public.
 - Les scripts temporaires cPanel doivent etre self-delete et inclure `config.php` avant `helpers.php` si `db()` est requis.
@@ -153,3 +158,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: ajout de la regle "nouveau PHP = ajout deploy script".
 - 2026-06-30: clarification des rewrites `.htaccess` pour `api/app/*` et exception `device-diagnostics.php`.
+- 2026-06-30: ajout de la regle "nouveau build release livrable = deploy backend obligatoire".
