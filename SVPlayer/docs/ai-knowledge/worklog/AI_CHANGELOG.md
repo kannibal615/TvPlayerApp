@@ -1,5 +1,26 @@
 # AI Changelog
 
+## 2026-06-30 - Release Android 0.1.57 versionCode 60
+
+Type:
+- android
+- ui
+- release
+- deploy
+
+Resume:
+- Bump Android de `0.1.56 (59)` vers `0.1.57 (60)`.
+- Correction du bandeau de controle YouTube: DPAD gauche/droite route manuellement dans les boutons, OK/Enter declenche l'action focus, Haut/Back masque le bandeau et rend le focus au player.
+- YouTube: suppression du bandeau haut sur le mini-lecteur, retrait des libelles sous les icones, bandeau bas plus compact, fond bleu tres transparent, bordures/glow neon renforces.
+- Live TV / Films / Series: bandeau haut sans nom de dossier/categorie, bandeau bas plus compact, boutons mieux distingues, bordures et glow neon renforces.
+
+Fichiers concernes:
+- `app/build.gradle.kts`
+- `app/src/main/java/com/smartvision/svplayer/ui/player/FullScreenPlayerScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/youtube/YoutubeScreen.kt`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+
 ## 2026-06-30 - Release Android 0.1.56 versionCode 59
 
 Type:

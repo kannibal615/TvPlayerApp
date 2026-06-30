@@ -37,7 +37,7 @@ Playback:
 - `FullScreenPlayerScreen.kt` gere Live, Movie et Episode.
 - Live peut utiliser `.ts` et fallback `.m3u8`.
 - Films/series sauvegardent la progression.
-- Overlay plein ecran Live/Films/Series: bandeau haut glassmorphism avec logo, badge type contenu, titre, categorie et meta droite; bandeau bas glassmorphism avec boutons circulaires et barre de progression uniquement pour Films/Series.
+- Overlay plein ecran Live/Films/Series: bandeau haut glassmorphism avec logo, badge type contenu, titre et meta droite; le nom dossier/categorie n'est pas affiche dans le bandeau haut. Bandeau bas glassmorphism bleu tres transparent avec boutons circulaires distingues, bordure/glow neon et barre de progression uniquement pour Films/Series.
 
 ## 5. Ecrans concernes
 
@@ -131,3 +131,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: documentation des routes `player`, `movie_player`, `episode_player`, `series_detail`.
 - 2026-06-30: refonte overlay player Live/Films/Series vers le modele glassmorphism TV premium, sans modifier le rendu video Media3.
+- 2026-06-30: ajustement overlay player: categorie retiree du bandeau haut, bandeaux plus compacts, bleu plus transparent, bordure/glow neon plus visible.

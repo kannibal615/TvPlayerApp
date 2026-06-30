@@ -96,7 +96,7 @@ Backend indirect:
 
 - Tout element actionnable doit rester focusable.
 - Ne pas remplacer les controles natifs attendus par des overlays qui volent le focus sans demande explicite.
-- Si un overlay custom YouTube est explicitement demande, le bandeau doit borner le focus gauche/droite; Haut ou Back doit masquer le bandeau et rendre le focus au conteneur player.
+- Si un overlay custom YouTube est explicitement demande, le bandeau doit borner le focus gauche/droite avec routage DPAD explicite entre boutons; OK/Enter doit declencher l'action du bouton focus; Haut ou Back doit masquer le bandeau et rendre le focus au conteneur player.
 - Ne pas hardcoder un focus cyan si un style global existe.
 - Ne pas auto-focus un bouton qui doit rester accessible par scroll D-pad.
 - Ne pas changer l'ordre D-pad sans valider les surfaces adjacentes.
@@ -133,3 +133,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: ajout des signaux `FocusRequester`, `D-pad`, `focusBackground`.
 - 2026-06-30: ajout de la regle focus pour overlay YouTube custom demande explicitement: bandeau focusable borne, retour Haut/Back vers le player.
+- 2026-06-30: renforcement overlay YouTube: routage manuel gauche/droite, OK/Enter intercepte par bouton, pas de bandeau haut sur mini-lecteur.
