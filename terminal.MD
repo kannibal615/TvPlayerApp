@@ -1,22 +1,22 @@
 
-Vérification de la version live avant build: 
-
-la prod était déjà en 0.1.45 (48), donc j’ai incrémenté la version locale.
-Mise à jour de [build.gradle.kts (line 54)]
-(C:/Users/ONEDEV/Desktop/IPTV APP NATIVE ANDROID/TvPlayerApp/SVPlayer/app/build.gradle.kts:54) 
-vers versionCode = 49 et versionName = "0.1.46".
-
-Build release exécuté avec:
-.\gradlew.bat --% :app:assembleRelease --no-daemon --console=plain -Dkotlin.compiler.execution.strategy=in-process
+# ###########################################################################
 
 # Build release
 cd SVPlayer
 .\gradlew.bat --% :app:assembleRelease --console=rich
 
+# verification N° version
+.\scripts\guard_release_version.ps1 -RequireBuildMetadata
 
 # Déploiement serveur
-cd SVPlayer
 .\scripts\deploy_activation_phase1.ps1 -SkipInstall -SkipTests
+
+# ###########################################################################
+
+
+
+
+
 
 
 
