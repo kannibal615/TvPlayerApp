@@ -91,6 +91,8 @@ Sources:
 - Le header doit rester coherent entre ecrans.
 - YouTube lock doit respecter `app_config`.
 - Settings langue visible limitee a English et Francais, English par defaut.
+- Toute nouvelle ligne ou libelle visible dans l'app TV doit passer par `SmartVisionStrings.kt` avec valeur anglaise par defaut et traduction francaise.
+- Les demandes sont souvent formulees en francais, mais la copie officielle de l'application reste l'anglais.
 - Ne pas reintroduire des langues non demandees sans consigne.
 - Garder les actions TV focusables.
 
@@ -99,6 +101,7 @@ Sources:
 - Certaines traductions visibles restent a externaliser selon `TRANSLATION_PROGRESS.md`.
 - Les releases anciennes dans les trackers ne sont pas la source actuelle.
 - Les notifications update doivent ouvrir le popup update, pas seulement Home.
+- Le popup update ne doit pas s'ouvrir automatiquement apres un check silencieux; ouverture uniquement depuis notification update ou bouton Settings > Updates > Check for update.
 
 ## 11. Quand lire ce fichier ?
 
@@ -123,3 +126,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: ajout du domaine YouTube et notifications dans le routage UI.
 - 2026-06-30: ajout des routes `continue_watching` et `trending`.
+- 2026-06-30: clarification politique langue English par defaut / Francais secondaire et popup update non automatique.

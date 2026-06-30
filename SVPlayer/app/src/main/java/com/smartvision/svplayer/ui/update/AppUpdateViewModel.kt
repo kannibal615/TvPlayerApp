@@ -32,10 +32,15 @@ class AppUpdateViewModel(
                     _uiState.update {
                         val shouldReveal = revealDialogAfterCheck || revealDialog
                         revealDialogAfterCheck = false
+                        val dismissedVersionCode = when {
+                            shouldReveal -> null
+                            update != null -> update.versionCode
+                            else -> it.dismissedVersionCode
+                        }
                         it.copy(
                             checking = false,
                             update = update,
-                            dismissedVersionCode = if (shouldReveal || update?.mandatory == true) null else it.dismissedVersionCode,
+                            dismissedVersionCode = dismissedVersionCode,
                             checkedOnce = true,
                         )
                     }

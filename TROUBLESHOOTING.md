@@ -1,9 +1,9 @@
 # Troubleshooting
 
-## 2026-06-28 - Build release depasse 15 minutes avec R8/shrink actives
+## 2026-06-28 - Build release depasse 20 minutes avec R8/shrink actives
 
 Probleme rencontre :
-Activer `minifyEnabled true` et `shrinkResources true` sur la variante `release` a fait depasser `:app:assembleRelease` la limite de 15 minutes. Le wrapper Gradle restait actif apres timeout et devait etre arrete pour eviter des builds concurrents.
+Activer `minifyEnabled true` et `shrinkResources true` sur la variante `release` a fait depasser `:app:assembleRelease` la limite de 20 minutes. Le wrapper Gradle restait actif apres timeout et devait etre arrete pour eviter des builds concurrents.
 
 Contexte :
 SVPlayer Android TV, build release profile apres corrections YouTube. Le diagnostic sans R8 montrait deja des goulots lourds : `lintVitalAnalyzeRelease`, `l8DexDesugarLibRelease`, KAPT Room et dex/merge.
@@ -15,7 +15,7 @@ Solution qui fonctionne :
 - si une commande timeout, verifier les process `java/gradle` et arreter le wrapper reste actif avant de relancer.
 
 Erreurs a eviter :
-- ne pas activer R8/shrink directement sur la release prod sans verifier qu elle compile sous 15 minutes ;
+- ne pas activer R8/shrink directement sur la release prod sans verifier qu elle compile sous 20 minutes ;
 - ne pas relancer un deuxieme Gradle tant que le premier process Java est encore actif ;
 - ne pas utiliser l argument JVM invalide `-XX=1g`; utiliser `-XX:MaxMetaspaceSize=1g`.
 

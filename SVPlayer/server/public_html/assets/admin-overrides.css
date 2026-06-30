@@ -885,14 +885,17 @@ body.admin-modal-open {
 
 .admin-modal-tabs {
     position: sticky;
-    top: 75px;
-    z-index: 2;
+    top: 72px;
+    z-index: 3;
     display: flex;
     gap: 6px;
-    padding: 12px 20px;
+    align-items: center;
+    min-height: 58px;
+    padding: 10px 20px;
     border-bottom: 1px solid #203149;
     background: rgba(7, 17, 30, .96);
     overflow-x: auto;
+    scrollbar-width: thin;
 }
 
 .admin-modal-tabs button {
@@ -908,6 +911,13 @@ body.admin-modal-open {
     white-space: nowrap;
 }
 
+.admin-modal-tabs button:hover,
+.admin-modal-tabs button:focus-visible {
+    border-color: #3c94ff;
+    color: #fff;
+    outline: none;
+}
+
 .admin-modal-tabs button.active {
     border-color: #3c94ff;
     background: #0d438c;
@@ -916,6 +926,7 @@ body.admin-modal-open {
 
 .admin-tab-panel {
     display: none;
+    min-height: 260px;
 }
 
 .admin-tab-panel.active {
@@ -930,6 +941,31 @@ body.admin-modal-open {
     display: grid;
     grid-template-columns: minmax(0, 1.35fr) minmax(320px, .65fr);
     gap: 14px;
+}
+
+.behavior-insight-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    padding: 16px 20px 20px;
+}
+
+.behavior-insight-grid section {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid #203149;
+    border-radius: 7px;
+    background: #081422;
+}
+
+.behavior-insight-grid h3 {
+    margin: 0 0 10px;
+    color: #f7f9fc;
+    font-size: 14px;
+}
+
+.device-insight-grid {
+    padding-top: 0;
 }
 
 .behavior-panel {
@@ -1379,6 +1415,7 @@ body.admin-modal-open {
     .slide-admin-grid,
     .notification-form,
     .server-dashboard-grid,
+    .behavior-insight-grid,
     .ads-dashboard-grid {
         grid-template-columns: 1fr 1fr;
     }
@@ -1410,6 +1447,7 @@ body.admin-modal-open {
     .generated-code-grid,
     .notification-form,
     .server-dashboard-grid,
+    .behavior-insight-grid,
     .server-metric-list,
     .ads-dashboard-grid,
     .ads-settings-form,

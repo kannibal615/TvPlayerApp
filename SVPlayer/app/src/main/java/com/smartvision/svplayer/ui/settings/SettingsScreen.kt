@@ -1,6 +1,10 @@
 package com.smartvision.svplayer.ui.settings
 
 import androidx.activity.compose.BackHandler
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import android.text.format.DateFormat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -85,6 +89,7 @@ import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.update.AppUpdateUiState
 import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import java.util.UUID
+import java.util.Date
 import kotlinx.coroutines.launch
 
 @Composable
@@ -108,6 +113,7 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     var selectedSection by remember { mutableStateOf(SettingsSection.Preferences) }
     val strings = smartVisionStrings(settings.language)
+    val lastUpdateLabel = remember(context) { context.smartVisionLastUpdateLabel() }
 
     BackHandler(onBack = onBack)
 
@@ -177,6 +183,7 @@ fun SettingsScreen(
             parentalControlAllowed = parentalControlAllowed,
             onLockedFeature = onLockedFeature,
             strings = strings,
+            lastUpdateLabel = lastUpdateLabel,
             modifier = Modifier.fillMaxSize(),
         )
         return@Column
@@ -343,6 +350,7 @@ private fun SettingsMenuLayout(
     parentalControlAllowed: Boolean,
     onLockedFeature: () -> Unit,
     strings: SmartVisionStrings,
+    lastUpdateLabel: String,
     modifier: Modifier = Modifier,
 ) {
     var parentalUnlocked by remember { mutableStateOf(false) }
@@ -558,6 +566,7 @@ private fun SettingsMenuLayout(
                 }
                 SettingsSection.Updates -> {
                     SettingsInfoRow(strings.installedVersion, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                    SettingsInfoRow(strings.lastUpdate, lastUpdateLabel)
                     SettingsInfoRow(strings.portal, BuildConfig.ACTIVATION_BASE_URL.removeSuffix("/"))
                     Spacer(Modifier.height(14.dp))
                     TvButton(
@@ -813,6 +822,19 @@ private fun syncFrequencyOptions(strings: SmartVisionStrings): List<SettingsOpti
 
 private fun String.localizedSyncFrequency(strings: SmartVisionStrings): String {
     return syncFrequencyOptions(strings).firstOrNull { it.value == this }?.label ?: this
+}
+
+private fun Context.smartVisionLastUpdateLabel(): String {
+    return runCatching {
+        val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getPackageInfo(packageName, 0)
+        }
+        val updatedAt = Date(packageInfo.lastUpdateTime)
+        DateFormat.getDateFormat(this).format(updatedAt) + " " + DateFormat.getTimeFormat(this).format(updatedAt)
+    }.getOrDefault("-")
 }
 
 @Composable

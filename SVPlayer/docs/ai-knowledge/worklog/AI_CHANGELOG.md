@@ -1,5 +1,49 @@
 # AI Changelog
 
+## 2026-06-30 - Release Android 0.1.52 versionCode 55
+
+Type:
+- release
+- deploy
+
+Resume:
+- Bump Android de `0.1.51 (54)` vers `0.1.52 (55)`.
+- Build release direct via `:app:assembleRelease`.
+- Deploiement complet backend/APK via `scripts/deploy_activation_phase1.ps1 -SkipInstall`.
+- Verification publique de `api/app_update.php`, `downloads/smartvision-tv.version.json`, APK versionne, APK stable et assets admin `admin-overrides.css?v=8` / `admin.js?v=4`.
+
+Fichiers concernes:
+- `app/build.gradle.kts`
+- `app/build/outputs/apk/release/output-metadata.json`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+
+## 2026-06-30 - Update settings, segmentation enrichie et onglets appareil
+
+Type:
+- android
+- backend
+- admin
+- documentation
+
+Resume:
+- Ajout de `Last update` / `Derniere mise a jour` dans Settings > Updates.
+- Suppression de l'ouverture automatique du popup update apres check silencieux.
+- Ajout du `contentTitle` dans le tracking Android et stockage backend `content_title`.
+- Inference backend region, pays, langue et centres d'interet depuis categories, medias et tags.
+- Enrichissement admin Segmentation avec regions, pays, langues, interets et colonnes recentes demandees.
+- Correction JS/CSS des onglets du popup detail appareil et cache-busting assets.
+- Documentation de la regle langue: UI Android en anglais par defaut avec traduction francaise.
+
+Fichiers concernes:
+- `app/src/main/java/com/smartvision/svplayer/ui/update/AppUpdateViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/settings/SettingsScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/i18n/SmartVisionStrings.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/behavior/BehaviorReporter.kt`
+- `server/public_html/api/behavior_service.php`
+- `server/public_html/admin/index.php`
+- `server/public_html/assets/admin.js`
+- `server/public_html/assets/admin-overrides.css`
+
 ## 2026-06-30 - Release Android 0.1.51 versionCode 54
 
 Type:

@@ -12,13 +12,15 @@ L'application distingue premium, essai, essai expire et gratuit avec pubs. Les f
 
 Le tracking actuellement implemente couvre:
 - pub: `ads_events`;
-- comportement YouTube: `app_behavior_events`;
+- comportement generique Live TV, Movies, Series, Episodes et YouTube: `app_behavior_events`;
+- segmentation utilisateur: `user_segments`;
+- agregats comportementaux quotidiens: `user_behavior_daily`;
 - anomalies: endpoint `api/app/anomaly-events.php`;
 - diagnostics device: `api/app/device-diagnostics.php`;
 - consentement TV: `app_consent_receipts`.
 
-Spec d'evolution:
-- `docs/ai-knowledge/features/user-behavior-segmentation-ads-v1.md` formalise une cible future V1 de tracking comportemental generique, segmentation utilisateur et ciblage publicitaire. Elle ne doit pas etre lue comme une implementation deja complete.
+Segmentation:
+- `docs/ai-knowledge/features/user-behavior-segmentation-ads-v1.md` decrit maintenant la V1 en cours: tracking contenu consomme, interpretation region/pays/langue/interets et dashboard admin Segmentation.
 
 ## 3. Workflow utilisateur
 
@@ -39,7 +41,7 @@ Android:
 - `ui/appconfig/ConsentDialog.kt`
 - `data/anomaly/AnomalyReporter.kt`
 - `data/diagnostics/DeviceDiagnosticsReporter.kt`
-- `data/youtube/YoutubeBehaviorReporter.kt`
+- `data/behavior/BehaviorReporter.kt`
 
 Backend:
 - `api/app_config.php`
@@ -93,6 +95,15 @@ Evenements comportementaux actuellement acceptes cote serveur:
 - `PLAY_PAUSE`
 - `VIDEO_COMPLETED`
 - `SUGGESTION_OPENED`
+- `CONTENT_OPENED`
+- `PLAYBACK_STARTED`
+- `PLAYBACK_PROGRESS`
+- `PLAYBACK_COMPLETED`
+- `FAVORITE_ADDED`
+- `FAVORITE_REMOVED`
+- `SEARCH_PERFORMED`
+- `CATEGORY_OPENED`
+- `PLAYER_ERROR`
 
 Tables ou settings:
 - `app_settings`
@@ -101,6 +112,8 @@ Tables ou settings:
 - `ads_settings`
 - `ads_events`
 - `app_behavior_events`
+- `user_behavior_daily`
+- `user_segments`
 
 ## 8. Dependances
 
@@ -117,6 +130,8 @@ Tables ou settings:
 - Les feature flags prod stockes peuvent override les defaults: verifier `api/app_config.php`.
 - Ne pas rendre l'admin dependent d'un service optionnel qui peut faire HTTP 500.
 - Garder les evenements rates limites pour eviter le bruit.
+- Ne pas stocker de nouveaux evenements comportementaux avec `content_type = UNKNOWN`; les lignes UNKNOWN sont purgees par le service comportement.
+- Les segments region/pays/langue/interets doivent rester explicables par evidence textuelle nettoyee, pas par modele opaque.
 
 ## 10. Problemes connus
 
@@ -152,3 +167,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-29: ajout des mots-cles `ads-vast`, `app_feature_access`, `behavior-events`, `anomaly-events`.
 - 2026-06-30: ajout de la spec V1 segmentation utilisateur et ciblage publicitaire.
 - 2026-06-30: clarification etat actuel vs cible future, routes extensionless et exception `device-diagnostics.php`.
+- 2026-06-30: mise a jour etat actuel apres implementation segmentation admin et inference region/pays/langue/interets.

@@ -79,18 +79,34 @@
         button.addEventListener('click', () => closeModal(button.closest('.admin-modal')));
     });
 
-    document.querySelectorAll('[data-tab-target]').forEach((button) => {
-        button.addEventListener('click', () => {
-            const modal = button.closest('.admin-modal');
-            const target = document.getElementById(button.dataset.tabTarget || '');
-            if (!modal || !target) return;
-            modal.querySelectorAll('[data-tab-target]').forEach((tab) => {
-                tab.classList.toggle('active', tab === button);
-            });
-            modal.querySelectorAll('.admin-tab-panel').forEach((panel) => {
-                panel.classList.toggle('active', panel === target);
-            });
+    const activateModalTab = (button) => {
+        const modal = button.closest('.admin-modal');
+        const target = document.getElementById(button.dataset.tabTarget || '');
+        if (!modal || !target) return;
+        modal.querySelectorAll('[data-tab-target]').forEach((tab) => {
+            const active = tab === button;
+            tab.classList.toggle('active', active);
+            tab.setAttribute('aria-selected', active ? 'true' : 'false');
         });
+        modal.querySelectorAll('.admin-tab-panel').forEach((panel) => {
+            const active = panel === target;
+            panel.classList.toggle('active', active);
+            panel.hidden = !active;
+        });
+    };
+
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-tab-target]');
+        if (!button) return;
+        event.preventDefault();
+        activateModalTab(button);
+    });
+
+    document.querySelectorAll('.admin-modal').forEach((modal) => {
+        const activeButton = modal.querySelector('[data-tab-target].active') || modal.querySelector('[data-tab-target]');
+        if (activeButton) {
+            activateModalTab(activeButton);
+        }
     });
 
     document.addEventListener('keydown', (event) => {

@@ -2005,7 +2005,7 @@ function render_admin_login(?string $error): void
 {
     $configured = admin_auth_is_configured();
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=7"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=8"></head>
 <body class="admin-login-body"><main class="admin-login-panel">
     <a class="admin-brand" href="/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
     <h1>Administration</h1><p>Commandes, licences et appareils SmartVision.</p>
@@ -2068,7 +2068,7 @@ function render_admin_dashboard(
     ];
     $heading = $pages[$page] ?? $pages['overview'];
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=7"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=8"></head>
 <body class="admin-body">
 <aside class="admin-sidebar">
     <a class="admin-brand" href="/admin/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
@@ -2550,7 +2550,7 @@ function render_admin_dashboard(
         <?php endif; ?>
     </main>
 </div>
-<script src="/assets/admin.js?v=3" defer></script>
+<script src="/assets/admin.js?v=4" defer></script>
 </body></html><?php
 }
 
@@ -2736,6 +2736,10 @@ function admin_render_behavior_segments_page(array $behaviorAdmin): void
     $summary = is_array($behaviorAdmin['summary'] ?? null) ? $behaviorAdmin['summary'] : [];
     $segments = is_array($behaviorAdmin['segments'] ?? null) ? $behaviorAdmin['segments'] : [];
     $content = is_array($behaviorAdmin['content'] ?? null) ? $behaviorAdmin['content'] : [];
+    $regions = is_array($behaviorAdmin['regions'] ?? null) ? $behaviorAdmin['regions'] : [];
+    $countries = is_array($behaviorAdmin['countries'] ?? null) ? $behaviorAdmin['countries'] : [];
+    $languages = is_array($behaviorAdmin['languages'] ?? null) ? $behaviorAdmin['languages'] : [];
+    $interests = is_array($behaviorAdmin['interests'] ?? null) ? $behaviorAdmin['interests'] : [];
     $recentEvents = is_array($behaviorAdmin['recent_events'] ?? null) ? $behaviorAdmin['recent_events'] : [];
     ?>
     <section class="admin-kpis behavior-kpis" aria-label="Segmentation utilisateurs">
@@ -2767,16 +2771,28 @@ function admin_render_behavior_segments_page(array $behaviorAdmin): void
             </ul>
         </section>
     </div>
+    <section class="admin-panel behavior-panel">
+        <div class="admin-panel-heading"><div><h2>Interpretation contenu consomme</h2><p>Regions, pays, langues et centres d'interet deduits des categories et medias.</p></div></div>
+        <div class="behavior-insight-grid">
+            <section><h3>Regions</h3><?= admin_render_behavior_breakdown($regions) ?></section>
+            <section><h3>Pays</h3><?= admin_render_behavior_breakdown($countries) ?></section>
+            <section><h3>Langues</h3><?= admin_render_behavior_breakdown($languages) ?></section>
+            <section><h3>Centres d'interet</h3><?= admin_render_behavior_breakdown($interests) ?></section>
+        </div>
+    </section>
     <section class="admin-panel">
         <div class="admin-panel-heading"><div><h2>Evenements comportementaux recents</h2><p>Derniers signaux recus depuis les applications TV.</p></div></div>
-        <div class="admin-table-wrap"><table><thead><tr><th>Date</th><th>Event</th><th>Contenu</th><th>Categorie</th><th>Source</th><th>Plateforme</th><th>App</th><th>Engagement</th></tr></thead><tbody>
-            <?php if ($recentEvents === []): ?><tr><td colspan="8" class="admin-empty">Aucun evenement recent.</td></tr><?php endif; ?>
+        <div class="admin-table-wrap"><table><thead><tr><th>Date</th><th>Code TV</th><th>Type licence</th><th>Event</th><th>Contenu</th><th>Source</th><th>Categorie</th><th>Media</th><th>Plateforme</th><th>App</th><th>Engagement</th></tr></thead><tbody>
+            <?php if ($recentEvents === []): ?><tr><td colspan="11" class="admin-empty">Aucun evenement recent.</td></tr><?php endif; ?>
             <?php foreach ($recentEvents as $event): ?><tr>
                 <td><?= admin_escape((string) ($event['created_at'] ?? '-')) ?></td>
+                <td><strong><?= admin_escape((string) ($event['public_device_code'] ?? '------')) ?></strong></td>
+                <td><?= admin_escape((string) ($event['license_type'] ?? '-')) ?></td>
                 <td><strong><?= admin_escape((string) ($event['event_type'] ?? '-')) ?></strong></td>
                 <td><?= admin_escape((string) ($event['content_type'] ?? '-')) ?></td>
-                <td><?= admin_escape((string) ($event['category_label'] ?? '-')) ?></td>
                 <td><?= admin_escape((string) ($event['source_screen'] ?? '-')) ?></td>
+                <td><?= admin_escape((string) ($event['category_label'] ?? '-')) ?></td>
+                <td><?= admin_escape((string) ($event['content_title'] ?? '-')) ?></td>
                 <td><?= admin_escape((string) ($event['platform'] ?? '-')) ?></td>
                 <td><?= admin_escape((string) ($event['app_version'] ?? '-')) ?></td>
                 <td><?= admin_escape((string) ($event['engagement_score'] ?? '-')) ?></td>
@@ -3061,6 +3077,10 @@ function admin_render_device_modal(array $device): void
     $recentEvents = is_array($behavior['recent_events'] ?? null) ? $behavior['recent_events'] : [];
     $contentBreakdown = is_array($behavior['content_breakdown'] ?? null) ? $behavior['content_breakdown'] : [];
     $categoryBreakdown = is_array($behavior['category_breakdown'] ?? null) ? $behavior['category_breakdown'] : [];
+    $languageBreakdown = is_array($behavior['language_breakdown'] ?? null) ? $behavior['language_breakdown'] : [];
+    $countryBreakdown = is_array($behavior['country_breakdown'] ?? null) ? $behavior['country_breakdown'] : [];
+    $regionBreakdown = is_array($behavior['region_breakdown'] ?? null) ? $behavior['region_breakdown'] : [];
+    $interestBreakdown = is_array($behavior['interest_breakdown'] ?? null) ? $behavior['interest_breakdown'] : [];
     ?><div class="admin-modal" id="<?= admin_escape($modalId) ?>" role="dialog" aria-modal="true" aria-labelledby="<?= admin_escape($modalId) ?>-title" hidden>
         <div class="admin-modal-backdrop" data-modal-close></div>
         <section class="admin-modal-card">
@@ -3107,9 +3127,15 @@ function admin_render_device_modal(array $device): void
                     <section><h3>Contenus consommes</h3><?= admin_render_behavior_breakdown($contentBreakdown) ?></section>
                     <section><h3>Categories detectees</h3><?= admin_render_behavior_breakdown($categoryBreakdown) ?></section>
                 </div>
-                <section class="device-tracking-events"><h3>Evenements recents</h3><div class="admin-table-wrap"><table><thead><tr><th>Date</th><th>Event</th><th>Contenu</th><th>Categorie</th><th>Source</th><th>Score</th></tr></thead><tbody>
-                    <?php if ($recentEvents === []): ?><tr><td colspan="6" class="admin-empty">Aucun tracking recu.</td></tr><?php endif; ?>
-                    <?php foreach ($recentEvents as $event): ?><tr><td><?= admin_escape((string) ($event['created_at'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['event_type'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['content_type'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['category_label'] ?? $event['category_id'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['source_screen'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['engagement_score'] ?? '-')) ?></td></tr><?php endforeach; ?>
+                <div class="behavior-insight-grid device-insight-grid">
+                    <section><h3>Regions</h3><?= admin_render_behavior_breakdown($regionBreakdown) ?></section>
+                    <section><h3>Pays</h3><?= admin_render_behavior_breakdown($countryBreakdown) ?></section>
+                    <section><h3>Langues</h3><?= admin_render_behavior_breakdown($languageBreakdown) ?></section>
+                    <section><h3>Interets</h3><?= admin_render_behavior_breakdown($interestBreakdown) ?></section>
+                </div>
+                <section class="device-tracking-events"><h3>Evenements recents</h3><div class="admin-table-wrap"><table><thead><tr><th>Date</th><th>Event</th><th>Contenu</th><th>Categorie</th><th>Media</th><th>Source</th><th>Score</th></tr></thead><tbody>
+                    <?php if ($recentEvents === []): ?><tr><td colspan="7" class="admin-empty">Aucun tracking recu.</td></tr><?php endif; ?>
+                    <?php foreach ($recentEvents as $event): ?><tr><td><?= admin_escape((string) ($event['created_at'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['event_type'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['content_type'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['category_label'] ?? $event['category_id'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['content_title'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['source_screen'] ?? '-')) ?></td><td><?= admin_escape((string) ($event['engagement_score'] ?? '-')) ?></td></tr><?php endforeach; ?>
                 </tbody></table></div></section>
             </div>
             <div class="admin-tab-panel" id="<?= admin_escape($modalId) ?>-analysis">
@@ -3142,7 +3168,7 @@ function admin_render_behavior_breakdown(array $rows): string
         return '<p class="muted">Aucune donnee.</p>';
     }
     ob_start();
-    ?><ul class="behavior-breakdown-list compact"><?php foreach ($rows as $row): ?><li><span><?= admin_escape((string) ($row['label'] ?? 'UNKNOWN')) ?></span><strong><?= number_format((int) ($row['count'] ?? 0), 0, ',', ' ') ?></strong></li><?php endforeach; ?></ul><?php
+    ?><ul class="behavior-breakdown-list compact"><?php foreach ($rows as $row): ?><li><span><?= admin_escape((string) ($row['label'] ?? 'UNKNOWN')) ?></span><strong><?= number_format((int) ($row['count'] ?? $row['events'] ?? 0), 0, ',', ' ') ?></strong><?php if (isset($row['devices'])): ?><small><?= number_format((int) $row['devices'], 0, ',', ' ') ?> appareil(s)</small><?php endif; ?></li><?php endforeach; ?></ul><?php
     return (string) ob_get_clean();
 }
 

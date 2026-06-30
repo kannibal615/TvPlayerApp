@@ -17,9 +17,12 @@ function behavior_ensure_schema(PDO $pdo): void
             content_type ENUM('LIVE_TV', 'MOVIE', 'SERIES', 'EPISODE', 'YOUTUBE', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
             content_id_hash CHAR(64) NULL,
             content_title_hash CHAR(64) NULL,
+            content_title VARCHAR(180) NULL,
             category_label VARCHAR(120) NULL,
             content_country VARCHAR(16) NULL,
+            content_region VARCHAR(32) NULL,
             content_language VARCHAR(16) NULL,
+            interest_tags VARCHAR(255) NULL,
             duration_seconds INT UNSIGNED NULL,
             position_seconds INT UNSIGNED NULL,
             engagement_score TINYINT UNSIGNED NULL,
@@ -40,10 +43,13 @@ function behavior_ensure_schema(PDO $pdo): void
         "ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_type ENUM('LIVE_TV', 'MOVIE', 'SERIES', 'EPISODE', 'YOUTUBE', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN' AFTER tags",
         "ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_id_hash CHAR(64) NULL AFTER content_type",
         "ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_title_hash CHAR(64) NULL AFTER content_id_hash",
+        "ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_title VARCHAR(180) NULL AFTER content_title_hash",
         "ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS category_label VARCHAR(120) NULL AFTER category_id",
         "ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_country VARCHAR(16) NULL AFTER category_label",
-        "ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_language VARCHAR(16) NULL AFTER content_country",
-        "ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS duration_seconds INT UNSIGNED NULL AFTER content_language",
+        "ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_region VARCHAR(32) NULL AFTER content_country",
+        "ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_language VARCHAR(16) NULL AFTER content_region",
+        "ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS interest_tags VARCHAR(255) NULL AFTER content_language",
+        "ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS duration_seconds INT UNSIGNED NULL AFTER interest_tags",
         "ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS position_seconds INT UNSIGNED NULL AFTER duration_seconds",
         "ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS engagement_score TINYINT UNSIGNED NULL AFTER position_seconds",
         "ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS source_screen VARCHAR(40) NULL AFTER engagement_score",
@@ -71,6 +77,7 @@ function behavior_ensure_schema(PDO $pdo): void
             top_category_id VARCHAR(40) NULL,
             top_category_label VARCHAR(120) NULL,
             top_tags VARCHAR(500) NULL,
+            top_interests VARCHAR(255) NULL,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY uq_behavior_daily_device_type_day (device_id_hash, activity_date, content_type),
             INDEX idx_behavior_daily_date (activity_date),
@@ -84,7 +91,7 @@ function behavior_ensure_schema(PDO $pdo): void
             device_id_hash CHAR(64) NOT NULL,
             segment_key VARCHAR(80) NOT NULL,
             segment_label VARCHAR(120) NOT NULL,
-            segment_group ENUM('CONTENT', 'ENGAGEMENT', 'LANGUAGE', 'COUNTRY', 'ADS', 'RISK') NOT NULL DEFAULT 'CONTENT',
+            segment_group ENUM('CONTENT', 'ENGAGEMENT', 'LANGUAGE', 'COUNTRY', 'REGION', 'INTEREST', 'ADS', 'RISK') NOT NULL DEFAULT 'CONTENT',
             score TINYINT UNSIGNED NOT NULL DEFAULT 0,
             confidence TINYINT UNSIGNED NOT NULL DEFAULT 0,
             evidence VARCHAR(500) NULL,
@@ -98,6 +105,24 @@ function behavior_ensure_schema(PDO $pdo): void
             INDEX idx_user_segments_last_seen (last_seen_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
+
+    foreach ([
+        "ALTER TABLE user_behavior_daily ADD COLUMN IF NOT EXISTS top_interests VARCHAR(255) NULL AFTER top_tags",
+        "ALTER TABLE user_segments MODIFY segment_group ENUM('CONTENT', 'ENGAGEMENT', 'LANGUAGE', 'COUNTRY', 'REGION', 'INTEREST', 'ADS', 'RISK') NOT NULL DEFAULT 'CONTENT'",
+    ] as $statement) {
+        try {
+            $pdo->exec($statement);
+        } catch (Throwable $exception) {
+            error_log('SmartVision behavior schema post alter skipped.');
+        }
+    }
+
+    try {
+        $pdo->exec("DELETE FROM app_behavior_events WHERE content_type = 'UNKNOWN'");
+        $pdo->exec("DELETE FROM user_behavior_daily WHERE content_type = 'UNKNOWN'");
+    } catch (Throwable $exception) {
+        error_log('SmartVision behavior unknown purge skipped.');
+    }
 }
 
 function behavior_allowed_event_types(): array
@@ -161,6 +186,21 @@ function behavior_store_event(PDO $pdo, array $payload): array
         throw new InvalidArgumentException('eventType invalide.');
     }
     $contentType = behavior_clean_enum($payload['contentType'] ?? behavior_legacy_content_type($payload), behavior_allowed_content_types(), 'UNKNOWN');
+    if ($contentType === 'UNKNOWN') {
+        return [
+            'id' => 0,
+            'eventType' => $eventType,
+            'ignored' => true,
+        ];
+    }
+    $tags = behavior_clean_tags($payload['tags'] ?? null);
+    $contentTitle = clean_optional_text($payload['contentTitle'] ?? $payload['title'] ?? behavior_context_value($payload['context'] ?? null, ['title', 'media', 'channel']), 180);
+    $categoryLabel = clean_optional_text($payload['categoryLabel'] ?? null, 120);
+    $inference = behavior_infer_content_context($categoryLabel, $contentTitle, $tags);
+    $contentCountry = behavior_clean_id($payload['country'] ?? null, 16) ?: $inference['country'];
+    $contentRegion = $inference['region'];
+    $contentLanguage = behavior_clean_id($payload['language'] ?? null, 16) ?: $inference['language'];
+    $interestTags = $inference['interests'];
     $durationSeconds = behavior_clean_int($payload['durationSeconds'] ?? null, 0, 86400);
     $positionSeconds = behavior_clean_int($payload['positionSeconds'] ?? null, 0, 86400);
     $engagementScore = behavior_clean_int($payload['engagementScore'] ?? null, 0, 100);
@@ -168,11 +208,13 @@ function behavior_store_event(PDO $pdo, array $payload): array
     $statement = $pdo->prepare(
         "INSERT INTO app_behavior_events
             (device_id_hash, app_version, platform, event_type, video_id_hash, channel_id, category_id, tags,
-             content_type, content_id_hash, content_title_hash, category_label, content_country, content_language,
+             content_type, content_id_hash, content_title_hash, content_title, category_label, content_country,
+             content_region, content_language, interest_tags,
              duration_seconds, position_seconds, engagement_score, source_screen, context_json, created_at)
          VALUES
             (:device_id_hash, :app_version, :platform, :event_type, :video_id_hash, :channel_id, :category_id, :tags,
-             :content_type, :content_id_hash, :content_title_hash, :category_label, :content_country, :content_language,
+             :content_type, :content_id_hash, :content_title_hash, :content_title, :category_label, :content_country,
+             :content_region, :content_language, :interest_tags,
              :duration_seconds, :position_seconds, :engagement_score, :source_screen, :context_json, NOW())"
     );
     $statement->execute([
@@ -183,13 +225,16 @@ function behavior_store_event(PDO $pdo, array $payload): array
         'video_id_hash' => behavior_clean_hash64($payload['videoIdHash'] ?? null),
         'channel_id' => behavior_clean_id($payload['channelId'] ?? null, 80),
         'category_id' => behavior_clean_id($payload['categoryId'] ?? null, 40),
-        'tags' => behavior_clean_tags($payload['tags'] ?? null),
+        'tags' => $tags,
         'content_type' => $contentType,
         'content_id_hash' => behavior_clean_hash64($payload['contentIdHash'] ?? null),
         'content_title_hash' => behavior_clean_hash64($payload['contentTitleHash'] ?? null),
-        'category_label' => clean_optional_text($payload['categoryLabel'] ?? null, 120),
-        'content_country' => behavior_clean_id($payload['country'] ?? null, 16),
-        'content_language' => behavior_clean_id($payload['language'] ?? null, 16),
+        'content_title' => $contentTitle,
+        'category_label' => $categoryLabel,
+        'content_country' => $contentCountry,
+        'content_region' => $contentRegion,
+        'content_language' => $contentLanguage,
+        'interest_tags' => $interestTags,
         'duration_seconds' => $durationSeconds,
         'position_seconds' => $positionSeconds,
         'engagement_score' => $engagementScore,
@@ -292,12 +337,151 @@ function behavior_clean_context(mixed $value): ?string
     return $cleanParts === [] ? null : smartvision_text_substr(implode(';', $cleanParts), 0, 1000);
 }
 
+function behavior_context_value(mixed $value, array $keys): ?string
+{
+    $text = trim((string) $value);
+    if ($text === '') {
+        return null;
+    }
+    $wanted = array_fill_keys(array_map('strtolower', $keys), true);
+    foreach (explode(';', $text) as $part) {
+        [$key, $partValue] = array_pad(explode('=', $part, 2), 2, '');
+        $cleanKey = strtolower(trim($key));
+        $cleanValue = trim($partValue);
+        if (isset($wanted[$cleanKey]) && $cleanValue !== '') {
+            return $cleanValue;
+        }
+    }
+
+    return null;
+}
+
+function behavior_infer_content_context(?string $categoryLabel, ?string $contentTitle, ?string $tags): array
+{
+    $haystack = behavior_match_text(implode(' ', array_filter([$categoryLabel, $contentTitle, $tags])));
+    $language = null;
+    $country = null;
+    $region = null;
+    $interests = [];
+
+    foreach (behavior_language_rules() as $code => $rule) {
+        if (preg_match($rule, $haystack)) {
+            $language = $code;
+            break;
+        }
+    }
+
+    foreach (behavior_country_rules() as $code => $rule) {
+        if (preg_match($rule['pattern'], $haystack)) {
+            $country = $code;
+            $region = $rule['region'];
+            if ($language === null && isset($rule['language'])) {
+                $language = $rule['language'];
+            }
+            break;
+        }
+    }
+
+    if ($region === null) {
+        foreach (behavior_region_rules() as $label => $rule) {
+            if (preg_match($rule, $haystack)) {
+                $region = $label;
+                break;
+            }
+        }
+    }
+
+    foreach (behavior_interest_rules() as $tag => $rule) {
+        if (preg_match($rule, $haystack)) {
+            $interests[$tag] = true;
+        }
+    }
+
+    return [
+        'language' => $language,
+        'country' => $country,
+        'region' => $region,
+        'interests' => $interests === [] ? null : implode(',', array_keys($interests)),
+    ];
+}
+
+function behavior_match_text(string $text): string
+{
+    $normalized = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text);
+    if ($normalized === false) {
+        $normalized = $text;
+    }
+    $normalized = strtoupper($normalized);
+    $normalized = preg_replace('/[^A-Z0-9]+/', ' ', $normalized) ?: '';
+
+    return ' ' . trim($normalized) . ' ';
+}
+
+function behavior_language_rules(): array
+{
+    return [
+        'ar' => '/(\|AR\||\bAR\b|\bARABE\b|\bARABIC\b|\bMBC\b|\bROTANA\b|\bSHAHID\b)/',
+        'fr' => '/(\|FR\||\bFRANCE\b|\bFRANCAIS\b|\bFRENCH\b|\bTF1\b|\bM6\b|\bCANAL\b)/',
+        'en' => '/(\|EN\||\bENGLISH\b|\bUK\b|\bUSA\b|\bBBC\b|\bCNN\b)/',
+        'es' => '/(\|ES\||\bESPANA\b|\bSPAIN\b|\bSPANISH\b|\bLATINO\b)/',
+        'pt' => '/(\|PT\||\bPORTUGAL\b|\bBRAZIL\b|\bPORTUGUESE\b)/',
+        'it' => '/(\|IT\||\bITALIA\b|\bITALY\b|\bITALIAN\b)/',
+        'de' => '/(\|DE\||\bDEUTSCH\b|\bGERMANY\b|\bALLEMAND\b)/',
+        'tr' => '/(\|TR\||\bTURKEY\b|\bTURKISH\b|\bTURK\b)/',
+    ];
+}
+
+function behavior_region_rules(): array
+{
+    return [
+        'Europe' => '/(\|EU\||\bEU\b|\bEUROPE\b|\bFRANCE\b|\bITALY\b|\bSPAIN\b|\bGERMANY\b|\bUK\b)/',
+        'MENA' => '/(\|AR\||\bAR\b|\bMAGHREB\b|\bMENA\b|\bTUNISIA\b|\bMAROC\b|\bALGERIA\b|\bEGYPT\b|\bSAUDI\b)/',
+        'North America' => '/(\bUSA\b|\bUNITED STATES\b|\bCANADA\b|\bUS\b)/',
+        'Latin America' => '/(\bLATAM\b|\bLATINO\b|\bMEXICO\b|\bBRAZIL\b|\bARGENTINA\b)/',
+        'Africa' => '/(\bAFRICA\b|\bSENEGAL\b|\bCAMEROON\b|\bNIGERIA\b|\bIVORY COAST\b)/',
+    ];
+}
+
+function behavior_country_rules(): array
+{
+    return [
+        'FR' => ['region' => 'Europe', 'language' => 'fr', 'pattern' => '/(\bFRANCE\b|\bFR\b|\bTF1\b|\bM6\b)/'],
+        'TN' => ['region' => 'MENA', 'language' => 'ar', 'pattern' => '/(\bTUNISIA\b|\bTUNISIE\b|\bTN\b|\bDIWAN\b|\bNESSMA\b)/'],
+        'MA' => ['region' => 'MENA', 'language' => 'ar', 'pattern' => '/(\bMOROCCO\b|\bMAROC\b|\bMA\b|\b2M\b)/'],
+        'DZ' => ['region' => 'MENA', 'language' => 'ar', 'pattern' => '/(\bALGERIA\b|\bALGERIE\b|\bDZ\b|\bENTV\b)/'],
+        'EG' => ['region' => 'MENA', 'language' => 'ar', 'pattern' => '/(\bEGYPT\b|\bEGYPTE\b|\bEG\b|\bCBC\b)/'],
+        'SA' => ['region' => 'MENA', 'language' => 'ar', 'pattern' => '/(\bSAUDI\b|\bKSA\b|\bSA\b)/'],
+        'AE' => ['region' => 'MENA', 'language' => 'ar', 'pattern' => '/(\bUAE\b|\bDUBAI\b|\bABU DHABI\b|\bAE\b)/'],
+        'GB' => ['region' => 'Europe', 'language' => 'en', 'pattern' => '/(\bUK\b|\bUNITED KINGDOM\b|\bBRITAIN\b|\bBBC\b)/'],
+        'US' => ['region' => 'North America', 'language' => 'en', 'pattern' => '/(\bUSA\b|\bUNITED STATES\b|\bUS\b|\bFOX\b|\bNBC\b)/'],
+        'CA' => ['region' => 'North America', 'pattern' => '/(\bCANADA\b|\bCA\b)/'],
+        'ES' => ['region' => 'Europe', 'language' => 'es', 'pattern' => '/(\bSPAIN\b|\bESPANA\b|\bES\b)/'],
+        'IT' => ['region' => 'Europe', 'language' => 'it', 'pattern' => '/(\bITALY\b|\bITALIA\b|\bIT\b|\bRAI\b)/'],
+        'DE' => ['region' => 'Europe', 'language' => 'de', 'pattern' => '/(\bGERMANY\b|\bDEUTSCHLAND\b|\bDE\b)/'],
+        'TR' => ['region' => 'Europe', 'language' => 'tr', 'pattern' => '/(\bTURKEY\b|\bTURKIYE\b|\bTR\b)/'],
+    ];
+}
+
+function behavior_interest_rules(): array
+{
+    return [
+        'sports' => '/(\bSPORT\b|\bSPORTS\b|\bBEIN\b|\bESPN\b|\bEUROSPORT\b|\bFOOT\b|\bFIFA\b|\bNBA\b|\bTENNIS\b|\bDIWAN SPORT\b)/',
+        'news' => '/(\bNEWS\b|\bINFO\b|\bACTU\b|\bACTUALITE\b|\bJOURNAL\b|\bFRANCE 24\b|\bCNN\b|\bBBC\b|\bALJAZEERA\b|\bSKY NEWS\b)/',
+        'kids' => '/(\bKIDS\b|\bENFANT\b|\bJEUNESSE\b|\bCARTOON\b|\bDISNEY\b|\bNICKELODEON\b|\bTOON\b|\bANIME\b)/',
+        'cinema' => '/(\bCINEMA\b|\bMOVIE\b|\bMOVIES\b|\bFILM\b|\bFILMS\b|\bVOD\b|\bBOX OFFICE\b|\bACTION\b|\bCOMEDY\b)/',
+        'music' => '/(\bMUSIC\b|\bMUSIQUE\b|\bMTV\b|\bMCM\b|\bCLIP\b|\bHITS\b|\bRADIO\b)/',
+        'documentaries' => '/(\bDOC\b|\bDOCUMENTARY\b|\bDOCUMENTAIRE\b|\bNAT GEO\b|\bHISTORY\b|\bDISCOVERY\b|\bNATURE\b)/',
+        'religion' => '/(\bQURAN\b|\bCORAN\b|\bISLAM\b|\bRELIGION\b|\bCHRISTIAN\b)/',
+        'entertainment' => '/(\bENTERTAINMENT\b|\bVARIETY\b|\bSHOW\b|\bMBC\b|\bROTANA\b|\bREALITY\b)/',
+    ];
+}
+
 function behavior_update_daily(PDO $pdo, string $deviceHash, string $contentType): void
 {
     $statement = $pdo->prepare(
         "REPLACE INTO user_behavior_daily
             (device_id_hash, activity_date, content_type, events_count, playback_count, completed_count,
-             favorite_count, total_duration_seconds, avg_engagement_score, top_category_id, top_category_label, top_tags)
+             favorite_count, total_duration_seconds, avg_engagement_score, top_category_id, top_category_label, top_tags, top_interests)
          SELECT
             device_id_hash,
             UTC_DATE(),
@@ -310,7 +494,8 @@ function behavior_update_daily(PDO $pdo, string $deviceHash, string $contentType
             COALESCE(AVG(engagement_score), 0),
             MAX(category_id),
             MAX(category_label),
-            MAX(tags)
+            MAX(tags),
+            MAX(interest_tags)
          FROM app_behavior_events
          WHERE device_id_hash = :device_id_hash
            AND content_type = :content_type
@@ -364,6 +549,8 @@ function behavior_device_summary(PDO $pdo, string $deviceHash, int $days = 30): 
     $summary['category_breakdown'] = behavior_group_counts($pdo, $deviceHash, $days, 'category_label');
     $summary['language_breakdown'] = behavior_group_counts($pdo, $deviceHash, $days, 'content_language');
     $summary['country_breakdown'] = behavior_group_counts($pdo, $deviceHash, $days, 'content_country');
+    $summary['region_breakdown'] = behavior_group_counts($pdo, $deviceHash, $days, 'content_region');
+    $summary['interest_breakdown'] = behavior_interest_counts($pdo, $days, $deviceHash);
     $summary['segments'] = behavior_load_device_segments($pdo, $deviceHash);
     $summary['recent_events'] = behavior_recent_device_events($pdo, $deviceHash);
 
@@ -372,7 +559,7 @@ function behavior_device_summary(PDO $pdo, string $deviceHash, int $days = 30): 
 
 function behavior_group_counts(PDO $pdo, string $deviceHash, int $days, string $column): array
 {
-    $allowed = ['content_type', 'category_label', 'content_language', 'content_country'];
+    $allowed = ['content_type', 'category_label', 'content_language', 'content_country', 'content_region'];
     if (!in_array($column, $allowed, true)) {
         return [];
     }
@@ -388,6 +575,40 @@ function behavior_group_counts(PDO $pdo, string $deviceHash, int $days, string $
     $statement->execute(['device_id_hash' => $deviceHash]);
 
     return $statement->fetchAll();
+}
+
+function behavior_interest_counts(PDO $pdo, int $days, ?string $deviceHash = null): array
+{
+    $where = "created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY) AND interest_tags IS NOT NULL AND interest_tags <> ''";
+    $params = [];
+    if ($deviceHash !== null) {
+        $where .= ' AND device_id_hash = :device_id_hash';
+        $params['device_id_hash'] = $deviceHash;
+    }
+    $statement = $pdo->prepare(
+        "SELECT interest_tags
+         FROM app_behavior_events
+         WHERE {$where}
+         ORDER BY id DESC
+         LIMIT 1000"
+    );
+    $statement->execute($params);
+    $counts = [];
+    foreach ($statement->fetchAll() as $row) {
+        foreach (explode(',', (string) ($row['interest_tags'] ?? '')) as $tag) {
+            $tag = trim($tag);
+            if ($tag !== '') {
+                $counts[$tag] = ($counts[$tag] ?? 0) + 1;
+            }
+        }
+    }
+    arsort($counts);
+    $rows = [];
+    foreach (array_slice($counts, 0, 10, true) as $label => $count) {
+        $rows[] = ['label' => $label, 'count' => $count];
+    }
+
+    return $rows;
 }
 
 function behavior_interpret_segments(array $summary): array
@@ -425,6 +646,21 @@ function behavior_interpret_segments(array $summary): array
         }
     }
 
+    foreach (($summary['interest_breakdown'] ?? []) as $interest) {
+        $value = strtolower((string) ($interest['label'] ?? ''));
+        $count = (int) ($interest['count'] ?? 0);
+        if ($value !== '' && $count >= 2) {
+            $score = min(100, (int) round(($count / $total) * 150));
+            $segments[] = behavior_segment(
+                'interest_' . preg_replace('/[^a-z0-9_]/', '', $value),
+                behavior_interest_label($value),
+                'INTEREST',
+                max(35, $score),
+                "signals={$count}"
+            );
+        }
+    }
+
     $activeDays = (int) ($summary['active_days'] ?? 0);
     $playbackStarts = (int) ($summary['playback_starts'] ?? 0);
     $completed = (int) ($summary['playback_completed'] ?? 0);
@@ -443,17 +679,68 @@ function behavior_interpret_segments(array $summary): array
         $segments[] = behavior_segment('deep_viewer', 'Visionnage profond', 'ENGAGEMENT', (int) min(100, $avgEngagement), "score_moyen={$avgEngagement}");
     }
 
-    foreach ([['language_breakdown', 'LANGUAGE', 'language_'], ['country_breakdown', 'COUNTRY', 'country_']] as [$source, $group, $prefix]) {
+    foreach ([['language_breakdown', 'LANGUAGE', 'language_'], ['country_breakdown', 'COUNTRY', 'country_'], ['region_breakdown', 'REGION', 'region_']] as [$source, $group, $prefix]) {
         foreach (($summary[$source] ?? []) as $row) {
             $value = strtolower((string) ($row['label'] ?? ''));
             $count = (int) ($row['count'] ?? 0);
             if ($value !== '' && $value !== 'unknown' && $count >= 3) {
-                $segments[] = behavior_segment($prefix . preg_replace('/[^a-z0-9_]/', '', $value), strtoupper($value), $group, min(100, (int) round(($count / $total) * 130)), "events={$count}");
+                $segments[] = behavior_segment($prefix . preg_replace('/[^a-z0-9_]/', '', $value), behavior_geo_label($group, $value), $group, min(100, (int) round(($count / $total) * 130)), "events={$count}");
             }
         }
     }
 
     return $segments;
+}
+
+function behavior_interest_label(string $value): string
+{
+    return [
+        'sports' => 'Interet Sport',
+        'news' => 'Interet News',
+        'kids' => 'Interet Enfants',
+        'cinema' => 'Interet Cinema',
+        'music' => 'Interet Music',
+        'documentaries' => 'Interet Documentaires',
+        'religion' => 'Interet Religion',
+        'entertainment' => 'Interet Divertissement',
+    ][$value] ?? ('Interet ' . ucfirst($value));
+}
+
+function behavior_geo_label(string $group, string $value): string
+{
+    $upper = strtoupper($value);
+    if ($group === 'LANGUAGE') {
+        return 'Langue ' . ([
+            'AR' => 'Arabe',
+            'FR' => 'Francais',
+            'EN' => 'Anglais',
+            'ES' => 'Espagnol',
+            'PT' => 'Portugais',
+            'IT' => 'Italien',
+            'DE' => 'Allemand',
+            'TR' => 'Turc',
+        ][$upper] ?? $upper);
+    }
+    if ($group === 'COUNTRY') {
+        return 'Pays ' . ([
+            'FR' => 'France',
+            'TN' => 'Tunisie',
+            'MA' => 'Maroc',
+            'DZ' => 'Algerie',
+            'EG' => 'Egypte',
+            'SA' => 'Arabie Saoudite',
+            'AE' => 'Emirats',
+            'GB' => 'Royaume-Uni',
+            'US' => 'Etats-Unis',
+            'CA' => 'Canada',
+            'ES' => 'Espagne',
+            'IT' => 'Italie',
+            'DE' => 'Allemagne',
+            'TR' => 'Turquie',
+        ][$upper] ?? $upper);
+    }
+
+    return 'Region ' . ucwords($value);
 }
 
 function behavior_segment(string $key, string $label, string $group, int $score, string $evidence): array
@@ -513,8 +800,8 @@ function behavior_load_device_segments(PDO $pdo, string $deviceHash): array
 function behavior_recent_device_events(PDO $pdo, string $deviceHash): array
 {
     $statement = $pdo->prepare(
-        "SELECT event_type, content_type, category_id, category_label, content_language, content_country,
-                duration_seconds, position_seconds, engagement_score, source_screen, tags, created_at
+        "SELECT event_type, content_type, category_id, category_label, content_title, content_language, content_country,
+                content_region, interest_tags, duration_seconds, position_seconds, engagement_score, source_screen, tags, created_at
          FROM app_behavior_events
          WHERE device_id_hash = :device_id_hash
          ORDER BY id DESC
@@ -552,10 +839,21 @@ function behavior_admin_dashboard(PDO $pdo): array
          GROUP BY content_type
          ORDER BY events DESC"
     )->fetchAll();
+    $regions = behavior_admin_group_counts($pdo, 'content_region');
+    $countries = behavior_admin_group_counts($pdo, 'content_country');
+    $languages = behavior_admin_group_counts($pdo, 'content_language');
+    $interests = behavior_interest_counts($pdo, 30);
     $recent = $pdo->query(
-        "SELECT event_type, content_type, category_label, source_screen, app_version, platform, engagement_score, created_at
-         FROM app_behavior_events
-         ORDER BY id DESC
+        "SELECT e.created_at, d.public_device_code, COALESCE(c.license_type, d.license_status, 'unknown') AS license_type,
+                e.event_type, e.content_type, e.source_screen, e.category_label, e.content_title,
+                e.platform, e.app_version, e.engagement_score
+         FROM app_behavior_events e
+         LEFT JOIN devices d ON e.device_id_hash = SHA2(d.device_id, 256)
+         LEFT JOIN device_activations a ON a.id = (
+             SELECT da.id FROM device_activations da WHERE da.device_id = d.device_id ORDER BY da.id DESC LIMIT 1
+         )
+         LEFT JOIN activation_codes c ON c.id = a.activation_code_id
+         ORDER BY e.id DESC
          LIMIT 80"
     )->fetchAll();
 
@@ -564,8 +862,31 @@ function behavior_admin_dashboard(PDO $pdo): array
         'summary' => $summary,
         'segments' => $segments,
         'content' => $content,
+        'regions' => $regions,
+        'countries' => $countries,
+        'languages' => $languages,
+        'interests' => $interests,
         'recent_events' => $recent,
     ];
+}
+
+function behavior_admin_group_counts(PDO $pdo, string $column): array
+{
+    if (!in_array($column, ['content_region', 'content_country', 'content_language'], true)) {
+        return [];
+    }
+    $rows = $pdo->query(
+        "SELECT {$column} AS label, COUNT(*) AS count, COUNT(DISTINCT device_id_hash) AS devices
+         FROM app_behavior_events
+         WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+           AND {$column} IS NOT NULL
+           AND {$column} <> ''
+         GROUP BY {$column}
+         ORDER BY count DESC
+         LIMIT 12"
+    );
+
+    return $rows ? $rows->fetchAll() : [];
 }
 
 function behavior_admin_device_analysis(PDO $pdo, string $deviceId): array

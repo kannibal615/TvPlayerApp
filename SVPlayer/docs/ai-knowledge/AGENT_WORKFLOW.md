@@ -56,7 +56,7 @@ Quand l'utilisateur demande une release:
 - lancer `.\scripts\guard_release_version.ps1` avant le build pour bloquer un numero deja publie ou installe;
 - bypass automatiquement `compileDebugKotlin` et `testDebugUnitTest`;
 - lancer directement `.\gradlew.bat assembleRelease`;
-- utiliser un timeout de 15 minutes minimum;
+- utiliser un timeout de 20 minutes minimum;
 - si le build timeout, verifier les processus Java/Gradle et les artefacts avant de relancer;
 - relancer `.\scripts\guard_release_version.ps1 -RequireBuildMetadata` apres le build pour verifier `output-metadata.json`;
 - publier avec `scripts/deploy_activation_phase1.ps1 -SkipInstall` sauf consigne contraire;

@@ -11,8 +11,8 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
 
 Gradle local constate le 2026-06-30:
-- `versionCode = 54`
-- `versionName = "0.1.51"`
+- `versionCode = 55`
+- `versionName = "0.1.52"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -131,3 +131,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-29: ajout de la regle release: bypass debug/test et timeout 20 minutes.
 - 2026-06-30: ajout du garde-fou `scripts/guard_release_version.ps1` et de la regle deploy backend apres build release.
 - 2026-06-30: release publiee `0.1.51` / `versionCode 54`.
+- 2026-06-30: release publiee `0.1.52` / `versionCode 55`.

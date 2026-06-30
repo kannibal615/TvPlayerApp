@@ -8,15 +8,20 @@ Construire une cible V1 simple et fiable pour comprendre les comportements utili
 
 La V1 ne doit pas faire de machine learning. Elle doit collecter des evenements normalises, agreger des signaux par appareil, calculer des segments par regles et exposer ces segments au backend publicitaire.
 
-Important: ce document est une specification future. L'etat reel actuel est limite au tracking pub, anomalies, diagnostics et comportement YouTube.
+Important: ce document decrit la V1 maintenant partiellement implementee. L'etat actuel inclut le tracking comportemental generique, les agregats, les segments admin et l'inference region/pays/langue/interets depuis categories et medias. Le ciblage publicitaire base sur ces segments reste l'etape suivante.
 
 ## 2. Etat actuel
 
 Deja en place:
 - tracking publicitaire dans `ads_events`;
-- tracking comportemental YouTube dans `app_behavior_events`;
+- tracking comportemental Live TV, Movies, Series, Episodes et YouTube dans `app_behavior_events`;
 - endpoint Android `POST api/app/behavior-events`;
 - endpoint Android `POST api/app/ads-events`;
+- table `user_behavior_daily`;
+- table `user_segments`;
+- menu admin `Segmentation`;
+- popup detail appareil avec onglets Tracking et Analyse;
+- inference backend des regions, pays, langues et centres d'interet depuis `category_label`, `content_title` et `tags`;
 - historique local YouTube avec video, channel, category, tags et duree;
 - historique local de lecture, favoris, progression, categories Live/Films/Series;
 - donnees device: pays, version app, statut licence, essai, free_ads, xtream_status.
@@ -29,12 +34,10 @@ Evenements comportementaux actuellement acceptes par `behavior_service.php`:
 - `SUGGESTION_OPENED`.
 
 Limites actuelles:
-- `app_behavior_events` est centre sur YouTube;
-- Live TV, films, series et episodes ne remontent pas encore d'evenements comportementaux complets;
-- aucune table de segments utilisateurs n'existe;
-- aucun scoring quotidien par appareil;
-- aucun dashboard admin dedie a la segmentation;
-- les donnees pub et comportement ne sont pas encore reliees pour le ciblage.
+- le ciblage publicitaire ne consomme pas encore `user_segments`;
+- l'inference pays/langue/interets est basee sur regles lexicales, a enrichir progressivement avec les vrais noms categories/medias observes;
+- le stockage local offline/batch durable Android n'est pas encore implemente;
+- la retention avancee et les seuils configurables restent a finaliser.
 
 ## 3. Donnees V1 a exploiter
 
@@ -83,7 +86,7 @@ Ne pas envoyer:
 - identifiants Xtream;
 - URL de lecture;
 - username/password;
-- titre exact si non necessaire au segment;
+- titre exact long ou sensible; la V1 stocke un `content_title` court nettoye pour permettre l'analyse admin et l'inference, sans URL ni secret Xtream;
 - adresse IP brute;
 - device_id brut hors endpoint deja hash cote serveur;
 - donnees personnelles declarees par l'utilisateur;
@@ -316,11 +319,11 @@ Phase 1 - Documentation et validation:
 - confirmer si `app_behavior_events` est etendue ou si une nouvelle table est creee.
 
 Phase 2 - Backend:
-- schema SQL;
-- validation payload;
-- batch endpoint;
-- agregation quotidienne;
-- calcul segments;
+- schema SQL implemente;
+- validation payload implemente;
+- batch endpoint implemente;
+- agregation quotidienne implemente;
+- calcul segments implemente;
 - tests PHP.
 
 Phase 3 - Android:
@@ -331,9 +334,9 @@ Phase 3 - Android:
 - tests unitaires si possible.
 
 Phase 4 - Admin:
-- dashboard segments;
-- top segments;
-- fiche device;
+- dashboard segments implemente;
+- top segments implemente;
+- fiche device implemente avec onglets;
 - controles de seuils.
 
 Phase 5 - Publicite:

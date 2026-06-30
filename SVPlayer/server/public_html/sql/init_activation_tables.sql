@@ -289,8 +289,11 @@ CREATE TABLE IF NOT EXISTS app_behavior_events (
     content_type ENUM('LIVE_TV', 'MOVIE', 'SERIES', 'EPISODE', 'YOUTUBE', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
     content_id_hash CHAR(64) NULL,
     content_title_hash CHAR(64) NULL,
+    content_title VARCHAR(180) NULL,
     content_country VARCHAR(16) NULL,
+    content_region VARCHAR(32) NULL,
     content_language VARCHAR(16) NULL,
+    interest_tags VARCHAR(255) NULL,
     duration_seconds INT UNSIGNED NULL,
     position_seconds INT UNSIGNED NULL,
     engagement_score TINYINT UNSIGNED NULL,
@@ -309,10 +312,13 @@ CREATE TABLE IF NOT EXISTS app_behavior_events (
 ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_type ENUM('LIVE_TV', 'MOVIE', 'SERIES', 'EPISODE', 'YOUTUBE', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN' AFTER tags;
 ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_id_hash CHAR(64) NULL AFTER content_type;
 ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_title_hash CHAR(64) NULL AFTER content_id_hash;
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_title VARCHAR(180) NULL AFTER content_title_hash;
 ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS category_label VARCHAR(120) NULL AFTER category_id;
 ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_country VARCHAR(16) NULL AFTER category_label;
-ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_language VARCHAR(16) NULL AFTER content_country;
-ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS duration_seconds INT UNSIGNED NULL AFTER content_language;
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_region VARCHAR(32) NULL AFTER content_country;
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS content_language VARCHAR(16) NULL AFTER content_region;
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS interest_tags VARCHAR(255) NULL AFTER content_language;
+ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS duration_seconds INT UNSIGNED NULL AFTER interest_tags;
 ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS position_seconds INT UNSIGNED NULL AFTER duration_seconds;
 ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS engagement_score TINYINT UNSIGNED NULL AFTER position_seconds;
 ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS source_screen VARCHAR(40) NULL AFTER engagement_score;
@@ -332,18 +338,21 @@ CREATE TABLE IF NOT EXISTS user_behavior_daily (
     top_category_id VARCHAR(40) NULL,
     top_category_label VARCHAR(120) NULL,
     top_tags VARCHAR(500) NULL,
+    top_interests VARCHAR(255) NULL,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_behavior_daily_device_type_day (device_id_hash, activity_date, content_type),
     INDEX idx_behavior_daily_date (activity_date),
     INDEX idx_behavior_daily_type (content_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+ALTER TABLE user_behavior_daily ADD COLUMN IF NOT EXISTS top_interests VARCHAR(255) NULL AFTER top_tags;
+
 CREATE TABLE IF NOT EXISTS user_segments (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     device_id_hash CHAR(64) NOT NULL,
     segment_key VARCHAR(80) NOT NULL,
     segment_label VARCHAR(120) NOT NULL,
-    segment_group ENUM('CONTENT', 'ENGAGEMENT', 'LANGUAGE', 'COUNTRY', 'ADS', 'RISK') NOT NULL DEFAULT 'CONTENT',
+    segment_group ENUM('CONTENT', 'ENGAGEMENT', 'LANGUAGE', 'COUNTRY', 'REGION', 'INTEREST', 'ADS', 'RISK') NOT NULL DEFAULT 'CONTENT',
     score TINYINT UNSIGNED NOT NULL DEFAULT 0,
     confidence TINYINT UNSIGNED NOT NULL DEFAULT 0,
     evidence VARCHAR(500) NULL,
@@ -356,6 +365,8 @@ CREATE TABLE IF NOT EXISTS user_segments (
     INDEX idx_user_segments_score (score),
     INDEX idx_user_segments_last_seen (last_seen_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE user_segments MODIFY segment_group ENUM('CONTENT', 'ENGAGEMENT', 'LANGUAGE', 'COUNTRY', 'REGION', 'INTEREST', 'ADS', 'RISK') NOT NULL DEFAULT 'CONTENT';
 
 INSERT INTO ads_settings
     (id, ads_enabled, provider, use_test_ads, vast_production_tag_url, vast_test_tag_url,
