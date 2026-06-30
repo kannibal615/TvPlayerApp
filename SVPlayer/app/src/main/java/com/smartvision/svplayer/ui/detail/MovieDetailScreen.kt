@@ -201,7 +201,6 @@ fun MovieDetailRoute(
         notificationBadgeCount = notificationBadgeCount,
         onRetry = viewModel::loadDetails,
         onWatchMovie = {
-            container.behaviorReporter.reportAsync(behaviorScope, "PLAYBACK_STARTED", state.toBehaviorContent("DETAIL"))
             onWatchMovie(state.movieId)
         },
         onFavorite = {

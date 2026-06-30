@@ -943,6 +943,33 @@ body.admin-modal-open {
     gap: 14px;
 }
 
+.behavior-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 14px;
+    overflow-x: auto;
+}
+
+.behavior-tabs button {
+    min-height: 38px;
+    padding: 0 14px;
+    border: 1px solid #203149;
+    border-radius: 6px;
+    background: #07111e;
+    color: #b8c4d3;
+    cursor: pointer;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.behavior-tabs button:hover,
+.behavior-tabs button:focus-visible,
+.behavior-tabs button.active {
+    border-color: #3c94ff;
+    background: #0d438c;
+    color: #fff;
+}
+
 .behavior-insight-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));

@@ -20,8 +20,11 @@ Deja en place:
 - table `user_behavior_daily`;
 - table `user_segments`;
 - menu admin `Segmentation`;
+- ecran admin `Segmentation` organise en onglets Vue, Segments, Interpretation et Evenements;
 - popup detail appareil avec onglets Tracking et Analyse;
 - inference backend des regions, pays, langues et centres d'interet depuis `category_label`, `content_title` et `tags`;
+- normalisation admin des types licence comportementaux en `free_ads`, `trial_demo`, `premium`;
+- diagnostics admin autostart/auto-sync via `app_device_diagnostics`;
 - historique local YouTube avec video, channel, category, tags et duree;
 - historique local de lecture, favoris, progression, categories Live/Films/Series;
 - donnees device: pays, version app, statut licence, essai, free_ads, xtream_status.
@@ -32,6 +35,17 @@ Evenements comportementaux actuellement acceptes par `behavior_service.php`:
 - `PLAY_PAUSE`;
 - `VIDEO_COMPLETED`;
 - `SUGGESTION_OPENED`.
+- `CONTENT_OPENED`;
+- `PLAYBACK_PROGRESS`;
+- `PLAYBACK_COMPLETED`;
+- `FAVORITE_ADDED`;
+- `FAVORITE_REMOVED`;
+- `SEARCH_PERFORMED`;
+- `PLAYER_ERROR`.
+
+Evenements explicitement retires du tracking comportemental:
+- `CATEGORY_OPENED`;
+- `PLAYBACK_STARTED`.
 
 Limites actuelles:
 - le ciblage publicitaire ne consomme pas encore `user_segments`;
@@ -54,13 +68,11 @@ Types de contenu:
 
 Evenements V1:
 - `CONTENT_OPENED`: contenu ouvert ou chaine selectionnee;
-- `PLAYBACK_STARTED`: lecture effective;
 - `PLAYBACK_PROGRESS`: progression significative, limitee en frequence;
 - `PLAYBACK_COMPLETED`: contenu termine;
 - `FAVORITE_ADDED`;
 - `FAVORITE_REMOVED`;
 - `SEARCH_PERFORMED`: requete normalisee ou hash selon contexte;
-- `CATEGORY_OPENED`;
 - `SUGGESTION_OPENED`;
 - `AD_REQUESTED`;
 - `AD_STARTED`;

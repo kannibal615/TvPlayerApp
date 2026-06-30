@@ -1,5 +1,35 @@
 # AI Changelog
 
+## 2026-06-30 - Release Android 0.1.54 versionCode 57
+
+Type:
+- android
+- backend
+- admin
+- release
+- deploy
+
+Resume:
+- Bump Android de `0.1.52 (55)` vers `0.1.54 (57)`.
+- Correction du fallback de titre Live player/tracking via le catalogue local quand le cache Xtream memoire est absent.
+- Suppression du tracking `CATEGORY_OPENED` et `PLAYBACK_STARTED` cote app et rejet serveur pour anciennes APK.
+- Normalisation admin des types licence comportementaux en `free_ads`, `trial_demo`, `premium`.
+- Reorganisation de l'ecran Segmentation en onglets et enrichissement de la lecture rapide.
+- Correction du tableau Diagnostics admin: suppression de la reference invalide a `devices.license_type`, jointure activation/code et schema SQL `app_device_diagnostics`.
+- Correction Back player Live: Back quitte le player hors pub meme si l'overlay est visible, puis le focus revient sur la chaine selectionnee/focalisee.
+- Build release direct via `:app:assembleRelease`, deploiement complet backend/APK et verification publique de `0.1.54 (57)`.
+
+Fichiers concernes:
+- `app/build.gradle.kts`
+- `app/src/main/java/com/smartvision/svplayer/data/behavior/BehaviorReporter.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/LiveTvScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/player/FullScreenPlayerScreen.kt`
+- `server/public_html/api/behavior_service.php`
+- `server/public_html/admin/index.php`
+- `server/public_html/assets/admin.js`
+- `server/public_html/assets/admin-overrides.css`
+- `server/public_html/sql/init_activation_tables.sql`
+
 ## 2026-06-30 - Release Android 0.1.52 versionCode 55
 
 Type:

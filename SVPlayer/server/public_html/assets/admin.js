@@ -79,16 +79,16 @@
         button.addEventListener('click', () => closeModal(button.closest('.admin-modal')));
     });
 
-    const activateModalTab = (button) => {
-        const modal = button.closest('.admin-modal');
+    const activateTab = (button) => {
+        const scope = button.closest('[data-tab-scope]') || button.closest('.admin-modal');
         const target = document.getElementById(button.dataset.tabTarget || '');
-        if (!modal || !target) return;
-        modal.querySelectorAll('[data-tab-target]').forEach((tab) => {
+        if (!scope || !target) return;
+        scope.querySelectorAll('[data-tab-target]').forEach((tab) => {
             const active = tab === button;
             tab.classList.toggle('active', active);
             tab.setAttribute('aria-selected', active ? 'true' : 'false');
         });
-        modal.querySelectorAll('.admin-tab-panel').forEach((panel) => {
+        scope.querySelectorAll('.admin-tab-panel').forEach((panel) => {
             const active = panel === target;
             panel.classList.toggle('active', active);
             panel.hidden = !active;
@@ -99,13 +99,13 @@
         const button = event.target.closest('[data-tab-target]');
         if (!button) return;
         event.preventDefault();
-        activateModalTab(button);
+        activateTab(button);
     });
 
-    document.querySelectorAll('.admin-modal').forEach((modal) => {
-        const activeButton = modal.querySelector('[data-tab-target].active') || modal.querySelector('[data-tab-target]');
+    document.querySelectorAll('.admin-modal, [data-tab-scope]').forEach((scope) => {
+        const activeButton = scope.querySelector('[data-tab-target].active') || scope.querySelector('[data-tab-target]');
         if (activeButton) {
-            activateModalTab(activeButton);
+            activateTab(activeButton);
         }
     });
 

@@ -108,6 +108,8 @@ import com.smartvision.svplayer.data.monetization.smartVisionMediaSourceFactory
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.domain.model.PlaybackKind
+import com.smartvision.svplayer.domain.usecase.BuildPlaybackRequestUseCase
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.components.TvButton
@@ -181,6 +183,7 @@ class FullScreenPlayerViewModel(
     private val kind: FullScreenContentKind,
     private val xtreamRepository: XtreamRepository,
     private val userContentRepository: UserContentRepository,
+    private val buildPlaybackRequest: BuildPlaybackRequestUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(resolvePlayback(contentId, kind, xtreamRepository))
     val uiState: StateFlow<FullScreenPlayback> = _uiState
@@ -191,6 +194,19 @@ class FullScreenPlayerViewModel(
             val stored = userContentRepository.getProgress(kind.storageType(), contentId)
             if (kind != FullScreenContentKind.Live && stored != null && stored.positionMs > 0L) {
                 _uiState.value = _uiState.value.copy(resumePositionMs = stored.positionMs)
+            }
+            val localPlayback = buildPlaybackRequest(kind.playbackKind(), contentId.toString())
+            if (localPlayback != null && _uiState.value.title.isGeneratedTitleFor(kind, contentId)) {
+                _uiState.value = _uiState.value.copy(
+                    title = localPlayback.title.cleanTitle(),
+                    subtitle = localPlayback.subtitle,
+                    url = localPlayback.url,
+                    resumePositionMs = if (kind == FullScreenContentKind.Live) {
+                        _uiState.value.resumePositionMs
+                    } else {
+                        localPlayback.resumePositionMs
+                    },
+                )
             }
         }
     }
@@ -404,6 +420,7 @@ fun FullScreenPlayerRoute(
                 kind = kind,
                 xtreamRepository = container.xtreamRepository,
                 userContentRepository = container.userContentRepository,
+                buildPlaybackRequest = container.buildPlaybackRequest,
             )
         },
     )
@@ -477,7 +494,6 @@ private fun FullScreenPlayerScreen(
     var adPositionMs by remember(playback.streamId) { mutableLongStateOf(0L) }
     var adDurationMs by remember(playback.streamId) { mutableLongStateOf(0L) }
     var exiting by remember(playback.streamId) { mutableStateOf(false) }
-    var playbackStartedReported by remember(playback.streamId) { mutableStateOf(false) }
     var playbackCompletedReported by remember(playback.streamId) { mutableStateOf(false) }
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
     val exitStopDone = remember(playback.streamId) { AtomicBoolean(false) }
@@ -730,13 +746,6 @@ private fun FullScreenPlayerScreen(
     BackHandler {
         if (adGateActive) {
             Unit
-        } else if (activeMenu != PlayerOverlayMenu.None) {
-            activeMenu = PlayerOverlayMenu.None
-        } else if (nextEpisodeCountdown != null) {
-            nextEpisodeCountdown = null
-            nextEpisodeDismissed = true
-        } else if (overlayVisible) {
-            overlayVisible = false
         } else {
             exitPlayer("back_handler")
         }
@@ -931,10 +940,6 @@ private fun FullScreenPlayerScreen(
                 if (playbackState == Player.STATE_READY) {
                     errorText = null
                     stalledRefreshCount = 0
-                    if (!adGateActive && !playbackStartedReported) {
-                        playbackStartedReported = true
-                        behaviorReporter.reportAsync(coroutineScope, "PLAYBACK_STARTED", behaviorContent("ready"))
-                    }
                 }
                 if (playbackState == Player.STATE_ENDED && adGateActive) {
                     buffering = true
@@ -1086,11 +1091,7 @@ private fun FullScreenPlayerScreen(
                                 adGateActive -> true
 
                             keyCode == AndroidKeyEvent.KEYCODE_BACK && event.action == AndroidKeyEvent.ACTION_UP -> {
-                                if (overlayVisible) {
-                                    overlayVisible = false
-                                } else {
-                                    exitPlayer("player_view_back")
-                                }
+                                exitPlayer("player_view_back")
                                 true
                             }
 
@@ -1122,11 +1123,7 @@ private fun FullScreenPlayerScreen(
                             adGateActive -> true
 
                         keyCode == AndroidKeyEvent.KEYCODE_BACK && event.action == AndroidKeyEvent.ACTION_UP -> {
-                            if (overlayVisible) {
-                                overlayVisible = false
-                            } else {
-                                exitPlayer("player_view_back_update")
-                            }
+                            exitPlayer("player_view_back_update")
                             true
                         }
 
@@ -1987,6 +1984,23 @@ private fun FullScreenContentKind.storageType(): String =
         FullScreenContentKind.Movie -> UserContentType.Movie
         FullScreenContentKind.Episode -> UserContentType.Episode
     }
+
+private fun FullScreenContentKind.playbackKind(): PlaybackKind =
+    when (this) {
+        FullScreenContentKind.Live -> PlaybackKind.Live
+        FullScreenContentKind.Movie -> PlaybackKind.Movie
+        FullScreenContentKind.Episode -> PlaybackKind.Episode
+    }
+
+private fun String.isGeneratedTitleFor(kind: FullScreenContentKind, id: Int): Boolean {
+    val normalized = trim()
+    return when (kind) {
+        FullScreenContentKind.Live -> normalized.equals("Chaine $id", ignoreCase = true) ||
+            normalized.matches(Regex("(?i)^chaine\\s+\\d+$"))
+        FullScreenContentKind.Movie -> normalized.equals("Film $id", ignoreCase = true)
+        FullScreenContentKind.Episode -> normalized.equals("Episode $id", ignoreCase = true)
+    }
+}
 
 private fun FullScreenContentKind.toPlayerContentType(): PlayerContentType =
     when (this) {

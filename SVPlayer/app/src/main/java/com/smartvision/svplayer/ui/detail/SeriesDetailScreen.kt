@@ -257,11 +257,6 @@ fun SeriesDetailRoute(
             viewModel.toggleFavorite()
         },
         onWatchEpisode = { episodeId ->
-            container.behaviorReporter.reportAsync(
-                behaviorScope,
-                "PLAYBACK_STARTED",
-                state.toBehaviorContent("DETAIL", episodeId),
-            )
             onWatchEpisode(episodeId)
         },
         modifier = modifier,

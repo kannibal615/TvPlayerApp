@@ -324,6 +324,22 @@ ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS engagement_score TINYIN
 ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS source_screen VARCHAR(40) NULL AFTER engagement_score;
 ALTER TABLE app_behavior_events ADD COLUMN IF NOT EXISTS context_json TEXT NULL AFTER source_screen;
 
+CREATE TABLE IF NOT EXISTS app_device_diagnostics (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    device_id VARCHAR(100) NULL,
+    public_device_code VARCHAR(40) NULL,
+    diagnostic_type VARCHAR(40) NOT NULL,
+    app_version VARCHAR(50) NULL,
+    android_version VARCHAR(40) NULL,
+    device_model VARCHAR(120) NULL,
+    payload_json TEXT NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_device_diag (device_id, diagnostic_type),
+    INDEX idx_public_diag (public_device_code, diagnostic_type),
+    INDEX idx_diag_type_time (diagnostic_type, updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS user_behavior_daily (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     device_id_hash CHAR(64) NOT NULL,

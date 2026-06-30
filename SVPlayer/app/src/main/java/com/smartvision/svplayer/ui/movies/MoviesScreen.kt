@@ -208,19 +208,6 @@ fun MoviesScreen(
                     contentSearchQuery = contentSearchQuery,
                     onCategory = { category ->
                         if (inputReady) {
-                            container.behaviorReporter.reportAsync(
-                                behaviorScope,
-                                "CATEGORY_OPENED",
-                                BehaviorContent(
-                                    contentType = "MOVIE",
-                                    contentId = category.id,
-                                    title = category.label,
-                                    categoryId = category.id,
-                                    categoryLabel = category.label,
-                                    sourceScreen = "MOVIES",
-                                    engagementScore = 30,
-                                ),
-                            )
                             viewModel.selectCategory(category)
                         }
                     },

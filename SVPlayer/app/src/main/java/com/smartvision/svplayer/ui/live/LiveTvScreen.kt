@@ -314,19 +314,6 @@ fun LiveTvScreen(
                     contentSearchQuery = contentSearchQuery,
                     onCategory = { category ->
                         if (inputReady) {
-                            container.behaviorReporter.reportAsync(
-                                behaviorScope,
-                                "CATEGORY_OPENED",
-                                BehaviorContent(
-                                    contentType = "LIVE_TV",
-                                    contentId = category.id,
-                                    title = category.label,
-                                    categoryId = category.id,
-                                    categoryLabel = category.label,
-                                    sourceScreen = "LIVE",
-                                    engagementScore = 30,
-                                ),
-                            )
                             viewModel.selectCategory(category)
                         }
                     },
@@ -492,6 +479,17 @@ private fun ChannelList(
     val visibleChannels = state.channels.filter { channel ->
         searchQuery.isBlank() || channel.name.contains(searchQuery, ignoreCase = true)
     }
+    val focusChannelId = state.selectedChannelId
+        ?.takeIf { selectedId -> visibleChannels.any { it.streamId == selectedId } }
+        ?: state.focusedChannelId?.takeIf { focusedId -> visibleChannels.any { it.streamId == focusedId } }
+        ?: visibleChannels.firstOrNull()?.streamId
+    LaunchedEffect(focusChannelId, state.channelsLoading, visibleChannels.size) {
+        if (!state.channelsLoading && focusChannelId != null) {
+            withFrameNanos { }
+            delay(80)
+            runCatching { firstChannelFocusRequester.requestFocus() }
+        }
+    }
     LiveTvPanel(
         title = "Chaines",
         modifier = modifier,
@@ -552,7 +550,7 @@ private fun ChannelList(
                     ChannelRow(
                         channel = channel,
                         selected = channel.streamId == state.selectedChannel?.streamId,
-                        focusRequester = firstChannelFocusRequester.takeIf { index == 0 },
+                        focusRequester = firstChannelFocusRequester.takeIf { channel.streamId == focusChannelId },
                         leftFocusRequester = selectedCategoryFocusRequester,
                         rightFocusRequester = previewActionFocusRequester,
                         onFocused = { onChannelFocused(channel) },

@@ -207,19 +207,6 @@ fun SeriesScreen(
                     contentSearchQuery = contentSearchQuery,
                     onCategory = { category ->
                         if (inputReady) {
-                            container.behaviorReporter.reportAsync(
-                                behaviorScope,
-                                "CATEGORY_OPENED",
-                                BehaviorContent(
-                                    contentType = "SERIES",
-                                    contentId = category.id,
-                                    title = category.label,
-                                    categoryId = category.id,
-                                    categoryLabel = category.label,
-                                    sourceScreen = "SERIES",
-                                    engagementScore = 30,
-                                ),
-                            )
                             viewModel.selectCategory(category)
                         }
                     },

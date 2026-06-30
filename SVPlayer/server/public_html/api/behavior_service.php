@@ -134,15 +134,19 @@ function behavior_allowed_event_types(): array
         'VIDEO_COMPLETED',
         'SUGGESTION_OPENED',
         'CONTENT_OPENED',
-        'PLAYBACK_STARTED',
         'PLAYBACK_PROGRESS',
         'PLAYBACK_COMPLETED',
         'FAVORITE_ADDED',
         'FAVORITE_REMOVED',
         'SEARCH_PERFORMED',
-        'CATEGORY_OPENED',
         'PLAYER_ERROR',
     ];
+}
+
+function behavior_tracked_events_sql(?string $alias = null): string
+{
+    $prefix = $alias !== null && $alias !== '' ? $alias . '.' : '';
+    return $prefix . "event_type NOT IN ('CATEGORY_OPENED', 'PLAYBACK_STARTED')";
 }
 
 function behavior_allowed_content_types(): array
@@ -487,7 +491,7 @@ function behavior_update_daily(PDO $pdo, string $deviceHash, string $contentType
             UTC_DATE(),
             content_type,
             COUNT(*),
-            SUM(event_type IN ('PLAYBACK_STARTED', 'PLAYER_READY')),
+            SUM(event_type IN ('PLAYBACK_PROGRESS', 'PLAYER_READY')),
             SUM(event_type IN ('PLAYBACK_COMPLETED', 'VIDEO_COMPLETED')),
             SUM(event_type IN ('FAVORITE_ADDED', 'FAVORITE_REMOVED')),
             COALESCE(SUM(duration_seconds), 0),
@@ -499,6 +503,7 @@ function behavior_update_daily(PDO $pdo, string $deviceHash, string $contentType
          FROM app_behavior_events
          WHERE device_id_hash = :device_id_hash
            AND content_type = :content_type
+           AND " . behavior_tracked_events_sql() . "
            AND created_at >= UTC_DATE()
          GROUP BY device_id_hash, content_type"
     );
@@ -534,13 +539,14 @@ function behavior_device_summary(PDO $pdo, string $deviceHash, int $days = 30): 
             SUM(content_type = 'MOVIE') AS movie_events,
             SUM(content_type IN ('SERIES', 'EPISODE')) AS series_events,
             SUM(content_type = 'YOUTUBE') AS youtube_events,
-            SUM(event_type IN ('PLAYBACK_STARTED', 'PLAYER_READY')) AS playback_starts,
+            SUM(event_type IN ('PLAYBACK_PROGRESS', 'PLAYER_READY')) AS playback_starts,
             SUM(event_type IN ('PLAYBACK_COMPLETED', 'VIDEO_COMPLETED')) AS playback_completed,
             SUM(event_type = 'SEARCH_PERFORMED') AS searches,
             SUM(event_type IN ('FAVORITE_ADDED', 'FAVORITE_REMOVED')) AS favorite_events,
             COALESCE(AVG(engagement_score), 0) AS avg_engagement
          FROM app_behavior_events
          WHERE device_id_hash = :device_id_hash
+           AND " . behavior_tracked_events_sql() . "
            AND created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)"
     );
     $statement->execute(['device_id_hash' => $deviceHash]);
@@ -567,6 +573,7 @@ function behavior_group_counts(PDO $pdo, string $deviceHash, int $days, string $
         "SELECT COALESCE({$column}, 'UNKNOWN') AS label, COUNT(*) AS count
          FROM app_behavior_events
          WHERE device_id_hash = :device_id_hash
+           AND " . behavior_tracked_events_sql() . "
            AND created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
          GROUP BY COALESCE({$column}, 'UNKNOWN')
          ORDER BY count DESC
@@ -579,7 +586,7 @@ function behavior_group_counts(PDO $pdo, string $deviceHash, int $days, string $
 
 function behavior_interest_counts(PDO $pdo, int $days, ?string $deviceHash = null): array
 {
-    $where = "created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY) AND interest_tags IS NOT NULL AND interest_tags <> ''";
+    $where = behavior_tracked_events_sql() . " AND created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY) AND interest_tags IS NOT NULL AND interest_tags <> ''";
     $params = [];
     if ($deviceHash !== null) {
         $where .= ' AND device_id_hash = :device_id_hash';
@@ -804,6 +811,7 @@ function behavior_recent_device_events(PDO $pdo, string $deviceHash): array
                 content_region, interest_tags, duration_seconds, position_seconds, engagement_score, source_screen, tags, created_at
          FROM app_behavior_events
          WHERE device_id_hash = :device_id_hash
+           AND " . behavior_tracked_events_sql() . "
          ORDER BY id DESC
          LIMIT 30"
     );
@@ -822,7 +830,8 @@ function behavior_admin_dashboard(PDO $pdo): array
             COUNT(DISTINCT CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN device_id_hash END) AS active_7d,
             MAX(created_at) AS last_event_at,
             COALESCE(AVG(engagement_score), 0) AS avg_engagement
-         FROM app_behavior_events"
+         FROM app_behavior_events
+         WHERE " . behavior_tracked_events_sql()
     )->fetch() ?: [];
     $segments = $pdo->query(
         "SELECT segment_key, segment_label, segment_group, COUNT(*) AS devices, ROUND(AVG(score), 1) AS avg_score, MAX(last_seen_at) AS last_seen_at
@@ -836,6 +845,7 @@ function behavior_admin_dashboard(PDO $pdo): array
         "SELECT content_type, COUNT(*) AS events, COUNT(DISTINCT device_id_hash) AS devices
          FROM app_behavior_events
          WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+           AND " . behavior_tracked_events_sql() . "
          GROUP BY content_type
          ORDER BY events DESC"
     )->fetchAll();
@@ -844,7 +854,12 @@ function behavior_admin_dashboard(PDO $pdo): array
     $languages = behavior_admin_group_counts($pdo, 'content_language');
     $interests = behavior_interest_counts($pdo, 30);
     $recent = $pdo->query(
-        "SELECT e.created_at, d.public_device_code, COALESCE(c.license_type, d.license_status, 'unknown') AS license_type,
+        "SELECT e.created_at, d.public_device_code,
+                CASE
+                    WHEN a.activation_type = 'free_ads' OR d.free_with_ads_status = 'active' OR c.license_type = 'free' THEN 'free_ads'
+                    WHEN a.activation_type IN ('trial_demo', 'trial_pending_xtream') OR d.trial_status IN ('active', 'pending_xtream') OR c.license_type = 'trial' THEN 'trial_demo'
+                    ELSE 'premium'
+                END AS license_type,
                 e.event_type, e.content_type, e.source_screen, e.category_label, e.content_title,
                 e.platform, e.app_version, e.engagement_score
          FROM app_behavior_events e
@@ -853,6 +868,7 @@ function behavior_admin_dashboard(PDO $pdo): array
              SELECT da.id FROM device_activations da WHERE da.device_id = d.device_id ORDER BY da.id DESC LIMIT 1
          )
          LEFT JOIN activation_codes c ON c.id = a.activation_code_id
+         WHERE " . behavior_tracked_events_sql('e') . "
          ORDER BY e.id DESC
          LIMIT 80"
     )->fetchAll();
@@ -879,6 +895,7 @@ function behavior_admin_group_counts(PDO $pdo, string $column): array
         "SELECT {$column} AS label, COUNT(*) AS count, COUNT(DISTINCT device_id_hash) AS devices
          FROM app_behavior_events
          WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+           AND " . behavior_tracked_events_sql() . "
            AND {$column} IS NOT NULL
            AND {$column} <> ''
          GROUP BY {$column}

@@ -164,6 +164,21 @@ function admin_page_number(mixed $page): int
     return $value === false ? 1 : (int) $value;
 }
 
+function admin_normalized_license_type(array $row): string
+{
+    $activationType = (string) ($row['activation_type'] ?? '');
+    $trialStatus = (string) ($row['trial_status'] ?? '');
+    $freeAdsStatus = (string) ($row['free_with_ads_status'] ?? '');
+    $codeLicenseType = (string) ($row['code_license_type'] ?? $row['license_type'] ?? '');
+    if ($activationType === 'free_ads' || $freeAdsStatus === 'active' || $codeLicenseType === 'free') {
+        return 'free_ads';
+    }
+    if (in_array($activationType, ['trial_demo', 'trial_pending_xtream'], true) || in_array($trialStatus, ['active', 'pending_xtream'], true) || $codeLicenseType === 'trial') {
+        return 'trial_demo';
+    }
+    return 'premium';
+}
+
 function handle_admin_action(PDO $pdo, string $action): void
 {
     switch ($action) {
@@ -1641,11 +1656,16 @@ function admin_load_diagnostics_admin(PDO $pdo): array
             "SELECT dd.device_id, dd.public_device_code, dd.diagnostic_type, dd.app_version,
                     dd.android_version, dd.device_model, dd.payload_json, dd.updated_at,
                     d.device_name, d.status AS device_status, d.license_status,
-                    d.license_type, d.last_seen_at
+                    d.trial_status, d.free_with_ads_status, d.last_seen_at,
+                    a.activation_type, c.license_type AS code_license_type
              FROM app_device_diagnostics dd
              LEFT JOIN devices d
                 ON d.device_id = dd.device_id
                 OR (dd.public_device_code IS NOT NULL AND dd.public_device_code <> '' AND d.public_device_code = dd.public_device_code)
+             LEFT JOIN device_activations a ON a.id = (
+                SELECT da.id FROM device_activations da WHERE da.device_id = d.device_id ORDER BY da.id DESC LIMIT 1
+             )
+             LEFT JOIN activation_codes c ON c.id = a.activation_code_id
              ORDER BY dd.updated_at DESC
              LIMIT 300"
         );
@@ -1673,7 +1693,7 @@ function admin_load_diagnostics_admin(PDO $pdo): array
                 'device_name' => $row['device_name'] ?: $row['device_model'] ?: 'Android TV',
                 'device_status' => $row['device_status'] ?? null,
                 'license_status' => $row['license_status'] ?? null,
-                'license_type' => $row['license_type'] ?? null,
+                'license_type' => admin_normalized_license_type($row),
                 'last_seen_at' => $row['last_seen_at'] ?? null,
                 'latest_at' => $row['updated_at'] ?? null,
                 'diagnostics' => [],
@@ -2005,7 +2025,7 @@ function render_admin_login(?string $error): void
 {
     $configured = admin_auth_is_configured();
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=8"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=9"></head>
 <body class="admin-login-body"><main class="admin-login-panel">
     <a class="admin-brand" href="/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
     <h1>Administration</h1><p>Commandes, licences et appareils SmartVision.</p>
@@ -2068,7 +2088,7 @@ function render_admin_dashboard(
     ];
     $heading = $pages[$page] ?? $pages['overview'];
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=8"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=9"></head>
 <body class="admin-body">
 <aside class="admin-sidebar">
     <a class="admin-brand" href="/admin/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
@@ -2550,7 +2570,7 @@ function render_admin_dashboard(
         <?php endif; ?>
     </main>
 </div>
-<script src="/assets/admin.js?v=4" defer></script>
+<script src="/assets/admin.js?v=5" defer></script>
 </body></html><?php
 }
 
@@ -2749,56 +2769,80 @@ function admin_render_behavior_segments_page(array $behaviorAdmin): void
         <?= admin_kpi('Engagement moyen', number_format((float) ($summary['avg_engagement'] ?? 0), 1, ',', ' ') . ' / 100', 'orange') ?>
     </section>
     <?php if (!$available): ?><div class="admin-notice error"><?= admin_escape($message ?: 'Segmentation indisponible.') ?></div><?php endif; ?>
-    <div class="behavior-dashboard-grid">
-        <section class="admin-panel behavior-panel">
-            <div class="admin-panel-heading"><div><h2>Segments actifs</h2><p>Segments deduits automatiquement des usages 30 jours.</p></div><a class="admin-button compact secondary" href="/admin/?page=segments">Actualiser</a></div>
-            <div class="admin-table-wrap"><table><thead><tr><th>Segment</th><th>Groupe</th><th>Appareils</th><th>Score moyen</th><th>Dernier signal</th></tr></thead><tbody>
-                <?php if ($segments === []): ?><tr><td colspan="5" class="admin-empty">Aucun segment calcule pour le moment.</td></tr><?php endif; ?>
-                <?php foreach ($segments as $segment): ?><tr>
-                    <td><strong><?= admin_escape((string) ($segment['segment_label'] ?? '-')) ?></strong><small><?= admin_escape((string) ($segment['segment_key'] ?? '-')) ?></small></td>
-                    <td><span class="admin-state <?= admin_escape(strtolower((string) ($segment['segment_group'] ?? 'content'))) ?>"><?= admin_escape((string) ($segment['segment_group'] ?? '-')) ?></span></td>
-                    <td><?= number_format((int) ($segment['devices'] ?? 0), 0, ',', ' ') ?></td>
-                    <td><?= admin_escape((string) ($segment['avg_score'] ?? '0')) ?></td>
-                    <td><?= admin_escape((string) ($segment['last_seen_at'] ?? '-')) ?></td>
-                </tr><?php endforeach; ?>
-            </tbody></table></div>
+    <div data-tab-scope>
+        <nav class="behavior-tabs" aria-label="Segmentation">
+            <button type="button" class="active" data-tab-target="behavior-tab-overview">Vue</button>
+            <button type="button" data-tab-target="behavior-tab-segments">Segments</button>
+            <button type="button" data-tab-target="behavior-tab-insights">Interpretation</button>
+            <button type="button" data-tab-target="behavior-tab-events">Evenements</button>
+        </nav>
+        <section class="admin-tab-panel active" id="behavior-tab-overview">
+            <div class="behavior-dashboard-grid">
+                <section class="admin-panel behavior-panel">
+                    <div class="admin-panel-heading"><div><h2>Types de contenus</h2><p>Repartition des signaux utiles sur les 30 derniers jours.</p></div><a class="admin-button compact secondary" href="/admin/?page=segments">Actualiser</a></div>
+                    <ul class="behavior-breakdown-list">
+                        <?php if ($content === []): ?><li class="muted">Aucun contenu tracke.</li><?php endif; ?>
+                        <?php foreach ($content as $row): ?><li><span><?= admin_escape((string) ($row['content_type'] ?? 'UNKNOWN')) ?></span><strong><?= number_format((int) ($row['events'] ?? 0), 0, ',', ' ') ?></strong><small><?= number_format((int) ($row['devices'] ?? 0), 0, ',', ' ') ?> appareil(s)</small></li><?php endforeach; ?>
+                    </ul>
+                </section>
+                <section class="admin-panel behavior-panel">
+                    <div class="admin-panel-heading"><div><h2>Lecture rapide</h2><p>Signaux exploitables pour ciblage.</p></div></div>
+                    <ul class="behavior-breakdown-list">
+                        <li><span>Dernier signal</span><strong><?= admin_escape((string) ($summary['last_event_at'] ?? '-')) ?></strong></li>
+                        <li><span>Centres d'interet detectes</span><strong><?= number_format(count($interests), 0, ',', ' ') ?></strong></li>
+                        <li><span>Pays detectes</span><strong><?= number_format(count($countries), 0, ',', ' ') ?></strong></li>
+                    </ul>
+                </section>
+            </div>
         </section>
-        <section class="admin-panel behavior-panel">
-            <div class="admin-panel-heading"><div><h2>Types de contenus</h2><p>Repartition des signaux sur les 30 derniers jours.</p></div></div>
-            <ul class="behavior-breakdown-list">
-                <?php if ($content === []): ?><li class="muted">Aucun contenu tracke.</li><?php endif; ?>
-                <?php foreach ($content as $row): ?><li><span><?= admin_escape((string) ($row['content_type'] ?? 'UNKNOWN')) ?></span><strong><?= number_format((int) ($row['events'] ?? 0), 0, ',', ' ') ?></strong><small><?= number_format((int) ($row['devices'] ?? 0), 0, ',', ' ') ?> appareil(s)</small></li><?php endforeach; ?>
-            </ul>
+        <section class="admin-tab-panel" id="behavior-tab-segments" hidden>
+            <section class="admin-panel behavior-panel">
+                <div class="admin-panel-heading"><div><h2>Segments actifs</h2><p>Segments deduits automatiquement des usages 30 jours.</p></div></div>
+                <div class="admin-table-wrap"><table><thead><tr><th>Segment</th><th>Groupe</th><th>Appareils</th><th>Score moyen</th><th>Dernier signal</th></tr></thead><tbody>
+                    <?php if ($segments === []): ?><tr><td colspan="5" class="admin-empty">Aucun segment calcule pour le moment.</td></tr><?php endif; ?>
+                    <?php foreach ($segments as $segment): ?><tr>
+                        <td><strong><?= admin_escape((string) ($segment['segment_label'] ?? '-')) ?></strong><small><?= admin_escape((string) ($segment['segment_key'] ?? '-')) ?></small></td>
+                        <td><span class="admin-state <?= admin_escape(strtolower((string) ($segment['segment_group'] ?? 'content'))) ?>"><?= admin_escape((string) ($segment['segment_group'] ?? '-')) ?></span></td>
+                        <td><?= number_format((int) ($segment['devices'] ?? 0), 0, ',', ' ') ?></td>
+                        <td><?= admin_escape((string) ($segment['avg_score'] ?? '0')) ?></td>
+                        <td><?= admin_escape((string) ($segment['last_seen_at'] ?? '-')) ?></td>
+                    </tr><?php endforeach; ?>
+                </tbody></table></div>
+            </section>
+        </section>
+        <section class="admin-tab-panel" id="behavior-tab-insights" hidden>
+            <section class="admin-panel behavior-panel">
+                <div class="admin-panel-heading"><div><h2>Interpretation contenu consomme</h2><p>Regions, pays, langues et centres d'interet deduits des categories et medias.</p></div></div>
+                <div class="behavior-insight-grid">
+                    <section><h3>Regions</h3><?= admin_render_behavior_breakdown($regions) ?></section>
+                    <section><h3>Pays</h3><?= admin_render_behavior_breakdown($countries) ?></section>
+                    <section><h3>Langues</h3><?= admin_render_behavior_breakdown($languages) ?></section>
+                    <section><h3>Centres d'interet</h3><?= admin_render_behavior_breakdown($interests) ?></section>
+                </div>
+            </section>
+        </section>
+        <section class="admin-tab-panel" id="behavior-tab-events" hidden>
+            <section class="admin-panel behavior-panel">
+                <div class="admin-panel-heading"><div><h2>Evenements comportementaux recents</h2><p>Derniers signaux utiles recus depuis les applications TV.</p></div></div>
+                <div class="admin-table-wrap"><table><thead><tr><th>Date</th><th>Code TV</th><th>Type licence</th><th>Event</th><th>Contenu</th><th>Source</th><th>Categorie</th><th>Media</th><th>Plateforme</th><th>App</th><th>Engagement</th></tr></thead><tbody>
+                    <?php if ($recentEvents === []): ?><tr><td colspan="11" class="admin-empty">Aucun evenement recent.</td></tr><?php endif; ?>
+                    <?php foreach ($recentEvents as $event): ?><tr>
+                        <td><?= admin_escape((string) ($event['created_at'] ?? '-')) ?></td>
+                        <td><strong><?= admin_escape((string) ($event['public_device_code'] ?? '------')) ?></strong></td>
+                        <td><?= admin_escape((string) ($event['license_type'] ?? '-')) ?></td>
+                        <td><strong><?= admin_escape((string) ($event['event_type'] ?? '-')) ?></strong></td>
+                        <td><?= admin_escape((string) ($event['content_type'] ?? '-')) ?></td>
+                        <td><?= admin_escape((string) ($event['source_screen'] ?? '-')) ?></td>
+                        <td><?= admin_escape((string) ($event['category_label'] ?? '-')) ?></td>
+                        <td><?= admin_escape((string) ($event['content_title'] ?? '-')) ?></td>
+                        <td><?= admin_escape((string) ($event['platform'] ?? '-')) ?></td>
+                        <td><?= admin_escape((string) ($event['app_version'] ?? '-')) ?></td>
+                        <td><?= admin_escape((string) ($event['engagement_score'] ?? '-')) ?></td>
+                    </tr><?php endforeach; ?>
+                </tbody></table></div>
+            </section>
         </section>
     </div>
-    <section class="admin-panel behavior-panel">
-        <div class="admin-panel-heading"><div><h2>Interpretation contenu consomme</h2><p>Regions, pays, langues et centres d'interet deduits des categories et medias.</p></div></div>
-        <div class="behavior-insight-grid">
-            <section><h3>Regions</h3><?= admin_render_behavior_breakdown($regions) ?></section>
-            <section><h3>Pays</h3><?= admin_render_behavior_breakdown($countries) ?></section>
-            <section><h3>Langues</h3><?= admin_render_behavior_breakdown($languages) ?></section>
-            <section><h3>Centres d'interet</h3><?= admin_render_behavior_breakdown($interests) ?></section>
-        </div>
-    </section>
-    <section class="admin-panel">
-        <div class="admin-panel-heading"><div><h2>Evenements comportementaux recents</h2><p>Derniers signaux recus depuis les applications TV.</p></div></div>
-        <div class="admin-table-wrap"><table><thead><tr><th>Date</th><th>Code TV</th><th>Type licence</th><th>Event</th><th>Contenu</th><th>Source</th><th>Categorie</th><th>Media</th><th>Plateforme</th><th>App</th><th>Engagement</th></tr></thead><tbody>
-            <?php if ($recentEvents === []): ?><tr><td colspan="11" class="admin-empty">Aucun evenement recent.</td></tr><?php endif; ?>
-            <?php foreach ($recentEvents as $event): ?><tr>
-                <td><?= admin_escape((string) ($event['created_at'] ?? '-')) ?></td>
-                <td><strong><?= admin_escape((string) ($event['public_device_code'] ?? '------')) ?></strong></td>
-                <td><?= admin_escape((string) ($event['license_type'] ?? '-')) ?></td>
-                <td><strong><?= admin_escape((string) ($event['event_type'] ?? '-')) ?></strong></td>
-                <td><?= admin_escape((string) ($event['content_type'] ?? '-')) ?></td>
-                <td><?= admin_escape((string) ($event['source_screen'] ?? '-')) ?></td>
-                <td><?= admin_escape((string) ($event['category_label'] ?? '-')) ?></td>
-                <td><?= admin_escape((string) ($event['content_title'] ?? '-')) ?></td>
-                <td><?= admin_escape((string) ($event['platform'] ?? '-')) ?></td>
-                <td><?= admin_escape((string) ($event['app_version'] ?? '-')) ?></td>
-                <td><?= admin_escape((string) ($event['engagement_score'] ?? '-')) ?></td>
-            </tr><?php endforeach; ?>
-        </tbody></table></div>
-    </section>
     <?php
 }
 

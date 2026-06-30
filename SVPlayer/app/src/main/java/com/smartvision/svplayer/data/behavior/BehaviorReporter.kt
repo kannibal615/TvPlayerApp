@@ -67,12 +67,14 @@ class BehaviorReporter(
     private val api: BehaviorApiService,
 ) {
     suspend fun report(eventType: String, content: BehaviorContent) = withContext(Dispatchers.IO) {
+        val cleanEventType = eventType.cleanToken(40)
+        if (cleanEventType in IgnoredEventTypes) return@withContext
         val activation = activationRepository.localState.first()
         if (activation.deviceId.isBlank()) return@withContext
         val request = BehaviorEventRequest(
             deviceId = activation.deviceId,
             appVersion = BuildConfig.VERSION_NAME,
-            eventType = eventType.cleanToken(40),
+            eventType = cleanEventType,
             contentType = content.contentType.cleanToken(30).ifBlank { "UNKNOWN" },
             contentIdHash = content.contentId?.sha256(),
             contentTitleHash = content.title?.normalizeForHash()?.takeIf { it.isNotBlank() }?.sha256(),
@@ -150,5 +152,6 @@ class BehaviorReporter(
 
     private companion object {
         const val TAG = "SmartVisionBehavior"
+        val IgnoredEventTypes = setOf("CATEGORY_OPENED", "PLAYBACK_STARTED")
     }
 }
