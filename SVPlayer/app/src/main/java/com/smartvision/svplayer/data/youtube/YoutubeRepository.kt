@@ -85,7 +85,10 @@ class YoutubeRepository(
                 ensureApiKey()
                 personalizedTrending(pageToken)
             }
-            else -> searchPage(category.query, pageToken = pageToken, recordSearch = false)
+            else -> {
+                ensureApiKey()
+                personalizedCategory(category.query, pageToken)
+            }
         }
     }
 
@@ -162,6 +165,19 @@ class YoutubeRepository(
         history.getOrNull(currentIndex + 1)
     }
 
+    suspend fun clearSearchHistory() = withContext(Dispatchers.IO) {
+        dao.clearSearchHistory()
+    }
+
+    suspend fun clearVideoHistory() = withContext(Dispatchers.IO) {
+        dao.clearVideoHistory()
+        dao.clearSelections()
+    }
+
+    suspend fun clearYoutubeFavorites() = withContext(Dispatchers.IO) {
+        favoriteDao.deleteByType(YoutubeFavoriteContentType)
+    }
+
     suspend fun suggestVideos(video: YoutubeVideo): List<YoutubeVideo> = withContext(Dispatchers.IO) {
         ensureApiKey()
         val sameChannel = video.channelId
@@ -201,13 +217,76 @@ class YoutubeRepository(
 
     private suspend fun personalizedTrending(pageToken: String?): YoutubePage {
         val history = dao.getRecentVideos(limit = 30)
-        val query = history.buildHistoryQuery()
-        return if (query.isBlank()) {
+        return if (pageToken != null || history.isEmpty()) {
             popularVideos(pageToken)
         } else {
-            runCatching { searchPage(query, pageToken = pageToken, recordSearch = false) }
+            runCatching { blendedRecommendationPage(baseQuery = null, history = history) }
                 .getOrElse { popularVideos(pageToken) }
         }
+    }
+
+    private suspend fun personalizedCategory(baseQuery: String, pageToken: String?): YoutubePage {
+        if (pageToken != null) return searchPage(baseQuery, pageToken = pageToken, recordSearch = false)
+        val history = dao.getRecentVideos(limit = 30)
+        return if (history.isEmpty()) {
+            searchPage(baseQuery, pageToken = null, recordSearch = false)
+        } else {
+            runCatching { blendedRecommendationPage(baseQuery = baseQuery, history = history) }
+                .getOrElse { searchPage(baseQuery, pageToken = null, recordSearch = false) }
+        }
+    }
+
+    private suspend fun blendedRecommendationPage(
+        baseQuery: String?,
+        history: List<YoutubeVideoHistoryEntity>,
+    ): YoutubePage {
+        val viewed = history.map { it.toVideo() }.take(5)
+        val topChannelIds = history
+            .mapNotNull { it.channelId?.takeIf(String::isNotBlank) }
+            .groupingBy { it }
+            .eachCount()
+            .entries
+            .sortedByDescending { it.value }
+            .take(2)
+            .map { it.key }
+        val sameChannels = topChannelIds.flatMap { channelId ->
+            runCatching {
+                searchPage(
+                    query = baseQuery,
+                    pageToken = null,
+                    recordSearch = false,
+                    channelId = channelId,
+                    order = "date",
+                ).videos
+            }.getOrDefault(emptyList())
+        }
+        val historyQuery = history.buildHistoryQuery()
+        val sameStyleQuery = listOfNotNull(baseQuery, historyQuery.takeIf { it.isNotBlank() })
+            .joinToString(" ")
+            .trim()
+        val sameStyle = if (sameStyleQuery.isNotBlank()) {
+            runCatching { searchPage(sameStyleQuery, pageToken = null, recordSearch = false).videos }
+                .getOrDefault(emptyList())
+        } else {
+            emptyList()
+        }
+        val discoveryPage = if (!baseQuery.isNullOrBlank()) {
+            searchPage(baseQuery, pageToken = null, recordSearch = false)
+        } else {
+            popularVideos(null)
+        }
+        val blended = listOf(
+            viewed.take(3),
+            sameChannels.take(16),
+            sameStyle.take(12),
+            discoveryPage.videos.take(10),
+        ).flatten()
+            .distinctBy { it.videoId }
+            .take(50)
+        return YoutubePage(
+            videos = blended.ifEmpty { discoveryPage.videos },
+            nextPageToken = discoveryPage.nextPageToken,
+        )
     }
 
     private suspend fun favoriteVideos(): List<YoutubeVideo> {

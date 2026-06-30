@@ -53,6 +53,7 @@ data class YoutubeScreenState(
     val playerSuggestions: List<YoutubeVideoUi> = emptyList(),
     val recentVideos: List<YoutubeVideoUi> = emptyList(),
     val favoriteVideoIds: Set<String> = emptySet(),
+    val youtubeAutoplayEnabled: Boolean = true,
     val suggestionsLoading: Boolean = false,
     val playerSuggestionsEndReached: Boolean = false,
 ) {
@@ -152,26 +153,38 @@ class YoutubeViewModel(
         _uiState.update { it.copy(focusedVideoId = video.videoId) }
     }
 
-    fun openYoutubeVideo(video: YoutubeVideoUi, sourceScreen: String = currentBehaviorSource()) {
+    fun openYoutubeVideo(
+        video: YoutubeVideoUi,
+        sourceScreen: String = currentBehaviorSource(),
+        refreshSuggestions: Boolean = true,
+    ) {
         _uiState.update {
             it.copy(
                 selectedVideoId = video.videoId,
                 focusedVideoId = video.videoId,
-                playerSuggestions = emptyList(),
-                suggestionsLoading = true,
-                playerSuggestionsEndReached = false,
+                playerSuggestions = if (refreshSuggestions) {
+                    emptyList()
+                } else {
+                    it.playerSuggestions.filterNot { suggestion -> suggestion.videoId == video.videoId }
+                },
+                suggestionsLoading = if (refreshSuggestions) true else it.suggestionsLoading,
+                playerSuggestionsEndReached = if (refreshSuggestions) false else it.playerSuggestionsEndReached,
             )
         }
         viewModelScope.launch {
             val domain = video.toDomain()
             repository.recordVideoSelected(domain, sourceScreen)
-            val suggestions = repository.suggestVideos(domain).map { it.toUi() }
-            _uiState.update {
-                it.copy(
-                    playerSuggestions = suggestions,
-                    suggestionsLoading = false,
-                    playerSuggestionsEndReached = suggestions.size < 8,
-                )
+            if (refreshSuggestions) {
+                val suggestions = repository.suggestVideos(domain).map { it.toUi() }
+                _uiState.update {
+                    it.copy(
+                        playerSuggestions = suggestions,
+                        suggestionsLoading = false,
+                        playerSuggestionsEndReached = suggestions.size < MinimumAutoplayQueueSize,
+                    )
+                }
+            } else {
+                topUpPlayerSuggestions(domain, appendOnlyOne = true)
             }
         }
     }
@@ -196,6 +209,35 @@ class YoutubeViewModel(
     fun toggleFavorite(video: YoutubeVideoUi) {
         viewModelScope.launch {
             repository.toggleFavorite(video.toDomain())
+        }
+    }
+
+    fun setYoutubeAutoplayEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(youtubeAutoplayEnabled = enabled) }
+    }
+
+    fun clearSearchHistory() {
+        viewModelScope.launch {
+            repository.clearSearchHistory()
+            _uiState.update { it.copy(recentSearches = emptyList(), searchSuggestions = emptyList()) }
+        }
+    }
+
+    fun clearVideoHistory() {
+        viewModelScope.launch {
+            repository.clearVideoHistory()
+            _uiState.update { state ->
+                state.copy(
+                    recentVideos = emptyList(),
+                    categories = state.categories.withCategoryCount("history", 0),
+                )
+            }
+        }
+    }
+
+    fun clearYoutubeFavorites() {
+        viewModelScope.launch {
+            repository.clearYoutubeFavorites()
         }
     }
 
@@ -281,6 +323,41 @@ class YoutubeViewModel(
                     _uiState.update { it.copy(suggestionsLoading = false) }
                 }
         }
+    }
+
+    fun ensureAutoplayQueue(seed: YoutubeVideoUi?) {
+        val video = seed ?: return
+        val state = _uiState.value
+        if (state.suggestionsLoading || state.playerSuggestions.size >= MinimumAutoplayQueueSize) return
+        if (state.playerSuggestionsEndReached) return
+        if (loadMoreSuggestionsJob?.isActive == true) return
+        loadMoreSuggestionsJob = viewModelScope.launch {
+            _uiState.update { it.copy(suggestionsLoading = true) }
+            topUpPlayerSuggestions(video.toDomain(), appendOnlyOne = false)
+        }
+    }
+
+    private suspend fun topUpPlayerSuggestions(seed: YoutubeVideo, appendOnlyOne: Boolean) {
+        runCatching { repository.suggestVideos(seed).map { it.toUi() } }
+            .onSuccess { suggestions ->
+                _uiState.update { current ->
+                    val knownIds = (current.playerSuggestions.map { it.videoId } + current.selectedVideoId).toSet()
+                    val additions = suggestions
+                        .filterNot { it.videoId in knownIds }
+                        .let { if (appendOnlyOne) it.take(1) else it }
+                    val appended = (current.playerSuggestions + additions)
+                        .distinctBy { it.videoId }
+                        .take(60)
+                    current.copy(
+                        playerSuggestions = appended,
+                        suggestionsLoading = false,
+                        playerSuggestionsEndReached = additions.isEmpty() || appended.size >= 60,
+                    )
+                }
+            }
+            .onFailure {
+                _uiState.update { it.copy(suggestionsLoading = false) }
+            }
     }
 
     private fun loadCategory(categoryId: String) {
@@ -459,6 +536,8 @@ private fun YoutubeVideoUi.toDomain(): YoutubeVideo =
 
 private fun Throwable.userMessage(defaultMessage: String): String =
     message?.takeIf { it.isNotBlank() } ?: defaultMessage
+
+private const val MinimumAutoplayQueueSize = 20
 
 private fun formatViews(viewCount: Long?): String? {
     val views = viewCount ?: return null

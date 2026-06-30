@@ -1,5 +1,27 @@
 # Troubleshooting
 
+## 2026-06-30 - Micro-coupures et ecran noir entre videos YouTube
+
+Probleme rencontre :
+Le player YouTube pouvait afficher souvent le loader pendant la lecture, surtout en fullscreen, et le passage a la video suivante provoquait un ecran noir de 2 a 3 secondes. Le progress bar pouvait aussi rester vide quand la duree iframe arrivait a 0.
+
+Contexte :
+Le lecteur SmartVision utilise une WebView avec l IFrame Player API et des controles Compose. Le code rechargeait la page HTML du player a chaque changement de video et laissait YouTube choisir librement une qualite parfois haute. Les callbacks JS etaient aussi lies a la premiere composition si le bridge n etait pas actualise.
+
+Solution qui fonctionne :
+- garder la meme WebView/iframe entre deux videos et appeler `window.smartVisionLoadVideo(...)` qui utilise `player.loadVideoById(...)`;
+- actualiser les callbacks Compose via `rememberUpdatedState` pour que le bridge JS appelle toujours la video courante;
+- demander une qualite equilibree (`medium` en priorite, fallback non-HD si disponible) avec `setPlaybackQuality`;
+- masquer les controles iframe (`controls=0`, `disablekb=1`) et conserver les controles SmartVision Compose;
+- utiliser la duree API locale comme fallback si `player.getDuration()` vaut 0, puis afficher temps consomme/duree totale autour de la progress bar;
+- conserver une queue de suggestions et la recharger par petites additions au lieu de reconstruire toute la liste a chaque lecture.
+
+Erreurs a eviter :
+- ne pas appeler `loadDataWithBaseURL` pour chaque video suivante si la WebView existe deja;
+- ne pas laisser l iframe choisir systematiquement la plus haute resolution;
+- ne pas conserver des lambdas JS bridge capturees sur une ancienne video;
+- ne pas relancer toute la recherche de suggestions apres chaque autoplay/next/suggestion.
+
 ## 2026-06-30 - Boutons overlay YouTube Compose sans action
 
 Probleme rencontre :

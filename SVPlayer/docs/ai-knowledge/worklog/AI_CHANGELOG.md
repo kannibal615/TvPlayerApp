@@ -1,5 +1,38 @@
 # AI Changelog
 
+## 2026-06-30 - Release Android 0.1.61 versionCode 64
+
+Type:
+- android
+- youtube
+- release
+
+Resume:
+- Bump Android de `0.1.60 (63)` vers `0.1.61 (64)`.
+- YouTube WebView: changement video via `loadVideoById` sans recharger toute la page HTML, bridge Compose actualise et qualite de lecture ciblee `medium`.
+- YouTube autoplay: la liste de suggestions est consommee progressivement et maintenue autour de 20 videos pour eviter les arrets apres quelques lectures.
+- YouTube UI: header mini-player corrige avec favoris visible et bouton parametres persistant; popup parametres sans arreter la lecture; nettoyage recherche, historique et favoris.
+- YouTube overlay: progress bar avec temps consomme/duree totale, bouton retour fullscreen masque avec le bandeau ou affichable seul via DPAD Haut.
+- Recommandations YouTube: algorithme de dossiers enrichi avec mix historique, memes chaines, meme style et decouverte.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+- `../TROUBLESHOOTING.md`
+
+Fichiers code concernes:
+- `app/build.gradle.kts`
+- `app/src/main/java/com/smartvision/svplayer/ui/youtube/YoutubeScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/youtube/YoutubeViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/youtube/YoutubeWebPlayer.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/youtube/YoutubeRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/dao/YoutubeDao.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/dao/FavoriteDao.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/i18n/SmartVisionStrings.kt`
+
 ## 2026-06-30 - Release Android 0.1.60 versionCode 63
 
 Type:

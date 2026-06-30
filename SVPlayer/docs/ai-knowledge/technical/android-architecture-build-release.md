@@ -11,8 +11,8 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
 
 Gradle local constate le 2026-06-30:
-- `versionCode = 63`
-- `versionName = "0.1.60"`
+- `versionCode = 64`
+- `versionName = "0.1.61"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -128,6 +128,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-06-29: migration vers documentation specialisee.
+- 2026-06-30: release `0.1.61` / `versionCode 64` pour performance YouTube: WebView conserve entre videos via `loadVideoById`, qualite cible `medium`, queue autoplay 20, popup parametres YouTube et header mini-player corrige.
 - 2026-06-30: release `0.1.60` / `versionCode 63` pour ameliorations YouTube: controles affiches uniquement a la lecture reelle, progress bar, reload, previous via historique, favoris locaux, bouton retour mini/fullscreen et reprise de position.
 - 2026-06-30: release `0.1.59` / `versionCode 62` pour correction focus/actions boutons YouTube; le conteneur player ne consomme plus les touches quand un bouton du bandeau est focus.
 - 2026-06-29: ajout de la regle release: bypass debug/test et timeout release 15 minutes.

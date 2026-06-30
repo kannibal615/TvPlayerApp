@@ -19,7 +19,7 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 - Series: grille, detail, saisons/episodes, lecture episode.
 - Profile: licence, device, mode d'utilisation, expiration, compte Xtream, QR achat/config.
 - Settings: experience video, personnalisation focus, langue, synchro, comptes Xtream, parental.
-- YouTube: recherche/suggestions/player, soumis a feature lock.
+- YouTube: recherche/suggestions/player, favoris, parametres YouTube et queue autoplay, soumis a feature lock.
 - Notifications: liste et ouverture du popup update si notification release.
 
 ## 4. Workflow technique
@@ -95,6 +95,7 @@ Sources:
 - Les demandes sont souvent formulees en francais, mais la copie officielle de l'application reste l'anglais.
 - Ne pas reintroduire des langues non demandees sans consigne.
 - Garder les actions TV focusables.
+- YouTube: ne pas recharger toute la liste de suggestions a chaque video; consommer la queue courante, enlever la video lancee et recharger en arriere-plan seulement les elements manquants.
 
 ## 10. Problemes connus
 
@@ -127,3 +128,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-29: ajout du domaine YouTube et notifications dans le routage UI.
 - 2026-06-30: ajout des routes `continue_watching` et `trending`.
 - 2026-06-30: clarification politique langue English par defaut / Francais secondaire et popup update non automatique.
+- 2026-06-30: YouTube enrichi avec favoris visibles dans le header, bouton parametres persistant, nettoyage historiques/favoris et suggestions consommees dynamiquement.

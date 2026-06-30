@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
@@ -54,7 +55,12 @@ internal fun YoutubeWebPlayer(
     onPlaybackCompleted: () -> Unit = {},
 ) {
     val safeVideoId = videoId.sanitizeYoutubeVideoId()
-    var renderRestart by remember(safeVideoId, mode) { mutableIntStateOf(0) }
+    val currentSafeVideoId by rememberUpdatedState(safeVideoId)
+    val currentOnPlayerReady by rememberUpdatedState(onPlayerReady)
+    val currentOnPlaybackStateChanged by rememberUpdatedState(onPlaybackStateChanged)
+    val currentOnPlaybackProgress by rememberUpdatedState(onPlaybackProgress)
+    val currentOnPlaybackCompleted by rememberUpdatedState(onPlaybackCompleted)
+    var renderRestart by remember(mode) { mutableIntStateOf(0) }
     var handledCommandSerial by remember(safeVideoId, mode) { mutableIntStateOf(0) }
     key(renderRestart) {
         AndroidView(
@@ -72,12 +78,14 @@ internal fun YoutubeWebPlayer(
                         addJavascriptInterface(
                             YoutubePlayerBridge(
                                 anomalyReporter = anomalyReporter,
-                                videoId = safeVideoId,
+                                videoIdProvider = { currentSafeVideoId },
                                 mode = mode.name,
-                                onPlayerReady = onPlayerReady,
-                                onPlaybackStateChanged = onPlaybackStateChanged,
-                                onPlaybackProgress = onPlaybackProgress,
-                                onPlaybackCompleted = onPlaybackCompleted,
+                                onPlayerReady = { currentOnPlayerReady() },
+                                onPlaybackStateChanged = { currentOnPlaybackStateChanged(it) },
+                                onPlaybackProgress = { position, duration ->
+                                    currentOnPlaybackProgress(position, duration)
+                                },
+                                onPlaybackCompleted = { currentOnPlaybackCompleted() },
                             ),
                             JavascriptBridgeName,
                         )
@@ -85,10 +93,9 @@ internal fun YoutubeWebPlayer(
                 }
             },
             update = { webView ->
-                val tag = "${mode.name}:$safeVideoId"
                 val currentTag = webView.tag as? YoutubeWebViewTag
-                if (currentTag?.videoKey != tag) {
-                    webView.tag = YoutubeWebViewTag(videoKey = tag)
+                if (currentTag?.modeKey != mode.name) {
+                    webView.tag = YoutubeWebViewTag(modeKey = mode.name, videoKey = safeVideoId)
                     webView.loadDataWithBaseURL(
                         YoutubePlayerOrigin,
                         youtubePlayerHtml(
@@ -100,6 +107,12 @@ internal fun YoutubeWebPlayer(
                         ),
                         "text/html",
                         "utf-8",
+                        null,
+                    )
+                } else if (currentTag.videoKey != safeVideoId) {
+                    webView.tag = currentTag.copy(videoKey = safeVideoId)
+                    webView.evaluateJavascript(
+                        "window.smartVisionLoadVideo && window.smartVisionLoadVideo('$safeVideoId', ${initialStartSeconds.toInt().coerceAtLeast(0)});",
                         null,
                     )
                 }
@@ -270,7 +283,7 @@ private fun WebView.handleYoutubeKeyCode(keyCode: Int): Boolean =
 
 private class YoutubePlayerBridge(
     private val anomalyReporter: AnomalyReporter,
-    private val videoId: String,
+    private val videoIdProvider: () -> String,
     private val mode: String,
     private val onPlayerReady: () -> Unit,
     private val onPlaybackStateChanged: (Boolean) -> Unit,
@@ -302,7 +315,7 @@ private class YoutubePlayerBridge(
         anomalyReporter.reportAsync(
             anomalyType = "YOUTUBE_PLAYER_ERROR",
             message = "Erreur lecteur YouTube: $errorCode",
-            context = "videoId=$videoId mode=$mode",
+            context = "videoId=${videoIdProvider()} mode=$mode",
         )
     }
 }
@@ -384,6 +397,7 @@ private fun youtubePlayerHtml(
               var playerState = -1;
               var pendingCommand = null;
               var completedSent = false;
+              var preferredQuality = 'medium';
               function onYouTubeIframeAPIReady() {
                 player = new YT.Player('player', {
                   width: '100%',
@@ -399,6 +413,7 @@ private fun youtubePlayerHtml(
                     iv_load_policy: 3,
                     modestbranding: 1,
                     playsinline: 1,
+                    vq: preferredQuality,
                     rel: 0,
                     origin: '$YoutubePlayerOrigin'
                   },
@@ -418,7 +433,10 @@ private fun youtubePlayerHtml(
                 if ($startValue > 1 && event.target.seekTo) {
                   event.target.seekTo($startValue, true);
                 }
+                setBalancedQuality();
                 event.target.playVideo();
+                reportPlaybackProgress();
+                setTimeout(setBalancedQuality, 260);
                 setTimeout(function() { event.target.playVideo(); }, 450);
                 setTimeout(function() { runPendingCommand(); }, 520);
                 setInterval(reportPlaybackProgress, 1000);
@@ -427,6 +445,10 @@ private fun youtubePlayerHtml(
                 playerState = event.data;
                 if (window.$JavascriptBridgeName) {
                   window.$JavascriptBridgeName.onPlaybackStateChanged(event.data === YT.PlayerState.PLAYING);
+                }
+                if (event.data === YT.PlayerState.PLAYING) {
+                  setBalancedQuality();
+                  reportPlaybackProgress();
                 }
                 if (event.data === YT.PlayerState.ENDED && window.$JavascriptBridgeName && !completedSent) {
                   completedSent = true;
@@ -464,6 +486,25 @@ private fun youtubePlayerHtml(
                   window.$JavascriptBridgeName.onPlaybackProgress(player.getCurrentTime(), player.getDuration());
                 } catch (err) {}
               }
+              function pickBalancedQuality(levels) {
+                if (!levels || !levels.length) return preferredQuality;
+                if (levels.indexOf('medium') >= 0) return 'medium';
+                if (levels.indexOf('small') >= 0) return 'small';
+                if (levels.indexOf('large') >= 0) return 'large';
+                var ordered = ['tiny', 'small', 'medium', 'large', 'hd720', 'hd1080', 'highres'];
+                var available = ordered.filter(function(level) { return levels.indexOf(level) >= 0; });
+                if (!available.length) return levels[Math.floor(levels.length / 2)] || preferredQuality;
+                var nonHigh = available.filter(function(level) { return level !== 'hd720' && level !== 'hd1080' && level !== 'highres'; });
+                if (nonHigh.length) return nonHigh[Math.floor(nonHigh.length / 2)];
+                return available[0];
+              }
+              function setBalancedQuality() {
+                try {
+                  if (!player || !player.setPlaybackQuality) return;
+                  var levels = player.getAvailableQualityLevels ? player.getAvailableQualityLevels() : [];
+                  player.setPlaybackQuality(pickBalancedQuality(levels));
+                } catch (err) {}
+              }
               window.smartVisionPlay = function() {
                 runWhenReady(function() { if (player.playVideo) player.playVideo(); });
               };
@@ -488,7 +529,23 @@ private fun youtubePlayerHtml(
               window.smartVisionReload = function() {
                 runWhenReady(function() {
                   if (player.seekTo) player.seekTo(0, true);
+                  setBalancedQuality();
                   if (player.playVideo) player.playVideo();
+                });
+              };
+              window.smartVisionLoadVideo = function(nextVideoId, startSeconds) {
+                runWhenReady(function() {
+                  if (!nextVideoId || !player.loadVideoById) return;
+                  completedSent = false;
+                  document.getElementById('error').style.display = 'none';
+                  document.getElementById('player').style.display = 'block';
+                  player.loadVideoById({
+                    videoId: nextVideoId,
+                    startSeconds: Math.max(0, startSeconds || 0),
+                    suggestedQuality: preferredQuality
+                  });
+                  setTimeout(setBalancedQuality, 260);
+                  setTimeout(reportPlaybackProgress, 520);
                 });
               };
               window.smartVisionStop = function() {
@@ -521,7 +578,7 @@ private fun youtubePlayerHtml(
 private const val JavascriptBridgeName = "SmartVisionYoutube"
 private const val YoutubeBaseUrl = "https://www.youtube.com"
 private const val YoutubePlayerOrigin = "https://com.smartvision.svplayer"
-private data class YoutubeWebViewTag(val videoKey: String)
+private data class YoutubeWebViewTag(val modeKey: String, val videoKey: String)
 private val AllowedYoutubeHosts = setOf(
     "youtube.com",
     "youtube-nocookie.com",

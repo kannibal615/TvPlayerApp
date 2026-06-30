@@ -44,4 +44,13 @@ interface YoutubeDao {
 
     @Query("UPDATE youtube_behavior_events SET syncedAt = :syncedAt WHERE id IN (:ids)")
     suspend fun markBehaviorEventsSynced(ids: List<Long>, syncedAt: Long)
+
+    @Query("DELETE FROM youtube_searches")
+    suspend fun clearSearchHistory()
+
+    @Query("DELETE FROM youtube_video_history")
+    suspend fun clearVideoHistory()
+
+    @Query("DELETE FROM youtube_selection")
+    suspend fun clearSelections()
 }
