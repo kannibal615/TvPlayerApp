@@ -5,6 +5,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,6 +35,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -76,15 +78,18 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.anomaly.AnomalyReporter
@@ -770,8 +775,9 @@ private fun YoutubeInlinePlayer(
     var command by remember(video.videoId) { mutableStateOf<YoutubePlayerCommand?>(null) }
     var commandSerial by remember(video.videoId) { mutableStateOf(0) }
     var isPlaying by remember(video.videoId) { mutableStateOf(false) }
+    var controlsHaveFocus by remember(video.videoId) { mutableStateOf(false) }
     val controlsOffset by animateDpAsState(
-        targetValue = if (controlsVisible) 0.dp else 92.dp,
+        targetValue = if (controlsVisible) 0.dp else 132.dp,
         animationSpec = tween(260),
         label = "youtubeControlsOffset",
     )
@@ -796,7 +802,16 @@ private fun YoutubeInlinePlayer(
             withFrameNanos { }
             delay(50)
             runCatching { playPauseFocusRequester.requestFocus() }
+        } else if (controlsHaveFocus) {
+            controlsHaveFocus = false
+            runCatching { focusRequester.requestFocus() }
         }
+    }
+
+    fun hideControlsToPlayer() {
+        controlsVisible = false
+        controlsHaveFocus = false
+        runCatching { focusRequester.requestFocus() }
     }
 
     Box(
@@ -810,6 +825,7 @@ private fun YoutubeInlinePlayer(
                 when (event.key) {
                     Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.DirectionDown -> {
                         controlsVisible = true
+                        runCatching { playPauseFocusRequester.requestFocus() }
                         true
                     }
                     Key.DirectionLeft -> {
@@ -855,11 +871,24 @@ private fun YoutubeInlinePlayer(
                 onPlaybackCompleted = { onPlayerBehavior("VIDEO_COMPLETED", video) },
                 modifier = Modifier.fillMaxSize(),
             )
+            YoutubePlayerTopBar(
+                title = video.title,
+                meta = video.meta.ifBlank { "YouTube" },
+                rightText = video.durationLabel,
+                offsetY = -controlsOffset,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(start = if (fullScreen) 24.dp else 18.dp, end = if (fullScreen) 24.dp else 18.dp, top = if (fullScreen) 18.dp else 14.dp),
+            )
             YoutubePlayerControlBar(
                 isPlaying = isPlaying,
                 fullScreen = fullScreen,
+                enabled = controlsVisible,
                 focusRequester = playPauseFocusRequester,
                 offsetY = controlsOffset,
+                playerFocusRequester = focusRequester,
+                onFocusChanged = { controlsHaveFocus = it },
+                onDismiss = ::hideControlsToPlayer,
                 onPrevious = {
                     controlsVisible = true
                     onPreviousVideo()
@@ -889,43 +918,147 @@ private fun YoutubeInlinePlayer(
 }
 
 @Composable
+private fun YoutubePlayerTopBar(
+    title: String,
+    meta: String,
+    rightText: String,
+    offsetY: Dp,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .offset(y = offsetY)
+            .clip(YoutubePlayerGlassShape)
+            .background(YoutubePlayerGlassBackground)
+            .border(BorderStroke(1.dp, YoutubePlayerGlassBorder), YoutubePlayerGlassShape)
+            .padding(horizontal = 22.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.smartvision_logo_wide),
+            contentDescription = "SmartVision",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .width(162.dp)
+                .height(40.dp),
+        )
+        YoutubePlayerSeparator()
+        YoutubePlayerBadge("YOUTUBE", YoutubePlayerNeonBlue)
+        YoutubePlayerSeparator()
+        Text(
+            text = title,
+            color = Color.White,
+            fontSize = 20.sp,
+            lineHeight = 24.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1.2f),
+        )
+        YoutubePlayerSeparator()
+        Text(
+            text = meta,
+            color = Color.White.copy(alpha = 0.82f),
+            fontSize = 17.sp,
+            lineHeight = 21.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(0.7f),
+        )
+        Text(
+            text = rightText.ifBlank { "YouTube" },
+            color = Color.White.copy(alpha = 0.74f),
+            fontSize = 17.sp,
+            lineHeight = 21.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            modifier = Modifier.width(96.dp),
+        )
+    }
+}
+
+@Composable
 private fun YoutubePlayerControlBar(
     isPlaying: Boolean,
     fullScreen: Boolean,
+    enabled: Boolean,
     focusRequester: FocusRequester,
-    offsetY: androidx.compose.ui.unit.Dp,
+    offsetY: Dp,
+    playerFocusRequester: FocusRequester,
+    onFocusChanged: (Boolean) -> Unit,
+    onDismiss: () -> Unit,
     onPrevious: () -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onToggleFullScreen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val previousFocusRequester = remember { FocusRequester() }
+    val nextFocusRequester = remember { FocusRequester() }
+    val fullScreenFocusRequester = remember { FocusRequester() }
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(74.dp)
+            .height(128.dp)
             .offset(y = offsetY)
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xD6071123))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)), RoundedCornerShape(8.dp))
-            .padding(horizontal = 22.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+            .clip(YoutubePlayerGlassShape)
+            .background(YoutubePlayerGlassBackground)
+            .border(BorderStroke(1.dp, YoutubePlayerGlassBorder), YoutubePlayerGlassShape)
+            .padding(horizontal = 28.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(46.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        YoutubeControlButton("Previous video", Icons.Default.SkipPrevious, onPrevious)
+        YoutubeControlButton(
+            label = "Previous",
+            icon = Icons.Default.SkipPrevious,
+            onClick = onPrevious,
+            enabled = enabled,
+            focusRequester = previousFocusRequester,
+            leftFocusRequester = previousFocusRequester,
+            rightFocusRequester = focusRequester,
+            upFocusRequester = playerFocusRequester,
+            onDismiss = onDismiss,
+            onFocusChanged = onFocusChanged,
+        )
         YoutubeControlButton(
             label = if (isPlaying) "Pause" else "Play",
             icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
             onClick = onPlayPause,
+            enabled = enabled,
             focusRequester = focusRequester,
+            leftFocusRequester = previousFocusRequester,
+            rightFocusRequester = nextFocusRequester,
+            upFocusRequester = playerFocusRequester,
+            onDismiss = onDismiss,
+            onFocusChanged = onFocusChanged,
             primary = true,
         )
-        YoutubeControlButton("Next video", Icons.Default.SkipNext, onNext)
-        Spacer(Modifier.weight(1f))
+        YoutubeControlButton(
+            label = "Next",
+            icon = Icons.Default.SkipNext,
+            onClick = onNext,
+            enabled = enabled,
+            focusRequester = nextFocusRequester,
+            leftFocusRequester = focusRequester,
+            rightFocusRequester = fullScreenFocusRequester,
+            upFocusRequester = playerFocusRequester,
+            onDismiss = onDismiss,
+            onFocusChanged = onFocusChanged,
+        )
         YoutubeControlButton(
             label = if (fullScreen) "Exit full screen" else "Full screen",
             icon = if (fullScreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
             onClick = onToggleFullScreen,
+            enabled = enabled,
+            focusRequester = fullScreenFocusRequester,
+            leftFocusRequester = nextFocusRequester,
+            rightFocusRequester = fullScreenFocusRequester,
+            upFocusRequester = playerFocusRequester,
+            onDismiss = onDismiss,
+            onFocusChanged = onFocusChanged,
         )
     }
 }
@@ -935,48 +1068,130 @@ private fun YoutubeControlButton(
     label: String,
     icon: ImageVector,
     onClick: () -> Unit,
+    enabled: Boolean,
     focusRequester: FocusRequester? = null,
+    leftFocusRequester: FocusRequester? = null,
+    rightFocusRequester: FocusRequester? = null,
+    upFocusRequester: FocusRequester? = null,
+    onDismiss: () -> Unit,
+    onFocusChanged: (Boolean) -> Unit,
     primary: Boolean = false,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val focusStyle = LocalTvFocusStyle.current
-    val shape = RoundedCornerShape(7.dp)
-    Box(
+    val circleSize = if (primary) 88.dp else 68.dp
+    Column(
         modifier = Modifier
-            .size(width = if (primary) 96.dp else 76.dp, height = 56.dp)
+            .width(if (primary) 104.dp else 86.dp)
+            .height(if (primary) 116.dp else 98.dp)
+            .focusProperties {
+                leftFocusRequester?.let { left = it }
+                rightFocusRequester?.let { right = it }
+                upFocusRequester?.let { up = it }
+            }
+            .onFocusChanged { onFocusChanged(it.isFocused) }
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.DirectionUp, Key.Back -> {
+                        onDismiss()
+                        true
+                    }
+                    Key.DirectionDown -> true
+                    else -> false
+                }
+            }
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
+                enabled = enabled,
                 pressed = pressed,
-                focusedScale = 1.045f,
-                glowColor = focusStyle.accent,
-                cornerRadius = 7.dp,
+                focusedScale = if (primary) 1.08f else 1.04f,
+                glowColor = YoutubePlayerNeonBlue,
+                cornerRadius = 50.dp,
             )
-            .clip(shape)
-            .background(
-                when {
-                    focusState.isFocused -> focusStyle.background
-                    primary -> SmartVisionColors.PrimaryDark.copy(alpha = 0.82f)
-                    else -> Color.Black.copy(alpha = 0.34f)
-                },
+            .clickable(
+                enabled = enabled,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
             )
-            .border(
-                BorderStroke(if (focusState.isFocused) focusStyle.borderWidth else 1.dp, if (focusState.isFocused) focusStyle.accent else Color.White.copy(alpha = 0.15f)),
-                shape,
-            )
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .focusable(interactionSource = interactionSource),
-        contentAlignment = Alignment.Center,
+            .focusable(enabled = enabled, interactionSource = interactionSource),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = Color.White,
-            modifier = Modifier.size(if (primary) 30.dp else 26.dp),
+        Box(
+            modifier = Modifier
+                .size(circleSize)
+                .clip(CircleShape)
+                .background(
+                    when {
+                        primary && focusState.isFocused -> YoutubePlayerNeonBlue.copy(alpha = 0.25f)
+                        primary -> Color.Black.copy(alpha = 0.34f)
+                        focusState.isFocused -> YoutubePlayerNeonBlue.copy(alpha = 0.16f)
+                        else -> Color.White.copy(alpha = 0.05f)
+                    },
+                )
+                .border(
+                    BorderStroke(
+                        if (focusState.isFocused || primary) 2.dp else 1.dp,
+                        if (focusState.isFocused || primary) YoutubePlayerNeonBlue else Color.White.copy(alpha = 0.22f),
+                    ),
+                    CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = Color.White,
+                modifier = Modifier.size(if (primary) 34.dp else 25.dp),
+            )
+        }
+        Spacer(Modifier.height(7.dp))
+        Text(
+            text = label,
+            color = if (focusState.isFocused || primary) Color.White else SmartVisionColors.TextSecondary,
+            fontSize = 12.sp,
+            lineHeight = 15.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
+}
+
+@Composable
+private fun YoutubePlayerBadge(text: String, color: Color) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(color.copy(alpha = 0.16f))
+            .border(BorderStroke(1.dp, color.copy(alpha = 0.72f)), RoundedCornerShape(8.dp))
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(color),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text, color = Color.White, fontSize = 14.sp, lineHeight = 17.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun YoutubePlayerSeparator() {
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 18.dp)
+            .width(1.dp)
+            .height(28.dp)
+            .background(Color.White.copy(alpha = 0.24f)),
+    )
 }
 
 @Composable
@@ -1401,6 +1616,11 @@ private fun YoutubeCategoryUi.localizedLabel(strings: SmartVisionStrings): Strin
         "kids" -> strings.youtubeCategoryKids
         else -> label
     }
+
+private val YoutubePlayerGlassShape = RoundedCornerShape(28.dp)
+private val YoutubePlayerGlassBackground = Color(0x66040E20)
+private val YoutubePlayerGlassBorder = Color.White.copy(alpha = 0.22f)
+private val YoutubePlayerNeonBlue = Color(0xFF0A84FF)
 
 private const val YoutubeVideoCardAspectRatio = 16f / 9f
 private const val YoutubeGridColumns = 4

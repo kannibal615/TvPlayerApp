@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-06-29.
+Derniere mise a jour: 2026-06-30.
 
 ## 1. Objectif
 
@@ -96,6 +96,7 @@ Backend indirect:
 
 - Tout element actionnable doit rester focusable.
 - Ne pas remplacer les controles natifs attendus par des overlays qui volent le focus sans demande explicite.
+- Si un overlay custom YouTube est explicitement demande, le bandeau doit borner le focus gauche/droite; Haut ou Back doit masquer le bandeau et rendre le focus au conteneur player.
 - Ne pas hardcoder un focus cyan si un style global existe.
 - Ne pas auto-focus un bouton qui doit rester accessible par scroll D-pad.
 - Ne pas changer l'ordre D-pad sans valider les surfaces adjacentes.
@@ -131,3 +132,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: ajout des signaux `FocusRequester`, `D-pad`, `focusBackground`.
+- 2026-06-30: ajout de la regle focus pour overlay YouTube custom demande explicitement: bandeau focusable borne, retour Haut/Back vers le player.

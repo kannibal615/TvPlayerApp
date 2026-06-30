@@ -1,5 +1,27 @@
 # AI Changelog
 
+## 2026-06-30 - Release Android 0.1.56 versionCode 59
+
+Type:
+- android
+- ui
+- release
+- deploy
+
+Resume:
+- Bump Android de `0.1.55 (58)` vers `0.1.56 (59)`.
+- Refonte overlay plein ecran Live TV / Films / Series en style glassmorphism: bandeau haut avec logo, badge, titre, categorie et meta droite.
+- Remplacement du bloc de controles par un bandeau bas transparent avec boutons circulaires; barre de progression conservee uniquement pour Films/Series.
+- Application du meme langage visuel au player YouTube avec bandeau haut/bas, boutons ronds, glow bleu et focus Play/Pause.
+- Correction de la navigation telecommande du bandeau YouTube: Bas/OK affiche les controles et focus Play/Pause; gauche/droite restent dans le bandeau; Haut/Back masque le bandeau et rend le focus au player.
+
+Fichiers concernes:
+- `app/build.gradle.kts`
+- `app/src/main/java/com/smartvision/svplayer/ui/player/FullScreenPlayerScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/youtube/YoutubeScreen.kt`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+
 ## 2026-06-30 - Release Android 0.1.55 versionCode 58
 
 Type:

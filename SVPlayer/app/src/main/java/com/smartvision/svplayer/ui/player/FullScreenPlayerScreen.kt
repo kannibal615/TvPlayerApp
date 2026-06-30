@@ -146,6 +146,7 @@ data class FullScreenPlayback(
     val infoPills: List<String>,
     val imageUrl: String? = null,
     val categoryId: String? = null,
+    val overlayRightText: String = "",
     val parentContentId: Int? = null,
     val previousItem: AdjacentPlayback? = null,
     val nextItem: AdjacentPlayback? = null,
@@ -267,6 +268,7 @@ class FullScreenPlayerViewModel(
                 infoPills = listOf("16+", "HD", "5.1"),
                 imageUrl = stream.streamIcon,
                 categoryId = stream.categoryId,
+                overlayRightText = stream.number.toString().padStart(3, '0'),
                 previousItem = previous?.let {
                     AdjacentPlayback(
                         streamId = it.streamId,
@@ -317,6 +319,7 @@ class FullScreenPlayerViewModel(
                 infoPills = listOf("HD", movie.containerExtension.uppercase()).distinct(),
                 imageUrl = movie.posterUrl,
                 categoryId = movie.categoryId,
+                overlayRightText = movie.added.extractReleaseYear() ?: "VOD",
                 previousItem = previous?.let {
                     AdjacentPlayback(
                         streamId = it.streamId,
@@ -366,6 +369,7 @@ class FullScreenPlayerViewModel(
                 infoPills = listOf("HD", episode.containerExtension.uppercase()).distinct(),
                 imageUrl = seriesCover,
                 categoryId = series?.categoryId,
+                overlayRightText = episode.seasonEpisodeLabel(),
                 parentContentId = episode.seriesId,
                 previousItem = previousEpisode?.let {
                     AdjacentPlayback(
@@ -1419,31 +1423,15 @@ private fun FullPlayerOverlay(
     onOpenSubtitles: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
+    val showProgress = playback.contentType != UserContentType.Live
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color.Black.copy(alpha = 0.42f),
-                        Color.Transparent,
-                        Color(0xF0010612),
-                    ),
-                ),
-            ),
+        modifier = Modifier.fillMaxSize(),
     ) {
-        PlayerLogo(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = 30.dp, top = 23.dp),
-        )
-
-        PlayerInfoCard(
+        PlayerTopGlassBar(
             playback = playback,
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 30.dp, bottom = 194.dp)
-                .width(348.dp),
+                .align(Alignment.TopCenter)
+                .padding(start = 24.dp, end = 24.dp, top = 18.dp),
         )
 
         errorText?.let { message ->
@@ -1461,59 +1449,113 @@ private fun FullPlayerOverlay(
             )
         }
 
-        PlayerProgressBar(
-            playback = playback,
-            positionMs = positionMs,
-            durationMs = durationMs,
-            bufferedPositionMs = bufferedPositionMs,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(start = 42.dp, end = 42.dp, bottom = 130.dp),
-            onSeekBy = onSeekBy,
-        )
-
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(start = 30.dp, end = 30.dp, bottom = 24.dp)
+                .padding(start = 44.dp, end = 44.dp, bottom = 28.dp)
                 .fillMaxWidth()
-                .height(76.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xD6071123))
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)), RoundedCornerShape(8.dp))
-                .padding(horizontal = 22.dp, vertical = 8.dp),
+                .height(if (showProgress) 166.dp else 132.dp)
+                .clip(PlayerGlassShape)
+                .background(PlayerGlassBackground)
+                .border(BorderStroke(1.dp, PlayerGlassBorder), PlayerGlassShape)
+                .padding(horizontal = 28.dp, vertical = if (showProgress) 14.dp else 18.dp),
         ) {
+            if (showProgress) {
+                PlayerProgressBar(
+                    playback = playback,
+                    positionMs = positionMs,
+                    durationMs = durationMs,
+                    bufferedPositionMs = bufferedPositionMs,
+                    modifier = Modifier.fillMaxWidth(),
+                    onSeekBy = onSeekBy,
+                )
+                Spacer(Modifier.height(12.dp))
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(),
+                    .weight(1f),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                val showAdjacentControls = playback.contentType != UserContentType.Live
                 PlayerControlButton("Sous-titres", Icons.Default.Subtitles, onOpenSubtitles)
                 PlayerControlButton("- 10 sec", Icons.Default.Replay10, onSeekBack)
-                if (showAdjacentControls) {
-                    PlayerControlButton("Precedent", Icons.Default.SkipPrevious, onPlayPrevious)
-                }
                 PlayerControlButton(
                     label = if (isPlaying) "Pause" else "Lecture",
                     icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     onClick = onPlayPause,
                     focusRequester = playFocusRequester,
                     primary = true,
-                    width = 92.dp,
-                    height = 60.dp,
-                    iconSize = 28.dp,
+                    width = 96.dp,
+                    height = 96.dp,
+                    iconSize = 34.dp,
                 )
-                if (showAdjacentControls) {
-                    PlayerControlButton("Suivant", Icons.Default.SkipNext, onPlayNext)
-                }
                 PlayerControlButton("+ 10 sec", Icons.Default.Forward10, onSeekForward)
                 PlayerControlButton("Parametres", Icons.Default.Settings, onOpenSettings)
             }
         }
     }
+}
+
+@Composable
+private fun PlayerTopGlassBar(
+    playback: FullScreenPlayback,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(76.dp)
+            .clip(PlayerGlassShape)
+            .background(PlayerGlassBackground)
+            .border(BorderStroke(1.dp, PlayerGlassBorder), PlayerGlassShape)
+            .padding(horizontal = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PlayerLogo()
+        PlayerVerticalSeparator()
+        PlaybackPill(playback.badge)
+        PlayerVerticalSeparator()
+        Text(
+            text = playback.title,
+            color = Color.White,
+            style = PlayerTitleStyle.copy(fontSize = 21.sp, lineHeight = 25.sp),
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1.15f),
+        )
+        PlayerVerticalSeparator()
+        Text(
+            text = playback.subtitle,
+            color = Color.White.copy(alpha = 0.9f),
+            style = PlayerTitleStyle.copy(fontSize = 20.sp, lineHeight = 24.sp),
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(0.9f),
+        )
+        Text(
+            text = playback.overlayRightText.ifBlank { playback.status },
+            color = Color.White.copy(alpha = 0.78f),
+            style = PlayerTitleStyle.copy(fontSize = 20.sp, lineHeight = 24.sp),
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+            modifier = Modifier.width(104.dp),
+        )
+    }
+}
+
+@Composable
+private fun PlayerVerticalSeparator() {
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 22.dp)
+            .width(1.dp)
+            .height(30.dp)
+            .background(Color.White.copy(alpha = 0.24f)),
+    )
 }
 
 @Composable
@@ -1580,21 +1622,28 @@ private fun PlayerInfoCard(
 
 @Composable
 private fun PlaybackPill(text: String) {
+    val badgeColor = when (text) {
+        "LIVE" -> Color(0xFFEF233C)
+        "VOD" -> Color(0xFFFF8A00)
+        "SERIE" -> PlayerNeonBlue
+        else -> SmartVisionColors.Primary
+    }
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(3.dp))
-            .background(if (text == "LIVE") SmartVisionColors.Primary else SmartVisionColors.PrimaryDark)
-            .padding(horizontal = 6.dp, vertical = 3.dp),
+            .clip(RoundedCornerShape(8.dp))
+            .background(badgeColor.copy(alpha = 0.16f))
+            .border(BorderStroke(1.dp, badgeColor.copy(alpha = 0.72f)), RoundedCornerShape(8.dp))
+            .padding(horizontal = 13.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = if (text == "LIVE") Icons.Default.VolumeUp else Icons.Default.PlayArrow,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(10.dp),
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(badgeColor),
         )
-        Spacer(Modifier.width(3.dp))
-        Text(text, color = Color.White, style = PlayerTinyStyle, fontWeight = FontWeight.Black)
+        Spacer(Modifier.width(8.dp))
+        Text(text, color = Color.White, style = PlayerMetaStyle.copy(fontSize = 15.sp, lineHeight = 18.sp), fontWeight = FontWeight.Bold)
     }
 }
 
@@ -1641,20 +1690,20 @@ private fun PlayerProgressBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(30.dp)
+            .height(34.dp)
             .tvFocusTarget(
                 state = focusState,
                 enabled = hasDuration,
                 pressed = pressed,
                 focusedScale = 1.01f,
                 glowColor = SmartVisionColors.Primary,
-                cornerRadius = 6.dp,
+                cornerRadius = 18.dp,
             )
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(if (focusState.isFocused) Color(0xA6111F36) else Color.Transparent)
             .border(
-                BorderStroke(if (focusState.isFocused) 2.dp else 1.dp, if (focusState.isFocused) SmartVisionColors.FocusWhite else Color.Transparent),
-                RoundedCornerShape(6.dp),
+                BorderStroke(if (focusState.isFocused) 2.dp else 1.dp, if (focusState.isFocused) PlayerNeonBlue else Color.Transparent),
+                RoundedCornerShape(18.dp),
             )
             .onPreviewKeyEvent { event ->
                 if (event.nativeKeyEvent.action != AndroidKeyEvent.ACTION_DOWN) return@onPreviewKeyEvent false
@@ -1680,7 +1729,7 @@ private fun PlayerProgressBar(
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(startText, color = Color.White, style = PlayerMetaStyle)
+        Text(startText, color = Color.White, style = PlayerMetaStyle.copy(fontSize = 13.sp, lineHeight = 16.sp))
         Spacer(Modifier.width(10.dp))
         BoxWithConstraints(
             modifier = Modifier
@@ -1691,7 +1740,7 @@ private fun PlayerProgressBar(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(3.dp)
+                    .height(4.dp)
                     .align(Alignment.Center)
                     .clip(RoundedCornerShape(50))
                     .background(Color.White.copy(alpha = 0.22f)),
@@ -1706,19 +1755,19 @@ private fun PlayerProgressBar(
                     modifier = Modifier
                         .fillMaxWidth(progress)
                         .fillMaxHeight()
-                        .background(SmartVisionColors.Primary),
+                        .background(PlayerNeonBlue),
                 )
             }
             Box(
                 modifier = Modifier
                     .offset(x = thumbOffset)
-                    .size(10.dp)
+                    .size(12.dp)
                     .clip(CircleShape)
-                    .background(SmartVisionColors.Primary),
+                    .background(PlayerNeonBlue),
             )
         }
         Spacer(Modifier.width(10.dp))
-        Text(endText, color = Color.White, style = PlayerMetaStyle)
+        Text(endText, color = Color.White, style = PlayerMetaStyle.copy(fontSize = 13.sp, lineHeight = 16.sp))
     }
 }
 
@@ -1852,29 +1901,28 @@ private fun PlayerControlButton(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
     primary: Boolean = false,
-    width: Dp = 84.dp,
-    height: Dp = 54.dp,
+    width: Dp = 68.dp,
+    height: Dp = 68.dp,
     iconSize: Dp = 23.dp,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val shape = RoundedCornerShape(if (primary) 8.dp else 6.dp)
+    val shape = CircleShape
     val backgroundColor by animateColorAsState(
         targetValue = when {
-            primary && focusState.isFocused -> SmartVisionColors.PrimaryDark
-            primary -> Color(0xD9113E91)
-            focusState.isFocused -> SmartVisionColors.SurfaceElevated
-            else -> Color.Transparent
+            primary && focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.24f)
+            primary -> Color.Black.copy(alpha = 0.32f)
+            focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.16f)
+            else -> Color.White.copy(alpha = 0.05f)
         },
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "playerControlBackground",
     )
     val borderColor by animateColorAsState(
         targetValue = when {
-            focusState.isFocused -> SmartVisionColors.FocusWhite
-            primary -> SmartVisionColors.Primary
-            else -> Color.Transparent
+            focusState.isFocused || primary -> PlayerNeonBlue
+            else -> Color.White.copy(alpha = 0.22f)
         },
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "playerControlBorder",
@@ -1883,46 +1931,52 @@ private fun PlayerControlButton(
     Column(
         modifier = modifier
             .width(width)
-            .height(height)
+            .height(height + 28.dp)
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
                 pressed = pressed,
                 focusedScale = if (primary) 1.08f else 1.04f,
-                glowColor = SmartVisionColors.Primary,
-                cornerRadius = if (primary) 8.dp else 6.dp,
+                glowColor = PlayerNeonBlue,
+                cornerRadius = 50.dp,
             )
             .zIndex(if (focusState.isFocused) 3f else 0f)
-            .clip(shape)
-            .background(backgroundColor)
-            .border(
-                BorderStroke(
-                    if (focusState.isFocused) 2.dp else 1.dp,
-                    borderColor,
-                ),
-                shape,
-            )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
             )
             .focusable(interactionSource = interactionSource)
-            .padding(PaddingValues(horizontal = 4.dp, vertical = 4.dp)),
+            .padding(PaddingValues(horizontal = 2.dp, vertical = 2.dp)),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(iconSize),
-        )
-        Spacer(Modifier.height(5.dp))
+        Box(
+            modifier = Modifier
+                .size(width = width, height = height)
+                .clip(shape)
+                .background(backgroundColor)
+                .border(
+                    BorderStroke(
+                        if (focusState.isFocused || primary) 2.dp else 1.dp,
+                        borderColor,
+                    ),
+                    shape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(iconSize),
+            )
+        }
+        Spacer(Modifier.height(7.dp))
         Text(
             text = label,
             color = if (focusState.isFocused || primary) Color.White else SmartVisionColors.TextSecondary,
-            style = PlayerTinyStyle,
+            style = PlayerMetaStyle.copy(fontSize = 13.sp, lineHeight = 16.sp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -1967,6 +2021,11 @@ private val PlayerTinyStyle = TextStyle(
     letterSpacing = 0.sp,
 )
 
+private val PlayerGlassShape = RoundedCornerShape(28.dp)
+private val PlayerGlassBackground = Color(0x66040E20)
+private val PlayerGlassBorder = Color.White.copy(alpha = 0.22f)
+private val PlayerNeonBlue = Color(0xFF0A84FF)
+
 private fun String.cleanTitle(): String =
     replace(Regex("\\s+"), " ")
         .replace(" FHD", "", ignoreCase = true)
@@ -1974,6 +2033,11 @@ private fun String.cleanTitle(): String =
         .replace(" SD", "", ignoreCase = true)
         .trim()
         .ifBlank { "Live TV" }
+
+private fun String?.extractReleaseYear(): String? =
+    this
+        ?.let { Regex("(19|20)\\d{2}").find(it)?.value }
+        ?.takeIf { year -> year.toIntOrNull()?.let { it in 1900..2100 } == true }
 
 private fun XtreamSeriesEpisode.seasonEpisodeLabel(): String =
     "S${seasonNumber.toString().padStart(2, '0')}E${episodeNumber.toString().padStart(2, '0')}"

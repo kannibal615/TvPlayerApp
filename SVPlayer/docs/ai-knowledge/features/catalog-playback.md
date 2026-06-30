@@ -1,6 +1,6 @@
 # Catalogue, Playlist et Lecture
 
-Derniere mise a jour: 2026-06-29.
+Derniere mise a jour: 2026-06-30.
 
 ## 1. Objectif
 
@@ -37,6 +37,7 @@ Playback:
 - `FullScreenPlayerScreen.kt` gere Live, Movie et Episode.
 - Live peut utiliser `.ts` et fallback `.m3u8`.
 - Films/series sauvegardent la progression.
+- Overlay plein ecran Live/Films/Series: bandeau haut glassmorphism avec logo, badge type contenu, titre, categorie et meta droite; bandeau bas glassmorphism avec boutons circulaires et barre de progression uniquement pour Films/Series.
 
 ## 5. Ecrans concernes
 
@@ -129,3 +130,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: documentation des routes `player`, `movie_player`, `episode_player`, `series_detail`.
+- 2026-06-30: refonte overlay player Live/Films/Series vers le modele glassmorphism TV premium, sans modifier le rendu video Media3.
