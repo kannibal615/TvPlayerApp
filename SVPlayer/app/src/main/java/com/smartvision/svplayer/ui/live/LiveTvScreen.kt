@@ -196,7 +196,7 @@ fun LiveTvScreen(
     val firstPreviewActionFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
-    var categorySearchQuery by remember { mutableStateOf("") }
+    var showEpgCategoriesOnly by remember { mutableStateOf(false) }
     var contentSearchQuery by remember { mutableStateOf("") }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
     var tvCode by remember { mutableStateOf("") }
@@ -237,12 +237,26 @@ fun LiveTvScreen(
         }
     }
 
+    LaunchedEffect(showEpgCategoriesOnly) {
+        if (showEpgCategoriesOnly) {
+            viewModel.refreshEpgCategoryAvailability()
+        }
+    }
+
+    LaunchedEffect(showEpgCategoriesOnly, state.categories) {
+        if (showEpgCategoriesOnly) {
+            val currentVisible = state.categories.any { it.id == state.selectedCategoryId && it.hasEpg }
+            if (!currentVisible) {
+                state.categories.firstOrNull { it.hasEpg }?.let(viewModel::selectCategory)
+            }
+        }
+    }
+
     val selectedCategoryVisible = state.categories.any { category ->
-        category.id == state.selectedCategoryId &&
-            (categorySearchQuery.isBlank() || category.label.contains(categorySearchQuery, ignoreCase = true))
+        category.id == state.selectedCategoryId && (!showEpgCategoriesOnly || category.hasEpg)
     }
     val categoryFocusTargetAvailable = selectedCategoryVisible || state.categories.any { category ->
-        categorySearchQuery.isBlank() || category.label.contains(categorySearchQuery, ignoreCase = true)
+        !showEpgCategoriesOnly || category.hasEpg
     }
 
     LaunchedEffect(state.categoriesLoading, hasPlayableSource, categoryFocusTargetAvailable) {
@@ -316,9 +330,10 @@ fun LiveTvScreen(
                 CategoryList(
                     state = state,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
-                    firstChannelFocusRequester = firstChannelFocusRequester,
-                    searchQuery = categorySearchQuery,
-                    onSearchQueryChange = { categorySearchQuery = it },
+                    showEpgOnly = showEpgCategoriesOnly,
+                    onToggleEpgOnly = {
+                        showEpgCategoriesOnly = !showEpgCategoriesOnly
+                    },
                     contentSearchQuery = contentSearchQuery,
                     onCategory = { category ->
                         if (inputReady) {
@@ -332,7 +347,6 @@ fun LiveTvScreen(
                 ChannelList(
                     state = state,
                     firstChannelFocusRequester = firstChannelFocusRequester,
-                    selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     searchQuery = contentSearchQuery,
                     onSearchQueryChange = { contentSearchQuery = it },
                     previewActionFocusRequester = firstPreviewActionFocusRequester.takeIf {
@@ -415,15 +429,14 @@ fun LiveTvScreen(
 private fun CategoryList(
     state: LiveTvUiState,
     selectedCategoryFocusRequester: FocusRequester,
-    firstChannelFocusRequester: FocusRequester,
-    searchQuery: String,
-    onSearchQueryChange: (String) -> Unit,
+    showEpgOnly: Boolean,
+    onToggleEpgOnly: () -> Unit,
     contentSearchQuery: String,
     onCategory: (LiveTvCategory) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val visibleCategories = state.categories.filter {
-        searchQuery.isBlank() || it.label.contains(searchQuery, ignoreCase = true)
+        !showEpgOnly || it.hasEpg
     }
     val focusCategoryId = visibleCategories.firstOrNull { it.id == state.selectedCategoryId }?.id
         ?: visibleCategories.firstOrNull()?.id
@@ -432,11 +445,16 @@ private fun CategoryList(
         title = "Categories",
         modifier = modifier,
         trailing = {
-            CatalogSearchField(
-                query = searchQuery,
-                onQueryChange = onSearchQueryChange,
-                placeholder = "Dossier",
-                modifier = Modifier.width(118.dp),
+            TvButton(
+                text = "EPG",
+                onClick = onToggleEpgOnly,
+                selected = showEpgOnly,
+                variant = if (showEpgOnly) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+                leadingIcon = Icons.Default.FilterList,
+                contentPadding = PaddingValues(horizontal = 10.dp),
+                modifier = Modifier
+                    .width(92.dp)
+                    .height(34.dp),
             )
         },
     ) {
@@ -457,11 +475,6 @@ private fun CategoryList(
                     } else {
                         null
                     },
-                    rightFocusRequester = firstChannelFocusRequester.takeIf {
-                        !state.channelsLoading && state.channels.any {
-                            contentSearchQuery.isBlank() || it.name.contains(contentSearchQuery, ignoreCase = true)
-                        }
-                    },
                     onClick = { onCategory(category) },
                 )
             }
@@ -473,7 +486,6 @@ private fun CategoryList(
 private fun ChannelList(
     state: LiveTvUiState,
     firstChannelFocusRequester: FocusRequester,
-    selectedCategoryFocusRequester: FocusRequester,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     previewActionFocusRequester: FocusRequester?,
@@ -559,7 +571,6 @@ private fun ChannelList(
                         channel = channel,
                         selected = channel.streamId == state.selectedChannel?.streamId,
                         focusRequester = firstChannelFocusRequester.takeIf { channel.streamId == focusChannelId },
-                        leftFocusRequester = selectedCategoryFocusRequester,
                         rightFocusRequester = previewActionFocusRequester,
                         onFocused = { onChannelFocused(channel) },
                         onClick = { onChannelClick(channel) },
@@ -1116,7 +1127,6 @@ private fun CategoryRow(
     category: LiveTvCategory,
     selected: Boolean,
     focusRequester: FocusRequester?,
-    rightFocusRequester: FocusRequester?,
     onClick: () -> Unit,
 ) {
     val focusState = rememberTvFocusState()
@@ -1139,13 +1149,6 @@ private fun CategoryRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(LiveTvDimens.CategoryRowHeight)
-            .then(
-                if (rightFocusRequester != null) {
-                    Modifier.focusProperties { right = rightFocusRequester }
-                } else {
-                    Modifier
-                },
-            )
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -1208,6 +1211,26 @@ private fun CategoryRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
+        if (category.hasEpg) {
+            Box(
+                modifier = Modifier
+                    .height(18.dp)
+                    .width(24.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0xFF0876FF).copy(alpha = if (active) 0.95f else 0.72f))
+                    .border(BorderStroke(1.dp, Color(0xFF1FDDFF).copy(alpha = 0.76f)), RoundedCornerShape(4.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "E",
+                    color = Color.White,
+                    style = LiveTvItemMetaStyle,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+        }
         Text(
             text = category.count?.toString().orEmpty(),
             color = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
@@ -1222,7 +1245,6 @@ private fun ChannelRow(
     channel: LiveTvChannel,
     selected: Boolean,
     focusRequester: FocusRequester?,
-    leftFocusRequester: FocusRequester,
     rightFocusRequester: FocusRequester?,
     onFocused: () -> Unit,
     onClick: () -> Unit,
@@ -1257,15 +1279,20 @@ private fun ChannelRow(
         Row(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxHeight()
-                .focusProperties {
-                    left = leftFocusRequester
-                    if (showDelete) {
-                        right = deleteFocusRequester
-                    } else if (rightFocusRequester != null) {
-                        right = rightFocusRequester
-                    }
-                }
+            .fillMaxHeight()
+                .then(
+                    if (showDelete || rightFocusRequester != null) {
+                        Modifier.focusProperties {
+                            if (showDelete) {
+                                right = deleteFocusRequester
+                            } else if (rightFocusRequester != null) {
+                                right = rightFocusRequester
+                            }
+                        }
+                    } else {
+                        Modifier
+                    },
+                )
                 .tvFocusTarget(
                     state = focusState,
                     focusRequester = rowFocusRequester,

@@ -1,5 +1,41 @@
 # AI Changelog
 
+## 2026-07-01 - Splash leger et filtre EPG Live TV
+
+Type:
+- android
+- ui
+- performance
+- documentation
+
+Resume:
+- `SplashActivity` ne precharge plus Home ni EPG; le demarrage lit seulement les categories/counts apres les verifications et l'eventuelle synchro catalogue.
+- Le splash garde la video, mais ajoute `@drawable/splash_background` en preview systeme et un poster `smartvision_splash_bg` jusqu'a la premiere frame Media3 pour reduire l'ecran noir avant la video.
+- Live TV remplace la recherche du header Categories par un bouton `EPG`; actif, il filtre les dossiers pour n'afficher que ceux qui ont au moins une chaine avec EPG local disponible.
+- Le cache EPG passe par un fichier local borne et un parsing streaming, et la synchro EPG manuelle ne rend plus la synchro catalogue rouge si elle echoue seule.
+- Les demandes de focus du profil/popup sont differees et protegees; le test Firestick 10 minutes a revele des crashes `FocusRequester is not initialized` sur DPAD droite, corriges par suppression des liens `focusProperties` vers items lazy et filet de securite dans `MainActivity`.
+- Release prod publiee en `0.1.71` / `versionCode 74` avec APK `smartvision-tv-v74-d76a5da8.apk`.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/SplashActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/MainActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/playlist/EpgRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/catalog/MediaCatalogComponents.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/LiveTvScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/LiveTvViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/movies/MoviesScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/profile/ProfileScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/series/SeriesScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/youtube/YoutubeScreen.kt`
+- `app/src/main/res/values/styles.xml`
+
 ## 2026-07-01 - Diagnostic memoire synchro Xtream Firestick
 
 Type:
@@ -12,6 +48,8 @@ Resume:
 - Ajout du script `scripts/capture_firestick_xtream_sync.ps1` pour capturer `logcat` et `dumpsys meminfo` sur la Firestick `192.168.1.33:5555`.
 - Documentation du chemin ADB Windows de reference: `C:\Users\ONEDEV\AppData\Local\Android\Sdk\platform-tools\adb.exe`.
 - Premiere capture Firestick: un tres gros catalogue a atteint `usedMb=118` juste avant l'ecriture Room puis a fini en ANR; au redemarrage, la reconstruction locale a lance deux OOM de 62 Mo avant qu'une synchro plus reduite reussisse.
+- Optimisation candidate: synchro Xtream traitee par sections et insertions Room en batchs dans une transaction unique, counts/categories via SQL, tendances Home limitees, splash sans prechargement complet Movies/Series.
+- Capture Firestick apres optimisation: `diagnostics/firestick-sync-20260701-123758`, deux synchros reussies sans OOM/ANR sur `21769 Live / 104005 Movies / 24325 Series`; pic `SVSyncMemory` observe a environ `59 Mo`.
 
 Fichiers MD mis a jour:
 - `docs/ai-knowledge/ROOT.md`
@@ -21,8 +59,11 @@ Fichiers MD mis a jour:
 
 Fichiers code/outillage concernes:
 - `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/SVDatabase.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/dao/MediaDao.kt`
+- `app/src/main/java/com/smartvision/svplayer/SplashActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeViewModel.kt`
 - `scripts/capture_firestick_xtream_sync.ps1`
-- `.gitignore`
 
 ## 2026-07-01 - M3U source-aware, EPG badge et UI player slim
 

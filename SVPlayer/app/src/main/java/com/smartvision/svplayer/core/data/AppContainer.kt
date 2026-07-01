@@ -212,6 +212,7 @@ class AppContainer(context: Context) {
     )
 
     val catalogRepository: CatalogRepository = DefaultCatalogRepository(
+        database = database,
         api = api,
         accountManager = accountManager,
         urlFactory = urlFactory,

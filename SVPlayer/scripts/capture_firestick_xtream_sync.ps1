@@ -2,7 +2,7 @@ param(
     [string]$AdbPath = "C:\Users\ONEDEV\AppData\Local\Android\Sdk\platform-tools\adb.exe",
     [string]$Device = "192.168.1.33:5555",
     [string]$PackageName = "com.smartvision.svplayer",
-    [int]$DurationSeconds = 180,
+    [int]$DurationSeconds = 480,
     [int]$SampleIntervalSeconds = 5,
     [string]$OutputRoot = "diagnostics"
 )
@@ -18,6 +18,7 @@ $outputDir = Join-Path $OutputRoot "firestick-sync-$timestamp"
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 $logcatPath = Join-Path $outputDir "logcat.txt"
+$logcatFullAfterPath = Join-Path $outputDir "logcat-full-after.txt"
 $meminfoBeforePath = Join-Path $outputDir "meminfo-before.txt"
 $meminfoSamplesPath = Join-Path $outputDir "meminfo-samples.txt"
 $meminfoAfterPath = Join-Path $outputDir "meminfo-after.txt"
@@ -36,7 +37,7 @@ Write-Host "Lance maintenant la synchronisation Xtream depuis Info compte sur la
 
 $logcatProcess = Start-Process `
     -FilePath $AdbPath `
-    -ArgumentList @("-s", $Device, "logcat", "-v", "time", "SVSyncMemory:I", "AndroidRuntime:E", "System.err:W", "*:S") `
+    -ArgumentList @("-s", $Device, "logcat", "-v", "time", "SVSyncMemory:I", "SVEpgMemory:I", "AndroidRuntime:E", "System.err:W", "vision.svplaye:W", "*:S") `
     -RedirectStandardOutput $logcatPath `
     -NoNewWindow `
     -PassThru
@@ -56,5 +57,6 @@ try {
 }
 
 & $AdbPath -s $Device shell dumpsys meminfo $PackageName | Out-File -Encoding utf8 $meminfoAfterPath
+& $AdbPath -s $Device logcat -d -v time | Out-File -Encoding utf8 $logcatFullAfterPath
 
 Write-Host "Capture terminee: $outputDir"

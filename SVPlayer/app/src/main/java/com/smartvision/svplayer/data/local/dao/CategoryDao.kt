@@ -11,6 +11,9 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE type = :type ORDER BY name")
     fun observeByType(type: String): Flow<List<CategoryEntity>>
 
+    @Query("SELECT * FROM categories WHERE type = :type ORDER BY name")
+    suspend fun getByType(type: String): List<CategoryEntity>
+
     @Query("DELETE FROM categories WHERE type = :type")
     suspend fun deleteByType(type: String)
 

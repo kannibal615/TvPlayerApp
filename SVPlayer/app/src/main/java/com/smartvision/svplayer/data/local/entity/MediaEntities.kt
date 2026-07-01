@@ -1,9 +1,17 @@
 package com.smartvision.svplayer.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "live_streams")
+@Entity(
+    tableName = "live_streams",
+    indices = [
+        Index(value = ["categoryId"]),
+        Index(value = ["categoryId", "number", "name"]),
+        Index(value = ["source"]),
+    ],
+)
 data class LiveStreamEntity(
     @PrimaryKey val streamId: Int,
     val number: Int,
@@ -15,7 +23,13 @@ data class LiveStreamEntity(
     val source: String = "xtream",
 )
 
-@Entity(tableName = "movies")
+@Entity(
+    tableName = "movies",
+    indices = [
+        Index(value = ["categoryId"]),
+        Index(value = ["categoryId", "number", "title"]),
+    ],
+)
 data class MovieEntity(
     @PrimaryKey val streamId: Int,
     val number: Int,
@@ -30,7 +44,13 @@ data class MovieEntity(
     val containerExtension: String,
 )
 
-@Entity(tableName = "series")
+@Entity(
+    tableName = "series",
+    indices = [
+        Index(value = ["categoryId"]),
+        Index(value = ["categoryId", "number", "title"]),
+    ],
+)
 data class SeriesEntity(
     @PrimaryKey val seriesId: Int,
     val number: Int,
@@ -44,7 +64,12 @@ data class SeriesEntity(
     val plot: String?,
 )
 
-@Entity(tableName = "episodes")
+@Entity(
+    tableName = "episodes",
+    indices = [
+        Index(value = ["seriesId"]),
+    ],
+)
 data class EpisodeEntity(
     @PrimaryKey val episodeId: Int,
     val seriesId: Int,

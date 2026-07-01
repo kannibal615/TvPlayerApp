@@ -120,6 +120,7 @@ import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -254,14 +255,16 @@ private fun ProfileScreen(
     val deviceSectionFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
-        licenseSectionFocusRequester.requestFocus()
+        delay(ProfileFocusRequestDelayMillis)
+        runCatching { licenseSectionFocusRequester.requestFocus() }
     }
 
     LaunchedEffect(pendingFocusSection, showXtreamSyncDialog) {
         if (!showXtreamSyncDialog) {
+            delay(ProfileFocusRequestDelayMillis)
             when (pendingFocusSection) {
-                ProfileSection.Xtream -> xtreamSectionFocusRequester.requestFocus()
-                ProfileSection.Device -> deviceSectionFocusRequester.requestFocus()
+                ProfileSection.Xtream -> runCatching { xtreamSectionFocusRequester.requestFocus() }
+                ProfileSection.Device -> runCatching { deviceSectionFocusRequester.requestFocus() }
                 else -> Unit
             }
             pendingFocusSection = null
@@ -1021,7 +1024,8 @@ private fun UrlEditorDialog(
     val saveFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
-        urlFocusRequester.requestFocus()
+        delay(ProfileFocusRequestDelayMillis)
+        runCatching { urlFocusRequester.requestFocus() }
     }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -1120,10 +1124,12 @@ private fun XtreamSynchronizationDialog(
         if (!blocking) closeAllowed()
     }
     LaunchedEffect(Unit) {
+        delay(ProfileFocusRequestDelayMillis)
         runCatching { startFocusRequester.requestFocus() }
     }
     LaunchedEffect(phase) {
         if (phase == XtreamSyncDialogPhase.Success || phase == XtreamSyncDialogPhase.Error) {
+            delay(ProfileFocusRequestDelayMillis)
             runCatching { returnFocusRequester.requestFocus() }
         }
     }
@@ -1490,7 +1496,8 @@ private fun XtreamAccountEditorDialog(
     val saveFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
-        nameFocusRequester.requestFocus()
+        delay(ProfileFocusRequestDelayMillis)
+        runCatching { nameFocusRequester.requestFocus() }
     }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -1690,13 +1697,13 @@ private fun ProfileEditTextField(
                     Key.DirectionDown -> {
                         editing = false
                         keyboardController?.hide()
-                        nextFocusRequester?.requestFocus()
+                        runCatching { nextFocusRequester?.requestFocus() }
                         nextFocusRequester != null
                     }
                     Key.DirectionUp -> {
                         editing = false
                         keyboardController?.hide()
-                        previousFocusRequester?.requestFocus()
+                        runCatching { previousFocusRequester?.requestFocus() }
                         previousFocusRequester != null
                     }
                     else -> false
@@ -2145,7 +2152,8 @@ private fun PremiumQrOnlyDialog(
     val closeFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
-        closeFocusRequester.requestFocus()
+        delay(ProfileFocusRequestDelayMillis)
+        runCatching { closeFocusRequester.requestFocus() }
     }
 
     Dialog(
@@ -2277,12 +2285,14 @@ private fun PremiumLicenseDialog(
     val focusStyle = LocalTvFocusStyle.current
 
     LaunchedEffect(Unit) {
-        fieldFocusRequester.requestFocus()
+        delay(ProfileFocusRequestDelayMillis)
+        runCatching { fieldFocusRequester.requestFocus() }
     }
 
     LaunchedEffect(editing) {
         if (editing) {
-            inputFocusRequester.requestFocus()
+            delay(ProfileFocusRequestDelayMillis)
+            runCatching { inputFocusRequester.requestFocus() }
             keyboardController?.show()
         }
     }
@@ -3111,3 +3121,5 @@ private fun createQrBitmap(content: String, size: Int): Bitmap {
         setPixels(pixels, 0, size, 0, 0, size, size)
     }
 }
+
+private const val ProfileFocusRequestDelayMillis = 80L

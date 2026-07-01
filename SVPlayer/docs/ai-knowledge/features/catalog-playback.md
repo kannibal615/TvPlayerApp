@@ -14,9 +14,9 @@ Les ecrans actifs sont routes par `ui/navigation/AppNavigation.kt`. Ne pas modif
 
 Depuis le 2026-06-30, la navigation Home / Live TV / Movies / Series ne doit plus declencher de telechargement Xtream global ni charger les categories depuis le reseau. Ces ecrans lisent le catalogue local Room via `CatalogRepository`. Les appels reseau Xtream sont limites aux controles rapides de disponibilite et aux synchronisations catalogue autorisees.
 
-Les snapshots locaux Live / Movies / Series peuvent etre conserves en memoire applicative dans `DefaultCatalogRepository` apres une premiere lecture Room. Depuis le 2026-07-01, `SplashActivity` prechauffe ces snapshots pendant le demarrage apres la verification Xtream et l'eventuelle synchronisation. Les ViewModels catalogue les reutilisent pour eviter de remettre un loader plein ecran au premier affichage ou a chaque retour sur un ecran. Le cache est invalide apres synchronisation catalogue ou changement de compte Xtream.
+Les snapshots locaux Live / Movies / Series peuvent etre conserves en memoire applicative dans `DefaultCatalogRepository` apres une premiere lecture Room. Depuis le diagnostic Firestick du 2026-07-01, `SplashActivity` evite de precharger les snapshots complets des gros catalogues: il prechauffe uniquement les categories/counts. Les ViewModels catalogue peuvent encore utiliser les snapshots locaux comme secours, mais la direction durable pour les gros catalogues est le chargement local limite/pagine depuis Room plutot que la reconstruction globale en RAM.
 
-Les donnees Home legeres sont aussi prechauffees au demarrage: slides Home via `HomeSlidesRepository`, progression recente enrichie via `UserContentRepository`, et tendances depuis les snapshots Movies / Series deja charges en memoire.
+Home charge ses donnees legeres hors splash. Ne pas reintegrer slides, progression recente ou tendances Movies / Series dans le demarrage tant que les mesures Firestick restent sensibles a la pression memoire.
 
 Clarification stockage/performance:
 - Room est le stockage local persistant de l'application sur l'appareil; les catalogues synchronises restent disponibles apres fermeture ou redemarrage de l'app tant que les donnees de l'application ne sont pas effacees.
@@ -25,19 +25,19 @@ Clarification stockage/performance:
 - Apres une vraie reouverture ou un process tue par Android, ce chargement local ne peut pas etre supprime a 100%, car l'UI doit reconstruire ses listes en memoire. Il peut seulement etre optimise.
 - La synchronisation reseau complete est separee du chargement local et depend de `SyncFrequencyPolicy`: `A chaque demarrage` force une synchro a chaque ouverture, `24h`/`48h` ne resynchronisent que si la derniere synchro est obsolete, `Manuelle`/`Jamais` evitent la synchro automatique.
 - Recommandation d'optimisation: garder le prechauffage Room au splash et preferer une frequence `24h` ou `48h` pour eviter les telechargements reseau inutiles tout en gardant les catalogues frais.
-- Si le chargement local reste visible, les pistes utiles sont: index Room sur les colonnes de tri/filtre, requetes paginees, prechargement categories + premiers elements seulement, ou snapshot local materialise pour Home. Ces pistes accelerent la lecture locale, elles ne remplacent pas le stockage Room.
+- Si le chargement local reste visible, les pistes utiles sont: requetes paginees, prechargement categories + premiers elements seulement, ou snapshot local materialise pour Home. Les index Room sur `categoryId`, tri par numero/titre/nom et `episodes.seriesId` sont deja ajoutes en schema 7.
 
 Depuis le 2026-06-30, la synchronisation manuelle depuis Info compte publie aussi une progression par section Live TV / Films / Series dans `SyncStatus`. Les compteurs de l'ancienne synchro servent d'estimation de progression; chaque section passe a 100% quand son endpoint principal est termine.
 
-Depuis le 2026-07-01, la synchronisation Xtream emet aussi des logs memoire `SVSyncMemory` pour diagnostiquer les OOM Firestick. Les jalons couvrent le debut de synchro, les appels compte/categories/Live/Films/Series, l'ecriture Room, l'invalidation du cache local et les erreurs. Ces logs ne changent pas le comportement utilisateur et ne doivent pas exposer les identifiants Xtream.
+Depuis le 2026-07-01, la synchronisation Xtream emet aussi des logs memoire `SVSyncMemory` pour diagnostiquer les OOM Firestick. Les jalons couvrent le debut de synchro, les appels compte/categories/Live/Films/Series, les ecritures Room par section, l'invalidation du cache local et les erreurs. Ces logs ne changent pas le comportement utilisateur et ne doivent pas exposer les identifiants Xtream.
 
 Depuis le 2026-07-01, un lien M3U peut devenir la source active du catalogue Live TV. Les entrees M3U sont parsees depuis `#EXTINF`, groupees par `group-title`, stockees dans `live_streams` avec `source = m3u` et `directStreamUrl`, puis lues sans `XtreamUrlFactory`. Quand M3U est actif, Movies et Series sont vides pour respecter la regle une seule source active.
 
-Depuis le 2026-07-01, l'URL EPG XMLTV est telechargee dans un cache local leger au demarrage ou lors d'une synchronisation manuelle. Les programmes enrichissent l'apercu Live TV via `tvg-id`/nom de chaine; la zone EPG de l'apercu est scrollable si la liste est longue.
+Depuis le 2026-07-01, l'URL EPG XMLTV est telechargee dans un cache local borne lors d'une synchronisation manuelle ou catalogue, mais pas pendant le splash. Les programmes enrichissent l'apercu Live TV via `tvg-id`/nom de chaine; la zone EPG de l'apercu est scrollable si la liste est longue.
 
 Depuis le 2026-07-01, le splash tient compte de la source active: en M3U, il verifie le lien, synchronise et precharge Home + Live TV uniquement, sans afficher de faux statuts de chargement Films/Series. Les ecrans Movies et Series affichent un etat vide explicite quand M3U est actif, au lieu d'une erreur Xtream. Live TV reconnait un lien M3U comme source jouable meme sans compte Xtream local.
 
-Depuis le 2026-07-01, les lignes Live TV affichent un petit badge bleu `E` a droite quand des programmes EPG locaux sont disponibles pour la chaine.
+Depuis le 2026-07-01, les lignes Live TV affichent un petit badge bleu `E` a droite quand des programmes EPG locaux sont disponibles pour la chaine. Le header des categories Live TV remplace la recherche dossier par un bouton `EPG`; active, il n'affiche que les dossiers contenant au moins une chaine avec EPG local disponible.
 
 ## 3. Workflow utilisateur
 
@@ -65,7 +65,7 @@ M3U / EPG:
 - `DefaultCatalogRepository.kt` choisit la branche de synchronisation selon `PlaylistSource`.
 
 Room:
-- `SVDatabase.kt` version 4.
+- `SVDatabase.kt` version 7.
 - Entites: profiles, categories, live streams, movies, series, episodes, favorites, playback progress, sync state, historique YouTube.
 
 Playback:
@@ -140,14 +140,14 @@ URL de lecture:
 - Pour Live TV, ne pas sauvegarder la progression comme VOD.
 - Garder les categories speciales Favoris/Historiques coherentes.
 - Ne pas bloquer l'affichage si du contenu partiel est deja disponible.
-- Ne pas remplacer les tables locales tant que toutes les reponses principales de synchronisation n'ont pas ete recuperees avec succes.
+- Ne pas publier un catalogue partiel apres echec de synchronisation. La synchro Xtream actuelle ecrit Live, Movies, Series et `SyncState` dans une transaction Room unique; les sections sont traitees en serie et en batchs pour reduire les listes simultanees en RAM.
 - Une seule source catalogue peut etre active: Xtream ou M3U. Activer une source desactive l'autre cote preference locale.
 - M3U alimente Live TV uniquement; ne pas fabriquer des films/series sans structure fiable.
 - Quand M3U est actif, ne pas afficher de messages d'erreur Xtream sur Movies/Series; afficher un etat vide source-aware.
 - Le badge EPG des lignes Live TV doit se baser sur les programmes locaux disponibles, pas seulement sur la presence d'une URL EPG.
 - Ne pas lancer de synchronisation globale pendant la navigation Home / Live TV / Movies / Series / categories / listes.
 - Ne pas afficher un loader plein ecran si un snapshot local memoire existe deja pour l'ecran catalogue demande.
-- Le premier chargement local des snapshots Home / Live TV / Movies / Series doit rester dans `SplashActivity` quand le compte Xtream est disponible; les ecrans ne doivent faire qu'utiliser le cache ou une lecture locale de secours.
+- Le premier chargement local au splash doit rester leger: categories/counts uniquement. Ne pas remettre Home, EPG, tendances ou snapshots complets Movies/Series dans `SplashActivity` pour les tres gros catalogues.
 - Ne pas confondre prechargement local et synchro reseau: reconstruire le cache memoire depuis Room au demarrage est normal; retelecharger le catalogue complet ne doit arriver que si la politique de frequence le demande ou si l'utilisateur lance Synchroniser.
 - Ne pas promettre zero chargement local apres fermeture complete: si le process Android a ete tue, le cache RAM n'existe plus et doit etre reconstruit depuis Room.
 - AutoSync et sync manuelle doivent verifier Xtream avant de synchroniser; seules les erreurs reseau sont retentees automatiquement.
@@ -160,7 +160,8 @@ URL de lecture:
 - Les loaders doivent tenir compte de `visibleItems` pour eviter un blocage malgre le contenu partiel.
 - Les changements de focus pendant fermeture lecteur peuvent provoquer des erreurs Compose si un FocusRequester survit a son composable.
 - Les crashes playback doivent etre diagnostiques depuis fatal stack ou anomalies avant correction UI.
-- Capture Firestick 2026-07-01: une synchro Xtream tres volumineuse peut atteindre environ 118 Mo utilises sur 128 Mo max avant l'ecriture Room, puis provoquer ANR/OOM. Les optimisations prioritaires sont la reduction des listes simultanees en RAM, l'ecriture transactionnelle/batch par section et le chargement local pagine au lieu d'un snapshot complet.
+- Capture Firestick 2026-07-01 avant optimisation: une synchro Xtream tres volumineuse pouvait atteindre environ 118 Mo utilises sur 128 Mo max avant l'ecriture Room, puis provoquer ANR/OOM.
+- Capture Firestick 2026-07-01 apres optimisation candidate: deux synchronisations du catalogue `21769 Live / 104005 Movies / 24325 Series` ont reussi sans OOM ni ANR; le pic `SVSyncMemory` observe est descendu a environ 59 Mo pendant `after_get_movies`. Prochaine piste si necessaire: remplacer les snapshots complets d'ecrans par du paging Room.
 
 ## 11. Quand lire ce fichier ?
 
@@ -198,3 +199,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-01: correction M3U source-aware: splash Home/Live uniquement, Movies/Series en etat vide explicite, popup sync M3U avec lien M3U, et badge `E` sur les chaines avec EPG.
 - 2026-07-01: clarification optimisation demarrage: Room persiste sur l'appareil, le cache memoire se reconstruit au splash, et la synchro reseau doit dependre de la frequence configuree.
 - 2026-07-01: ajout instrumentation `SVSyncMemory` et script ADB Firestick pour mesurer les pics memoire pendant la synchronisation Xtream.
+- 2026-07-01: optimisation candidate Firestick: synchro Xtream par sections/batchs dans une transaction Room, counts/categories via SQL, splash limite aux categories sans Home/EPG/snapshots complets, et bouton EPG dans les categories Live TV.

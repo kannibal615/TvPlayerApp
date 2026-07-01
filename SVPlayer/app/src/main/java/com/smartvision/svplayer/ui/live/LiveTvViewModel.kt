@@ -18,6 +18,7 @@ import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.LocalCatalogSnapshot
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,12 +26,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class LiveTvCategory(
     val id: String,
     val label: String,
     val count: Int?,
     val kind: LiveTvCategoryKind,
+    val hasEpg: Boolean = false,
 )
 
 enum class LiveTvCategoryKind {
@@ -171,6 +174,31 @@ class LiveTvViewModel(
             )
         }
         loadHistoryChannels()
+        refreshEpgCategoryAvailability()
+    }
+
+    fun refreshEpgCategoryAvailability() {
+        if (localChannels.isEmpty() || localCategories.isEmpty()) return
+        viewModelScope.launch {
+            val epgCategoryIds = withContext(Dispatchers.IO) {
+                localChannels
+                    .asSequence()
+                    .filter { stream -> epgRepository.hasPrograms(stream.epgChannelId, stream.name) }
+                    .mapNotNull { it.categoryId }
+                    .toSet()
+            }
+            _uiState.update { state ->
+                state.copy(
+                    categories = state.categories.map { category ->
+                        if (category.id in SpecialLiveCategoryIds) {
+                            category.copy(hasEpg = false)
+                        } else {
+                            category.copy(hasEpg = category.id in epgCategoryIds)
+                        }
+                    },
+                )
+            }
+        }
     }
 
     fun selectCategory(category: LiveTvCategory) {

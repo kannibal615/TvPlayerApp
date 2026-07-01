@@ -232,7 +232,6 @@ fun MoviesScreen(
                 MovieGrid(
                     state = state,
                     firstMovieFocusRequester = firstMovieFocusRequester,
-                    selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     searchQuery = contentSearchQuery,
                     onSearchQueryChange = { contentSearchQuery = it },
                     onMovieFocused = viewModel::focusMovie,
@@ -331,11 +330,6 @@ private fun MovieCategoryList(
                     } else {
                         null
                     },
-                    rightFocusRequester = firstMovieFocusRequester.takeIf {
-                        !state.moviesLoading && state.movies.any {
-                            contentSearchQuery.isBlank() || it.title.contains(contentSearchQuery, ignoreCase = true)
-                        }
-                    },
                     onClick = { onCategory(category) },
                 )
             }
@@ -347,7 +341,6 @@ private fun MovieCategoryList(
 private fun MovieGrid(
     state: MoviesScreenState,
     firstMovieFocusRequester: FocusRequester,
-    selectedCategoryFocusRequester: FocusRequester,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onMovieFocused: (MovieItemUi) -> Unit,
@@ -435,9 +428,6 @@ private fun MovieGrid(
                             selected = movie.streamId == state.selectedMovieId,
                             favorite = movie.isFavorite,
                             focusRequester = cardFocusRequester,
-                            leftFocusRequester = selectedCategoryFocusRequester.takeIf {
-                                index % MediaCatalogDimens.MediaGridColumns == 0
-                            },
                             rightFocusRequester = deleteFocusRequester.takeIf { showHistoryDelete },
                             onFocused = { onMovieFocused(movie) },
                             onClick = { onMovieClick(movie) },

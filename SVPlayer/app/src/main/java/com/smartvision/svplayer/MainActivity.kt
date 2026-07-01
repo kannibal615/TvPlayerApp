@@ -5,6 +5,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
+import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -35,6 +37,18 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
+        try {
+            super.dispatchKeyEvent(event)
+        } catch (error: IllegalStateException) {
+            if (error.message?.contains("FocusRequester is not initialized") == true) {
+                Log.w(TAG, "Focus search ignored uninitialized requester for keyCode=${event.keyCode}")
+                true
+            } else {
+                throw error
+            }
+        }
+
     private fun handleIntent(intent: Intent?) {
         if (intent?.action == ACTION_SHOW_XTREAM_CONNECTION_ALERT) {
             (application as SVPlayerApplication).appContainer.xtreamConnectionManager.requestAlert()
@@ -48,6 +62,7 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        private const val TAG = "SmartVisionFocus"
         const val ACTION_SHOW_XTREAM_CONNECTION_ALERT = "com.smartvision.svplayer.SHOW_XTREAM_CONNECTION_ALERT"
         private const val REQUEST_NOTIFICATIONS = 7041
     }

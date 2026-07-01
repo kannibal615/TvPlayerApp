@@ -43,7 +43,7 @@ import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
         YoutubeSelectionEntity::class,
         YoutubeBehaviorEventEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class SVDatabase : RoomDatabase() {
@@ -58,7 +58,7 @@ abstract class SVDatabase : RoomDatabase() {
     companion object {
         fun build(context: Context): SVDatabase =
             Room.databaseBuilder(context, SVDatabase::class.java, "svplayer.db")
-                .addMigrations(Migration1To2, Migration2To3, Migration3To4, Migration4To5, Migration5To6)
+                .addMigrations(Migration1To2, Migration2To3, Migration3To4, Migration4To5, Migration5To6, Migration6To7)
                 .build()
 
         private val Migration1To2 = object : Migration(1, 2) {
@@ -136,6 +136,19 @@ abstract class SVDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE live_streams ADD COLUMN directStreamUrl TEXT")
                 db.execSQL("ALTER TABLE live_streams ADD COLUMN source TEXT NOT NULL DEFAULT 'xtream'")
+            }
+        }
+
+        private val Migration6To7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_live_streams_categoryId ON live_streams(categoryId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_live_streams_categoryId_number_name ON live_streams(categoryId, number, name)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_live_streams_source ON live_streams(source)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_movies_categoryId ON movies(categoryId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_movies_categoryId_number_title ON movies(categoryId, number, title)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_series_categoryId ON series(categoryId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_series_categoryId_number_title ON series(categoryId, number, title)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_episodes_seriesId ON episodes(seriesId)")
             }
         }
     }

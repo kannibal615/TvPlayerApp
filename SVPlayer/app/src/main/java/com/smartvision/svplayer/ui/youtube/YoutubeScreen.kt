@@ -378,7 +378,6 @@ fun YoutubeScreen(
                     state = state,
                     strings = strings,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
-                    contentFocusRequester = contentFocusRequester,
                     onCategory = viewModel::selectCategory,
                     modifier = Modifier
                         .weight(0.22f)
@@ -468,7 +467,6 @@ private fun YoutubeCategoryList(
     state: YoutubeScreenState,
     strings: SmartVisionStrings,
     selectedCategoryFocusRequester: FocusRequester,
-    contentFocusRequester: FocusRequester?,
     onCategory: (YoutubeCategoryUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -493,7 +491,6 @@ private fun YoutubeCategoryList(
                     } else {
                         null
                     },
-                    rightFocusRequester = contentFocusRequester,
                     onClick = { onCategory(category) },
                 )
             }

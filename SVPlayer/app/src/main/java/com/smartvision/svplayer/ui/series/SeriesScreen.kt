@@ -231,7 +231,6 @@ fun SeriesScreen(
                 SeriesGrid(
                     state = state,
                     firstSeriesFocusRequester = firstSeriesFocusRequester,
-                    selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     searchQuery = contentSearchQuery,
                     onSearchQueryChange = { contentSearchQuery = it },
                     onSeriesFocused = viewModel::focusSeries,
@@ -334,11 +333,6 @@ private fun SeriesCategoryList(
                     } else {
                         null
                     },
-                    rightFocusRequester = firstSeriesFocusRequester.takeIf {
-                        !state.seriesLoading && state.series.any {
-                            contentSearchQuery.isBlank() || it.title.contains(contentSearchQuery, ignoreCase = true)
-                        }
-                    },
                     onClick = { onCategory(category) },
                 )
             }
@@ -350,7 +344,6 @@ private fun SeriesCategoryList(
 private fun SeriesGrid(
     state: SeriesScreenState,
     firstSeriesFocusRequester: FocusRequester,
-    selectedCategoryFocusRequester: FocusRequester,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onSeriesFocused: (SeriesItemUi) -> Unit,
@@ -438,9 +431,6 @@ private fun SeriesGrid(
                             selected = series.seriesId == state.selectedSeriesId,
                             favorite = series.isFavorite,
                             focusRequester = cardFocusRequester,
-                            leftFocusRequester = selectedCategoryFocusRequester.takeIf {
-                                index % MediaCatalogDimens.MediaGridColumns == 0
-                            },
                             rightFocusRequester = deleteFocusRequester.takeIf { showHistoryDelete },
                             onFocused = { onSeriesFocused(series) },
                             onClick = { onSeriesClick(series) },

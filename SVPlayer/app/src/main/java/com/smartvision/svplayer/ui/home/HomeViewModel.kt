@@ -100,11 +100,11 @@ class HomeViewModel(
     }
 
     private suspend fun loadTrendingMovies(): List<ScoredTrend> {
-        return catalogRepository.getMovieCatalogSnapshot().items.toMovieTrends()
+        return catalogRepository.getTrendingMovies(HomeTrendingSectionLimit).toMovieTrends()
     }
 
     private suspend fun loadTrendingSeries(): List<ScoredTrend> {
-        return catalogRepository.getSeriesCatalogSnapshot().items.toSeriesTrends()
+        return catalogRepository.getTrendingSeries(HomeTrendingSectionLimit).toSeriesTrends()
     }
 
     private fun buildCachedTrending(): List<ContinueItem> {
@@ -119,6 +119,7 @@ class HomeViewModel(
 }
 
 private const val ContinueWatchingSnapshotLimit = 60
+private const val HomeTrendingSectionLimit = 24
 
 private fun toContinueItem(progress: PlaybackProgressEntity): ContinueItem? {
     val id = progress.contentId.toIntOrNull() ?: return null

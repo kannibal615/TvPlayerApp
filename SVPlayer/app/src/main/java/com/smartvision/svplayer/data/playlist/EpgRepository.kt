@@ -1,8 +1,10 @@
 package com.smartvision.svplayer.data.playlist
 
 import android.content.Context
+import android.util.Log
 import android.util.Xml
-import java.io.StringReader
+import java.io.File
+import java.io.Reader
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -15,25 +17,42 @@ class EpgRepository(
     context: Context,
     private val okHttpClient: OkHttpClient,
 ) {
-    private val preferences = context.getSharedPreferences("smartvision_epg_cache", Context.MODE_PRIVATE)
-    @Volatile private var cache: Map<String, List<EpgProgram>> = loadCache()
+    private val cacheFile = File(context.filesDir, "smartvision_epg_cache.tsv")
+    @Volatile private var cache: Map<String, List<EpgProgram>> = emptyMap()
+    @Volatile private var cacheLoaded: Boolean = false
+
+    init {
+        deleteLegacySharedPreferenceCache(context)
+    }
 
     suspend fun synchronize(url: String): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {
             if (url.isBlank()) return@runCatching 0
+            logMemory("epg_sync_start")
             val request = Request.Builder().url(url).header("Accept", "application/xml,text/xml,*/*").build()
-            val xml = okHttpClient.newCall(request).execute().use { response ->
+            val parsed = okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) error("URL EPG indisponible (${response.code}).")
-                response.body?.string().orEmpty()
+                val body = response.body ?: error("URL EPG vide.")
+                body.charStream().use { parseXmltv(it) }
             }
-            val parsed = parseXmltv(xml)
-            cache = parsed
+            cache = withLookupAliases(parsed)
+            cacheLoaded = true
             persist(parsed)
-            parsed.values.sumOf { it.size }
+            parsed.values.sumOf { it.size }.also { count ->
+                logMemory("epg_sync_success", "channels=${parsed.size} programs=$count")
+            }
+        }.onFailure { error ->
+            if (error is OutOfMemoryError) {
+                cache = emptyMap()
+                cacheLoaded = true
+                runCatching { cacheFile.delete() }
+            }
+            logMemory("epg_sync_error", "error=${error.javaClass.simpleName}")
         }
     }
 
     fun loadPrograms(channelId: String?, channelName: String): List<EpgProgram> {
+        ensureCacheLoaded()
         val keys = listOfNotNull(channelId, channelName)
             .flatMap { key -> listOf(key, normalizeKey(key)) }
             .filter { it.isNotBlank() }
@@ -44,25 +63,43 @@ class EpgRepository(
             .sortedBy { it.startMillis ?: Long.MAX_VALUE }
     }
 
-    private fun parseXmltv(xml: String): Map<String, List<EpgProgram>> {
+    fun hasPrograms(channelId: String?, channelName: String): Boolean {
+        ensureCacheLoaded()
+        return listOfNotNull(channelId, channelName)
+            .flatMap { key -> listOf(key, normalizeKey(key)) }
+            .filter { it.isNotBlank() }
+            .any { key -> cache[key]?.isNotEmpty() == true }
+    }
+
+    private fun parseXmltv(reader: Reader): Map<String, List<EpgProgram>> {
         val parser = Xml.newPullParser()
-        parser.setInput(StringReader(xml))
-        val programs = mutableMapOf<String, MutableList<EpgProgram>>()
+        parser.setInput(reader)
+        val programs = linkedMapOf<String, MutableList<EpgProgram>>()
+        var totalPrograms = 0
         var event = parser.eventType
         while (event != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG && parser.name == "programme") {
                 val channel = parser.getAttributeValue(null, "channel").orEmpty()
                 val start = parser.getAttributeValue(null, "start")
                 val stop = parser.getAttributeValue(null, "stop")
-                val program = readProgramme(parser, channel, start, stop)
-                if (channel.isNotBlank() && program.title.isNotBlank()) {
-                    programs.getOrPut(channel) { mutableListOf() } += program
-                    programs.getOrPut(normalizeKey(channel)) { mutableListOf() } += program
+                val items = channel.takeIf { it.isNotBlank() }?.let { programs.getOrPut(it) { mutableListOf() } }
+                if (items == null ||
+                    items.size >= MaxProgramsPerChannel ||
+                    programs.size > MaxCachedChannels ||
+                    totalPrograms >= MaxCachedPrograms
+                ) {
+                    skipCurrentTag(parser)
+                } else {
+                    val program = readProgramme(parser, channel, start, stop)
+                    if (program.title.isNotBlank()) {
+                        items += program
+                        totalPrograms++
+                    }
                 }
             }
             event = parser.next()
         }
-        return programs
+        return programs.mapValues { (_, items) -> items.toList() }
     }
 
     private fun readProgramme(
@@ -95,30 +132,51 @@ class EpgRepository(
     }
 
     private fun persist(programs: Map<String, List<EpgProgram>>) {
-        val lines = programs.entries.flatMap { (channel, items) ->
-            items.take(MaxProgramsPerChannel).map { program ->
-                listOf(
-                    channel,
-                    program.title,
-                    program.description,
-                    program.startLabel,
-                    program.stopLabel,
-                    program.startMillis?.toString().orEmpty(),
-                    program.stopMillis?.toString().orEmpty(),
-                ).joinToString("\t") { it.replace("\t", " ").replace("\n", " ") }
-            }
+        cacheFile.parentFile?.mkdirs()
+        cacheFile.bufferedWriter().use { writer ->
+            programs.entries
+                .asSequence()
+                .take(MaxCachedChannels)
+                .forEach { (channel, items) ->
+                    items.take(MaxProgramsPerChannel).forEach { program ->
+                        writer.appendLine(
+                            listOf(
+                                channel,
+                                program.title,
+                                program.description,
+                                program.startLabel,
+                                program.stopLabel,
+                                program.startMillis?.toString().orEmpty(),
+                                program.stopMillis?.toString().orEmpty(),
+                            ).joinToString("\t") { it.toCacheField() },
+                        )
+                    }
+                }
         }
-        preferences.edit().putString(KEY_PROGRAMS, lines.joinToString("\n")).apply()
     }
 
-    private fun loadCache(): Map<String, List<EpgProgram>> =
-        preferences.getString(KEY_PROGRAMS, "").orEmpty()
-            .lineSequence()
-            .mapNotNull { line ->
-                val parts = line.split('\t')
-                if (parts.size < 7) return@mapNotNull null
-                parts[0] to EpgProgram(
-                    channelId = parts[0],
+    private fun ensureCacheLoaded() {
+        if (cacheLoaded) return
+        synchronized(this) {
+            if (cacheLoaded) return
+            val loaded = loadCache()
+            cache = withLookupAliases(loaded)
+            cacheLoaded = true
+        }
+    }
+
+    private fun loadCache(): Map<String, List<EpgProgram>> {
+        if (!cacheFile.exists()) return emptyMap()
+        val programs = linkedMapOf<String, MutableList<EpgProgram>>()
+        cacheFile.useLines { lines ->
+            lines.take(MaxCachedPrograms).forEach { line ->
+                val parts = line.split('\t', limit = 7)
+                if (parts.size < 7) return@forEach
+                val channel = parts[0].takeIf { it.isNotBlank() } ?: return@forEach
+                val items = programs.getOrPut(channel) { mutableListOf() }
+                if (items.size >= MaxProgramsPerChannel || programs.size > MaxCachedChannels) return@forEach
+                items += EpgProgram(
+                    channelId = channel,
                     title = parts[1],
                     description = parts[2],
                     startLabel = parts[3],
@@ -127,11 +185,54 @@ class EpgRepository(
                     stopMillis = parts[6].toLongOrNull(),
                 )
             }
-            .groupBy({ it.first }, { it.second })
+        }
+        return programs.mapValues { (_, items) -> items.toList() }
+    }
+
+    private fun withLookupAliases(programs: Map<String, List<EpgProgram>>): Map<String, List<EpgProgram>> {
+        if (programs.isEmpty()) return emptyMap()
+        val indexed = LinkedHashMap<String, List<EpgProgram>>(programs.size * 2)
+        programs.forEach { (channel, items) ->
+            indexed[channel] = items
+            normalizeKey(channel).takeIf { it.isNotBlank() }?.let { indexed[it] = items }
+        }
+        return indexed
+    }
+
+    private fun skipCurrentTag(parser: XmlPullParser) {
+        var depth = 1
+        while (depth > 0) {
+            when (parser.next()) {
+                XmlPullParser.START_TAG -> depth++
+                XmlPullParser.END_TAG -> depth--
+                XmlPullParser.END_DOCUMENT -> return
+            }
+        }
+    }
+
+    private fun logMemory(stage: String, details: String = "") {
+        val runtime = Runtime.getRuntime()
+        val usedMb = (runtime.totalMemory() - runtime.freeMemory()) / BytesInMb
+        val freeMb = runtime.freeMemory() / BytesInMb
+        val totalMb = runtime.totalMemory() / BytesInMb
+        val maxMb = runtime.maxMemory() / BytesInMb
+        Log.i(
+            "SVEpgMemory",
+            "stage=$stage usedMb=$usedMb freeMb=$freeMb totalMb=$totalMb maxMb=$maxMb $details".trim(),
+        )
+    }
+
+    private fun deleteLegacySharedPreferenceCache(context: Context) {
+        runCatching {
+            File(context.applicationInfo.dataDir, "shared_prefs/smartvision_epg_cache.xml").delete()
+        }
+    }
 
     private companion object {
-        const val KEY_PROGRAMS = "programs"
-        const val MaxProgramsPerChannel = 30
+        const val BytesInMb = 1024L * 1024L
+        const val MaxProgramsPerChannel = 8
+        const val MaxCachedChannels = 8_000
+        const val MaxCachedPrograms = 64_000
     }
 }
 
@@ -160,6 +261,11 @@ private fun normalizeKey(value: String): String =
     value.lowercase(Locale.ROOT)
         .replace(Regex("\\s+"), " ")
         .replace(Regex("[^a-z0-9]+"), "")
+
+private fun String.toCacheField(): String =
+    replace("\t", " ")
+        .replace("\n", " ")
+        .replace("\r", " ")
 
 private val XmltvDateFormat = SimpleDateFormat("yyyyMMddHHmmss", Locale.US)
 private val DisplayTimeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())

@@ -36,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,8 +61,6 @@ import androidx.media3.ui.PlayerView
 import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.data.AppContainer
 import com.smartvision.svplayer.sync.SyncFrequencyPolicy
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
@@ -103,10 +102,16 @@ class SplashActivity : ComponentActivity() {
     @Composable
     private fun SplashVideoScreen(statusLabel: String, progress: Float) {
         var loadingVisible by remember { mutableStateOf(true) }
+        var videoFrameReady by remember { mutableStateOf(false) }
         val loadingAlpha by animateFloatAsState(
             targetValue = if (loadingVisible) 1f else 0f,
             animationSpec = tween(LoadingFadeMillis.toInt(), easing = FastOutSlowInEasing),
             label = "splashLoadingAlpha",
+        )
+        val posterAlpha by animateFloatAsState(
+            targetValue = if (videoFrameReady) 0f else 1f,
+            animationSpec = tween(VideoPosterFadeMillis.toInt(), easing = FastOutSlowInEasing),
+            label = "splashVideoPosterAlpha",
         )
 
         Box(
@@ -114,7 +119,26 @@ class SplashActivity : ComponentActivity() {
                 .fillMaxSize()
                 .background(Color.Black),
         ) {
-            SplashVideoBackground(Modifier.fillMaxSize())
+            Image(
+                painter = painterResource(R.drawable.smartvision_splash_bg),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            SplashVideoBackground(
+                modifier = Modifier.fillMaxSize(),
+                onFirstFrame = { videoFrameReady = true },
+            )
+            if (posterAlpha > 0.01f) {
+                Image(
+                    painter = painterResource(R.drawable.smartvision_splash_bg),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(posterAlpha),
+                )
+            }
             SplashLoadingOverlay(
                 statusLabel = statusLabel,
                 progress = progress,
@@ -125,8 +149,12 @@ class SplashActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun SplashVideoBackground(modifier: Modifier = Modifier) {
+    private fun SplashVideoBackground(
+        modifier: Modifier = Modifier,
+        onFirstFrame: () -> Unit,
+    ) {
         val context = LocalContext.current
+        val currentOnFirstFrame = rememberUpdatedState(onFirstFrame)
         val player = remember {
             ExoPlayer.Builder(context)
                 .build()
@@ -140,18 +168,27 @@ class SplashActivity : ComponentActivity() {
         }
 
         DisposableEffect(player) {
+            val listener = object : Player.Listener {
+                override fun onRenderedFirstFrame() {
+                    currentOnFirstFrame.value()
+                }
+            }
+            player.addListener(listener)
             onDispose {
+                player.removeListener(listener)
                 player.release()
             }
         }
 
         AndroidView(
-            modifier = modifier.background(Color.Black),
+            modifier = modifier,
             factory = { viewContext ->
                 PlayerView(viewContext).apply {
                     useController = false
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                    setShutterBackgroundColor(AndroidColor.BLACK)
+                    setBackgroundColor(AndroidColor.TRANSPARENT)
+                    setShutterBackgroundColor(AndroidColor.TRANSPARENT)
+                    setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
                     setKeepContentOnPlayerReset(true)
                     isFocusable = false
                     isFocusableInTouchMode = false
@@ -261,7 +298,7 @@ class SplashActivity : ComponentActivity() {
     private suspend fun runStartupChecks(updateStatus: (String, Float) -> Unit) {
         val startedAt = SystemClock.elapsedRealtime()
         val container = (application as SVPlayerApplication).appContainer
-        var totalSteps = startupStepCount(PlaylistSource.Xtream, shouldSync = true, shouldSyncEpg = false)
+        var totalSteps = startupStepCount(PlaylistSource.Xtream, shouldSync = true)
         suspend fun update(label: String, step: Int, total: Int = totalSteps) {
             updateStatus(label, startupProgress(step, total))
             delay(StatusStepPauseMillis)
@@ -281,8 +318,7 @@ class SplashActivity : ComponentActivity() {
                 container.accountManager.m3uUrl.value.isNotBlank()
             }
             val shouldSync = connectionReady && shouldRunStartupCatalogSync(container)
-            val shouldSyncEpg = container.accountManager.epgUrl.value.isNotBlank()
-            totalSteps = startupStepCount(source, shouldSync, shouldSyncEpg)
+            totalSteps = startupStepCount(source, shouldSync)
             update(
                 label = "Verification derniere synchronisation... ${if (shouldSync) "KO" else "OK"}",
                 step = 5,
@@ -310,25 +346,13 @@ class SplashActivity : ComponentActivity() {
                 )
             }
 
-            if (shouldSyncEpg) {
-                update("Synchronisation EPG en cours...", step++, totalSteps)
-                val epgResult = runCatching { container.epgRepository.synchronize(container.accountManager.epgUrl.value).getOrThrow() }
-                update(
-                    if (epgResult.isSuccess) "Chargement EPG termine." else "Chargement EPG indisponible.",
-                    step++,
-                    totalSteps,
-                )
-            }
-
-            update("Chargement des donnees (HOME)...", step++, totalSteps)
-            preloadHomeData(container)
-            update("Chargement des donnees (LIVE TV)...", step++, totalSteps)
-            runCatching { container.catalogRepository.getLiveCatalogSnapshot() }
+            update("Chargement des categories (LIVE TV)...", step++, totalSteps)
+            runCatching { container.catalogRepository.observeLiveCategories().first() }
             if (source == PlaylistSource.Xtream) {
-                update("Chargement des donnees (FILMS)...", step++, totalSteps)
-                runCatching { container.catalogRepository.getMovieCatalogSnapshot() }
-                update("Chargement des donnees (SERIES)...", step++, totalSteps)
-                runCatching { container.catalogRepository.getSeriesCatalogSnapshot() }
+                update("Chargement des categories (FILMS)...", step++, totalSteps)
+                runCatching { container.catalogRepository.observeMovieCategories().first() }
+                update("Chargement des categories (SERIES)...", step++, totalSteps)
+                runCatching { container.catalogRepository.observeSeriesCategories().first() }
             }
             update("Demarrage en cours...", totalSteps, totalSteps)
         }
@@ -339,22 +363,13 @@ class SplashActivity : ComponentActivity() {
         launchHome()
     }
 
-    private suspend fun preloadHomeData(container: AppContainer) = coroutineScope {
-        val slides = async { runCatching { container.homeSlidesRepository.refresh() } }
-        val progress = async { runCatching { container.userContentRepository.getRecentProgressSnapshot() } }
-        slides.await()
-        progress.await()
-        Unit
-    }
-
     private fun startupProgress(step: Int, total: Int): Float =
         (step.toFloat() / total.toFloat()).coerceIn(MinimumProgressScale, 1f)
 
-    private fun startupStepCount(source: PlaylistSource, shouldSync: Boolean, shouldSyncEpg: Boolean): Int {
+    private fun startupStepCount(source: PlaylistSource, shouldSync: Boolean): Int {
         var total = 5
         if (shouldSync) total += 2
-        if (shouldSyncEpg) total += 2
-        total += 2 // HOME + LIVE TV
+        total += 1 // Live TV categories
         if (source == PlaylistSource.Xtream) total += 2 // Movies + Series
         return total + 1 // startup handoff
     }
@@ -394,6 +409,7 @@ class SplashActivity : ComponentActivity() {
         const val LogoPulseMaxAlpha = 1.0f
         const val LogoPulseMillis = 760L
         const val LoadingFadeMillis = 260L
+        const val VideoPosterFadeMillis = 220L
         const val MinimumSplashDurationMillis = 2_400L
         const val StatusStepPauseMillis = 80L
         const val ProgressStepMillis = 180L

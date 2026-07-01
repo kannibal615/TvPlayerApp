@@ -1,6 +1,7 @@
 package com.smartvision.svplayer.ui.navigation
 
 import android.app.Activity
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -210,7 +211,9 @@ fun AppNavigation(
                     container.catalogRepository.invalidateLocalCatalogCache()
                     container.synchronizeCatalog().getOrThrow()
                     container.accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let {
-                        container.epgRepository.synchronize(it).getOrThrow()
+                        container.epgRepository.synchronize(it).onFailure { error ->
+                            Log.w("SVEpgMemory", "EPG indisponible apres synchro catalogue: ${error.javaClass.simpleName}")
+                        }
                     }
                 }
             }
@@ -220,7 +223,9 @@ fun AppNavigation(
                 container.catalogRepository.invalidateLocalCatalogCache()
                 container.synchronizeCatalog().getOrThrow()
                 container.accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let {
-                    container.epgRepository.synchronize(it).getOrThrow()
+                    container.epgRepository.synchronize(it).onFailure { error ->
+                        Log.w("SVEpgMemory", "EPG indisponible apres synchro catalogue: ${error.javaClass.simpleName}")
+                    }
                 }
             }
         }

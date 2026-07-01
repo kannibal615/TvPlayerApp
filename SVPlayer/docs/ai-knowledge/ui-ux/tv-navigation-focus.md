@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-06-30.
+Derniere mise a jour: 2026-07-01.
 
 ## 1. Objectif
 
@@ -41,6 +41,8 @@ Fichiers centraux:
 
 Attention:
 - Un `FocusRequester` peut crasher si demande de focus avant initialisation ou apres disparition du composable.
+- Ne pas affecter `left`/`right`/`up`/`down` dans `focusProperties` vers un `FocusRequester` porte par un item `LazyColumn`/`LazyVerticalGrid` qui peut ne pas etre compose. Preferer la recherche spatiale Compose ou un routage explicite par evenement avec `runCatching`.
+- `MainActivity.dispatchKeyEvent()` absorbe par securite le crash Compose `FocusRequester is not initialized` pendant une recherche D-pad, mais cette protection ne doit pas remplacer un routage de focus propre.
 - Les handlers D-pad doivent tenir compte des surfaces visibles.
 - Le popup manuel Info compte > Synchroniser bloque Back/D-pad uniquement pendant `SyncStatus.Running`; a la fin ou en erreur, le focus va sur `Retour`.
 
@@ -106,6 +108,7 @@ Backend indirect:
 - Ne pas hardcoder un focus cyan si un style global existe.
 - Ne pas auto-focus un bouton qui doit rester accessible par scroll D-pad.
 - Ne pas changer l'ordre D-pad sans valider les surfaces adjacentes.
+- Les transitions entre une liste de categories et une liste/grille de contenus ne doivent pas pointer directement vers le premier item lazy via `focusProperties`; si l'item sort de composition, DPAD droite/gauche peut crasher.
 - Le texte doit rester lisible a distance TV.
 - Les boutons icones d'Info compte et de l'overlay player doivent rester focusables et conserver une cible D-pad suffisante meme si le rendu visuel est compact.
 

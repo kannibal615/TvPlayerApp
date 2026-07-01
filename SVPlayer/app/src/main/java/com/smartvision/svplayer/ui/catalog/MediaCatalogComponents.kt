@@ -364,7 +364,6 @@ fun CatalogCategoryRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
-    rightFocusRequester: FocusRequester? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -386,13 +385,6 @@ fun CatalogCategoryRow(
         modifier = modifier
             .fillMaxWidth()
             .height(MediaCatalogDimens.CategoryRowHeight)
-            .then(
-                if (rightFocusRequester != null) {
-                    Modifier.focusProperties { right = rightFocusRequester }
-                } else {
-                    Modifier
-                },
-            )
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -475,7 +467,6 @@ fun CatalogMediaCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
-    leftFocusRequester: FocusRequester? = null,
     rightFocusRequester: FocusRequester? = null,
 ) {
     val focusState = rememberTvFocusState()
@@ -498,10 +489,9 @@ fun CatalogMediaCard(
         modifier = modifier
             .aspectRatio(MediaCatalogDimens.MediaCardAspectRatio)
             .then(
-                if (leftFocusRequester != null || rightFocusRequester != null) {
+                if (rightFocusRequester != null) {
                     Modifier.focusProperties {
-                        if (leftFocusRequester != null) left = leftFocusRequester
-                        if (rightFocusRequester != null) right = rightFocusRequester
+                        right = rightFocusRequester
                     }
                 } else {
                     Modifier

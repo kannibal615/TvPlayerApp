@@ -11,8 +11,8 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
 
 Gradle local constate le 2026-07-01:
-- `versionCode = 73`
-- `versionName = "0.1.70"`
+- `versionCode = 74`
+- `versionName = "0.1.71"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -23,7 +23,8 @@ Demarrage:
 - `SplashActivity` reste l'unique splash applicatif avant `MainActivity`.
 - Le splash est un ecran Compose personnalise qui affiche `R.raw.splash_wave_animation` via Media3 `ExoPlayer` en plein ecran, muet, sans controles, non focusable et en boucle.
 - Le logo, la progress bar et les statuts startup restent rendus au-dessus de la video.
-- Le theme systeme `Theme.SVPlayer.Splash` ne porte plus l'ancien fond image; son `windowBackground` est noir pour eviter un second visuel avant la video.
+- Le theme systeme `Theme.SVPlayer.Splash` utilise `@drawable/splash_background` comme preview immediate pour eviter l'ecran noir avant que la video Compose soit prete.
+- `SplashActivity` affiche `smartvision_splash_bg` derriere la video et garde un poster identique au-dessus du `PlayerView` jusqu'a `onRenderedFirstFrame`, puis le masque par fade court; cela evite un ecran noir si Media3 tarde a produire la premiere frame.
 - `ExoPlayer.release()` est appele quand la composition du splash disparait.
 - L'initialisation lourde `AppContainer` dans `SVPlayerApplication` est differee au premier passage de la boucle UI pour reduire l'ecran noir avant le splash Compose.
 - Les etats transitoires de `AppNavigation` apres splash utilisent un fond sombre neutre, pas l'ancien visuel splash.
@@ -95,6 +96,7 @@ Diagnostic Firestick / ADB:
 - ADB Windows de reference pour ce workspace: `C:\Users\ONEDEV\AppData\Local\Android\Sdk\platform-tools\adb.exe`.
 - Firestick Wi-Fi connue: `192.168.1.33:5555` (`AFTSSS`, `sheldonp`) apres autorisation RSA cote TV.
 - Pour les mesures de synchro Xtream, utiliser `scripts/capture_firestick_xtream_sync.ps1`; le script nettoie `logcat`, capture `SVSyncMemory`, releve `dumpsys meminfo com.smartvision.svplayer` et ecrit les resultats sous `diagnostics/firestick-sync-*`.
+- Capture de reference apres optimisation candidate: `diagnostics/firestick-sync-20260701-123758`, deux synchronisations reussies sans OOM/ANR sur `21769 Live / 104005 Movies / 24325 Series`, pic `SVSyncMemory` environ `59 Mo`.
 
 ## 8. Dependances
 
@@ -142,6 +144,8 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-06-29: migration vers documentation specialisee.
+- 2026-07-01: release publiee `0.1.71` / `versionCode 74` pour splash sans noir avant premiere frame, EPG streaming borne, filtre categories EPG Live TV, splash categories-only et correction crash focus D-pad; APK `smartvision-tv-v74-d76a5da8.apk`, manifeste public et hash SHA256 verifies.
+- 2026-07-01: diagnostic local Firestick pour synchro Xtream volumineuse; release installee localement par ADB, deux synchros reussies sans OOM apres traitement par sections/batchs.
 - 2026-07-01: release publiee `0.1.70` / `versionCode 73` pour source M3U/splash source-aware, badge EPG Live TV, Info compte compact et overlay player slim; APK `smartvision-tv-v73-5ab10617.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-01: release publiee `0.1.69` / `versionCode 72` pour splash video Compose Media3 au demarrage; APK `smartvision-tv-v72-a30ec7bf.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-01: release publiee `0.1.68` / `versionCode 71` pour source active Xtream/M3U, parsing M3U Live TV, cache EPG XMLTV et Info compte compact; APK `smartvision-tv-v71-44e92a70.apk`, manifeste public et hash SHA256 verifies.

@@ -35,6 +35,8 @@ interface CatalogRepository {
     suspend fun getLiveCatalogSnapshot(): LocalCatalogSnapshot<LiveChannel>
     suspend fun getMovieCatalogSnapshot(): LocalCatalogSnapshot<Movie>
     suspend fun getSeriesCatalogSnapshot(): LocalCatalogSnapshot<TvSeries>
+    suspend fun getTrendingMovies(limit: Int): List<Movie>
+    suspend fun getTrendingSeries(limit: Int): List<TvSeries>
     fun invalidateLocalCatalogCache()
     suspend fun synchronize(): Result<Unit>
     suspend fun toggleFavorite(contentType: String, contentId: String)
