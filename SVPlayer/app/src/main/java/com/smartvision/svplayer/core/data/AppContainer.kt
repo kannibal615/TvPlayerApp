@@ -27,6 +27,8 @@ import com.smartvision.svplayer.data.monetization.AdsEventsApiService
 import com.smartvision.svplayer.data.monetization.RemoteAdConfigProvider
 import com.smartvision.svplayer.data.notifications.NotificationsApiService
 import com.smartvision.svplayer.data.notifications.NotificationsRepository
+import com.smartvision.svplayer.data.playlist.EpgRepository
+import com.smartvision.svplayer.data.playlist.M3uPlaylistClient
 import com.smartvision.svplayer.data.remote.XtreamApiClient
 import com.smartvision.svplayer.data.remote.XtreamApiService
 import com.smartvision.svplayer.data.remote.XtreamUrlFactory
@@ -100,6 +102,8 @@ class AppContainer(context: Context) {
         .readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS)
         .build()
+    val m3uPlaylistClient = M3uPlaylistClient(activationOkHttpClient)
+    val epgRepository = EpgRepository(appContext, activationOkHttpClient)
 
     private val activationRetrofit = Retrofit.Builder()
         .baseUrl(activationBaseUrl())
@@ -209,8 +213,10 @@ class AppContainer(context: Context) {
 
     val catalogRepository: CatalogRepository = DefaultCatalogRepository(
         api = api,
-        credentialsProvider = credentialsProvider,
+        accountManager = accountManager,
         urlFactory = urlFactory,
+        m3uPlaylistClient = m3uPlaylistClient,
+        epgRepository = epgRepository,
         categoryDao = database.categoryDao(),
         mediaDao = database.mediaDao(),
         profileDao = database.profileDao(),

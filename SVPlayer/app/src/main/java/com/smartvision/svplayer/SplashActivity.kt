@@ -20,6 +20,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.smartvision.svplayer.core.data.AppContainer
+import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.sync.SyncFrequencyPolicy
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
@@ -205,10 +206,17 @@ class SplashActivity : Activity() {
             update("Verification de la licence...", 2)
             update("Verification de l'activation...", 3)
             runCatching { container.activationRepository.checkStatus() }
-            update("Verification du serveur Xtream...", 4)
-            val connection = container.xtreamConnectionManager.verifyQuick("splash")
-            val shouldSync = connection.isConnected && shouldRunStartupCatalogSync(container)
-            totalSteps = if (shouldSync) StartupStepsWithSync else StartupStepsWithoutSync
+            val source = container.accountManager.activePlaylistSource.value
+            val connectionReady = if (source == PlaylistSource.Xtream) {
+                update("Verification du serveur Xtream...", 4)
+                container.xtreamConnectionManager.verifyQuick("splash").isConnected
+            } else {
+                update("Verification du lien M3U...", 4)
+                container.accountManager.m3uUrl.value.isNotBlank()
+            }
+            val shouldSync = connectionReady && shouldRunStartupCatalogSync(container)
+            val shouldSyncEpg = container.accountManager.epgUrl.value.isNotBlank()
+            totalSteps = (if (shouldSync) StartupStepsWithSync else StartupStepsWithoutSync) + if (shouldSyncEpg) EpgStartupSteps else 0
             update(
                 label = "Verification derniere synchronisation... ${if (shouldSync) "KO" else "OK"}",
                 step = 5,
@@ -217,18 +225,32 @@ class SplashActivity : Activity() {
 
             var step = 6
             if (shouldSync) {
-                update("Synchronisation en cours...", step++, totalSteps)
+                update(
+                    if (source == PlaylistSource.M3u) "Synchronisation M3U en cours..." else "Synchronisation Xtream en cours...",
+                    step++,
+                    totalSteps,
+                )
                 container.xtreamRepository.clearCaches()
                 container.catalogRepository.invalidateLocalCatalogCache()
                 val syncResult = runCatching { container.synchronizeCatalog().getOrThrow() }
                 update(
                     label = if (syncResult.isSuccess) {
-                        "Synchronisation catalogue terminee."
+                        if (source == PlaylistSource.M3u) "Chargement catalogue M3U termine." else "Chargement catalogue Xtream termine."
                     } else {
                         "Synchronisation catalogue indisponible."
                     },
                     step = step++,
                     total = totalSteps,
+                )
+            }
+
+            if (shouldSyncEpg) {
+                update("Synchronisation EPG en cours...", step++, totalSteps)
+                val epgResult = runCatching { container.epgRepository.synchronize(container.accountManager.epgUrl.value).getOrThrow() }
+                update(
+                    if (epgResult.isSuccess) "Chargement EPG termine." else "Chargement EPG indisponible.",
+                    step++,
+                    totalSteps,
                 )
             }
 
@@ -267,7 +289,9 @@ class SplashActivity : Activity() {
     }
 
     private suspend fun shouldRunStartupCatalogSync(container: AppContainer): Boolean {
-        if (!container.accountManager.current().isConfigured) return false
+        val source = container.accountManager.activePlaylistSource.value
+        if (source == PlaylistSource.Xtream && !container.accountManager.current().isConfigured) return false
+        if (source == PlaylistSource.M3u && container.accountManager.m3uUrl.value.isBlank()) return false
         val settings = container.settingsRepository.settings.first()
         val policy = SyncFrequencyPolicy.from(settings.syncFrequency)
         if (policy.runOnStartup) return true
@@ -309,5 +333,6 @@ class SplashActivity : Activity() {
         const val MinimumProgressScale = 0.03f
         const val StartupStepsWithoutSync = 10
         const val StartupStepsWithSync = 12
+        const val EpgStartupSteps = 2
     }
 }

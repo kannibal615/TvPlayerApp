@@ -11,6 +11,8 @@ data class LiveStreamEntity(
     val categoryId: String?,
     val logoUrl: String?,
     val epgChannelId: String?,
+    val directStreamUrl: String? = null,
+    val source: String = "xtream",
 )
 
 @Entity(tableName = "movies")

@@ -105,6 +105,8 @@ try {
     $hasXtreamConfig = trim((string) ($config['host'] ?? '')) !== ''
         && trim((string) ($config['username'] ?? '')) !== ''
         && trim((string) ($config['password'] ?? '')) !== '';
+    $hasM3uConfig = trim((string) ($config['m3u_url'] ?? '')) !== '';
+    $playlistConfigured = $hasXtreamConfig || $hasM3uConfig;
     $encrypted = encrypt_playlist_config($config);
     $upsert = $pdo->prepare(
         "INSERT INTO device_playlist_configs (device_id, encrypted_payload, delivered_at, created_at, updated_at)
@@ -140,7 +142,7 @@ try {
 
     json_response([
         'success' => true,
-        'playlist_configured' => $hasXtreamConfig,
+        'playlist_configured' => $playlistConfigured,
         'trial_started' => $trialActivation !== null,
         'expires_at' => is_array($trialActivation) ? ($trialActivation['expires_at'] ?? null) : null,
     ]);

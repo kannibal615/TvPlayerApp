@@ -35,8 +35,8 @@ Flux observe:
 2. Si l'appareil n'est pas actif, il voit un code/QR d'activation ou les options d'essai/licence.
 3. Il active sur le portail web ou saisit un code licence.
 4. Si aucun compte Xtream n'est configure, les sections contenus affichent un QR de configuration.
-5. Il configure ses identifiants Xtream sur le portail ou envoie une URL EPG depuis `/playlist/`.
-6. L'app recupere la playlist, conserve l'URL EPG et synchronise les contenus Xtream quand les identifiants sont presents.
+5. Il configure ses identifiants Xtream sur le portail ou envoie un lien M3U / une URL EPG depuis `/playlist/`.
+6. L'app recupere la playlist, conserve l'URL EPG, conserve le lien M3U, puis synchronise la source active choisie localement: Xtream ou M3U.
 7. L'essai peut demarrer apres validation Xtream si le type est `trial_pending_xtream`.
 
 ## 4. Workflow technique
@@ -112,6 +112,8 @@ Champs importants:
 - `xtreamStatus`
 - `playlist_config`
 - `epg_url`
+- `m3u_url`
+- `activePlaylistSource` local Android: `xtream` ou `m3u`, exclusif.
 
 Admin:
 - generation et gestion des codes/licences dans `server/public_html/admin/index.php`;
@@ -133,6 +135,7 @@ Admin:
 - Toujours verifier les retours publics si changement backend.
 - L'alerte Xtream doit masquer les mots de passe et ne remonter au backend que serveur, type d'erreur, message court, detail technique non secret, code TV et version app.
 - Ne pas tester seulement l'ancien compte local au demarrage: rafraichir le statut backend avant le controle Xtream pour detecter une playlist remplacee depuis le portail web.
+- Si Xtream et M3U sont tous les deux renseignes, ne pas choisir automatiquement une source distante a chaque refresh: conserver la source active locale choisie par l'utilisateur.
 
 ## 10. Problemes connus
 
@@ -170,3 +173,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-01: ajout d'un garde `localStateReady` pour empecher le rendu transitoire de l'ecran activation apres le splash sur appareil deja actif.
 - 2026-07-01: ajout de l'URL EPG dans le payload playlist chiffre, affichage/edition dans Info compte, et page web `/playlist/` pour pousser Xtream/EPG vers une TV par code.
 - 2026-07-01: `/playlist/` passe en onglets `Code Xtream`, `Lien M3U`, `Lien EPG`; le payload chiffre peut aussi porter `m3u_url`, et un push cree une notification d'information ciblee sur la TV.
+- 2026-07-01: Info compte ajoute la source active exclusive Xtream/M3U; `device_status.php` considere aussi `m3u_url` comme playlist configuree sans marquer Xtream configure.

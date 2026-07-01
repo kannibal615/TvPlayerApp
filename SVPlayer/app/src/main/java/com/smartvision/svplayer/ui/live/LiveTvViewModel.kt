@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.smartvision.svplayer.data.models.XtreamLiveCategory
 import com.smartvision.svplayer.data.models.XtreamLiveStream
 import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
+import com.smartvision.svplayer.data.playlist.EpgRepository
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
@@ -55,10 +56,17 @@ data class LiveTvChannel(
     val description: String,
     val nextProgram: String,
     val nextTimeRange: String,
+    val epgPrograms: List<LiveTvProgram> = emptyList(),
     val streamUrl: String,
     val fallbackStreamUrl: String,
     val quality: String = "HD",
     val isFavorite: Boolean = false,
+)
+
+data class LiveTvProgram(
+    val title: String,
+    val timeRange: String,
+    val description: String,
 )
 
 data class LiveTvUiState(
@@ -86,6 +94,7 @@ class LiveTvViewModel(
     private val catalogRepository: CatalogRepository,
     private val userContentRepository: UserContentRepository,
     private val settingsRepository: SettingsRepository,
+    private val epgRepository: EpgRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(LiveTvUiState())
     val uiState: StateFlow<LiveTvUiState> = _uiState.asStateFlow()
@@ -368,6 +377,7 @@ class LiveTvViewModel(
                             index = collected.size,
                             categoryLabel = category.label,
                             xtreamRepository = xtreamRepository,
+                            epgRepository = epgRepository,
                             favoriteIds = favoriteIds,
                         )
                     }
@@ -472,6 +482,7 @@ class LiveTvViewModel(
                     index = index,
                     categoryLabel = categoryLabel,
                     xtreamRepository = xtreamRepository,
+                    epgRepository = epgRepository,
                     favoriteIds = favoriteIds,
                 )
             }
@@ -499,6 +510,7 @@ class LiveTvViewModel(
                         index = index,
                         categoryLabel = categoryLabel,
                         xtreamRepository = xtreamRepository,
+                        epgRepository = epgRepository,
                         favoriteIds = favoriteIds,
                     )
                 }
@@ -614,24 +626,35 @@ private fun LocalLiveChannel.toUiChannel(
     index: Int,
     categoryLabel: String,
     xtreamRepository: XtreamRepository,
+    epgRepository: EpgRepository,
     favoriteIds: Set<Int>,
 ): LiveTvChannel {
     val displayName = name.cleanedChannelName()
+    val epgPrograms = epgRepository.loadPrograms(epgChannelId, name).map {
+        LiveTvProgram(
+            title = it.title,
+            timeRange = it.timeRange,
+            description = it.description,
+        )
+    }
+    val current = epgPrograms.firstOrNull()
+    val next = epgPrograms.drop(1).firstOrNull()
     return LiveTvChannel(
         streamId = streamId,
         number = (number.takeIf { it > 0 } ?: (index + 1)).toString().padStart(3, '0'),
         logoText = displayName.logoFallback(),
         logoUrl = logoUrl,
         name = displayName,
-        program = currentProgram ?: "Direct",
+        program = current?.title ?: currentProgram ?: "Direct",
         genre = categoryLabel,
-        timeRange = timeRange ?: "Live",
+        timeRange = current?.timeRange ?: timeRange ?: "Live",
         progress = 0f,
-        description = "Chaine issue de la derniere synchronisation locale.",
-        nextProgram = "EPG non disponible",
-        nextTimeRange = "A suivre",
-        streamUrl = xtreamRepository.buildLiveStreamUrl(streamId),
-        fallbackStreamUrl = xtreamRepository.buildLiveStreamFallbackUrl(streamId),
+        description = current?.description?.takeIf { it.isNotBlank() } ?: "Chaine issue de la derniere synchronisation locale.",
+        nextProgram = next?.title ?: "EPG non disponible",
+        nextTimeRange = next?.timeRange ?: "A suivre",
+        epgPrograms = epgPrograms,
+        streamUrl = directStreamUrl?.takeIf { it.isNotBlank() } ?: xtreamRepository.buildLiveStreamUrl(streamId),
+        fallbackStreamUrl = directStreamUrl?.takeIf { it.isNotBlank() } ?: xtreamRepository.buildLiveStreamFallbackUrl(streamId),
         isFavorite = streamId in favoriteIds,
     )
 }

@@ -97,6 +97,7 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.R
+import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.config.XtreamAccount
 import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.core.data.LocalAppContainer
@@ -194,9 +195,12 @@ fun ProfileRoute(
         privacyOptionsRequired = privacyOptionsRequired,
         onShowXtreamSetupQr = viewModel::showXtreamSetupQr,
         onSaveEpgUrl = viewModel::saveEpgUrl,
+        onSaveM3uUrl = viewModel::saveM3uUrl,
+        onSelectPlaylistSource = viewModel::selectPlaylistSource,
         onSaveXtreamAccount = { account ->
             val accountId = container.accountManager.upsert(account)
             container.accountManager.select(accountId)
+            container.accountManager.selectPlaylistSource(PlaylistSource.Xtream)
             container.xtreamRepository.clearCaches()
             scope.launch { onSyncCatalog() }
         },
@@ -236,6 +240,8 @@ private fun ProfileScreen(
     onShowXtreamSetupQr: () -> Unit,
     onSaveXtreamAccount: (XtreamAccount) -> Unit,
     onSaveEpgUrl: (String) -> Unit,
+    onSaveM3uUrl: (String) -> Unit,
+    onSelectPlaylistSource: (PlaylistSource) -> Unit,
     onDeleteXtreamAccount: (String) -> Unit,
     onDismissQr: () -> Unit,
 ) {
@@ -358,6 +364,8 @@ private fun ProfileScreen(
                         onOpenSyncDialog = { showXtreamSyncDialog = true },
                         onSaveXtreamAccount = onSaveXtreamAccount,
                         onSaveEpgUrl = onSaveEpgUrl,
+                        onSaveM3uUrl = onSaveM3uUrl,
+                        onSelectPlaylistSource = onSelectPlaylistSource,
                         onDeleteXtreamAccount = onDeleteXtreamAccount,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -537,12 +545,15 @@ private fun XtreamPanel(
     onOpenSyncDialog: () -> Unit,
     onSaveXtreamAccount: (XtreamAccount) -> Unit,
     onSaveEpgUrl: (String) -> Unit,
+    onSaveM3uUrl: (String) -> Unit,
+    onSelectPlaylistSource: (PlaylistSource) -> Unit,
     onDeleteXtreamAccount: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var accountToEdit by remember { mutableStateOf<XtreamAccount?>(null) }
     var accountToDelete by remember { mutableStateOf<XtreamAccount?>(null) }
     var showEpgEditor by remember { mutableStateOf(false) }
+    var showM3uEditor by remember { mutableStateOf(false) }
     val activeAccount = state.activeXtreamAccount
 
     ProfilePanel(
@@ -555,17 +566,26 @@ private fun XtreamPanel(
     ) {
         XtreamAccountCard(
             account = activeAccount,
+            active = state.activePlaylistSource == PlaylistSource.Xtream,
+            onToggleSource = { onSelectPlaylistSource(PlaylistSource.Xtream) },
             onEdit = { account -> accountToEdit = account },
             onEditQr = onShowXtreamSetupQr,
             onDelete = { account -> accountToDelete = account },
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
+        M3uUrlCard(
+            m3uUrl = state.m3uUrl,
+            active = state.activePlaylistSource == PlaylistSource.M3u,
+            onToggleSource = { onSelectPlaylistSource(PlaylistSource.M3u) },
+            onEdit = { showM3uEditor = true },
+        )
+        Spacer(Modifier.height(8.dp))
         EpgUrlCard(
             epgUrl = state.epgUrl,
             onEdit = { showEpgEditor = true },
             onEditQr = onShowXtreamSetupQr,
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         SynchronizationCard(
             state = state,
             syncStatus = syncStatus,
@@ -634,7 +654,9 @@ private fun XtreamPanel(
     }
 
     if (showEpgEditor) {
-        EpgUrlEditorDialog(
+        UrlEditorDialog(
+            title = "Modifier URL EPG",
+            invalidMessage = "URL EPG invalide.",
             initialUrl = state.epgUrl,
             onDismiss = { showEpgEditor = false },
             onSave = { url ->
@@ -643,11 +665,26 @@ private fun XtreamPanel(
             },
         )
     }
+
+    if (showM3uEditor) {
+        UrlEditorDialog(
+            title = "Modifier lien M3U",
+            invalidMessage = "Lien M3U invalide.",
+            initialUrl = state.m3uUrl,
+            onDismiss = { showM3uEditor = false },
+            onSave = { url ->
+                showM3uEditor = false
+                onSaveM3uUrl(url)
+            },
+        )
+    }
 }
 
 @Composable
 private fun XtreamAccountCard(
     account: XtreamAccount?,
+    active: Boolean,
+    onToggleSource: () -> Unit,
     onEdit: (XtreamAccount) -> Unit,
     onEditQr: () -> Unit,
     onDelete: (XtreamAccount) -> Unit,
@@ -658,11 +695,13 @@ private fun XtreamAccountCard(
             .clip(RoundedCornerShape(7.dp))
             .background(SmartVisionColors.Surface.copy(alpha = 0.58f))
             .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.78f)), RoundedCornerShape(7.dp))
-            .padding(14.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        SourceToggleButton(active = active, enabled = account != null, onClick = onToggleSource)
+        Spacer(Modifier.width(12.dp))
         Column(
-            verticalArrangement = Arrangement.spacedBy(13.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.weight(1f),
         ) {
             AccountInfoLine(Icons.Default.Home, "URL", account?.host?.ifBlank { "Non configure" } ?: "Non configure")
@@ -673,13 +712,13 @@ private fun XtreamAccountCard(
         Box(
             modifier = Modifier
                 .width(1.dp)
-                .height(150.dp)
+                .height(116.dp)
                 .background(SmartVisionColors.Border.copy(alpha = 0.74f)),
         )
         Spacer(Modifier.width(22.dp))
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.width(260.dp),
+            modifier = Modifier.width(220.dp),
         ) {
             ProfileActionButton(
                 text = "Modifier par QR",
@@ -687,7 +726,7 @@ private fun XtreamAccountCard(
                 onClick = onEditQr,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .height(38.dp),
             )
             ProfileActionButton(
                 text = "Modifier",
@@ -696,7 +735,7 @@ private fun XtreamAccountCard(
                 enabled = account != null,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .height(38.dp),
             )
             ProfileActionButton(
                 text = "Supprimer",
@@ -705,9 +744,42 @@ private fun XtreamAccountCard(
                 enabled = account != null,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .height(38.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun M3uUrlCard(
+    m3uUrl: String,
+    active: Boolean,
+    onToggleSource: () -> Unit,
+    onEdit: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(7.dp))
+            .background(SmartVisionColors.Surface.copy(alpha = 0.58f))
+            .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.78f)), RoundedCornerShape(7.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SourceToggleButton(active = active, enabled = m3uUrl.isNotBlank(), onClick = onToggleSource)
+        Spacer(Modifier.width(12.dp))
+        AccountInfoLine(
+            icon = Icons.Default.Devices,
+            label = "Lien M3U",
+            value = m3uUrl.ifBlank { "Non configure" },
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(12.dp))
+        ProfileIconTileButton(
+            icon = Icons.Default.Edit,
+            contentDescription = "Modifier lien M3U",
+            onClick = onEdit,
+        )
     }
 }
 
@@ -723,7 +795,7 @@ private fun EpgUrlCard(
             .clip(RoundedCornerShape(7.dp))
             .background(SmartVisionColors.Surface.copy(alpha = 0.58f))
             .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.78f)), RoundedCornerShape(7.dp))
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AccountInfoLine(
@@ -769,20 +841,53 @@ private fun SynchronizationCard(
             leadingIcon = Icons.Default.CloudSync,
             modifier = Modifier
                 .width(310.dp)
-                .height(56.dp),
+                .height(46.dp),
         )
         Spacer(Modifier.width(28.dp))
         Box(
             modifier = Modifier
                 .width(1.dp)
-                .height(78.dp)
+                .height(62.dp)
                 .background(SmartVisionColors.Border.copy(alpha = 0.74f)),
         )
         Spacer(Modifier.width(28.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
             AccountInfoLine(Icons.Default.CheckCircle, "Date de synchronisation", state.account.lastSync ?: "Jamais")
             AccountInfoLine(Icons.Default.Verified, "Date d'expiration", state.xtreamExpiresAt.ifBlank { state.licenseExpiresAt.ifBlank { "Non disponible" } })
         }
+    }
+}
+
+@Composable
+private fun SourceToggleButton(
+    active: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    var focused by remember { mutableStateOf(false) }
+    val color = if (active) Color(0xFF20D46B) else Color(0xFFE33A3A)
+    Box(
+        modifier = Modifier
+            .size(width = 70.dp, height = 34.dp)
+            .clip(RoundedCornerShape(50))
+            .background(color.copy(alpha = if (enabled) 0.88f else 0.32f))
+            .border(
+                BorderStroke(if (focused) 2.dp else 1.dp, if (focused) Color.White else color.copy(alpha = 0.9f)),
+                RoundedCornerShape(50),
+            )
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(enabled = enabled, interactionSource = interactionSource)
+            .padding(horizontal = 8.dp),
+        contentAlignment = if (active) Alignment.CenterEnd else Alignment.CenterStart,
+    ) {
+        Text(
+            text = if (active) "ON" else "OFF",
+            color = Color.White,
+            style = SmartVisionType.Caption,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 
@@ -897,7 +1002,9 @@ private fun ProfileIconTileButton(
 }
 
 @Composable
-private fun EpgUrlEditorDialog(
+private fun UrlEditorDialog(
+    title: String,
+    invalidMessage: String,
     initialUrl: String,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
@@ -921,7 +1028,7 @@ private fun EpgUrlEditorDialog(
                 .padding(22.dp),
         ) {
             Text(
-                text = "Modifier URL EPG",
+                text = title,
                 color = SmartVisionColors.TextPrimary,
                 style = SmartVisionType.TitleS,
                 fontWeight = FontWeight.Bold,
@@ -955,7 +1062,7 @@ private fun EpgUrlEditorDialog(
                     onClick = {
                         val normalized = url.trim()
                         if (normalized.isNotBlank() && !normalized.startsWith("http://") && !normalized.startsWith("https://")) {
-                            error = "URL EPG invalide."
+                            error = invalidMessage
                         } else {
                             onSave(normalized)
                         }
@@ -2529,14 +2636,30 @@ class ProfileViewModel(
 ) : ViewModel() {
     private val transient = MutableStateFlow(ProfileTransientState())
 
-    private val baseState = combine(
-        activationRepository.localState,
+    private val playlistState = combine(
         accountManager.accounts,
         accountManager.activeAccountId,
-        catalogRepository.observeAccount(),
         accountManager.epgUrl,
-    ) { activation, accounts, activeAccountId, account, epgUrl ->
-        ProfileBaseState(activation, accounts, activeAccountId.orEmpty(), account, epgUrl)
+        accountManager.m3uUrl,
+        accountManager.activePlaylistSource,
+    ) { accounts, activeAccountId, epgUrl, m3uUrl, activePlaylistSource ->
+        ProfilePlaylistState(accounts, activeAccountId.orEmpty(), epgUrl, m3uUrl, activePlaylistSource)
+    }
+
+    private val baseState = combine(
+        activationRepository.localState,
+        playlistState,
+        catalogRepository.observeAccount(),
+    ) { activation, playlist, account ->
+        ProfileBaseState(
+            activation = activation,
+            accounts = playlist.accounts,
+            activeAccountId = playlist.activeAccountId,
+            account = account,
+            epgUrl = playlist.epgUrl,
+            m3uUrl = playlist.m3uUrl,
+            activePlaylistSource = playlist.activePlaylistSource,
+        )
     }
 
     val uiState = combine(
@@ -2549,7 +2672,7 @@ class ProfileViewModel(
         val activeAccountId = base.activeAccountId
         val activeAccount = accounts.firstOrNull { it.id == activeAccountId } ?: accounts.firstOrNull()
         runCatching {
-            buildProfileState(activation, accounts, activeAccountId, activeAccount, account, base.epgUrl, transient)
+            buildProfileState(activation, accounts, activeAccountId, activeAccount, account, base.epgUrl, base.m3uUrl, base.activePlaylistSource, transient)
         }.getOrElse {
             ProfileUiState(
                 deviceId = activation.deviceId,
@@ -2707,6 +2830,14 @@ class ProfileViewModel(
     fun saveEpgUrl(url: String) {
         accountManager.updateEpgUrl(url)
     }
+
+    fun saveM3uUrl(url: String) {
+        accountManager.updateM3uUrl(url)
+    }
+
+    fun selectPlaylistSource(source: PlaylistSource) {
+        accountManager.selectPlaylistSource(source)
+    }
 }
 
 private data class ProfileBaseState(
@@ -2715,6 +2846,16 @@ private data class ProfileBaseState(
     val activeAccountId: String,
     val account: AccountProfile,
     val epgUrl: String,
+    val m3uUrl: String,
+    val activePlaylistSource: PlaylistSource,
+)
+
+private data class ProfilePlaylistState(
+    val accounts: List<XtreamAccount>,
+    val activeAccountId: String,
+    val epgUrl: String,
+    val m3uUrl: String,
+    val activePlaylistSource: PlaylistSource,
 )
 
 data class ProfileUiState(
@@ -2726,6 +2867,8 @@ data class ProfileUiState(
     val xtreamHost: String = "",
     val xtreamUsername: String = "",
     val epgUrl: String = "",
+    val m3uUrl: String = "",
+    val activePlaylistSource: PlaylistSource = PlaylistSource.Xtream,
     val xtreamExpiresAt: String = "",
     val xtreamConnections: String = "",
     val hasXtream: Boolean = false,
@@ -2805,6 +2948,8 @@ private fun buildProfileState(
     activeAccount: XtreamAccount?,
     account: AccountProfile,
     epgUrl: String,
+    m3uUrl: String,
+    activePlaylistSource: PlaylistSource,
     transient: ProfileTransientState,
 ): ProfileUiState {
     val usageMode = when (activation.monetizationStatus()) {
@@ -2841,6 +2986,8 @@ private fun buildProfileState(
         xtreamHost = account.host.ifBlank { activeAccount?.host.orEmpty() },
         xtreamUsername = xtreamUsername,
         epgUrl = epgUrl.ifBlank { activeAccount?.epgUrl.orEmpty() },
+        m3uUrl = m3uUrl,
+        activePlaylistSource = activePlaylistSource,
         xtreamExpiresAt = account.expirationDate.orEmpty(),
         xtreamConnections = connections,
         hasXtream = hasXtream,

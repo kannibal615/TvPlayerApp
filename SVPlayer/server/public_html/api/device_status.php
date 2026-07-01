@@ -45,11 +45,20 @@ try {
             ? decrypt_playlist_config((string) $encryptedPlaylist)
             : null;
         $playlistConfigured = is_array($playlist)
+            && (
+                trim((string) ($playlist['m3u_url'] ?? '')) !== ''
+                || (
+                    trim((string) ($playlist['host'] ?? '')) !== ''
+            && trim((string) ($playlist['username'] ?? '')) !== ''
+                    && trim((string) ($playlist['password'] ?? '')) !== ''
+                )
+            );
+        $xtreamConfigured = is_array($playlist)
             && trim((string) ($playlist['host'] ?? '')) !== ''
             && trim((string) ($playlist['username'] ?? '')) !== ''
             && trim((string) ($playlist['password'] ?? '')) !== '';
         $state['playlist_configured'] = $playlistConfigured;
-        $state['xtreamStatus'] = $playlistConfigured ? 'configured' : 'missing';
+        $state['xtreamStatus'] = $xtreamConfigured ? 'configured' : 'missing';
 
         if (is_array($playlist) && has_valid_device_token($pdo, $deviceId, $deviceToken)) {
             $state['playlist_config'] = $playlist;

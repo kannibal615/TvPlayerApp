@@ -13,6 +13,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -179,6 +181,7 @@ fun LiveTvScreen(
                 catalogRepository = container.catalogRepository,
                 userContentRepository = container.userContentRepository,
                 settingsRepository = container.settingsRepository,
+                epgRepository = container.epgRepository,
             )
         },
     )
@@ -1598,7 +1601,12 @@ private fun ProgramInfoCard(
     channel: LiveTvChannel,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(185.dp)
+            .verticalScroll(rememberScrollState()),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             LiveBadge(text = "EN COURS", color = SmartVisionColors.Primary)
             Spacer(Modifier.weight(1f))
@@ -1656,38 +1664,46 @@ private fun ProgramInfoCard(
 
         Spacer(Modifier.height(8.dp))
 
-        Row(verticalAlignment = Alignment.Top) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "A suivre",
-                    color = SmartVisionColors.TextPrimary,
-                    style = LiveTvItemMetaStyle,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = channel.nextProgram,
-                    color = SmartVisionColors.TextPrimary,
-                    style = LiveTvItemMetaStyle,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = channel.genre,
-                    color = SmartVisionColors.TextSecondary,
-                    style = LiveTvItemMetaStyle,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+        val upcomingPrograms = channel.epgPrograms.drop(1).ifEmpty {
+            listOf(LiveTvProgram(channel.nextProgram, channel.nextTimeRange, channel.genre))
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Text(
-                text = channel.nextTimeRange,
-                color = SmartVisionColors.TextSecondary,
+                text = "A suivre",
+                color = SmartVisionColors.TextPrimary,
                 style = LiveTvItemMetaStyle,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
             )
+            upcomingPrograms.forEach { program ->
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = program.title,
+                            color = SmartVisionColors.TextPrimary,
+                            style = LiveTvItemMetaStyle,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (program.description.isNotBlank()) {
+                            Text(
+                                text = program.description,
+                                color = SmartVisionColors.TextSecondary,
+                                style = LiveTvItemMetaStyle,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    Text(
+                        text = program.timeRange,
+                        color = SmartVisionColors.TextSecondary,
+                        style = LiveTvItemMetaStyle,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
     }
 }

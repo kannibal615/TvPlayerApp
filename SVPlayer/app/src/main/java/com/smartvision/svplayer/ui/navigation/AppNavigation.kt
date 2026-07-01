@@ -49,6 +49,7 @@ import androidx.navigation.compose.rememberNavController
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.data.LocalAppContainer
+import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.monetization.resolveMonetizationStatus
@@ -142,8 +143,9 @@ fun AppNavigation(
     var showXtreamConnectionDialog by remember { mutableStateOf(false) }
     var showXtreamSetupDialog by remember { mutableStateOf(false) }
     var premiumLicenseCode by remember { mutableStateOf("") }
+    val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
     val xtreamConnectionState by container.xtreamConnectionManager.state.collectAsStateWithLifecycle()
-    val xtreamCatalogBlocked = xtreamConnectionState.blocksCatalogForNavigation
+    val xtreamCatalogBlocked = activePlaylistSource == PlaylistSource.Xtream && xtreamConnectionState.blocksCatalogForNavigation
     val context = LocalContext.current
     val activity = context as? Activity
     val monetizationStatus = resolveMonetizationStatus(
@@ -201,15 +203,29 @@ fun AppNavigation(
         container.monetizationManager.synchronizeStatus()
     }
     val syncCatalog: suspend () -> Result<Unit> = {
-        val connection = container.xtreamConnectionManager.verifyQuick("manual_sync")
-        if (!connection.isConnected) {
-            showXtreamConnectionDialog = connection.blocksCatalog
-            Result.failure(IllegalStateException("Connexion Xtream indisponible"))
+        if (container.accountManager.activePlaylistSource.value == PlaylistSource.Xtream) {
+            val connection = container.xtreamConnectionManager.verifyQuick("manual_sync")
+            if (!connection.isConnected) {
+                showXtreamConnectionDialog = connection.blocksCatalog
+                Result.failure(IllegalStateException("Connexion Xtream indisponible"))
+            } else {
+                runCatching {
+                    container.xtreamRepository.clearCaches()
+                    container.catalogRepository.invalidateLocalCatalogCache()
+                    container.synchronizeCatalog().getOrThrow()
+                    container.accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let {
+                        container.epgRepository.synchronize(it).getOrThrow()
+                    }
+                }
+            }
         } else {
             runCatching {
                 container.xtreamRepository.clearCaches()
                 container.catalogRepository.invalidateLocalCatalogCache()
                 container.synchronizeCatalog().getOrThrow()
+                container.accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let {
+                    container.epgRepository.synchronize(it).getOrThrow()
+                }
             }
         }
     }
@@ -254,6 +270,8 @@ fun AppNavigation(
     }
 
     val xtreamAccounts by container.accountManager.accounts.collectAsStateWithLifecycle()
+    val m3uUrl by container.accountManager.m3uUrl.collectAsStateWithLifecycle()
+    val hasPlayableSource = xtreamAccounts.isNotEmpty() || m3uUrl.isNotBlank()
     val xtreamAccountSignature = remember(xtreamAccounts) {
         xtreamAccounts.joinToString("|") { account ->
             "${account.id}:${account.host}:${account.username}:${account.password.hashCode()}"
@@ -302,7 +320,7 @@ fun AppNavigation(
         return
     }
 
-    if (xtreamAccounts.isEmpty()) {
+    if (!hasPlayableSource) {
         BackHandler {
             showExitConfirmation = true
         }
@@ -339,7 +357,7 @@ fun AppNavigation(
         BackgroundSyncScheduler.applyPeriodicSync(context, playerSettings.backgroundSyncEnabled)
     }
     LaunchedEffect(activationState.activated, xtreamAccountSignature, playerSettings.syncFrequency) {
-        if (activationState.activated && xtreamAccounts.isNotEmpty()) {
+        if (activationState.activated && activePlaylistSource == PlaylistSource.Xtream && xtreamAccounts.isNotEmpty()) {
             val previousSignature = lastXtreamAccountSignature
             lastXtreamAccountSignature = xtreamAccountSignature
             val accountChanged = previousSignature != null && previousSignature != xtreamAccountSignature
@@ -366,7 +384,7 @@ fun AppNavigation(
         }
     }
     LaunchedEffect(activationState.activated, xtreamAccountSignature, xtreamConnectionState.status) {
-        if (activationState.activated && xtreamAccounts.isNotEmpty() && xtreamConnectionState.shouldRetryInBackground) {
+        if (activationState.activated && activePlaylistSource == PlaylistSource.Xtream && xtreamAccounts.isNotEmpty() && xtreamConnectionState.shouldRetryInBackground) {
             while (isActive && container.xtreamConnectionManager.state.value.shouldRetryInBackground) {
                 delay(60_000L)
                 val connection = container.xtreamConnectionManager.verifyQuick("background_retry")

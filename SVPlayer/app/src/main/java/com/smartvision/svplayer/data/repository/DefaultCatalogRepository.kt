@@ -1,6 +1,7 @@
 package com.smartvision.svplayer.data.repository
 
-import com.smartvision.svplayer.core.config.XtreamCredentialsProvider
+import com.smartvision.svplayer.core.config.PlaylistSource
+import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.data.local.dao.CategoryDao
 import com.smartvision.svplayer.data.local.dao.FavoriteDao
 import com.smartvision.svplayer.data.local.dao.MediaDao
@@ -10,6 +11,8 @@ import com.smartvision.svplayer.data.local.dao.SyncStateDao
 import com.smartvision.svplayer.data.local.entity.FavoriteEntity
 import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.local.entity.SyncStateEntity
+import com.smartvision.svplayer.data.playlist.EpgRepository
+import com.smartvision.svplayer.data.playlist.M3uPlaylistClient
 import com.smartvision.svplayer.data.remote.XtreamApiService
 import com.smartvision.svplayer.data.remote.XtreamUrlFactory
 import com.smartvision.svplayer.domain.model.AccountProfile
@@ -35,8 +38,10 @@ import kotlinx.coroutines.withContext
 
 class DefaultCatalogRepository(
     private val api: XtreamApiService,
-    private val credentialsProvider: XtreamCredentialsProvider,
+    private val accountManager: XtreamAccountManager,
     private val urlFactory: XtreamUrlFactory,
+    private val m3uPlaylistClient: M3uPlaylistClient,
+    private val epgRepository: EpgRepository,
     private val categoryDao: CategoryDao,
     private val mediaDao: MediaDao,
     private val profileDao: ProfileDao,
@@ -52,8 +57,11 @@ class DefaultCatalogRepository(
         combine(
             categoryDao.observeByType(MediaSection.Live.storageName),
             mediaDao.observeLiveStreams(),
-        ) { categories, streams ->
-            if (!credentialsProvider.current().isConfigured) return@combine emptyList()
+            accountManager.activePlaylistSource,
+            accountManager.m3uUrl,
+            accountManager.accounts,
+        ) { categories, streams, source, m3uUrl, accounts ->
+            if (!source.hasConfiguredCatalog(m3uUrl, accounts.isNotEmpty())) return@combine emptyList()
             val counts = streams.groupingBy { it.categoryId }.eachCount()
             categories.map { it.toDomain(MediaSection.Live, counts[it.id] ?: 0) }
         }
@@ -62,18 +70,23 @@ class DefaultCatalogRepository(
         combine(
             categoryDao.observeByType(MediaSection.Live.storageName),
             mediaDao.observeLiveStreamsByCategory(categoryId),
-        ) { categories, streams ->
-            if (!credentialsProvider.current().isConfigured) return@combine emptyList()
+            accountManager.activePlaylistSource,
+            accountManager.m3uUrl,
+            accountManager.accounts,
+        ) { categories, streams, source, m3uUrl, accounts ->
+            if (!source.hasConfiguredCatalog(m3uUrl, accounts.isNotEmpty())) return@combine emptyList()
             val names = categories.associate { it.id to it.name }
-            streams.map { it.toDomain(names[it.categoryId] ?: "Live TV") }
+            streams.map { it.toDomain(names[it.categoryId] ?: "Live TV").withEpg(epgRepository) }
         }
 
     override fun observeMovieCategories(): Flow<List<Category>> =
         combine(
             categoryDao.observeByType(MediaSection.Movies.storageName),
             mediaDao.observeMovies(),
-        ) { categories, movies ->
-            if (!credentialsProvider.current().isConfigured) return@combine emptyList()
+            accountManager.activePlaylistSource,
+            accountManager.accounts,
+        ) { categories, movies, source, accounts ->
+            if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
             val counts = movies.groupingBy { it.categoryId }.eachCount()
             categories.map { it.toDomain(MediaSection.Movies, counts[it.id] ?: 0) }
         }
@@ -82,8 +95,10 @@ class DefaultCatalogRepository(
         combine(
             categoryDao.observeByType(MediaSection.Movies.storageName),
             mediaDao.observeMoviesByCategory(categoryId?.takeUnless { it == "all" || it == "new" || it == "favorites" }),
-        ) { categories, movies ->
-            if (!credentialsProvider.current().isConfigured) return@combine emptyList()
+            accountManager.activePlaylistSource,
+            accountManager.accounts,
+        ) { categories, movies, source, accounts ->
+            if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
             val names = categories.associate { it.id to it.name }
             movies.map { it.toDomain(names[it.categoryId] ?: "Films") }
         }
@@ -92,8 +107,10 @@ class DefaultCatalogRepository(
         combine(
             categoryDao.observeByType(MediaSection.Series.storageName),
             mediaDao.observeSeries(),
-        ) { categories, series ->
-            if (!credentialsProvider.current().isConfigured) return@combine emptyList()
+            accountManager.activePlaylistSource,
+            accountManager.accounts,
+        ) { categories, series, source, accounts ->
+            if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
             val counts = series.groupingBy { it.categoryId }.eachCount()
             categories.map { it.toDomain(MediaSection.Series, counts[it.id] ?: 0) }
         }
@@ -102,8 +119,10 @@ class DefaultCatalogRepository(
         combine(
             categoryDao.observeByType(MediaSection.Series.storageName),
             mediaDao.observeSeriesByCategory(categoryId?.takeUnless { it == "all" || it == "new" || it == "favorites" }),
-        ) { categories, series ->
-            if (!credentialsProvider.current().isConfigured) return@combine emptyList()
+            accountManager.activePlaylistSource,
+            accountManager.accounts,
+        ) { categories, series, source, accounts ->
+            if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
             val names = categories.associate { it.id to it.name }
             series.map { it.toDomain(names[it.categoryId] ?: "Series") }
         }
@@ -163,7 +182,11 @@ class DefaultCatalogRepository(
     }
 
     override suspend fun synchronize(): Result<Unit> = withContext(Dispatchers.IO) {
-        val credentials = credentialsProvider.current()
+        if (accountManager.activePlaylistSource.value == PlaylistSource.M3u) {
+            return@withContext synchronizeM3u()
+        }
+
+        val credentials = accountManager.current()
         if (!credentials.isConfigured) {
             val message = "Aucun compte Xtream configure"
             _syncStatus.value = SyncStatus.Error(message)
@@ -297,7 +320,7 @@ class DefaultCatalogRepository(
                     val local = mediaDao.getLiveStream(streamId)
                     val title = local?.name ?: return@withContext null
                     val subtitle = local.categoryId ?: "Live TV"
-                    PlaybackRequest(kind, id, title, subtitle, urlFactory.live(streamId))
+                    PlaybackRequest(kind, id, title, subtitle, local.directStreamUrl?.takeIf { it.isNotBlank() } ?: urlFactory.live(streamId))
                 }
 
                 PlaybackKind.Movie -> {
@@ -335,6 +358,80 @@ class DefaultCatalogRepository(
                 durationMs = durationMs,
                 updatedAt = System.currentTimeMillis(),
             ),
+        )
+    }
+
+    private suspend fun synchronizeM3u(): Result<Unit> {
+        val m3uUrl = accountManager.m3uUrl.value
+        if (m3uUrl.isBlank()) {
+            val message = "Aucun lien M3U configure"
+            _syncStatus.value = SyncStatus.Error(message)
+            return Result.failure(IllegalStateException(message))
+        }
+        _syncStatus.value = SyncStatus.Running(message = "Synchronisation M3U...", totalItems = 2)
+        return try {
+            val now = System.currentTimeMillis()
+            val playlist = m3uPlaylistClient.fetch(m3uUrl)
+            _syncStatus.value = SyncStatus.Running(
+                message = "Chargement catalogue M3U...",
+                completedItems = 1,
+                totalItems = 2,
+                catalogProgress = SyncStatus.CatalogProgress(
+                    live = SyncStatus.SyncSectionProgress(currentItems = playlist.channels.size),
+                ),
+            )
+            categoryDao.deleteByType(MediaSection.Live.storageName)
+            categoryDao.upsertAll(playlist.categories)
+            mediaDao.clearLiveStreams()
+            mediaDao.upsertLiveStreams(playlist.channels.map { it.toEntity() })
+            categoryDao.deleteByType(MediaSection.Movies.storageName)
+            categoryDao.deleteByType(MediaSection.Series.storageName)
+            mediaDao.clearMovies()
+            mediaDao.clearSeries()
+            accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let { epgRepository.synchronize(it) }
+            syncStateDao.upsert(
+                SyncStateEntity(
+                    id = "catalog",
+                    lastSync = now,
+                    status = "success",
+                    message = "Synchronisation M3U terminee",
+                ),
+            )
+            invalidateLocalCatalogCache()
+            _syncStatus.value = SyncStatus.Success(
+                message = "Synchronisation M3U terminee",
+                catalogProgress = SyncStatus.CatalogProgress(
+                    live = SyncStatus.SyncSectionProgress(currentItems = playlist.channels.size, completed = true),
+                ),
+            )
+            Result.success(Unit)
+        } catch (error: Exception) {
+            _syncStatus.value = SyncStatus.Error("Synchronisation M3U indisponible")
+            Result.failure(error)
+        }
+    }
+}
+
+private fun PlaylistSource.hasConfiguredCatalog(m3uUrl: String, hasXtream: Boolean): Boolean =
+    when (this) {
+        PlaylistSource.Xtream -> hasXtream
+        PlaylistSource.M3u -> m3uUrl.isNotBlank()
+    }
+
+private fun LiveChannel.withEpg(epgRepository: EpgRepository): LiveChannel {
+    val programs = epgRepository.loadPrograms(epgChannelId, name)
+    val now = System.currentTimeMillis()
+    val current = programs.firstOrNull { program ->
+        val start = program.startMillis
+        val stop = program.stopMillis
+        start != null && stop != null && now in start..stop
+    } ?: programs.firstOrNull()
+    return if (current == null) {
+        this
+    } else {
+        copy(
+            currentProgram = current.title,
+            timeRange = current.timeRange,
         )
     }
 }

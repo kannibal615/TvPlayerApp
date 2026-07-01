@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.smartvision.svplayer.BuildConfig
+import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.config.XtreamAccount
 import com.smartvision.svplayer.core.config.XtreamAccountManager
 import java.util.UUID
@@ -225,9 +226,26 @@ class ActivationRepository(
 
         response.playlistConfig?.let { playlist ->
             playlist.epgUrl?.trim()?.takeIf { it.isNotBlank() }?.let(accountManager::updateEpgUrl)
-            playlist.toAccount()?.let { account ->
+            playlist.m3uUrl?.trim()?.takeIf { it.isNotBlank() }?.let(accountManager::updateM3uUrl)
+            val account = playlist.toAccount()
+            val hasM3u = !playlist.m3uUrl.isNullOrBlank()
+            if (account != null) {
                 val id = accountManager.upsert(account)
                 accountManager.select(id)
+            }
+            when {
+                account != null && !hasM3u -> {
+                    accountManager.selectPlaylistSource(PlaylistSource.Xtream)
+                }
+                account == null && hasM3u -> {
+                    accountManager.selectPlaylistSource(PlaylistSource.M3u)
+                }
+                account != null && hasM3u && accountManager.activePlaylistSource.value == PlaylistSource.M3u -> {
+                    accountManager.selectPlaylistSource(PlaylistSource.M3u)
+                }
+                account != null && hasM3u && accountManager.activePlaylistSource.value == PlaylistSource.Xtream -> {
+                accountManager.selectPlaylistSource(PlaylistSource.Xtream)
+                }
             }
         }
 

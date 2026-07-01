@@ -111,7 +111,7 @@ Tables/settings a surveiller:
 - `ads_events`;
 - `app_behavior_events`.
 - `app_anomaly_events.public_device_code` pour afficher le code TV dans Diagnostics > Anomalies App.
-- `device_playlist_configs.encrypted_payload` contient maintenant aussi `epg_url` ou `m3u_url` quand l'utilisateur fournit ces liens; une config EPG/M3U seule ne doit pas marquer Xtream comme configure.
+- `device_playlist_configs.encrypted_payload` contient maintenant aussi `epg_url` ou `m3u_url` quand l'utilisateur fournit ces liens; une config M3U seule marque la playlist comme configuree mais ne marque pas Xtream comme configure.
 
 ## 8. Dependances
 
@@ -169,3 +169,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: refonte admin Diagnostics en onglets et ajout migration additive `app_anomaly_events.public_device_code`.
 - 2026-06-30: alignement du test admin `deploy_activation_phase1.ps1` sur la navigation Diagnostics apres suppression du menu Journal separe.
 - 2026-07-01: ajout `/playlist/`, upload deploy associe, support `epg_url` dans le payload playlist chiffre, puis onglets Xtream/M3U/EPG et notification appareil ciblee apres push playlist.
+- 2026-07-01: `device_status.php` et `save_playlist_config.php` traitent `m3u_url` comme configuration playlist valide, tout en gardant `xtreamStatus` lie uniquement aux identifiants Xtream.

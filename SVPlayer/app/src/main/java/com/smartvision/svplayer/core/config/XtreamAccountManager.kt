@@ -17,6 +17,16 @@ data class XtreamAccount(
     val epgUrl: String = "",
 )
 
+enum class PlaylistSource(val storageValue: String) {
+    Xtream("xtream"),
+    M3u("m3u");
+
+    companion object {
+        fun fromStorage(value: String?): PlaylistSource =
+            entries.firstOrNull { it.storageValue == value } ?: Xtream
+    }
+}
+
 class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
     private val preferences = context.getSharedPreferences("xtream_accounts", Context.MODE_PRIVATE)
     private val _accounts = MutableStateFlow(loadAccounts())
@@ -31,6 +41,14 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
 
     private val _epgUrl = MutableStateFlow(preferences.getString(KEY_EPG_URL, "").orEmpty())
     val epgUrl: StateFlow<String> = _epgUrl.asStateFlow()
+
+    private val _m3uUrl = MutableStateFlow(preferences.getString(KEY_M3U_URL, "").orEmpty())
+    val m3uUrl: StateFlow<String> = _m3uUrl.asStateFlow()
+
+    private val _activePlaylistSource = MutableStateFlow(
+        PlaylistSource.fromStorage(preferences.getString(KEY_ACTIVE_PLAYLIST_SOURCE, null)),
+    )
+    val activePlaylistSource: StateFlow<PlaylistSource> = _activePlaylistSource.asStateFlow()
 
     init {
         persist()
@@ -82,6 +100,21 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
     }
 
     @Synchronized
+    fun updateM3uUrl(url: String) {
+        _m3uUrl.value = url.trim()
+        if (_m3uUrl.value.isNotBlank() && !_activePlaylistSource.value.isAvailable()) {
+            _activePlaylistSource.value = PlaylistSource.M3u
+        }
+        persist()
+    }
+
+    @Synchronized
+    fun selectPlaylistSource(source: PlaylistSource) {
+        _activePlaylistSource.value = source
+        persist()
+    }
+
+    @Synchronized
     fun delete(accountId: String) {
         _accounts.value = _accounts.value.filterNot { it.id == accountId }
         if (_activeAccountId.value == accountId) {
@@ -115,6 +148,8 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             .putString(KEY_ACCOUNTS, json.toString())
             .putString(KEY_ACTIVE, _activeAccountId.value)
             .putString(KEY_EPG_URL, _epgUrl.value)
+            .putString(KEY_M3U_URL, _m3uUrl.value)
+            .putString(KEY_ACTIVE_PLAYLIST_SOURCE, _activePlaylistSource.value.storageValue)
             .apply()
     }
 
@@ -140,6 +175,14 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
         const val KEY_ACCOUNTS = "accounts_json"
         const val KEY_ACTIVE = "active_account_id"
         const val KEY_EPG_URL = "epg_url"
+        const val KEY_M3U_URL = "m3u_url"
+        const val KEY_ACTIVE_PLAYLIST_SOURCE = "active_playlist_source"
         const val LEGACY_BUILD_CONFIG_ACCOUNT = "build_config"
     }
+
+    private fun PlaylistSource.isAvailable(): Boolean =
+        when (this) {
+            PlaylistSource.Xtream -> current().isConfigured
+            PlaylistSource.M3u -> _m3uUrl.value.isNotBlank()
+        }
 }

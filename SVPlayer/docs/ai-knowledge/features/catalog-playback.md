@@ -4,11 +4,11 @@ Derniere mise a jour: 2026-06-30.
 
 ## 1. Objectif
 
-Documenter le chargement Xtream, le cache Room, les ecrans Live TV / Films / Series, les favoris, l'historique, la progression et la lecture ExoPlayer.
+Documenter le chargement Xtream ou M3U, le cache Room, les ecrans Live TV / Films / Series, l'EPG XMLTV, les favoris, l'historique, la progression et la lecture ExoPlayer.
 
 ## 2. Fonctionnement actuel
 
-SmartVision charge les contenus depuis le compte Xtream de l'utilisateur. Les donnees sont synchronisees vers Room et affichees dans les ecrans Compose actifs sous `ui/*`. La lecture plein ecran passe par Media3 ExoPlayer.
+SmartVision charge les contenus depuis la source active choisie par l'utilisateur: Xtream ou M3U, jamais les deux simultanement. Les donnees sont synchronisees vers Room et affichees dans les ecrans Compose actifs sous `ui/*`. La lecture plein ecran passe par Media3 ExoPlayer.
 
 Les ecrans actifs sont routes par `ui/navigation/AppNavigation.kt`. Ne pas modifier une ancienne architecture sans verifier qu'elle est importee par la navigation active.
 
@@ -19,6 +19,10 @@ Les snapshots locaux Live / Movies / Series peuvent etre conserves en memoire ap
 Les donnees Home legeres sont aussi prechauffees au demarrage: slides Home via `HomeSlidesRepository`, progression recente enrichie via `UserContentRepository`, et tendances depuis les snapshots Movies / Series deja charges en memoire.
 
 Depuis le 2026-06-30, la synchronisation manuelle depuis Info compte publie aussi une progression par section Live TV / Films / Series dans `SyncStatus`. Les compteurs de l'ancienne synchro servent d'estimation de progression; chaque section passe a 100% quand son endpoint principal est termine.
+
+Depuis le 2026-07-01, un lien M3U peut devenir la source active du catalogue Live TV. Les entrees M3U sont parsees depuis `#EXTINF`, groupees par `group-title`, stockees dans `live_streams` avec `source = m3u` et `directStreamUrl`, puis lues sans `XtreamUrlFactory`. Quand M3U est actif, Movies et Series sont vides pour respecter la regle une seule source active.
+
+Depuis le 2026-07-01, l'URL EPG XMLTV est telechargee dans un cache local leger au demarrage ou lors d'une synchronisation manuelle. Les programmes enrichissent l'apercu Live TV via `tvg-id`/nom de chaine; la zone EPG de l'apercu est scrollable si la liste est longue.
 
 ## 3. Workflow utilisateur
 
@@ -39,6 +43,11 @@ Xtream:
 - `SynchronizeCatalogUseCase` declenche la synchro.
 - `XtreamUrlFactory.kt` construit les URL de lecture.
 - `data/xtream/XtreamConnectionManager.kt` centralise l'etat connecte / erreur reseau / identifiants invalides / reponse invalide.
+
+M3U / EPG:
+- `data/playlist/M3uPlaylistClient.kt` telecharge et parse les playlists M3U.
+- `data/playlist/EpgRepository.kt` telecharge, parse et cache les programmes XMLTV.
+- `DefaultCatalogRepository.kt` choisit la branche de synchronisation selon `PlaylistSource`.
 
 Room:
 - `SVDatabase.kt` version 4.
@@ -68,6 +77,8 @@ Playback:
 - `data/remote/XtreamUrlFactory.kt`
 - `data/repository/XtreamRepository.kt`
 - `data/repository/DefaultCatalogRepository.kt`
+- `data/playlist/M3uPlaylistClient.kt`
+- `data/playlist/EpgRepository.kt`
 - `data/repository/UserContentRepository.kt`
 - `data/local/SVDatabase.kt`
 - `data/local/dao/*`
@@ -96,6 +107,8 @@ URL de lecture:
 - Live fallback: `/live/{username}/{password}/{stream_id}.m3u8`
 - Film: `/movie/{username}/{password}/{stream_id}.{extension}`
 - Episode: `/series/{username}/{password}/{episode_id}.{extension}`
+- M3U Live: URL directe issue de la ligne suivant `#EXTINF`, stockee dans `live_streams.directStreamUrl`.
+- EPG XMLTV: rapprochement par `tvg-id`/nom de chaine et affichage dans l'apercu Live TV.
 
 ## 8. Dependances
 
@@ -113,6 +126,8 @@ URL de lecture:
 - Garder les categories speciales Favoris/Historiques coherentes.
 - Ne pas bloquer l'affichage si du contenu partiel est deja disponible.
 - Ne pas remplacer les tables locales tant que toutes les reponses principales de synchronisation n'ont pas ete recuperees avec succes.
+- Une seule source catalogue peut etre active: Xtream ou M3U. Activer une source desactive l'autre cote preference locale.
+- M3U alimente Live TV uniquement; ne pas fabriquer des films/series sans structure fiable.
 - Ne pas lancer de synchronisation globale pendant la navigation Home / Live TV / Movies / Series / categories / listes.
 - Ne pas afficher un loader plein ecran si un snapshot local memoire existe deja pour l'ecran catalogue demande.
 - Le premier chargement local des snapshots Home / Live TV / Movies / Series doit rester dans le splash natif quand le compte Xtream est disponible; les ecrans ne doivent faire qu'utiliser le cache ou une lecture locale de secours.
@@ -158,3 +173,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: ajout progression detaillee Live TV / Films / Series dans `SyncStatus` pour le popup manuel de synchronisation Xtream du profil.
 - 2026-07-01: deplacement du prechargement Home / Live TV / Movies / Series dans `SplashActivity`, apres la verification de fraicheur de synchronisation.
 - 2026-07-01: premiere etape EPG: stockage/affichage de l'URL EPG dans Info compte et transfert web vers TV, sans encore traiter les donnees XMLTV.
+- 2026-07-01: ajout de la source active Xtream/M3U exclusive, parsing M3U vers Live TV, URL directe en Room et cache EPG XMLTV affiche dans l'apercu Live TV.

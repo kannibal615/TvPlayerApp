@@ -33,6 +33,8 @@ data class LiveChannel(
     val logoUrl: String?,
     val currentProgram: String?,
     val timeRange: String?,
+    val epgChannelId: String? = null,
+    val directStreamUrl: String? = null,
     val isFavorite: Boolean = false,
 )
 

@@ -101,6 +101,8 @@ fun LiveStreamEntity.toDomain(categoryName: String): LiveChannel =
         logoUrl = logoUrl,
         currentProgram = categoryName,
         timeRange = null,
+        epgChannelId = epgChannelId,
+        directStreamUrl = directStreamUrl,
     )
 
 fun MovieEntity.toDomain(categoryName: String): Movie =

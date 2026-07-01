@@ -43,7 +43,7 @@ import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
         YoutubeSelectionEntity::class,
         YoutubeBehaviorEventEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class SVDatabase : RoomDatabase() {
@@ -58,7 +58,7 @@ abstract class SVDatabase : RoomDatabase() {
     companion object {
         fun build(context: Context): SVDatabase =
             Room.databaseBuilder(context, SVDatabase::class.java, "svplayer.db")
-                .addMigrations(Migration1To2, Migration2To3, Migration3To4, Migration4To5)
+                .addMigrations(Migration1To2, Migration2To3, Migration3To4, Migration4To5, Migration5To6)
                 .build()
 
         private val Migration1To2 = object : Migration(1, 2) {
@@ -129,6 +129,13 @@ abstract class SVDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE youtube_behavior_events ADD COLUMN durationSeconds INTEGER")
                 db.execSQL("ALTER TABLE youtube_behavior_events ADD COLUMN engagementScore INTEGER")
                 db.execSQL("ALTER TABLE youtube_behavior_events ADD COLUMN context TEXT")
+            }
+        }
+
+        private val Migration5To6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE live_streams ADD COLUMN directStreamUrl TEXT")
+                db.execSQL("ALTER TABLE live_streams ADD COLUMN source TEXT NOT NULL DEFAULT 'xtream'")
             }
         }
     }

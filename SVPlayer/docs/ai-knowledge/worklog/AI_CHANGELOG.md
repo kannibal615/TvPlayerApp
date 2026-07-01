@@ -1,5 +1,39 @@
 # AI Changelog
 
+## 2026-07-01 - Source M3U active et EPG Live TV
+
+Type:
+- android
+- ui
+- backend
+- documentation
+
+Resume:
+- Info compte compacte les cartes source et ajoute le lien M3U avec bascules exclusives Xtream/M3U ON vert / OFF rouge.
+- Le catalogue supporte une source active unique: Xtream conserve le comportement existant, M3U alimente Live TV via URL directe et vide Movies/Series.
+- Ajout du parser M3U, du cache EPG XMLTV et de l'affichage EPG scrollable dans l'apercu Live TV.
+- Le Splash affiche les statuts de synchronisation/chargement M3U et EPG; le backend considere `m3u_url` comme playlist configuree sans marquer Xtream configure.
+- Release prod publiee en `0.1.68` / `versionCode 71` avec APK `smartvision-tv-v71-44e92a70.apk`.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/technical/backend-admin-api-deploy.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/decisions/2026-07-01-exclusive-playlist-source.md`
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/core/config/XtreamAccountManager.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/playlist/*`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/profile/ProfileScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/*`
+- `server/public_html/api/device_status.php`
+- `server/public_html/api/save_playlist_config.php`
+
 ## 2026-07-01 - Correctifs Home YouTube, Playlist et Info compte pilote
 
 Type:
