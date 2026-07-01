@@ -91,6 +91,11 @@ Artefacts locaux:
 - `app/build/outputs/apk/release/output-metadata.json`
 - `app/build/reports/profile/` si profiling Gradle.
 
+Diagnostic Firestick / ADB:
+- ADB Windows de reference pour ce workspace: `C:\Users\ONEDEV\AppData\Local\Android\Sdk\platform-tools\adb.exe`.
+- Firestick Wi-Fi connue: `192.168.1.33:5555` (`AFTSSS`, `sheldonp`) apres autorisation RSA cote TV.
+- Pour les mesures de synchro Xtream, utiliser `scripts/capture_firestick_xtream_sync.ps1`; le script nettoie `logcat`, capture `SVSyncMemory`, releve `dumpsys meminfo com.smartvision.svplayer` et ecrit les resultats sous `diagnostics/firestick-sync-*`.
+
 ## 8. Dependances
 
 - Backend/admin/deploy pour publication APK.

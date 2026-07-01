@@ -9,5 +9,6 @@
 /keystore/
 /captures/
 /logs/
+/diagnostics/
 externalNativeBuild/
 .cxx/

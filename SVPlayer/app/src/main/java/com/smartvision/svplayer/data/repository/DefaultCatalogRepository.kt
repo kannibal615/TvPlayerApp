@@ -1,5 +1,6 @@
 package com.smartvision.svplayer.data.repository
 
+import android.util.Log
 import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.data.local.dao.CategoryDao
@@ -213,6 +214,12 @@ class DefaultCatalogRepository(
 
         _syncStatus.value = SyncStatus.Running(catalogProgress = previousCatalogProgress)
         try {
+            logSyncMemory(
+                stage = "xtream_sync_start",
+                previousLive = previousCatalogProgress.live.previousItems,
+                previousMovies = previousCatalogProgress.movies.previousItems,
+                previousSeries = previousCatalogProgress.series.previousItems,
+            )
             val now = System.currentTimeMillis()
             var completedItems = 0
             var totalItems = 6
@@ -227,32 +234,52 @@ class DefaultCatalogRepository(
                 )
             }
 
+            logSyncMemory(stage = "before_get_account")
             val account = api.getAccount(credentials.username, credentials.password)
+            logSyncMemory(stage = "after_get_account")
             updateProgress("Verification du compte Xtream...", fetched = 1, remainingSteps = 5)
 
+            logSyncMemory(stage = "before_get_live_categories")
             val liveCategories = api.getCategories(credentials.username, credentials.password, "get_live_categories")
+            logSyncMemory(stage = "after_get_live_categories", liveCategories = liveCategories.size)
             updateProgress("Telechargement des categories Live TV...", fetched = liveCategories.size, remainingSteps = 4)
             profileDao.upsert(account.toProfileEntity(credentials, now))
 
+            logSyncMemory(stage = "before_get_live_streams", liveCategories = liveCategories.size)
             val liveStreams = api.getLiveStreams(credentials.username, credentials.password)
             liveItems = liveStreams.size
             liveCompleted = true
+            logSyncMemory(stage = "after_get_live_streams", live = liveStreams.size, liveCategories = liveCategories.size)
             updateProgress("Telechargement des chaines Live TV...", fetched = liveStreams.size, remainingSteps = 3)
 
+            logSyncMemory(stage = "before_get_movie_categories", live = liveStreams.size)
             val movieCategories = api.getCategories(credentials.username, credentials.password, "get_vod_categories")
+            logSyncMemory(stage = "after_get_movie_categories", live = liveStreams.size, movieCategories = movieCategories.size)
             updateProgress("Telechargement des categories Films...", fetched = movieCategories.size, remainingSteps = 2)
+            logSyncMemory(stage = "before_get_movies", live = liveStreams.size, movieCategories = movieCategories.size)
             val movies = api.getMovies(credentials.username, credentials.password)
             movieItems = movies.size
             moviesCompleted = true
+            logSyncMemory(stage = "after_get_movies", live = liveStreams.size, movies = movies.size, movieCategories = movieCategories.size)
             updateProgress("Telechargement des films...", fetched = movies.size, remainingSteps = 1)
 
+            logSyncMemory(stage = "before_get_series_categories", live = liveStreams.size, movies = movies.size)
             val seriesCategories = api.getCategories(credentials.username, credentials.password, "get_series_categories")
+            logSyncMemory(
+                stage = "after_get_series_categories",
+                live = liveStreams.size,
+                movies = movies.size,
+                seriesCategories = seriesCategories.size,
+            )
             updateProgress("Telechargement des categories Series...", fetched = seriesCategories.size, remainingSteps = 1)
+            logSyncMemory(stage = "before_get_series", live = liveStreams.size, movies = movies.size, seriesCategories = seriesCategories.size)
             val series = api.getSeries(credentials.username, credentials.password)
             seriesItems = series.size
             seriesCompleted = true
+            logSyncMemory(stage = "after_get_series", live = liveStreams.size, movies = movies.size, series = series.size)
             updateProgress("Telechargement des series...", fetched = series.size, remainingSteps = 0)
 
+            logSyncMemory(stage = "before_room_write", live = liveStreams.size, movies = movies.size, series = series.size)
             categoryDao.deleteByType(MediaSection.Live.storageName)
             categoryDao.upsertAll(liveCategories.mapNotNull { it.toEntity(MediaSection.Live) })
             mediaDao.clearLiveStreams()
@@ -267,6 +294,7 @@ class DefaultCatalogRepository(
             categoryDao.upsertAll(seriesCategories.mapNotNull { it.toEntity(MediaSection.Series) })
             mediaDao.clearSeries()
             mediaDao.upsertSeries(series.mapNotNull { it.toEntity() })
+            logSyncMemory(stage = "after_room_write", live = liveStreams.size, movies = movies.size, series = series.size)
 
             syncStateDao.upsert(
                 SyncStateEntity(
@@ -277,12 +305,15 @@ class DefaultCatalogRepository(
                 ),
             )
             invalidateLocalCatalogCache()
+            logSyncMemory(stage = "after_cache_invalidation", live = liveStreams.size, movies = movies.size, series = series.size)
             _syncStatus.value = SyncStatus.Success(
                 message = "Synchronisation terminee",
                 catalogProgress = currentCatalogProgress(),
             )
+            logSyncMemory(stage = "xtream_sync_success", live = liveStreams.size, movies = movies.size, series = series.size)
             Result.success(Unit)
         } catch (error: Exception) {
+            logSyncMemory(stage = "xtream_sync_error_${error.javaClass.simpleName}")
             syncStateDao.upsert(
                 SyncStateEntity(
                     id = "catalog",
@@ -417,6 +448,47 @@ private fun PlaylistSource.hasConfiguredCatalog(m3uUrl: String, hasXtream: Boole
         PlaylistSource.Xtream -> hasXtream
         PlaylistSource.M3u -> m3uUrl.isNotBlank()
     }
+
+private fun logSyncMemory(
+    stage: String,
+    live: Int? = null,
+    movies: Int? = null,
+    series: Int? = null,
+    liveCategories: Int? = null,
+    movieCategories: Int? = null,
+    seriesCategories: Int? = null,
+    previousLive: Int? = null,
+    previousMovies: Int? = null,
+    previousSeries: Int? = null,
+) {
+    val runtime = Runtime.getRuntime()
+    val total = runtime.totalMemory()
+    val free = runtime.freeMemory()
+    val used = total - free
+    Log.i(
+        SyncMemoryTag,
+        buildString {
+            append("stage=").append(stage)
+            append(" usedMb=").append(used.toMiB())
+            append(" freeMb=").append(free.toMiB())
+            append(" totalMb=").append(total.toMiB())
+            append(" maxMb=").append(runtime.maxMemory().toMiB())
+            live?.let { append(" live=").append(it) }
+            movies?.let { append(" movies=").append(it) }
+            series?.let { append(" series=").append(it) }
+            liveCategories?.let { append(" liveCategories=").append(it) }
+            movieCategories?.let { append(" movieCategories=").append(it) }
+            seriesCategories?.let { append(" seriesCategories=").append(it) }
+            previousLive?.let { append(" previousLive=").append(it) }
+            previousMovies?.let { append(" previousMovies=").append(it) }
+            previousSeries?.let { append(" previousSeries=").append(it) }
+        },
+    )
+}
+
+private fun Long.toMiB(): Long = this / (1024L * 1024L)
+
+private const val SyncMemoryTag = "SVSyncMemory"
 
 private fun LiveChannel.withEpg(epgRepository: EpgRepository): LiveChannel {
     val programs = epgRepository.loadPrograms(epgChannelId, name)

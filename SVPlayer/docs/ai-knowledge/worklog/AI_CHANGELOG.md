@@ -1,5 +1,29 @@
 # AI Changelog
 
+## 2026-07-01 - Diagnostic memoire synchro Xtream Firestick
+
+Type:
+- android
+- tooling
+- documentation
+
+Resume:
+- Ajout de logs `SVSyncMemory` dans la synchronisation Xtream pour mesurer les pics memoire autour des appels reseau, de l'ecriture Room et de l'invalidation du cache local.
+- Ajout du script `scripts/capture_firestick_xtream_sync.ps1` pour capturer `logcat` et `dumpsys meminfo` sur la Firestick `192.168.1.33:5555`.
+- Documentation du chemin ADB Windows de reference: `C:\Users\ONEDEV\AppData\Local\Android\Sdk\platform-tools\adb.exe`.
+- Premiere capture Firestick: un tres gros catalogue a atteint `usedMb=118` juste avant l'ecriture Room puis a fini en ANR; au redemarrage, la reconstruction locale a lance deux OOM de 62 Mo avant qu'une synchro plus reduite reussisse.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code/outillage concernes:
+- `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+- `scripts/capture_firestick_xtream_sync.ps1`
+- `.gitignore`
+
 ## 2026-07-01 - M3U source-aware, EPG badge et UI player slim
 
 Type:

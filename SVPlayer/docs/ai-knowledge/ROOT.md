@@ -16,6 +16,7 @@ Etat technique constate le 2026-07-01:
 - lecture video: AndroidX Media3 ExoPlayer natif
 - backend local: `server/public_html/`
 - deploiement: `scripts/deploy_activation_phase1.ps1`
+- ADB Windows de reference pour tests Firestick: `C:\Users\ONEDEV\AppData\Local\Android\Sdk\platform-tools\adb.exe`; Firestick Wi-Fi connue: `192.168.1.33:5555`.
 
 ## Regles de lecture
 
