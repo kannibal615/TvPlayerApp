@@ -217,6 +217,82 @@ function normalize_xtream_host(mixed $value): string
     return $host;
 }
 
+function normalize_epg_url(mixed $value): ?string
+{
+    $url = trim((string) $value);
+    if ($url === '') {
+        return null;
+    }
+    if (strlen($url) > 512) {
+        return '';
+    }
+    if (!preg_match('#^https?://#i', $url)) {
+        $url = 'https://' . $url;
+    }
+    $parts = parse_url($url);
+    if (!is_array($parts) || empty($parts['host']) || !in_array(strtolower((string) ($parts['scheme'] ?? '')), ['http', 'https'], true)) {
+        return '';
+    }
+
+    return $url;
+}
+
+function normalize_playlist_url(mixed $value): ?string
+{
+    return normalize_epg_url($value);
+}
+
+function create_playlist_push_notification(
+    PDO $pdo,
+    string $deviceId,
+    string $publicDeviceCode,
+    bool $xtreamUpdated,
+    bool $m3uUpdated,
+    bool $epgUpdated,
+    string $source = 'playlist'
+): void {
+    if (!$xtreamUpdated && !$m3uUpdated && !$epgUpdated) {
+        return;
+    }
+
+    ensure_app_notifications_table($pdo);
+    $parts = [];
+    if ($xtreamUpdated) {
+        $parts[] = 'identifiants Xtream';
+    }
+    if ($m3uUpdated) {
+        $parts[] = 'lien M3U';
+    }
+    if ($epgUpdated) {
+        $parts[] = 'URL EPG';
+    }
+
+    $targetValues = array_values(array_filter([
+        strtolower(clean_device_id($deviceId)),
+        strtolower(clean_public_device_code($publicDeviceCode)),
+    ]));
+    if ($targetValues === []) {
+        return;
+    }
+
+    $message = 'Configuration recue depuis SmartVision Playlist: '
+        . implode(', ', $parts)
+        . '. Ouvrez Info compte sur la TV pour verifier les donnees, puis synchronisez le catalogue si les identifiants Xtream ont change.';
+
+    $statement = $pdo->prepare(
+        "INSERT INTO app_notifications
+            (title, message, target_scope, target_value, priority, status, created_by, expires_at, created_at, updated_at)
+         VALUES
+            (:title, :message, 'devices', :target_value, 'normal', 'active', :created_by, DATE_ADD(NOW(), INTERVAL 14 DAY), NOW(), NOW())"
+    );
+    $statement->execute([
+        'title' => 'Configuration playlist recue',
+        'message' => $message,
+        'target_value' => implode(',', $targetValues),
+        'created_by' => 'system_' . clean_optional_text($source, 40),
+    ]);
+}
+
 function credentials_key(): string
 {
     $config = load_database_config();

@@ -42,7 +42,7 @@ Fichiers centraux:
 Attention:
 - Un `FocusRequester` peut crasher si demande de focus avant initialisation ou apres disparition du composable.
 - Les handlers D-pad doivent tenir compte des surfaces visibles.
-- Le popup manuel Profil > Identifiants Xtream bloque Back/D-pad uniquement pendant `SyncStatus.Running`; a la fin ou en erreur, le focus va sur `Retour`.
+- Le popup manuel Info compte > Synchroniser bloque Back/D-pad uniquement pendant `SyncStatus.Running`; a la fin ou en erreur, le focus va sur `Retour`.
 
 ## 5. Ecrans concernes
 
@@ -96,6 +96,7 @@ Backend indirect:
 ## 9. Regles a ne pas casser
 
 - Tout element actionnable doit rester focusable.
+- Info compte doit donner le focus initial au menu `Licence SmartVision`; le panneau `Info compte` reutilise le header principal et ses boutons globaux.
 - Ne pas remplacer les controles natifs attendus par des overlays qui volent le focus sans demande explicite.
 - Si un overlay custom YouTube est explicitement demande, le bandeau doit borner le focus gauche/droite avec routage DPAD explicite entre boutons; OK/Enter doit declencher l'action du bouton focus; Haut ou Back doit masquer le bandeau et rendre le focus au conteneur player. Le parent du bandeau ne doit pas consommer OK/Enter, et le WebView ne doit pas reprendre automatiquement le focus pendant l'affichage des controles Compose.
 - Le bandeau YouTube custom ne doit pas s'afficher a l'ouverture du player: attendre le premier etat `PLAYING`, puis masquer completement le bandeau apres timeout meme si un bouton garde le focus.
@@ -143,3 +144,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: amelioration overlay YouTube: affichage seulement au demarrage reel de lecture, auto-hide 7s, progress bar, bouton reload, previous via historique et retour full screen vers mini lecteur avec reprise de position.
 - 2026-06-30: performance/UX YouTube: WebView conserve entre videos avec `loadVideoById`, queue autoplay maintenue autour de 20 suggestions, qualite cible `medium`, bouton retour fullscreen masque avec l'overlay et popup parametres sans stopper la lecture.
 - 2026-06-30: ajout popup de synchronisation Xtream avec focus initial sur lancement, blocage telecommande pendant synchro active et retour focus vers Appareil et catalogue apres fermeture.
+- 2026-07-01: Info compte ajoute une section URL EPG avec boutons icones focusables Modifier et Modifier par QR.
+- 2026-07-01: Info compte devient l'ecran pilote visuel: header principal, menu gauche plus etroit, icones de lignes sans cadres, focus initial sur Licence SmartVision, et badge usage dans l'en-tete du panneau droit.

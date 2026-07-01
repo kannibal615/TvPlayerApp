@@ -11,8 +11,8 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
 
 Gradle local constate le 2026-07-01:
-- `versionCode = 69`
-- `versionName = "0.1.66"`
+- `versionCode = 70`
+- `versionName = "0.1.67"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -128,6 +128,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-06-29: migration vers documentation specialisee.
+- 2026-07-01: release publiee `0.1.67` / `versionCode 70` pour Info compte, URL EPG et page web `/playlist/`; APK `smartvision-tv-v70-50bfb24e.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-01: release publiee `0.1.66` / `versionCode 69` pour agrandissement du splash et suppression du flash activation apres splash; APK `smartvision-tv-v69-cb3e3030.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-01: release publiee `0.1.65` / `versionCode 68` pour splash unique et prechargement Home/catalogues au demarrage; APK `smartvision-tv-v68-e4732ab9.apk`, manifeste public et hash SHA256 verifies.
 - 2026-06-30: release publiee `0.1.62` / `versionCode 65`; APK `smartvision-tv-v65-db9e9d1a.apk`, manifeste public et hash SHA256 verifies.

@@ -129,7 +129,7 @@ function find_or_create_web_activation_session(PDO $pdo, string $deviceId): arra
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Activation SmartVision</title>
-    <link rel="stylesheet" href="/assets/site.css?v=5">
+    <link rel="stylesheet" href="/assets/site.css?v=6">
     <link rel="stylesheet" href="/assets/site-overrides.css?v=6">
 </head>
 <body class="activation-page">

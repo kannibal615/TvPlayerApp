@@ -241,7 +241,7 @@ private fun NotificationRow(
         createdAt = notification.createdAt,
         priority = notification.priority,
         leadingIcon = if (notification.isUpdateNotification()) Icons.Default.FileDownload else null,
-        onClick = onClick ?: {},
+        onClick = onClick,
     )
 }
 
@@ -252,7 +252,7 @@ private fun NotificationCard(
     createdAt: String,
     priority: String,
     leadingIcon: ImageVector? = null,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
 ) {
     val focusState = rememberTvFocusState()
     val focusStyle = LocalTvFocusStyle.current
@@ -283,8 +283,15 @@ private fun NotificationCard(
                 ),
                 shape,
             )
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .focusable(interactionSource = interactionSource)
+            .then(
+                if (onClick != null) {
+                    Modifier
+                        .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+                        .focusable(interactionSource = interactionSource)
+                } else {
+                    Modifier
+                },
+            )
             .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

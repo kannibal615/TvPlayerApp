@@ -18,7 +18,7 @@ Les snapshots locaux Live / Movies / Series peuvent etre conserves en memoire ap
 
 Les donnees Home legeres sont aussi prechauffees au demarrage: slides Home via `HomeSlidesRepository`, progression recente enrichie via `UserContentRepository`, et tendances depuis les snapshots Movies / Series deja charges en memoire.
 
-Depuis le 2026-06-30, la synchronisation manuelle depuis Profil > Identifiants Xtream publie aussi une progression par section Live TV / Films / Series dans `SyncStatus`. Les compteurs de l'ancienne synchro servent d'estimation de progression; chaque section passe a 100% quand son endpoint principal est termine.
+Depuis le 2026-06-30, la synchronisation manuelle depuis Info compte publie aussi une progression par section Live TV / Films / Series dans `SyncStatus`. Les compteurs de l'ancienne synchro servent d'estimation de progression; chaque section passe a 100% quand son endpoint principal est termine.
 
 ## 3. Workflow utilisateur
 
@@ -157,3 +157,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: ajout d'un cache memoire de snapshots catalogue locaux pour accelerer les retours Live TV / Movies / Series sans resynchronisation reseau.
 - 2026-06-30: ajout progression detaillee Live TV / Films / Series dans `SyncStatus` pour le popup manuel de synchronisation Xtream du profil.
 - 2026-07-01: deplacement du prechargement Home / Live TV / Movies / Series dans `SplashActivity`, apres la verification de fraicheur de synchronisation.
+- 2026-07-01: premiere etape EPG: stockage/affichage de l'URL EPG dans Info compte et transfert web vers TV, sans encore traiter les donnees XMLTV.

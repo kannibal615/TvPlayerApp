@@ -129,4 +129,6 @@ data class PlaylistConfigResponse(
     @SerializedName("host") val host: String? = null,
     @SerializedName("username") val username: String? = null,
     @SerializedName("password") val password: String? = null,
+    @SerializedName("epg_url") val epgUrl: String? = null,
+    @SerializedName("m3u_url") val m3uUrl: String? = null,
 )

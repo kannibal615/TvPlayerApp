@@ -25,8 +25,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $host = normalize_xtream_host($_POST['host'] ?? null);
     $username = clean_optional_text($_POST['username'] ?? null, 180);
     $password = clean_optional_text($_POST['password'] ?? null, 255);
+    $epgUrl = normalize_epg_url($_POST['epg_url'] ?? null);
 
-    if ($publicDeviceCode === '' || $shortCode === '' || $host === '' || $username === null || $password === null) {
+    if ($publicDeviceCode === '' || $shortCode === '' || $host === '' || $username === null || $password === null || $epgUrl === '') {
         $message = 'Informations incompletes ou invalides.';
     } else {
         try {
@@ -67,11 +68,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 throw new RuntimeException('Device inactive.');
             }
 
-            $encrypted = encrypt_playlist_config([
+            $config = [
                 'host' => $host,
                 'username' => $username,
                 'password' => $password,
-            ]);
+            ];
+            if ($epgUrl !== null) {
+                $config['epg_url'] = $epgUrl;
+            }
+            $encrypted = encrypt_playlist_config($config);
             $upsert = $pdo->prepare(
                 "INSERT INTO device_playlist_configs (device_id, encrypted_payload, delivered_at, created_at, updated_at)
                  VALUES (:device_id, :payload, NULL, NOW(), NOW())
@@ -97,7 +102,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Configuration Xtream SmartVision</title>
-    <link rel="stylesheet" href="/assets/site.css?v=3">
+    <link rel="stylesheet" href="/assets/site.css?v=6">
 </head>
 <body class="activation-page">
 <main class="activation-shell">
@@ -120,6 +125,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 <div class="field"><label for="xtream-host">Host / URL serveur</label><input id="xtream-host" name="host" type="url" placeholder="https://serveur.example" autocomplete="url" required></div>
                 <div class="field"><label for="xtream-username">Nom d'utilisateur</label><input id="xtream-username" name="username" type="text" autocomplete="username" required></div>
                 <div class="field"><label for="xtream-password">Mot de passe</label><input id="xtream-password" name="password" type="text" autocomplete="off" required></div>
+                <div class="field"><label for="xtream-epg">URL EPG optionnelle</label><input id="xtream-epg" name="epg_url" type="url" placeholder="https://serveur.example/epg.xml" autocomplete="url"></div>
                 <button class="button button-primary" type="submit">Synchroniser ma TV</button>
                 <?php if ($message !== ''): ?><p class="message" role="alert"><?= xtream_h($message) ?></p><?php endif; ?>
             </form>

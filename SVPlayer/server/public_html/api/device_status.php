@@ -41,19 +41,22 @@ try {
         );
         $playlistQuery->execute(['device_id' => $deviceId]);
         $encryptedPlaylist = $playlistQuery->fetchColumn();
-        $playlistConfigured = is_string($encryptedPlaylist) && $encryptedPlaylist !== '';
+        $playlist = is_string($encryptedPlaylist) && $encryptedPlaylist !== ''
+            ? decrypt_playlist_config((string) $encryptedPlaylist)
+            : null;
+        $playlistConfigured = is_array($playlist)
+            && trim((string) ($playlist['host'] ?? '')) !== ''
+            && trim((string) ($playlist['username'] ?? '')) !== ''
+            && trim((string) ($playlist['password'] ?? '')) !== '';
         $state['playlist_configured'] = $playlistConfigured;
         $state['xtreamStatus'] = $playlistConfigured ? 'configured' : 'missing';
 
-        if ($playlistConfigured && has_valid_device_token($pdo, $deviceId, $deviceToken)) {
-            $playlist = decrypt_playlist_config((string) $encryptedPlaylist);
-            if ($playlist !== null) {
-                $state['playlist_config'] = $playlist;
-                $delivered = $pdo->prepare(
-                    'UPDATE device_playlist_configs SET delivered_at = NOW() WHERE device_id = :device_id'
-                );
-                $delivered->execute(['device_id' => $deviceId]);
-            }
+        if (is_array($playlist) && has_valid_device_token($pdo, $deviceId, $deviceToken)) {
+            $state['playlist_config'] = $playlist;
+            $delivered = $pdo->prepare(
+                'UPDATE device_playlist_configs SET delivered_at = NOW() WHERE device_id = :device_id'
+            );
+            $delivered->execute(['device_id' => $deviceId]);
         }
     }
 

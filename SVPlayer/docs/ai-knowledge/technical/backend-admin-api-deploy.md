@@ -17,6 +17,7 @@ Le script de deploiement upload les fichiers explicitement. Tout nouveau fichier
 - Site public: decouverte, telechargement, achat/activation.
 - Account: achat/prolongation, configuration Xtream, verification email.
 - Activate/Xtream: parcours QR depuis TV.
+- Playlist: page publique `/playlist/` pour envoyer par code TV des identifiants Xtream, un lien M3U ou une URL EPG vers la TV, sans passage obligatoire par le panel admin. Chaque envoi cree une notification d'information ciblee sur l'appareil, sans contenu sensible.
 - Admin: gestion fonctionnalites, consentement, pubs, codes, notifications, diagnostics.
 - Admin Diagnostics centralise maintenant Synthese, AutoSync, Anomalies App, Info Serveur et Journal dans `server/public_html/admin/index.php`.
 - App: consomme les endpoints activation, config, update, ads, tracking.
@@ -59,6 +60,7 @@ Regle release:
 - `server/public_html/activate/index.php`
 - `server/public_html/activation/index.php`
 - `server/public_html/xtream/index.php`
+- `server/public_html/playlist/index.php`
 - `server/public_html/payment-callback/index.php`
 - `server/public_html/verify-email/index.php`
 - `server/public_html/admin/*`
@@ -109,6 +111,7 @@ Tables/settings a surveiller:
 - `ads_events`;
 - `app_behavior_events`.
 - `app_anomaly_events.public_device_code` pour afficher le code TV dans Diagnostics > Anomalies App.
+- `device_playlist_configs.encrypted_payload` contient maintenant aussi `epg_url` ou `m3u_url` quand l'utilisateur fournit ces liens; une config EPG/M3U seule ne doit pas marquer Xtream comme configure.
 
 ## 8. Dependances
 
@@ -165,3 +168,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: ajout de la regle "nouveau build release livrable = deploy backend obligatoire".
 - 2026-06-30: refonte admin Diagnostics en onglets et ajout migration additive `app_anomaly_events.public_device_code`.
 - 2026-06-30: alignement du test admin `deploy_activation_phase1.ps1` sur la navigation Diagnostics apres suppression du menu Journal separe.
+- 2026-07-01: ajout `/playlist/`, upload deploy associe, support `epg_url` dans le payload playlist chiffre, puis onglets Xtream/M3U/EPG et notification appareil ciblee apres push playlist.

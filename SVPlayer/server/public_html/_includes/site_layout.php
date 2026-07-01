@@ -73,6 +73,7 @@ function sv_render_site_header(): void
         <a href="/">Accueil</a>
         <a href="/#tarifs">Tarifs</a>
         <a href="/activate/">Activation</a>
+        <a href="/playlist/">Playlist</a>
         <a href="/#telecharger">Télécharger l’application</a>
         <a class="mobile-only" href="<?= sv_h($accountUrl) ?>"><?= sv_h($accountLabel) ?></a>
     </nav>
@@ -99,6 +100,7 @@ function sv_render_site_footer(string $class = ''): void
         <a href="/">Accueil</a>
         <a href="/#tarifs">Tarifs</a>
         <a href="/activate/">Activation</a>
+        <a href="/playlist/">Playlist</a>
         <a href="/account/">Compte client</a>
         <a href="/contact/">Contact</a>
         <a href="/terms-of-use/">Conditions d’utilisation</a>

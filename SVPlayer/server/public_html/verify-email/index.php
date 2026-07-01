@@ -82,7 +82,7 @@ if (preg_match('/^[a-f0-9]{64}$/', $token)) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
     <title>Vérification email | SmartVision</title>
-    <link rel="stylesheet" href="/assets/site.css?v=5">
+    <link rel="stylesheet" href="/assets/site.css?v=6">
     <link rel="stylesheet" href="/assets/site-overrides.css?v=5">
     <link rel="stylesheet" href="/assets/account.css?v=6">
 </head>

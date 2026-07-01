@@ -17,7 +17,7 @@ sv_send_site_headers();
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="<?= sv_h((string) $page['description']) ?>">
     <title><?= sv_h((string) $page['title']) ?></title>
-    <link rel="stylesheet" href="/assets/site.css?v=3">
+    <link rel="stylesheet" href="/assets/site.css?v=6">
     <link rel="stylesheet" href="/assets/site-overrides.css?v=4">
     <link rel="stylesheet" href="/assets/mobile.css?v=5">
 </head>

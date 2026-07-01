@@ -15,12 +15,30 @@ $input = read_json_input();
 $deviceId = clean_device_id($input['device_id'] ?? null);
 $publicDeviceCode = clean_public_device_code($input['publicDeviceCode'] ?? $input['device'] ?? null);
 $shortCode = normalize_activation_code($input['short_code'] ?? null);
-$host = normalize_xtream_host($input['host'] ?? null);
-$username = clean_optional_text($input['username'] ?? null, 180);
-$password = clean_optional_text($input['password'] ?? null, 255);
+$hostInput = trim((string) ($input['host'] ?? ''));
+$usernameInput = trim((string) ($input['username'] ?? ''));
+$passwordInput = trim((string) ($input['password'] ?? ''));
+$hasXtreamInput = $hostInput !== '' || $usernameInput !== '' || $passwordInput !== '';
+$host = $hasXtreamInput ? normalize_xtream_host($hostInput) : null;
+$username = $hasXtreamInput ? clean_optional_text($usernameInput, 180) : null;
+$password = $hasXtreamInput ? clean_optional_text($passwordInput, 255) : null;
+$epgUrl = normalize_epg_url($input['epg_url'] ?? $input['epgUrl'] ?? null);
+$m3uUrl = normalize_playlist_url($input['m3u_url'] ?? $input['m3uUrl'] ?? null);
 
-if (($deviceId === '' && $publicDeviceCode === '') || $shortCode === '' || $host === '' || $username === null || $password === null) {
+if (($deviceId === '' && $publicDeviceCode === '') || $shortCode === '') {
     json_response(['success' => false, 'error' => 'Identifiants Xtream incomplets ou invalides.'], 400);
+}
+if ($hasXtreamInput && ($host === null || $host === '' || $username === null || $password === null)) {
+    json_response(['success' => false, 'error' => 'Identifiants Xtream incomplets ou invalides.'], 400);
+}
+if ($epgUrl === '') {
+    json_response(['success' => false, 'error' => 'URL EPG invalide.'], 400);
+}
+if ($m3uUrl === '') {
+    json_response(['success' => false, 'error' => 'URL M3U invalide.'], 400);
+}
+if (!$hasXtreamInput && $epgUrl === null && $m3uUrl === null) {
+    json_response(['success' => false, 'error' => 'Configuration playlist vide.'], 400);
 }
 
 $pdo = db();
@@ -67,11 +85,27 @@ try {
         json_response(['success' => false, 'error' => 'Activation appareil invalide.'], 403);
     }
 
-    $encrypted = encrypt_playlist_config([
-        'host' => $host,
-        'username' => $username,
-        'password' => $password,
-    ]);
+    $existingQuery = $pdo->prepare('SELECT encrypted_payload FROM device_playlist_configs WHERE device_id = :device_id LIMIT 1');
+    $existingQuery->execute(['device_id' => $deviceId]);
+    $existingPayload = $existingQuery->fetchColumn();
+    $config = is_string($existingPayload) && $existingPayload !== ''
+        ? (decrypt_playlist_config($existingPayload) ?? [])
+        : [];
+    if ($hasXtreamInput) {
+        $config['host'] = $host;
+        $config['username'] = $username;
+        $config['password'] = $password;
+    }
+    if ($epgUrl !== null) {
+        $config['epg_url'] = $epgUrl;
+    }
+    if ($m3uUrl !== null) {
+        $config['m3u_url'] = $m3uUrl;
+    }
+    $hasXtreamConfig = trim((string) ($config['host'] ?? '')) !== ''
+        && trim((string) ($config['username'] ?? '')) !== ''
+        && trim((string) ($config['password'] ?? '')) !== '';
+    $encrypted = encrypt_playlist_config($config);
     $upsert = $pdo->prepare(
         "INSERT INTO device_playlist_configs (device_id, encrypted_payload, delivered_at, created_at, updated_at)
          VALUES (:device_id, :payload, NULL, NOW(), NOW())
@@ -80,7 +114,7 @@ try {
     $upsert->execute(['device_id' => $deviceId, 'payload' => $encrypted]);
 
     $trialActivation = null;
-    if (!$hasActivation && $hasPendingTrial) {
+    if ($hasXtreamConfig && !$hasActivation && $hasPendingTrial) {
         $trialActivation = create_trial_activation(
             $pdo,
             $deviceId,
@@ -88,12 +122,25 @@ try {
         );
     }
 
-    $pdo->prepare("UPDATE devices SET xtream_status = 'configured', updated_at = NOW() WHERE device_id = :device_id")
-        ->execute(['device_id' => $deviceId]);
+    $pdo->prepare("UPDATE devices SET xtream_status = :xtream_status, updated_at = NOW() WHERE device_id = :device_id")
+        ->execute([
+            'xtream_status' => $hasXtreamConfig ? 'configured' : 'missing',
+            'device_id' => $deviceId,
+        ]);
+
+    create_playlist_push_notification(
+        $pdo,
+        $deviceId,
+        clean_public_device_code($access['public_device_code'] ?? null),
+        $hasXtreamInput,
+        $m3uUrl !== null,
+        $epgUrl !== null,
+        'xtream_qr'
+    );
 
     json_response([
         'success' => true,
-        'playlist_configured' => true,
+        'playlist_configured' => $hasXtreamConfig,
         'trial_started' => $trialActivation !== null,
         'expires_at' => is_array($trialActivation) ? ($trialActivation['expires_at'] ?? null) : null,
     ]);

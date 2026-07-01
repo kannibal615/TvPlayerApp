@@ -18,7 +18,8 @@ Flux observe:
 - essai via `api/devices/start_trial.php`;
 - mode gratuit avec pubs via `api/devices/enable_free_with_ads.php`;
 - configuration Xtream via `api/create_playlist_setup_session.php` puis portail `/xtream/`;
-- recuperation de `playlist_config` dans `device_status.php`;
+- envoi web direct via `/playlist/` avec code TV pour pousser des identifiants Xtream et/ou une URL EPG;
+- recuperation de `playlist_config` dans `device_status.php`, incluant `epg_url` si fourni;
 - creation locale du compte Xtream et synchro catalogue.
 - verification rapide Xtream au demarrage via `XtreamConnectionManager` avant synchro globale; en cas d'erreur, Home reste accessible mais les sections catalogue sont bloquees.
 - au splash, `device_status.php` doit etre relu avant `XtreamConnectionManager.verifyQuick()` afin d'importer la derniere playlist configuree cote serveur avant le test, meme si un ancien compte local et un ancien catalogue Room existent deja.
@@ -34,8 +35,8 @@ Flux observe:
 2. Si l'appareil n'est pas actif, il voit un code/QR d'activation ou les options d'essai/licence.
 3. Il active sur le portail web ou saisit un code licence.
 4. Si aucun compte Xtream n'est configure, les sections contenus affichent un QR de configuration.
-5. Il configure ses identifiants Xtream sur le portail.
-6. L'app recupere la playlist et synchronise les contenus.
+5. Il configure ses identifiants Xtream sur le portail ou envoie une URL EPG depuis `/playlist/`.
+6. L'app recupere la playlist, conserve l'URL EPG et synchronise les contenus Xtream quand les identifiants sont presents.
 7. L'essai peut demarrer apres validation Xtream si le type est `trial_pending_xtream`.
 
 ## 4. Workflow technique
@@ -62,6 +63,7 @@ Backend:
 - `server/public_html/api/save_playlist_config.php`
 - `server/public_html/activate/index.php`
 - `server/public_html/xtream/index.php`
+- `server/public_html/playlist/index.php`
 - `server/public_html/account/index.php`
 
 ## 5. Ecrans concernes
@@ -70,8 +72,8 @@ Backend:
 - Home si licence ou essai donne acces
 - Live TV / Movies / Series en cas de QR Xtream
 - Home + popup alerte Xtream si compte configure mais indisponible
-- Profil pour statut licence, device, compte Xtream
-- Portail web activation / account / xtream
+- Info compte pour statut licence, device, compte Xtream et URL EPG
+- Portail web activation / account / xtream / playlist
 
 ## 6. Fichiers de code concernes
 
@@ -109,6 +111,7 @@ Champs importants:
 - `freeWithAdsStatus`
 - `xtreamStatus`
 - `playlist_config`
+- `epg_url`
 
 Admin:
 - generation et gestion des codes/licences dans `server/public_html/admin/index.php`;
@@ -165,3 +168,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: unification visuelle du splash et conservation de l'etat local actif pendant le refresh activation pour eviter un second loader apres le splash.
 - 2026-07-01: suppression du panneau de verification Compose au demarrage; `SplashActivity` devient l'unique splash avec les statuts startup complets.
 - 2026-07-01: ajout d'un garde `localStateReady` pour empecher le rendu transitoire de l'ecran activation apres le splash sur appareil deja actif.
+- 2026-07-01: ajout de l'URL EPG dans le payload playlist chiffre, affichage/edition dans Info compte, et page web `/playlist/` pour pousser Xtream/EPG vers une TV par code.
+- 2026-07-01: `/playlist/` passe en onglets `Code Xtream`, `Lien M3U`, `Lien EPG`; le payload chiffre peut aussi porter `m3u_url`, et un push cree une notification d'information ciblee sur la TV.

@@ -378,7 +378,7 @@ $sectionTitles = [
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Gérez vos licences, commandes et activations SmartVision.">
     <title><?= $user ? account_escape($sectionTitles[$section]) : ($authMode === 'login' ? 'Connexion' : 'Créer mon compte') ?> | SmartVision</title>
-    <link rel="stylesheet" href="/assets/site.css?v=5">
+    <link rel="stylesheet" href="/assets/site.css?v=6">
     <link rel="stylesheet" href="/assets/site-overrides.css?v=5">
     <link rel="stylesheet" href="/assets/account.css?v=6">
     <link rel="stylesheet" href="/assets/mobile.css?v=5">

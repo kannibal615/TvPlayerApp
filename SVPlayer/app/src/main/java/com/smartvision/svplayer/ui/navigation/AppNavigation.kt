@@ -152,11 +152,12 @@ fun AppNavigation(
         trialStatus = activationState.trialStatus,
         freeWithAdsStatus = activationState.freeWithAdsStatus,
     )
-    val youtubeAllowed = container.appConfigRepository.isFeatureAllowed(
+    val loadedYoutubeAllowed = container.appConfigRepository.isFeatureAllowed(
         config = appConfigState.config,
         featureKey = "youtube",
         status = monetizationStatus,
     )
+    val youtubeAllowed = if (appConfigState.loading) true else loadedYoutubeAllowed
     val parentalControlAllowed = container.appConfigRepository.isFeatureAllowed(
         config = appConfigState.config,
         featureKey = "parental_control",
@@ -441,6 +442,15 @@ fun AppNavigation(
             ProfileRoute(
                 onBack = { navController.popBackStack() },
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                currentRoute = currentRoute,
+                tabs = tabs,
+                onNavigate = navigateFromHeader,
+                onSync = launchSyncCatalog,
+                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                onLicenseKey = { showLicensePurchaseQr = true },
+                showLicenseKey = activationState.shouldShowLicenseKey,
+                hasNewNotifications = hasNewNotifications,
+                notificationBadgeCount = notificationBadgeCount,
                 onSyncCatalog = syncCatalog,
                 onActivationChanged = activationViewModel::checkNow,
             )

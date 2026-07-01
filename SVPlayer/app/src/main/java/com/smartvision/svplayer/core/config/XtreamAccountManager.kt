@@ -14,6 +14,7 @@ data class XtreamAccount(
     val host: String,
     val username: String,
     val password: String,
+    val epgUrl: String = "",
 )
 
 class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
@@ -27,6 +28,9 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             ?: _accounts.value.firstOrNull()?.id,
     )
     val activeAccountId: StateFlow<String?> = _activeAccountId.asStateFlow()
+
+    private val _epgUrl = MutableStateFlow(preferences.getString(KEY_EPG_URL, "").orEmpty())
+    val epgUrl: StateFlow<String> = _epgUrl.asStateFlow()
 
     init {
         persist()
@@ -51,6 +55,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             host = account.host.trim().trimEnd('/'),
             username = account.username.trim(),
             password = account.password.trim(),
+            epgUrl = account.epgUrl.trim(),
         )
         require(normalized.host.isNotBlank() && normalized.username.isNotBlank() && normalized.password.isNotBlank()) {
             "Hote, utilisateur et mot de passe sont obligatoires."
@@ -58,8 +63,22 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
         _accounts.value = (_accounts.value.filterNot { it.id == id } + normalized)
             .sortedBy { it.name.lowercase() }
         if (_activeAccountId.value == null) _activeAccountId.value = id
+        if (normalized.epgUrl.isNotBlank()) _epgUrl.value = normalized.epgUrl
         persist()
         return id
+    }
+
+    @Synchronized
+    fun updateEpgUrl(url: String) {
+        val normalizedUrl = url.trim()
+        _epgUrl.value = normalizedUrl
+        val activeId = _activeAccountId.value
+        if (activeId != null) {
+            _accounts.value = _accounts.value.map { account ->
+                if (account.id == activeId) account.copy(epgUrl = normalizedUrl) else account
+            }
+        }
+        persist()
     }
 
     @Synchronized
@@ -87,13 +106,15 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
                         .put("name", account.name)
                         .put("host", account.host)
                         .put("username", account.username)
-                        .put("password", account.password),
+                        .put("password", account.password)
+                        .put("epg_url", account.epgUrl),
                 )
             }
         }
         preferences.edit()
             .putString(KEY_ACCOUNTS, json.toString())
             .putString(KEY_ACTIVE, _activeAccountId.value)
+            .putString(KEY_EPG_URL, _epgUrl.value)
             .apply()
     }
 
@@ -107,6 +128,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
                 host = item.optString("host"),
                 username = item.optString("username"),
                 password = item.optString("password"),
+                epgUrl = item.optString("epg_url"),
             )
         }.filter {
             it.id != LEGACY_BUILD_CONFIG_ACCOUNT &&
@@ -117,6 +139,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
     private companion object {
         const val KEY_ACCOUNTS = "accounts_json"
         const val KEY_ACTIVE = "active_account_id"
+        const val KEY_EPG_URL = "epg_url"
         const val LEGACY_BUILD_CONFIG_ACCOUNT = "build_config"
     }
 }

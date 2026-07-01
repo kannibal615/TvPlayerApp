@@ -1,5 +1,72 @@
 # AI Changelog
 
+## 2026-07-01 - Correctifs Home YouTube, Playlist et Info compte pilote
+
+Type:
+- android
+- ui
+- backend
+- siteweb
+- documentation
+
+Resume:
+- Correction du flash Home ou YouTube apparaissait verrouille avec couronne pendant le chargement initial de la config distante.
+- Les pushs playlist depuis `/playlist/` ou le QR Xtream creent maintenant une notification d'information ciblee sur la TV, non cliquable dans l'app.
+- `/playlist/` passe en interface mobile-first a onglets `Code Xtream`, `Lien M3U`, `Lien EPG`; le header web est stabilise et le payload chiffre accepte aussi `m3u_url`.
+- Info compte reutilise le header principal, reduit le menu gauche, agrandit/compacte le panneau droit, retire les cadres des icones de lignes/actions EPG et donne le focus initial a `Licence SmartVision`.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/technical/backend-admin-api-deploy.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/profile/ProfileScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/notifications/NotificationsScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/activation/ActivationApiService.kt`
+- `server/public_html/api/helpers.php`
+- `server/public_html/api/save_playlist_config.php`
+- `server/public_html/playlist/index.php`
+- `server/public_html/assets/site.css`
+
+## 2026-07-01 - Info compte, URL EPG et page Playlist
+
+Type:
+- android
+- ui
+- backend
+- siteweb
+- documentation
+
+Resume:
+- `Profil client` est renomme `Info compte`; la section Xtream est reorganisee en cartes selon le modele fourni, avec actions Modifier par QR / Modifier / Supprimer et icones blanches.
+- Ajout d'une section URL EPG avec affichage, popup d'edition locale et bouton QR.
+- Le payload playlist chiffre accepte `epg_url`; `device_status.php` renvoie l'URL EPG a la TV sans marquer Xtream comme configure si les identifiants sont absents.
+- Ajout de la page publique `/playlist/` dans le header/footer pour envoyer par code TV des identifiants Xtream et/ou une URL EPG vers la TV.
+- Release prod publiee en `0.1.67` / `versionCode 70` avec APK `smartvision-tv-v70-50bfb24e.apk`.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/technical/backend-admin-api-deploy.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/ui/profile/ProfileScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/core/config/XtreamAccountManager.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/activation/*`
+- `server/public_html/api/device_status.php`
+- `server/public_html/api/save_playlist_config.php`
+- `server/public_html/playlist/index.php`
+- `server/public_html/xtream/index.php`
+- `scripts/deploy_activation_phase1.ps1`
+
 ## 2026-07-01 - Ajustement splash et suppression flash activation
 
 Type:

@@ -181,7 +181,7 @@ $canVerify = !$simulationComplete && $simulationError === '' && !$cancelled && i
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
     <title>Retour de paiement | SmartVision</title>
-    <link rel="stylesheet" href="/assets/site.css?v=5">
+    <link rel="stylesheet" href="/assets/site.css?v=6">
     <link rel="stylesheet" href="/assets/site-overrides.css?v=5">
     <link rel="stylesheet" href="/assets/account.css?v=6">
     <?php if ($canVerify): ?><script src="https://api.gammal.tech/sdk/pay/link/verify.js" defer></script><?php endif; ?>

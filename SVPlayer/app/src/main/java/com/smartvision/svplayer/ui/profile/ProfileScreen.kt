@@ -115,6 +115,8 @@ import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
+import com.smartvision.svplayer.ui.home.HomeHeaderTab
+import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -129,6 +131,15 @@ import kotlinx.coroutines.launch
 fun ProfileRoute(
     onBack: () -> Unit,
     onSettings: () -> Unit,
+    currentRoute: String,
+    tabs: List<HomeHeaderTab>,
+    onNavigate: (String) -> Unit,
+    onSync: () -> Unit,
+    onNotifications: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
+    hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     onSyncCatalog: suspend () -> Result<Unit>,
     onActivationChanged: () -> Unit,
 ) {
@@ -161,6 +172,15 @@ fun ProfileRoute(
         syncStatus = syncStatus,
         onBack = onBack,
         onSettings = onSettings,
+        currentRoute = currentRoute,
+        tabs = tabs,
+        onNavigate = onNavigate,
+        onSync = onSync,
+        onNotifications = onNotifications,
+        onLicenseKey = onLicenseKey,
+        showLicenseKey = showLicenseKey,
+        hasNewNotifications = hasNewNotifications,
+        notificationBadgeCount = notificationBadgeCount,
         onRefresh = viewModel::refresh,
         onSyncCatalog = onSyncCatalog,
         onShowLicenseQr = viewModel::showLicenseQr,
@@ -173,6 +193,7 @@ fun ProfileRoute(
         },
         privacyOptionsRequired = privacyOptionsRequired,
         onShowXtreamSetupQr = viewModel::showXtreamSetupQr,
+        onSaveEpgUrl = viewModel::saveEpgUrl,
         onSaveXtreamAccount = { account ->
             val accountId = container.accountManager.upsert(account)
             container.accountManager.select(accountId)
@@ -196,6 +217,15 @@ private fun ProfileScreen(
     syncStatus: SyncStatus,
     onBack: () -> Unit,
     onSettings: () -> Unit,
+    currentRoute: String,
+    tabs: List<HomeHeaderTab>,
+    onNavigate: (String) -> Unit,
+    onSync: () -> Unit,
+    onNotifications: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
+    hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     onRefresh: () -> Unit,
     onSyncCatalog: suspend () -> Result<Unit>,
     onShowLicenseQr: () -> Unit,
@@ -205,6 +235,7 @@ private fun ProfileScreen(
     privacyOptionsRequired: Boolean,
     onShowXtreamSetupQr: () -> Unit,
     onSaveXtreamAccount: (XtreamAccount) -> Unit,
+    onSaveEpgUrl: (String) -> Unit,
     onDeleteXtreamAccount: (String) -> Unit,
     onDismissQr: () -> Unit,
 ) {
@@ -212,8 +243,13 @@ private fun ProfileScreen(
     var selectedSection by remember { mutableStateOf(ProfileSection.License) }
     var showXtreamSyncDialog by remember { mutableStateOf(false) }
     var pendingFocusSection by remember { mutableStateOf<ProfileSection?>(null) }
+    val licenseSectionFocusRequester = remember { FocusRequester() }
     val xtreamSectionFocusRequester = remember { FocusRequester() }
     val deviceSectionFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        licenseSectionFocusRequester.requestFocus()
+    }
 
     LaunchedEffect(pendingFocusSection, showXtreamSyncDialog) {
         if (!showXtreamSyncDialog) {
@@ -239,15 +275,24 @@ private fun ProfileScreen(
                     radius = 1550f,
                 ),
             )
-            .padding(horizontal = 34.dp, vertical = 24.dp),
+            .padding(horizontal = 34.dp, vertical = 18.dp),
     ) {
-        ProfileTopBar(
-            modeLabel = state.usageMode.label,
-            modeColor = state.usageMode.color,
-            onBack = onBack,
+        TvHeader(
+            currentRoute = currentRoute,
+            tabs = tabs,
+            onNavigate = onNavigate,
+            onSync = onSync,
+            onSettings = onSettings,
+            onProfile = {},
+            onNotifications = onNotifications,
+            onLicenseKey = onLicenseKey,
+            showLicenseKey = showLicenseKey,
+            hasNewNotifications = hasNewNotifications,
+            notificationBadgeCount = notificationBadgeCount,
+            modifier = Modifier.fillMaxWidth(),
         )
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(14.dp))
 
         Row(
             modifier = Modifier
@@ -257,12 +302,12 @@ private fun ProfileScreen(
         ) {
             Column(
                 modifier = Modifier
-                    .width(292.dp)
+                    .width(250.dp)
                     .fillMaxHeight()
                     .background(Color(0xD9091424), RoundedCornerShape(8.dp))
                     .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(horizontal = 10.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 ProfileSection.entries.forEach { section ->
                     TvButton(
@@ -278,13 +323,14 @@ private fun ProfileScreen(
                             }
                         },
                         focusRequester = when (section) {
+                            ProfileSection.License -> licenseSectionFocusRequester
                             ProfileSection.Xtream -> xtreamSectionFocusRequester
                             ProfileSection.Device -> deviceSectionFocusRequester
                             else -> null
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp),
+                            .height(46.dp),
                     )
                 }
             }
@@ -294,7 +340,7 @@ private fun ProfileScreen(
                     .weight(1f)
                     .fillMaxHeight()
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 when (selectedSection) {
                     ProfileSection.License -> LicensePanel(
@@ -311,6 +357,7 @@ private fun ProfileScreen(
                         onShowXtreamSetupQr = onShowXtreamSetupQr,
                         onOpenSyncDialog = { showXtreamSyncDialog = true },
                         onSaveXtreamAccount = onSaveXtreamAccount,
+                        onSaveEpgUrl = onSaveEpgUrl,
                         onDeleteXtreamAccount = onDeleteXtreamAccount,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -384,12 +431,12 @@ private fun ProfileTopBar(
         Icon(
             imageVector = Icons.Default.Person,
             contentDescription = null,
-            tint = SmartVisionColors.CyanAccent,
-            modifier = Modifier.size(30.dp),
+            tint = Color.White,
+            modifier = Modifier.size(34.dp),
         )
         Spacer(Modifier.width(10.dp))
         Text(
-            text = "Profil client",
+            text = "Info compte",
             color = SmartVisionColors.TextPrimary,
             style = SmartVisionType.TitleL,
             fontWeight = FontWeight.Bold,
@@ -474,7 +521,7 @@ private enum class ProfileSection(
     val icon: ImageVector,
 ) {
     License("Licence SmartVision", Icons.Default.Verified),
-    Xtream("Identifiants Xtream", Icons.Default.CloudSync),
+    Xtream("Info compte", Icons.Default.CloudSync),
     Device("Appareil et catalogue", Icons.Default.Devices),
     Usage("Mode d'utilisation", Icons.Default.CreditCard),
     History("Historique", Icons.Default.History),
@@ -489,38 +536,44 @@ private fun XtreamPanel(
     onShowXtreamSetupQr: () -> Unit,
     onOpenSyncDialog: () -> Unit,
     onSaveXtreamAccount: (XtreamAccount) -> Unit,
+    onSaveEpgUrl: (String) -> Unit,
     onDeleteXtreamAccount: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var showDetails by remember(state.activeXtreamAccount?.id) { mutableStateOf(true) }
     var accountToEdit by remember { mutableStateOf<XtreamAccount?>(null) }
     var accountToDelete by remember { mutableStateOf<XtreamAccount?>(null) }
+    var showEpgEditor by remember { mutableStateOf(false) }
     val activeAccount = state.activeXtreamAccount
 
     ProfilePanel(
-        title = "Identifiants Xtream",
+        title = "Info compte",
         icon = Icons.Default.CloudSync,
         modifier = modifier,
+        trailingContent = {
+            StatusPill(state.usageMode.label, state.usageMode.color)
+        },
     ) {
-        TvButton(
-            text = syncStatus.buttonLabel,
-            onClick = onOpenSyncDialog,
-            enabled = syncStatus !is SyncStatus.Running,
-            leadingIcon = Icons.Default.CloudSync,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(46.dp),
+        XtreamAccountCard(
+            account = activeAccount,
+            onEdit = { account -> accountToEdit = account },
+            onEditQr = onShowXtreamSetupQr,
+            onDelete = { account -> accountToDelete = account },
         )
-        Text(
-            text = "Derniere synchronisation : ${state.account.lastSync ?: "Jamais"}",
-            color = SmartVisionColors.TextSecondary,
-            style = SmartVisionType.Caption,
-            textAlign = TextAlign.End,
-            modifier = Modifier.fillMaxWidth(),
+        Spacer(Modifier.height(12.dp))
+        EpgUrlCard(
+            epgUrl = state.epgUrl,
+            onEdit = { showEpgEditor = true },
+            onEditQr = onShowXtreamSetupQr,
         )
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
+        SynchronizationCard(
+            state = state,
+            syncStatus = syncStatus,
+            onOpenSyncDialog = onOpenSyncDialog,
+        )
         when (syncStatus) {
             is SyncStatus.Running -> {
+                Spacer(Modifier.height(10.dp))
                 LinearProgressIndicator(
                     progress = { if (syncStatus.totalItems > 0) syncStatus.completedItems.toFloat() / syncStatus.totalItems.toFloat() else 0f },
                     modifier = Modifier
@@ -556,28 +609,6 @@ private fun XtreamPanel(
             )
             else -> Unit
         }
-        Spacer(Modifier.height(14.dp))
-        XtreamConnectedAccountSection(
-            account = activeAccount,
-            showDetails = showDetails,
-            onToggleDetails = { showDetails = !showDetails },
-            onEdit = { account -> accountToEdit = account },
-            onDelete = { account -> accountToDelete = account },
-        )
-        if (state.xtreamExpiresAt.isNotBlank()) {
-            Spacer(Modifier.height(10.dp))
-            ProfileInfoRow("Expiration Xtream", state.xtreamExpiresAt)
-        }
-        Spacer(Modifier.height(12.dp))
-        TvButton(
-            text = if (state.hasXtream) "Modifier par QR" else "Configurer par QR",
-            onClick = onShowXtreamSetupQr,
-            leadingIcon = Icons.Default.QrCode2,
-            variant = TvButtonVariant.Secondary,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(46.dp),
-        )
     }
 
     accountToEdit?.let { account ->
@@ -600,6 +631,340 @@ private fun XtreamPanel(
                 onDeleteXtreamAccount(account.id)
             },
         )
+    }
+
+    if (showEpgEditor) {
+        EpgUrlEditorDialog(
+            initialUrl = state.epgUrl,
+            onDismiss = { showEpgEditor = false },
+            onSave = { url ->
+                showEpgEditor = false
+                onSaveEpgUrl(url)
+            },
+        )
+    }
+}
+
+@Composable
+private fun XtreamAccountCard(
+    account: XtreamAccount?,
+    onEdit: (XtreamAccount) -> Unit,
+    onEditQr: () -> Unit,
+    onDelete: (XtreamAccount) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(7.dp))
+            .background(SmartVisionColors.Surface.copy(alpha = 0.58f))
+            .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.78f)), RoundedCornerShape(7.dp))
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(13.dp),
+            modifier = Modifier.weight(1f),
+        ) {
+            AccountInfoLine(Icons.Default.Home, "URL", account?.host?.ifBlank { "Non configure" } ?: "Non configure")
+            AccountInfoLine(Icons.Default.Person, "Nom d'utilisateur", account?.username?.ifBlank { "Non configure" } ?: "Non configure")
+            AccountInfoLine(Icons.Default.Security, "Mot de passe", account?.password?.ifBlank { "Non configure" } ?: "Non configure")
+        }
+        Spacer(Modifier.width(22.dp))
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .height(150.dp)
+                .background(SmartVisionColors.Border.copy(alpha = 0.74f)),
+        )
+        Spacer(Modifier.width(22.dp))
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.width(260.dp),
+        ) {
+            ProfileActionButton(
+                text = "Modifier par QR",
+                icon = Icons.Default.QrCode2,
+                onClick = onEditQr,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+            )
+            ProfileActionButton(
+                text = "Modifier",
+                icon = Icons.Default.Edit,
+                onClick = { account?.let(onEdit) },
+                enabled = account != null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+            )
+            ProfileActionButton(
+                text = "Supprimer",
+                icon = Icons.Default.Delete,
+                onClick = { account?.let(onDelete) },
+                enabled = account != null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun EpgUrlCard(
+    epgUrl: String,
+    onEdit: () -> Unit,
+    onEditQr: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(7.dp))
+            .background(SmartVisionColors.Surface.copy(alpha = 0.58f))
+            .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.78f)), RoundedCornerShape(7.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AccountInfoLine(
+            icon = Icons.Default.Devices,
+            label = "URL EPG",
+            value = epgUrl.ifBlank { "Non configure" },
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(18.dp))
+        ProfileIconTileButton(
+            icon = Icons.Default.Edit,
+            contentDescription = "Modifier URL EPG",
+            onClick = onEdit,
+        )
+        Spacer(Modifier.width(12.dp))
+        ProfileIconTileButton(
+            icon = Icons.Default.QrCode2,
+            contentDescription = "Modifier URL EPG par QR",
+            onClick = onEditQr,
+        )
+    }
+}
+
+@Composable
+private fun SynchronizationCard(
+    state: ProfileUiState,
+    syncStatus: SyncStatus,
+    onOpenSyncDialog: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(7.dp))
+            .background(SmartVisionColors.Surface.copy(alpha = 0.58f))
+            .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.78f)), RoundedCornerShape(7.dp))
+            .padding(18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TvButton(
+            text = syncStatus.buttonLabel,
+            onClick = onOpenSyncDialog,
+            enabled = syncStatus !is SyncStatus.Running,
+            leadingIcon = Icons.Default.CloudSync,
+            modifier = Modifier
+                .width(310.dp)
+                .height(56.dp),
+        )
+        Spacer(Modifier.width(28.dp))
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .height(78.dp)
+                .background(SmartVisionColors.Border.copy(alpha = 0.74f)),
+        )
+        Spacer(Modifier.width(28.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
+            AccountInfoLine(Icons.Default.CheckCircle, "Date de synchronisation", state.account.lastSync ?: "Jamais")
+            AccountInfoLine(Icons.Default.Verified, "Date d'expiration", state.xtreamExpiresAt.ifBlank { state.licenseExpiresAt.ifBlank { "Non disponible" } })
+        }
+    }
+}
+
+@Composable
+private fun AccountInfoLine(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(32.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1)
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = value,
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.Label,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileActionButton(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    var focused by remember { mutableStateOf(false) }
+    val borderColor = if (focused) SmartVisionColors.CyanAccent else SmartVisionColors.Border.copy(alpha = 0.76f)
+    val background = SmartVisionColors.SurfaceElevated.copy(alpha = if (enabled) 0.86f else 0.42f)
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(7.dp))
+            .background(background)
+            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(7.dp))
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(
+                enabled = enabled,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .focusable(enabled = enabled, interactionSource = interactionSource)
+            .padding(horizontal = 18.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(25.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = text,
+                color = if (enabled) Color.White else Color.White.copy(alpha = 0.42f),
+                style = SmartVisionType.Label,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileIconTileButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    var focused by remember { mutableStateOf(false) }
+    val borderColor = if (focused) SmartVisionColors.CyanAccent else Color.Transparent
+    Box(
+        modifier = Modifier
+            .size(width = 60.dp, height = 48.dp)
+            .clip(RoundedCornerShape(7.dp))
+            .background(if (focused) SmartVisionColors.SurfaceElevated.copy(alpha = 0.9f) else Color.Transparent)
+            .border(BorderStroke(if (focused) 1.dp else 0.dp, borderColor), RoundedCornerShape(7.dp))
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(interactionSource = interactionSource),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = Color.White,
+            modifier = Modifier.size(27.dp),
+        )
+    }
+}
+
+@Composable
+private fun EpgUrlEditorDialog(
+    initialUrl: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    var url by remember(initialUrl) { mutableStateOf(initialUrl) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val urlFocusRequester = remember { FocusRequester() }
+    val saveFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        urlFocusRequester.requestFocus()
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .width(600.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF0A1425))
+                .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent), RoundedCornerShape(8.dp))
+                .padding(22.dp),
+        ) {
+            Text(
+                text = "Modifier URL EPG",
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.TitleS,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(14.dp))
+            ProfileEditTextField(
+                label = "URL",
+                value = url,
+                onValueChange = {
+                    url = it
+                    error = null
+                },
+                focusRequester = urlFocusRequester,
+                nextFocusRequester = saveFocusRequester,
+            )
+            error?.let {
+                Spacer(Modifier.height(6.dp))
+                Text(it, color = SmartVisionColors.Error, style = SmartVisionType.Caption)
+            }
+            Spacer(Modifier.height(14.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TvButton(
+                    text = "Annuler",
+                    onClick = onDismiss,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier.height(42.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                TvButton(
+                    text = "Enregistrer",
+                    onClick = {
+                        val normalized = url.trim()
+                        if (normalized.isNotBlank() && !normalized.startsWith("http://") && !normalized.startsWith("https://")) {
+                            error = "URL EPG invalide."
+                        } else {
+                            onSave(normalized)
+                        }
+                    },
+                    focusRequester = saveFocusRequester,
+                    modifier = Modifier.height(42.dp),
+                )
+            }
+        }
     }
 }
 
@@ -1304,7 +1669,7 @@ private fun XtreamSummaryPanel(
     modifier: Modifier = Modifier,
 ) {
     ProfilePanel(
-        title = "Identifiants Xtream",
+        title = "Info compte",
         icon = Icons.Default.CloudSync,
         modifier = modifier,
     ) {
@@ -1368,6 +1733,7 @@ private fun ProfilePanel(
     title: String,
     icon: ImageVector,
     modifier: Modifier = Modifier,
+    trailingContent: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
@@ -1388,6 +1754,8 @@ private fun ProfilePanel(
             Icon(icon, contentDescription = null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(9.dp))
             Text(title, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.weight(1f))
+            trailingContent?.invoke()
         }
         Spacer(Modifier.height(16.dp))
         content()
@@ -2161,16 +2529,27 @@ class ProfileViewModel(
 ) : ViewModel() {
     private val transient = MutableStateFlow(ProfileTransientState())
 
-    val uiState = combine(
+    private val baseState = combine(
         activationRepository.localState,
         accountManager.accounts,
         accountManager.activeAccountId,
         catalogRepository.observeAccount(),
+        accountManager.epgUrl,
+    ) { activation, accounts, activeAccountId, account, epgUrl ->
+        ProfileBaseState(activation, accounts, activeAccountId.orEmpty(), account, epgUrl)
+    }
+
+    val uiState = combine(
+        baseState,
         transient,
-    ) { activation, accounts, activeAccountId, account, transient ->
+    ) { base, transient ->
+        val activation = base.activation
+        val accounts = base.accounts
+        val account = base.account
+        val activeAccountId = base.activeAccountId
         val activeAccount = accounts.firstOrNull { it.id == activeAccountId } ?: accounts.firstOrNull()
         runCatching {
-            buildProfileState(activation, accounts, activeAccountId.orEmpty(), activeAccount, account, transient)
+            buildProfileState(activation, accounts, activeAccountId, activeAccount, account, base.epgUrl, transient)
         }.getOrElse {
             ProfileUiState(
                 deviceId = activation.deviceId,
@@ -2324,7 +2703,19 @@ class ProfileViewModel(
     fun dismissQr() {
         transient.update { it.copy(qrDialog = null, errorMessage = null) }
     }
+
+    fun saveEpgUrl(url: String) {
+        accountManager.updateEpgUrl(url)
+    }
 }
+
+private data class ProfileBaseState(
+    val activation: StoredActivationState,
+    val accounts: List<XtreamAccount>,
+    val activeAccountId: String,
+    val account: AccountProfile,
+    val epgUrl: String,
+)
 
 data class ProfileUiState(
     val deviceId: String = "",
@@ -2334,6 +2725,7 @@ data class ProfileUiState(
     val usageMode: UsageMode = UsageMode.Unknown,
     val xtreamHost: String = "",
     val xtreamUsername: String = "",
+    val epgUrl: String = "",
     val xtreamExpiresAt: String = "",
     val xtreamConnections: String = "",
     val hasXtream: Boolean = false,
@@ -2412,6 +2804,7 @@ private fun buildProfileState(
     activeAccountId: String,
     activeAccount: XtreamAccount?,
     account: AccountProfile,
+    epgUrl: String,
     transient: ProfileTransientState,
 ): ProfileUiState {
     val usageMode = when (activation.monetizationStatus()) {
@@ -2447,6 +2840,7 @@ private fun buildProfileState(
         usageMode = usageMode,
         xtreamHost = account.host.ifBlank { activeAccount?.host.orEmpty() },
         xtreamUsername = xtreamUsername,
+        epgUrl = epgUrl.ifBlank { activeAccount?.epgUrl.orEmpty() },
         xtreamExpiresAt = account.expirationDate.orEmpty(),
         xtreamConnections = connections,
         hasXtream = hasXtream,

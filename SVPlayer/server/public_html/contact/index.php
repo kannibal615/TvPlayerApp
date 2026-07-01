@@ -96,7 +96,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Contacter le support SmartVision pour l’installation, l’activation, la licence ou un problème technique.">
     <title>Contact | SmartVision</title>
-    <link rel="stylesheet" href="/assets/site.css?v=4">
+    <link rel="stylesheet" href="/assets/site.css?v=6">
     <link rel="stylesheet" href="/assets/site-overrides.css?v=4">
     <link rel="stylesheet" href="/assets/account.css?v=4">
 </head>

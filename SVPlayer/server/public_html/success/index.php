@@ -68,7 +68,7 @@ $code = is_array($order) ? (string) ($order['activation_code'] ?? '') : '';
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Confirmation de paiement SmartVision et code licence.">
     <title>Paiement confirmé | SmartVision</title>
-    <link rel="stylesheet" href="/assets/site.css?v=5">
+    <link rel="stylesheet" href="/assets/site.css?v=6">
     <link rel="stylesheet" href="/assets/site-overrides.css?v=5">
     <link rel="stylesheet" href="/assets/account.css?v=5">
 </head>

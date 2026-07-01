@@ -223,9 +223,12 @@ class ActivationRepository(
 
         val resolved = persistStatusResponse(response, "Statut activation indisponible.")
 
-        response.playlistConfig?.toAccount()?.let { account ->
-            val id = accountManager.upsert(account)
-            accountManager.select(id)
+        response.playlistConfig?.let { playlist ->
+            playlist.epgUrl?.trim()?.takeIf { it.isNotBlank() }?.let(accountManager::updateEpgUrl)
+            playlist.toAccount()?.let { account ->
+                val id = accountManager.upsert(account)
+                accountManager.select(id)
+            }
         }
 
         return resolved
@@ -377,6 +380,7 @@ private fun PlaylistConfigResponse.toAccount(): XtreamAccount? {
         host = normalizedHost,
         username = normalizedUsername,
         password = normalizedPassword,
+        epgUrl = epgUrl?.trim().orEmpty(),
     )
 }
 
