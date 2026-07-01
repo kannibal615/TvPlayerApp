@@ -1,5 +1,41 @@
 # AI Changelog
 
+## 2026-07-01 - M3U source-aware, EPG badge et UI player slim
+
+Type:
+- android
+- ui
+- documentation
+
+Resume:
+- Le splash et le popup manuel de synchronisation tiennent compte de la source active: M3U affiche le lien M3U et ne presente plus Films/Series comme sections chargees.
+- Live TV accepte un lien M3U comme source jouable et Movies/Series affichent un etat vide explicite quand M3U est actif.
+- Ajout d'un badge bleu `E` sur les lignes Live TV qui ont des programmes EPG locaux.
+- Info compte est compacte: badge usage dans Licence, expiration Xtream dans Info compte, identifiants Xtream sur une ligne, boutons d'actions en icones et bascules plus petites.
+- L'overlay player Live/Films/Series devient plus slim sans toucher YouTube.
+- L'initialisation lourde de l'application est differee pour reduire l'ecran noir avant le splash, et les etats transitoires n'affichent plus l'ancien visuel splash.
+- Release prod publiee en `0.1.70` / `versionCode 73` avec APK `smartvision-tv-v73-5ab10617.apk`.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/SVPlayerApplication.kt`
+- `app/src/main/java/com/smartvision/svplayer/SplashActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/LiveTvScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/movies/MoviesScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/series/SeriesScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/profile/ProfileScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/player/FullScreenPlayerScreen.kt`
+- `app/build.gradle.kts`
+
 ## 2026-07-01 - Splash video Compose Media3
 
 Type:

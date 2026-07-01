@@ -1446,7 +1446,7 @@ private fun FullPlayerOverlay(
             playback = playback,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(start = 24.dp, end = 24.dp, top = 18.dp),
+                .padding(start = 28.dp, end = 28.dp, top = 14.dp),
         )
 
         errorText?.let { message ->
@@ -1467,16 +1467,16 @@ private fun FullPlayerOverlay(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(start = 44.dp, end = 44.dp, bottom = 28.dp)
+                .padding(start = 58.dp, end = 58.dp, bottom = 24.dp)
                 .fillMaxWidth()
-                .height(if (showProgress) 158.dp else 120.dp)
-                .background(PlayerNeonBlue.copy(alpha = 0.12f), PlayerGlassShape)
-                .border(BorderStroke(2.dp, PlayerGlassGlowBorder), PlayerGlassShape)
+                .height(if (showProgress) 134.dp else 96.dp)
+                .background(PlayerNeonBlue.copy(alpha = 0.08f), PlayerGlassShape)
+                .border(BorderStroke(1.dp, PlayerGlassGlowBorder), PlayerGlassShape)
                 .padding(1.dp)
                 .clip(PlayerGlassShape)
                 .background(PlayerGlassBackground)
-                .border(BorderStroke(2.dp, PlayerGlassBorder), PlayerGlassShape)
-                .padding(horizontal = 28.dp, vertical = if (showProgress) 8.dp else 8.dp),
+                .border(BorderStroke(1.dp, PlayerGlassBorder), PlayerGlassShape)
+                .padding(horizontal = 22.dp, vertical = if (showProgress) 7.dp else 6.dp),
         ) {
             if (showProgress) {
                 PlayerProgressBar(
@@ -1487,7 +1487,7 @@ private fun FullPlayerOverlay(
                     modifier = Modifier.fillMaxWidth(),
                     onSeekBy = onSeekBy,
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(7.dp))
             }
             Row(
                 modifier = Modifier
@@ -1504,9 +1504,9 @@ private fun FullPlayerOverlay(
                     onClick = onPlayPause,
                     focusRequester = playFocusRequester,
                     primary = true,
-                    width = 82.dp,
-                    height = 82.dp,
-                    iconSize = 30.dp,
+                    width = 62.dp,
+                    height = 62.dp,
+                    iconSize = 28.dp,
                 )
                 PlayerControlButton("+ 10 sec", Icons.Default.Forward10, onSeekForward)
                 PlayerControlButton("Parametres", Icons.Default.Settings, onOpenSettings)
@@ -1523,14 +1523,14 @@ private fun PlayerTopGlassBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(76.dp)
-            .background(PlayerNeonBlue.copy(alpha = 0.10f), PlayerGlassShape)
-            .border(BorderStroke(2.dp, PlayerGlassGlowBorder), PlayerGlassShape)
+            .height(58.dp)
+            .background(PlayerNeonBlue.copy(alpha = 0.08f), PlayerGlassShape)
+            .border(BorderStroke(1.dp, PlayerGlassGlowBorder), PlayerGlassShape)
             .padding(1.dp)
             .clip(PlayerGlassShape)
             .background(PlayerGlassBackground)
-            .border(BorderStroke(2.dp, PlayerGlassBorder), PlayerGlassShape)
-            .padding(horizontal = 24.dp),
+            .border(BorderStroke(1.dp, PlayerGlassBorder), PlayerGlassShape)
+            .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         PlayerLogo()
@@ -1540,7 +1540,7 @@ private fun PlayerTopGlassBar(
         Text(
             text = playback.title,
             color = Color.White,
-            style = PlayerTitleStyle.copy(fontSize = 21.sp, lineHeight = 25.sp),
+            style = PlayerTitleStyle.copy(fontSize = 17.sp, lineHeight = 21.sp),
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1550,11 +1550,11 @@ private fun PlayerTopGlassBar(
         Text(
             text = playback.overlayRightText.ifBlank { playback.status },
             color = Color.White.copy(alpha = 0.78f),
-            style = PlayerTitleStyle.copy(fontSize = 20.sp, lineHeight = 24.sp),
+            style = PlayerTitleStyle.copy(fontSize = 16.sp, lineHeight = 20.sp),
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             textAlign = androidx.compose.ui.text.style.TextAlign.End,
-            modifier = Modifier.width(104.dp),
+            modifier = Modifier.width(84.dp),
         )
     }
 }
@@ -1563,10 +1563,10 @@ private fun PlayerTopGlassBar(
 private fun PlayerVerticalSeparator() {
     Box(
         modifier = Modifier
-            .padding(horizontal = 22.dp)
+            .padding(horizontal = 14.dp)
             .width(1.dp)
-            .height(30.dp)
-            .background(Color.White.copy(alpha = 0.24f)),
+            .height(24.dp)
+            .background(Color.White.copy(alpha = 0.18f)),
     )
 }
 
@@ -1577,8 +1577,8 @@ private fun PlayerLogo(modifier: Modifier = Modifier) {
         contentDescription = "SmartVision",
         contentScale = ContentScale.Fit,
         modifier = modifier
-            .width(178.dp)
-            .height(44.dp),
+            .width(138.dp)
+            .height(34.dp),
     )
 }
 
@@ -1645,7 +1645,7 @@ private fun PlaybackPill(text: String) {
             .clip(RoundedCornerShape(8.dp))
             .background(badgeColor.copy(alpha = 0.16f))
             .border(BorderStroke(1.dp, badgeColor.copy(alpha = 0.72f)), RoundedCornerShape(8.dp))
-            .padding(horizontal = 13.dp, vertical = 7.dp),
+            .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -1655,7 +1655,7 @@ private fun PlaybackPill(text: String) {
                 .background(badgeColor),
         )
         Spacer(Modifier.width(8.dp))
-        Text(text, color = Color.White, style = PlayerMetaStyle.copy(fontSize = 15.sp, lineHeight = 18.sp), fontWeight = FontWeight.Bold)
+        Text(text, color = Color.White, style = PlayerMetaStyle.copy(fontSize = 12.sp, lineHeight = 15.sp), fontWeight = FontWeight.Bold)
     }
 }
 
@@ -1702,20 +1702,20 @@ private fun PlayerProgressBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(34.dp)
+            .height(28.dp)
             .tvFocusTarget(
                 state = focusState,
                 enabled = hasDuration,
                 pressed = pressed,
                 focusedScale = 1.01f,
                 glowColor = SmartVisionColors.Primary,
-                cornerRadius = 18.dp,
+                cornerRadius = 14.dp,
             )
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(if (focusState.isFocused) Color(0xA6111F36) else Color.Transparent)
             .border(
                 BorderStroke(if (focusState.isFocused) 2.dp else 1.dp, if (focusState.isFocused) PlayerNeonBlue else Color.Transparent),
-                RoundedCornerShape(18.dp),
+                RoundedCornerShape(14.dp),
             )
             .onPreviewKeyEvent { event ->
                 if (event.nativeKeyEvent.action != AndroidKeyEvent.ACTION_DOWN) return@onPreviewKeyEvent false
@@ -1741,18 +1741,18 @@ private fun PlayerProgressBar(
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(startText, color = Color.White, style = PlayerMetaStyle.copy(fontSize = 13.sp, lineHeight = 16.sp))
+        Text(startText, color = Color.White, style = PlayerMetaStyle.copy(fontSize = 12.sp, lineHeight = 15.sp))
         Spacer(Modifier.width(10.dp))
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
-                .height(10.dp),
+                .height(8.dp),
         ) {
             val thumbOffset = (maxWidth - 10.dp) * progress
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(4.dp)
+                    .height(3.dp)
                     .align(Alignment.Center)
                     .clip(RoundedCornerShape(50))
                     .background(Color.White.copy(alpha = 0.22f)),
@@ -1773,13 +1773,13 @@ private fun PlayerProgressBar(
             Box(
                 modifier = Modifier
                     .offset(x = thumbOffset)
-                    .size(12.dp)
+                    .size(10.dp)
                     .clip(CircleShape)
                     .background(PlayerNeonBlue),
             )
         }
         Spacer(Modifier.width(10.dp))
-        Text(endText, color = Color.White, style = PlayerMetaStyle.copy(fontSize = 13.sp, lineHeight = 16.sp))
+        Text(endText, color = Color.White, style = PlayerMetaStyle.copy(fontSize = 12.sp, lineHeight = 15.sp))
     }
 }
 
@@ -1913,15 +1913,15 @@ private fun PlayerControlButton(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
     primary: Boolean = false,
-    width: Dp = 60.dp,
-    height: Dp = 60.dp,
-    iconSize: Dp = 22.dp,
+    width: Dp = 48.dp,
+    height: Dp = 48.dp,
+    iconSize: Dp = 20.dp,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val shape = CircleShape
-    val outerGlowSize = maxOf(width, height) + if (primary) 18.dp else 14.dp
+    val outerGlowSize = maxOf(width, height) + if (primary) 12.dp else 8.dp
     val backgroundColor by animateColorAsState(
         targetValue = when {
             primary && focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.34f)
@@ -1944,12 +1944,12 @@ private fun PlayerControlButton(
     Column(
         modifier = modifier
             .width(outerGlowSize + 8.dp)
-            .height(outerGlowSize + 22.dp)
+            .height(outerGlowSize + 16.dp)
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
                 pressed = pressed,
-                focusedScale = if (primary) 1.08f else 1.04f,
+                focusedScale = if (primary) 1.06f else 1.035f,
                 glowColor = PlayerNeonBlue,
                 cornerRadius = 50.dp,
             )
@@ -1968,10 +1968,10 @@ private fun PlayerControlButton(
             modifier = Modifier
                 .size(outerGlowSize)
                 .background(
-                    if (focusState.isFocused) PlayerNeonBlue.copy(alpha = 0.30f) else Color.Transparent,
+                    if (focusState.isFocused) PlayerNeonBlue.copy(alpha = 0.22f) else Color.Transparent,
                     shape,
                 )
-                .padding(if (focusState.isFocused) 7.dp else 5.dp),
+                .padding(if (focusState.isFocused) 5.dp else 4.dp),
             contentAlignment = Alignment.Center,
         ) {
             Box(
@@ -1981,7 +1981,7 @@ private fun PlayerControlButton(
                     .background(backgroundColor)
                     .border(
                         BorderStroke(
-                            if (focusState.isFocused || primary) 2.5.dp else 1.5.dp,
+                            if (focusState.isFocused || primary) 2.dp else 1.dp,
                             borderColor,
                         ),
                         shape,
@@ -1996,11 +1996,11 @@ private fun PlayerControlButton(
                 )
             }
         }
-        Spacer(Modifier.height(3.dp))
+        Spacer(Modifier.height(2.dp))
         Text(
             text = label,
             color = if (focusState.isFocused || primary) Color.White else SmartVisionColors.TextSecondary,
-            style = PlayerMetaStyle.copy(fontSize = 12.sp, lineHeight = 15.sp),
+            style = PlayerMetaStyle.copy(fontSize = 10.sp, lineHeight = 12.sp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -2045,12 +2045,12 @@ private val PlayerTinyStyle = TextStyle(
     letterSpacing = 0.sp,
 )
 
-private val PlayerGlassShape = RoundedCornerShape(18.dp)
-private val PlayerGlassBackground = Color(0x300A2A66)
-private val PlayerGlassBorder = Color.White.copy(alpha = 0.34f)
+private val PlayerGlassShape = RoundedCornerShape(14.dp)
+private val PlayerGlassBackground = Color(0x26071222)
+private val PlayerGlassBorder = Color.White.copy(alpha = 0.22f)
 private val PlayerNeonBlue = Color(0xFF0A84FF)
-private val PlayerGlassGlowBorder = PlayerNeonBlue.copy(alpha = 0.24f)
-private val PlayerButtonBackground = Color(0xB30A1B38)
+private val PlayerGlassGlowBorder = PlayerNeonBlue.copy(alpha = 0.18f)
+private val PlayerButtonBackground = Color(0x990A1B38)
 
 private fun String.cleanTitle(): String =
     replace(Regex("\\s+"), " ")

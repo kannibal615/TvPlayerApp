@@ -439,8 +439,8 @@ private fun ProfileTopBar(
         Icon(
             imageVector = Icons.Default.Person,
             contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(34.dp),
+            tint = SmartVisionColors.CyanAccent,
+            modifier = Modifier.size(40.dp),
         )
         Spacer(Modifier.width(10.dp))
         Text(
@@ -467,6 +467,9 @@ private fun LicensePanel(
         title = "Licence SmartVision",
         icon = Icons.Default.Verified,
         modifier = modifier,
+        trailingContent = {
+            StatusPill(state.usageMode.label, state.usageMode.color)
+        },
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             ProfileMetric("Statut", state.activationStatusLabel, Modifier.weight(1f), state.usageMode.color)
@@ -529,7 +532,7 @@ private enum class ProfileSection(
     val icon: ImageVector,
 ) {
     License("Licence SmartVision", Icons.Default.Verified),
-    Xtream("Info compte", Icons.Default.CloudSync),
+    Xtream("Info compte", Icons.Default.Person),
     Device("Appareil et catalogue", Icons.Default.Devices),
     Usage("Mode d'utilisation", Icons.Default.CreditCard),
     History("Historique", Icons.Default.History),
@@ -558,10 +561,10 @@ private fun XtreamPanel(
 
     ProfilePanel(
         title = "Info compte",
-        icon = Icons.Default.CloudSync,
+        icon = Icons.Default.Person,
         modifier = modifier,
         trailingContent = {
-            StatusPill(state.usageMode.label, state.usageMode.color)
+            ExpirationPill(state.xtreamExpiresAt.ifBlank { "Expiration non disponible" })
         },
     ) {
         XtreamAccountCard(
@@ -699,55 +702,57 @@ private fun XtreamAccountCard(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SourceToggleButton(active = active, enabled = account != null, onClick = onToggleSource)
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(10.dp))
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.weight(1f),
         ) {
-            AccountInfoLine(Icons.Default.Home, "URL", account?.host?.ifBlank { "Non configure" } ?: "Non configure")
-            AccountInfoLine(Icons.Default.Person, "Nom d'utilisateur", account?.username?.ifBlank { "Non configure" } ?: "Non configure")
-            AccountInfoLine(Icons.Default.Security, "Mot de passe", account?.password?.ifBlank { "Non configure" } ?: "Non configure")
-        }
-        Spacer(Modifier.width(22.dp))
-        Box(
-            modifier = Modifier
-                .width(1.dp)
-                .height(116.dp)
-                .background(SmartVisionColors.Border.copy(alpha = 0.74f)),
-        )
-        Spacer(Modifier.width(22.dp))
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.width(220.dp),
-        ) {
-            ProfileActionButton(
-                text = "Modifier par QR",
-                icon = Icons.Default.QrCode2,
-                onClick = onEditQr,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(38.dp),
+            Text(
+                text = account?.name?.ifBlank { "Compte Xtream" } ?: "Compte Xtream",
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.Label,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            ProfileActionButton(
-                text = "Modifier",
+            Spacer(Modifier.height(5.dp))
+            XtreamCredentialsLine(account)
+        }
+        Spacer(Modifier.width(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            ProfileIconTileButton(
+                icon = Icons.Default.QrCode2,
+                contentDescription = "Modifier par QR",
+                onClick = onEditQr,
+            )
+            ProfileIconTileButton(
                 icon = Icons.Default.Edit,
+                contentDescription = "Modifier",
                 onClick = { account?.let(onEdit) },
                 enabled = account != null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(38.dp),
             )
-            ProfileActionButton(
-                text = "Supprimer",
+            ProfileIconTileButton(
                 icon = Icons.Default.Delete,
+                contentDescription = "Supprimer",
                 onClick = { account?.let(onDelete) },
                 enabled = account != null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(38.dp),
             )
         }
     }
+}
+
+@Composable
+private fun XtreamCredentialsLine(account: XtreamAccount?) {
+    Text(
+        text = listOf(
+            "URL ${account?.host?.ifBlank { "Non configure" } ?: "Non configure"}",
+            "User ${account?.username?.ifBlank { "Non configure" } ?: "Non configure"}",
+            "Pass ${if (account?.password.isNullOrBlank()) "Non configure" else "********"}",
+        ).joinToString("  |  "),
+        color = SmartVisionColors.TextSecondary,
+        style = SmartVisionType.Caption,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
 }
 
 @Composable
@@ -763,7 +768,7 @@ private fun M3uUrlCard(
             .clip(RoundedCornerShape(7.dp))
             .background(SmartVisionColors.Surface.copy(alpha = 0.58f))
             .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.78f)), RoundedCornerShape(7.dp))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SourceToggleButton(active = active, enabled = m3uUrl.isNotBlank(), onClick = onToggleSource)
@@ -795,7 +800,7 @@ private fun EpgUrlCard(
             .clip(RoundedCornerShape(7.dp))
             .background(SmartVisionColors.Surface.copy(alpha = 0.58f))
             .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.78f)), RoundedCornerShape(7.dp))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AccountInfoLine(
@@ -831,7 +836,7 @@ private fun SynchronizationCard(
             .clip(RoundedCornerShape(7.dp))
             .background(SmartVisionColors.Surface.copy(alpha = 0.58f))
             .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.78f)), RoundedCornerShape(7.dp))
-            .padding(18.dp),
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TvButton(
@@ -840,20 +845,19 @@ private fun SynchronizationCard(
             enabled = syncStatus !is SyncStatus.Running,
             leadingIcon = Icons.Default.CloudSync,
             modifier = Modifier
-                .width(310.dp)
-                .height(46.dp),
+                .width(270.dp)
+                .height(42.dp),
         )
-        Spacer(Modifier.width(28.dp))
+        Spacer(Modifier.width(20.dp))
         Box(
             modifier = Modifier
                 .width(1.dp)
-                .height(62.dp)
+                .height(44.dp)
                 .background(SmartVisionColors.Border.copy(alpha = 0.74f)),
         )
-        Spacer(Modifier.width(28.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+        Spacer(Modifier.width(20.dp))
+        Column(modifier = Modifier.weight(1f)) {
             AccountInfoLine(Icons.Default.CheckCircle, "Date de synchronisation", state.account.lastSync ?: "Jamais")
-            AccountInfoLine(Icons.Default.Verified, "Date d'expiration", state.xtreamExpiresAt.ifBlank { state.licenseExpiresAt.ifBlank { "Non disponible" } })
         }
     }
 }
@@ -869,7 +873,7 @@ private fun SourceToggleButton(
     val color = if (active) Color(0xFF20D46B) else Color(0xFFE33A3A)
     Box(
         modifier = Modifier
-            .size(width = 70.dp, height = 34.dp)
+            .size(width = 54.dp, height = 26.dp)
             .clip(RoundedCornerShape(50))
             .background(color.copy(alpha = if (enabled) 0.88f else 0.32f))
             .border(
@@ -879,7 +883,7 @@ private fun SourceToggleButton(
             .onFocusChanged { focused = it.isFocused }
             .clickable(enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick)
             .focusable(enabled = enabled, interactionSource = interactionSource)
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 6.dp),
         contentAlignment = if (active) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
         Text(
@@ -906,9 +910,9 @@ private fun AccountInfoLine(
             imageVector = icon,
             contentDescription = null,
             tint = Color.White,
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(24.dp),
         )
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(label, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1)
             Spacer(Modifier.height(3.dp))
@@ -977,26 +981,28 @@ private fun ProfileIconTileButton(
     icon: ImageVector,
     contentDescription: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     var focused by remember { mutableStateOf(false) }
     val borderColor = if (focused) SmartVisionColors.CyanAccent else Color.Transparent
     Box(
-        modifier = Modifier
-            .size(width = 60.dp, height = 48.dp)
+        modifier = modifier
+            .size(width = 48.dp, height = 38.dp)
             .clip(RoundedCornerShape(7.dp))
             .background(if (focused) SmartVisionColors.SurfaceElevated.copy(alpha = 0.9f) else Color.Transparent)
             .border(BorderStroke(if (focused) 1.dp else 0.dp, borderColor), RoundedCornerShape(7.dp))
             .onFocusChanged { focused = it.isFocused }
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .focusable(interactionSource = interactionSource),
+            .clickable(enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(enabled = enabled, interactionSource = interactionSource),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = Color.White,
-            modifier = Modifier.size(27.dp),
+            tint = if (enabled) Color.White else Color.White.copy(alpha = 0.34f),
+            modifier = Modifier.size(24.dp),
         )
     }
 }
@@ -1097,6 +1103,12 @@ private fun XtreamSynchronizationDialog(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val blocking = phase == XtreamSyncDialogPhase.Running
     val account = state.activeXtreamAccount
+    val source = state.activePlaylistSource
+    val sourceConfigured = when (source) {
+        PlaylistSource.Xtream -> state.hasXtream
+        PlaylistSource.M3u -> state.m3uUrl.isNotBlank()
+    }
+    val sourceTitle = if (source == PlaylistSource.M3u) "Synchronisation M3U" else "Synchronisation Xtream"
     val progress = syncStatus.catalogProgressOrDefault(state.account)
     val showProgress = phase != XtreamSyncDialogPhase.Confirmation
 
@@ -1108,11 +1120,11 @@ private fun XtreamSynchronizationDialog(
         if (!blocking) closeAllowed()
     }
     LaunchedEffect(Unit) {
-        startFocusRequester.requestFocus()
+        runCatching { startFocusRequester.requestFocus() }
     }
     LaunchedEffect(phase) {
         if (phase == XtreamSyncDialogPhase.Success || phase == XtreamSyncDialogPhase.Error) {
-            returnFocusRequester.requestFocus()
+            runCatching { returnFocusRequester.requestFocus() }
         }
     }
 
@@ -1150,13 +1162,17 @@ private fun XtreamSynchronizationDialog(
                 Spacer(Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Synchronisation Xtream",
+                        text = sourceTitle,
                         color = SmartVisionColors.TextPrimary,
                         style = SmartVisionType.TitleS,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = "Controlez les donnees catalogue avant de lancer la mise a jour.",
+                        text = if (source == PlaylistSource.M3u) {
+                            "Controlez le lien M3U avant de relancer le chargement Live TV."
+                        } else {
+                            "Controlez les donnees catalogue avant de lancer la mise a jour."
+                        },
                         color = SmartVisionColors.TextSecondary,
                         style = SmartVisionType.Caption,
                     )
@@ -1174,12 +1190,14 @@ private fun XtreamSynchronizationDialog(
                     title = "Films",
                     progress = progress.movies,
                     showProgress = showProgress,
+                    enabled = source == PlaylistSource.Xtream,
                     modifier = Modifier.weight(1f),
                 )
                 XtreamSyncCountCard(
                     title = "Series",
                     progress = progress.series,
                     showProgress = showProgress,
+                    enabled = source == PlaylistSource.Xtream,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -1193,9 +1211,16 @@ private fun XtreamSynchronizationDialog(
                     .padding(14.dp),
             ) {
                 SyncDialogInfoRow("Code TV", state.tvCode)
-                SyncDialogInfoRow("Url Xtream", account?.host?.ifBlank { state.xtreamHost } ?: state.xtreamHost.ifBlank { "Non configure" })
-                SyncDialogInfoRow("Username", account?.username?.ifBlank { state.xtreamUsername } ?: state.xtreamUsername.ifBlank { "Non configure" })
-                SyncDialogInfoRow("Password", if (account?.password.isNullOrBlank()) "********" else "********")
+                if (source == PlaylistSource.M3u) {
+                    SyncDialogInfoRow("Source active", "Lien M3U")
+                    SyncDialogInfoRow("Lien M3U", state.m3uUrl.ifBlank { "Non configure" })
+                    SyncDialogInfoRow("URL EPG", state.epgUrl.ifBlank { "Non configure" })
+                } else {
+                    SyncDialogInfoRow("Source active", "Xtream")
+                    SyncDialogInfoRow("Url Xtream", account?.host?.ifBlank { state.xtreamHost } ?: state.xtreamHost.ifBlank { "Non configure" })
+                    SyncDialogInfoRow("Username", account?.username?.ifBlank { state.xtreamUsername } ?: state.xtreamUsername.ifBlank { "Non configure" })
+                    SyncDialogInfoRow("Password", if (account?.password.isNullOrBlank()) "********" else "********")
+                }
                 SyncDialogInfoRow("Derniere synchro", state.account.lastSync ?: "Jamais")
             }
             if (phase == XtreamSyncDialogPhase.Success) {
@@ -1244,7 +1269,7 @@ private fun XtreamSynchronizationDialog(
                         .height(44.dp),
                 )
                 TvButton(
-                    text = if (blocking) "Synchronisation encours" else "Lancer la synchronisation",
+                    text = if (blocking) "Synchronisation en cours" else "Lancer la synchronisation",
                     onClick = {
                         if (phase == XtreamSyncDialogPhase.Confirmation) {
                             phase = XtreamSyncDialogPhase.Running
@@ -1260,7 +1285,7 @@ private fun XtreamSynchronizationDialog(
                             }
                         }
                     },
-                    enabled = phase == XtreamSyncDialogPhase.Confirmation && state.hasXtream,
+                    enabled = phase == XtreamSyncDialogPhase.Confirmation && sourceConfigured,
                     leadingIcon = if (blocking) null else Icons.Default.CloudSync,
                     leadingContent = if (blocking) {
                         {
@@ -1288,9 +1313,14 @@ private fun XtreamSyncCountCard(
     title: String,
     progress: SyncStatus.SyncSectionProgress,
     showProgress: Boolean,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
-    val valueColor = if (progress.completed) Color(0xFF7CFFB2) else SmartVisionColors.TextPrimary
+    val valueColor = when {
+        !enabled -> SmartVisionColors.TextSecondary
+        progress.completed -> Color(0xFF7CFFB2)
+        else -> SmartVisionColors.TextPrimary
+    }
     Column(
         modifier = modifier
             .height(118.dp)
@@ -1303,20 +1333,23 @@ private fun XtreamSyncCountCard(
                     ),
                 ),
             )
-            .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent.copy(alpha = 0.38f)), RoundedCornerShape(7.dp))
+            .border(
+                BorderStroke(1.dp, if (enabled) SmartVisionColors.CyanAccent.copy(alpha = 0.38f) else SmartVisionColors.Border.copy(alpha = 0.44f)),
+                RoundedCornerShape(7.dp),
+            )
             .padding(12.dp),
     ) {
         Text(title, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1)
         Spacer(Modifier.height(5.dp))
         Text(
-            text = progress.currentItems.toString(),
+            text = if (enabled) progress.currentItems.toString() else "N/A",
             color = valueColor,
             style = SmartVisionType.TitleS,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
         )
         Spacer(Modifier.weight(1f))
-        if (showProgress) {
+        if (showProgress && enabled) {
             LinearProgressIndicator(
                 progress = { progress.fraction },
                 modifier = Modifier
@@ -1858,7 +1891,7 @@ private fun ProfilePanel(
             .padding(18.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(22.dp))
+            Icon(icon, contentDescription = null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(26.dp))
             Spacer(Modifier.width(9.dp))
             Text(title, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
@@ -2023,6 +2056,27 @@ private fun StatusPill(label: String, color: Color) {
         )
         Spacer(Modifier.width(8.dp))
         Text(label, color = color, style = SmartVisionType.Caption, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun ExpirationPill(label: String) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(100.dp))
+            .background(SmartVisionColors.Primary.copy(alpha = 0.14f))
+            .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent.copy(alpha = 0.62f)), RoundedCornerShape(100.dp))
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            color = SmartVisionColors.CyanAccent,
+            style = SmartVisionType.Caption,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

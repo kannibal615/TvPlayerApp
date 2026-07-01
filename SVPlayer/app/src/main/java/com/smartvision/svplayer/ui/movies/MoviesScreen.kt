@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.behavior.BehaviorContent
@@ -111,6 +112,9 @@ fun MoviesScreen(
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val accounts by container.accountManager.accounts.collectAsStateWithLifecycle()
+    val m3uUrl by container.accountManager.m3uUrl.collectAsStateWithLifecycle()
+    val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
+    val m3uActive = activePlaylistSource == PlaylistSource.M3u && m3uUrl.isNotBlank()
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstMovieFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
@@ -132,8 +136,8 @@ fun MoviesScreen(
         categorySearchQuery.isBlank() || category.label.contains(categorySearchQuery, ignoreCase = true)
     }
 
-    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), categoryFocusTargetAvailable) {
-        if (accounts.isNotEmpty() && !state.categoriesLoading && categoryFocusTargetAvailable) {
+    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), m3uActive, categoryFocusTargetAvailable) {
+        if (!m3uActive && accounts.isNotEmpty() && !state.categoriesLoading && categoryFocusTargetAvailable) {
             withFrameNanos { }
             delay(120)
             runCatching { selectedCategoryFocusRequester.requestFocus() }
@@ -173,6 +177,15 @@ fun MoviesScreen(
         )
 
         Spacer(Modifier.height(MediaCatalogDimens.HeaderGap))
+
+        if (m3uActive) {
+            CatalogEmpty(
+                title = "Films non disponibles en M3U",
+                subtitle = "La source M3U active alimente Live TV. Passez sur Xtream pour les films.",
+                modifier = Modifier.fillMaxSize(),
+            )
+            return@Column
+        }
 
         if (accounts.isEmpty()) {
             XtreamQrSetupPanel(

@@ -96,6 +96,7 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.R
+import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.behavior.BehaviorContent
@@ -187,6 +188,9 @@ fun LiveTvScreen(
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val accounts by container.accountManager.accounts.collectAsStateWithLifecycle()
+    val m3uUrl by container.accountManager.m3uUrl.collectAsStateWithLifecycle()
+    val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
+    val hasPlayableSource = accounts.isNotEmpty() || (activePlaylistSource == PlaylistSource.M3u && m3uUrl.isNotBlank())
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstChannelFocusRequester = remember { FocusRequester() }
     val firstPreviewActionFocusRequester = remember { FocusRequester() }
@@ -241,8 +245,8 @@ fun LiveTvScreen(
         categorySearchQuery.isBlank() || category.label.contains(categorySearchQuery, ignoreCase = true)
     }
 
-    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), categoryFocusTargetAvailable) {
-        if (accounts.isNotEmpty() && !state.categoriesLoading && categoryFocusTargetAvailable) {
+    LaunchedEffect(state.categoriesLoading, hasPlayableSource, categoryFocusTargetAvailable) {
+        if (hasPlayableSource && !state.categoriesLoading && categoryFocusTargetAvailable) {
             withFrameNanos { }
             delay(120)
             runCatching { selectedCategoryFocusRequester.requestFocus() }
@@ -283,7 +287,7 @@ fun LiveTvScreen(
 
         Spacer(Modifier.height(LiveTvDimens.HeaderGap))
 
-        if (accounts.isEmpty()) {
+        if (!hasPlayableSource) {
             XtreamQrSetupPanel(
                 activationRepository = container.activationRepository,
                 title = "Configurer vos chaînes Live TV",
@@ -1346,6 +1350,10 @@ private fun ChannelRow(
                     )
                 }
             }
+            if (channel.epgPrograms.isNotEmpty()) {
+                Spacer(Modifier.width(8.dp))
+                EpgAvailabilityBadge()
+            }
         }
 
         if (showDelete) {
@@ -1357,6 +1365,26 @@ private fun ChannelRow(
                 onClick = onDelete,
             )
         }
+    }
+}
+
+@Composable
+private fun EpgAvailabilityBadge() {
+    Box(
+        modifier = Modifier
+            .size(width = 30.dp, height = 22.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(SmartVisionColors.Primary.copy(alpha = 0.24f))
+            .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent.copy(alpha = 0.72f)), RoundedCornerShape(4.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "E",
+            color = Color.White,
+            style = LiveTvItemMetaStyle,
+            fontWeight = FontWeight.Black,
+            maxLines = 1,
+        )
     }
 }
 

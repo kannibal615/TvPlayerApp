@@ -58,6 +58,7 @@ Attention:
 - ActivationScreen
 - Xtream setup
 - Player overlay
+- Badge EPG Live TV
 
 ## 6. Fichiers de code concernes
 
@@ -106,6 +107,7 @@ Backend indirect:
 - Ne pas auto-focus un bouton qui doit rester accessible par scroll D-pad.
 - Ne pas changer l'ordre D-pad sans valider les surfaces adjacentes.
 - Le texte doit rester lisible a distance TV.
+- Les boutons icones d'Info compte et de l'overlay player doivent rester focusables et conserver une cible D-pad suffisante meme si le rendu visuel est compact.
 
 ## 10. Problemes connus
 
@@ -146,3 +148,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: ajout popup de synchronisation Xtream avec focus initial sur lancement, blocage telecommande pendant synchro active et retour focus vers Appareil et catalogue apres fermeture.
 - 2026-07-01: Info compte ajoute une section URL EPG avec boutons icones focusables Modifier et Modifier par QR.
 - 2026-07-01: Info compte devient l'ecran pilote visuel: header principal, menu gauche plus etroit, icones de lignes sans cadres, focus initial sur Licence SmartVision, et badge usage dans l'en-tete du panneau droit.
+- 2026-07-01: Info compte renforce l'approche icones focusables et l'overlay Live/Films/Series devient plus slim sans changer les actions lecteur.

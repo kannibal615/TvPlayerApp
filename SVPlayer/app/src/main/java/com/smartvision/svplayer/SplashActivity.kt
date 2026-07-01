@@ -102,17 +102,12 @@ class SplashActivity : ComponentActivity() {
 
     @Composable
     private fun SplashVideoScreen(statusLabel: String, progress: Float) {
-        var loadingVisible by remember { mutableStateOf(false) }
+        var loadingVisible by remember { mutableStateOf(true) }
         val loadingAlpha by animateFloatAsState(
             targetValue = if (loadingVisible) 1f else 0f,
             animationSpec = tween(LoadingFadeMillis.toInt(), easing = FastOutSlowInEasing),
             label = "splashLoadingAlpha",
         )
-
-        LaunchedEffect(Unit) {
-            delay(LoadingRevealDelayMillis)
-            loadingVisible = true
-        }
 
         Box(
             modifier = Modifier
@@ -266,7 +261,7 @@ class SplashActivity : ComponentActivity() {
     private suspend fun runStartupChecks(updateStatus: (String, Float) -> Unit) {
         val startedAt = SystemClock.elapsedRealtime()
         val container = (application as SVPlayerApplication).appContainer
-        var totalSteps = StartupStepsWithSync
+        var totalSteps = startupStepCount(PlaylistSource.Xtream, shouldSync = true, shouldSyncEpg = false)
         suspend fun update(label: String, step: Int, total: Int = totalSteps) {
             updateStatus(label, startupProgress(step, total))
             delay(StatusStepPauseMillis)
@@ -287,7 +282,7 @@ class SplashActivity : ComponentActivity() {
             }
             val shouldSync = connectionReady && shouldRunStartupCatalogSync(container)
             val shouldSyncEpg = container.accountManager.epgUrl.value.isNotBlank()
-            totalSteps = (if (shouldSync) StartupStepsWithSync else StartupStepsWithoutSync) + if (shouldSyncEpg) EpgStartupSteps else 0
+            totalSteps = startupStepCount(source, shouldSync, shouldSyncEpg)
             update(
                 label = "Verification derniere synchronisation... ${if (shouldSync) "KO" else "OK"}",
                 step = 5,
@@ -329,10 +324,12 @@ class SplashActivity : ComponentActivity() {
             preloadHomeData(container)
             update("Chargement des donnees (LIVE TV)...", step++, totalSteps)
             runCatching { container.catalogRepository.getLiveCatalogSnapshot() }
-            update("Chargement des donnees (FILMS)...", step++, totalSteps)
-            runCatching { container.catalogRepository.getMovieCatalogSnapshot() }
-            update("Chargement des donnees (SERIES)...", step++, totalSteps)
-            runCatching { container.catalogRepository.getSeriesCatalogSnapshot() }
+            if (source == PlaylistSource.Xtream) {
+                update("Chargement des donnees (FILMS)...", step++, totalSteps)
+                runCatching { container.catalogRepository.getMovieCatalogSnapshot() }
+                update("Chargement des donnees (SERIES)...", step++, totalSteps)
+                runCatching { container.catalogRepository.getSeriesCatalogSnapshot() }
+            }
             update("Demarrage en cours...", totalSteps, totalSteps)
         }
         val elapsed = SystemClock.elapsedRealtime() - startedAt
@@ -352,6 +349,15 @@ class SplashActivity : ComponentActivity() {
 
     private fun startupProgress(step: Int, total: Int): Float =
         (step.toFloat() / total.toFloat()).coerceIn(MinimumProgressScale, 1f)
+
+    private fun startupStepCount(source: PlaylistSource, shouldSync: Boolean, shouldSyncEpg: Boolean): Int {
+        var total = 5
+        if (shouldSync) total += 2
+        if (shouldSyncEpg) total += 2
+        total += 2 // HOME + LIVE TV
+        if (source == PlaylistSource.Xtream) total += 2 // Movies + Series
+        return total + 1 // startup handoff
+    }
 
     private suspend fun shouldRunStartupCatalogSync(container: AppContainer): Boolean {
         val source = container.accountManager.activePlaylistSource.value
@@ -387,14 +393,10 @@ class SplashActivity : ComponentActivity() {
         const val LogoPulseMinAlpha = 0.86f
         const val LogoPulseMaxAlpha = 1.0f
         const val LogoPulseMillis = 760L
-        const val LoadingRevealDelayMillis = 820L
         const val LoadingFadeMillis = 260L
         const val MinimumSplashDurationMillis = 2_400L
         const val StatusStepPauseMillis = 80L
         const val ProgressStepMillis = 180L
         const val MinimumProgressScale = 0.03f
-        const val StartupStepsWithoutSync = 10
-        const val StartupStepsWithSync = 12
-        const val EpgStartupSteps = 2
     }
 }

@@ -26,8 +26,10 @@ Flux observe:
 - `SplashActivity` porte tout le statut de demarrage avec un seul visuel et une seule progress bar; le panneau `StartupVerificationPanel` Compose n'est plus utilise au demarrage.
 - depuis le 2026-07-01, ce splash applicatif est un ecran Compose avec video Media3 `splash_wave_animation.mp4` en plein ecran, muette, sans controles et bouclee; le theme systeme reste noir pour ne pas afficher un second visuel avant la video.
 - le splash enchaine les statuts licence, activation, serveur Xtream, fraicheur de la derniere synchronisation, synchro si necessaire, prechargement Home / Live TV / Films / Series, puis demarrage.
+- quand la source active est M3U, le splash verifie le lien M3U et ne precharge que Home / Live TV pour eviter de presenter Films / Series comme disponibles.
 - si le cache local indique deja un acces actif, `ActivationViewModel` garde Home accessible pendant le refresh serveur au lieu d'afficher un second loader Compose.
 - apres `MainActivity`, `AppNavigation` attend que `ActivationViewModel` ait lu l'etat local avant de rendre `ActivationScreen`, afin d'eviter le flash "Activer SmartVision" sur un appareil deja actif.
+- les etats transitoires apres splash dans `AppNavigation` utilisent un fond sombre neutre et plus l'ancien visuel `smartvision_splash_bg`, afin d'eviter un flash d'ancien splash avant Home.
 - si le splash vient de valider Xtream pour le compte courant, `AppNavigation` ne relance pas immediatement la meme verification startup.
 
 ## 3. Workflow utilisateur
@@ -137,6 +139,7 @@ Admin:
 - L'alerte Xtream doit masquer les mots de passe et ne remonter au backend que serveur, type d'erreur, message court, detail technique non secret, code TV et version app.
 - Ne pas tester seulement l'ancien compte local au demarrage: rafraichir le statut backend avant le controle Xtream pour detecter une playlist remplacee depuis le portail web.
 - Si Xtream et M3U sont tous les deux renseignes, ne pas choisir automatiquement une source distante a chaque refresh: conserver la source active locale choisie par l'utilisateur.
+- Les popups et messages de synchronisation doivent afficher les donnees de la source active: identifiants Xtream si Xtream est actif, lien M3U si M3U est actif.
 
 ## 10. Problemes connus
 
@@ -176,3 +179,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-01: ajout de l'URL EPG dans le payload playlist chiffre, affichage/edition dans Info compte, et page web `/playlist/` pour pousser Xtream/EPG vers une TV par code.
 - 2026-07-01: `/playlist/` passe en onglets `Code Xtream`, `Lien M3U`, `Lien EPG`; le payload chiffre peut aussi porter `m3u_url`, et un push cree une notification d'information ciblee sur la TV.
 - 2026-07-01: Info compte ajoute la source active exclusive Xtream/M3U; `device_status.php` considere aussi `m3u_url` comme playlist configuree sans marquer Xtream configure.
+- 2026-07-01: correction source active M3U dans le splash et le popup manuel de synchronisation; suppression du flash de l'ancien visuel splash dans `AppNavigation`.

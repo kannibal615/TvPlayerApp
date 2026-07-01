@@ -51,8 +51,8 @@ android {
         applicationId = "com.smartvision.svplayer"
         minSdk = 23
         targetSdk = 36
-        versionCode = 72
-        versionName = "0.1.69"
+        versionCode = 73
+        versionName = "0.1.70"
 
         buildConfigField("String", "ACTIVATION_BASE_URL", buildConfigString(activationBaseUrl()))
         buildConfigField("String", "YOUTUBE_API_KEY", buildConfigString(localAdString("YOUTUBE_API_KEY")))

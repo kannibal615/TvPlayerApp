@@ -21,6 +21,9 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 - Movies: grille de films, detail, lecture.
 - Series: grille, detail, saisons/episodes, lecture episode.
 - Info compte: licence, device, mode d'utilisation, expiration, compte Xtream, lien M3U, URL EPG, source active exclusive, QR achat/config. L'ecran reutilise le header principal de l'application, donne le focus initial au menu `Licence SmartVision`, et garde la section droite plus large/compacte pour servir de modele aux futurs ecrans profil/parametres. Dans Info compte, le bouton Synchroniser ouvre un popup de confirmation avec compteurs Live TV / Films / Series; apres succes ou erreur, Retour ferme le popup, ouvre Appareil et catalogue et y remet le focus.
+- Info compte compacte la section source: icone utilisateur bleue pour le panneau, badge d'usage dans l'en-tete Licence SmartVision, expiration Xtream dans l'en-tete Info compte, identifiants Xtream sur une ligne, boutons Xtream en icones et bascules source plus petites.
+- Quand M3U est actif, Movies et Series affichent un etat vide source-aware au lieu d'une erreur Xtream.
+- Live TV affiche un badge bleu `E` a droite des lignes de chaines qui ont des programmes EPG locaux.
 - Settings: experience video, personnalisation focus, langue, synchro, comptes Xtream, parental.
 - YouTube: recherche/suggestions/player, favoris, parametres YouTube et queue autoplay, soumis a feature lock.
 - Notifications: liste et ouverture du popup update si notification release.
@@ -113,6 +116,7 @@ Sources:
 - Les notifications d'information, comme une configuration Playlist poussee depuis le site, restent non cliquables; seules les notifications de mise a jour ouvrent une action.
 - Le popup update ne doit pas s'ouvrir automatiquement apres un check silencieux; ouverture uniquement depuis notification update ou bouton Settings > Updates > Check for update.
 - Info compte doit garder les cartes source Xtream/M3U/EPG compactes pour tenir sans scroll sur TV; les bascules source sont ON vert / OFF rouge et un seul ON est autorise.
+- Les actions Modifier par QR / Modifier / Supprimer de la carte Xtream doivent rester en boutons icones focusables pour limiter l'encombrement.
 
 ## 11. Quand lire ce fichier ?
 
@@ -149,3 +153,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-01: Profil client renomme Info compte; la section Xtream adopte une mise en page cartes/actions et ajoute l'affichage/edition de l'URL EPG.
 - 2026-07-01: Info compte reutilise le header principal, reduit le menu gauche, agrandit/compacte le panneau droit, retire les cadres d'icones dans la section Xtream/EPG, et corrige le flash temporaire du bouton YouTube verrouille pendant le chargement de la config.
 - 2026-07-01: Info compte compacte la section source, ajoute le lien M3U et les bascules exclusives Xtream/M3U avec etat ON/OFF visuel.
+- 2026-07-01: Info compte compact: icone utilisateur bleue, badge usage deplace vers Licence, expiration Xtream dans l'en-tete Info compte, boutons Xtream en icones et identifiants sur une seule ligne.
+- 2026-07-01: badge `E` sur les lignes Live TV avec EPG et etats Movies/Series explicites quand M3U est actif.

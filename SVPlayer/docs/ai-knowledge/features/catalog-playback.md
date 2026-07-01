@@ -18,11 +18,24 @@ Les snapshots locaux Live / Movies / Series peuvent etre conserves en memoire ap
 
 Les donnees Home legeres sont aussi prechauffees au demarrage: slides Home via `HomeSlidesRepository`, progression recente enrichie via `UserContentRepository`, et tendances depuis les snapshots Movies / Series deja charges en memoire.
 
+Clarification stockage/performance:
+- Room est le stockage local persistant de l'application sur l'appareil; les catalogues synchronises restent disponibles apres fermeture ou redemarrage de l'app tant que les donnees de l'application ne sont pas effacees.
+- Le cache memoire applicatif est uniquement en RAM; il accelere les navigations tant que le process Android vit, mais doit etre reconstruit depuis Room apres une fermeture complete ou un kill process.
+- Le chargement local au splash relit Room et reconstruit le cache memoire; il ne doit pas etre confondu avec une synchronisation reseau.
+- Apres une vraie reouverture ou un process tue par Android, ce chargement local ne peut pas etre supprime a 100%, car l'UI doit reconstruire ses listes en memoire. Il peut seulement etre optimise.
+- La synchronisation reseau complete est separee du chargement local et depend de `SyncFrequencyPolicy`: `A chaque demarrage` force une synchro a chaque ouverture, `24h`/`48h` ne resynchronisent que si la derniere synchro est obsolete, `Manuelle`/`Jamais` evitent la synchro automatique.
+- Recommandation d'optimisation: garder le prechauffage Room au splash et preferer une frequence `24h` ou `48h` pour eviter les telechargements reseau inutiles tout en gardant les catalogues frais.
+- Si le chargement local reste visible, les pistes utiles sont: index Room sur les colonnes de tri/filtre, requetes paginees, prechargement categories + premiers elements seulement, ou snapshot local materialise pour Home. Ces pistes accelerent la lecture locale, elles ne remplacent pas le stockage Room.
+
 Depuis le 2026-06-30, la synchronisation manuelle depuis Info compte publie aussi une progression par section Live TV / Films / Series dans `SyncStatus`. Les compteurs de l'ancienne synchro servent d'estimation de progression; chaque section passe a 100% quand son endpoint principal est termine.
 
 Depuis le 2026-07-01, un lien M3U peut devenir la source active du catalogue Live TV. Les entrees M3U sont parsees depuis `#EXTINF`, groupees par `group-title`, stockees dans `live_streams` avec `source = m3u` et `directStreamUrl`, puis lues sans `XtreamUrlFactory`. Quand M3U est actif, Movies et Series sont vides pour respecter la regle une seule source active.
 
 Depuis le 2026-07-01, l'URL EPG XMLTV est telechargee dans un cache local leger au demarrage ou lors d'une synchronisation manuelle. Les programmes enrichissent l'apercu Live TV via `tvg-id`/nom de chaine; la zone EPG de l'apercu est scrollable si la liste est longue.
+
+Depuis le 2026-07-01, le splash tient compte de la source active: en M3U, il verifie le lien, synchronise et precharge Home + Live TV uniquement, sans afficher de faux statuts de chargement Films/Series. Les ecrans Movies et Series affichent un etat vide explicite quand M3U est actif, au lieu d'une erreur Xtream. Live TV reconnait un lien M3U comme source jouable meme sans compte Xtream local.
+
+Depuis le 2026-07-01, les lignes Live TV affichent un petit badge bleu `E` a droite quand des programmes EPG locaux sont disponibles pour la chaine.
 
 ## 3. Workflow utilisateur
 
@@ -128,9 +141,13 @@ URL de lecture:
 - Ne pas remplacer les tables locales tant que toutes les reponses principales de synchronisation n'ont pas ete recuperees avec succes.
 - Une seule source catalogue peut etre active: Xtream ou M3U. Activer une source desactive l'autre cote preference locale.
 - M3U alimente Live TV uniquement; ne pas fabriquer des films/series sans structure fiable.
+- Quand M3U est actif, ne pas afficher de messages d'erreur Xtream sur Movies/Series; afficher un etat vide source-aware.
+- Le badge EPG des lignes Live TV doit se baser sur les programmes locaux disponibles, pas seulement sur la presence d'une URL EPG.
 - Ne pas lancer de synchronisation globale pendant la navigation Home / Live TV / Movies / Series / categories / listes.
 - Ne pas afficher un loader plein ecran si un snapshot local memoire existe deja pour l'ecran catalogue demande.
 - Le premier chargement local des snapshots Home / Live TV / Movies / Series doit rester dans `SplashActivity` quand le compte Xtream est disponible; les ecrans ne doivent faire qu'utiliser le cache ou une lecture locale de secours.
+- Ne pas confondre prechargement local et synchro reseau: reconstruire le cache memoire depuis Room au demarrage est normal; retelecharger le catalogue complet ne doit arriver que si la politique de frequence le demande ou si l'utilisateur lance Synchroniser.
+- Ne pas promettre zero chargement local apres fermeture complete: si le process Android a ete tue, le cache RAM n'existe plus et doit etre reconstruit depuis Room.
 - AutoSync et sync manuelle doivent verifier Xtream avant de synchroniser; seules les erreurs reseau sont retentees automatiquement.
 - La verification de connexion Xtream est obligatoire au premier affichage actif, mais ne doit pas forcer une resynchronisation globale si la politique de frequence ne la demande pas.
 - Les routes player/detail doivent aussi respecter le blocage Xtream; ne pas compter uniquement sur Home/Header pour bloquer l'acces.
@@ -174,3 +191,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-01: deplacement du prechargement Home / Live TV / Movies / Series dans `SplashActivity`, apres la verification de fraicheur de synchronisation.
 - 2026-07-01: premiere etape EPG: stockage/affichage de l'URL EPG dans Info compte et transfert web vers TV, sans encore traiter les donnees XMLTV.
 - 2026-07-01: ajout de la source active Xtream/M3U exclusive, parsing M3U vers Live TV, URL directe en Room et cache EPG XMLTV affiche dans l'apercu Live TV.
+- 2026-07-01: correction M3U source-aware: splash Home/Live uniquement, Movies/Series en etat vide explicite, popup sync M3U avec lien M3U, et badge `E` sur les chaines avec EPG.
+- 2026-07-01: clarification optimisation demarrage: Room persiste sur l'appareil, le cache memoire se reconstruit au splash, et la synchro reseau doit dependre de la frequence configuree.
