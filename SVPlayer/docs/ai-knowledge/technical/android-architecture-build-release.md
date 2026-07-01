@@ -1,6 +1,6 @@
 # Android Architecture, Build et Release
 
-Derniere mise a jour: 2026-06-30.
+Derniere mise a jour: 2026-07-01.
 
 ## 1. Objectif
 
@@ -11,13 +11,20 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
 
 Gradle local constate le 2026-07-01:
-- `versionCode = 71`
-- `versionName = "0.1.68"`
+- `versionCode = 72`
+- `versionName = "0.1.69"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
 - release standard sans minify/shrink
 - `releaseOptimized` avec minify/shrink
+
+Demarrage:
+- `SplashActivity` reste l'unique splash applicatif avant `MainActivity`.
+- Le splash est un ecran Compose personnalise qui affiche `R.raw.splash_wave_animation` via Media3 `ExoPlayer` en plein ecran, muet, sans controles, non focusable et en boucle.
+- Le logo, la progress bar et les statuts startup restent rendus au-dessus de la video.
+- Le theme systeme `Theme.SVPlayer.Splash` ne porte plus l'ancien fond image; son `windowBackground` est noir pour eviter un second visuel avant la video.
+- `ExoPlayer.release()` est appele quand la composition du splash disparait.
 
 ## 3. Workflow utilisateur
 
@@ -38,7 +45,7 @@ Points d'entree:
 
 Build:
 - `.\gradlew.bat assembleRelease`
-- timeout 15 minutes minimum pour release;
+- timeout 20 minutes minimum pour release;
 - pas de `compileDebugKotlin` ni `testDebugUnitTest` avant release sauf demande explicite.
 - avant le build, verifier que `versionCode` est strictement superieur a la prod et aux appareils ADB connectes avec `.\scripts\guard_release_version.ps1`;
 - apres le build, relancer `.\scripts\guard_release_version.ps1 -RequireBuildMetadata` pour verifier `output-metadata.json`.
@@ -128,6 +135,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-06-29: migration vers documentation specialisee.
+- 2026-07-01: release publiee `0.1.69` / `versionCode 72` pour splash video Compose Media3 au demarrage; APK `smartvision-tv-v72-a30ec7bf.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-01: release publiee `0.1.68` / `versionCode 71` pour source active Xtream/M3U, parsing M3U Live TV, cache EPG XMLTV et Info compte compact; APK `smartvision-tv-v71-44e92a70.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-01: release publiee `0.1.67` / `versionCode 70` pour Info compte, URL EPG et page web `/playlist/`; APK `smartvision-tv-v70-50bfb24e.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-01: release publiee `0.1.66` / `versionCode 69` pour agrandissement du splash et suppression du flash activation apres splash; APK `smartvision-tv-v69-cb3e3030.apk`, manifeste public et hash SHA256 verifies.

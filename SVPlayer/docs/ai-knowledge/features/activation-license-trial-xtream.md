@@ -1,6 +1,6 @@
 # Activation, Licence, Essai et Xtream
 
-Derniere mise a jour: 2026-06-30.
+Derniere mise a jour: 2026-07-01.
 
 ## 1. Objectif
 
@@ -23,7 +23,8 @@ Flux observe:
 - creation locale du compte Xtream et synchro catalogue.
 - verification rapide Xtream au demarrage via `XtreamConnectionManager` avant synchro globale; en cas d'erreur, Home reste accessible mais les sections catalogue sont bloquees.
 - au splash, `device_status.php` doit etre relu avant `XtreamConnectionManager.verifyQuick()` afin d'importer la derniere playlist configuree cote serveur avant le test, meme si un ancien compte local et un ancien catalogue Room existent deja.
-- le splash natif porte tout le statut de demarrage avec un seul visuel et une seule progress bar; le panneau `StartupVerificationPanel` Compose n'est plus utilise au demarrage.
+- `SplashActivity` porte tout le statut de demarrage avec un seul visuel et une seule progress bar; le panneau `StartupVerificationPanel` Compose n'est plus utilise au demarrage.
+- depuis le 2026-07-01, ce splash applicatif est un ecran Compose avec video Media3 `splash_wave_animation.mp4` en plein ecran, muette, sans controles et bouclee; le theme systeme reste noir pour ne pas afficher un second visuel avant la video.
 - le splash enchaine les statuts licence, activation, serveur Xtream, fraicheur de la derniere synchronisation, synchro si necessaire, prechargement Home / Live TV / Films / Series, puis demarrage.
 - si le cache local indique deja un acces actif, `ActivationViewModel` garde Home accessible pendant le refresh serveur au lieu d'afficher un second loader Compose.
 - apres `MainActivity`, `AppNavigation` attend que `ActivationViewModel` ait lu l'etat local avant de rendre `ActivationScreen`, afin d'eviter le flash "Activer SmartVision" sur un appareil deja actif.
@@ -170,6 +171,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: correction du controle de demarrage Xtream: rafraichissement `device_status.php` avant verification et controle obligatoire au premier affichage actif, meme si la derniere synchro est recente.
 - 2026-06-30: unification visuelle du splash et conservation de l'etat local actif pendant le refresh activation pour eviter un second loader apres le splash.
 - 2026-07-01: suppression du panneau de verification Compose au demarrage; `SplashActivity` devient l'unique splash avec les statuts startup complets.
+- 2026-07-01: remplacement du fond image du splash par une video Compose Media3 muette et bouclee, avec logo/progress/status conserves au-dessus.
 - 2026-07-01: ajout d'un garde `localStateReady` pour empecher le rendu transitoire de l'ecran activation apres le splash sur appareil deja actif.
 - 2026-07-01: ajout de l'URL EPG dans le payload playlist chiffre, affichage/edition dans Info compte, et page web `/playlist/` pour pousser Xtream/EPG vers une TV par code.
 - 2026-07-01: `/playlist/` passe en onglets `Code Xtream`, `Lien M3U`, `Lien EPG`; le payload chiffre peut aussi porter `m3u_url`, et un push cree une notification d'information ciblee sur la TV.

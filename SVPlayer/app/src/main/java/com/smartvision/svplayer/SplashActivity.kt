@@ -1,49 +1,79 @@
 package com.smartvision.svplayer
 
-import android.app.Activity
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
+import android.graphics.Color as AndroidColor
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.SystemClock
-import android.view.Gravity
 import android.view.View
-import android.view.ViewTreeObserver
+import android.view.ViewGroup
 import android.view.WindowManager
-import android.view.animation.AccelerateDecelerateInterpolator
-import android.view.animation.AlphaAnimation
-import android.view.animation.Animation
-import android.widget.FrameLayout
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
-import com.smartvision.svplayer.core.data.AppContainer
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.datasource.RawResourceDataSource
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import com.smartvision.svplayer.core.config.PlaylistSource
+import com.smartvision.svplayer.core.data.AppContainer
 import com.smartvision.svplayer.sync.SyncFrequencyPolicy
-import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 
-class SplashActivity : Activity() {
-    private val handler = Handler(Looper.getMainLooper())
-    private val splashScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private lateinit var root: FrameLayout
+class SplashActivity : ComponentActivity() {
     private var launched = false
-    private var animationStarted = false
-    private val openHome = Runnable { launchHome() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN)
+        window.statusBarColor = AndroidColor.BLACK
+        window.navigationBarColor = AndroidColor.BLACK
         window.decorView.systemUiVisibility =
             View.SYSTEM_UI_FLAG_FULLSCREEN or
                 View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
@@ -52,152 +82,193 @@ class SplashActivity : Activity() {
                 View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
                 View.SYSTEM_UI_FLAG_LAYOUT_STABLE
 
-        root = FrameLayout(this).apply {
-            setBackgroundColor(Color.rgb(2, 8, 23))
-        }
-        val backdrop = ImageView(this).apply {
-            setImageResource(R.drawable.smartvision_splash_bg)
-            scaleType = ImageView.ScaleType.FIT_XY
-        }
-        val displayWidth = resources.displayMetrics.widthPixels
-        val displayHeight = resources.displayMetrics.heightPixels
-        val logoWidth = (displayWidth * SplashLogoWidthRatio).toInt()
-        val logoHeight = (logoWidth * LogoAspectRatio).toInt()
-        val progressWidth = (displayWidth * SplashProgressWidthRatio).toInt()
+        setContent {
+            var statusLabel by remember { mutableStateOf("Initialisation en cours...") }
+            var progress by remember { mutableFloatStateOf(MinimumProgressScale) }
 
-        val logo = ImageView(this).apply {
-            setImageResource(R.drawable.smartvision_logo_wide)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            contentDescription = getString(R.string.app_name)
+            LaunchedEffect(Unit) {
+                runStartupChecks { label, targetProgress ->
+                    statusLabel = label
+                    progress = targetProgress
+                }
+            }
+
+            SplashVideoScreen(
+                statusLabel = statusLabel,
+                progress = progress,
+            )
         }
-        val progressFill = View(this).apply {
-            scaleX = 0f
-            pivotX = 0f
-            background = GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.rgb(29, 118, 255), Color.rgb(31, 221, 255)),
-            ).apply {
-                cornerRadius = displayHeight * 0.012f
+    }
+
+    @Composable
+    private fun SplashVideoScreen(statusLabel: String, progress: Float) {
+        var loadingVisible by remember { mutableStateOf(false) }
+        val loadingAlpha by animateFloatAsState(
+            targetValue = if (loadingVisible) 1f else 0f,
+            animationSpec = tween(LoadingFadeMillis.toInt(), easing = FastOutSlowInEasing),
+            label = "splashLoadingAlpha",
+        )
+
+        LaunchedEffect(Unit) {
+            delay(LoadingRevealDelayMillis)
+            loadingVisible = true
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+        ) {
+            SplashVideoBackground(Modifier.fillMaxSize())
+            SplashLoadingOverlay(
+                statusLabel = statusLabel,
+                progress = progress,
+                loadingAlpha = loadingAlpha,
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
+    }
+
+    @Composable
+    private fun SplashVideoBackground(modifier: Modifier = Modifier) {
+        val context = LocalContext.current
+        val player = remember {
+            ExoPlayer.Builder(context)
+                .build()
+                .apply {
+                    volume = 0f
+                    repeatMode = Player.REPEAT_MODE_ALL
+                    playWhenReady = true
+                    setMediaItem(MediaItem.fromUri(RawResourceDataSource.buildRawResourceUri(R.raw.splash_wave_animation)))
+                    prepare()
+                }
+        }
+
+        DisposableEffect(player) {
+            onDispose {
+                player.release()
             }
         }
-        val progressTrack = FrameLayout(this).apply {
-            alpha = 0f
-            background = GradientDrawable().apply {
-                cornerRadius = displayHeight * 0.012f
-                setColor(Color.argb(150, 13, 29, 54))
-            }
-            addView(
-                progressFill,
-                FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                ),
-            )
-        }
-        val statusText = TextView(this).apply {
-            text = "Initialisation en cours..."
-            setTextColor(Color.argb(220, 219, 234, 254))
-            textSize = 13f
-            gravity = Gravity.CENTER
-            alpha = 0f
-            includeFontPadding = false
-        }
-        val logoGroup = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            alpha = LogoPulseMinAlpha
-            scaleX = 1f
-            scaleY = 1f
-            translationY = 0f
-            addView(
-                logo,
-                LinearLayout.LayoutParams(logoWidth, logoHeight),
-            )
-            addView(
-                progressTrack,
-                LinearLayout.LayoutParams(progressWidth, (displayHeight * 0.008f).toInt().coerceAtLeast(5)).apply {
-                    gravity = Gravity.CENTER_HORIZONTAL
-                    topMargin = (displayHeight * 0.018f).toInt()
-                },
-            )
-            addView(
-                statusText,
-                LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                    gravity = Gravity.CENTER_HORIZONTAL
-                    topMargin = (displayHeight * 0.014f).toInt()
-                },
-            )
-        }
 
-        root.addView(
-            backdrop,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
-            ),
-        )
-        root.addView(
-            logoGroup,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.CENTER,
-            ),
-        )
-        setContentView(root)
-
-        root.viewTreeObserver.addOnPreDrawListener(
-            object : ViewTreeObserver.OnPreDrawListener {
-                override fun onPreDraw(): Boolean {
-                    if (root.viewTreeObserver.isAlive) {
-                        root.viewTreeObserver.removeOnPreDrawListener(this)
-                    }
-                    root.post { startSplashAnimation(logoGroup, progressTrack, progressFill, statusText) }
-                    return true
+        AndroidView(
+            modifier = modifier.background(Color.Black),
+            factory = { viewContext ->
+                PlayerView(viewContext).apply {
+                    useController = false
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    setShutterBackgroundColor(AndroidColor.BLACK)
+                    setKeepContentOnPlayerReset(true)
+                    isFocusable = false
+                    isFocusableInTouchMode = false
+                    isClickable = false
+                    isLongClickable = false
+                    descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                    this.player = player
+                }
+            },
+            update = { playerView ->
+                if (playerView.player !== player) {
+                    playerView.player = player
                 }
             },
         )
     }
 
-    private fun startSplashAnimation(logoGroup: View, progressTrack: View, progressFill: View, statusText: TextView) {
-        if (animationStarted || launched || isFinishing) return
-        animationStarted = true
-        logoGroup.startAnimation(
-            AlphaAnimation(LogoPulseMinAlpha, LogoPulseMaxAlpha).apply {
-                duration = LogoPulseMillis
-                repeatMode = Animation.REVERSE
-                repeatCount = Animation.INFINITE
-                interpolator = AccelerateDecelerateInterpolator()
-            },
-        )
-        handler.postDelayed(
-            {
-                if (launched || isFinishing) return@postDelayed
-                progressTrack.animate()
-                    .alpha(1f)
-                    .setDuration(LoadingFadeMillis)
-                    .setInterpolator(AccelerateDecelerateInterpolator())
-                    .start()
-                statusText.animate()
-                    .alpha(1f)
-                    .setDuration(LoadingFadeMillis)
-                    .setInterpolator(AccelerateDecelerateInterpolator())
-                    .start()
-            },
-            LoadingRevealDelayMillis,
-        )
-        splashScope.launch {
-            runStartupChecks(statusText, progressFill)
+    @Composable
+    private fun SplashLoadingOverlay(
+        statusLabel: String,
+        progress: Float,
+        loadingAlpha: Float,
+        modifier: Modifier = Modifier,
+    ) {
+        BoxWithConstraints(modifier = modifier) {
+            val logoWidth = maxWidth * SplashLogoWidthRatio
+            val logoHeight = logoWidth * LogoAspectRatio
+            val progressWidth = maxWidth * SplashProgressWidthRatio
+            val progressHeight = (maxHeight * SplashProgressHeightRatio).coerceAtLeast(MinimumProgressHeight)
+            val progressTopMargin = maxHeight * SplashProgressTopMarginRatio
+            val statusTopMargin = maxHeight * SplashStatusTopMarginRatio
+            val logoAlpha by rememberInfiniteTransition(label = "splashLogoPulse").animateFloat(
+                initialValue = LogoPulseMinAlpha,
+                targetValue = LogoPulseMaxAlpha,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(LogoPulseMillis.toInt(), easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+                label = "splashLogoAlpha",
+            )
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.smartvision_logo_wide),
+                    contentDescription = getString(R.string.app_name),
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .width(logoWidth)
+                        .height(logoHeight)
+                        .alpha(logoAlpha),
+                )
+                Spacer(Modifier.height(progressTopMargin))
+                SplashProgressBar(
+                    progress = progress,
+                    modifier = Modifier
+                        .width(progressWidth)
+                        .height(progressHeight)
+                        .alpha(loadingAlpha),
+                )
+                Spacer(Modifier.height(statusTopMargin))
+                Text(
+                    text = statusLabel,
+                    color = Color(0xFFDBEAFE).copy(alpha = 0.86f),
+                    fontSize = 13.sp,
+                    lineHeight = 16.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.alpha(loadingAlpha),
+                )
+            }
         }
     }
 
-    private suspend fun runStartupChecks(statusText: TextView, progressFill: View) {
+    @Composable
+    private fun SplashProgressBar(progress: Float, modifier: Modifier = Modifier) {
+        val animatedProgress by animateFloatAsState(
+            targetValue = progress.coerceIn(MinimumProgressScale, 1f),
+            animationSpec = tween(ProgressStepMillis.toInt(), easing = FastOutSlowInEasing),
+            label = "splashProgress",
+        )
+        val shape = RoundedCornerShape(percent = 50)
+
+        Box(
+            modifier = modifier
+                .clip(shape)
+                .background(Color(0x960D1D36)),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(animatedProgress)
+                    .clip(shape)
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF1D76FF),
+                                Color(0xFF1FDDFF),
+                            ),
+                        ),
+                    ),
+            )
+        }
+    }
+
+    private suspend fun runStartupChecks(updateStatus: (String, Float) -> Unit) {
         val startedAt = SystemClock.elapsedRealtime()
         val container = (application as SVPlayerApplication).appContainer
         var totalSteps = StartupStepsWithSync
         suspend fun update(label: String, step: Int, total: Int = totalSteps) {
-            statusText.text = label
-            animateStartupProgress(progressFill, step, total)
+            updateStatus(label, startupProgress(step, total))
             delay(StatusStepPauseMillis)
         }
 
@@ -279,14 +350,8 @@ class SplashActivity : Activity() {
         Unit
     }
 
-    private fun animateStartupProgress(progressFill: View, step: Int, total: Int) {
-        val target = (step.toFloat() / total.toFloat()).coerceIn(MinimumProgressScale, 1f)
-        progressFill.animate()
-            .scaleX(target)
-            .setDuration(ProgressStepMillis)
-            .setInterpolator(AccelerateDecelerateInterpolator())
-            .start()
-    }
+    private fun startupProgress(step: Int, total: Int): Float =
+        (step.toFloat() / total.toFloat()).coerceIn(MinimumProgressScale, 1f)
 
     private suspend fun shouldRunStartupCatalogSync(container: AppContainer): Boolean {
         val source = container.accountManager.activePlaylistSource.value
@@ -303,25 +368,22 @@ class SplashActivity : Activity() {
     private fun launchHome() {
         if (launched || isFinishing) return
         launched = true
-        handler.removeCallbacks(openHome)
-        root.clearAnimation()
-        root.animate().cancel()
-        root.alpha = 1f
-        startActivity(Intent(this, MainActivity::class.java))
+        startActivity(
+            Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION),
+        )
         overridePendingTransition(0, 0)
         finish()
-    }
-
-    override fun onDestroy() {
-        handler.removeCallbacks(openHome)
-        splashScope.cancel()
-        super.onDestroy()
     }
 
     private companion object {
         const val LogoAspectRatio = 248f / 980f
         const val SplashLogoWidthRatio = 0.54f
         const val SplashProgressWidthRatio = 0.36f
+        const val SplashProgressHeightRatio = 0.008f
+        const val SplashProgressTopMarginRatio = 0.018f
+        const val SplashStatusTopMarginRatio = 0.014f
+        val MinimumProgressHeight: Dp = 5.dp
         const val LogoPulseMinAlpha = 0.86f
         const val LogoPulseMaxAlpha = 1.0f
         const val LogoPulseMillis = 760L

@@ -1,5 +1,32 @@
 # AI Changelog
 
+## 2026-07-01 - Splash video Compose Media3
+
+Type:
+- android
+- ui
+- documentation
+
+Resume:
+- `SplashActivity` remplace l'ancien fond image par `splash_wave_animation.mp4` lu avec Media3 `ExoPlayer` dans un ecran Compose plein ecran.
+- La video est muette, bouclee, sans controles et non focusable; le fond noir sert de securite.
+- Le logo, la progress bar, les statuts startup et les prechargements Home / Live TV / Films / Series restent dans le meme splash unique.
+- Le theme `Theme.SVPlayer.Splash` utilise maintenant un `windowBackground` noir pour eviter l'ancien visuel avant l'ecran video.
+- Release prod publiee en `0.1.69` / `versionCode 72` avec APK `smartvision-tv-v72-a30ec7bf.apk`.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/SplashActivity.kt`
+- `app/src/main/res/values/styles.xml`
+- `app/build.gradle.kts`
+
 ## 2026-07-01 - Source M3U active et EPG Live TV
 
 Type:

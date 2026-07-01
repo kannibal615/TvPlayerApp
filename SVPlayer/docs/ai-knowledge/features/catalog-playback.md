@@ -1,6 +1,6 @@
 # Catalogue, Playlist et Lecture
 
-Derniere mise a jour: 2026-06-30.
+Derniere mise a jour: 2026-07-01.
 
 ## 1. Objectif
 
@@ -130,7 +130,7 @@ URL de lecture:
 - M3U alimente Live TV uniquement; ne pas fabriquer des films/series sans structure fiable.
 - Ne pas lancer de synchronisation globale pendant la navigation Home / Live TV / Movies / Series / categories / listes.
 - Ne pas afficher un loader plein ecran si un snapshot local memoire existe deja pour l'ecran catalogue demande.
-- Le premier chargement local des snapshots Home / Live TV / Movies / Series doit rester dans le splash natif quand le compte Xtream est disponible; les ecrans ne doivent faire qu'utiliser le cache ou une lecture locale de secours.
+- Le premier chargement local des snapshots Home / Live TV / Movies / Series doit rester dans `SplashActivity` quand le compte Xtream est disponible; les ecrans ne doivent faire qu'utiliser le cache ou une lecture locale de secours.
 - AutoSync et sync manuelle doivent verifier Xtream avant de synchroniser; seules les erreurs reseau sont retentees automatiquement.
 - La verification de connexion Xtream est obligatoire au premier affichage actif, mais ne doit pas forcer une resynchronisation globale si la politique de frequence ne la demande pas.
 - Les routes player/detail doivent aussi respecter le blocage Xtream; ne pas compter uniquement sur Home/Header pour bloquer l'acces.
