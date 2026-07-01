@@ -27,9 +27,16 @@ data class HomeSlide(
 class HomeSlidesRepository(
     private val api: HomeSlidesApiService,
 ) {
+    @Volatile
+    private var cachedSlides: List<HomeSlide>? = null
+
+    fun getCachedSlides(): List<HomeSlide>? = cachedSlides
+
     suspend fun refresh(): List<HomeSlide> {
         val response = api.getHomeSlides()
         check(response.success) { "Slides indisponibles." }
-        return response.slides.filter { it.title.isNotBlank() }
+        return response.slides
+            .filter { it.title.isNotBlank() }
+            .also { cachedSlides = it }
     }
 }

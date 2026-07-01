@@ -266,6 +266,18 @@ fun AppNavigation(
         }
     }
 
+    if (!activationState.localStateReady && activationState.checking) {
+        Box(Modifier.fillMaxSize()) {
+            Image(
+                painter = painterResource(R.drawable.smartvision_splash_bg),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        return
+    }
+
     if (!activationState.activated) {
         BackHandler {
             showExitConfirmation = true

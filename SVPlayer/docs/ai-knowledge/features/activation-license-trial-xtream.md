@@ -22,7 +22,10 @@ Flux observe:
 - creation locale du compte Xtream et synchro catalogue.
 - verification rapide Xtream au demarrage via `XtreamConnectionManager` avant synchro globale; en cas d'erreur, Home reste accessible mais les sections catalogue sont bloquees.
 - au splash, `device_status.php` doit etre relu avant `XtreamConnectionManager.verifyQuick()` afin d'importer la derniere playlist configuree cote serveur avant le test, meme si un ancien compte local et un ancien catalogue Room existent deja.
-- le splash natif porte tout le statut de demarrage avec le grand visuel SmartVision; si le cache local indique deja un acces actif, `ActivationViewModel` garde Home accessible pendant le refresh serveur au lieu d'afficher un second loader Compose.
+- le splash natif porte tout le statut de demarrage avec un seul visuel et une seule progress bar; le panneau `StartupVerificationPanel` Compose n'est plus utilise au demarrage.
+- le splash enchaine les statuts licence, activation, serveur Xtream, fraicheur de la derniere synchronisation, synchro si necessaire, prechargement Home / Live TV / Films / Series, puis demarrage.
+- si le cache local indique deja un acces actif, `ActivationViewModel` garde Home accessible pendant le refresh serveur au lieu d'afficher un second loader Compose.
+- apres `MainActivity`, `AppNavigation` attend que `ActivationViewModel` ait lu l'etat local avant de rendre `ActivationScreen`, afin d'eviter le flash "Activer SmartVision" sur un appareil deja actif.
 - si le splash vient de valider Xtream pour le compte courant, `AppNavigation` ne relance pas immediatement la meme verification startup.
 
 ## 3. Workflow utilisateur
@@ -160,3 +163,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: ajout etat Xtream central et popup/notification locale quand le serveur utilisateur est indisponible.
 - 2026-06-30: correction du controle de demarrage Xtream: rafraichissement `device_status.php` avant verification et controle obligatoire au premier affichage actif, meme si la derniere synchro est recente.
 - 2026-06-30: unification visuelle du splash et conservation de l'etat local actif pendant le refresh activation pour eviter un second loader apres le splash.
+- 2026-07-01: suppression du panneau de verification Compose au demarrage; `SplashActivity` devient l'unique splash avec les statuts startup complets.
+- 2026-07-01: ajout d'un garde `localStateReady` pour empecher le rendu transitoire de l'ecran activation apres le splash sur appareil deja actif.

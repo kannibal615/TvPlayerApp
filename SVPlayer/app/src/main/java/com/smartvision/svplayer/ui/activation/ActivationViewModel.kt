@@ -23,6 +23,7 @@ import java.io.IOException
 
 data class ActivationUiState(
     val checking: Boolean = true,
+    val localStateReady: Boolean = false,
     val creatingSession: Boolean = false,
     val polling: Boolean = false,
     val activated: Boolean = false,
@@ -171,6 +172,7 @@ class ActivationViewModel(
                     cachedMonetization.hasRuntimeAccess()
             _uiState.update {
                 it.copy(
+                    localStateReady = true,
                     checking = !cachedHasAccess,
                     activated = cachedHasAccess,
                     activationBusy = false,

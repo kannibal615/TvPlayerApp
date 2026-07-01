@@ -36,7 +36,6 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -103,19 +102,16 @@ fun ActivationScreen(
             .fillMaxSize()
             .background(SmartVisionActivationBackground()),
     ) {
-        when {
-            state.checking -> StartupVerificationPanel(state = state, onRetry = onRetry)
-            else -> ActivationContent(
-                state = state,
-                onActivateLicense = onActivateLicense,
-                onStartTrial = onStartTrial,
-                onCheckNow = onCheckNow,
-                onRetry = onRetry,
-                onContinueFreeWithAds = onContinueFreeWithAds,
-                onShowActivationForm = onShowActivationForm,
-                onBuyPremium = { showPurchaseQr = true },
-            )
-        }
+        ActivationContent(
+            state = state,
+            onActivateLicense = onActivateLicense,
+            onStartTrial = onStartTrial,
+            onCheckNow = onCheckNow,
+            onRetry = onRetry,
+            onContinueFreeWithAds = onContinueFreeWithAds,
+            onShowActivationForm = onShowActivationForm,
+            onBuyPremium = { showPurchaseQr = true },
+        )
     }
     if (showPurchaseQr) {
         ActivationPurchaseDialog(
@@ -160,81 +156,6 @@ private fun ActivationContent(
                     onCheckNow = onCheckNow,
                     onRetry = onRetry,
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun StartupVerificationPanel(
-    state: ActivationUiState,
-    onRetry: () -> Unit,
-) {
-    val retryFocus = remember { FocusRequester() }
-
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Image(
-            painter = painterResource(R.drawable.smartvision_splash_bg),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color(0xAA020814),
-                        ),
-                        radius = 980f,
-                    ),
-                ),
-        )
-        Column(
-            modifier = Modifier.width(560.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            SmartVisionLogo(
-                modifier = Modifier
-                    .width(520.dp)
-                    .height(132.dp),
-            )
-            Spacer(Modifier.height(18.dp))
-            LinearProgressIndicator(
-                color = SmartVisionColors.CyanAccent,
-                trackColor = Color(0xFF11233D).copy(alpha = 0.88f),
-                modifier = Modifier
-                    .width(320.dp)
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(99.dp)),
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = state.errorMessage ?: state.statusLabel,
-                color = if (state.errorMessage == null) {
-                    SmartVisionColors.TextSecondary
-                } else {
-                    SmartVisionColors.Error
-                },
-                style = SmartVisionType.Caption,
-                textAlign = TextAlign.Center,
-            )
-            state.errorMessage?.let {
-                Spacer(Modifier.height(16.dp))
-                TvButton(
-                    text = "Reessayer",
-                    onClick = onRetry,
-                    focusRequester = retryFocus,
-                    modifier = Modifier
-                        .width(210.dp)
-                        .height(46.dp),
-                )
-                LaunchedEffect(Unit) { retryFocus.requestFocus() }
             }
         }
     }

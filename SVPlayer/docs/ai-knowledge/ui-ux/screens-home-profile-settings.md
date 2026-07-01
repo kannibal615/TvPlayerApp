@@ -15,6 +15,7 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 - Home: hero, cartes Live/Movies/Series, continue watching, tendances, notifications/profil/settings.
 - Home affiche un overlay "Connexion indisponible" sur les cartes et reprises de lecture quand Xtream est indisponible.
 - Home ne doit pas afficher cet overlay pendant un simple refresh rapide si la derniere verification Xtream est encore `CONNECTED`.
+- Home recoit ses donnees initiales depuis les caches prechauffes par le splash natif: slides, progression recente enrichie et tendances basees sur les snapshots Movies / Series.
 - Home routes secondaires: `continue_watching` et `trending` via `HomeCollectionsScreen`.
 - Live TV: categories, chaines, apercu puis plein ecran.
 - Movies: grille de films, detail, lecture.
@@ -34,9 +35,11 @@ Navigation:
 
 Etat:
 - `ActivationViewModel` pour acces;
+- `ActivationViewModel.localStateReady` empeche le rendu temporaire de l'ecran activation avant la lecture du cache local;
 - `AppConfigViewModel` pour feature flags et consent;
 - `AppUpdateViewModel` pour update;
 - `SettingsRepository` pour preferences.
+- `HomeViewModel` seme son etat initial depuis les caches memoire `HomeSlidesRepository`, `UserContentRepository` et `CatalogRepository` avant toute lecture reactive de secours.
 
 ## 5. Ecrans concernes
 
@@ -138,3 +141,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: extension du blocage Xtream aux routes detail/player et a l'etat verification en cours.
 - 2026-06-30: correction du flicker Home: `CONNECTED + checking` ne bloque plus les cartes; seuls les etats inconnus/en erreur pendant verification restent bloquants.
 - 2026-06-30: Profil > Identifiants Xtream affiche la derniere synchronisation sous le bouton et lance la synchro via un popup dedie avec compteurs, progress bars et routage focus vers Appareil et catalogue.
+- 2026-07-01: Home est alimente par les caches prechauffes dans le splash natif pour eviter le premier chargement visible apres l'ouverture.
+- 2026-07-01: suppression du flash transitoire "Activer SmartVision" apres splash pour les appareils deja actifs.

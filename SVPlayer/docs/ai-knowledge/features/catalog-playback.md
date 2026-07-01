@@ -14,7 +14,9 @@ Les ecrans actifs sont routes par `ui/navigation/AppNavigation.kt`. Ne pas modif
 
 Depuis le 2026-06-30, la navigation Home / Live TV / Movies / Series ne doit plus declencher de telechargement Xtream global ni charger les categories depuis le reseau. Ces ecrans lisent le catalogue local Room via `CatalogRepository`. Les appels reseau Xtream sont limites aux controles rapides de disponibilite et aux synchronisations catalogue autorisees.
 
-Les snapshots locaux Live / Movies / Series peuvent etre conserves en memoire applicative dans `DefaultCatalogRepository` apres une premiere lecture Room. Les ViewModels catalogue les reutilisent pour eviter de remettre un loader plein ecran a chaque retour sur un ecran. Le cache est invalide apres synchronisation catalogue ou changement de compte Xtream.
+Les snapshots locaux Live / Movies / Series peuvent etre conserves en memoire applicative dans `DefaultCatalogRepository` apres une premiere lecture Room. Depuis le 2026-07-01, `SplashActivity` prechauffe ces snapshots pendant le demarrage apres la verification Xtream et l'eventuelle synchronisation. Les ViewModels catalogue les reutilisent pour eviter de remettre un loader plein ecran au premier affichage ou a chaque retour sur un ecran. Le cache est invalide apres synchronisation catalogue ou changement de compte Xtream.
+
+Les donnees Home legeres sont aussi prechauffees au demarrage: slides Home via `HomeSlidesRepository`, progression recente enrichie via `UserContentRepository`, et tendances depuis les snapshots Movies / Series deja charges en memoire.
 
 Depuis le 2026-06-30, la synchronisation manuelle depuis Profil > Identifiants Xtream publie aussi une progression par section Live TV / Films / Series dans `SyncStatus`. Les compteurs de l'ancienne synchro servent d'estimation de progression; chaque section passe a 100% quand son endpoint principal est termine.
 
@@ -113,6 +115,7 @@ URL de lecture:
 - Ne pas remplacer les tables locales tant que toutes les reponses principales de synchronisation n'ont pas ete recuperees avec succes.
 - Ne pas lancer de synchronisation globale pendant la navigation Home / Live TV / Movies / Series / categories / listes.
 - Ne pas afficher un loader plein ecran si un snapshot local memoire existe deja pour l'ecran catalogue demande.
+- Le premier chargement local des snapshots Home / Live TV / Movies / Series doit rester dans le splash natif quand le compte Xtream est disponible; les ecrans ne doivent faire qu'utiliser le cache ou une lecture locale de secours.
 - AutoSync et sync manuelle doivent verifier Xtream avant de synchroniser; seules les erreurs reseau sont retentees automatiquement.
 - La verification de connexion Xtream est obligatoire au premier affichage actif, mais ne doit pas forcer une resynchronisation globale si la politique de frequence ne la demande pas.
 - Les routes player/detail doivent aussi respecter le blocage Xtream; ne pas compter uniquement sur Home/Header pour bloquer l'acces.
@@ -153,3 +156,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: correction cache ancien + serveur Xtream KO: controle backend puis Xtream au demarrage, routes player/detail bloquees, buffering persistant transforme en anomalie `XTREAM_FAILED`.
 - 2026-06-30: ajout d'un cache memoire de snapshots catalogue locaux pour accelerer les retours Live TV / Movies / Series sans resynchronisation reseau.
 - 2026-06-30: ajout progression detaillee Live TV / Films / Series dans `SyncStatus` pour le popup manuel de synchronisation Xtream du profil.
+- 2026-07-01: deplacement du prechargement Home / Live TV / Movies / Series dans `SplashActivity`, apres la verification de fraicheur de synchronisation.

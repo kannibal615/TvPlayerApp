@@ -1,5 +1,60 @@
 # AI Changelog
 
+## 2026-07-01 - Ajustement splash et suppression flash activation
+
+Type:
+- android
+- ui
+- documentation
+
+Resume:
+- `SplashActivity` garde le splash natif unique et augmente le ratio du logo a `0.54f` et de la progress bar a `0.36f`.
+- `ActivationViewModel` expose `localStateReady` apres lecture du cache activation local.
+- `AppNavigation` affiche seulement le fond plein ecran tant que l'etat local activation n'est pas pret, au lieu de rendre temporairement `ActivationScreen`.
+- Release prod publiee en `0.1.66` / `versionCode 69` avec APK `smartvision-tv-v69-cb3e3030.apk`.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/SplashActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/activation/ActivationViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+- `app/build.gradle.kts`
+
+## 2026-07-01 - Splash unique et prechargement Home/catalogues au demarrage
+
+Type:
+- android
+- ui
+- performance
+- documentation
+
+Resume:
+- Suppression du panneau `StartupVerificationPanel` Compose pour eliminer le second splash et sa seconde progress bar.
+- `SplashActivity` redevient l'unique splash visuel, au format du premier modele, avec progression par statuts startup.
+- Le splash verifie activation/Xtream, decide si la derniere synchronisation est OK ou KO, synchronise si necessaire, puis precharge Home / Live TV / Films / Series.
+- Home utilise les caches memoire de slides, progression recente enrichie et snapshots Movies / Series pour eviter le premier chargement visible.
+- Release prod publiee en `0.1.65` / `versionCode 68` avec APK `smartvision-tv-v68-e4732ab9.apk`.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/decisions/2026-06-30-xtream-startup-gating-local-catalog.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/SplashActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/activation/ActivationScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/home/HomeSlidesRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/UserContentRepository.kt`
+- `app/build.gradle.kts`
+
 ## 2026-06-30 - Popup manuel de synchronisation Xtream dans Profil
 
 Type:

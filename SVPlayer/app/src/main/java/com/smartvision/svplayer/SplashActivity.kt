@@ -19,12 +19,15 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.smartvision.svplayer.core.data.AppContainer
 import com.smartvision.svplayer.sync.SyncFrequencyPolicy
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -57,9 +60,9 @@ class SplashActivity : Activity() {
         }
         val displayWidth = resources.displayMetrics.widthPixels
         val displayHeight = resources.displayMetrics.heightPixels
-        val logoWidth = (displayWidth * 0.54f).toInt()
+        val logoWidth = (displayWidth * SplashLogoWidthRatio).toInt()
         val logoHeight = (logoWidth * LogoAspectRatio).toInt()
-        val progressWidth = (displayWidth * 0.33f).toInt()
+        val progressWidth = (displayWidth * SplashProgressWidthRatio).toInt()
 
         val logo = ImageView(this).apply {
             setImageResource(R.drawable.smartvision_logo_wide)
@@ -91,7 +94,7 @@ class SplashActivity : Activity() {
             )
         }
         val statusText = TextView(this).apply {
-            text = "Initialisation de l'application..."
+            text = "Initialisation en cours..."
             setTextColor(Color.argb(220, 219, 234, 254))
             textSize = 13f
             gravity = Gravity.CENTER
@@ -179,41 +182,91 @@ class SplashActivity : Activity() {
                     .setDuration(LoadingFadeMillis)
                     .setInterpolator(AccelerateDecelerateInterpolator())
                     .start()
-                progressFill.animate()
-                    .scaleX(1f)
-                    .setDuration(SplashDurationMillis - LoadingRevealDelayMillis)
-                    .setInterpolator(AccelerateDecelerateInterpolator())
-                    .start()
             },
             LoadingRevealDelayMillis,
         )
         splashScope.launch {
-            runStartupChecks(statusText)
+            runStartupChecks(statusText, progressFill)
         }
     }
 
-    private suspend fun runStartupChecks(statusText: TextView) {
+    private suspend fun runStartupChecks(statusText: TextView, progressFill: View) {
         val startedAt = SystemClock.elapsedRealtime()
         val container = (application as SVPlayerApplication).appContainer
+        var totalSteps = StartupStepsWithSync
+        suspend fun update(label: String, step: Int, total: Int = totalSteps) {
+            statusText.text = label
+            animateStartupProgress(progressFill, step, total)
+            delay(StatusStepPauseMillis)
+        }
+
         runCatching {
-            statusText.text = "Verification du statut appareil..."
+            update("Initialisation en cours...", 1)
+            update("Verification de la licence...", 2)
+            update("Verification de l'activation...", 3)
             runCatching { container.activationRepository.checkStatus() }
-            statusText.text = "Verification de la connexion Xtream..."
+            update("Verification du serveur Xtream...", 4)
             val connection = container.xtreamConnectionManager.verifyQuick("splash")
-            if (connection.isConnected && shouldRunStartupCatalogSync(container)) {
-                statusText.text = "Telechargement de la playlist..."
+            val shouldSync = connection.isConnected && shouldRunStartupCatalogSync(container)
+            totalSteps = if (shouldSync) StartupStepsWithSync else StartupStepsWithoutSync
+            update(
+                label = "Verification derniere synchronisation... ${if (shouldSync) "KO" else "OK"}",
+                step = 5,
+                total = totalSteps,
+            )
+
+            var step = 6
+            if (shouldSync) {
+                update("Synchronisation en cours...", step++, totalSteps)
                 container.xtreamRepository.clearCaches()
-                container.synchronizeCatalog()
+                container.catalogRepository.invalidateLocalCatalogCache()
+                val syncResult = runCatching { container.synchronizeCatalog().getOrThrow() }
+                update(
+                    label = if (syncResult.isSuccess) {
+                        "Synchronisation catalogue terminee."
+                    } else {
+                        "Synchronisation catalogue indisponible."
+                    },
+                    step = step++,
+                    total = totalSteps,
+                )
             }
+
+            update("Chargement des donnees (HOME)...", step++, totalSteps)
+            preloadHomeData(container)
+            update("Chargement des donnees (LIVE TV)...", step++, totalSteps)
+            runCatching { container.catalogRepository.getLiveCatalogSnapshot() }
+            update("Chargement des donnees (FILMS)...", step++, totalSteps)
+            runCatching { container.catalogRepository.getMovieCatalogSnapshot() }
+            update("Chargement des donnees (SERIES)...", step++, totalSteps)
+            runCatching { container.catalogRepository.getSeriesCatalogSnapshot() }
+            update("Demarrage en cours...", totalSteps, totalSteps)
         }
         val elapsed = SystemClock.elapsedRealtime() - startedAt
-        if (elapsed < SplashDurationMillis) {
-            delay(SplashDurationMillis - elapsed)
+        if (elapsed < MinimumSplashDurationMillis) {
+            delay(MinimumSplashDurationMillis - elapsed)
         }
         launchHome()
     }
 
-    private suspend fun shouldRunStartupCatalogSync(container: com.smartvision.svplayer.core.data.AppContainer): Boolean {
+    private suspend fun preloadHomeData(container: AppContainer) = coroutineScope {
+        val slides = async { runCatching { container.homeSlidesRepository.refresh() } }
+        val progress = async { runCatching { container.userContentRepository.getRecentProgressSnapshot() } }
+        slides.await()
+        progress.await()
+        Unit
+    }
+
+    private fun animateStartupProgress(progressFill: View, step: Int, total: Int) {
+        val target = (step.toFloat() / total.toFloat()).coerceIn(MinimumProgressScale, 1f)
+        progressFill.animate()
+            .scaleX(target)
+            .setDuration(ProgressStepMillis)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .start()
+    }
+
+    private suspend fun shouldRunStartupCatalogSync(container: AppContainer): Boolean {
         if (!container.accountManager.current().isConfigured) return false
         val settings = container.settingsRepository.settings.first()
         val policy = SyncFrequencyPolicy.from(settings.syncFrequency)
@@ -243,11 +296,18 @@ class SplashActivity : Activity() {
 
     private companion object {
         const val LogoAspectRatio = 248f / 980f
+        const val SplashLogoWidthRatio = 0.54f
+        const val SplashProgressWidthRatio = 0.36f
         const val LogoPulseMinAlpha = 0.86f
         const val LogoPulseMaxAlpha = 1.0f
         const val LogoPulseMillis = 760L
         const val LoadingRevealDelayMillis = 820L
         const val LoadingFadeMillis = 260L
-        const val SplashDurationMillis = 3_400L
+        const val MinimumSplashDurationMillis = 2_400L
+        const val StatusStepPauseMillis = 80L
+        const val ProgressStepMillis = 180L
+        const val MinimumProgressScale = 0.03f
+        const val StartupStepsWithoutSync = 10
+        const val StartupStepsWithSync = 12
     }
 }

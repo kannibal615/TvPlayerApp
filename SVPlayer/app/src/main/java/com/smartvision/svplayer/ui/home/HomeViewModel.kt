@@ -17,8 +17,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -33,9 +33,13 @@ class HomeViewModel(
     private val catalogRepository: CatalogRepository,
     private val homeSlidesRepository: HomeSlidesRepository,
 ) : ViewModel() {
-    private val trending = MutableStateFlow<List<ContinueItem>>(emptyList())
-    private val slides = MutableStateFlow<List<HomeSlide>>(emptyList())
-    private val continueWatching = userContentRepository.observeRecentProgress(limit = 60)
+    private val cachedContinueWatching = userContentRepository
+        .getCachedRecentProgressSnapshot(limit = ContinueWatchingSnapshotLimit)
+        ?.toContinueItems()
+        .orEmpty()
+    private val trending = MutableStateFlow(buildCachedTrending())
+    private val slides = MutableStateFlow(homeSlidesRepository.getCachedSlides().orEmpty())
+    private val continueWatching = userContentRepository.observeRecentProgress(limit = ContinueWatchingSnapshotLimit)
         .map { progress ->
             progress
                 .filter { it.positionMs > 5_000L }
@@ -43,6 +47,11 @@ class HomeViewModel(
                 .distinctBy(::historyGroupingKey)
                 .take(20)
                 .mapNotNull(::toContinueItem)
+        }
+        .onStart {
+            if (cachedContinueWatching.isNotEmpty()) {
+                emit(cachedContinueWatching)
+            }
         }
 
     val uiState: StateFlow<HomeUiState> = combine(
@@ -66,14 +75,20 @@ class HomeViewModel(
         refreshSlides()
     }
 
-    fun refreshSlides() {
+    fun refreshSlides(forceRefresh: Boolean = false) {
         viewModelScope.launch {
+            val cached = homeSlidesRepository.getCachedSlides()
+            if (!forceRefresh && !cached.isNullOrEmpty()) {
+                slides.value = cached
+                return@launch
+            }
             runCatching { homeSlidesRepository.refresh() }
                 .onSuccess { refreshed -> slides.value = refreshed }
         }
     }
 
-    fun refreshTrending() {
+    fun refreshTrending(forceRefresh: Boolean = false) {
+        if (!forceRefresh && trending.value.isNotEmpty()) return
         viewModelScope.launch {
             val movies = async { runCatching { loadTrendingMovies() }.getOrDefault(emptyList()) }
             val series = async { runCatching { loadTrendingSeries() }.getOrDefault(emptyList()) }
@@ -85,90 +100,112 @@ class HomeViewModel(
     }
 
     private suspend fun loadTrendingMovies(): List<ScoredTrend> {
-        return catalogRepository.observeMovies(null).first()
-            .distinctBy { it.streamId }
-            .shuffled()
-            .take(12)
-            .map { movie ->
-                ScoredTrend(
-                    score = movieTrendScore(movie),
-                    item = ContinueItem(
-                        id = "movie:${movie.streamId}",
-                        title = movie.title.cleanHistoryTitle(),
-                        meta = "Film${movie.rating?.let { "  |  $it/10" }.orEmpty()}",
-                        remaining = "Tendance",
-                        progress = 0f,
-                        visualStyle = HomeVisualStyle.Cinema,
-                        imageUrl = movie.posterUrl,
-                        mediaType = "FILM",
-                    ),
-                )
-            }
+        return catalogRepository.getMovieCatalogSnapshot().items.toMovieTrends()
     }
 
     private suspend fun loadTrendingSeries(): List<ScoredTrend> {
-        return catalogRepository.observeSeries(null).first()
-            .distinctBy { it.seriesId }
-            .shuffled()
-            .take(12)
-            .map { series ->
-                ScoredTrend(
-                    score = seriesTrendScore(series),
-                    item = ContinueItem(
-                        id = "series:${series.seriesId}",
-                        title = series.title.cleanHistoryTitle(),
-                        meta = "Serie${series.rating?.let { "  |  $it/10" }.orEmpty()}",
-                        remaining = series.year?.take(4) ?: "Tendance",
-                        progress = 0f,
-                        visualStyle = HomeVisualStyle.Series,
-                        imageUrl = series.posterUrl,
-                        mediaType = "SERIE",
-                    ),
-                )
-            }
+        return catalogRepository.getSeriesCatalogSnapshot().items.toSeriesTrends()
     }
 
-    private fun toContinueItem(progress: PlaybackProgressEntity): ContinueItem? {
-        val id = progress.contentId.toIntOrNull() ?: return null
-        val duration = progress.durationMs
-        val position = progress.positionMs.coerceAtLeast(0L)
-        val visualStyle = when (progress.contentType) {
-            UserContentType.Live -> HomeVisualStyle.Signal
-            UserContentType.Movie -> HomeVisualStyle.Cinema
-            UserContentType.Episode -> HomeVisualStyle.Series
-            else -> HomeVisualStyle.Mystery
-        }
-        val title = progress.title?.cleanHistoryTitle() ?: when (progress.contentType) {
-            UserContentType.Live -> "Chaine $id"
-            UserContentType.Movie -> "Film $id"
-            UserContentType.Episode -> "Episode $id"
-            else -> return null
-        }
-        val imageUrl = progress.imageUrl?.takeIf { it.isNotBlank() }
-        val meta = progress.subtitle?.take(36) ?: when (progress.contentType) {
-            UserContentType.Live -> "Live TV"
-            UserContentType.Movie -> "Film"
-            UserContentType.Episode -> "Serie"
-            else -> "Media"
-        }
-        val ratio = if (duration > 0L) position.toFloat() / duration.toFloat() else 0f
-        return ContinueItem(
-            id = "${progress.contentType}:$id",
-            title = title,
-            meta = meta,
-            remaining = if (duration > position) (duration - position).formatRemaining() else "Direct",
-            progress = ratio.coerceIn(0f, 1f),
-            visualStyle = visualStyle,
-            imageUrl = imageUrl,
-            mediaType = when (progress.contentType) {
-                UserContentType.Live -> "LIVE"
-                UserContentType.Movie -> "FILM"
-                UserContentType.Episode -> "SERIE"
-                else -> "MEDIA"
-            },
-        )
+    private fun buildCachedTrending(): List<ContinueItem> {
+        val movieTrends = catalogRepository.getCachedMovieCatalogSnapshot()?.items.orEmpty().toMovieTrends()
+        val seriesTrends = catalogRepository.getCachedSeriesCatalogSnapshot()?.items.orEmpty().toSeriesTrends()
+        return (movieTrends + seriesTrends)
+            .shuffled()
+            .take(10)
+            .map { it.item }
     }
+
 }
+
+private const val ContinueWatchingSnapshotLimit = 60
+
+private fun toContinueItem(progress: PlaybackProgressEntity): ContinueItem? {
+    val id = progress.contentId.toIntOrNull() ?: return null
+    val duration = progress.durationMs
+    val position = progress.positionMs.coerceAtLeast(0L)
+    val visualStyle = when (progress.contentType) {
+        UserContentType.Live -> HomeVisualStyle.Signal
+        UserContentType.Movie -> HomeVisualStyle.Cinema
+        UserContentType.Episode -> HomeVisualStyle.Series
+        else -> HomeVisualStyle.Mystery
+    }
+    val title = progress.title?.cleanHistoryTitle() ?: when (progress.contentType) {
+        UserContentType.Live -> "Chaine $id"
+        UserContentType.Movie -> "Film $id"
+        UserContentType.Episode -> "Episode $id"
+        else -> return null
+    }
+    val imageUrl = progress.imageUrl?.takeIf { it.isNotBlank() }
+    val meta = progress.subtitle?.take(36) ?: when (progress.contentType) {
+        UserContentType.Live -> "Live TV"
+        UserContentType.Movie -> "Film"
+        UserContentType.Episode -> "Serie"
+        else -> "Media"
+    }
+    val ratio = if (duration > 0L) position.toFloat() / duration.toFloat() else 0f
+    return ContinueItem(
+        id = "${progress.contentType}:$id",
+        title = title,
+        meta = meta,
+        remaining = if (duration > position) (duration - position).formatRemaining() else "Direct",
+        progress = ratio.coerceIn(0f, 1f),
+        visualStyle = visualStyle,
+        imageUrl = imageUrl,
+        mediaType = when (progress.contentType) {
+            UserContentType.Live -> "LIVE"
+            UserContentType.Movie -> "FILM"
+            UserContentType.Episode -> "SERIE"
+            else -> "MEDIA"
+        },
+    )
+}
+
+private fun List<PlaybackProgressEntity>.toContinueItems(): List<ContinueItem> =
+    filter { it.positionMs > 5_000L }
+        .distinctBy(::historyGroupingKey)
+        .take(20)
+        .mapNotNull(::toContinueItem)
+
+private fun List<Movie>.toMovieTrends(): List<ScoredTrend> =
+    distinctBy { it.streamId }
+        .shuffled()
+        .take(12)
+        .map { movie ->
+            ScoredTrend(
+                score = movieTrendScore(movie),
+                item = ContinueItem(
+                    id = "movie:${movie.streamId}",
+                    title = movie.title.cleanHistoryTitle(),
+                    meta = "Film${movie.rating?.let { "  |  $it/10" }.orEmpty()}",
+                    remaining = "Tendance",
+                    progress = 0f,
+                    visualStyle = HomeVisualStyle.Cinema,
+                    imageUrl = movie.posterUrl,
+                    mediaType = "FILM",
+                ),
+            )
+        }
+
+private fun List<TvSeries>.toSeriesTrends(): List<ScoredTrend> =
+    distinctBy { it.seriesId }
+        .shuffled()
+        .take(12)
+        .map { series ->
+            ScoredTrend(
+                score = seriesTrendScore(series),
+                item = ContinueItem(
+                    id = "series:${series.seriesId}",
+                    title = series.title.cleanHistoryTitle(),
+                    meta = "Serie${series.rating?.let { "  |  $it/10" }.orEmpty()}",
+                    remaining = series.year?.take(4) ?: "Tendance",
+                    progress = 0f,
+                    visualStyle = HomeVisualStyle.Series,
+                    imageUrl = series.posterUrl,
+                    mediaType = "SERIE",
+                ),
+            )
+        }
 
 private fun historyGroupingKey(progress: PlaybackProgressEntity): String =
     if (progress.contentType == UserContentType.Episode) {

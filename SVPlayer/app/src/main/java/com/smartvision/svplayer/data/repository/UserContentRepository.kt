@@ -8,6 +8,7 @@ import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.domain.model.CategoryHistorySignal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
@@ -23,6 +24,9 @@ class UserContentRepository(
     private val progressDao: ProgressDao,
     private val mediaDao: MediaDao,
 ) {
+    @Volatile
+    private var recentProgressSnapshot: RecentProgressSnapshot? = null
+
     fun observeFavoriteIds(contentType: String): Flow<Set<Int>> =
         favoriteDao.observeByType(contentType).map { favorites ->
             favorites.mapNotNull { it.contentId.toIntOrNull() }.toSet()
@@ -30,6 +34,19 @@ class UserContentRepository(
 
     fun observeRecentProgress(limit: Int = 12): Flow<List<PlaybackProgressEntity>> =
         progressDao.observeRecent(limit)
+
+    fun getCachedRecentProgressSnapshot(limit: Int = 60): List<PlaybackProgressEntity>? =
+        recentProgressSnapshot
+            ?.takeIf { it.limit == limit }
+            ?.items
+
+    suspend fun getRecentProgressSnapshot(limit: Int = 60): List<PlaybackProgressEntity> =
+        withContext(Dispatchers.IO) {
+            progressDao.observeRecent(limit)
+                .first()
+                .map { enrichProgress(it) }
+                .also { recentProgressSnapshot = RecentProgressSnapshot(limit, it) }
+        }
 
     fun observeHistory(contentType: String, limit: Int = 100): Flow<List<PlaybackProgressEntity>> {
         val minimumPositionMs = if (contentType == UserContentType.Live) 4_999L else 5_000L
@@ -43,6 +60,7 @@ class UserContentRepository(
 
     suspend fun deleteProgress(contentType: String, contentId: Int) = withContext(Dispatchers.IO) {
         progressDao.delete(contentType, contentId.toString())
+        recentProgressSnapshot = null
     }
 
     suspend fun resolveCategorySignals(progressItems: List<PlaybackProgressEntity>): List<CategoryHistorySignal> =
@@ -144,8 +162,14 @@ class UserContentRepository(
                 parentContentId = parentContentId?.toString(),
             ),
         )
+        recentProgressSnapshot = null
     }
 }
+
+private data class RecentProgressSnapshot(
+    val limit: Int,
+    val items: List<PlaybackProgressEntity>,
+)
 
 private fun String?.isFallbackLiveTitle(contentId: Int): Boolean {
     val value = this?.trim() ?: return true
