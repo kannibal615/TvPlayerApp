@@ -47,6 +47,7 @@ try {
         'consent' => app_config_consent($pdo),
         'accepted_consent_version' => app_config_accepted_consent_version($pdo, $deviceId, $publicDeviceCode),
         'features' => app_config_features($pdo),
+        'trending' => app_config_trending($pdo),
     ]);
 } catch (Throwable $exception) {
     error_log('SmartVision app config failed.');
@@ -131,6 +132,46 @@ function app_config_features(PDO $pdo): array
     }
 
     return app_config_normalize_features($decoded);
+}
+
+function app_config_trending(PDO $pdo): array
+{
+    $json = (string) get_setting($pdo, 'app_trending_config', '');
+    $decoded = json_decode($json, true);
+    if (!is_array($decoded)) {
+        $decoded = app_config_default_trending();
+    }
+
+    return app_config_normalize_trending($decoded);
+}
+
+function app_config_normalize_trending(array $config): array
+{
+    $defaults = app_config_default_trending();
+    $minimumRating = (float) ($config['minimum_rating'] ?? $defaults['minimum_rating']);
+    $candidateLimit = (int) ($config['candidate_limit'] ?? $defaults['candidate_limit']);
+    $sectionLimit = (int) ($config['section_limit'] ?? $defaults['section_limit']);
+
+    return [
+        'require_landscape_image' => (bool) ($config['require_landscape_image'] ?? $defaults['require_landscape_image']),
+        'exclude_adult' => (bool) ($config['exclude_adult'] ?? $defaults['exclude_adult']),
+        'use_rating_filter' => (bool) ($config['use_rating_filter'] ?? $defaults['use_rating_filter']),
+        'minimum_rating' => max(0.0, min(10.0, $minimumRating)),
+        'candidate_limit' => max(10, min(100, $candidateLimit)),
+        'section_limit' => max(1, min(20, $sectionLimit)),
+    ];
+}
+
+function app_config_default_trending(): array
+{
+    return [
+        'require_landscape_image' => true,
+        'exclude_adult' => true,
+        'use_rating_filter' => false,
+        'minimum_rating' => 9.0,
+        'candidate_limit' => 50,
+        'section_limit' => 10,
+    ];
 }
 
 function app_config_normalize_features(array $features): array

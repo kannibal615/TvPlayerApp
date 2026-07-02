@@ -85,6 +85,7 @@ fun ContentProgressCard(
     onFocusChanged: (Boolean) -> Unit = {},
     onDown: (() -> Unit)? = null,
     onUp: (() -> Unit)? = null,
+    blockLeft: Boolean = false,
     enablePreview: Boolean = false,
     resumeOverlayText: String = "Resume playback",
     blocked: Boolean = false,
@@ -107,6 +108,7 @@ fun ContentProgressCard(
         item.previewMode != HomePreviewMode.None
     val previewPosterUrl = item.previewImageUrl ?: item.imageUrl
     var showPreview by remember(item.id, item.previewUrl) { mutableStateOf(false) }
+    val trendPreviewVisible = showPreview && item.previewMode == HomePreviewMode.TrendSegments
 
     LaunchedEffect(focusState.isFocused) {
         onFocusChanged(focusState.isFocused)
@@ -116,14 +118,6 @@ fun ContentProgressCard(
     LaunchedEffect(previewActive, item.previewUrl) {
         showPreview = false
         if (previewActive) {
-            val startDelay = when (item.previewMode) {
-                HomePreviewMode.LiveImmediate -> 0L
-                HomePreviewMode.TrendSegments,
-                HomePreviewMode.ResumeLoop,
-                HomePreviewMode.None,
-                -> PreviewFocusStartDelayMillis
-            }
-            if (startDelay > 0L) delay(startDelay)
             showPreview = true
         }
     }
@@ -144,6 +138,7 @@ fun ContentProgressCard(
                             onUp()
                             true
                         }
+                        event.key == Key.DirectionLeft && blockLeft -> true
                         else -> false
                     }
                 }
@@ -152,7 +147,7 @@ fun ContentProgressCard(
                 state = focusState,
                 focusRequester = focusRequester,
                 pressed = pressed,
-                focusedScale = 1.045f,
+                focusedScale = 1.0f,
                 glowColor = SmartVisionColors.Primary,
                 cornerRadius = SmartVisionDimensions.HomeContentRadius,
             )
@@ -188,70 +183,72 @@ fun ContentProgressCard(
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color.Black.copy(alpha = 0.46f),
-                            Color.Black.copy(alpha = 0.10f),
-                            Color.Transparent,
+        if (!trendPreviewVisible) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color.Black.copy(alpha = 0.46f),
+                                Color.Black.copy(alpha = 0.10f),
+                                Color.Transparent,
+                            ),
                         ),
                     ),
-                ),
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f)),
-                    ),
-                ),
-        )
-        MediaTypeBadge(
-            text = item.mediaType,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(7.dp),
-        )
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
-        ) {
-            Text(
-                text = item.title,
-                color = Color.White,
-                style = SmartVisionType.Caption.copy(fontSize = 11.sp, lineHeight = 14.sp),
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(4.dp))
-            ProgressBar(progress = item.progress)
-            Spacer(Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f)),
+                        ),
+                    ),
+            )
+            MediaTypeBadge(
+                text = item.mediaType,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(7.dp),
+            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
             ) {
                 Text(
-                    text = item.meta,
-                    color = SmartVisionColors.TextSecondary,
-                    style = SmartVisionType.Caption.copy(fontSize = 10.sp, lineHeight = 13.sp),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    text = item.remaining,
-                    color = SmartVisionColors.TextSecondary,
-                    style = SmartVisionType.Caption.copy(fontSize = 10.sp, lineHeight = 13.sp),
-                    maxLines = 1,
+                    text = item.title,
+                    color = Color.White,
+                    style = SmartVisionType.Caption.copy(fontSize = 11.sp, lineHeight = 14.sp),
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                Spacer(Modifier.height(4.dp))
+                ProgressBar(progress = item.progress)
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = item.meta,
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Caption.copy(fontSize = 10.sp, lineHeight = 13.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = item.remaining,
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Caption.copy(fontSize = 10.sp, lineHeight = 13.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
         if (blocked) {
@@ -346,7 +343,8 @@ private fun HomeMutedPreviewPlayer(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    var transitionVisible by remember(url) { mutableStateOf(true) }
+    val showPoster = mode == HomePreviewMode.TrendSegments && !posterUrl.isNullOrBlank()
+    var transitionVisible by remember(url) { mutableStateOf(false) }
     var resumeOverlayVisible by remember(url, startPositionMs) { mutableStateOf(false) }
     var videoVisible by remember(url) { mutableStateOf(mode == HomePreviewMode.LiveImmediate) }
     var firstFrameRendered by remember(url) { mutableStateOf(false) }
@@ -394,6 +392,7 @@ private fun HomeMutedPreviewPlayer(
             HomePreviewMode.TrendSegments -> {
                 resumeOverlayVisible = false
                 videoVisible = false
+                delay(TrendPreviewPosterDelayMillis)
                 var duration = player.duration
                 var attempts = 0
                 while ((duration <= 0L || duration == C.TIME_UNSET) && attempts < 35) {
@@ -404,27 +403,29 @@ private fun HomeMutedPreviewPlayer(
                 if (duration <= 0L || duration == C.TIME_UNSET) {
                     duration = TrendPreviewFallbackDurationMillis
                 }
-                while (true) {
-                    for (positionRatio in TrendPreviewPositions) {
+                for (positionRatio in TrendPreviewPositions) {
+                    val targetPosition = (duration * positionRatio)
+                        .toLong()
+                        .coerceIn(0L, (duration - 1_000L).coerceAtLeast(0L))
+                    player.seekTo(targetPosition)
+                    player.volume = 0f
+                    player.playWhenReady = true
+                    player.play()
+                    if (!videoVisible) {
+                        while (!firstFrameRendered) {
+                            delay(50L)
+                        }
+                        videoVisible = true
+                    } else {
                         transitionVisible = true
                         delay(PreviewFadeMillis)
-                        val targetPosition = (duration * positionRatio)
-                            .toLong()
-                            .coerceIn(0L, (duration - 1_000L).coerceAtLeast(0L))
-                        player.seekTo(targetPosition)
-                        player.volume = 0f
-                        player.playWhenReady = true
-                        player.play()
-                        if (!videoVisible) {
-                            while (!firstFrameRendered) {
-                                delay(50L)
-                            }
-                            videoVisible = true
-                        }
-                        transitionVisible = false
-                        delay(TrendPreviewSegmentMillis)
                     }
+                    transitionVisible = false
+                    delay(TrendPreviewSegmentMillis)
                 }
+                player.pause()
+                videoVisible = false
+                transitionVisible = false
             }
 
             HomePreviewMode.LiveImmediate -> {
@@ -474,7 +475,7 @@ private fun HomeMutedPreviewPlayer(
     }
 
     Box(modifier = modifier.background(Color.Black)) {
-        if (!posterUrl.isNullOrBlank()) {
+        if (showPoster) {
             AsyncImage(
                 model = posterUrl,
                 contentDescription = null,
@@ -537,10 +538,10 @@ private fun HomeMutedPreviewPlayer(
     }
 }
 
-private const val PreviewFocusStartDelayMillis = 4_000L
+private const val TrendPreviewPosterDelayMillis = 4_000L
 private const val TrendPreviewSegmentMillis = 8_000L
-private const val PreviewFadeMillis = 520L
-private const val PreviewCrossfadeMillis = 850L
+private const val PreviewFadeMillis = 900L
+private const val PreviewCrossfadeMillis = 1_100L
 private const val TrendPreviewFallbackDurationMillis = 60 * 60_000L
 private const val ContinuePreviewLoopMillis = 20_000L
 private const val ContinuePreviewOverlayMillis = 2_000L

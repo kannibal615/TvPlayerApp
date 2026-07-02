@@ -30,6 +30,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -834,6 +835,60 @@ private fun StartupHandoffScreen() {
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
         )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Black.copy(alpha = 0.10f),
+                            Color.Black.copy(alpha = 0.30f),
+                            Color.Black.copy(alpha = 0.52f),
+                        ),
+                    ),
+                ),
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .width(360.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.smartvision_logo_wide),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(92.dp),
+            )
+            Spacer(Modifier.height(26.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.White.copy(alpha = 0.18f)),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(SmartVisionColors.Primary, SmartVisionColors.CyanAccent),
+                            ),
+                        ),
+                )
+            }
+            Spacer(Modifier.height(14.dp))
+            Text(
+                text = "Demarrage en cours...",
+                color = Color.White,
+                style = SmartVisionType.Body,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 

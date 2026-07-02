@@ -633,7 +633,7 @@ class DefaultCatalogRepository(
         val categoryNames = categories.categoryNameById()
         val candidates = movies
             .mapNotNull { movie -> movie.toMovieTrendCandidate(categoryNames) }
-            .bestRatedTrendCandidates(previousTrendingIds)
+            .filteredTrendCandidates(previousTrendingIds)
         val verified = candidates
             .asSequence()
             .take(TrendValidationScanLimit)
@@ -667,7 +667,7 @@ class DefaultCatalogRepository(
         val categoryNames = categories.categoryNameById()
         val candidates = series
             .mapNotNull { item -> item.toSeriesTrendCandidate(categoryNames) }
-            .bestRatedTrendCandidates(previousTrendingIds)
+            .filteredTrendCandidates(previousTrendingIds)
         val verified = mutableListOf<TrendingMediaEntity>()
 
         for (candidate in candidates.take(TrendValidationScanLimit)) {
@@ -879,13 +879,11 @@ private fun String?.toRatingValue(): Float =
         ?.coerceIn(0f, 10f)
         ?: 0f
 
-private fun List<TrendCandidate>.bestRatedTrendCandidates(previousTrendingIds: Set<Int>): List<TrendCandidate> {
+private fun List<TrendCandidate>.filteredTrendCandidates(previousTrendingIds: Set<Int>): List<TrendCandidate> {
     val clean = filter { candidate ->
-        candidate.rating >= TrendMinimumFallbackRating && !candidate.containsAdultMarker()
+        !candidate.containsAdultMarker()
     }
-    val perfect = clean.filter { it.rating >= TrendPerfectRatingFloor }
-    val fallback = clean.filter { it.rating >= TrendMinimumFallbackRating && it.rating < TrendPerfectRatingFloor }
-    return perfect.preferFresh(previousTrendingIds) + fallback.preferFresh(previousTrendingIds)
+    return clean.preferFresh(previousTrendingIds)
 }
 
 private fun List<TrendCandidate>.preferFresh(previousTrendingIds: Set<Int>): List<TrendCandidate> {
@@ -1006,8 +1004,6 @@ private const val TrendingMovieType = "movie"
 private const val TrendingSeriesType = "series"
 private const val TrendStorageLimit = 50
 private const val TrendValidationScanLimit = 90
-private const val TrendMinimumFallbackRating = 9.0f
-private const val TrendPerfectRatingFloor = 9.95f
 private val AdultContentPattern = Regex(
     "(^|[^a-z0-9])(adult|adults|adulte|porn|porno|xxx|erotic|erotique|sex|sexy|18\\+)([^a-z0-9]|$)",
     RegexOption.IGNORE_CASE,

@@ -151,6 +151,7 @@ Lire ce fichier si la demande concerne:
 - notifications;
 - app_update;
 - app_config;
+- `app_trending_config` dans `app_settings`: expose via `api/app_config.php` les parametres Home Trends (`require_landscape_image`, `use_rating_filter`, `minimum_rating`, `candidate_limit`, `section_limit`; `exclude_adult` reste actif dans l'admin).
 - paiement;
 - email;
 - pubs/tracking cote serveur.
@@ -163,6 +164,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-06-29: migration vers documentation specialisee.
+- 2026-07-02: `Admin > Fonctionnalites` ajoute le bloc Tendances Home et `api/app_config.php` renvoie le bloc `trending` consomme par Android.
 - 2026-06-29: ajout de la regle "nouveau PHP = ajout deploy script".
 - 2026-06-30: clarification des rewrites `.htaccess` pour `api/app/*` et exception `device-diagnostics.php`.
 - 2026-06-30: ajout de la regle "nouveau build release livrable = deploy backend obligatoire".

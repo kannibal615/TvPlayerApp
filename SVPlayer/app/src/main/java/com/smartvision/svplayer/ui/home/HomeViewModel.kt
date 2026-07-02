@@ -2,6 +2,9 @@ package com.smartvision.svplayer.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.smartvision.svplayer.data.appconfig.AppConfigRepository
+import com.smartvision.svplayer.data.appconfig.TrendingConfig
+import com.smartvision.svplayer.data.appconfig.defaultTrendingConfig
 import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.home.HomeSlide
 import com.smartvision.svplayer.data.home.HomeSlidesRepository
@@ -35,6 +38,7 @@ class HomeViewModel(
     private val userContentRepository: UserContentRepository,
     private val catalogRepository: CatalogRepository,
     private val xtreamRepository: XtreamRepository,
+    private val appConfigRepository: AppConfigRepository,
     private val homeSlidesRepository: HomeSlidesRepository,
 ) : ViewModel() {
     private val cachedContinueWatching = userContentRepository
@@ -99,17 +103,19 @@ class HomeViewModel(
     fun refreshTrending(forceRefresh: Boolean = false) {
         if (!forceRefresh && trendingMovies.value.isNotEmpty() && trendingSeries.value.isNotEmpty()) return
         viewModelScope.launch {
+            val trendingConfig = runCatching { appConfigRepository.loadConfig().trending }
+                .getOrDefault(defaultTrendingConfig())
             val movies = async {
-                runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingCandidateLimit) }
+                runCatching { catalogRepository.getTrendingMovieItems(trendingConfig.candidateLimit) }
                     .getOrDefault(emptyList())
-                    .mapNotNull { it.toMovieTrendItem(xtreamRepository) }
-                    .take(HomeTrendingSectionLimit)
+                    .mapNotNull { it.toMovieTrendItem(xtreamRepository, trendingConfig) }
+                    .take(trendingConfig.sectionLimit)
             }
             val series = async {
-                runCatching { catalogRepository.getTrendingSeriesItems(HomeTrendingCandidateLimit) }
+                runCatching { catalogRepository.getTrendingSeriesItems(trendingConfig.candidateLimit) }
                     .getOrDefault(emptyList())
-                    .mapNotNull { it.toSeriesTrendItem(xtreamRepository) }
-                    .take(HomeTrendingSectionLimit)
+                    .mapNotNull { it.toSeriesTrendItem(xtreamRepository, trendingConfig) }
+                    .take(trendingConfig.sectionLimit)
             }
             trendingMovies.value = movies.await()
             trendingSeries.value = series.await()
@@ -118,8 +124,6 @@ class HomeViewModel(
 }
 
 private const val ContinueWatchingSnapshotLimit = 10
-private const val HomeTrendingSectionLimit = 10
-private const val HomeTrendingCandidateLimit = 50
 
 private fun toContinueItem(progress: PlaybackProgressEntity): ContinueItem? {
     val id = progress.contentId.toIntOrNull() ?: return null
@@ -205,11 +209,15 @@ private fun List<PlaybackProgressEntity>.toContinueItems(): List<ContinueItem> =
         .take(10)
         .mapNotNull(::toContinueItem)
 
-private suspend fun TrendingCatalogItem.toMovieTrendItem(xtreamRepository: XtreamRepository): ContinueItem? {
+private suspend fun TrendingCatalogItem.toMovieTrendItem(
+    xtreamRepository: XtreamRepository,
+    config: TrendingConfig,
+): ContinueItem? {
+    if (config.useRatingFilter && rating.toTrendRatingValue() < config.minimumRating) return null
     val backdropUrl = runCatching { xtreamRepository.getMovieDetails(contentId).backdropUrl }
         .getOrNull()
         ?.takeIf { it.isNotBlank() }
-        ?: return null
+    if (config.requireLandscapeImage && backdropUrl.isNullOrBlank()) return null
     return ContinueItem(
         id = "movie:$contentId",
         title = title.cleanHistoryTitle(),
@@ -225,11 +233,15 @@ private suspend fun TrendingCatalogItem.toMovieTrendItem(xtreamRepository: Xtrea
     )
 }
 
-private suspend fun TrendingCatalogItem.toSeriesTrendItem(xtreamRepository: XtreamRepository): ContinueItem? {
+private suspend fun TrendingCatalogItem.toSeriesTrendItem(
+    xtreamRepository: XtreamRepository,
+    config: TrendingConfig,
+): ContinueItem? {
+    if (config.useRatingFilter && rating.toTrendRatingValue() < config.minimumRating) return null
     val backdropUrl = runCatching { xtreamRepository.getSeriesDetails(contentId).backdropUrl }
         .getOrNull()
         ?.takeIf { it.isNotBlank() }
-        ?: return null
+    if (config.requireLandscapeImage && backdropUrl.isNullOrBlank()) return null
     return ContinueItem(
         id = "series:$contentId",
         title = title.cleanHistoryTitle(),
@@ -259,6 +271,13 @@ private fun historyGroupingKey(progress: PlaybackProgressEntity): String =
     } else {
         "${progress.contentType}:${progress.contentId}"
     }
+
+private fun String?.toTrendRatingValue(): Float =
+    this
+        ?.replace(',', '.')
+        ?.toFloatOrNull()
+        ?.coerceIn(0f, 10f)
+        ?: 0f
 
 private fun Long.formatRemaining(): String {
     val minutes = (this / 60_000L).coerceAtLeast(1L)

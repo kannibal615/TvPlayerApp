@@ -74,6 +74,7 @@ fun HomeScreen(
                 userContentRepository = container.userContentRepository,
                 catalogRepository = container.catalogRepository,
                 xtreamRepository = container.xtreamRepository,
+                appConfigRepository = container.appConfigRepository,
                 homeSlidesRepository = container.homeSlidesRepository,
             )
         },

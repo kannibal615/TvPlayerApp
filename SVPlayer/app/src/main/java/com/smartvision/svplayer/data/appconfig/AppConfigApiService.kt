@@ -24,6 +24,7 @@ data class AppConfigResponse(
     @SerializedName("consent") val consent: RemoteConsentConfig? = null,
     @SerializedName("accepted_consent_version") val acceptedConsentVersion: String? = null,
     @SerializedName("features") val features: List<RemoteFeatureAccess> = emptyList(),
+    @SerializedName("trending") val trending: RemoteTrendingConfig? = null,
     @SerializedName("error") val error: String? = null,
 )
 
@@ -54,4 +55,13 @@ data class RemoteFeatureAccess(
     @SerializedName("premium") val premium: Boolean = false,
     @SerializedName("trial") val trial: Boolean = false,
     @SerializedName("free_ads") val freeAds: Boolean = false,
+)
+
+data class RemoteTrendingConfig(
+    @SerializedName("require_landscape_image") val requireLandscapeImage: Boolean? = null,
+    @SerializedName("exclude_adult") val excludeAdult: Boolean? = null,
+    @SerializedName("use_rating_filter") val useRatingFilter: Boolean? = null,
+    @SerializedName("minimum_rating") val minimumRating: Float? = null,
+    @SerializedName("candidate_limit") val candidateLimit: Int? = null,
+    @SerializedName("section_limit") val sectionLimit: Int? = null,
 )

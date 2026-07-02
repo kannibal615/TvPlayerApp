@@ -202,6 +202,7 @@ function handle_admin_action(PDO $pdo, string $action): void
         case 'save_app_config': admin_save_app_config($pdo); break;
         case 'save_feature_access': admin_save_feature_access($pdo); break;
         case 'save_app_consent': admin_save_app_consent($pdo); break;
+        case 'save_trending_config': admin_save_trending_config($pdo); break;
         case 'send_notification': admin_send_notification($pdo); break;
         case 'set_notification_status': admin_set_notification_status($pdo); break;
         case 'delete_notification': admin_delete_notification($pdo); break;
@@ -1833,6 +1834,11 @@ function admin_load_app_config_admin(PDO $pdo): array
     if (!is_array($variables)) {
         $variables = admin_default_consent_variables();
     }
+    $trendingJson = (string) get_setting($pdo, 'app_trending_config', '');
+    $trending = json_decode($trendingJson, true);
+    if (!is_array($trending)) {
+        $trending = admin_default_trending_config();
+    }
 
     return [
         'consent_version' => (string) get_setting($pdo, 'app_consent_version', '2026-06-28'),
@@ -1840,6 +1846,7 @@ function admin_load_app_config_admin(PDO $pdo): array
         'consent_body' => (string) get_setting($pdo, 'app_consent_body', admin_default_consent_body()),
         'consent_variables' => array_replace(admin_default_consent_variables(), $variables),
         'features' => admin_normalize_feature_access($features),
+        'trending' => admin_normalize_trending_config($trending),
     ];
 }
 
@@ -1847,6 +1854,7 @@ function admin_save_app_config(PDO $pdo): void
 {
     admin_save_feature_access($pdo, false);
     admin_save_app_consent($pdo, false);
+    admin_save_trending_config($pdo, false);
     audit_admin_action($pdo, 'app_config_updated', 'settings', 'features');
     set_admin_flash('success', 'Configuration application enregistree.');
 }
@@ -1897,6 +1905,27 @@ function admin_save_app_consent(PDO $pdo, bool $withFlash = true): void
     }
 }
 
+function admin_save_trending_config(PDO $pdo, bool $withFlash = true): void
+{
+    $config = admin_normalize_trending_config([
+        'require_landscape_image' => isset($_POST['trending']['require_landscape_image']),
+        'exclude_adult' => isset($_POST['trending']['exclude_adult']),
+        'use_rating_filter' => isset($_POST['trending']['use_rating_filter']),
+        'minimum_rating' => $_POST['trending']['minimum_rating'] ?? null,
+        'candidate_limit' => $_POST['trending']['candidate_limit'] ?? null,
+        'section_limit' => $_POST['trending']['section_limit'] ?? null,
+    ]);
+
+    admin_save_app_settings($pdo, [
+        'app_trending_config' => json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    ]);
+
+    if ($withFlash) {
+        audit_admin_action($pdo, 'trending_config_updated', 'settings', 'features');
+        set_admin_flash('success', 'Parametres des tendances enregistres.');
+    }
+}
+
 function admin_save_app_settings(PDO $pdo, array $settings): void
 {
     $statement = $pdo->prepare(
@@ -1907,6 +1936,35 @@ function admin_save_app_settings(PDO $pdo, array $settings): void
     foreach ($settings as $key => $value) {
         $statement->execute(['setting_key' => $key, 'setting_value' => $value]);
     }
+}
+
+function admin_default_trending_config(): array
+{
+    return [
+        'require_landscape_image' => true,
+        'exclude_adult' => true,
+        'use_rating_filter' => false,
+        'minimum_rating' => 9.0,
+        'candidate_limit' => 50,
+        'section_limit' => 10,
+    ];
+}
+
+function admin_normalize_trending_config(array $config): array
+{
+    $defaults = admin_default_trending_config();
+    $minimumRating = (float) ($config['minimum_rating'] ?? $defaults['minimum_rating']);
+    $candidateLimit = (int) ($config['candidate_limit'] ?? $defaults['candidate_limit']);
+    $sectionLimit = (int) ($config['section_limit'] ?? $defaults['section_limit']);
+
+    return [
+        'require_landscape_image' => (bool) ($config['require_landscape_image'] ?? $defaults['require_landscape_image']),
+        'exclude_adult' => (bool) ($config['exclude_adult'] ?? $defaults['exclude_adult']),
+        'use_rating_filter' => (bool) ($config['use_rating_filter'] ?? $defaults['use_rating_filter']),
+        'minimum_rating' => max(0.0, min(10.0, $minimumRating)),
+        'candidate_limit' => max(10, min(100, $candidateLimit)),
+        'section_limit' => max(1, min(20, $sectionLimit)),
+    ];
 }
 
 function admin_default_consent_variables(): array
@@ -3042,6 +3100,7 @@ function admin_render_features_page(array $appConfigAdmin): void
 {
     $features = $appConfigAdmin['features'] ?? admin_default_feature_access();
     $variables = $appConfigAdmin['consent_variables'] ?? admin_default_consent_variables();
+    $trending = $appConfigAdmin['trending'] ?? admin_default_trending_config();
     ?>
         <form method="post">
             <input type="hidden" name="redirect_page" value="features">
@@ -3059,6 +3118,27 @@ function admin_render_features_page(array $appConfigAdmin): void
                     </tr><?php endforeach; ?>
                 </tbody></table></div>
                 <button class="admin-button primary" type="submit">Enregistrer les fonctionnalites</button>
+            </section>
+        </form>
+
+        <form method="post">
+            <input type="hidden" name="redirect_page" value="features">
+            <input type="hidden" name="action" value="save_trending_config">
+            <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+            <section class="admin-panel">
+                <div class="admin-panel-heading"><div><h2>Tendances Home</h2><p>Filtres et limites utilises par les sections Tendances films et Tendances series.</p></div></div>
+                <div class="admin-form-grid">
+                    <label><span>Candidats analyses</span><input name="trending[candidate_limit]" type="number" min="10" max="100" value="<?= (int) ($trending['candidate_limit'] ?? 50) ?>"></label>
+                    <label><span>Cards par section</span><input name="trending[section_limit]" type="number" min="1" max="20" value="<?= (int) ($trending['section_limit'] ?? 10) ?>"></label>
+                    <label><span>Note minimale si filtre actif</span><input name="trending[minimum_rating]" type="number" min="0" max="10" step="0.1" value="<?= admin_escape((string) ($trending['minimum_rating'] ?? '9')) ?>"></label>
+                </div>
+                <div class="admin-check-grid">
+                    <label><input type="checkbox" name="trending[require_landscape_image]" value="1"<?= !empty($trending['require_landscape_image']) ? ' checked' : '' ?>> Exiger un poster paysage</label>
+                    <label><input type="hidden" name="trending[exclude_adult]" value="1"><input type="checkbox" value="1" checked disabled> Exclure le contenu adulte</label>
+                    <label><input type="checkbox" name="trending[use_rating_filter]" value="1"<?= !empty($trending['use_rating_filter']) ? ' checked' : '' ?>> Activer le filtre note</label>
+                </div>
+                <p class="muted">Par defaut, le filtre note est desactive. Le filtre poster paysage et le filtre adulte restent actifs.</p>
+                <button class="admin-button primary" type="submit">Enregistrer les tendances</button>
             </section>
         </form>
 

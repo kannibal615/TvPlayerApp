@@ -37,6 +37,7 @@ class AppConfigRepository(
         return AppRuntimeConfig(
             consent = consent,
             features = features,
+            trending = response.trending?.toDomain() ?: defaultTrendingConfig(),
             acceptedConsentVersion = response.acceptedConsentVersion,
         )
     }
@@ -91,6 +92,7 @@ class AppConfigRepository(
 data class AppRuntimeConfig(
     val consent: ConsentConfig = defaultConsentConfig(),
     val features: List<FeatureAccess> = defaultFeatureAccess(),
+    val trending: TrendingConfig = defaultTrendingConfig(),
     val acceptedConsentVersion: String? = null,
 )
 
@@ -107,6 +109,15 @@ data class FeatureAccess(
     val premium: Boolean,
     val trial: Boolean,
     val freeAds: Boolean,
+)
+
+data class TrendingConfig(
+    val requireLandscapeImage: Boolean,
+    val excludeAdult: Boolean,
+    val useRatingFilter: Boolean,
+    val minimumRating: Float,
+    val candidateLimit: Int,
+    val sectionLimit: Int,
 )
 
 private data class AppConfigDeviceAccess(
@@ -133,8 +144,30 @@ private fun RemoteFeatureAccess.toDomainOrNull(): FeatureAccess? {
     )
 }
 
+private fun RemoteTrendingConfig.toDomain(): TrendingConfig {
+    val defaults = defaultTrendingConfig()
+    return TrendingConfig(
+        requireLandscapeImage = requireLandscapeImage ?: defaults.requireLandscapeImage,
+        excludeAdult = excludeAdult ?: defaults.excludeAdult,
+        useRatingFilter = useRatingFilter ?: defaults.useRatingFilter,
+        minimumRating = minimumRating?.coerceIn(0f, 10f) ?: defaults.minimumRating,
+        candidateLimit = candidateLimit?.coerceIn(10, 100) ?: defaults.candidateLimit,
+        sectionLimit = sectionLimit?.coerceIn(1, 20) ?: defaults.sectionLimit,
+    )
+}
+
 private fun defaultRuntimeConfig(): AppRuntimeConfig =
-    AppRuntimeConfig(defaultConsentConfig(), defaultFeatureAccess())
+    AppRuntimeConfig(defaultConsentConfig(), defaultFeatureAccess(), defaultTrendingConfig())
+
+fun defaultTrendingConfig(): TrendingConfig =
+    TrendingConfig(
+        requireLandscapeImage = true,
+        excludeAdult = true,
+        useRatingFilter = false,
+        minimumRating = 9.0f,
+        candidateLimit = 50,
+        sectionLimit = 10,
+    )
 
 private fun defaultConsentConfig(): ConsentConfig =
     ConsentConfig(

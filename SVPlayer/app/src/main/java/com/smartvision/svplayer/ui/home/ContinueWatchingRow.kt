@@ -1,6 +1,8 @@
 package com.smartvision.svplayer.ui.home
 
 import android.util.Log
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,7 +35,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,7 +56,6 @@ import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
-import kotlinx.coroutines.launch
 
 @Composable
 fun ContinueWatchingRow(
@@ -77,7 +77,6 @@ fun ContinueWatchingRow(
 ) {
     val fallbackRowState = rememberLazyListState()
     val rowState = lazyListState ?: fallbackRowState
-    val scope = rememberCoroutineScope()
     var focusedPreviewId by remember { mutableStateOf<String?>(null) }
     Column(modifier = modifier) {
         Text(
@@ -96,22 +95,22 @@ fun ContinueWatchingRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
-                val cardWidth = if (enablePreview && focusedPreviewId == item.id) {
+                val targetCardWidth = if (enablePreview && focusedPreviewId == item.id) {
                     SmartVisionDimensions.HomeContentPreviewCardWidth
                 } else {
                     SmartVisionDimensions.HomeContentCardWidth
                 }
+                val cardWidth by animateDpAsState(
+                    targetValue = targetCardWidth,
+                    animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+                    label = "homeRowCardWidth",
+                )
                 ContentProgressCard(
                     item = item,
                     onClick = { if (blocked) onBlockedClick() else onItemClick(item) },
                     focusRequester = if (index == 0) firstItemFocusRequester else null,
                     onFocused = {
                         Log.i(HomeRowLogTag, "focused row=$title index=$index id=${item.id}")
-                        scope.launch {
-                            runCatching { rowState.animateScrollToItem(index) }
-                                .onSuccess { Log.i(HomeRowLogTag, "scrollToFocused row=$title index=$index") }
-                                .onFailure { Log.w(HomeRowLogTag, "scrollToFocusedFailed row=$title index=$index", it) }
-                        }
                     },
                     onFocusChanged = { focused ->
                         if (enablePreview) {
@@ -120,6 +119,7 @@ fun ContinueWatchingRow(
                     },
                     onDown = onDownFromRow,
                     onUp = onUpFromRow,
+                    blockLeft = index == 0,
                     enablePreview = enablePreview,
                     resumeOverlayText = resumeOverlayText,
                     blocked = blocked,
@@ -164,7 +164,7 @@ private fun RowChevronButton(
             .tvFocusTarget(
                 state = focusState,
                 pressed = pressed,
-                focusedScale = 1.045f,
+                focusedScale = 1.0f,
                 glowColor = SmartVisionColors.Primary,
                 cornerRadius = SmartVisionDimensions.HomeContentRadius,
             )
@@ -200,6 +200,7 @@ private fun ViewAllButton(
     onClick: () -> Unit,
     onDown: (() -> Unit)? = null,
     onUp: (() -> Unit)? = null,
+    blockLeft: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val focusState = rememberTvFocusState()
@@ -224,6 +225,7 @@ private fun ViewAllButton(
                             onUp()
                             true
                         }
+                        event.key == Key.DirectionLeft && blockLeft -> true
                         else -> false
                     }
                 }
@@ -231,7 +233,7 @@ private fun ViewAllButton(
             .tvFocusTarget(
                 state = focusState,
                 pressed = pressed,
-                focusedScale = 1.045f,
+                focusedScale = 1.0f,
                 glowColor = SmartVisionColors.Primary,
                 cornerRadius = SmartVisionDimensions.HomeContentRadius,
             )

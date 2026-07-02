@@ -60,6 +60,7 @@ fun HomeCollectionsScreen(
                 container.userContentRepository,
                 container.catalogRepository,
                 container.xtreamRepository,
+                container.appConfigRepository,
                 container.homeSlidesRepository,
             )
         },

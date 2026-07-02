@@ -1,5 +1,28 @@
 # AI Changelog
 
+## 2026-07-02 - Mini-player Home et config tendances admin
+
+Type:
+- android
+- backend
+- admin
+- release-prep
+
+Resume:
+- Continue watching n'affiche plus de poster dans le mini-player: le focus lance la video sur fond noir avec fondu au demarrage.
+- Tendances films/series affichent uniquement le poster paysage pendant 4 secondes, puis fondent vers la video; la lecture mini-player est bornee a 40 secondes avant retour au poster.
+- Navigation Home: `LEFT` est bloque sur la premiere card des carrousels et le scroll horizontal automatique a chaque focus est retire pour reduire la latence/vibration.
+- Selection tendances: filtre note retire par defaut, filtre adulte conserve, filtre poster paysage conserve au chargement Home.
+- `Admin > Fonctionnalites` ajoute les parametres Tendances Home, exposes par `api/app_config.php` et consommes par Android.
+- Handoff splash affiche aussi logo, barre pleine et statut `Demarrage en cours...` pour eviter le fond seul avant Home.
+- Release prod publiee en `0.1.77` / `versionCode 80` avec APK `smartvision-tv-v80-8c4d880b.apk`, hash SHA256 `8c4d880b1b686aee1c101b668f0ff018181ee2c2fd1600a8ee14c42cc44bd1f0`.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/technical/backend-admin-api-deploy.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
 ## 2026-07-02 - Mini-player Home poster paysage
 
 Type:

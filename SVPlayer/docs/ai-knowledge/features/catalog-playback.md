@@ -20,7 +20,7 @@ Home charge ses donnees legeres en petits jeux bornes: le splash precharge uniqu
 
 Depuis le 2026-07-02, apres une synchro splash ou un demarrage sans synchro, le splash prechauffe aussi les categories Live/Films/Series et la premiere page locale bornee des catalogues (`96` Live, `72` Films, `72` Series). `DefaultCatalogRepository` garde ces categories et premieres pages en cache memoire jusqu'a invalidation; les ViewModels catalogue les utilisent pour eviter un loader initial inutile, puis continuent la pagination Room normale.
 
-Depuis le 2026-07-02, les tendances Home sont separees en films et series. La synchro Xtream alimente `trending_media` avec maximum `50` films et `50` series, en priorisant les notes `10/10`, puis `9/10` si besoin, en excluant les marqueurs adultes et en validant rapidement une URL de lecture avant insertion. Pour les series, la validation passe par un episode obtenu via `get_series_info`.
+Depuis le 2026-07-02, les tendances Home sont separees en films et series. La synchro Xtream alimente `trending_media` avec maximum `50` films et `50` series, sans filtre note par defaut, en excluant les marqueurs adultes et en validant rapidement une URL de lecture avant insertion. Pour les series, la validation passe par un episode obtenu via `get_series_info`. Le Home filtre ensuite les sections sur les medias qui exposent un poster paysage `backdropUrl`, sauf configuration distante contraire via `app_config.php`.
 
 Clarification stockage/performance:
 - Room est le stockage local persistant de l'application sur l'appareil; les catalogues synchronises restent disponibles apres fermeture ou redemarrage de l'app tant que les donnees de l'application ne sont pas effacees.
@@ -207,3 +207,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-01: optimisation candidate Firestick: synchro Xtream par sections/batchs dans une transaction Room, counts/categories via SQL, splash limite aux categories sans Home/EPG/snapshots complets, et bouton EPG dans les categories Live TV.
 - 2026-07-01: Live TV / Movies / Series passent en chargement pagine Room; Home ne lit plus les snapshots complets Movies/Series pour ses tendances.
 - 2026-07-02: prechauffage splash des categories et premieres pages locales bornees, avec cache memoire reutilise par Live TV / Movies / Series pour reduire le loader initial apres synchro.
+- 2026-07-02: tendances Home sans filtre note par defaut; filtre adulte conserve, validation lecture conservee, filtre poster paysage applique au chargement Home et parametres exposes par `api/app_config.php`.
