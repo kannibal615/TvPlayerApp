@@ -24,9 +24,9 @@ Flux observe:
 - verification rapide Xtream au demarrage via `XtreamConnectionManager` avant synchro globale; en cas d'erreur, Home reste accessible mais les sections catalogue sont bloquees.
 - au splash, `device_status.php` doit etre relu avant `XtreamConnectionManager.verifyQuick()` afin d'importer la derniere playlist configuree cote serveur avant le test, meme si un ancien compte local et un ancien catalogue Room existent deja.
 - `MainActivity` porte tout le statut de demarrage avec un seul visuel et une seule progress bar; `SplashActivity`, `StartupVerificationPanel` et `StartupHandoffScreen` ne sont plus utilises au demarrage.
-- depuis le 2026-07-02, ce startup applicatif est un ecran Compose image avec `smartvision_splash_bg`, logo, progress bar et statuts au-dessus du theme systeme `Theme.SVPlayer.Splash`.
-- `MainActivity` garde le theme splash systeme jusqu'a la premiere frame Compose pour ne pas remplacer le fond immediat par un ecran noir avant le logo/progress bar.
-- le splash enchaine les statuts licence, activation, serveur Xtream, fraicheur de la derniere synchronisation, synchro si necessaire, prechargement Home / Live TV / Films / Series, puis demarrage.
+- depuis le 2026-07-02, ce startup applicatif est hybride: le theme systeme `Theme.SVPlayer.Splash` affiche le fond + logo reduit, et Compose affiche uniquement progress bar, statuts et diagnostics au-dessus.
+- `MainActivity` garde le theme splash systeme pendant le startup pour ne pas remplacer le fond immediat par un ecran noir; juste avant Home, il applique le theme normal et remplace le `windowBackground` par un fond opaque neutre.
+- le splash enchaine les statuts licence, activation, serveur Xtream, fraicheur de la derniere synchronisation, synchro si necessaire, prechargement Home / Live TV / Films / Series, puis demarrage. Il affiche aussi pourcentage, etape courante, elements traites/restants, temps ecoule, ETA et details Live/Films/Series quand la synchro fournit ces compteurs.
 - quand la source active est M3U, le splash verifie le lien M3U et ne precharge que Home / Live TV pour eviter de presenter Films / Series comme disponibles.
 - si le cache local indique deja un acces actif, `ActivationViewModel` garde Home accessible pendant le refresh serveur au lieu d'afficher un second loader Compose.
 - `AppNavigation` ne contient plus d'ecran intermediaire `StartupHandoffScreen`; apres `Demarrage en cours...`, la navigation est rendue directement.

@@ -11,8 +11,8 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
 
 Gradle local constate le 2026-07-02:
-- `versionCode = 81`
-- `versionName = "0.1.78"`
+- `versionCode = 84`
+- `versionName = "0.1.81"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -21,11 +21,11 @@ Gradle local constate le 2026-07-02:
 
 Demarrage:
 - `MainActivity` est l'activite launcher TV/Android et utilise `Theme.SVPlayer.Splash` pour la preview systeme immediate.
-- Le startup Compose de `MainActivity` affiche `smartvision_splash_bg` en fond plein ecran, sans video de demarrage.
-- Le logo, la progress bar et les statuts startup restent rendus au-dessus de l'image.
-- Le theme systeme `Theme.SVPlayer.Splash` utilise `@drawable/splash_background` comme preview immediate; cette preview doit rester identique au fond Compose pour eviter un double splash visible.
-- `MainActivity` attend la premiere frame Compose avant de lancer les checks startup, pour afficher immediatement le logo/progress bar au-dessus du fond.
-- `MainActivity` n'appelle le theme normal qu'apres cette premiere frame Compose, afin de ne pas remplacer la preview splash systeme par un fond noir avant le rendu du logo/progress bar.
+- Le theme systeme `Theme.SVPlayer.Splash` utilise `@drawable/splash_background` comme preview immediate; cette preview contient le fond splash et le logo wide reduit/centre.
+- Le startup Compose de `MainActivity` ne redessine plus le fond ni le logo: il garde la preview systeme visible et affiche seulement la progress bar, le statut et les diagnostics.
+- Les diagnostics startup visibles incluent pourcentage, etape courante/total, elements traites/restants quand connus, temps ecoule, ETA estimee et details Live/Films/Series pendant une synchronisation catalogue.
+- `MainActivity` attend la premiere frame Compose avant de lancer les checks startup, pour afficher immediatement la barre et les statuts au-dessus de la preview systeme.
+- `MainActivity` applique le theme normal et remplace le `windowBackground` par un fond opaque neutre juste avant `AppNavigation`, afin que le fond/logo splash ne restent pas visibles derriere Home.
 - L'initialisation diagnostic `AppContainer` dans `SVPlayerApplication` est differee et lancee hors thread UI, pour ne pas bloquer le rendu initial du splash Compose.
 - `AppNavigation` ne contient plus de `StartupHandoffScreen`; apres le statut `Demarrage en cours...`, `MainActivity` rend directement la navigation.
 - `MainActivity` ne pose plus `@drawable/splash_background` comme fond de fenetre permanent afin d'eviter que le fond splash reapparaisse derriere Home; les logs `SVStartup` suivent les statuts startup.
@@ -143,8 +143,9 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-02: release publiee `0.1.81` / `versionCode 84` pour splash hybride: fond + logo reduit dans la preview systeme, barre/statuts/diagnostics en Compose, nettoyage du fond avant Home; APK `smartvision-tv-v84-1577e450.apk`, SHA256 `1577e4508feb3ae94d5ba672f67ff851d0a1779b6b94a34dd257044b4a65afb0`, manifeste public, `app_update.php`, APK stable et hash verifies.
+- 2026-07-02: release publiee `0.1.80` / `versionCode 83` pour splash systeme fond + logo immediat, anti-flash activation, cache final tendances startup, mini-player Continue watching immediat, ordre initial des tendances Home, refresh local du menu HOME et ancrage horizontal Home; APK `smartvision-tv-v83-90e2e35d.apk`, SHA256 `90e2e35df36f5b33bc20d6aaa19c366904989784f9c676915368909d9daff28f`, manifeste public, `app_update.php`, APK stable et hash verifies.
 - 2026-07-02: release publiee `0.1.78` / `versionCode 81` pour stabiliser le scroll/focus vertical Home Continue watching et Trending; APK `smartvision-tv-v81-bcf5a8d7.apk`, manifeste public, `app_update.php`, APK stable et hash SHA256 verifies.
-- 2026-07-02: correctif prepare pour splash immediat, anti-flash activation, cache final tendances startup, mini-player Continue watching immediat et ancrage horizontal Home; release a publier apres build.
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-07-02: release publiee `0.1.76` / `versionCode 79` pour mini-player Home poster paysage, filtre tendances avec `backdropUrl`, demarrage video apres 4 secondes de focus et fondu plus lent; APK `smartvision-tv-v79-54bfa614.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-02: release publiee `0.1.75` / `versionCode 78` pour supprimer l'ecran noir apres splash, renforcer le focus Home vers Tendances, corriger le clipping gauche des carrousels et ajouter les logs `SVStartup` / `SVHomeFocus`.

@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
+import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
@@ -14,13 +15,8 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -30,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -37,19 +34,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -57,12 +51,17 @@ import androidx.compose.ui.unit.sp
 import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.data.AppContainer
 import com.smartvision.svplayer.core.data.LocalAppContainer
+import com.smartvision.svplayer.domain.model.SyncStatus
 import com.smartvision.svplayer.sync.SyncFrequencyPolicy
 import com.smartvision.svplayer.ui.navigation.AppNavigation
 import com.smartvision.svplayer.ui.theme.SmartVisionTheme
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
@@ -124,23 +123,32 @@ class MainActivity : ComponentActivity() {
     private fun StartupGate() {
         var appContainer by remember { mutableStateOf<AppContainer?>(null) }
         var startupComplete by remember { mutableStateOf(false) }
-        var statusLabel by remember { mutableStateOf("Initialisation en cours...") }
-        var progress by remember { mutableFloatStateOf(MinimumProgressScale) }
+        val startupStartedAt = remember { SystemClock.elapsedRealtime() }
+        var nowMs by remember { mutableLongStateOf(startupStartedAt) }
+        var startupState by remember {
+            mutableStateOf(StartupProgressState(startedAtMs = startupStartedAt))
+        }
+
+        LaunchedEffect(startupComplete) {
+            while (!startupComplete) {
+                nowMs = SystemClock.elapsedRealtime()
+                delay(StartupTickerMillis)
+            }
+        }
 
         LaunchedEffect(Unit) {
             withFrameNanos { }
-            setTheme(R.style.Theme_SVPlayer)
             delay(FirstFrameStartupDelayMillis)
             val container = withContext(Dispatchers.Default) {
                 (application as SVPlayerApplication).appContainer
             }
             runStartupChecks(
                 container = container,
-                updateStatus = { label, targetProgress ->
-                    statusLabel = label
-                    progress = targetProgress
-                },
+                startedAtMs = startupStartedAt,
+                updateStatus = { state -> startupState = state },
             )
+            setTheme(R.style.Theme_SVPlayer)
+            window.setBackgroundDrawable(ColorDrawable(AndroidColor.rgb(2, 7, 20)))
             appContainer = container
             startupComplete = true
             Log.i(TAG_STARTUP, "startup complete: rendering AppNavigation")
@@ -153,28 +161,18 @@ class MainActivity : ComponentActivity() {
             }
         } else {
             StartupSplashScreen(
-                statusLabel = statusLabel,
-                progress = progress,
+                state = startupState,
+                nowMs = nowMs,
             )
         }
     }
 
     @Composable
-    private fun StartupSplashScreen(statusLabel: String, progress: Float) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black),
-        ) {
-            Image(
-                painter = painterResource(R.drawable.smartvision_splash_bg),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+    private fun StartupSplashScreen(state: StartupProgressState, nowMs: Long) {
+        Box(modifier = Modifier.fillMaxSize()) {
             StartupLoadingOverlay(
-                statusLabel = statusLabel,
-                progress = progress,
+                state = state,
+                nowMs = nowMs,
                 modifier = Modifier.align(Alignment.Center),
             )
         }
@@ -182,54 +180,62 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun StartupLoadingOverlay(
-        statusLabel: String,
-        progress: Float,
+        state: StartupProgressState,
+        nowMs: Long,
         modifier: Modifier = Modifier,
     ) {
         BoxWithConstraints(modifier = modifier) {
-            val logoWidth = maxWidth * SplashLogoWidthRatio
-            val logoHeight = logoWidth * LogoAspectRatio
             val progressWidth = maxWidth * SplashProgressWidthRatio
             val progressHeight = (maxHeight * SplashProgressHeightRatio).coerceAtLeast(MinimumProgressHeight)
-            val progressTopMargin = maxHeight * SplashProgressTopMarginRatio
             val statusTopMargin = maxHeight * SplashStatusTopMarginRatio
-            val logoAlpha by rememberInfiniteTransition(label = "startupLogoPulse").animateFloat(
-                initialValue = LogoPulseMinAlpha,
-                targetValue = LogoPulseMaxAlpha,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(LogoPulseMillis.toInt(), easing = FastOutSlowInEasing),
-                    repeatMode = RepeatMode.Reverse,
-                ),
-                label = "startupLogoAlpha",
-            )
+            val progressTopOffset = maxHeight / 2 + SystemSplashLogoHeight / 2 + (maxHeight * SplashProgressTopMarginRatio)
+            val elapsedMs = (nowMs - state.startedAtMs).coerceAtLeast(0L)
+            val etaText = estimateStartupEta(elapsedMs, state.progress)
 
             Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = progressTopOffset),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Image(
-                    painter = painterResource(R.drawable.smartvision_logo_wide),
-                    contentDescription = getString(R.string.app_name),
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .width(logoWidth)
-                        .height(logoHeight)
-                        .alpha(logoAlpha),
-                )
-                Spacer(Modifier.height(progressTopMargin))
                 StartupProgressBar(
-                    progress = progress,
+                    progress = state.progress,
                     modifier = Modifier
                         .width(progressWidth)
                         .height(progressHeight),
                 )
                 Spacer(Modifier.height(statusTopMargin))
                 Text(
-                    text = statusLabel,
+                    text = state.label,
                     color = Color(0xFFDBEAFE).copy(alpha = 0.86f),
                     fontSize = 13.sp,
                     lineHeight = 16.sp,
                     textAlign = TextAlign.Center,
                 )
+                Spacer(Modifier.height(DiagnosticLineTopMargin))
+                Text(
+                    text = state.summaryLine(),
+                    color = Color(0xFFB7D7FF).copy(alpha = 0.82f),
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = "Temps: ${formatDuration(elapsedMs)} | Restant: $etaText",
+                    color = Color(0xFFB7D7FF).copy(alpha = 0.76f),
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp,
+                    textAlign = TextAlign.Center,
+                )
+                state.sectionsLine()?.let { details ->
+                    Text(
+                        text = details,
+                        color = Color(0xFF9FC8FF).copy(alpha = 0.72f),
+                        fontSize = 10.sp,
+                        lineHeight = 13.sp,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         }
     }
@@ -267,13 +273,21 @@ class MainActivity : ComponentActivity() {
 
     private suspend fun runStartupChecks(
         container: AppContainer,
-        updateStatus: (String, Float) -> Unit,
+        startedAtMs: Long,
+        updateStatus: (StartupProgressState) -> Unit,
     ) {
-        val startedAt = SystemClock.elapsedRealtime()
         var totalSteps = startupStepCount(PlaylistSource.Xtream, shouldSync = true)
         suspend fun update(label: String, step: Int, total: Int = totalSteps) {
             Log.i(TAG_STARTUP, "startup status: $label")
-            updateStatus(label, startupProgress(step, total))
+            updateStatus(
+                StartupProgressState(
+                    label = label,
+                    progress = startupProgress(step, total),
+                    currentStep = step,
+                    totalSteps = total,
+                    startedAtMs = startedAtMs,
+                ),
+            )
             delay(StatusStepPauseMillis)
         }
 
@@ -307,7 +321,19 @@ class MainActivity : ComponentActivity() {
                 )
                 container.xtreamRepository.clearCaches()
                 container.catalogRepository.invalidateLocalCatalogCache()
-                val syncResult = runCatching { container.synchronizeCatalog().getOrThrow() }
+                val syncStep = step - 1
+                val syncResult = collectCatalogSyncStartupProgress(
+                    container = container,
+                    startedAtMs = startedAtMs,
+                    step = syncStep,
+                    totalSteps = totalSteps,
+                    fallbackLabel = if (source == PlaylistSource.M3u) {
+                        "Synchronisation M3U en cours..."
+                    } else {
+                        "Synchronisation Xtream en cours..."
+                    },
+                    updateStatus = updateStatus,
+                )
                 update(
                     label = if (syncResult.isSuccess) {
                         if (source == PlaylistSource.M3u) "Chargement catalogue M3U termine." else "Chargement catalogue Xtream termine."
@@ -341,16 +367,53 @@ class MainActivity : ComponentActivity() {
             update("Demarrage en cours...", totalSteps, totalSteps)
         }.onFailure { error ->
             Log.w(TAG_STARTUP, "startup checks failed: ${error.javaClass.simpleName}", error)
-            updateStatus("Demarrage en cours...", 1f)
+            updateStatus(
+                StartupProgressState(
+                    label = "Demarrage en cours...",
+                    progress = 1f,
+                    currentStep = totalSteps,
+                    totalSteps = totalSteps,
+                    startedAtMs = startedAtMs,
+                ),
+            )
         }
-        val elapsed = SystemClock.elapsedRealtime() - startedAt
+        val elapsed = SystemClock.elapsedRealtime() - startedAtMs
         if (elapsed < MinimumSplashDurationMillis) {
             delay(MinimumSplashDurationMillis - elapsed)
         }
     }
 
+    private suspend fun collectCatalogSyncStartupProgress(
+        container: AppContainer,
+        startedAtMs: Long,
+        step: Int,
+        totalSteps: Int,
+        fallbackLabel: String,
+        updateStatus: (StartupProgressState) -> Unit,
+    ): Result<Unit> = coroutineScope {
+        val syncJob = async { runCatching { container.synchronizeCatalog().getOrThrow() } }
+        val statusJob = launch {
+            container.catalogRepository.syncStatus.collect { status ->
+                val state = status.toStartupProgressState(
+                    fallbackLabel = fallbackLabel,
+                    startedAtMs = startedAtMs,
+                    step = step,
+                    totalSteps = totalSteps,
+                ) ?: return@collect
+                updateStatus(state)
+            }
+        }
+        val result = syncJob.await()
+        statusJob.cancelAndJoin()
+        result
+    }
+
     private fun startupProgress(step: Int, total: Int): Float =
         (step.toFloat() / total.toFloat()).coerceIn(MinimumProgressScale, 1f)
+
+    private fun startupProgressForStep(step: Int, total: Int, stepFraction: Float): Float =
+        (((step - 1).toFloat() + stepFraction.coerceIn(0f, 1f)) / total.toFloat())
+            .coerceIn(MinimumProgressScale, 1f)
 
     private fun startupStepCount(source: PlaylistSource, shouldSync: Boolean): Int {
         var total = 5
@@ -385,28 +448,143 @@ class MainActivity : ComponentActivity() {
         return System.currentTimeMillis() - lastSync >= TimeUnit.HOURS.toMillis(repeatHours)
     }
 
+    private fun SyncStatus.toStartupProgressState(
+        fallbackLabel: String,
+        startedAtMs: Long,
+        step: Int,
+        totalSteps: Int,
+    ): StartupProgressState? = when (this) {
+        SyncStatus.Idle -> null
+        is SyncStatus.Running -> StartupProgressState(
+            label = message.ifBlank { fallbackLabel },
+            progress = startupProgressForStep(step, totalSteps, percent.toFloat() / 100f),
+            currentStep = step,
+            totalSteps = totalSteps,
+            completedItems = completedItems.takeIf { totalItems > 0 },
+            totalItems = totalItems.takeIf { it > 0 },
+            sections = catalogProgress.toStartupSections(),
+            startedAtMs = startedAtMs,
+        )
+        is SyncStatus.Success -> StartupProgressState(
+            label = message.ifBlank { fallbackLabel },
+            progress = startupProgressForStep(step, totalSteps, 1f),
+            currentStep = step,
+            totalSteps = totalSteps,
+            sections = catalogProgress.toStartupSections(),
+            startedAtMs = startedAtMs,
+        )
+        is SyncStatus.Error -> StartupProgressState(
+            label = message.ifBlank { fallbackLabel },
+            progress = startupProgressForStep(step, totalSteps, 1f),
+            currentStep = step,
+            totalSteps = totalSteps,
+            sections = catalogProgress.toStartupSections(),
+            startedAtMs = startedAtMs,
+        )
+    }
+
+    private fun SyncStatus.CatalogProgress.toStartupSections(): List<StartupSectionProgress> =
+        listOf(
+            live.toStartupSection("Live"),
+            movies.toStartupSection("Films"),
+            series.toStartupSection("Series"),
+        )
+
+    private fun SyncStatus.SyncSectionProgress.toStartupSection(label: String): StartupSectionProgress =
+        StartupSectionProgress(
+            label = label,
+            currentItems = currentItems,
+            previousItems = previousItems,
+            percent = percent,
+            completed = completed,
+        )
+
     companion object {
         private const val TAG = "SmartVisionFocus"
         private const val TAG_STARTUP = "SVStartup"
         const val ACTION_SHOW_XTREAM_CONNECTION_ALERT = "com.smartvision.svplayer.SHOW_XTREAM_CONNECTION_ALERT"
         private const val REQUEST_NOTIFICATIONS = 7041
-        private const val LogoAspectRatio = 248f / 980f
-        private const val SplashLogoWidthRatio = 0.54f
         private const val SplashProgressWidthRatio = 0.36f
         private const val SplashProgressHeightRatio = 0.008f
         private const val SplashProgressTopMarginRatio = 0.018f
         private const val SplashStatusTopMarginRatio = 0.014f
+        private val SystemSplashLogoHeight: Dp = 142.dp
         private val MinimumProgressHeight: Dp = 5.dp
-        private const val LogoPulseMinAlpha = 0.86f
-        private const val LogoPulseMaxAlpha = 1.0f
-        private const val LogoPulseMillis = 760L
+        private val DiagnosticLineTopMargin: Dp = 6.dp
         private const val MinimumSplashDurationMillis = 2_400L
         private const val StatusStepPauseMillis = 80L
         private const val ProgressStepMillis = 180L
         private const val MinimumProgressScale = 0.03f
         private const val FirstFrameStartupDelayMillis = 60L
+        private const val StartupTickerMillis = 1_000L
         private const val StartupLivePageLimit = 96
         private const val StartupMoviePageLimit = 72
         private const val StartupSeriesPageLimit = 72
     }
+}
+
+private data class StartupProgressState(
+    val label: String = "Initialisation en cours...",
+    val progress: Float = 0.03f,
+    val currentStep: Int = 1,
+    val totalSteps: Int = 1,
+    val completedItems: Int? = null,
+    val totalItems: Int? = null,
+    val sections: List<StartupSectionProgress> = emptyList(),
+    val startedAtMs: Long,
+) {
+    fun summaryLine(): String {
+        val percent = (progress * 100f).toInt().coerceIn(0, 100)
+        val processed = if (completedItems != null && totalItems != null) {
+            "$completedItems / $totalItems elements"
+        } else {
+            "-- elements"
+        }
+        val remaining = if (completedItems != null && totalItems != null) {
+            (totalItems - completedItems).coerceAtLeast(0).toString()
+        } else {
+            "--"
+        }
+        return "$percent% | Etape $currentStep / $totalSteps | Traite: $processed | Restant: $remaining"
+    }
+
+    fun sectionsLine(): String? =
+        sections
+            .filter { it.currentItems > 0 || it.previousItems > 0 || it.completed }
+            .takeIf { it.isNotEmpty() }
+            ?.joinToString(" | ") { it.displayText() }
+}
+
+private data class StartupSectionProgress(
+    val label: String,
+    val currentItems: Int,
+    val previousItems: Int,
+    val percent: Int,
+    val completed: Boolean,
+) {
+    fun displayText(): String {
+        val previous = previousItems.takeIf { it > 0 }?.toString() ?: "--"
+        val remaining = if (previousItems > 0) {
+            (previousItems - currentItems).coerceAtLeast(0).toString()
+        } else {
+            "--"
+        }
+        val marker = if (completed) "OK" else "$percent%"
+        return "$label $marker: $currentItems/$previous reste $remaining"
+    }
+}
+
+private fun estimateStartupEta(elapsedMs: Long, progress: Float): String {
+    val safeProgress = progress.coerceIn(0f, 1f)
+    if (safeProgress >= 0.995f) return "00:00"
+    if (safeProgress <= 0.05f) return "Calcul..."
+    val remainingMs = ((elapsedMs / safeProgress) - elapsedMs).toLong().coerceAtLeast(0L)
+    return formatDuration(remainingMs)
+}
+
+private fun formatDuration(durationMs: Long): String {
+    val totalSeconds = (durationMs / 1_000L).coerceAtLeast(0L)
+    val minutes = totalSeconds / 60L
+    val seconds = totalSeconds % 60L
+    return "%02d:%02d".format(minutes, seconds)
 }

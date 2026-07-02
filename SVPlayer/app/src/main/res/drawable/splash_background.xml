@@ -10,4 +10,12 @@
             android:gravity="fill"
             android:src="@drawable/smartvision_splash_bg" />
     </item>
+    <item
+        android:width="560dp"
+        android:height="142dp"
+        android:gravity="center">
+        <bitmap
+            android:gravity="fill"
+            android:src="@drawable/smartvision_logo_wide" />
+    </item>
 </layer-list>

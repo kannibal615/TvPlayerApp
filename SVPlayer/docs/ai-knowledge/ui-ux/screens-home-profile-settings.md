@@ -13,6 +13,7 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 ## 3. Workflow utilisateur
 
 - Home: hero, cartes Live/Movies/Series, continue watching si disponible, `Trending movies`, `Trending series`, notifications/profil/settings.
+- Quand l'utilisateur est deja sur Home, le bouton HOME du header ne doit pas relancer la navigation vers la meme route: il rafraichit localement slides/tendances, remet les listes horizontales a l'index `0`, remonte l'ecran et redonne le focus aux categories.
 - Home affiche un overlay "Connexion indisponible" sur les cartes et reprises de lecture quand Xtream est indisponible.
 - Home ne doit pas afficher cet overlay pendant un simple refresh rapide si la derniere verification Xtream est encore `CONNECTED`.
 - Home affiche ses donnees a partir de petits jeux locaux: slides caches, historique recent limite a `10`, tendances films `10` et tendances series `10` issues du cache final `HomeContentRepository` prepare au startup depuis `trending_media`, la config tendances et les details `backdropUrl`. Il ne doit pas relire les snapshots complets Movies / Series.
@@ -20,7 +21,9 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 - Sur Home, Continue watching utilise aussi le mini-player Media3 muet au focus: Live demarre immediatement, Films et Episodes lancent `play()` tout de suite depuis la position de reprise sans poster intermediaire et sans garder le `PlayerView` derriere un alpha `0` prolonge; la boucle reste de 20 secondes avec overlay i18n `Resume playback` / `Reprendre la lecture`.
 - Sur Home, les tendances Films/Series sont filtrees au chargement de section pour garder uniquement les medias qui exposent une image paysage `backdropUrl` depuis les details Xtream, sauf override distant explicite. Cette image paysage sert de poster mini-player; le filtre note est desactive par defaut.
 - Sur Home, les lignes Continue watching / Trending movies / Trending series ont un padding interne horizontal pour que la premiere card, sa bordure focus et le mini-player ne soient pas tronques a gauche. Quand une card recoit le focus horizontal, la `LazyRow` anime vers cet index pour garder la card focussee en premiere position visible quand il reste assez d'items a droite; en fin de liste, elle se limite au dernier premier index utile.
+- Les `LazyListState` des lignes Home ne sont pas sauvegardes/restaures entre jeux de donnees; ils sont recrees par signature de liste et remis a l'index `0`, afin que les tendances ne s'ouvrent pas sur un ancien item comme le 14e.
 - Le D-pad bas/haut sur Home force la ligne cible a revenir a son premier item, annule tout scroll vertical Home deja lance, execute un seul scroll vertical deterministe, puis demande le focus apres la fin du scroll. Les lignes Continue watching / Trending movies / Trending series gardent une hauteur fixe pour que l'animation de largeur de la card focussee ne relance pas de corrections verticales.
+- Les sections Continue watching / Trending movies / Trending series ne sont rendues que si elles contiennent des items; les cibles D-pad haut/bas tiennent compte de ces lignes absentes pour eviter un focus mort.
 - Home routes secondaires: `continue_watching` et `trending` via `HomeCollectionsScreen`.
 - Live TV: categories, chaines, apercu puis plein ecran.
 - Movies: grille de films, detail, lecture.
@@ -50,6 +53,7 @@ Etat:
 - `AppUpdateViewModel` pour update;
 - `SettingsRepository` pour preferences.
 - `HomeViewModel` seme son etat initial depuis `HomeSlidesRepository`, `UserContentRepository` et le cache `HomeContentRepository`; il ne recharge les tendances que si ce cache startup est absent ou si un refresh force est demande.
+- `HomeHeroBanner` route les CTA applicatifs via la navigation active et n'ouvre le QR offre que pour les liens externes/non-routes.
 
 ## 5. Ecrans concernes
 
@@ -169,3 +173,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-02: mini-player Home ajuste: Continue watching passe par fond noir sans poster, Trends limite la lecture a 40 secondes puis revient au poster paysage, le D-pad gauche est bloque sur la premiere card des carrousels et le scroll horizontal automatique par focus est retire pour reduire la vibration.
 - 2026-07-02: stabilisation Home verticale: suppression du `bringIntoView()` repete sur Continue/Trending, scroll vertical unique par touche avec annulation du job precedent, focus demande apres scroll et hauteur de ligne fixe.
 - 2026-07-02: Home consomme un cache final tendances prepare au startup, Continue watching rend le `PlayerView` visible et lance `play()` immediatement, et les carrousels ancrent l'item focus horizontal en premiere position visible sauf en fin de liste.
+- 2026-07-02: Home corrige l'ordre initial des tendances en supprimant la restauration d'un ancien scroll horizontal, cache les sections vides, route HOME header vers un refresh local sans ecran gris et localise les libelles/fallbacks Home/Hero.

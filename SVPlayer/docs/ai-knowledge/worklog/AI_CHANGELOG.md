@@ -1,27 +1,42 @@
 # AI Changelog
 
-## 2026-07-02 - Startup Home sans flash et cache tendances
+## 2026-07-02 - Splash hybride et diagnostic startup
 
 Type:
 - android
 - startup
 - ui-tv
-- release-prep
+- release-prod
 
 Resume:
-- `MainActivity` garde la preview `Theme.SVPlayer.Splash` jusqu'a la premiere frame Compose, puis affiche fond, logo, progress bar et statuts sans fade initial.
+- `Theme.SVPlayer.Splash` affiche le fond + logo reduit dans la preview systeme pendant tout le startup.
+- `MainActivity` ne redessine plus fond/logo en Compose; il affiche uniquement progress bar, statut et diagnostics au-dessus de la preview systeme.
+- Le fond de fenetre splash est remplace par un fond opaque neutre juste avant `AppNavigation`, pour eviter que fond/logo splash restent visibles derriere Home.
+- Les diagnostics startup affichent pourcentage, etape courante/total, elements traites/restants, temps ecoule, ETA estimee et details Live/Films/Series pendant une synchro catalogue.
+- Version locale incrementee a `0.1.81` / `versionCode 84` car `0.1.80` / `83` est deja publie.
 - `AppNavigation` attend `ActivationViewModel.localStateReady` avant de rendre `ActivationScreen`, pour eviter le flash activation apres splash sur appareil deja actif.
 - Les tendances Home sont preparees pendant le startup dans `HomeContentRepository`: config tendances, details `backdropUrl`, mapping final `ContinueItem`, puis cache consomme par `HomeViewModel`.
 - Le mini-player Continue watching rend le `PlayerView` visible et lance `play()` immediatement au focus, sans attendre la duree ou la premiere frame derriere un alpha `0`.
 - Les carrousels Continue watching / Trending ancrent horizontalement la card focussee via `LazyListState.animateScrollToItem`, avec borne de fin de liste.
+- Les lignes tendances Home ne restaurent plus un ancien scroll sauvegarde: chaque jeu de donnees cree un `LazyListState` neuf et se remet a l'index `0`, ce qui evite une ouverture directement sur un item au milieu de liste.
+- Le clic sur HOME dans le header quand l'utilisateur est deja sur Home fait un refresh local Home et remet les lignes a gauche au lieu de renaviguer vers la meme route.
+- Les sections Home vides ne sont plus affichees et les routes D-pad ignorent les lignes absentes.
+- Release prod publiee en `0.1.81` / `versionCode 84` avec APK `smartvision-tv-v84-1577e450.apk`, SHA256 `1577e4508feb3ae94d5ba672f67ff851d0a1779b6b94a34dd257044b4a65afb0`; `downloads/smartvision-tv.version.json`, `api/app_update.php`, APK versionne et APK stable verifies.
 
 Fichiers code/version:
 - `app/src/main/java/com/smartvision/svplayer/MainActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/core/data/AppContainer.kt`
 - `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
 - `app/src/main/java/com/smartvision/svplayer/data/home/HomeContentRepository.kt`
 - `app/src/main/java/com/smartvision/svplayer/ui/home/HomeViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeCategoryCard.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeHeroBanner.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeCollectionsScreen.kt`
 - `app/src/main/java/com/smartvision/svplayer/ui/home/ContinueWatchingRow.kt`
 - `app/src/main/java/com/smartvision/svplayer/ui/home/ContentProgressCard.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/i18n/SmartVisionStrings.kt`
+- `app/src/main/res/drawable/splash_background.xml`
 
 Fichiers MD mis a jour:
 - `docs/ai-knowledge/features/catalog-playback.md`
@@ -30,6 +45,14 @@ Fichiers MD mis a jour:
 - `docs/ai-knowledge/features/activation-license-trial-xtream.md`
 - `docs/ai-knowledge/technical/android-architecture-build-release.md`
 - `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Verification:
+- `.\gradlew.bat --% :app:compileReleaseKotlin --no-daemon --console=plain -Dkotlin.compiler.execution.strategy=in-process` OK.
+- `.\scripts\guard_release_version.ps1` OK avant build.
+- `.\gradlew.bat --% :app:assembleRelease --no-daemon --console=plain -Dkotlin.compiler.execution.strategy=in-process` OK en 8m27.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata` OK apres build.
+- `apksigner verify --verbose --print-certs app-release.apk` OK.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall` OK; verification publique du manifeste, `app_update.php`, telechargement APK versionne/stable et hash OK.
 
 ## 2026-07-02 - Stabilisation verticale Home
 
