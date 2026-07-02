@@ -1,5 +1,37 @@
 # AI Changelog
 
+## 2026-07-01 - Pagination Room des catalogues
+
+Type:
+- android
+- performance
+- documentation
+
+Resume:
+- Abandon de l'idee de mini catalogue backend pour cette optimisation: Room reste le stockage persistant complet sur l'appareil.
+- Ajout de requetes catalogue paginees locales `LIMIT/OFFSET` et de methodes `CatalogRepository` pour Live TV, Movies et Series.
+- Live TV / Movies / Series ne chargent plus les snapshots complets pour ouvrir les ecrans; ils affichent les categories puis chargent les contenus au scroll.
+- Home ne seme plus ses tendances depuis les snapshots complets Movies/Series; il reste sur des requetes limitees et l'historique recent.
+- Ajout d'une decision durable: `docs/ai-knowledge/decisions/2026-07-01-room-paged-catalog-ui.md`.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/decisions/2026-07-01-room-paged-catalog-ui.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/data/local/dao/MediaDao.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/domain/repository/CatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/LiveTvScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/LiveTvViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/movies/MoviesScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/movies/MoviesViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/series/SeriesScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/series/SeriesViewModel.kt`
+
 ## 2026-07-01 - Splash leger et filtre EPG Live TV
 
 Type:

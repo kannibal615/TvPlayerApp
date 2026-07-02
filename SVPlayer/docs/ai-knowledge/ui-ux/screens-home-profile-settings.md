@@ -15,11 +15,12 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 - Home: hero, cartes Live/Movies/Series, continue watching, tendances, notifications/profil/settings.
 - Home affiche un overlay "Connexion indisponible" sur les cartes et reprises de lecture quand Xtream est indisponible.
 - Home ne doit pas afficher cet overlay pendant un simple refresh rapide si la derniere verification Xtream est encore `CONNECTED`.
-- Home recoit ses donnees initiales depuis les caches prechauffes par `SplashActivity`: slides, progression recente enrichie et tendances basees sur les snapshots Movies / Series.
+- Home affiche ses donnees a partir de petits jeux locaux: slides caches, historique recent limite et tendances issues de requetes Room bornees. Il ne doit pas relire les snapshots complets Movies / Series.
 - Home routes secondaires: `continue_watching` et `trending` via `HomeCollectionsScreen`.
 - Live TV: categories, chaines, apercu puis plein ecran.
 - Movies: grille de films, detail, lecture.
 - Series: grille, detail, saisons/episodes, lecture episode.
+- Live TV / Movies / Series affichent les categories puis chargent les contenus par pages Room locales pendant le scroll, sans reconstruire toute la playlist en RAM.
 - Info compte: licence, device, mode d'utilisation, expiration, compte Xtream, lien M3U, URL EPG, source active exclusive, QR achat/config. L'ecran reutilise le header principal de l'application, donne le focus initial au menu `Licence SmartVision`, et garde la section droite plus large/compacte pour servir de modele aux futurs ecrans profil/parametres. Dans Info compte, le bouton Synchroniser ouvre un popup de confirmation avec compteurs Live TV / Films / Series; apres succes ou erreur, Retour ferme le popup, ouvre Appareil et catalogue et y remet le focus.
 - Info compte compacte la section source: icone utilisateur bleue pour le panneau, badge d'usage dans l'en-tete Licence SmartVision, expiration Xtream dans l'en-tete Info compte, identifiants Xtream sur une ligne, boutons Xtream en icones et bascules source plus petites.
 - Quand M3U est actif, Movies et Series affichent un etat vide source-aware au lieu d'une erreur Xtream.
@@ -42,7 +43,7 @@ Etat:
 - `AppConfigViewModel` pour feature flags et consent;
 - `AppUpdateViewModel` pour update;
 - `SettingsRepository` pour preferences.
-- `HomeViewModel` seme son etat initial depuis les caches memoire `HomeSlidesRepository`, `UserContentRepository` et `CatalogRepository` avant toute lecture reactive de secours.
+- `HomeViewModel` seme son etat initial depuis `HomeSlidesRepository` et `UserContentRepository`, puis charge les tendances avec des requetes limitees de `CatalogRepository`.
 
 ## 5. Ecrans concernes
 
@@ -117,6 +118,7 @@ Sources:
 - Le popup update ne doit pas s'ouvrir automatiquement apres un check silencieux; ouverture uniquement depuis notification update ou bouton Settings > Updates > Check for update.
 - Info compte doit garder les cartes source Xtream/M3U/EPG compactes pour tenir sans scroll sur TV; les bascules source sont ON vert / OFF rouge et un seul ON est autorise.
 - Les actions Modifier par QR / Modifier / Supprimer de la carte Xtream doivent rester en boutons icones focusables pour limiter l'encombrement.
+- Les ecrans catalogue ne doivent pas ouvrir un snapshot complet Live TV / Movies / Series; garder la pagination Room locale pour proteger les gros catalogues Firestick.
 
 ## 11. Quand lire ce fichier ?
 
@@ -147,7 +149,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: extension du blocage Xtream aux routes detail/player et a l'etat verification en cours.
 - 2026-06-30: correction du flicker Home: `CONNECTED + checking` ne bloque plus les cartes; seuls les etats inconnus/en erreur pendant verification restent bloquants.
 - 2026-06-30: Profil > Identifiants Xtream affiche la derniere synchronisation sous le bouton et lance la synchro via un popup dedie avec compteurs, progress bars et routage focus vers Appareil et catalogue.
-- 2026-07-01: Home est alimente par les caches prechauffes dans `SplashActivity` pour eviter le premier chargement visible apres l'ouverture.
+- 2026-07-01: Home reste limite a des petits jeux locaux; les ecrans Live TV / Movies / Series chargent les contenus par pagination Room locale.
 - 2026-07-01: `SplashActivity` affiche un fond video Compose Media3 muet et boucle, avec le logo, la progress bar et les statuts startup au-dessus.
 - 2026-07-01: suppression du flash transitoire "Activer SmartVision" apres splash pour les appareils deja actifs.
 - 2026-07-01: Profil client renomme Info compte; la section Xtream adopte une mise en page cartes/actions et ajoute l'affichage/edition de l'URL EPG.

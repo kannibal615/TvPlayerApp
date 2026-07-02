@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -56,6 +57,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -368,6 +370,7 @@ fun LiveTvScreen(
                     },
                     showHistoryDelete = state.selectedCategory?.label == "Historique",
                     onDeleteHistoryChannel = { channel -> channelToDelete = channel },
+                    onLoadNextPage = viewModel::loadNextPage,
                     onRetry = viewModel::retryCurrentCategory,
                     modifier = Modifier
                         .weight(0.42f)
@@ -493,9 +496,11 @@ private fun ChannelList(
     onChannelClick: (LiveTvChannel) -> Unit,
     showHistoryDelete: Boolean,
     onDeleteHistoryChannel: (LiveTvChannel) -> Unit,
+    onLoadNextPage: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val listState = rememberLazyListState()
     val visibleChannels = state.channels.filter { channel ->
         searchQuery.isBlank() || channel.name.contains(searchQuery, ignoreCase = true)
     }
@@ -509,6 +514,16 @@ private fun ChannelList(
             delay(80)
             runCatching { firstChannelFocusRequester.requestFocus() }
         }
+    }
+    LaunchedEffect(listState, visibleChannels.size, state.hasMoreItems, state.nextPageLoading, searchQuery) {
+        if (searchQuery.isNotBlank()) return@LaunchedEffect
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+            .collect { lastVisibleIndex ->
+                val remaining = visibleChannels.lastIndex - lastVisibleIndex
+                if (state.hasMoreItems && !state.nextPageLoading && remaining <= LiveTvNextPageThreshold) {
+                    onLoadNextPage()
+                }
+            }
     }
     LiveTvPanel(
         title = "Chaines",
@@ -562,6 +577,7 @@ private fun ChannelList(
             )
 
             else -> LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(LiveTvDimens.ListGap),
                 contentPadding = PaddingValues(bottom = LiveTvDimens.ListGap),
@@ -577,6 +593,22 @@ private fun ChannelList(
                         showDelete = showHistoryDelete,
                         onDelete = { onDeleteHistoryChannel(channel) },
                     )
+                }
+                if (state.nextPageLoading) {
+                    item(key = "live-next-page-loading") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp,
+                                color = SmartVisionColors.Primary,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -2091,6 +2123,8 @@ private fun LiveTvPanel(
         content()
     }
 }
+
+private const val LiveTvNextPageThreshold = 12
 
 private object LiveTvDimens {
     val ScreenPadding = 14.dp

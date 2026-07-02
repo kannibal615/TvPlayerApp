@@ -41,6 +41,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -79,6 +80,7 @@ import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 
 @Suppress("UNUSED_PARAMETER")
 @Composable
@@ -247,6 +249,7 @@ fun SeriesScreen(
                     },
                     showHistoryDelete = state.selectedCategory?.label == "Historique",
                     onDeleteHistorySeries = { series -> seriesToDelete = series },
+                    onLoadNextPage = viewModel::loadNextPage,
                     onRetry = viewModel::retryCurrentCategory,
                     modifier = Modifier
                         .weight(0.78f)
@@ -350,6 +353,7 @@ private fun SeriesGrid(
     onSeriesClick: (SeriesItemUi) -> Unit,
     showHistoryDelete: Boolean,
     onDeleteHistorySeries: (SeriesItemUi) -> Unit,
+    onLoadNextPage: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -360,6 +364,16 @@ private fun SeriesGrid(
 
     LaunchedEffect(state.selectedCategoryId) {
         if (gridState.layoutInfo.totalItemsCount > 0) gridState.scrollToItem(0)
+    }
+    LaunchedEffect(gridState, visibleSeries.size, state.hasMoreItems, state.nextPageLoading, searchQuery) {
+        if (searchQuery.isNotBlank()) return@LaunchedEffect
+        snapshotFlow { gridState.layoutInfo.visibleItemsInfo.maxOfOrNull { it.index } ?: 0 }
+            .collect { lastVisibleIndex ->
+                val remaining = visibleSeries.lastIndex - lastVisibleIndex
+                if (state.hasMoreItems && !state.nextPageLoading && remaining <= SeriesNextPageThreshold) {
+                    onLoadNextPage()
+                }
+            }
     }
 
     MediaCatalogPanel(
@@ -535,6 +549,8 @@ private fun ConfirmHistoryDeleteDialog(
         }
     }
 }
+
+private const val SeriesNextPageThreshold = 15
 
 private fun seriesCardMeta(series: SeriesItemUi): String =
     listOfNotNull(

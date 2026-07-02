@@ -14,7 +14,6 @@ import com.smartvision.svplayer.domain.model.Movie
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.model.sortedByHistorySignals
 import com.smartvision.svplayer.domain.repository.CatalogRepository
-import com.smartvision.svplayer.domain.repository.LocalCatalogSnapshot
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
 import kotlinx.coroutines.Job
@@ -22,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -49,7 +49,11 @@ data class MovieItemUi(
 
 data class MoviesScreenState(
     val categoriesLoading: Boolean = true,
+    val itemsLoading: Boolean = false,
     val moviesLoading: Boolean = false,
+    val nextPageLoading: Boolean = false,
+    val hasMoreItems: Boolean = false,
+    val currentOffset: Int = 0,
     val errorMessage: String? = null,
     val categories: List<MovieCategoryUi> = emptyList(),
     val selectedCategoryId: String? = null,
@@ -79,29 +83,22 @@ class MoviesViewModel(
     private var historyCategorySignals: List<CategoryHistorySignal> = emptyList()
     private var playerSettings = PlayerSettings()
     private var localCategories: List<Category> = emptyList()
-    private var localMovies: List<Movie> = emptyList()
 
     init {
         observeSettings()
         observeFavorites()
         observeHistory()
-        if (!restoreCachedCatalog()) {
-            loadCategories()
-        }
+        loadCategories()
     }
 
     fun loadCategories() {
         moviesJob?.cancel()
         viewModelScope.launch {
-            catalogRepository.getCachedMovieCatalogSnapshot()?.let { snapshot ->
-                applyCatalogSnapshot(snapshot)
-                return@launch
-            }
             _uiState.value = MoviesScreenState(categoriesLoading = true)
             runCatching {
-                catalogRepository.getMovieCatalogSnapshot()
-            }.onSuccess { snapshot ->
-                applyCatalogSnapshot(snapshot)
+                catalogRepository.observeMovieCategories().first()
+            }.onSuccess { categories ->
+                applyCategories(categories)
             }.onFailure { error ->
                 _uiState.value = MoviesScreenState(
                     categoriesLoading = false,
@@ -111,15 +108,8 @@ class MoviesViewModel(
         }
     }
 
-    private fun restoreCachedCatalog(): Boolean {
-        val snapshot = catalogRepository.getCachedMovieCatalogSnapshot() ?: return false
-        applyCatalogSnapshot(snapshot)
-        return true
-    }
-
-    private fun applyCatalogSnapshot(snapshot: LocalCatalogSnapshot<Movie>) {
-        localCategories = snapshot.categories
-        localMovies = snapshot.items
+    private fun applyCategories(categoriesSnapshot: List<Category>) {
+        localCategories = categoriesSnapshot
         val categories = localCategories.map { it.toUiCategory() }
             .filter { category -> playerSettings.allowsContent(category.label) }
         if (categories.isEmpty()) {
@@ -131,7 +121,7 @@ class MoviesViewModel(
         }
         _uiState.update {
             val visibleCategories = categories.withSpecialCategories(
-                allCount = localMovies.size.takeIf { it > 0 },
+                allCount = catalogTotalCount(),
                 favoriteCount = favoriteIds.size,
                 historyCount = historyProgress.size,
                 historySignals = historyCategorySignals,
@@ -220,15 +210,17 @@ class MoviesViewModel(
         viewModelScope.launch {
             userContentRepository.observeFavoriteIds(UserContentType.Movie).collect { ids ->
                 favoriteIds = ids
+                val favoriteSelection = if (_uiState.value.selectedCategoryId == FavoriteMovieCategoryId) {
+                    favoriteMovies()
+                } else {
+                    null
+                }
                 _uiState.update { state ->
-                    val refreshedMovies = if (state.selectedCategoryId == FavoriteMovieCategoryId) {
-                        favoriteMovies()
-                    } else {
-                        state.movies.map { it.copy(isFavorite = it.streamId in ids) }
-                    }
+                    val refreshedMovies = favoriteSelection
+                        ?: state.movies.map { it.copy(isFavorite = it.streamId in ids) }
                     state.copy(
                         categories = state.categories.withSpecialCategories(
-                            allCount = localMovies.size.takeIf { it > 0 },
+                            allCount = catalogTotalCount(),
                             favoriteCount = ids.size,
                             historyCount = historyProgress.size,
                             historySignals = historyCategorySignals,
@@ -255,7 +247,7 @@ class MoviesViewModel(
                     val historyMovies = historyMovies()
                     state.copy(
                         categories = state.categories.withSpecialCategories(
-                            allCount = localMovies.size.takeIf { it > 0 },
+                            allCount = catalogTotalCount(),
                             favoriteCount = favoriteIds.size,
                             historyCount = historyProgress.size,
                             historySignals = historyCategorySignals,
@@ -270,22 +262,28 @@ class MoviesViewModel(
 
     private fun loadFavoriteMovies() {
         moviesJob?.cancel()
-        val movies = favoriteMovies()
-        _uiState.update { state ->
-            state.copy(
-                moviesLoading = false,
-                errorMessage = null,
-                selectedCategoryId = FavoriteMovieCategoryId,
-                categories = state.categories.withSpecialCategories(
-                    allCount = localMovies.size.takeIf { it > 0 },
-                    favoriteCount = favoriteIds.size,
-                    historyCount = historyProgress.size,
-                    historySignals = historyCategorySignals,
-                ),
-                movies = movies,
-                focusedMovieId = movies.firstOrNull()?.streamId,
-                selectedMovieId = null,
-            )
+        moviesJob = viewModelScope.launch {
+            val movies = favoriteMovies()
+            _uiState.update { state ->
+                state.copy(
+                    itemsLoading = false,
+                    moviesLoading = false,
+                    nextPageLoading = false,
+                    hasMoreItems = false,
+                    currentOffset = movies.size,
+                    errorMessage = null,
+                    selectedCategoryId = FavoriteMovieCategoryId,
+                    categories = state.categories.withSpecialCategories(
+                        allCount = catalogTotalCount(),
+                        favoriteCount = favoriteIds.size,
+                        historyCount = historyProgress.size,
+                        historySignals = historyCategorySignals,
+                    ),
+                    movies = movies,
+                    focusedMovieId = movies.firstOrNull()?.streamId,
+                    selectedMovieId = null,
+                )
+            }
         }
     }
 
@@ -295,10 +293,14 @@ class MoviesViewModel(
         _uiState.update { state ->
             state.copy(
                 moviesLoading = false,
+                itemsLoading = false,
+                nextPageLoading = false,
+                hasMoreItems = false,
+                currentOffset = movies.size,
                 errorMessage = null,
                 selectedCategoryId = HistoryMovieCategoryId,
                 categories = state.categories.withSpecialCategories(
-                    allCount = localMovies.size.takeIf { it > 0 },
+                    allCount = catalogTotalCount(),
                     favoriteCount = favoriteIds.size,
                     historyCount = historyProgress.size,
                     historySignals = historyCategorySignals,
@@ -311,71 +313,22 @@ class MoviesViewModel(
     }
 
     private fun loadAllMovies() {
-        moviesJob?.cancel()
-        moviesJob = viewModelScope.launch {
-            val categories = _uiState.value.categories
-                .filterNot { it.id in SpecialMovieCategoryIds }
-                .sortedByHistorySignals(historyCategorySignals) { it.id }
-            val collected = mutableListOf<MovieItemUi>()
-            val seen = mutableSetOf<Int>()
-            _uiState.update {
-                it.copy(
-                    moviesLoading = true,
-                    errorMessage = null,
-                    selectedCategoryId = AllMovieCategoryId,
-                    movies = emptyList(),
-                    focusedMovieId = null,
-                    selectedMovieId = null,
-                )
-            }
-            runCatching {
-                categories.forEach { category ->
-                    localMovies.filter { it.categoryId == category.id }.forEach { movie ->
-                        if (!seen.add(movie.streamId)) return@forEach
-                        if (!playerSettings.allowsContent(movie.title, movie.rating, category.label)) return@forEach
-                        collected += movie.toUiMovie(collected.size, category.label, xtreamRepository, favoriteIds)
-                    }
-                    _uiState.update { state ->
-                        state.copy(
-                            categories = state.categories.withSpecialCategories(
-                                allCount = collected.size,
-                                favoriteCount = favoriteIds.size,
-                                historyCount = historyProgress.size,
-                                historySignals = historyCategorySignals,
-                            ),
-                            movies = collected.toList(),
-                            focusedMovieId = state.focusedMovieId ?: collected.firstOrNull()?.streamId,
-                        )
-                    }
-                }
-                collected.toList()
-            }.onSuccess { movies ->
-                _uiState.update { state ->
-                    state.copy(
-                        moviesLoading = false,
-                        categories = state.categories.withSpecialCategories(
-                            allCount = movies.size,
-                            favoriteCount = favoriteIds.size,
-                            historyCount = historyProgress.size,
-                            historySignals = historyCategorySignals,
-                        ),
-                        movies = movies,
-                        focusedMovieId = movies.firstOrNull()?.streamId,
-                        errorMessage = null,
-                    )
-                }
-            }.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        moviesLoading = false,
-                        movies = collected.toList(),
-                        focusedMovieId = collected.firstOrNull()?.streamId,
-                        selectedMovieId = null,
-                        errorMessage = error.userMessage("Impossible de charger tous les films Xtream."),
-                    )
-                }
-            }
-        }
+        loadMoviePage(categoryId = null, selectedCategoryId = AllMovieCategoryId, categoryLabel = "Films", replace = true)
+    }
+
+    fun loadNextPage() {
+        val state = _uiState.value
+        if (state.categoriesLoading || state.itemsLoading || state.nextPageLoading || !state.hasMoreItems) return
+        val selectedCategoryId = state.selectedCategoryId ?: return
+        if (selectedCategoryId in setOf(FavoriteMovieCategoryId, HistoryMovieCategoryId)) return
+        val categoryId = selectedCategoryId.takeUnless { it == AllMovieCategoryId }
+        val categoryLabel = state.selectedCategory?.label ?: "Films"
+        loadMoviePage(
+            categoryId = categoryId,
+            selectedCategoryId = selectedCategoryId,
+            categoryLabel = categoryLabel,
+            replace = false,
+        )
     }
 
     private fun historyMovies(): List<MovieItemUi> =
@@ -396,68 +349,88 @@ class MoviesViewModel(
             )
         }
 
-    private fun favoriteMovies(): List<MovieItemUi> =
-        localMovies
-            .filter { it.streamId in favoriteIds }
+    private suspend fun favoriteMovies(): List<MovieItemUi> =
+        catalogRepository.getMoviesByIds(favoriteIds.toList())
             .filter { movie ->
-                val categoryLabel = localCategories
-                    .firstOrNull { category -> category.id == movie.categoryId }
-                    ?.name
-                playerSettings.allowsContent(movie.title, movie.rating, categoryLabel)
+                playerSettings.allowsContent(movie.title, movie.rating, movie.categoryName)
             }
             .sortedBy { it.title }
             .mapIndexed { index, movie ->
-                val categoryLabel = localCategories
-                    .firstOrNull { it.id == movie.categoryId }
-                    ?.name
-                    ?: "Favoris"
-                movie.toUiMovie(index, categoryLabel, xtreamRepository, favoriteIds)
+                movie.toUiMovie(index, movie.categoryName.ifBlank { "Favoris" }, xtreamRepository, favoriteIds)
             }
 
     private fun loadMovies(categoryId: String) {
-        moviesJob?.cancel()
+        val categoryLabel = _uiState.value.categories.firstOrNull { it.id == categoryId }?.label ?: "Films"
+        loadMoviePage(categoryId = categoryId, selectedCategoryId = categoryId, categoryLabel = categoryLabel, replace = true)
+    }
+
+    private fun loadMoviePage(
+        categoryId: String?,
+        selectedCategoryId: String,
+        categoryLabel: String,
+        replace: Boolean,
+    ) {
+        if (replace) moviesJob?.cancel()
         moviesJob = viewModelScope.launch {
-            val categoryLabel = _uiState.value.categories.firstOrNull { it.id == categoryId }?.label ?: "Films"
+            val startOffset = if (replace) 0 else _uiState.value.currentOffset
+            val previousMovies = if (replace) emptyList() else _uiState.value.movies
             _uiState.update {
                 it.copy(
-                    moviesLoading = true,
+                    itemsLoading = replace,
+                    moviesLoading = replace,
+                    nextPageLoading = !replace,
                     errorMessage = null,
-                    selectedCategoryId = categoryId,
-                    movies = emptyList(),
-                    focusedMovieId = null,
-                    selectedMovieId = null,
+                    selectedCategoryId = selectedCategoryId,
+                    movies = if (replace) emptyList() else it.movies,
+                    focusedMovieId = if (replace) null else it.focusedMovieId,
+                    selectedMovieId = if (replace) null else it.selectedMovieId,
                 )
             }
             runCatching {
-                localMovies.filter { it.categoryId == categoryId }
+                val page = if (categoryId == null) {
+                    catalogRepository.getAllMoviesPage(startOffset, MovieItemsPageSize)
+                } else {
+                    catalogRepository.getMoviesPage(categoryId, startOffset, MovieItemsPageSize)
+                }
+                val visiblePage = page
                     .filter { movie -> playerSettings.allowsContent(movie.title, movie.rating, categoryLabel) }
                     .mapIndexed { index, movie ->
-                    movie.toUiMovie(index, categoryLabel, xtreamRepository, favoriteIds)
-                }
-            }.onSuccess { movies ->
+                        movie.toUiMovie(
+                            index = startOffset + index,
+                            categoryLabel = movie.categoryName.ifBlank { categoryLabel },
+                            xtreamRepository = xtreamRepository,
+                            favoriteIds = favoriteIds,
+                        )
+                    }
+                PageLoadResult(items = (previousMovies + visiblePage).distinctBy { it.streamId }, rawPageSize = page.size)
+            }.onSuccess { result ->
                 _uiState.update { state ->
                     state.copy(
+                        itemsLoading = false,
                         moviesLoading = false,
-                        categories = state.categories.map {
-                            if (it.id == categoryId) it.copy(count = movies.size) else it
-                        }.withSpecialCategories(
-                            allCount = localMovies.size.takeIf { it > 0 },
+                        nextPageLoading = false,
+                        hasMoreItems = result.rawPageSize == MovieItemsPageSize,
+                        currentOffset = startOffset + result.rawPageSize,
+                        categories = state.categories.withSpecialCategories(
+                            allCount = catalogTotalCount(),
                             favoriteCount = favoriteIds.size,
                             historyCount = historyProgress.size,
                             historySignals = historyCategorySignals,
                         ),
-                        movies = movies,
-                        focusedMovieId = movies.firstOrNull()?.streamId,
+                        movies = result.items,
+                        focusedMovieId = state.focusedMovieId ?: result.items.firstOrNull()?.streamId,
                         errorMessage = null,
                     )
                 }
             }.onFailure { error ->
                 _uiState.update {
                     it.copy(
+                        itemsLoading = false,
                         moviesLoading = false,
-                        movies = emptyList(),
-                        focusedMovieId = null,
-                        selectedMovieId = null,
+                        nextPageLoading = false,
+                        movies = if (replace) emptyList() else it.movies,
+                        focusedMovieId = if (replace) null else it.focusedMovieId,
+                        selectedMovieId = if (replace) null else it.selectedMovieId,
                         errorMessage = error.userMessage("Impossible de charger les films Xtream."),
                     )
                 }
@@ -470,8 +443,17 @@ class MoviesViewModel(
             userContentRepository.deleteProgress(UserContentType.Movie, movie.streamId)
         }
     }
+
+    private fun catalogTotalCount(): Int? =
+        localCategories.sumOf { it.count }.takeIf { it > 0 }
 }
 
+private data class PageLoadResult<T>(
+    val items: List<T>,
+    val rawPageSize: Int,
+)
+
+private const val MovieItemsPageSize = 72
 private const val FavoriteMovieCategoryId = "__favorites_movies__"
 private const val HistoryMovieCategoryId = "__history_movies__"
 private const val AllMovieCategoryId = "__all_movies__"

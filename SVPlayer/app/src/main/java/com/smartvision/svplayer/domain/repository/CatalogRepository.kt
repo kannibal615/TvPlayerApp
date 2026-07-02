@@ -35,6 +35,15 @@ interface CatalogRepository {
     suspend fun getLiveCatalogSnapshot(): LocalCatalogSnapshot<LiveChannel>
     suspend fun getMovieCatalogSnapshot(): LocalCatalogSnapshot<Movie>
     suspend fun getSeriesCatalogSnapshot(): LocalCatalogSnapshot<TvSeries>
+    suspend fun getLiveChannelsPage(categoryId: String?, offset: Int, limit: Int): List<LiveChannel>
+    suspend fun getMoviesPage(categoryId: String?, offset: Int, limit: Int): List<Movie>
+    suspend fun getSeriesPage(categoryId: String?, offset: Int, limit: Int): List<TvSeries>
+    suspend fun getAllLiveChannelsPage(offset: Int, limit: Int): List<LiveChannel>
+    suspend fun getAllMoviesPage(offset: Int, limit: Int): List<Movie>
+    suspend fun getAllSeriesPage(offset: Int, limit: Int): List<TvSeries>
+    suspend fun getLiveChannelsByIds(streamIds: List<Int>): List<LiveChannel>
+    suspend fun getMoviesByIds(streamIds: List<Int>): List<Movie>
+    suspend fun getSeriesByIds(seriesIds: List<Int>): List<TvSeries>
     suspend fun getTrendingMovies(limit: Int): List<Movie>
     suspend fun getTrendingSeries(limit: Int): List<TvSeries>
     fun invalidateLocalCatalogCache()

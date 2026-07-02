@@ -37,7 +37,7 @@ class HomeViewModel(
         .getCachedRecentProgressSnapshot(limit = ContinueWatchingSnapshotLimit)
         ?.toContinueItems()
         .orEmpty()
-    private val trending = MutableStateFlow(buildCachedTrending())
+    private val trending = MutableStateFlow<List<ContinueItem>>(emptyList())
     private val slides = MutableStateFlow(homeSlidesRepository.getCachedSlides().orEmpty())
     private val continueWatching = userContentRepository.observeRecentProgress(limit = ContinueWatchingSnapshotLimit)
         .map { progress ->
@@ -105,15 +105,6 @@ class HomeViewModel(
 
     private suspend fun loadTrendingSeries(): List<ScoredTrend> {
         return catalogRepository.getTrendingSeries(HomeTrendingSectionLimit).toSeriesTrends()
-    }
-
-    private fun buildCachedTrending(): List<ContinueItem> {
-        val movieTrends = catalogRepository.getCachedMovieCatalogSnapshot()?.items.orEmpty().toMovieTrends()
-        val seriesTrends = catalogRepository.getCachedSeriesCatalogSnapshot()?.items.orEmpty().toSeriesTrends()
-        return (movieTrends + seriesTrends)
-            .shuffled()
-            .take(10)
-            .map { it.item }
     }
 
 }

@@ -181,6 +181,89 @@ class DefaultCatalogRepository(
         localCatalogSnapshotCache.putSeries(snapshot)
     }
 
+    override suspend fun getLiveChannelsPage(categoryId: String?, offset: Int, limit: Int): List<LiveChannel> =
+        withContext(Dispatchers.IO) {
+            if (!isLiveCatalogConfigured()) return@withContext emptyList()
+            val safeLimit = limit.coerceIn(1, CatalogPageMaxLimit)
+            val safeOffset = offset.coerceAtLeast(0)
+            val categoryNames = categoryDao.getByType(MediaSection.Live.storageName).associate { it.id to it.name }
+            val streams = categoryId
+                ?.takeIf { it.isNotBlank() }
+                ?.let { mediaDao.getLiveStreamsByCategoryPage(it, safeLimit, safeOffset) }
+                ?: mediaDao.getLiveStreamsPage(safeLimit, safeOffset)
+            streams.map { stream ->
+                stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV").withEpg(epgRepository)
+            }
+        }
+
+    override suspend fun getMoviesPage(categoryId: String?, offset: Int, limit: Int): List<Movie> =
+        withContext(Dispatchers.IO) {
+            if (!isXtreamCatalogConfigured()) return@withContext emptyList()
+            val safeLimit = limit.coerceIn(1, CatalogPageMaxLimit)
+            val safeOffset = offset.coerceAtLeast(0)
+            val categoryNames = categoryDao.getByType(MediaSection.Movies.storageName).associate { it.id to it.name }
+            val movies = categoryId
+                ?.takeIf { it.isNotBlank() }
+                ?.let { mediaDao.getMoviesByCategoryPage(it, safeLimit, safeOffset) }
+                ?: mediaDao.getMoviesPage(safeLimit, safeOffset)
+            movies.map { movie -> movie.toDomain(categoryNames[movie.categoryId] ?: "Films") }
+        }
+
+    override suspend fun getSeriesPage(categoryId: String?, offset: Int, limit: Int): List<TvSeries> =
+        withContext(Dispatchers.IO) {
+            if (!isXtreamCatalogConfigured()) return@withContext emptyList()
+            val safeLimit = limit.coerceIn(1, CatalogPageMaxLimit)
+            val safeOffset = offset.coerceAtLeast(0)
+            val categoryNames = categoryDao.getByType(MediaSection.Series.storageName).associate { it.id to it.name }
+            val series = categoryId
+                ?.takeIf { it.isNotBlank() }
+                ?.let { mediaDao.getSeriesByCategoryPage(it, safeLimit, safeOffset) }
+                ?: mediaDao.getSeriesPage(safeLimit, safeOffset)
+            series.map { item -> item.toDomain(categoryNames[item.categoryId] ?: "Series") }
+        }
+
+    override suspend fun getAllLiveChannelsPage(offset: Int, limit: Int): List<LiveChannel> =
+        getLiveChannelsPage(categoryId = null, offset = offset, limit = limit)
+
+    override suspend fun getAllMoviesPage(offset: Int, limit: Int): List<Movie> =
+        getMoviesPage(categoryId = null, offset = offset, limit = limit)
+
+    override suspend fun getAllSeriesPage(offset: Int, limit: Int): List<TvSeries> =
+        getSeriesPage(categoryId = null, offset = offset, limit = limit)
+
+    override suspend fun getLiveChannelsByIds(streamIds: List<Int>): List<LiveChannel> =
+        withContext(Dispatchers.IO) {
+            if (streamIds.isEmpty() || !isLiveCatalogConfigured()) return@withContext emptyList()
+            val distinctIds = streamIds.distinct()
+            val order = distinctIds.withIndex().associate { it.value to it.index }
+            val categoryNames = categoryDao.getByType(MediaSection.Live.storageName).associate { it.id to it.name }
+            mediaDao.getLiveStreamsByIds(distinctIds)
+                .sortedBy { order[it.streamId] ?: Int.MAX_VALUE }
+                .map { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV").withEpg(epgRepository) }
+        }
+
+    override suspend fun getMoviesByIds(streamIds: List<Int>): List<Movie> =
+        withContext(Dispatchers.IO) {
+            if (streamIds.isEmpty() || !isXtreamCatalogConfigured()) return@withContext emptyList()
+            val distinctIds = streamIds.distinct()
+            val order = distinctIds.withIndex().associate { it.value to it.index }
+            val categoryNames = categoryDao.getByType(MediaSection.Movies.storageName).associate { it.id to it.name }
+            mediaDao.getMoviesByIds(distinctIds)
+                .sortedBy { order[it.streamId] ?: Int.MAX_VALUE }
+                .map { movie -> movie.toDomain(categoryNames[movie.categoryId] ?: "Films") }
+        }
+
+    override suspend fun getSeriesByIds(seriesIds: List<Int>): List<TvSeries> =
+        withContext(Dispatchers.IO) {
+            if (seriesIds.isEmpty() || !isXtreamCatalogConfigured()) return@withContext emptyList()
+            val distinctIds = seriesIds.distinct()
+            val order = distinctIds.withIndex().associate { it.value to it.index }
+            val categoryNames = categoryDao.getByType(MediaSection.Series.storageName).associate { it.id to it.name }
+            mediaDao.getSeriesByIds(distinctIds)
+                .sortedBy { order[it.seriesId] ?: Int.MAX_VALUE }
+                .map { series -> series.toDomain(categoryNames[series.categoryId] ?: "Series") }
+        }
+
     override suspend fun getTrendingMovies(limit: Int): List<Movie> = withContext(Dispatchers.IO) {
         if (accountManager.activePlaylistSource.value != PlaylistSource.Xtream || accountManager.accounts.value.isEmpty()) {
             return@withContext emptyList()
@@ -202,6 +285,16 @@ class DefaultCatalogRepository(
     override fun invalidateLocalCatalogCache() {
         localCatalogSnapshotCache.invalidate()
     }
+
+    private fun isLiveCatalogConfigured(): Boolean =
+        accountManager.activePlaylistSource.value.hasConfiguredCatalog(
+            m3uUrl = accountManager.m3uUrl.value,
+            hasXtream = accountManager.accounts.value.isNotEmpty(),
+        )
+
+    private fun isXtreamCatalogConfigured(): Boolean =
+        accountManager.activePlaylistSource.value == PlaylistSource.Xtream &&
+            accountManager.accounts.value.isNotEmpty()
 
     override suspend fun synchronize(): Result<Unit> = withContext(Dispatchers.IO) {
         if (accountManager.activePlaylistSource.value == PlaylistSource.M3u) {
@@ -590,6 +683,7 @@ private fun logSyncMemory(
 private fun Long.toMiB(): Long = this / (1024L * 1024L)
 
 private const val SyncInsertBatchSize = 500
+private const val CatalogPageMaxLimit = 500
 private const val SyncMemoryTag = "SVSyncMemory"
 
 private fun LiveChannel.withEpg(epgRepository: EpgRepository): LiveChannel {

@@ -16,7 +16,6 @@ import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.model.TvSeries
 import com.smartvision.svplayer.domain.model.sortedByHistorySignals
 import com.smartvision.svplayer.domain.repository.CatalogRepository
-import com.smartvision.svplayer.domain.repository.LocalCatalogSnapshot
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
 import kotlinx.coroutines.Job
@@ -26,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -69,7 +69,11 @@ data class SeriesEpisodeUi(
 
 data class SeriesScreenState(
     val categoriesLoading: Boolean = true,
+    val itemsLoading: Boolean = false,
     val seriesLoading: Boolean = false,
+    val nextPageLoading: Boolean = false,
+    val hasMoreItems: Boolean = false,
+    val currentOffset: Int = 0,
     val episodesLoading: Boolean = false,
     val errorMessage: String? = null,
     val categories: List<SeriesCategoryUi> = emptyList(),
@@ -106,15 +110,12 @@ class SeriesViewModel(
     private var historyCategorySignals: List<CategoryHistorySignal> = emptyList()
     private var playerSettings = PlayerSettings()
     private var localCategories: List<Category> = emptyList()
-    private var localSeries: List<TvSeries> = emptyList()
 
     init {
         observeSettings()
         observeFavorites()
         observeHistory()
-        if (!restoreCachedCatalog()) {
-            loadCategories()
-        }
+        loadCategories()
     }
 
     fun loadCategories() {
@@ -122,15 +123,11 @@ class SeriesViewModel(
         episodesJob?.cancel()
         metadataJob?.cancel()
         viewModelScope.launch {
-            catalogRepository.getCachedSeriesCatalogSnapshot()?.let { snapshot ->
-                applyCatalogSnapshot(snapshot)
-                return@launch
-            }
             _uiState.value = SeriesScreenState(categoriesLoading = true)
             runCatching {
-                catalogRepository.getSeriesCatalogSnapshot()
-            }.onSuccess { snapshot ->
-                applyCatalogSnapshot(snapshot)
+                catalogRepository.observeSeriesCategories().first()
+            }.onSuccess { categories ->
+                applyCategories(categories)
             }.onFailure { error ->
                 _uiState.value = SeriesScreenState(
                     categoriesLoading = false,
@@ -140,15 +137,8 @@ class SeriesViewModel(
         }
     }
 
-    private fun restoreCachedCatalog(): Boolean {
-        val snapshot = catalogRepository.getCachedSeriesCatalogSnapshot() ?: return false
-        applyCatalogSnapshot(snapshot)
-        return true
-    }
-
-    private fun applyCatalogSnapshot(snapshot: LocalCatalogSnapshot<TvSeries>) {
-        localCategories = snapshot.categories
-        localSeries = snapshot.items
+    private fun applyCategories(categoriesSnapshot: List<Category>) {
+        localCategories = categoriesSnapshot
         val categories = localCategories.map { it.toUiCategory() }
             .filter { category -> playerSettings.allowsContent(category.label) }
         if (categories.isEmpty()) {
@@ -160,7 +150,7 @@ class SeriesViewModel(
         }
         _uiState.update {
             val visibleCategories = categories.withSpecialCategories(
-                allCount = localSeries.size.takeIf { it > 0 },
+                allCount = catalogTotalCount(),
                 favoriteCount = favoriteIds.size,
                 historyCount = historySeries().size,
                 historySignals = historyCategorySignals,
@@ -263,15 +253,17 @@ class SeriesViewModel(
         viewModelScope.launch {
             userContentRepository.observeFavoriteIds(UserContentType.Series).collect { ids ->
                 favoriteIds = ids
+                val favoriteSelection = if (_uiState.value.selectedCategoryId == FavoriteSeriesCategoryId) {
+                    favoriteSeries()
+                } else {
+                    null
+                }
                 _uiState.update { state ->
-                    val refreshedSeries = if (state.selectedCategoryId == FavoriteSeriesCategoryId) {
-                        favoriteSeries()
-                    } else {
-                        state.series.map { it.copy(isFavorite = it.seriesId in ids) }
-                    }
+                    val refreshedSeries = favoriteSelection
+                        ?: state.series.map { it.copy(isFavorite = it.seriesId in ids) }
                     state.copy(
                         categories = state.categories.withSpecialCategories(
-                            allCount = localSeries.size.takeIf { it > 0 },
+                            allCount = catalogTotalCount(),
                             favoriteCount = ids.size,
                             historyCount = historySeries().size,
                             historySignals = historyCategorySignals,
@@ -300,7 +292,7 @@ class SeriesViewModel(
                     val history = historySeries()
                     state.copy(
                         categories = state.categories.withSpecialCategories(
-                            allCount = localSeries.size.takeIf { it > 0 },
+                            allCount = catalogTotalCount(),
                             favoriteCount = favoriteIds.size,
                             historyCount = history.size,
                             historySignals = historyCategorySignals,
@@ -317,24 +309,30 @@ class SeriesViewModel(
         seriesJob?.cancel()
         episodesJob?.cancel()
         metadataJob?.cancel()
-        val series = favoriteSeries()
-        _uiState.update { state ->
-            state.copy(
-                seriesLoading = false,
-                episodesLoading = false,
-                errorMessage = null,
-                selectedCategoryId = FavoriteSeriesCategoryId,
-                categories = state.categories.withSpecialCategories(
-                    allCount = localSeries.size.takeIf { it > 0 },
-                    favoriteCount = favoriteIds.size,
-                    historyCount = historySeries().size,
-                    historySignals = historyCategorySignals,
-                ),
-                series = series,
-                focusedSeriesId = series.firstOrNull()?.seriesId,
-                selectedSeriesId = null,
-                episodes = emptyList(),
-            )
+        seriesJob = viewModelScope.launch {
+            val series = favoriteSeries()
+            _uiState.update { state ->
+                state.copy(
+                    itemsLoading = false,
+                    seriesLoading = false,
+                    nextPageLoading = false,
+                    hasMoreItems = false,
+                    currentOffset = series.size,
+                    episodesLoading = false,
+                    errorMessage = null,
+                    selectedCategoryId = FavoriteSeriesCategoryId,
+                    categories = state.categories.withSpecialCategories(
+                        allCount = catalogTotalCount(),
+                        favoriteCount = favoriteIds.size,
+                        historyCount = historySeries().size,
+                        historySignals = historyCategorySignals,
+                    ),
+                    series = series,
+                    focusedSeriesId = series.firstOrNull()?.seriesId,
+                    selectedSeriesId = null,
+                    episodes = emptyList(),
+                )
+            }
         }
     }
 
@@ -346,11 +344,15 @@ class SeriesViewModel(
         _uiState.update { state ->
             state.copy(
                 seriesLoading = false,
+                itemsLoading = false,
+                nextPageLoading = false,
+                hasMoreItems = false,
+                currentOffset = series.size,
                 episodesLoading = false,
                 errorMessage = null,
                 selectedCategoryId = HistorySeriesCategoryId,
                 categories = state.categories.withSpecialCategories(
-                    allCount = localSeries.size.takeIf { it > 0 },
+                    allCount = catalogTotalCount(),
                     favoriteCount = favoriteIds.size,
                     historyCount = series.size,
                     historySignals = historyCategorySignals,
@@ -364,77 +366,22 @@ class SeriesViewModel(
     }
 
     private fun loadAllSeries() {
-        seriesJob?.cancel()
-        episodesJob?.cancel()
-        metadataJob?.cancel()
-        seriesJob = viewModelScope.launch {
-            val categories = _uiState.value.categories
-                .filterNot { it.id in SpecialSeriesCategoryIds }
-                .sortedByHistorySignals(historyCategorySignals) { it.id }
-            val collected = mutableListOf<SeriesItemUi>()
-            val seen = mutableSetOf<Int>()
-            _uiState.update {
-                it.copy(
-                    seriesLoading = true,
-                    episodesLoading = false,
-                    errorMessage = null,
-                    selectedCategoryId = AllSeriesCategoryId,
-                    series = emptyList(),
-                    episodes = emptyList(),
-                    focusedSeriesId = null,
-                    selectedSeriesId = null,
-                )
-            }
-            runCatching {
-                categories.forEach { category ->
-                    localSeries.filter { it.categoryId == category.id }.forEach { series ->
-                        if (!seen.add(series.seriesId)) return@forEach
-                        if (!playerSettings.allowsContent(series.title, series.plot, series.genre, category.label)) return@forEach
-                        collected += series.toUiSeries(collected.size, category.label, favoriteIds)
-                    }
-                    _uiState.update { state ->
-                        state.copy(
-                            categories = state.categories.withSpecialCategories(
-                                allCount = collected.size,
-                                favoriteCount = favoriteIds.size,
-                                historyCount = historySeries().size,
-                                historySignals = historyCategorySignals,
-                            ),
-                            series = collected.toList(),
-                            focusedSeriesId = state.focusedSeriesId ?: collected.firstOrNull()?.seriesId,
-                        )
-                    }
-                }
-                collected.toList()
-            }.onSuccess { series ->
-                _uiState.update { state ->
-                    state.copy(
-                        seriesLoading = false,
-                        categories = state.categories.withSpecialCategories(
-                            allCount = series.size,
-                            favoriteCount = favoriteIds.size,
-                            historyCount = historySeries().size,
-                            historySignals = historyCategorySignals,
-                        ),
-                        series = series,
-                        focusedSeriesId = series.firstOrNull()?.seriesId,
-                        errorMessage = null,
-                    )
-                }
-                loadVisibleMetadata(series)
-            }.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        seriesLoading = false,
-                        series = collected.toList(),
-                        focusedSeriesId = collected.firstOrNull()?.seriesId,
-                        selectedSeriesId = null,
-                        episodes = emptyList(),
-                        errorMessage = error.userMessage("Impossible de charger toutes les series Xtream."),
-                    )
-                }
-            }
-        }
+        loadSeriesPage(categoryId = null, selectedCategoryId = AllSeriesCategoryId, categoryLabel = "Series", replace = true)
+    }
+
+    fun loadNextPage() {
+        val state = _uiState.value
+        if (state.categoriesLoading || state.itemsLoading || state.nextPageLoading || !state.hasMoreItems) return
+        val selectedCategoryId = state.selectedCategoryId ?: return
+        if (selectedCategoryId in setOf(FavoriteSeriesCategoryId, HistorySeriesCategoryId)) return
+        val categoryId = selectedCategoryId.takeUnless { it == AllSeriesCategoryId }
+        val categoryLabel = state.selectedCategory?.label ?: "Series"
+        loadSeriesPage(
+            categoryId = categoryId,
+            selectedCategoryId = selectedCategoryId,
+            categoryLabel = categoryLabel,
+            replace = false,
+        )
     }
 
     private fun historySeries(): List<SeriesItemUi> =
@@ -468,73 +415,88 @@ class SeriesViewModel(
             .toList()
             .filterNotNull()
 
-    private fun favoriteSeries(): List<SeriesItemUi> =
-        localSeries
-            .filter { it.seriesId in favoriteIds }
+    private suspend fun favoriteSeries(): List<SeriesItemUi> =
+        catalogRepository.getSeriesByIds(favoriteIds.toList())
             .filter { series ->
-                val categoryLabel = localCategories
-                    .firstOrNull { category -> category.id == series.categoryId }
-                    ?.name
-                playerSettings.allowsContent(series.title, series.plot, series.genre, categoryLabel)
+                playerSettings.allowsContent(series.title, series.plot, series.genre, series.categoryName)
             }
             .sortedBy { it.title }
             .mapIndexed { index, series ->
-                val categoryLabel = localCategories
-                    .firstOrNull { it.id == series.categoryId }
-                    ?.name
-                    ?: "Favoris"
-                series.toUiSeries(index, categoryLabel, favoriteIds)
+                series.toUiSeries(index, series.categoryName.ifBlank { "Favoris" }, favoriteIds)
             }
 
     private fun loadSeries(categoryId: String) {
-        seriesJob?.cancel()
-        episodesJob?.cancel()
+        val categoryLabel = _uiState.value.categories.firstOrNull { it.id == categoryId }?.label ?: "Series"
+        loadSeriesPage(categoryId = categoryId, selectedCategoryId = categoryId, categoryLabel = categoryLabel, replace = true)
+    }
+
+    private fun loadSeriesPage(
+        categoryId: String?,
+        selectedCategoryId: String,
+        categoryLabel: String,
+        replace: Boolean,
+    ) {
+        if (replace) seriesJob?.cancel()
+        if (replace) episodesJob?.cancel()
         seriesJob = viewModelScope.launch {
-            val categoryLabel = _uiState.value.categories.firstOrNull { it.id == categoryId }?.label ?: "Series"
+            val startOffset = if (replace) 0 else _uiState.value.currentOffset
+            val previousSeries = if (replace) emptyList() else _uiState.value.series
             _uiState.update {
                 it.copy(
-                    seriesLoading = true,
+                    itemsLoading = replace,
+                    seriesLoading = replace,
+                    nextPageLoading = !replace,
                     episodesLoading = false,
                     errorMessage = null,
-                    selectedCategoryId = categoryId,
-                    series = emptyList(),
-                    episodes = emptyList(),
-                    focusedSeriesId = null,
-                    selectedSeriesId = null,
+                    selectedCategoryId = selectedCategoryId,
+                    series = if (replace) emptyList() else it.series,
+                    episodes = if (replace) emptyList() else it.episodes,
+                    focusedSeriesId = if (replace) null else it.focusedSeriesId,
+                    selectedSeriesId = if (replace) null else it.selectedSeriesId,
                 )
             }
             runCatching {
-                localSeries.filter { it.categoryId == categoryId }
+                val page = if (categoryId == null) {
+                    catalogRepository.getAllSeriesPage(startOffset, SeriesItemsPageSize)
+                } else {
+                    catalogRepository.getSeriesPage(categoryId, startOffset, SeriesItemsPageSize)
+                }
+                val visiblePage = page
                     .filter { series -> playerSettings.allowsContent(series.title, series.plot, series.genre, categoryLabel) }
                     .mapIndexed { index, series ->
-                    series.toUiSeries(index, categoryLabel, favoriteIds)
-                }
-            }.onSuccess { series ->
+                        series.toUiSeries(startOffset + index, series.categoryName.ifBlank { categoryLabel }, favoriteIds)
+                    }
+                PageLoadResult(items = (previousSeries + visiblePage).distinctBy { it.seriesId }, rawPageSize = page.size)
+            }.onSuccess { result ->
                 _uiState.update { state ->
                     state.copy(
+                        itemsLoading = false,
                         seriesLoading = false,
-                        categories = state.categories.map {
-                            if (it.id == categoryId) it.copy(count = series.size) else it
-                        }.withSpecialCategories(
-                            allCount = localSeries.size.takeIf { it > 0 },
+                        nextPageLoading = false,
+                        hasMoreItems = result.rawPageSize == SeriesItemsPageSize,
+                        currentOffset = startOffset + result.rawPageSize,
+                        categories = state.categories.withSpecialCategories(
+                            allCount = catalogTotalCount(),
                             favoriteCount = favoriteIds.size,
                             historyCount = historySeries().size,
                             historySignals = historyCategorySignals,
                         ),
-                        series = series,
-                        focusedSeriesId = series.firstOrNull()?.seriesId,
+                        series = result.items,
+                        focusedSeriesId = state.focusedSeriesId ?: result.items.firstOrNull()?.seriesId,
                         errorMessage = null,
                     )
                 }
-                loadVisibleMetadata(series)
+                loadVisibleMetadata(result.items)
             }.onFailure { error ->
                 _uiState.update {
                     it.copy(
+                        itemsLoading = false,
                         seriesLoading = false,
-                        series = emptyList(),
-                        focusedSeriesId = null,
-                        selectedSeriesId = null,
-                        episodes = emptyList(),
+                        nextPageLoading = false,
+                        series = if (replace) emptyList() else it.series,
+                        focusedSeriesId = if (replace) null else it.focusedSeriesId,
+                        selectedSeriesId = if (replace) null else it.selectedSeriesId,
+                        episodes = if (replace) emptyList() else it.episodes,
                         errorMessage = error.userMessage("Impossible de charger les series Xtream."),
                     )
                 }
@@ -611,8 +573,17 @@ class SeriesViewModel(
             userContentRepository.deleteProgress(UserContentType.Episode, episodeId)
         }
     }
+
+    private fun catalogTotalCount(): Int? =
+        localCategories.sumOf { it.count }.takeIf { it > 0 }
 }
 
+private data class PageLoadResult<T>(
+    val items: List<T>,
+    val rawPageSize: Int,
+)
+
+private const val SeriesItemsPageSize = 72
 private const val FavoriteSeriesCategoryId = "__favorites_series__"
 private const val HistorySeriesCategoryId = "__history_series__"
 private const val AllSeriesCategoryId = "__all_series__"

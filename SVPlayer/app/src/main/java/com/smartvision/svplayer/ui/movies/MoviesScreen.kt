@@ -43,6 +43,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,6 +82,7 @@ import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 
 @Composable
 fun MoviesScreen(
@@ -248,6 +250,7 @@ fun MoviesScreen(
                     },
                     showHistoryDelete = state.selectedCategory?.label == "Historique",
                     onDeleteHistoryMovie = { movie -> movieToDelete = movie },
+                    onLoadNextPage = viewModel::loadNextPage,
                     onRetry = viewModel::retryCurrentCategory,
                     modifier = Modifier
                         .weight(0.78f)
@@ -347,6 +350,7 @@ private fun MovieGrid(
     onMovieClick: (MovieItemUi) -> Unit,
     showHistoryDelete: Boolean,
     onDeleteHistoryMovie: (MovieItemUi) -> Unit,
+    onLoadNextPage: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -357,6 +361,16 @@ private fun MovieGrid(
 
     LaunchedEffect(state.selectedCategoryId) {
         if (gridState.layoutInfo.totalItemsCount > 0) gridState.scrollToItem(0)
+    }
+    LaunchedEffect(gridState, visibleMovies.size, state.hasMoreItems, state.nextPageLoading, searchQuery) {
+        if (searchQuery.isNotBlank()) return@LaunchedEffect
+        snapshotFlow { gridState.layoutInfo.visibleItemsInfo.maxOfOrNull { it.index } ?: 0 }
+            .collect { lastVisibleIndex ->
+                val remaining = visibleMovies.lastIndex - lastVisibleIndex
+                if (state.hasMoreItems && !state.nextPageLoading && remaining <= MovieNextPageThreshold) {
+                    onLoadNextPage()
+                }
+            }
     }
 
     MediaCatalogPanel(
@@ -532,6 +546,8 @@ private fun ConfirmHistoryDeleteDialog(
         }
     }
 }
+
+private const val MovieNextPageThreshold = 15
 
 private fun movieCardMeta(movie: MovieItemUi): String =
     listOfNotNull(

@@ -15,7 +15,6 @@ import com.smartvision.svplayer.domain.model.LiveChannel as LocalLiveChannel
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.model.sortedByHistorySignals
 import com.smartvision.svplayer.domain.repository.CatalogRepository
-import com.smartvision.svplayer.domain.repository.LocalCatalogSnapshot
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -74,7 +74,11 @@ data class LiveTvProgram(
 
 data class LiveTvUiState(
     val categoriesLoading: Boolean = true,
+    val itemsLoading: Boolean = false,
     val channelsLoading: Boolean = false,
+    val nextPageLoading: Boolean = false,
+    val hasMoreItems: Boolean = false,
+    val currentOffset: Int = 0,
     val errorMessage: String? = null,
     val categories: List<LiveTvCategory> = emptyList(),
     val selectedCategoryId: String? = null,
@@ -108,29 +112,22 @@ class LiveTvViewModel(
     private var historyCategorySignals: List<CategoryHistorySignal> = emptyList()
     private var playerSettings = PlayerSettings()
     private var localCategories: List<Category> = emptyList()
-    private var localChannels: List<LocalLiveChannel> = emptyList()
 
     init {
         observeSettings()
         observeFavorites()
         observeHistory()
-        if (!restoreCachedCatalog()) {
-            loadCategories()
-        }
+        loadCategories()
     }
 
     fun loadCategories() {
         channelsJob?.cancel()
         viewModelScope.launch {
-            catalogRepository.getCachedLiveCatalogSnapshot()?.let { snapshot ->
-                applyCatalogSnapshot(snapshot)
-                return@launch
-            }
             _uiState.value = LiveTvUiState(categoriesLoading = true)
             runCatching {
-                catalogRepository.getLiveCatalogSnapshot()
-            }.onSuccess { snapshot ->
-                applyCatalogSnapshot(snapshot)
+                catalogRepository.observeLiveCategories().first()
+            }.onSuccess { categories ->
+                applyCategories(categories)
             }.onFailure { error ->
                 _uiState.value = LiveTvUiState(
                     categoriesLoading = false,
@@ -140,15 +137,8 @@ class LiveTvViewModel(
         }
     }
 
-    private fun restoreCachedCatalog(): Boolean {
-        val snapshot = catalogRepository.getCachedLiveCatalogSnapshot() ?: return false
-        applyCatalogSnapshot(snapshot)
-        return true
-    }
-
-    private fun applyCatalogSnapshot(snapshot: LocalCatalogSnapshot<LocalLiveChannel>) {
-        localCategories = snapshot.categories
-        localChannels = snapshot.items
+    private fun applyCategories(categoriesSnapshot: List<Category>) {
+        localCategories = categoriesSnapshot
         val categories = localCategories.map { it.toUiCategory() }
             .filter { category -> playerSettings.allowsContent(category.label) }
         if (categories.isEmpty()) {
@@ -161,7 +151,7 @@ class LiveTvViewModel(
 
         _uiState.update {
             val visibleCategories = categories.withSpecialCategories(
-                allCount = localChannels.size.takeIf { it > 0 },
+                allCount = catalogTotalCount(),
                 favoriteCount = favoriteIds.size,
                 historyCount = historyProgress.size,
                 historySignals = historyCategorySignals,
@@ -174,18 +164,24 @@ class LiveTvViewModel(
             )
         }
         loadHistoryChannels()
-        refreshEpgCategoryAvailability()
     }
 
     fun refreshEpgCategoryAvailability() {
-        if (localChannels.isEmpty() || localCategories.isEmpty()) return
+        if (localCategories.isEmpty()) return
         viewModelScope.launch {
             val epgCategoryIds = withContext(Dispatchers.IO) {
-                localChannels
-                    .asSequence()
-                    .filter { stream -> epgRepository.hasPrograms(stream.epgChannelId, stream.name) }
-                    .mapNotNull { it.categoryId }
-                    .toSet()
+                val ids = mutableSetOf<String>()
+                var offset = 0
+                do {
+                    val page = catalogRepository.getAllLiveChannelsPage(offset, EpgCategoryScanPageSize)
+                    page.forEach { stream ->
+                        if (epgRepository.hasPrograms(stream.epgChannelId, stream.name)) {
+                            stream.categoryId?.let(ids::add)
+                        }
+                    }
+                    offset += page.size
+                } while (page.size == EpgCategoryScanPageSize)
+                ids
             }
             _uiState.update { state ->
                 state.copy(
@@ -281,15 +277,17 @@ class LiveTvViewModel(
         viewModelScope.launch {
             userContentRepository.observeFavoriteIds(UserContentType.Live).collect { ids ->
                 favoriteIds = ids
+                val favoriteSelection = if (_uiState.value.selectedCategoryId == FavoriteLiveCategoryId) {
+                    favoriteChannels()
+                } else {
+                    null
+                }
                 _uiState.update { state ->
-                    val refreshedChannels = if (state.selectedCategoryId == FavoriteLiveCategoryId) {
-                        favoriteChannels()
-                    } else {
-                        state.channels.map { it.copy(isFavorite = it.streamId in ids) }
-                    }
+                    val refreshedChannels = favoriteSelection
+                        ?: state.channels.map { it.copy(isFavorite = it.streamId in ids) }
                     state.copy(
                         categories = state.categories.withSpecialCategories(
-                            allCount = localChannels.size.takeIf { it > 0 },
+                            allCount = catalogTotalCount(),
                             favoriteCount = ids.size,
                             historyCount = historyProgress.size,
                             historySignals = historyCategorySignals,
@@ -316,7 +314,7 @@ class LiveTvViewModel(
                     val history = historyChannels()
                     state.copy(
                         categories = state.categories.withSpecialCategories(
-                            allCount = localChannels.size.takeIf { it > 0 },
+                            allCount = catalogTotalCount(),
                             favoriteCount = favoriteIds.size,
                             historyCount = history.size,
                             historySignals = historyCategorySignals,
@@ -337,22 +335,28 @@ class LiveTvViewModel(
 
     private fun loadFavoriteChannels() {
         channelsJob?.cancel()
-        val channels = favoriteChannels()
-        _uiState.update { state ->
-            state.copy(
-                channelsLoading = false,
-                errorMessage = null,
-                selectedCategoryId = FavoriteLiveCategoryId,
-                categories = state.categories.withSpecialCategories(
-                    allCount = localChannels.size.takeIf { it > 0 },
-                    favoriteCount = favoriteIds.size,
-                    historyCount = historyProgress.size,
-                    historySignals = historyCategorySignals,
-                ),
-                channels = channels,
-                focusedChannelId = channels.firstOrNull()?.streamId,
-                selectedChannelId = null,
-            )
+        channelsJob = viewModelScope.launch {
+            val channels = favoriteChannels()
+            _uiState.update { state ->
+                state.copy(
+                    itemsLoading = false,
+                    channelsLoading = false,
+                    nextPageLoading = false,
+                    hasMoreItems = false,
+                    currentOffset = channels.size,
+                    errorMessage = null,
+                    selectedCategoryId = FavoriteLiveCategoryId,
+                    categories = state.categories.withSpecialCategories(
+                        allCount = catalogTotalCount(),
+                        favoriteCount = favoriteIds.size,
+                        historyCount = historyProgress.size,
+                        historySignals = historyCategorySignals,
+                    ),
+                    channels = channels,
+                    focusedChannelId = channels.firstOrNull()?.streamId,
+                    selectedChannelId = null,
+                )
+            }
         }
     }
 
@@ -362,10 +366,14 @@ class LiveTvViewModel(
         _uiState.update { state ->
             state.copy(
                 channelsLoading = false,
+                itemsLoading = false,
+                nextPageLoading = false,
+                hasMoreItems = false,
+                currentOffset = channels.size,
                 errorMessage = null,
                 selectedCategoryId = HistoryLiveCategoryId,
                 categories = state.categories.withSpecialCategories(
-                    allCount = localChannels.size.takeIf { it > 0 },
+                    allCount = catalogTotalCount(),
                     favoriteCount = favoriteIds.size,
                     historyCount = channels.size,
                     historySignals = historyCategorySignals,
@@ -378,78 +386,22 @@ class LiveTvViewModel(
     }
 
     private fun loadAllChannels() {
-        channelsJob?.cancel()
-        channelsJob = viewModelScope.launch {
-            val categories = _uiState.value.categories
-                .filterNot { it.id in SpecialLiveCategoryIds }
-                .sortedByHistorySignals(historyCategorySignals) { it.id }
-            val collected = mutableListOf<LiveTvChannel>()
-            val seen = mutableSetOf<Int>()
-            _uiState.update { state ->
-                state.copy(
-                    channelsLoading = true,
-                    errorMessage = null,
-                    selectedCategoryId = AllLiveCategoryId,
-                    channels = emptyList(),
-                    focusedChannelId = null,
-                    selectedChannelId = null,
-                )
-            }
+        loadChannelPage(categoryId = null, selectedCategoryId = AllLiveCategoryId, categoryLabel = "Live TV", replace = true)
+    }
 
-            runCatching {
-                categories.forEach { category ->
-                    localChannels.filter { it.categoryId == category.id }.forEach { stream ->
-                        if (!seen.add(stream.streamId)) return@forEach
-                        if (!playerSettings.allowsContent(stream.name, category.label)) return@forEach
-                        collected += stream.toUiChannel(
-                            index = collected.size,
-                            categoryLabel = category.label,
-                            xtreamRepository = xtreamRepository,
-                            epgRepository = epgRepository,
-                            favoriteIds = favoriteIds,
-                        )
-                    }
-                    _uiState.update { state ->
-                        state.copy(
-                            categories = state.categories.withSpecialCategories(
-                                allCount = collected.size,
-                                favoriteCount = favoriteIds.size,
-                                historyCount = historyProgress.size,
-                                historySignals = historyCategorySignals,
-                            ),
-                            channels = collected.toList(),
-                            focusedChannelId = state.focusedChannelId ?: collected.firstOrNull()?.streamId,
-                        )
-                    }
-                }
-                collected.toList()
-            }.onSuccess { channels ->
-                _uiState.update { state ->
-                    state.copy(
-                        channelsLoading = false,
-                        categories = state.categories.withSpecialCategories(
-                            allCount = channels.size,
-                            favoriteCount = favoriteIds.size,
-                            historyCount = historyProgress.size,
-                            historySignals = historyCategorySignals,
-                        ),
-                        channels = channels,
-                        focusedChannelId = channels.firstOrNull()?.streamId,
-                        errorMessage = null,
-                    )
-                }
-            }.onFailure { error ->
-                _uiState.update { state ->
-                    state.copy(
-                        channelsLoading = false,
-                        channels = collected.toList(),
-                        focusedChannelId = collected.firstOrNull()?.streamId,
-                        selectedChannelId = null,
-                        errorMessage = error.userMessage("Impossible de charger toutes les chaines Xtream."),
-                    )
-                }
-            }
-        }
+    fun loadNextPage() {
+        val state = _uiState.value
+        if (state.categoriesLoading || state.itemsLoading || state.nextPageLoading || !state.hasMoreItems) return
+        val selectedCategoryId = state.selectedCategoryId ?: return
+        if (selectedCategoryId in setOf(FavoriteLiveCategoryId, HistoryLiveCategoryId)) return
+        val categoryId = selectedCategoryId.takeUnless { it == AllLiveCategoryId }
+        val categoryLabel = state.selectedCategory?.label ?: "Live TV"
+        loadChannelPage(
+            categoryId = categoryId,
+            selectedCategoryId = selectedCategoryId,
+            categoryLabel = categoryLabel,
+            replace = false,
+        )
     }
 
     fun deleteHistoryChannel(channel: LiveTvChannel) {
@@ -461,13 +413,9 @@ class LiveTvViewModel(
     private fun historyChannels(): List<LiveTvChannel> =
         historyProgress.mapIndexedNotNull { index, progress ->
             val id = progress.contentId.toIntOrNull() ?: return@mapIndexedNotNull null
-            val cachedStream = localChannels.firstOrNull { it.streamId == id }
-            val name = cachedStream?.name?.cleanedChannelName()
-                ?: progress.title?.takeUnless { it.isGeneratedLiveTitle(id) }
+            val name = progress.title?.takeUnless { it.isGeneratedLiveTitle(id) }
                 ?: "Chaine $id"
-            val categoryLabel = cachedStream?.categoryId
-                ?.let { categoryId -> localCategories.firstOrNull { it.id == categoryId }?.name }
-                ?: progress.subtitle
+            val categoryLabel = progress.subtitle
                 ?: "Historique"
             if (!playerSettings.allowsContent(name, categoryLabel, progress.title, progress.subtitle)) {
                 return@mapIndexedNotNull null
@@ -476,7 +424,7 @@ class LiveTvViewModel(
                 streamId = id,
                 number = (index + 1).toString().padStart(3, '0'),
                 logoText = name.logoFallback(),
-                logoUrl = cachedStream?.logoUrl?.takeIf { it.isNotBlank() } ?: progress.imageUrl,
+                logoUrl = progress.imageUrl,
                 name = name,
                 program = "Direct",
                 genre = categoryLabel,
@@ -491,24 +439,16 @@ class LiveTvViewModel(
             )
         }
 
-    private fun favoriteChannels(): List<LiveTvChannel> =
-        localChannels
-            .filter { it.streamId in favoriteIds }
+    private suspend fun favoriteChannels(): List<LiveTvChannel> =
+        catalogRepository.getLiveChannelsByIds(favoriteIds.toList())
             .filter { stream ->
-                val categoryLabel = localCategories
-                    .firstOrNull { category -> category.id == stream.categoryId }
-                    ?.name
-                playerSettings.allowsContent(stream.name, categoryLabel)
+                playerSettings.allowsContent(stream.name, stream.categoryName)
             }
             .sortedBy { it.name }
             .mapIndexed { index, stream ->
-                val categoryLabel = localCategories
-                    .firstOrNull { it.id == stream.categoryId }
-                    ?.name
-                    ?: "Favoris"
                 stream.toUiChannel(
                     index = index,
-                    categoryLabel = categoryLabel,
+                    categoryLabel = stream.categoryName.ifBlank { "Favoris" },
                     xtreamRepository = xtreamRepository,
                     epgRepository = epgRepository,
                     favoriteIds = favoriteIds,
@@ -516,65 +456,99 @@ class LiveTvViewModel(
             }
 
     private fun loadChannels(categoryId: String) {
-        channelsJob?.cancel()
+        val categoryLabel = _uiState.value.categories.firstOrNull { it.id == categoryId }?.label ?: "Live TV"
+        loadChannelPage(categoryId = categoryId, selectedCategoryId = categoryId, categoryLabel = categoryLabel, replace = true)
+    }
+
+    private fun loadChannelPage(
+        categoryId: String?,
+        selectedCategoryId: String,
+        categoryLabel: String,
+        replace: Boolean,
+    ) {
+        if (replace) channelsJob?.cancel()
         channelsJob = viewModelScope.launch {
-            val categoryLabel = _uiState.value.categories.firstOrNull { it.id == categoryId }?.label ?: "Live TV"
+            val startOffset = if (replace) 0 else _uiState.value.currentOffset
+            val previousChannels = if (replace) emptyList() else _uiState.value.channels
             _uiState.update { state ->
                 state.copy(
-                    channelsLoading = true,
+                    itemsLoading = replace,
+                    channelsLoading = replace,
+                    nextPageLoading = !replace,
                     errorMessage = null,
-                    selectedCategoryId = categoryId,
-                    channels = emptyList(),
-                    focusedChannelId = null,
-                    selectedChannelId = null,
+                    selectedCategoryId = selectedCategoryId,
+                    channels = if (replace) emptyList() else state.channels,
+                    focusedChannelId = if (replace) null else state.focusedChannelId,
+                    selectedChannelId = if (replace) null else state.selectedChannelId,
                 )
             }
 
             runCatching {
-                localChannels.filter { it.categoryId == categoryId }
+                val page = if (categoryId == null) {
+                    catalogRepository.getAllLiveChannelsPage(startOffset, LiveItemsPageSize)
+                } else {
+                    catalogRepository.getLiveChannelsPage(categoryId, startOffset, LiveItemsPageSize)
+                }
+                val visiblePage = page
                     .filter { stream -> playerSettings.allowsContent(stream.name, categoryLabel) }
                     .mapIndexed { index, stream ->
-                    stream.toUiChannel(
-                        index = index,
-                        categoryLabel = categoryLabel,
-                        xtreamRepository = xtreamRepository,
-                        epgRepository = epgRepository,
-                        favoriteIds = favoriteIds,
-                    )
-                }
-            }.onSuccess { channels ->
+                        stream.toUiChannel(
+                            index = startOffset + index,
+                            categoryLabel = stream.categoryName.ifBlank { categoryLabel },
+                            xtreamRepository = xtreamRepository,
+                            epgRepository = epgRepository,
+                            favoriteIds = favoriteIds,
+                        )
+                    }
+                val merged = (previousChannels + visiblePage).distinctBy { it.streamId }
+                PageLoadResult(items = merged, rawPageSize = page.size)
+            }.onSuccess { result ->
                 _uiState.update { state ->
-                    val refreshedCategories = state.categories.map { category ->
-                        if (category.id == categoryId) category.copy(count = channels.size) else category
-                    }.withSpecialCategories(
-                            allCount = localChannels.size.takeIf { it > 0 },
+                    val refreshedCategories = state.categories.withSpecialCategories(
+                        allCount = catalogTotalCount(),
                         favoriteCount = favoriteIds.size,
                         historyCount = historyProgress.size,
                         historySignals = historyCategorySignals,
                     )
                     state.copy(
+                        itemsLoading = false,
                         channelsLoading = false,
+                        nextPageLoading = false,
+                        hasMoreItems = result.rawPageSize == LiveItemsPageSize,
+                        currentOffset = startOffset + result.rawPageSize,
                         categories = refreshedCategories,
-                        channels = channels,
-                        focusedChannelId = channels.firstOrNull()?.streamId,
+                        channels = result.items,
+                        focusedChannelId = state.focusedChannelId ?: result.items.firstOrNull()?.streamId,
                         errorMessage = null,
                     )
                 }
             }.onFailure { error ->
                 _uiState.update { state ->
                     state.copy(
+                        itemsLoading = false,
                         channelsLoading = false,
-                        channels = emptyList(),
-                        focusedChannelId = null,
-                        selectedChannelId = null,
+                        nextPageLoading = false,
+                        channels = if (replace) emptyList() else state.channels,
+                        focusedChannelId = if (replace) null else state.focusedChannelId,
+                        selectedChannelId = if (replace) null else state.selectedChannelId,
                         errorMessage = error.userMessage("Impossible de charger les chaines Xtream."),
                     )
                 }
             }
         }
     }
+
+    private fun catalogTotalCount(): Int? =
+        localCategories.sumOf { it.count }.takeIf { it > 0 }
 }
 
+private data class PageLoadResult<T>(
+    val items: List<T>,
+    val rawPageSize: Int,
+)
+
+private const val LiveItemsPageSize = 96
+private const val EpgCategoryScanPageSize = 500
 private const val FavoriteLiveCategoryId = "__favorites_live__"
 private const val HistoryLiveCategoryId = "__history_live__"
 private const val AllLiveCategoryId = "__all_live__"

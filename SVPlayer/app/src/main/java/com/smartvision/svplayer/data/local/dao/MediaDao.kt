@@ -31,6 +31,15 @@ interface MediaDao {
     @Query("SELECT * FROM live_streams WHERE (:categoryId IS NULL OR categoryId = :categoryId) ORDER BY number, name")
     fun observeLiveStreamsByCategory(categoryId: String?): Flow<List<LiveStreamEntity>>
 
+    @Query("SELECT * FROM live_streams ORDER BY number, name LIMIT :limit OFFSET :offset")
+    suspend fun getLiveStreamsPage(limit: Int, offset: Int): List<LiveStreamEntity>
+
+    @Query("SELECT * FROM live_streams WHERE categoryId = :categoryId ORDER BY number, name LIMIT :limit OFFSET :offset")
+    suspend fun getLiveStreamsByCategoryPage(categoryId: String, limit: Int, offset: Int): List<LiveStreamEntity>
+
+    @Query("SELECT * FROM live_streams WHERE streamId IN (:streamIds)")
+    suspend fun getLiveStreamsByIds(streamIds: List<Int>): List<LiveStreamEntity>
+
     @Query("SELECT * FROM live_streams WHERE streamId = :streamId")
     suspend fun getLiveStream(streamId: Int): LiveStreamEntity?
 
@@ -54,6 +63,15 @@ interface MediaDao {
 
     @Query("SELECT * FROM movies WHERE (:categoryId IS NULL OR categoryId = :categoryId) ORDER BY number, title")
     fun observeMoviesByCategory(categoryId: String?): Flow<List<MovieEntity>>
+
+    @Query("SELECT * FROM movies ORDER BY number, title LIMIT :limit OFFSET :offset")
+    suspend fun getMoviesPage(limit: Int, offset: Int): List<MovieEntity>
+
+    @Query("SELECT * FROM movies WHERE categoryId = :categoryId ORDER BY number, title LIMIT :limit OFFSET :offset")
+    suspend fun getMoviesByCategoryPage(categoryId: String, limit: Int, offset: Int): List<MovieEntity>
+
+    @Query("SELECT * FROM movies WHERE streamId IN (:streamIds)")
+    suspend fun getMoviesByIds(streamIds: List<Int>): List<MovieEntity>
 
     @Query("SELECT * FROM movies WHERE streamId = :streamId")
     suspend fun getMovie(streamId: Int): MovieEntity?
@@ -81,6 +99,15 @@ interface MediaDao {
 
     @Query("SELECT * FROM series WHERE (:categoryId IS NULL OR categoryId = :categoryId) ORDER BY number, title")
     fun observeSeriesByCategory(categoryId: String?): Flow<List<SeriesEntity>>
+
+    @Query("SELECT * FROM series ORDER BY number, title LIMIT :limit OFFSET :offset")
+    suspend fun getSeriesPage(limit: Int, offset: Int): List<SeriesEntity>
+
+    @Query("SELECT * FROM series WHERE categoryId = :categoryId ORDER BY number, title LIMIT :limit OFFSET :offset")
+    suspend fun getSeriesByCategoryPage(categoryId: String, limit: Int, offset: Int): List<SeriesEntity>
+
+    @Query("SELECT * FROM series WHERE seriesId IN (:seriesIds)")
+    suspend fun getSeriesByIds(seriesIds: List<Int>): List<SeriesEntity>
 
     @Query("SELECT * FROM series WHERE seriesId = :seriesId")
     suspend fun getSeries(seriesId: Int): SeriesEntity?
