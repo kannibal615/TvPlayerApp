@@ -1,5 +1,6 @@
 package com.smartvision.svplayer.ui.home
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -64,14 +66,17 @@ fun ContinueWatchingRow(
     showViewAll: Boolean = false,
     viewAllText: String = "View all",
     onViewAll: () -> Unit = {},
+    lazyListState: LazyListState? = null,
     firstItemFocusRequester: FocusRequester? = null,
     onDownFromRow: (() -> Unit)? = null,
+    onUpFromRow: (() -> Unit)? = null,
     enablePreview: Boolean = false,
     resumeOverlayText: String = "Resume playback",
     blocked: Boolean = false,
     onBlockedClick: () -> Unit = {},
 ) {
-    val rowState = rememberLazyListState()
+    val fallbackRowState = rememberLazyListState()
+    val rowState = lazyListState ?: fallbackRowState
     val scope = rememberCoroutineScope()
     var focusedPreviewId by remember { mutableStateOf<String?>(null) }
     Column(modifier = modifier) {
@@ -86,6 +91,7 @@ fun ContinueWatchingRow(
         LazyRow(
             state = rowState,
             modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = SmartVisionDimensions.HomeRowEdgePadding),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -100,7 +106,12 @@ fun ContinueWatchingRow(
                     onClick = { if (blocked) onBlockedClick() else onItemClick(item) },
                     focusRequester = if (index == 0) firstItemFocusRequester else null,
                     onFocused = {
-                        scope.launch { rowState.animateScrollToItem(index) }
+                        Log.i(HomeRowLogTag, "focused row=$title index=$index id=${item.id}")
+                        scope.launch {
+                            runCatching { rowState.animateScrollToItem(index) }
+                                .onSuccess { Log.i(HomeRowLogTag, "scrollToFocused row=$title index=$index") }
+                                .onFailure { Log.w(HomeRowLogTag, "scrollToFocusedFailed row=$title index=$index", it) }
+                        }
                     },
                     onFocusChanged = { focused ->
                         if (enablePreview) {
@@ -108,6 +119,7 @@ fun ContinueWatchingRow(
                         }
                     },
                     onDown = onDownFromRow,
+                    onUp = onUpFromRow,
                     enablePreview = enablePreview,
                     resumeOverlayText = resumeOverlayText,
                     blocked = blocked,
@@ -122,6 +134,7 @@ fun ContinueWatchingRow(
                         text = viewAllText,
                         onClick = { if (blocked) onBlockedClick() else onViewAll() },
                         onDown = onDownFromRow,
+                        onUp = onUpFromRow,
                         modifier = Modifier
                             .width(78.dp)
                             .height(SmartVisionDimensions.HomeContentCardHeight),
@@ -131,6 +144,8 @@ fun ContinueWatchingRow(
         }
     }
 }
+
+private const val HomeRowLogTag = "SVHomeFocus"
 
 @Composable
 private fun RowChevronButton(
@@ -184,6 +199,7 @@ private fun ViewAllButton(
     text: String,
     onClick: () -> Unit,
     onDown: (() -> Unit)? = null,
+    onUp: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val focusState = rememberTvFocusState()
@@ -196,11 +212,20 @@ private fun ViewAllButton(
         modifier = modifier
             .zIndex(if (focusState.isFocused) 2f else 0f)
             .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown && onDown != null) {
-                    onDown()
-                    true
-                } else {
+                if (event.type != KeyEventType.KeyDown) {
                     false
+                } else {
+                    when {
+                        event.key == Key.DirectionDown && onDown != null -> {
+                            onDown()
+                            true
+                        }
+                        event.key == Key.DirectionUp && onUp != null -> {
+                            onUp()
+                            true
+                        }
+                        else -> false
+                    }
                 }
             }
             .tvFocusTarget(

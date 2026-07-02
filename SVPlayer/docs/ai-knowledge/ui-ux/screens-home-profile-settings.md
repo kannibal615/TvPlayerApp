@@ -18,6 +18,9 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 - Home affiche ses donnees a partir de petits jeux locaux: slides caches, historique recent limite a `10`, tendances films `10` et tendances series `10` issues de `trending_media`. Il ne doit pas relire les snapshots complets Movies / Series.
 - Sur Home, les cards tendances films/series passent en largeur 16:9 au focus en gardant la hauteur actuelle; le poster reste affiche immediatement puis un mini-player Media3 muet demarre apres environ 650 ms avec segments a 10%, 25%, 45%, 65% et 80% du media.
 - Sur Home, Continue watching utilise aussi le mini-player Media3 muet au focus: Live demarre immediatement, Films et Episodes demarrent depuis la position de reprise, bouclent par segments de 20 secondes, puis affichent un overlay i18n `Resume playback` / `Reprendre la lecture`.
+- Sur Home, les tendances Films/Series sont filtrees au chargement de section pour garder uniquement les medias qui exposent une image paysage `backdropUrl` depuis les details Xtream. Cette image paysage sert de poster mini-player; la video se prepare en arriere-plan et apparait en crossfade lent apres 4 secondes de focus.
+- Sur Home, les lignes Continue watching / Trending movies / Trending series ont un padding interne horizontal pour que la premiere card, sa bordure focus et le mini-player ne soient pas tronques a gauche.
+- Le D-pad bas sur Home force la ligne cible a revenir a son premier item avant de demander le focus, ce qui evite de rester bloque sur une card Continue watching deja scrollee horizontalement.
 - Home routes secondaires: `continue_watching` et `trending` via `HomeCollectionsScreen`.
 - Live TV: categories, chaines, apercu puis plein ecran.
 - Movies: grille de films, detail, lecture.
@@ -161,3 +164,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-01: Info compte compact: icone utilisateur bleue, badge usage deplace vers Licence, expiration Xtream dans l'en-tete Info compte, boutons Xtream en icones et identifiants sur une seule ligne.
 - 2026-07-01: badge `E` sur les lignes Live TV avec EPG et etats Movies/Series explicites quand M3U est actif.
 - 2026-07-02: Continue watching ajoute le mini-player au focus et les ecrans catalogue reutilisent le prechauffage splash categories/premieres pages pour reduire le loading d'ouverture.
+- 2026-07-02: correction Home: padding de bord sur les carrousels, reset horizontal vers le premier item avant focus vertical, et logs diagnostics `SVHomeFocus`.
+- 2026-07-02: mini-player Home poster-first: filtre tendances sur `backdropUrl`, poster paysage pendant preparation video, demarrage apres 4 secondes de focus et fondu plus lent.

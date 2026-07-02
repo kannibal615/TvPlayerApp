@@ -1,5 +1,46 @@
 # AI Changelog
 
+## 2026-07-02 - Mini-player Home poster paysage
+
+Type:
+- android
+- ui-tv
+- release-prep
+
+Resume:
+- Home filtre les tendances films/series au chargement de section pour ne garder que les medias avec une image paysage `backdropUrl` issue des details Xtream.
+- Les cards Home portent maintenant une image `previewImageUrl` dediee au mini-player, distincte du poster portrait.
+- Le mini-player garde le poster paysage affiche pendant la preparation Media3, attend 4 secondes de focus pour films/series, puis affiche la video en crossfade plus lent afin d'eviter l'impression de coupure/ecran noir.
+- Le routage focus Home demande le focus avant le recentrage vertical pour reduire le decalage entre mouvement d'ecran et focus visible.
+- Release prod publiee en `0.1.76` / `versionCode 79` avec APK `smartvision-tv-v79-54bfa614.apk`, hash SHA256 `54bfa6145236657f92be05e012fa76ca4416ccddb34b764a8ff71188418e937d`.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+## 2026-07-02 - Handoff splash et focus Home durable
+
+Type:
+- android
+- ui-tv
+- release-prep
+
+Resume:
+- `MainActivity` applique le fond `splash_background` avant `setContent` et `AppNavigation` affiche `smartvision_splash_bg` pendant la rehydratation locale pour eviter l'ecran noir entre splash et Home.
+- Home renforce le routage D-pad vertical: chaque descente vers une ligne cible remet la `LazyRow` a l'index `0`, attend les frames Compose, scrolle la ligne visible, puis demande le focus sur le premier item.
+- Les carrousels Continue watching / Trending movies / Trending series recoivent un padding horizontal interne pour que la premiere card, le focus et le mini-player ne soient pas tronques.
+- Ajout de logs diagnostics `SVStartup` et `SVHomeFocus` pour verifier le handoff splash et les problemes de focus sur Firestick.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
 ## 2026-07-02 - Splash immediat, focus Home et preview Continue watching
 
 Type:

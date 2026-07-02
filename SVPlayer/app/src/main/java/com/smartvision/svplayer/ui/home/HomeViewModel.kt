@@ -10,6 +10,7 @@ import com.smartvision.svplayer.data.mock.HomePreviewMode
 import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
+import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.domain.model.PlaybackKind
 import com.smartvision.svplayer.domain.model.TrendingCatalogItem
 import com.smartvision.svplayer.domain.repository.CatalogRepository
@@ -33,6 +34,7 @@ data class HomeUiState(
 class HomeViewModel(
     private val userContentRepository: UserContentRepository,
     private val catalogRepository: CatalogRepository,
+    private val xtreamRepository: XtreamRepository,
     private val homeSlidesRepository: HomeSlidesRepository,
 ) : ViewModel() {
     private val cachedContinueWatching = userContentRepository
@@ -50,7 +52,7 @@ class HomeViewModel(
                 .distinctBy(::historyGroupingKey)
                 .take(10)
             recent.mapNotNull { item ->
-                toContinueItemWithPreview(item, catalogRepository)
+                toContinueItemWithPreview(item, catalogRepository, xtreamRepository)
             }
         }
         .onStart {
@@ -98,14 +100,16 @@ class HomeViewModel(
         if (!forceRefresh && trendingMovies.value.isNotEmpty() && trendingSeries.value.isNotEmpty()) return
         viewModelScope.launch {
             val movies = async {
-                runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingSectionLimit) }
+                runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingCandidateLimit) }
                     .getOrDefault(emptyList())
-                    .map { it.toMovieTrendItem() }
+                    .mapNotNull { it.toMovieTrendItem(xtreamRepository) }
+                    .take(HomeTrendingSectionLimit)
             }
             val series = async {
-                runCatching { catalogRepository.getTrendingSeriesItems(HomeTrendingSectionLimit) }
+                runCatching { catalogRepository.getTrendingSeriesItems(HomeTrendingCandidateLimit) }
                     .getOrDefault(emptyList())
-                    .map { it.toSeriesTrendItem() }
+                    .mapNotNull { it.toSeriesTrendItem(xtreamRepository) }
+                    .take(HomeTrendingSectionLimit)
             }
             trendingMovies.value = movies.await()
             trendingSeries.value = series.await()
@@ -115,6 +119,7 @@ class HomeViewModel(
 
 private const val ContinueWatchingSnapshotLimit = 10
 private const val HomeTrendingSectionLimit = 10
+private const val HomeTrendingCandidateLimit = 50
 
 private fun toContinueItem(progress: PlaybackProgressEntity): ContinueItem? {
     val id = progress.contentId.toIntOrNull() ?: return null
@@ -160,6 +165,7 @@ private fun toContinueItem(progress: PlaybackProgressEntity): ContinueItem? {
 private suspend fun toContinueItemWithPreview(
     progress: PlaybackProgressEntity,
     catalogRepository: CatalogRepository,
+    xtreamRepository: XtreamRepository,
 ): ContinueItem? {
     val base = toContinueItem(progress) ?: return null
     val previewKind = progress.contentType.toPreviewPlaybackKind() ?: return base
@@ -172,8 +178,18 @@ private suspend fun toContinueItemWithPreview(
         UserContentType.Movie, UserContentType.Episode -> HomePreviewMode.ResumeLoop
         else -> HomePreviewMode.None
     }
+    val previewImageUrl = when (progress.contentType) {
+        UserContentType.Movie -> progress.contentId.toIntOrNull()?.let { movieId ->
+            runCatching { xtreamRepository.getMovieDetails(movieId).backdropUrl }.getOrNull()
+        }
+        UserContentType.Episode -> progress.parentContentId?.toIntOrNull()?.let { seriesId ->
+            runCatching { xtreamRepository.getSeriesDetails(seriesId).backdropUrl }.getOrNull()
+        }
+        else -> null
+    }?.takeIf { it.isNotBlank() }
     return base.copy(
         previewUrl = url,
+        previewImageUrl = previewImageUrl ?: base.previewImageUrl,
         previewMode = previewMode,
         previewStartPositionMs = if (previewMode == HomePreviewMode.ResumeLoop) {
             (request.resumePositionMs.takeIf { it > 0L } ?: progress.positionMs).coerceAtLeast(0L)
@@ -189,8 +205,12 @@ private fun List<PlaybackProgressEntity>.toContinueItems(): List<ContinueItem> =
         .take(10)
         .mapNotNull(::toContinueItem)
 
-private fun TrendingCatalogItem.toMovieTrendItem(): ContinueItem =
-    ContinueItem(
+private suspend fun TrendingCatalogItem.toMovieTrendItem(xtreamRepository: XtreamRepository): ContinueItem? {
+    val backdropUrl = runCatching { xtreamRepository.getMovieDetails(contentId).backdropUrl }
+        .getOrNull()
+        ?.takeIf { it.isNotBlank() }
+        ?: return null
+    return ContinueItem(
         id = "movie:$contentId",
         title = title.cleanHistoryTitle(),
         meta = "Film${rating?.let { "  |  $it/10" }.orEmpty()}",
@@ -198,13 +218,19 @@ private fun TrendingCatalogItem.toMovieTrendItem(): ContinueItem =
         progress = 0f,
         visualStyle = HomeVisualStyle.Cinema,
         imageUrl = posterUrl,
+        previewImageUrl = backdropUrl,
         mediaType = "FILM",
         previewUrl = previewUrl,
         previewMode = HomePreviewMode.TrendSegments,
     )
+}
 
-private fun TrendingCatalogItem.toSeriesTrendItem(): ContinueItem =
-    ContinueItem(
+private suspend fun TrendingCatalogItem.toSeriesTrendItem(xtreamRepository: XtreamRepository): ContinueItem? {
+    val backdropUrl = runCatching { xtreamRepository.getSeriesDetails(contentId).backdropUrl }
+        .getOrNull()
+        ?.takeIf { it.isNotBlank() }
+        ?: return null
+    return ContinueItem(
         id = "series:$contentId",
         title = title.cleanHistoryTitle(),
         meta = "Serie${rating?.let { "  |  $it/10" }.orEmpty()}",
@@ -212,10 +238,12 @@ private fun TrendingCatalogItem.toSeriesTrendItem(): ContinueItem =
         progress = 0f,
         visualStyle = HomeVisualStyle.Series,
         imageUrl = posterUrl,
+        previewImageUrl = backdropUrl,
         mediaType = "SERIE",
         previewUrl = previewUrl,
         previewMode = HomePreviewMode.TrendSegments,
     )
+}
 
 private fun String.toPreviewPlaybackKind(): PlaybackKind? =
     when (this) {

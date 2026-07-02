@@ -1,6 +1,7 @@
 package com.smartvision.svplayer.ui.home
 
 import android.media.MediaPlayer
+import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -37,7 +40,6 @@ import com.smartvision.svplayer.data.mock.HomeNavigationData
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -71,6 +73,7 @@ fun HomeScreen(
             HomeViewModel(
                 userContentRepository = container.userContentRepository,
                 catalogRepository = container.catalogRepository,
+                xtreamRepository = container.xtreamRepository,
                 homeSlidesRepository = container.homeSlidesRepository,
             )
         },
@@ -80,36 +83,108 @@ fun HomeScreen(
     val continueFirstFocusRequester = remember { FocusRequester() }
     val movieTrendFirstFocusRequester = remember { FocusRequester() }
     val seriesTrendFirstFocusRequester = remember { FocusRequester() }
+    val categoryBringIntoViewRequester = remember { BringIntoViewRequester() }
     val continueBringIntoViewRequester = remember { BringIntoViewRequester() }
     val movieTrendBringIntoViewRequester = remember { BringIntoViewRequester() }
     val seriesTrendBringIntoViewRequester = remember { BringIntoViewRequester() }
+    val continueRowState = rememberLazyListState()
+    val movieTrendRowState = rememberLazyListState()
+    val seriesTrendRowState = rememberLazyListState()
     val hasContinueWatching = state.continueWatching.isNotEmpty()
     val hasMovieTrends = state.trendingMovies.isNotEmpty()
     val hasSeriesTrends = state.trendingSeries.isNotEmpty()
 
+    suspend fun animateRowToFirst(targetName: String, rowState: LazyListState) {
+        if (rowState.firstVisibleItemIndex == 0 && rowState.firstVisibleItemScrollOffset == 0) {
+            Log.i(HomeFocusLogTag, "requestRowFocus target=$targetName rowAlreadyAtFirst")
+            return
+        }
+        rowState.animateScrollToItem(0)
+    }
+
     fun requestRowFocus(
+        targetName: String,
         focusRequester: FocusRequester,
         bringIntoViewRequester: BringIntoViewRequester,
+        rowState: LazyListState,
     ) {
         focusScope.launch {
-            runCatching { bringIntoViewRequester.bringIntoView() }
-            delay(60)
+            Log.i(HomeFocusLogTag, "requestRowFocus target=$targetName start")
+            runCatching { animateRowToFirst(targetName, rowState) }
+                .onSuccess { Log.i(HomeFocusLogTag, "requestRowFocus target=$targetName rowScrolledToFirst") }
+                .onFailure { Log.w(HomeFocusLogTag, "requestRowFocus target=$targetName rowScrollFailed", it) }
+            withFrameNanos { }
             runCatching { focusRequester.requestFocus() }
+                .onSuccess { Log.i(HomeFocusLogTag, "requestRowFocus target=$targetName focusRequested") }
+                .onFailure { Log.w(HomeFocusLogTag, "requestRowFocus target=$targetName focusRequestFailed", it) }
+            withFrameNanos { }
+            runCatching { bringIntoViewRequester.bringIntoView() }
+                .onSuccess { Log.i(HomeFocusLogTag, "requestRowFocus target=$targetName broughtIntoView") }
+                .onFailure { Log.w(HomeFocusLogTag, "requestRowFocus target=$targetName bringIntoViewFailed", it) }
+        }
+    }
+
+    fun requestMainCategoryFocus() {
+        focusScope.launch {
+            Log.i(HomeFocusLogTag, "requestMainCategoryFocus start")
+            runCatching { liveFocusRequester.requestFocus() }
+                .onSuccess { Log.i(HomeFocusLogTag, "requestMainCategoryFocus focusRequested") }
+                .onFailure { Log.w(HomeFocusLogTag, "requestMainCategoryFocus focusRequestFailed", it) }
+            withFrameNanos { }
+            runCatching { categoryBringIntoViewRequester.bringIntoView() }
+                .onSuccess { Log.i(HomeFocusLogTag, "requestMainCategoryFocus broughtIntoView") }
+                .onFailure { Log.w(HomeFocusLogTag, "requestMainCategoryFocus bringIntoViewFailed", it) }
         }
     }
 
     fun requestFirstHomeRowFocus() {
         when {
-            hasContinueWatching -> requestRowFocus(continueFirstFocusRequester, continueBringIntoViewRequester)
-            hasMovieTrends -> requestRowFocus(movieTrendFirstFocusRequester, movieTrendBringIntoViewRequester)
-            hasSeriesTrends -> requestRowFocus(seriesTrendFirstFocusRequester, seriesTrendBringIntoViewRequester)
+            hasContinueWatching -> requestRowFocus(
+                targetName = "continue_watching",
+                focusRequester = continueFirstFocusRequester,
+                bringIntoViewRequester = continueBringIntoViewRequester,
+                rowState = continueRowState,
+            )
+            hasMovieTrends -> requestRowFocus(
+                targetName = "trending_movies",
+                focusRequester = movieTrendFirstFocusRequester,
+                bringIntoViewRequester = movieTrendBringIntoViewRequester,
+                rowState = movieTrendRowState,
+            )
+            hasSeriesTrends -> requestRowFocus(
+                targetName = "trending_series",
+                focusRequester = seriesTrendFirstFocusRequester,
+                bringIntoViewRequester = seriesTrendBringIntoViewRequester,
+                rowState = seriesTrendRowState,
+            )
         }
     }
 
     fun requestMovieTrendFocus() {
         when {
-            hasMovieTrends -> requestRowFocus(movieTrendFirstFocusRequester, movieTrendBringIntoViewRequester)
-            hasSeriesTrends -> requestRowFocus(seriesTrendFirstFocusRequester, seriesTrendBringIntoViewRequester)
+            hasMovieTrends -> requestRowFocus(
+                targetName = "trending_movies",
+                focusRequester = movieTrendFirstFocusRequester,
+                bringIntoViewRequester = movieTrendBringIntoViewRequester,
+                rowState = movieTrendRowState,
+            )
+            hasSeriesTrends -> requestRowFocus(
+                targetName = "trending_series",
+                focusRequester = seriesTrendFirstFocusRequester,
+                bringIntoViewRequester = seriesTrendBringIntoViewRequester,
+                rowState = seriesTrendRowState,
+            )
+        }
+    }
+
+    fun requestContinueFocus() {
+        if (hasContinueWatching) {
+            requestRowFocus(
+                targetName = "continue_watching",
+                focusRequester = continueFirstFocusRequester,
+                bringIntoViewRequester = continueBringIntoViewRequester,
+                rowState = continueRowState,
+            )
         }
     }
 
@@ -177,7 +252,8 @@ fun HomeScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(SmartVisionDimensions.HomeCategoryHeight),
+                    .height(SmartVisionDimensions.HomeCategoryHeight)
+                    .bringIntoViewRequester(categoryBringIntoViewRequester),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 HomeNavigationData.categories.forEach { category ->
@@ -204,8 +280,10 @@ fun HomeScreen(
                     viewAllText = strings.viewAll,
                     onViewAll = onContinueViewAll,
                     onItemClick = onContentClick,
+                    lazyListState = continueRowState,
                     firstItemFocusRequester = continueFirstFocusRequester,
                     onDownFromRow = { requestMovieTrendFocus() },
+                    onUpFromRow = { requestMainCategoryFocus() },
                     enablePreview = true,
                     resumeOverlayText = strings.resumePlayback,
                     blocked = xtreamCatalogBlocked,
@@ -224,12 +302,19 @@ fun HomeScreen(
                 viewAllText = strings.viewAll,
                 onViewAll = onTrendingViewAll,
                 onItemClick = onContentClick,
+                lazyListState = movieTrendRowState,
                 firstItemFocusRequester = movieTrendFirstFocusRequester,
                 onDownFromRow = {
                     if (hasSeriesTrends) {
-                        requestRowFocus(seriesTrendFirstFocusRequester, seriesTrendBringIntoViewRequester)
+                        requestRowFocus(
+                            targetName = "trending_series",
+                            focusRequester = seriesTrendFirstFocusRequester,
+                            bringIntoViewRequester = seriesTrendBringIntoViewRequester,
+                            rowState = seriesTrendRowState,
+                        )
                     }
                 },
+                onUpFromRow = { requestContinueFocus() },
                 enablePreview = true,
                 blocked = xtreamCatalogBlocked,
                 onBlockedClick = onXtreamBlocked,
@@ -247,7 +332,9 @@ fun HomeScreen(
                 viewAllText = strings.viewAll,
                 onViewAll = onTrendingViewAll,
                 onItemClick = onContentClick,
+                lazyListState = seriesTrendRowState,
                 firstItemFocusRequester = seriesTrendFirstFocusRequester,
+                onUpFromRow = { requestMovieTrendFocus() },
                 enablePreview = true,
                 blocked = xtreamCatalogBlocked,
                 onBlockedClick = onXtreamBlocked,
@@ -285,3 +372,5 @@ private val com.smartvision.svplayer.data.mock.HomeCategory.routeName: String
 
 private fun String.isHomeXtreamRoute(): Boolean =
     this == "live_tv" || this == "movies" || this == "series"
+
+private const val HomeFocusLogTag = "SVHomeFocus"

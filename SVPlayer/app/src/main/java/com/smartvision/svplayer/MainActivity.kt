@@ -19,9 +19,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        window.setBackgroundDrawableResource(R.drawable.splash_background)
+        Log.i(TAG, "onCreate: splash window background applied before AppNavigation")
         requestNotificationPermissionIfNeeded()
         handleIntent(intent)
         setContent {
+            Log.i(TAG, "setContent: rendering AppNavigation")
             SmartVisionTheme {
                 val appContainer = (application as SVPlayerApplication).appContainer
                 CompositionLocalProvider(LocalAppContainer provides appContainer) {

@@ -11,8 +11,8 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
 
 Gradle local constate le 2026-07-02:
-- `versionCode = 77`
-- `versionName = "0.1.74"`
+- `versionCode = 79`
+- `versionName = "0.1.76"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -26,7 +26,8 @@ Demarrage:
 - Le theme systeme `Theme.SVPlayer.Splash` utilise `@drawable/splash_background` comme preview immediate; cette preview doit rester identique au fond Compose pour eviter un double splash visible.
 - `SplashActivity` attend la premiere frame Compose avant de lancer les checks startup, pour afficher immediatement le logo/progress bar au-dessus du fond.
 - L'initialisation diagnostic `AppContainer` dans `SVPlayerApplication` est differee et lancee hors thread UI, pour ne pas bloquer le rendu initial du splash Compose.
-- Les etats transitoires de `AppNavigation` apres splash utilisent un fond sombre neutre, pas l'ancien visuel splash.
+- Les etats transitoires de `AppNavigation` apres splash gardent le visuel `smartvision_splash_bg` pendant la rehydratation locale, afin d'eviter un ecran noir entre `SplashActivity` et Home.
+- `MainActivity` applique aussi `@drawable/splash_background` comme fond de fenetre avant `setContent`; les logs `SVStartup` permettent de verifier la duree du handoff.
 
 ## 3. Workflow utilisateur
 
@@ -143,6 +144,8 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-06-29: migration vers documentation specialisee.
+- 2026-07-02: release publiee `0.1.76` / `versionCode 79` pour mini-player Home poster paysage, filtre tendances avec `backdropUrl`, demarrage video apres 4 secondes de focus et fondu plus lent; APK `smartvision-tv-v79-54bfa614.apk`, manifeste public et hash SHA256 verifies.
+- 2026-07-02: release publiee `0.1.75` / `versionCode 78` pour supprimer l'ecran noir apres splash, renforcer le focus Home vers Tendances, corriger le clipping gauche des carrousels et ajouter les logs `SVStartup` / `SVHomeFocus`.
 - 2026-07-02: release publiee `0.1.74` / `versionCode 77` pour affichage immediat logo/progress splash, prechauffage categories/premieres pages, mini-player Continue watching et focus Home corrige; APK `smartvision-tv-v77-055a7642.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-02: release publiee `0.1.73` / `versionCode 76` pour retour splash image, Home tendances films/series, liste `trending_media` validee et mini-preview tendances; APK `smartvision-tv-v76-6a70e99f.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-01: release publiee `0.1.71` / `versionCode 74` pour splash sans noir avant premiere frame, EPG streaming borne, filtre categories EPG Live TV, splash categories-only et correction crash focus D-pad; APK `smartvision-tv-v74-d76a5da8.apk`, manifeste public et hash SHA256 verifies.

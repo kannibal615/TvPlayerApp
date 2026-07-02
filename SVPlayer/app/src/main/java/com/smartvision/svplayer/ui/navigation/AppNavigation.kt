@@ -4,6 +4,7 @@ import android.app.Activity
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -32,7 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -45,6 +48,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.smartvision.svplayer.BuildConfig
+import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.ui.viewModelFactory
@@ -266,6 +270,19 @@ fun AppNavigation(
     val xtreamAccounts by container.accountManager.accounts.collectAsStateWithLifecycle()
     val m3uUrl by container.accountManager.m3uUrl.collectAsStateWithLifecycle()
     val hasPlayableSource = xtreamAccounts.isNotEmpty() || m3uUrl.isNotBlank()
+    LaunchedEffect(
+        activationState.localStateReady,
+        activationState.checking,
+        activationState.activated,
+        hasPlayableSource,
+        currentRoute,
+    ) {
+        Log.i(
+            TAG_STARTUP,
+            "state localReady=${activationState.localStateReady} checking=${activationState.checking} " +
+                "activated=${activationState.activated} playableSource=$hasPlayableSource route=$currentRoute",
+        )
+    }
     val xtreamAccountSignature = remember(xtreamAccounts) {
         xtreamAccounts.joinToString("|") { account ->
             "${account.id}:${account.host}:${account.username}:${account.password.hashCode()}"
@@ -280,11 +297,7 @@ fun AppNavigation(
     }
 
     if (!activationState.localStateReady && activationState.checking) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFF020714)),
-        ) {}
+        StartupHandoffScreen()
         return
     }
 
@@ -804,6 +817,27 @@ fun AppNavigation(
     }
 
 }
+
+@Composable
+private fun StartupHandoffScreen() {
+    LaunchedEffect(Unit) {
+        Log.i(TAG_STARTUP, "handoff visible: waiting for ActivationViewModel local state")
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+    ) {
+        Image(
+            painter = painterResource(R.drawable.smartvision_splash_bg),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+private const val TAG_STARTUP = "SVStartup"
 
 @Composable
 private fun XtreamConnectionAlertDialog(

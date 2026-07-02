@@ -44,6 +44,7 @@ data class ContinueItem(
     val progress: Float,
     val visualStyle: HomeVisualStyle,
     val imageUrl: String? = null,
+    val previewImageUrl: String? = null,
     val mediaType: String = "",
     val previewUrl: String? = null,
     val previewMode: HomePreviewMode = HomePreviewMode.None,

@@ -37,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -83,6 +84,7 @@ fun ContentProgressCard(
     onFocused: () -> Unit = {},
     onFocusChanged: (Boolean) -> Unit = {},
     onDown: (() -> Unit)? = null,
+    onUp: (() -> Unit)? = null,
     enablePreview: Boolean = false,
     resumeOverlayText: String = "Resume playback",
     blocked: Boolean = false,
@@ -103,6 +105,7 @@ fun ContentProgressCard(
         !blocked &&
         !item.previewUrl.isNullOrBlank() &&
         item.previewMode != HomePreviewMode.None
+    val previewPosterUrl = item.previewImageUrl ?: item.imageUrl
     var showPreview by remember(item.id, item.previewUrl) { mutableStateOf(false) }
 
     LaunchedEffect(focusState.isFocused) {
@@ -114,11 +117,11 @@ fun ContentProgressCard(
         showPreview = false
         if (previewActive) {
             val startDelay = when (item.previewMode) {
-                HomePreviewMode.TrendSegments -> TrendPreviewStartDelayMillis
-                HomePreviewMode.LiveImmediate,
+                HomePreviewMode.LiveImmediate -> 0L
+                HomePreviewMode.TrendSegments,
                 HomePreviewMode.ResumeLoop,
                 HomePreviewMode.None,
-                -> 0L
+                -> PreviewFocusStartDelayMillis
             }
             if (startDelay > 0L) delay(startDelay)
             showPreview = true
@@ -129,11 +132,20 @@ fun ContentProgressCard(
         modifier = modifier
             .zIndex(if (focusState.isFocused) 2f else 0f)
             .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown && onDown != null) {
-                    onDown()
-                    true
-                } else {
+                if (event.type != KeyEventType.KeyDown) {
                     false
+                } else {
+                    when {
+                        event.key == Key.DirectionDown && onDown != null -> {
+                            onDown()
+                            true
+                        }
+                        event.key == Key.DirectionUp && onUp != null -> {
+                            onUp()
+                            true
+                        }
+                        else -> false
+                    }
                 }
             }
             .tvFocusTarget(
@@ -171,6 +183,7 @@ fun ContentProgressCard(
                 url = item.previewUrl,
                 mode = item.previewMode,
                 startPositionMs = item.previewStartPositionMs,
+                posterUrl = previewPosterUrl,
                 resumeOverlayText = resumeOverlayText,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -328,16 +341,24 @@ private fun HomeMutedPreviewPlayer(
     url: String,
     mode: HomePreviewMode,
     startPositionMs: Long,
+    posterUrl: String?,
     resumeOverlayText: String,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     var transitionVisible by remember(url) { mutableStateOf(true) }
     var resumeOverlayVisible by remember(url, startPositionMs) { mutableStateOf(false) }
+    var videoVisible by remember(url) { mutableStateOf(mode == HomePreviewMode.LiveImmediate) }
+    var firstFrameRendered by remember(url) { mutableStateOf(false) }
     val transitionAlpha by androidx.compose.animation.core.animateFloatAsState(
         targetValue = if (transitionVisible) 0.72f else 0f,
-        animationSpec = tween(TrendPreviewFadeMillis.toInt(), easing = FastOutSlowInEasing),
+        animationSpec = tween(PreviewFadeMillis.toInt(), easing = FastOutSlowInEasing),
         label = "trendPreviewFade",
+    )
+    val videoAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (videoVisible) 1f else 0f,
+        animationSpec = tween(PreviewCrossfadeMillis.toInt(), easing = FastOutSlowInEasing),
+        label = "homePreviewVideoAlpha",
     )
     val player = remember(url) {
         ExoPlayer.Builder(context)
@@ -345,10 +366,23 @@ private fun HomeMutedPreviewPlayer(
             .apply {
                 volume = 0f
                 repeatMode = Player.REPEAT_MODE_OFF
-                playWhenReady = true
+                playWhenReady = false
                 setMediaItem(MediaItem.fromUri(url))
                 prepare()
             }
+    }
+
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onRenderedFirstFrame() {
+                firstFrameRendered = true
+                if (mode == HomePreviewMode.LiveImmediate) {
+                    videoVisible = true
+                }
+            }
+        }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
     }
 
     DisposableEffect(player) {
@@ -359,6 +393,7 @@ private fun HomeMutedPreviewPlayer(
         when (mode) {
             HomePreviewMode.TrendSegments -> {
                 resumeOverlayVisible = false
+                videoVisible = false
                 var duration = player.duration
                 var attempts = 0
                 while ((duration <= 0L || duration == C.TIME_UNSET) && attempts < 35) {
@@ -372,7 +407,7 @@ private fun HomeMutedPreviewPlayer(
                 while (true) {
                     for (positionRatio in TrendPreviewPositions) {
                         transitionVisible = true
-                        delay(TrendPreviewFadeMillis)
+                        delay(PreviewFadeMillis)
                         val targetPosition = (duration * positionRatio)
                             .toLong()
                             .coerceIn(0L, (duration - 1_000L).coerceAtLeast(0L))
@@ -380,6 +415,12 @@ private fun HomeMutedPreviewPlayer(
                         player.volume = 0f
                         player.playWhenReady = true
                         player.play()
+                        if (!videoVisible) {
+                            while (!firstFrameRendered) {
+                                delay(50L)
+                            }
+                            videoVisible = true
+                        }
                         transitionVisible = false
                         delay(TrendPreviewSegmentMillis)
                     }
@@ -389,6 +430,7 @@ private fun HomeMutedPreviewPlayer(
             HomePreviewMode.LiveImmediate -> {
                 resumeOverlayVisible = false
                 transitionVisible = false
+                videoVisible = firstFrameRendered
                 player.volume = 0f
                 player.playWhenReady = true
                 player.play()
@@ -408,12 +450,19 @@ private fun HomeMutedPreviewPlayer(
                     startPositionMs.coerceAtLeast(0L)
                 }
                 transitionVisible = false
+                videoVisible = false
                 while (true) {
                     resumeOverlayVisible = false
                     player.seekTo(safeStart)
                     player.volume = 0f
                     player.playWhenReady = true
                     player.play()
+                    if (!videoVisible) {
+                        while (!firstFrameRendered) {
+                            delay(50L)
+                        }
+                        videoVisible = true
+                    }
                     delay(ContinuePreviewLoopMillis)
                     resumeOverlayVisible = true
                     delay(ContinuePreviewOverlayMillis)
@@ -425,14 +474,25 @@ private fun HomeMutedPreviewPlayer(
     }
 
     Box(modifier = modifier.background(Color.Black)) {
+        if (!posterUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = posterUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
         AndroidView(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .alpha(videoAlpha),
             factory = { viewContext ->
                 PlayerView(viewContext).apply {
                     useController = false
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                    setBackgroundColor(AndroidColor.BLACK)
-                    setShutterBackgroundColor(AndroidColor.BLACK)
+                    setBackgroundColor(AndroidColor.TRANSPARENT)
+                    setShutterBackgroundColor(AndroidColor.TRANSPARENT)
                     setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
                     isFocusable = false
                     isFocusableInTouchMode = false
@@ -477,9 +537,10 @@ private fun HomeMutedPreviewPlayer(
     }
 }
 
-private const val TrendPreviewStartDelayMillis = 650L
+private const val PreviewFocusStartDelayMillis = 4_000L
 private const val TrendPreviewSegmentMillis = 8_000L
-private const val TrendPreviewFadeMillis = 220L
+private const val PreviewFadeMillis = 520L
+private const val PreviewCrossfadeMillis = 850L
 private const val TrendPreviewFallbackDurationMillis = 60 * 60_000L
 private const val ContinuePreviewLoopMillis = 20_000L
 private const val ContinuePreviewOverlayMillis = 2_000L
