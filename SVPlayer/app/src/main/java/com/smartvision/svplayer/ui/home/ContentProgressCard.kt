@@ -63,6 +63,7 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.smartvision.svplayer.data.mock.ContinueItem
+import com.smartvision.svplayer.data.mock.HomePreviewMode
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
@@ -83,6 +84,7 @@ fun ContentProgressCard(
     onFocusChanged: (Boolean) -> Unit = {},
     onDown: (() -> Unit)? = null,
     enablePreview: Boolean = false,
+    resumeOverlayText: String = "Resume playback",
     blocked: Boolean = false,
 ) {
     val focusState = rememberTvFocusState()
@@ -96,7 +98,11 @@ fun ContentProgressCard(
         label = "contentCardBorder",
     )
     val isLive = item.mediaType == "LIVE"
-    val previewActive = enablePreview && focusState.isFocused && !blocked && !item.previewUrl.isNullOrBlank()
+    val previewActive = enablePreview &&
+        focusState.isFocused &&
+        !blocked &&
+        !item.previewUrl.isNullOrBlank() &&
+        item.previewMode != HomePreviewMode.None
     var showPreview by remember(item.id, item.previewUrl) { mutableStateOf(false) }
 
     LaunchedEffect(focusState.isFocused) {
@@ -107,7 +113,14 @@ fun ContentProgressCard(
     LaunchedEffect(previewActive, item.previewUrl) {
         showPreview = false
         if (previewActive) {
-            delay(TrendPreviewStartDelayMillis)
+            val startDelay = when (item.previewMode) {
+                HomePreviewMode.TrendSegments -> TrendPreviewStartDelayMillis
+                HomePreviewMode.LiveImmediate,
+                HomePreviewMode.ResumeLoop,
+                HomePreviewMode.None,
+                -> 0L
+            }
+            if (startDelay > 0L) delay(startDelay)
             showPreview = true
         }
     }
@@ -154,8 +167,11 @@ fun ContentProgressCard(
             )
         }
         if (showPreview && item.previewUrl != null) {
-            TrendingMutedPreviewPlayer(
+            HomeMutedPreviewPlayer(
                 url = item.previewUrl,
+                mode = item.previewMode,
+                startPositionMs = item.previewStartPositionMs,
+                resumeOverlayText = resumeOverlayText,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -308,12 +324,16 @@ private fun ProgressBar(progress: Float) {
 }
 
 @Composable
-private fun TrendingMutedPreviewPlayer(
+private fun HomeMutedPreviewPlayer(
     url: String,
+    mode: HomePreviewMode,
+    startPositionMs: Long,
+    resumeOverlayText: String,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     var transitionVisible by remember(url) { mutableStateOf(true) }
+    var resumeOverlayVisible by remember(url, startPositionMs) { mutableStateOf(false) }
     val transitionAlpha by androidx.compose.animation.core.animateFloatAsState(
         targetValue = if (transitionVisible) 0.72f else 0f,
         animationSpec = tween(TrendPreviewFadeMillis.toInt(), easing = FastOutSlowInEasing),
@@ -335,31 +355,72 @@ private fun TrendingMutedPreviewPlayer(
         onDispose { player.release() }
     }
 
-    LaunchedEffect(player, url) {
-        var duration = player.duration
-        var attempts = 0
-        while ((duration <= 0L || duration == C.TIME_UNSET) && attempts < 35) {
-            delay(200L)
-            duration = player.duration
-            attempts++
-        }
-        if (duration <= 0L || duration == C.TIME_UNSET) {
-            duration = TrendPreviewFallbackDurationMillis
-        }
-        while (true) {
-            for (positionRatio in TrendPreviewPositions) {
-                transitionVisible = true
-                delay(TrendPreviewFadeMillis)
-                val targetPosition = (duration * positionRatio)
-                    .toLong()
-                    .coerceIn(0L, (duration - 1_000L).coerceAtLeast(0L))
-                player.seekTo(targetPosition)
+    LaunchedEffect(player, url, mode, startPositionMs) {
+        when (mode) {
+            HomePreviewMode.TrendSegments -> {
+                resumeOverlayVisible = false
+                var duration = player.duration
+                var attempts = 0
+                while ((duration <= 0L || duration == C.TIME_UNSET) && attempts < 35) {
+                    delay(200L)
+                    duration = player.duration
+                    attempts++
+                }
+                if (duration <= 0L || duration == C.TIME_UNSET) {
+                    duration = TrendPreviewFallbackDurationMillis
+                }
+                while (true) {
+                    for (positionRatio in TrendPreviewPositions) {
+                        transitionVisible = true
+                        delay(TrendPreviewFadeMillis)
+                        val targetPosition = (duration * positionRatio)
+                            .toLong()
+                            .coerceIn(0L, (duration - 1_000L).coerceAtLeast(0L))
+                        player.seekTo(targetPosition)
+                        player.volume = 0f
+                        player.playWhenReady = true
+                        player.play()
+                        transitionVisible = false
+                        delay(TrendPreviewSegmentMillis)
+                    }
+                }
+            }
+
+            HomePreviewMode.LiveImmediate -> {
+                resumeOverlayVisible = false
+                transitionVisible = false
                 player.volume = 0f
                 player.playWhenReady = true
                 player.play()
-                transitionVisible = false
-                delay(TrendPreviewSegmentMillis)
             }
+
+            HomePreviewMode.ResumeLoop -> {
+                var duration = player.duration
+                var attempts = 0
+                while ((duration <= 0L || duration == C.TIME_UNSET) && attempts < 30) {
+                    delay(200L)
+                    duration = player.duration
+                    attempts++
+                }
+                val safeStart = if (duration > 0L && duration != C.TIME_UNSET) {
+                    startPositionMs.coerceIn(0L, (duration - 1_000L).coerceAtLeast(0L))
+                } else {
+                    startPositionMs.coerceAtLeast(0L)
+                }
+                transitionVisible = false
+                while (true) {
+                    resumeOverlayVisible = false
+                    player.seekTo(safeStart)
+                    player.volume = 0f
+                    player.playWhenReady = true
+                    player.play()
+                    delay(ContinuePreviewLoopMillis)
+                    resumeOverlayVisible = true
+                    delay(ContinuePreviewOverlayMillis)
+                }
+            }
+
+            HomePreviewMode.None -> Unit
         }
     }
 
@@ -393,6 +454,26 @@ private fun TrendingMutedPreviewPlayer(
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = transitionAlpha)),
         )
+        if (resumeOverlayVisible) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color.Black.copy(alpha = 0.46f))
+                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.24f)), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = resumeOverlayText,
+                    color = Color.White,
+                    style = SmartVisionType.Caption.copy(fontSize = 10.sp, lineHeight = 12.sp),
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 
@@ -400,4 +481,6 @@ private const val TrendPreviewStartDelayMillis = 650L
 private const val TrendPreviewSegmentMillis = 8_000L
 private const val TrendPreviewFadeMillis = 220L
 private const val TrendPreviewFallbackDurationMillis = 60 * 60_000L
+private const val ContinuePreviewLoopMillis = 20_000L
+private const val ContinuePreviewOverlayMillis = 2_000L
 private val TrendPreviewPositions = listOf(0.10f, 0.25f, 0.45f, 0.65f, 0.80f)

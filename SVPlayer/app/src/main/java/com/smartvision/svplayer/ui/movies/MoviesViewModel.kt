@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -93,10 +92,16 @@ class MoviesViewModel(
 
     fun loadCategories() {
         moviesJob?.cancel()
+        val cachedCategories = catalogRepository.getCachedMovieCategories()
+        if (!cachedCategories.isNullOrEmpty()) {
+            applyCategories(cachedCategories)
+        }
         viewModelScope.launch {
-            _uiState.value = MoviesScreenState(categoriesLoading = true)
+            if (cachedCategories.isNullOrEmpty()) {
+                _uiState.value = MoviesScreenState(categoriesLoading = true)
+            }
             runCatching {
-                catalogRepository.observeMovieCategories().first()
+                catalogRepository.getMovieCategoriesSnapshot()
             }.onSuccess { categories ->
                 applyCategories(categories)
             }.onFailure { error ->

@@ -38,6 +38,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -61,8 +62,10 @@ import androidx.media3.ui.PlayerView
 import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.data.AppContainer
 import com.smartvision.svplayer.sync.SyncFrequencyPolicy
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 class SplashActivity : ComponentActivity() {
@@ -86,6 +89,8 @@ class SplashActivity : ComponentActivity() {
             var progress by remember { mutableFloatStateOf(MinimumProgressScale) }
 
             LaunchedEffect(Unit) {
+                withFrameNanos { }
+                delay(FirstFrameStartupDelayMillis)
                 runStartupChecks { label, targetProgress ->
                     statusLabel = label
                     progress = targetProgress
@@ -218,7 +223,9 @@ class SplashActivity : ComponentActivity() {
 
     private suspend fun runStartupChecks(updateStatus: (String, Float) -> Unit) {
         val startedAt = SystemClock.elapsedRealtime()
-        val container = (application as SVPlayerApplication).appContainer
+        val container = withContext(Dispatchers.Default) {
+            (application as SVPlayerApplication).appContainer
+        }
         var totalSteps = startupStepCount(PlaylistSource.Xtream, shouldSync = true)
         suspend fun update(label: String, step: Int, total: Int = totalSteps) {
             updateStatus(label, startupProgress(step, total))
@@ -268,12 +275,21 @@ class SplashActivity : ComponentActivity() {
             }
 
             update("Chargement des categories (LIVE TV)...", step++, totalSteps)
-            runCatching { container.catalogRepository.observeLiveCategories().first() }
+            runCatching {
+                container.catalogRepository.getLiveCategoriesSnapshot()
+                container.catalogRepository.getAllLiveChannelsPage(offset = 0, limit = StartupLivePageLimit)
+            }
             if (source == PlaylistSource.Xtream) {
                 update("Chargement des categories (FILMS)...", step++, totalSteps)
-                runCatching { container.catalogRepository.observeMovieCategories().first() }
+                runCatching {
+                    container.catalogRepository.getMovieCategoriesSnapshot()
+                    container.catalogRepository.getAllMoviesPage(offset = 0, limit = StartupMoviePageLimit)
+                }
                 update("Chargement des categories (SERIES)...", step++, totalSteps)
-                runCatching { container.catalogRepository.observeSeriesCategories().first() }
+                runCatching {
+                    container.catalogRepository.getSeriesCategoriesSnapshot()
+                    container.catalogRepository.getAllSeriesPage(offset = 0, limit = StartupSeriesPageLimit)
+                }
             }
             update("Chargement Home...", step++, totalSteps)
             runCatching { preloadHomeContent(container) }
@@ -343,5 +359,9 @@ class SplashActivity : ComponentActivity() {
         const val StatusStepPauseMillis = 80L
         const val ProgressStepMillis = 180L
         const val MinimumProgressScale = 0.03f
+        const val FirstFrameStartupDelayMillis = 60L
+        const val StartupLivePageLimit = 96
+        const val StartupMoviePageLimit = 72
+        const val StartupSeriesPageLimit = 72
     }
 }

@@ -67,6 +67,7 @@ fun ContinueWatchingRow(
     firstItemFocusRequester: FocusRequester? = null,
     onDownFromRow: (() -> Unit)? = null,
     enablePreview: Boolean = false,
+    resumeOverlayText: String = "Resume playback",
     blocked: Boolean = false,
     onBlockedClick: () -> Unit = {},
 ) {
@@ -108,6 +109,7 @@ fun ContinueWatchingRow(
                     },
                     onDown = onDownFromRow,
                     enablePreview = enablePreview,
+                    resumeOverlayText = resumeOverlayText,
                     blocked = blocked,
                     modifier = Modifier
                         .width(cardWidth)

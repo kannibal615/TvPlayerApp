@@ -76,7 +76,9 @@ class DefaultCatalogRepository(
         ) { categories, countsByCategory, source, m3uUrl, accounts ->
             if (!source.hasConfiguredCatalog(m3uUrl, accounts.isNotEmpty())) return@combine emptyList()
             val counts = countsByCategory.associate { it.categoryId to it.count }
-            categories.map { it.toDomain(MediaSection.Live, counts[it.id] ?: 0) }
+            localCatalogSnapshotCache.putLiveCategories(
+                categories.map { it.toDomain(MediaSection.Live, counts[it.id] ?: 0) },
+            )
         }
 
     override fun observeLiveChannels(categoryId: String?): Flow<List<LiveChannel>> =
@@ -101,7 +103,9 @@ class DefaultCatalogRepository(
         ) { categories, countsByCategory, source, accounts ->
             if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
             val counts = countsByCategory.associate { it.categoryId to it.count }
-            categories.map { it.toDomain(MediaSection.Movies, counts[it.id] ?: 0) }
+            localCatalogSnapshotCache.putMovieCategories(
+                categories.map { it.toDomain(MediaSection.Movies, counts[it.id] ?: 0) },
+            )
         }
 
     override fun observeMovies(categoryId: String?): Flow<List<Movie>> =
@@ -125,7 +129,9 @@ class DefaultCatalogRepository(
         ) { categories, countsByCategory, source, accounts ->
             if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
             val counts = countsByCategory.associate { it.categoryId to it.count }
-            categories.map { it.toDomain(MediaSection.Series, counts[it.id] ?: 0) }
+            localCatalogSnapshotCache.putSeriesCategories(
+                categories.map { it.toDomain(MediaSection.Series, counts[it.id] ?: 0) },
+            )
         }
 
     override fun observeSeries(categoryId: String?): Flow<List<TvSeries>> =
@@ -163,6 +169,30 @@ class DefaultCatalogRepository(
     override fun getCachedSeriesCatalogSnapshot(): LocalCatalogSnapshot<TvSeries>? =
         localCatalogSnapshotCache.getSeries()
 
+    override fun getCachedLiveCategories(): List<Category>? =
+        localCatalogSnapshotCache.getLiveCategories()
+
+    override fun getCachedMovieCategories(): List<Category>? =
+        localCatalogSnapshotCache.getMovieCategories()
+
+    override fun getCachedSeriesCategories(): List<Category>? =
+        localCatalogSnapshotCache.getSeriesCategories()
+
+    override suspend fun getLiveCategoriesSnapshot(): List<Category> = withContext(Dispatchers.IO) {
+        getCachedLiveCategories()?.let { return@withContext it }
+        localCatalogSnapshotCache.putLiveCategories(observeLiveCategories().first())
+    }
+
+    override suspend fun getMovieCategoriesSnapshot(): List<Category> = withContext(Dispatchers.IO) {
+        getCachedMovieCategories()?.let { return@withContext it }
+        localCatalogSnapshotCache.putMovieCategories(observeMovieCategories().first())
+    }
+
+    override suspend fun getSeriesCategoriesSnapshot(): List<Category> = withContext(Dispatchers.IO) {
+        getCachedSeriesCategories()?.let { return@withContext it }
+        localCatalogSnapshotCache.putSeriesCategories(observeSeriesCategories().first())
+    }
+
     override suspend fun getLiveCatalogSnapshot(): LocalCatalogSnapshot<LiveChannel> = withContext(Dispatchers.IO) {
         getCachedLiveCatalogSnapshot()?.let { return@withContext it }
         val snapshot = LocalCatalogSnapshot(
@@ -195,14 +225,20 @@ class DefaultCatalogRepository(
             if (!isLiveCatalogConfigured()) return@withContext emptyList()
             val safeLimit = limit.coerceIn(1, CatalogPageMaxLimit)
             val safeOffset = offset.coerceAtLeast(0)
+            localCatalogSnapshotCache.getLivePage(categoryId, safeOffset, safeLimit)?.let { return@withContext it }
             val categoryNames = categoryDao.getByType(MediaSection.Live.storageName).associate { it.id to it.name }
             val streams = categoryId
                 ?.takeIf { it.isNotBlank() }
                 ?.let { mediaDao.getLiveStreamsByCategoryPage(it, safeLimit, safeOffset) }
                 ?: mediaDao.getLiveStreamsPage(safeLimit, safeOffset)
-            streams.map { stream ->
-                stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV").withEpg(epgRepository)
-            }
+            localCatalogSnapshotCache.putLivePage(
+                categoryId = categoryId,
+                offset = safeOffset,
+                limit = safeLimit,
+                items = streams.map { stream ->
+                    stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV").withEpg(epgRepository)
+                },
+            )
         }
 
     override suspend fun getMoviesPage(categoryId: String?, offset: Int, limit: Int): List<Movie> =
@@ -210,12 +246,18 @@ class DefaultCatalogRepository(
             if (!isXtreamCatalogConfigured()) return@withContext emptyList()
             val safeLimit = limit.coerceIn(1, CatalogPageMaxLimit)
             val safeOffset = offset.coerceAtLeast(0)
+            localCatalogSnapshotCache.getMoviePage(categoryId, safeOffset, safeLimit)?.let { return@withContext it }
             val categoryNames = categoryDao.getByType(MediaSection.Movies.storageName).associate { it.id to it.name }
             val movies = categoryId
                 ?.takeIf { it.isNotBlank() }
                 ?.let { mediaDao.getMoviesByCategoryPage(it, safeLimit, safeOffset) }
                 ?: mediaDao.getMoviesPage(safeLimit, safeOffset)
-            movies.map { movie -> movie.toDomain(categoryNames[movie.categoryId] ?: "Films") }
+            localCatalogSnapshotCache.putMoviePage(
+                categoryId = categoryId,
+                offset = safeOffset,
+                limit = safeLimit,
+                items = movies.map { movie -> movie.toDomain(categoryNames[movie.categoryId] ?: "Films") },
+            )
         }
 
     override suspend fun getSeriesPage(categoryId: String?, offset: Int, limit: Int): List<TvSeries> =
@@ -223,12 +265,18 @@ class DefaultCatalogRepository(
             if (!isXtreamCatalogConfigured()) return@withContext emptyList()
             val safeLimit = limit.coerceIn(1, CatalogPageMaxLimit)
             val safeOffset = offset.coerceAtLeast(0)
+            localCatalogSnapshotCache.getSeriesPage(categoryId, safeOffset, safeLimit)?.let { return@withContext it }
             val categoryNames = categoryDao.getByType(MediaSection.Series.storageName).associate { it.id to it.name }
             val series = categoryId
                 ?.takeIf { it.isNotBlank() }
                 ?.let { mediaDao.getSeriesByCategoryPage(it, safeLimit, safeOffset) }
                 ?: mediaDao.getSeriesPage(safeLimit, safeOffset)
-            series.map { item -> item.toDomain(categoryNames[item.categoryId] ?: "Series") }
+            localCatalogSnapshotCache.putSeriesPage(
+                categoryId = categoryId,
+                offset = safeOffset,
+                limit = safeLimit,
+                items = series.map { item -> item.toDomain(categoryNames[item.categoryId] ?: "Series") },
+            )
         }
 
     override suspend fun getAllLiveChannelsPage(offset: Int, limit: Int): List<LiveChannel> =

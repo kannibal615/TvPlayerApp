@@ -18,6 +18,8 @@ Depuis le 2026-07-01, les ecrans Live TV / Movies / Series ne doivent plus ouvri
 
 Home charge ses donnees legeres en petits jeux bornes: le splash precharge uniquement l'historique recent `10`, les tendances films `10` et les tendances series `10`, puis `HomeViewModel` relit les memes limites depuis Room. Ne pas reutiliser les snapshots complets Movies / Series pour initialiser Home.
 
+Depuis le 2026-07-02, apres une synchro splash ou un demarrage sans synchro, le splash prechauffe aussi les categories Live/Films/Series et la premiere page locale bornee des catalogues (`96` Live, `72` Films, `72` Series). `DefaultCatalogRepository` garde ces categories et premieres pages en cache memoire jusqu'a invalidation; les ViewModels catalogue les utilisent pour eviter un loader initial inutile, puis continuent la pagination Room normale.
+
 Depuis le 2026-07-02, les tendances Home sont separees en films et series. La synchro Xtream alimente `trending_media` avec maximum `50` films et `50` series, en priorisant les notes `10/10`, puis `9/10` si besoin, en excluant les marqueurs adultes et en validant rapidement une URL de lecture avant insertion. Pour les series, la validation passe par un episode obtenu via `get_series_info`.
 
 Clarification stockage/performance:
@@ -149,7 +151,7 @@ URL de lecture:
 - Le badge EPG des lignes Live TV doit se baser sur les programmes locaux disponibles, pas seulement sur la presence d'une URL EPG.
 - Ne pas lancer de synchronisation globale pendant la navigation Home / Live TV / Movies / Series / categories / listes.
 - Ne pas charger un snapshot complet Live TV / Movies / Series pour ouvrir un ecran catalogue; utiliser categories/counts puis pages Room locales.
-- Le premier chargement local au splash doit rester leger: categories/counts et Home borne `10 historiques / 10 tendances films / 10 tendances series`. Ne pas remettre EPG ni snapshots complets Movies/Series dans `SplashActivity` pour les tres gros catalogues.
+- Le premier chargement local au splash doit rester leger: categories/counts, premieres pages locales bornees `96/72/72` et Home borne `10 historiques / 10 tendances films / 10 tendances series`. Ne pas remettre EPG reseau ni snapshots complets Movies/Series dans `SplashActivity` pour les tres gros catalogues.
 - Ne pas confondre prechargement local et synchro reseau: reconstruire le cache memoire depuis Room au demarrage est normal; retelecharger le catalogue complet ne doit arriver que si la politique de frequence le demande ou si l'utilisateur lance Synchroniser.
 - Ne pas promettre zero chargement local apres fermeture complete: si le process Android a ete tue, le cache RAM n'existe plus et doit etre reconstruit depuis Room.
 - AutoSync et sync manuelle doivent verifier Xtream avant de synchroniser; seules les erreurs reseau sont retentees automatiquement.
@@ -204,3 +206,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-01: ajout instrumentation `SVSyncMemory` et script ADB Firestick pour mesurer les pics memoire pendant la synchronisation Xtream.
 - 2026-07-01: optimisation candidate Firestick: synchro Xtream par sections/batchs dans une transaction Room, counts/categories via SQL, splash limite aux categories sans Home/EPG/snapshots complets, et bouton EPG dans les categories Live TV.
 - 2026-07-01: Live TV / Movies / Series passent en chargement pagine Room; Home ne lit plus les snapshots complets Movies/Series pour ses tendances.
+- 2026-07-02: prechauffage splash des categories et premieres pages locales bornees, avec cache memoire reutilise par Live TV / Movies / Series pour reduire le loader initial apres synchro.

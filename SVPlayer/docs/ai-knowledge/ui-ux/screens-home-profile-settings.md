@@ -17,11 +17,13 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 - Home ne doit pas afficher cet overlay pendant un simple refresh rapide si la derniere verification Xtream est encore `CONNECTED`.
 - Home affiche ses donnees a partir de petits jeux locaux: slides caches, historique recent limite a `10`, tendances films `10` et tendances series `10` issues de `trending_media`. Il ne doit pas relire les snapshots complets Movies / Series.
 - Sur Home, les cards tendances films/series passent en largeur 16:9 au focus en gardant la hauteur actuelle; le poster reste affiche immediatement puis un mini-player Media3 muet demarre apres environ 650 ms avec segments a 10%, 25%, 45%, 65% et 80% du media.
+- Sur Home, Continue watching utilise aussi le mini-player Media3 muet au focus: Live demarre immediatement, Films et Episodes demarrent depuis la position de reprise, bouclent par segments de 20 secondes, puis affichent un overlay i18n `Resume playback` / `Reprendre la lecture`.
 - Home routes secondaires: `continue_watching` et `trending` via `HomeCollectionsScreen`.
 - Live TV: categories, chaines, apercu puis plein ecran.
 - Movies: grille de films, detail, lecture.
 - Series: grille, detail, saisons/episodes, lecture episode.
 - Live TV / Movies / Series affichent les categories puis chargent les contenus par pages Room locales pendant le scroll, sans reconstruire toute la playlist en RAM.
+- Live TV / Movies / Series reutilisent les categories et premieres pages locales prechauffees au splash quand elles sont disponibles, pour eviter un loader initial apres synchronisation.
 - Info compte: licence, device, mode d'utilisation, expiration, compte Xtream, lien M3U, URL EPG, source active exclusive, QR achat/config. L'ecran reutilise le header principal de l'application, donne le focus initial au menu `Licence SmartVision`, et garde la section droite plus large/compacte pour servir de modele aux futurs ecrans profil/parametres. Dans Info compte, le bouton Synchroniser ouvre un popup de confirmation avec compteurs Live TV / Films / Series; apres succes ou erreur, Retour ferme le popup, ouvre Appareil et catalogue et y remet le focus.
 - Info compte compacte la section source: icone utilisateur bleue pour le panneau, badge d'usage dans l'en-tete Licence SmartVision, expiration Xtream dans l'en-tete Info compte, identifiants Xtream sur une ligne, boutons Xtream en icones et bascules source plus petites.
 - Quand M3U est actif, Movies et Series affichent un etat vide source-aware au lieu d'une erreur Xtream.
@@ -158,3 +160,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-01: Info compte compacte la section source, ajoute le lien M3U et les bascules exclusives Xtream/M3U avec etat ON/OFF visuel.
 - 2026-07-01: Info compte compact: icone utilisateur bleue, badge usage deplace vers Licence, expiration Xtream dans l'en-tete Info compte, boutons Xtream en icones et identifiants sur une seule ligne.
 - 2026-07-01: badge `E` sur les lignes Live TV avec EPG et etats Movies/Series explicites quand M3U est actif.
+- 2026-07-02: Continue watching ajoute le mini-player au focus et les ecrans catalogue reutilisent le prechauffage splash categories/premieres pages pour reduire le loading d'ouverture.

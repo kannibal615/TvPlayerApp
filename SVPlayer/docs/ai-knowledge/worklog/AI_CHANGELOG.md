@@ -1,5 +1,28 @@
 # AI Changelog
 
+## 2026-07-02 - Splash immediat, focus Home et preview Continue watching
+
+Type:
+- android
+- ui-tv
+- catalogue
+- release-prep
+
+Resume:
+- `SplashActivity` attend la premiere frame Compose avant les checks startup et `SVPlayerApplication` differe l'initialisation diagnostic hors thread UI pour afficher logo/progress bar sans retard perceptible.
+- Le splash prechauffe apres synchro ou sans synchro les categories et premieres pages locales bornees Live/Films/Series, reutilisees par les ViewModels catalogue pour limiter les loaders d'ouverture.
+- Home corrige le D-pad bas vers Continue watching / Trending movies / Trending series avec bring-into-view avant `requestFocus`.
+- Continue watching utilise le mini-player Media3 muet au focus: Live immediat, Films/Episodes depuis la position de reprise, boucle de 20 secondes et overlay i18n `Resume playback` / `Reprendre la lecture`.
+- Release prod publiee en `0.1.74` / `versionCode 77` avec APK `smartvision-tv-v77-055a7642.apk`, hash SHA256 `055a764235f6036795617e82fdd47ae71a68c3c448cc861beb4a44a5033205ab`.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
 ## 2026-07-02 - Splash image et tendances Home separees
 
 Type:

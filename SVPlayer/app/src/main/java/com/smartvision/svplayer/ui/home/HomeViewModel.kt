@@ -6,9 +6,11 @@ import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.home.HomeSlide
 import com.smartvision.svplayer.data.home.HomeSlidesRepository
 import com.smartvision.svplayer.data.mock.ContinueItem
+import com.smartvision.svplayer.data.mock.HomePreviewMode
 import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
+import com.smartvision.svplayer.domain.model.PlaybackKind
 import com.smartvision.svplayer.domain.model.TrendingCatalogItem
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import kotlinx.coroutines.async
@@ -42,12 +44,14 @@ class HomeViewModel(
     private val slides = MutableStateFlow(homeSlidesRepository.getCachedSlides().orEmpty())
     private val continueWatching = userContentRepository.observeRecentProgress(limit = ContinueWatchingSnapshotLimit)
         .map { progress ->
-            progress
+            val recent = progress
                 .filter { it.positionMs > 5_000L }
                 .map { userContentRepository.enrichProgress(it) }
                 .distinctBy(::historyGroupingKey)
                 .take(10)
-                .mapNotNull(::toContinueItem)
+            recent.mapNotNull { item ->
+                toContinueItemWithPreview(item, catalogRepository)
+            }
         }
         .onStart {
             if (cachedContinueWatching.isNotEmpty()) {
@@ -153,6 +157,32 @@ private fun toContinueItem(progress: PlaybackProgressEntity): ContinueItem? {
     )
 }
 
+private suspend fun toContinueItemWithPreview(
+    progress: PlaybackProgressEntity,
+    catalogRepository: CatalogRepository,
+): ContinueItem? {
+    val base = toContinueItem(progress) ?: return null
+    val previewKind = progress.contentType.toPreviewPlaybackKind() ?: return base
+    val request = runCatching {
+        catalogRepository.buildPlaybackRequest(previewKind, progress.contentId)
+    }.getOrNull()
+    val url = request?.url?.takeIf { it.isNotBlank() } ?: return base
+    val previewMode = when (progress.contentType) {
+        UserContentType.Live -> HomePreviewMode.LiveImmediate
+        UserContentType.Movie, UserContentType.Episode -> HomePreviewMode.ResumeLoop
+        else -> HomePreviewMode.None
+    }
+    return base.copy(
+        previewUrl = url,
+        previewMode = previewMode,
+        previewStartPositionMs = if (previewMode == HomePreviewMode.ResumeLoop) {
+            (request.resumePositionMs.takeIf { it > 0L } ?: progress.positionMs).coerceAtLeast(0L)
+        } else {
+            0L
+        },
+    )
+}
+
 private fun List<PlaybackProgressEntity>.toContinueItems(): List<ContinueItem> =
     filter { it.positionMs > 5_000L }
         .distinctBy(::historyGroupingKey)
@@ -170,6 +200,7 @@ private fun TrendingCatalogItem.toMovieTrendItem(): ContinueItem =
         imageUrl = posterUrl,
         mediaType = "FILM",
         previewUrl = previewUrl,
+        previewMode = HomePreviewMode.TrendSegments,
     )
 
 private fun TrendingCatalogItem.toSeriesTrendItem(): ContinueItem =
@@ -183,7 +214,16 @@ private fun TrendingCatalogItem.toSeriesTrendItem(): ContinueItem =
         imageUrl = posterUrl,
         mediaType = "SERIE",
         previewUrl = previewUrl,
+        previewMode = HomePreviewMode.TrendSegments,
     )
+
+private fun String.toPreviewPlaybackKind(): PlaybackKind? =
+    when (this) {
+        UserContentType.Live -> PlaybackKind.Live
+        UserContentType.Movie -> PlaybackKind.Movie
+        UserContentType.Episode -> PlaybackKind.Episode
+        else -> null
+    }
 
 private fun historyGroupingKey(progress: PlaybackProgressEntity): String =
     if (progress.contentType == UserContentType.Episode) {

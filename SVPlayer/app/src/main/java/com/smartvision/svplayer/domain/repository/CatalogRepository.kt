@@ -32,7 +32,13 @@ interface CatalogRepository {
     fun getCachedLiveCatalogSnapshot(): LocalCatalogSnapshot<LiveChannel>?
     fun getCachedMovieCatalogSnapshot(): LocalCatalogSnapshot<Movie>?
     fun getCachedSeriesCatalogSnapshot(): LocalCatalogSnapshot<TvSeries>?
+    fun getCachedLiveCategories(): List<Category>?
+    fun getCachedMovieCategories(): List<Category>?
+    fun getCachedSeriesCategories(): List<Category>?
 
+    suspend fun getLiveCategoriesSnapshot(): List<Category>
+    suspend fun getMovieCategoriesSnapshot(): List<Category>
+    suspend fun getSeriesCategoriesSnapshot(): List<Category>
     suspend fun getLiveCatalogSnapshot(): LocalCatalogSnapshot<LiveChannel>
     suspend fun getMovieCatalogSnapshot(): LocalCatalogSnapshot<Movie>
     suspend fun getSeriesCatalogSnapshot(): LocalCatalogSnapshot<TvSeries>

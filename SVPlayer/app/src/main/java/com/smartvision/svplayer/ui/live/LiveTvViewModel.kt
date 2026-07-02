@@ -23,7 +23,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -122,10 +121,16 @@ class LiveTvViewModel(
 
     fun loadCategories() {
         channelsJob?.cancel()
+        val cachedCategories = catalogRepository.getCachedLiveCategories()
+        if (!cachedCategories.isNullOrEmpty()) {
+            applyCategories(cachedCategories)
+        }
         viewModelScope.launch {
-            _uiState.value = LiveTvUiState(categoriesLoading = true)
+            if (cachedCategories.isNullOrEmpty()) {
+                _uiState.value = LiveTvUiState(categoriesLoading = true)
+            }
             runCatching {
-                catalogRepository.observeLiveCategories().first()
+                catalogRepository.getLiveCategoriesSnapshot()
             }.onSuccess { categories ->
                 applyCategories(categories)
             }.onFailure { error ->

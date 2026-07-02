@@ -11,8 +11,8 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
 
 Gradle local constate le 2026-07-02:
-- `versionCode = 76`
-- `versionName = "0.1.73"`
+- `versionCode = 77`
+- `versionName = "0.1.74"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -24,7 +24,8 @@ Demarrage:
 - Le splash est un ecran Compose personnalise avec `smartvision_splash_bg` en fond plein ecran, sans video de demarrage.
 - Le logo, la progress bar et les statuts startup restent rendus au-dessus de l'image.
 - Le theme systeme `Theme.SVPlayer.Splash` utilise `@drawable/splash_background` comme preview immediate; cette preview doit rester identique au fond Compose pour eviter un double splash visible.
-- L'initialisation lourde `AppContainer` dans `SVPlayerApplication` est differee au premier passage de la boucle UI pour reduire l'ecran noir avant le splash Compose.
+- `SplashActivity` attend la premiere frame Compose avant de lancer les checks startup, pour afficher immediatement le logo/progress bar au-dessus du fond.
+- L'initialisation diagnostic `AppContainer` dans `SVPlayerApplication` est differee et lancee hors thread UI, pour ne pas bloquer le rendu initial du splash Compose.
 - Les etats transitoires de `AppNavigation` apres splash utilisent un fond sombre neutre, pas l'ancien visuel splash.
 
 ## 3. Workflow utilisateur
@@ -142,6 +143,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-06-29: migration vers documentation specialisee.
+- 2026-07-02: release publiee `0.1.74` / `versionCode 77` pour affichage immediat logo/progress splash, prechauffage categories/premieres pages, mini-player Continue watching et focus Home corrige; APK `smartvision-tv-v77-055a7642.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-02: release publiee `0.1.73` / `versionCode 76` pour retour splash image, Home tendances films/series, liste `trending_media` validee et mini-preview tendances; APK `smartvision-tv-v76-6a70e99f.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-01: release publiee `0.1.71` / `versionCode 74` pour splash sans noir avant premiere frame, EPG streaming borne, filtre categories EPG Live TV, splash categories-only et correction crash focus D-pad; APK `smartvision-tv-v74-d76a5da8.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-01: diagnostic local Firestick pour synchro Xtream volumineuse; release installee localement par ADB, deux synchros reussies sans OOM apres traitement par sections/batchs.

@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -122,10 +121,16 @@ class SeriesViewModel(
         seriesJob?.cancel()
         episodesJob?.cancel()
         metadataJob?.cancel()
+        val cachedCategories = catalogRepository.getCachedSeriesCategories()
+        if (!cachedCategories.isNullOrEmpty()) {
+            applyCategories(cachedCategories)
+        }
         viewModelScope.launch {
-            _uiState.value = SeriesScreenState(categoriesLoading = true)
+            if (cachedCategories.isNullOrEmpty()) {
+                _uiState.value = SeriesScreenState(categoriesLoading = true)
+            }
             runCatching {
-                catalogRepository.observeSeriesCategories().first()
+                catalogRepository.getSeriesCategoriesSnapshot()
             }.onSuccess { categories ->
                 applyCategories(categories)
             }.onFailure { error ->

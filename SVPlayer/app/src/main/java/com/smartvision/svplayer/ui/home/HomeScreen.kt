@@ -1,6 +1,7 @@
 package com.smartvision.svplayer.ui.home
 
 import android.media.MediaPlayer
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,11 +12,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -33,7 +37,10 @@ import com.smartvision.svplayer.data.mock.HomeNavigationData
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     currentRoute: String,
@@ -57,6 +64,8 @@ fun HomeScreen(
 ) {
     val container = LocalAppContainer.current
     val context = LocalContext.current.applicationContext
+    val focusScope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
     val viewModel: HomeViewModel = viewModel(
         factory = viewModelFactory {
             HomeViewModel(
@@ -71,22 +80,36 @@ fun HomeScreen(
     val continueFirstFocusRequester = remember { FocusRequester() }
     val movieTrendFirstFocusRequester = remember { FocusRequester() }
     val seriesTrendFirstFocusRequester = remember { FocusRequester() }
+    val continueBringIntoViewRequester = remember { BringIntoViewRequester() }
+    val movieTrendBringIntoViewRequester = remember { BringIntoViewRequester() }
+    val seriesTrendBringIntoViewRequester = remember { BringIntoViewRequester() }
     val hasContinueWatching = state.continueWatching.isNotEmpty()
     val hasMovieTrends = state.trendingMovies.isNotEmpty()
     val hasSeriesTrends = state.trendingSeries.isNotEmpty()
 
+    fun requestRowFocus(
+        focusRequester: FocusRequester,
+        bringIntoViewRequester: BringIntoViewRequester,
+    ) {
+        focusScope.launch {
+            runCatching { bringIntoViewRequester.bringIntoView() }
+            delay(60)
+            runCatching { focusRequester.requestFocus() }
+        }
+    }
+
     fun requestFirstHomeRowFocus() {
         when {
-            hasContinueWatching -> runCatching { continueFirstFocusRequester.requestFocus() }
-            hasMovieTrends -> runCatching { movieTrendFirstFocusRequester.requestFocus() }
-            hasSeriesTrends -> runCatching { seriesTrendFirstFocusRequester.requestFocus() }
+            hasContinueWatching -> requestRowFocus(continueFirstFocusRequester, continueBringIntoViewRequester)
+            hasMovieTrends -> requestRowFocus(movieTrendFirstFocusRequester, movieTrendBringIntoViewRequester)
+            hasSeriesTrends -> requestRowFocus(seriesTrendFirstFocusRequester, seriesTrendBringIntoViewRequester)
         }
     }
 
     fun requestMovieTrendFocus() {
         when {
-            hasMovieTrends -> runCatching { movieTrendFirstFocusRequester.requestFocus() }
-            hasSeriesTrends -> runCatching { seriesTrendFirstFocusRequester.requestFocus() }
+            hasMovieTrends -> requestRowFocus(movieTrendFirstFocusRequester, movieTrendBringIntoViewRequester)
+            hasSeriesTrends -> requestRowFocus(seriesTrendFirstFocusRequester, seriesTrendBringIntoViewRequester)
         }
     }
 
@@ -135,7 +158,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
         ) {
             HomeHeroBanner(
                 remoteSlides = state.slides,
@@ -183,9 +206,13 @@ fun HomeScreen(
                     onItemClick = onContentClick,
                     firstItemFocusRequester = continueFirstFocusRequester,
                     onDownFromRow = { requestMovieTrendFocus() },
+                    enablePreview = true,
+                    resumeOverlayText = strings.resumePlayback,
                     blocked = xtreamCatalogBlocked,
                     onBlockedClick = onXtreamBlocked,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .bringIntoViewRequester(continueBringIntoViewRequester),
                 )
                 Spacer(Modifier.height(SmartVisionDimensions.HomeTrendFoldOffset))
             }
@@ -199,12 +226,16 @@ fun HomeScreen(
                 onItemClick = onContentClick,
                 firstItemFocusRequester = movieTrendFirstFocusRequester,
                 onDownFromRow = {
-                    if (hasSeriesTrends) runCatching { seriesTrendFirstFocusRequester.requestFocus() }
+                    if (hasSeriesTrends) {
+                        requestRowFocus(seriesTrendFirstFocusRequester, seriesTrendBringIntoViewRequester)
+                    }
                 },
                 enablePreview = true,
                 blocked = xtreamCatalogBlocked,
                 onBlockedClick = onXtreamBlocked,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .bringIntoViewRequester(movieTrendBringIntoViewRequester),
             )
 
             Spacer(Modifier.height(16.dp))
@@ -220,7 +251,9 @@ fun HomeScreen(
                 enablePreview = true,
                 blocked = xtreamCatalogBlocked,
                 onBlockedClick = onXtreamBlocked,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .bringIntoViewRequester(seriesTrendBringIntoViewRequester),
             )
 
             Spacer(Modifier.height(24.dp))

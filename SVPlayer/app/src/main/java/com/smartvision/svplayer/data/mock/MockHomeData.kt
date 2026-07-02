@@ -19,6 +19,13 @@ enum class HomeVisualStyle {
     Mystery,
 }
 
+enum class HomePreviewMode {
+    None,
+    TrendSegments,
+    LiveImmediate,
+    ResumeLoop,
+}
+
 data class HomeCategory(
     val id: String,
     val type: HomeCategoryType,
@@ -39,6 +46,8 @@ data class ContinueItem(
     val imageUrl: String? = null,
     val mediaType: String = "",
     val previewUrl: String? = null,
+    val previewMode: HomePreviewMode = HomePreviewMode.None,
+    val previewStartPositionMs: Long = 0L,
 )
 
 object HomeNavigationData {
