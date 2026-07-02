@@ -1,6 +1,6 @@
 # Activation, Licence, Essai et Xtream
 
-Derniere mise a jour: 2026-07-01.
+Derniere mise a jour: 2026-07-02.
 
 ## 1. Objectif
 
@@ -8,7 +8,7 @@ Documenter le flux d'acces SmartVision: enregistrement device, activation, licen
 
 ## 2. Fonctionnement actuel
 
-L'application demarre sur `SplashActivity`, puis `MainActivity`. `AppNavigation.kt` cree `ActivationViewModel`. Si l'appareil n'est pas active, `ActivationScreen` affiche les actions d'activation. Une fois actif, l'app peut afficher Home, mais les contenus Xtream demandent un compte playlist configure.
+L'application demarre sur `MainActivity`, activite launcher avec le theme systeme `Theme.SVPlayer.Splash`. `MainActivity` affiche le startup Compose, puis `AppNavigation.kt` cree `ActivationViewModel`. Si l'appareil n'est pas active, `ActivationScreen` affiche les actions d'activation. Une fois actif, l'app peut afficher Home, mais les contenus Xtream demandent un compte playlist configure.
 
 Flux observe:
 - device register via `api/devices/register.php`;
@@ -23,13 +23,13 @@ Flux observe:
 - creation locale du compte Xtream et synchro catalogue.
 - verification rapide Xtream au demarrage via `XtreamConnectionManager` avant synchro globale; en cas d'erreur, Home reste accessible mais les sections catalogue sont bloquees.
 - au splash, `device_status.php` doit etre relu avant `XtreamConnectionManager.verifyQuick()` afin d'importer la derniere playlist configuree cote serveur avant le test, meme si un ancien compte local et un ancien catalogue Room existent deja.
-- `SplashActivity` porte tout le statut de demarrage avec un seul visuel et une seule progress bar; le panneau `StartupVerificationPanel` Compose n'est plus utilise au demarrage.
-- depuis le 2026-07-01, ce splash applicatif est un ecran Compose avec video Media3 `splash_wave_animation.mp4` en plein ecran, muette, sans controles et bouclee; le theme systeme reste noir pour ne pas afficher un second visuel avant la video.
+- `MainActivity` porte tout le statut de demarrage avec un seul visuel et une seule progress bar; `SplashActivity`, `StartupVerificationPanel` et `StartupHandoffScreen` ne sont plus utilises au demarrage.
+- depuis le 2026-07-02, ce startup applicatif est un ecran Compose image avec `smartvision_splash_bg`, logo, progress bar et statuts au-dessus du theme systeme `Theme.SVPlayer.Splash`.
 - le splash enchaine les statuts licence, activation, serveur Xtream, fraicheur de la derniere synchronisation, synchro si necessaire, prechargement Home / Live TV / Films / Series, puis demarrage.
 - quand la source active est M3U, le splash verifie le lien M3U et ne precharge que Home / Live TV pour eviter de presenter Films / Series comme disponibles.
 - si le cache local indique deja un acces actif, `ActivationViewModel` garde Home accessible pendant le refresh serveur au lieu d'afficher un second loader Compose.
-- apres `MainActivity`, `AppNavigation` attend que `ActivationViewModel` ait lu l'etat local avant de rendre `ActivationScreen`, afin d'eviter le flash "Activer SmartVision" sur un appareil deja actif.
-- les etats transitoires apres splash dans `AppNavigation` utilisent un fond sombre neutre et plus l'ancien visuel `smartvision_splash_bg`, afin d'eviter un flash d'ancien splash avant Home.
+- `AppNavigation` ne contient plus d'ecran intermediaire `StartupHandoffScreen`; apres `Demarrage en cours...`, la navigation est rendue directement.
+- `MainActivity` ne garde plus `splash_background` comme fond de fenetre permanent apres `setContent`, afin d'eviter un retour visuel du splash derriere Home.
 - si le splash vient de valider Xtream pour le compte courant, `AppNavigation` ne relance pas immediatement la meme verification startup.
 
 ## 3. Workflow utilisateur
@@ -180,3 +180,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-01: `/playlist/` passe en onglets `Code Xtream`, `Lien M3U`, `Lien EPG`; le payload chiffre peut aussi porter `m3u_url`, et un push cree une notification d'information ciblee sur la TV.
 - 2026-07-01: Info compte ajoute la source active exclusive Xtream/M3U; `device_status.php` considere aussi `m3u_url` comme playlist configuree sans marquer Xtream configure.
 - 2026-07-01: correction source active M3U dans le splash et le popup manuel de synchronisation; suppression du flash de l'ancien visuel splash dans `AppNavigation`.
+- 2026-07-02: `MainActivity` devient l'activite launcher avec theme splash systeme, porte les checks/preloads startup, et `StartupHandoffScreen` est supprime.

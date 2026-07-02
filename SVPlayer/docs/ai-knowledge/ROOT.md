@@ -10,9 +10,9 @@ SmartVision / SVPlayer est une application Android TV native Kotlin/Compose pour
 
 Etat technique constate le 2026-07-01:
 - applicationId: `com.smartvision.svplayer`
-- version locale Gradle: `0.1.76` / `versionCode 79`
+- version locale Gradle: `0.1.78` / `versionCode 81`
 - langue officielle UI: anglais par defaut; deuxieme langue disponible: francais; futures langues a ajouter via le systeme i18n.
-- entree TV: `SplashActivity -> MainActivity -> ui/navigation/AppNavigation.kt`
+- entree TV: `MainActivity -> ui/navigation/AppNavigation.kt`
 - lecture video: AndroidX Media3 ExoPlayer natif
 - backend local: `server/public_html/`
 - deploiement: `scripts/deploy_activation_phase1.ps1`

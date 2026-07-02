@@ -78,7 +78,7 @@ fun ContinueWatchingRow(
     val fallbackRowState = rememberLazyListState()
     val rowState = lazyListState ?: fallbackRowState
     var focusedPreviewId by remember { mutableStateOf<String?>(null) }
-    Column(modifier = modifier) {
+    Column(modifier = modifier.height(SmartVisionDimensions.HomeContentRowHeight)) {
         Text(
             text = title,
             color = SmartVisionColors.TextPrimary,
@@ -89,7 +89,9 @@ fun ContinueWatchingRow(
         Spacer(Modifier.height(6.dp))
         LazyRow(
             state = rowState,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(SmartVisionDimensions.HomeContentCardHeight),
             contentPadding = PaddingValues(horizontal = SmartVisionDimensions.HomeRowEdgePadding),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,

@@ -4,7 +4,6 @@ import android.app.Activity
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -30,13 +29,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -49,7 +45,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.smartvision.svplayer.BuildConfig
-import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.ui.viewModelFactory
@@ -295,11 +290,6 @@ fun AppNavigation(
             runCatching { container.activationRepository.finalizeTrialAfterPlaylistConfigured() }
             activationViewModel.checkNow()
         }
-    }
-
-    if (!activationState.localStateReady && activationState.checking) {
-        StartupHandoffScreen()
-        return
     }
 
     if (!activationState.activated) {
@@ -817,79 +807,6 @@ fun AppNavigation(
     }
     }
 
-}
-
-@Composable
-private fun StartupHandoffScreen() {
-    LaunchedEffect(Unit) {
-        Log.i(TAG_STARTUP, "handoff visible: waiting for ActivationViewModel local state")
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black),
-    ) {
-        Image(
-            painter = painterResource(R.drawable.smartvision_splash_bg),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Black.copy(alpha = 0.10f),
-                            Color.Black.copy(alpha = 0.30f),
-                            Color.Black.copy(alpha = 0.52f),
-                        ),
-                    ),
-                ),
-        )
-        Column(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .width(360.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Image(
-                painter = painterResource(R.drawable.smartvision_logo_wide),
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(92.dp),
-            )
-            Spacer(Modifier.height(26.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.White.copy(alpha = 0.18f)),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(SmartVisionColors.Primary, SmartVisionColors.CyanAccent),
-                            ),
-                        ),
-                )
-            }
-            Spacer(Modifier.height(14.dp))
-            Text(
-                text = "Demarrage en cours...",
-                color = Color.White,
-                style = SmartVisionType.Body,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
 }
 
 private const val TAG_STARTUP = "SVStartup"

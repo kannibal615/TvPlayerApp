@@ -1,5 +1,55 @@
 # AI Changelog
 
+## 2026-07-02 - Stabilisation verticale Home
+
+Type:
+- android
+- ui-tv
+- release
+- deploy
+
+Resume:
+- Home ne fait plus de `bringIntoView()` repete apres `requestFocus()` pour les transitions Continue watching / Trending.
+- Le routage Up/Down annule le job precedent, remet la ligne cible au premier item, lance un seul scroll vertical `ScrollState.animateScrollTo()`, puis demande le focus apres la fin du scroll.
+- Les lignes Continue watching / Trending gardent une hauteur fixe pour isoler l'animation de largeur de la card focussee des calculs de scroll vertical.
+- Les logs `SVHomeFocus` tracent `scroll start`, `scroll end` et `focus requested`.
+- Release prod publiee en `0.1.78` / `versionCode 81` avec APK `smartvision-tv-v81-bcf5a8d7.apk`, hash SHA256 `bcf5a8d7e1201e28fdd78f44cfe26c349f61f1896aa3e92d52b8731a56cedd5c`.
+
+Fichiers code/version:
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/ContinueWatchingRow.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/theme/Dimensions.kt`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+## 2026-07-02 - Splash systeme MainActivity sans handoff
+
+Type:
+- android
+- startup
+- release-prep
+
+Resume:
+- `MainActivity` devient l'unique activite launcher TV/Android avec `Theme.SVPlayer.Splash` pour afficher immediatement le fond splash systeme.
+- La logique startup/preload anciennement portee par `SplashActivity.runStartupChecks()` est deplacee dans un etat Compose de `MainActivity`.
+- `SplashActivity` et `StartupHandoffScreen` sont supprimes; apres le statut `Demarrage en cours...`, `MainActivity` rend directement `AppNavigation`.
+- `MainActivity` ne pose plus `window.setBackgroundDrawableResource(R.drawable.splash_background)` afin d'eviter le retour du fond splash derriere Home.
+- Version locale incrementee a `0.1.78` / `versionCode 81` car `0.1.77` / `80` etait deja publie.
+
+Fichiers code/version:
+- `app/build.gradle.kts`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
 ## 2026-07-02 - Mini-player Home et config tendances admin
 
 Type:

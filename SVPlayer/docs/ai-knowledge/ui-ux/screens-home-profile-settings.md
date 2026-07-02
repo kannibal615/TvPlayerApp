@@ -20,7 +20,7 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 - Sur Home, Continue watching utilise aussi le mini-player Media3 muet au focus: Live demarre immediatement, Films et Episodes demarrent depuis la position de reprise sans poster intermediaire, avec fond noir puis fondu video, boucle de 20 secondes et overlay i18n `Resume playback` / `Reprendre la lecture`.
 - Sur Home, les tendances Films/Series sont filtrees au chargement de section pour garder uniquement les medias qui exposent une image paysage `backdropUrl` depuis les details Xtream, sauf override distant explicite. Cette image paysage sert de poster mini-player; le filtre note est desactive par defaut.
 - Sur Home, les lignes Continue watching / Trending movies / Trending series ont un padding interne horizontal pour que la premiere card, sa bordure focus et le mini-player ne soient pas tronques a gauche.
-- Le D-pad bas sur Home force la ligne cible a revenir a son premier item avant de demander le focus, ce qui evite de rester bloque sur une card Continue watching deja scrollee horizontalement.
+- Le D-pad bas/haut sur Home force la ligne cible a revenir a son premier item, annule tout scroll vertical Home deja lance, execute un seul scroll vertical deterministe, puis demande le focus apres la fin du scroll. Les lignes Continue watching / Trending movies / Trending series gardent une hauteur fixe pour que l'animation de largeur de la card focussee ne relance pas de corrections verticales.
 - Home routes secondaires: `continue_watching` et `trending` via `HomeCollectionsScreen`.
 - Live TV: categories, chaines, apercu puis plein ecran.
 - Movies: grille de films, detail, lecture.
@@ -167,3 +167,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-02: correction Home: padding de bord sur les carrousels, reset horizontal vers le premier item avant focus vertical, et logs diagnostics `SVHomeFocus`.
 - 2026-07-02: mini-player Home poster-first: filtre tendances sur `backdropUrl`, poster paysage pendant preparation video, demarrage apres 4 secondes de focus et fondu plus lent.
 - 2026-07-02: mini-player Home ajuste: Continue watching passe par fond noir sans poster, Trends limite la lecture a 40 secondes puis revient au poster paysage, le D-pad gauche est bloque sur la premiere card des carrousels et le scroll horizontal automatique par focus est retire pour reduire la vibration.
+- 2026-07-02: stabilisation Home verticale: suppression du `bringIntoView()` repete sur Continue/Trending, scroll vertical unique par touche avec annulation du job precedent, focus demande apres scroll et hauteur de ligne fixe.
