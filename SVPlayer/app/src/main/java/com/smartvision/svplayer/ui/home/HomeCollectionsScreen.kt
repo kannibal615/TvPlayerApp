@@ -57,11 +57,11 @@ fun HomeCollectionsScreen(
         key = "home-collection-${kind.name}",
         factory = viewModelFactory {
             HomeViewModel(
-                container.userContentRepository,
-                container.catalogRepository,
-                container.xtreamRepository,
-                container.appConfigRepository,
-                container.homeSlidesRepository,
+                userContentRepository = container.userContentRepository,
+                catalogRepository = container.catalogRepository,
+                xtreamRepository = container.xtreamRepository,
+                homeSlidesRepository = container.homeSlidesRepository,
+                homeContentRepository = container.homeContentRepository,
             )
         },
     )
@@ -78,7 +78,7 @@ fun HomeCollectionsScreen(
             CollectionSection(strings.trendingMovies, state.trendingMovies),
             CollectionSection(strings.trendingSeries, state.trendingSeries),
         )
-    }
+    }.filter { it.items.isNotEmpty() }
 
     BackHandler(onBack = onBack)
 
@@ -130,6 +130,7 @@ fun HomeCollectionsScreen(
                     items = section.items,
                     onItemClick = onItemClick,
                     showViewAll = false,
+                    blockedMessage = strings.connectionUnavailable,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

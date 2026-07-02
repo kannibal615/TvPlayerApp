@@ -279,6 +279,14 @@ fun AppNavigation(
                 "activated=${activationState.activated} playableSource=$hasPlayableSource route=$currentRoute",
         )
     }
+    if (!activationState.localStateReady) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SmartVisionColors.Background),
+        )
+        return
+    }
     val xtreamAccountSignature = remember(xtreamAccounts) {
         xtreamAccounts.joinToString("|") { account ->
             "${account.id}:${account.host}:${account.username}:${account.password.hashCode()}"

@@ -62,6 +62,7 @@ fun HomeCategoryCard(
     focusRequester: FocusRequester? = null,
     onDown: (() -> Unit)? = null,
     blocked: Boolean = false,
+    blockedMessage: String = "Connection unavailable",
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -183,7 +184,7 @@ fun HomeCategoryCard(
                         modifier = Modifier.size(18.dp),
                     )
                     Text(
-                        text = "Connexion indisponible",
+                        text = blockedMessage,
                         color = Color.White,
                         style = SmartVisionType.Caption,
                         fontWeight = FontWeight.Bold,

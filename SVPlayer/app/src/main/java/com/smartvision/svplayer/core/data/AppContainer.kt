@@ -13,6 +13,7 @@ import com.smartvision.svplayer.data.appconfig.AppConfigRepository
 import com.smartvision.svplayer.data.behavior.BehaviorApiService
 import com.smartvision.svplayer.data.behavior.BehaviorReporter
 import com.smartvision.svplayer.data.home.HomeSlidesApiService
+import com.smartvision.svplayer.data.home.HomeContentRepository
 import com.smartvision.svplayer.data.home.HomeSlidesRepository
 import com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsApiService
 import com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter
@@ -223,6 +224,13 @@ class AppContainer(context: Context) {
         profileDao = database.profileDao(),
         favoriteDao = database.favoriteDao(),
         progressDao = database.progressDao(),
+        syncStateDao = database.syncStateDao(),
+    )
+    val homeContentRepository = HomeContentRepository(
+        catalogRepository = catalogRepository,
+        xtreamRepository = xtreamRepository,
+        appConfigRepository = appConfigRepository,
+        accountManager = accountManager,
         syncStateDao = database.syncStateDao(),
     )
     val syncStateDao = database.syncStateDao()

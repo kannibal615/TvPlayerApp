@@ -32,9 +32,12 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +59,9 @@ import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 @Composable
 fun ContinueWatchingRow(
@@ -73,11 +79,49 @@ fun ContinueWatchingRow(
     enablePreview: Boolean = false,
     resumeOverlayText: String = "Resume playback",
     blocked: Boolean = false,
+    blockedMessage: String = "Connection unavailable",
     onBlockedClick: () -> Unit = {},
 ) {
     val fallbackRowState = rememberLazyListState()
     val rowState = lazyListState ?: fallbackRowState
+    val rowScope = rememberCoroutineScope()
     var focusedPreviewId by remember { mutableStateOf<String?>(null) }
+    var anchorJob by remember { mutableStateOf<Job?>(null) }
+    val totalFocusableItems = items.size + if (showViewAll) 1 else 0
+    val itemsSignature = remember(items, showViewAll) {
+        items.joinToString("|", postfix = "|$showViewAll") { it.id }
+    }
+
+    DisposableEffect(rowState) {
+        onDispose { anchorJob?.cancel() }
+    }
+
+    LaunchedEffect(itemsSignature) {
+        focusedPreviewId = null
+        if (rowState.firstVisibleItemIndex != 0 || rowState.firstVisibleItemScrollOffset != 0) {
+            rowState.scrollToItem(0)
+        }
+    }
+
+    fun anchorFocusedItem(index: Int) {
+        if (index < 0 || totalFocusableItems <= 0) return
+        val visibleCount = rowState.layoutInfo.visibleItemsInfo.size.coerceAtLeast(1)
+        val lastUsefulFirstIndex = (totalFocusableItems - visibleCount).coerceAtLeast(0)
+        val targetIndex = index.coerceAtMost(lastUsefulFirstIndex)
+        if (rowState.firstVisibleItemIndex == targetIndex && rowState.firstVisibleItemScrollOffset == 0) return
+        anchorJob?.cancel()
+        anchorJob = rowScope.launch {
+            try {
+                rowState.animateScrollToItem(targetIndex)
+                Log.i(HomeRowLogTag, "anchor row=$title focused=$index first=$targetIndex")
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Throwable) {
+                Log.w(HomeRowLogTag, "anchor failed row=$title focused=$index", error)
+            }
+        }
+    }
+
     Column(modifier = modifier.height(SmartVisionDimensions.HomeContentRowHeight)) {
         Text(
             text = title,
@@ -113,6 +157,7 @@ fun ContinueWatchingRow(
                     focusRequester = if (index == 0) firstItemFocusRequester else null,
                     onFocused = {
                         Log.i(HomeRowLogTag, "focused row=$title index=$index id=${item.id}")
+                        anchorFocusedItem(index)
                     },
                     onFocusChanged = { focused ->
                         if (enablePreview) {
@@ -125,6 +170,7 @@ fun ContinueWatchingRow(
                     enablePreview = enablePreview,
                     resumeOverlayText = resumeOverlayText,
                     blocked = blocked,
+                    blockedMessage = blockedMessage,
                     modifier = Modifier
                         .width(cardWidth)
                         .height(SmartVisionDimensions.HomeContentCardHeight),

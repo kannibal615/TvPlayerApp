@@ -89,6 +89,7 @@ fun ContentProgressCard(
     enablePreview: Boolean = false,
     resumeOverlayText: String = "Resume playback",
     blocked: Boolean = false,
+    blockedMessage: String = "Connection unavailable",
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -268,7 +269,7 @@ fun ContentProgressCard(
                     )
                     Spacer(Modifier.height(5.dp))
                     Text(
-                        text = "Connexion indisponible",
+                        text = blockedMessage,
                         color = Color.White,
                         style = SmartVisionType.Caption.copy(fontSize = 9.sp, lineHeight = 11.sp),
                         fontWeight = FontWeight.Bold,
@@ -438,35 +439,27 @@ private fun HomeMutedPreviewPlayer(
             }
 
             HomePreviewMode.ResumeLoop -> {
-                var duration = player.duration
-                var attempts = 0
-                while ((duration <= 0L || duration == C.TIME_UNSET) && attempts < 30) {
-                    delay(200L)
-                    duration = player.duration
-                    attempts++
-                }
-                val safeStart = if (duration > 0L && duration != C.TIME_UNSET) {
-                    startPositionMs.coerceIn(0L, (duration - 1_000L).coerceAtLeast(0L))
-                } else {
-                    startPositionMs.coerceAtLeast(0L)
-                }
                 transitionVisible = false
-                videoVisible = false
+                videoVisible = true
+                val requestedStart = startPositionMs.coerceAtLeast(0L)
+                player.seekTo(requestedStart)
+                player.volume = 0f
+                player.playWhenReady = true
+                player.play()
                 while (true) {
-                    resumeOverlayVisible = false
-                    player.seekTo(safeStart)
-                    player.volume = 0f
-                    player.playWhenReady = true
-                    player.play()
-                    if (!videoVisible) {
-                        while (!firstFrameRendered) {
-                            delay(50L)
-                        }
-                        videoVisible = true
-                    }
                     delay(ContinuePreviewLoopMillis)
                     resumeOverlayVisible = true
                     delay(ContinuePreviewOverlayMillis)
+                    resumeOverlayVisible = false
+                    val duration = player.duration
+                    val safeStart = if (duration > 0L && duration != C.TIME_UNSET) {
+                        requestedStart.coerceIn(0L, (duration - 1_000L).coerceAtLeast(0L))
+                    } else {
+                        requestedStart
+                    }
+                    player.seekTo(safeStart)
+                    player.playWhenReady = true
+                    player.play()
                 }
             }
 

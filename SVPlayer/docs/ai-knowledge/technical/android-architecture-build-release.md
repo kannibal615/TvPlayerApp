@@ -25,6 +25,7 @@ Demarrage:
 - Le logo, la progress bar et les statuts startup restent rendus au-dessus de l'image.
 - Le theme systeme `Theme.SVPlayer.Splash` utilise `@drawable/splash_background` comme preview immediate; cette preview doit rester identique au fond Compose pour eviter un double splash visible.
 - `MainActivity` attend la premiere frame Compose avant de lancer les checks startup, pour afficher immediatement le logo/progress bar au-dessus du fond.
+- `MainActivity` n'appelle le theme normal qu'apres cette premiere frame Compose, afin de ne pas remplacer la preview splash systeme par un fond noir avant le rendu du logo/progress bar.
 - L'initialisation diagnostic `AppContainer` dans `SVPlayerApplication` est differee et lancee hors thread UI, pour ne pas bloquer le rendu initial du splash Compose.
 - `AppNavigation` ne contient plus de `StartupHandoffScreen`; apres le statut `Demarrage en cours...`, `MainActivity` rend directement la navigation.
 - `MainActivity` ne pose plus `@drawable/splash_background` comme fond de fenetre permanent afin d'eviter que le fond splash reapparaisse derriere Home; les logs `SVStartup` suivent les statuts startup.
@@ -74,6 +75,7 @@ Deploy:
 - `app/src/main/java/com/smartvision/svplayer/MainActivity.kt`
 - `app/src/main/java/com/smartvision/svplayer/SVPlayerApplication.kt`
 - `app/src/main/java/com/smartvision/svplayer/core/data/AppContainer.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/home/HomeContentRepository.kt`
 - `app/src/main/java/com/smartvision/svplayer/ui/update/*`
 - `scripts/deploy_activation_phase1.ps1`
 
@@ -142,6 +144,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-07-02: release publiee `0.1.78` / `versionCode 81` pour stabiliser le scroll/focus vertical Home Continue watching et Trending; APK `smartvision-tv-v81-bcf5a8d7.apk`, manifeste public, `app_update.php`, APK stable et hash SHA256 verifies.
+- 2026-07-02: correctif prepare pour splash immediat, anti-flash activation, cache final tendances startup, mini-player Continue watching immediat et ancrage horizontal Home; release a publier apres build.
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-07-02: release publiee `0.1.76` / `versionCode 79` pour mini-player Home poster paysage, filtre tendances avec `backdropUrl`, demarrage video apres 4 secondes de focus et fondu plus lent; APK `smartvision-tv-v79-54bfa614.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-02: release publiee `0.1.75` / `versionCode 78` pour supprimer l'ecran noir apres splash, renforcer le focus Home vers Tendances, corriger le clipping gauche des carrousels et ajouter les logs `SVStartup` / `SVHomeFocus`.

@@ -69,7 +69,6 @@ import java.util.concurrent.TimeUnit
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setTheme(R.style.Theme_SVPlayer)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN)
         window.statusBarColor = AndroidColor.BLACK
@@ -130,6 +129,7 @@ class MainActivity : ComponentActivity() {
 
         LaunchedEffect(Unit) {
             withFrameNanos { }
+            setTheme(R.style.Theme_SVPlayer)
             delay(FirstFrameStartupDelayMillis)
             val container = withContext(Dispatchers.Default) {
                 (application as SVPlayerApplication).appContainer
@@ -161,12 +161,6 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun StartupSplashScreen(statusLabel: String, progress: Float) {
-        val loadingAlpha by animateFloatAsState(
-            targetValue = 1f,
-            animationSpec = tween(LoadingFadeMillis.toInt(), easing = FastOutSlowInEasing),
-            label = "startupLoadingAlpha",
-        )
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -181,7 +175,6 @@ class MainActivity : ComponentActivity() {
             StartupLoadingOverlay(
                 statusLabel = statusLabel,
                 progress = progress,
-                loadingAlpha = loadingAlpha,
                 modifier = Modifier.align(Alignment.Center),
             )
         }
@@ -191,7 +184,6 @@ class MainActivity : ComponentActivity() {
     private fun StartupLoadingOverlay(
         statusLabel: String,
         progress: Float,
-        loadingAlpha: Float,
         modifier: Modifier = Modifier,
     ) {
         BoxWithConstraints(modifier = modifier) {
@@ -228,8 +220,7 @@ class MainActivity : ComponentActivity() {
                     progress = progress,
                     modifier = Modifier
                         .width(progressWidth)
-                        .height(progressHeight)
-                        .alpha(loadingAlpha),
+                        .height(progressHeight),
                 )
                 Spacer(Modifier.height(statusTopMargin))
                 Text(
@@ -238,7 +229,6 @@ class MainActivity : ComponentActivity() {
                     fontSize = 13.sp,
                     lineHeight = 16.sp,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.alpha(loadingAlpha),
                 )
             }
         }
@@ -373,8 +363,14 @@ class MainActivity : ComponentActivity() {
 
     private suspend fun preloadHomeContent(container: AppContainer) {
         container.userContentRepository.getRecentProgressSnapshot(limit = 10)
-        container.catalogRepository.getTrendingMovieItems(limit = 10)
-        container.catalogRepository.getTrendingSeriesItems(limit = 10)
+        runCatching { container.homeSlidesRepository.refresh() }
+        if (container.accountManager.activePlaylistSource.value == PlaylistSource.Xtream &&
+            container.accountManager.accounts.value.isNotEmpty()
+        ) {
+            container.homeContentRepository.preloadTrending()
+        } else {
+            container.homeContentRepository.cacheEmptyTrending()
+        }
     }
 
     private suspend fun shouldRunStartupCatalogSync(container: AppContainer): Boolean {
@@ -404,7 +400,6 @@ class MainActivity : ComponentActivity() {
         private const val LogoPulseMinAlpha = 0.86f
         private const val LogoPulseMaxAlpha = 1.0f
         private const val LogoPulseMillis = 760L
-        private const val LoadingFadeMillis = 260L
         private const val MinimumSplashDurationMillis = 2_400L
         private const val StatusStepPauseMillis = 80L
         private const val ProgressStepMillis = 180L

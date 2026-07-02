@@ -1,5 +1,36 @@
 # AI Changelog
 
+## 2026-07-02 - Startup Home sans flash et cache tendances
+
+Type:
+- android
+- startup
+- ui-tv
+- release-prep
+
+Resume:
+- `MainActivity` garde la preview `Theme.SVPlayer.Splash` jusqu'a la premiere frame Compose, puis affiche fond, logo, progress bar et statuts sans fade initial.
+- `AppNavigation` attend `ActivationViewModel.localStateReady` avant de rendre `ActivationScreen`, pour eviter le flash activation apres splash sur appareil deja actif.
+- Les tendances Home sont preparees pendant le startup dans `HomeContentRepository`: config tendances, details `backdropUrl`, mapping final `ContinueItem`, puis cache consomme par `HomeViewModel`.
+- Le mini-player Continue watching rend le `PlayerView` visible et lance `play()` immediatement au focus, sans attendre la duree ou la premiere frame derriere un alpha `0`.
+- Les carrousels Continue watching / Trending ancrent horizontalement la card focussee via `LazyListState.animateScrollToItem`, avec borne de fin de liste.
+
+Fichiers code/version:
+- `app/src/main/java/com/smartvision/svplayer/MainActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/home/HomeContentRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/ContinueWatchingRow.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/ContentProgressCard.kt`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
 ## 2026-07-02 - Stabilisation verticale Home
 
 Type:

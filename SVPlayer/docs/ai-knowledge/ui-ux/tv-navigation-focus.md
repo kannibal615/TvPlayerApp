@@ -44,6 +44,7 @@ Attention:
 - Ne pas affecter `left`/`right`/`up`/`down` dans `focusProperties` vers un `FocusRequester` porte par un item `LazyColumn`/`LazyVerticalGrid` qui peut ne pas etre compose. Preferer la recherche spatiale Compose ou un routage explicite par evenement avec `runCatching`.
 - Sur Home, D-pad bas depuis Live TV / Movies / Series doit cibler le premier item de la prochaine ligne disponible; D-pad bas depuis Continue watching cible le premier item `Trending movies`; D-pad bas depuis `Trending movies` cible le premier item `Trending series`.
 - Sur Home, ce routage D-pad bas/haut annule le job vertical precedent, remet la `LazyRow` cible a l'index `0`, execute un unique `ScrollState.animateScrollTo()` vers une position calculee, puis demande le focus sur le premier item apres la fin du scroll. Ne pas reutiliser `BringIntoViewRequester` pour ces transitions verticales.
+- Sur Home, le focus horizontal dans Continue watching / Trending movies / Trending series doit ancrer l'item focus en premiere position visible via `LazyListState.animateScrollToItem(index)` tant qu'il reste assez d'items a droite; en fin de liste, utiliser le dernier premier index utile pour eviter un blanc a droite.
 - Les logs diagnostics Home focus utilisent le tag `SVHomeFocus`; les logs du handoff splash/MainActivity utilisent `SVStartup`.
 - `MainActivity.dispatchKeyEvent()` absorbe par securite le crash Compose `FocusRequester is not initialized` pendant une recherche D-pad, mais cette protection ne doit pas remplacer un routage de focus propre.
 - Les handlers D-pad doivent tenir compte des surfaces visibles.
@@ -159,3 +160,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-02: Home renforce le routage vertical avec reset horizontal vers le premier item, padding interne de `LazyRow` pour eviter le clipping gauche, et logs `SVHomeFocus`.
 - 2026-07-02: Home demande maintenant le focus avant le recentrage vertical pour eviter que l'ecran scrolle avant l'arrivee visuelle du focus.
 - 2026-07-02: Home remplace le recentrage vertical par `BringIntoViewRequester` par un scroll vertical deterministe annulable, focus apres scroll et hauteurs fixes Continue/Trending pour stopper les corrections continues liees a l'animation de largeur.
+- 2026-07-02: Home ajoute l'ancrage horizontal des cards focussees avec `LazyListState.animateScrollToItem`, borne en fin de liste pour conserver les items restants visibles.

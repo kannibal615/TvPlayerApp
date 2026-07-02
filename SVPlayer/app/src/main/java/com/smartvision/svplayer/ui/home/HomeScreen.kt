@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -37,7 +36,9 @@ import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
-import com.smartvision.svplayer.data.mock.HomeNavigationData
+import com.smartvision.svplayer.data.mock.HomeCategory
+import com.smartvision.svplayer.data.mock.HomeCategoryType
+import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
@@ -78,8 +79,8 @@ fun HomeScreen(
                 userContentRepository = container.userContentRepository,
                 catalogRepository = container.catalogRepository,
                 xtreamRepository = container.xtreamRepository,
-                appConfigRepository = container.appConfigRepository,
                 homeSlidesRepository = container.homeSlidesRepository,
+                homeContentRepository = container.homeContentRepository,
             )
         },
     )
@@ -88,12 +89,13 @@ fun HomeScreen(
     val continueFirstFocusRequester = remember { FocusRequester() }
     val movieTrendFirstFocusRequester = remember { FocusRequester() }
     val seriesTrendFirstFocusRequester = remember { FocusRequester() }
-    val continueRowState = rememberLazyListState()
-    val movieTrendRowState = rememberLazyListState()
-    val seriesTrendRowState = rememberLazyListState()
     val hasContinueWatching = state.continueWatching.isNotEmpty()
     val hasMovieTrends = state.trendingMovies.isNotEmpty()
     val hasSeriesTrends = state.trendingSeries.isNotEmpty()
+    val continueRowState = rememberHomeRowState(state.continueWatching)
+    val movieTrendRowState = rememberHomeRowState(state.trendingMovies)
+    val seriesTrendRowState = rememberHomeRowState(state.trendingSeries)
+    val homeCategories = remember(strings) { homeCategories(strings) }
 
     val categoryScrollPx = 0
     val continueScrollPx = with(density) { (SmartVisionDimensions.HomeHeroHeight + 16.dp).roundToPx() }
@@ -229,6 +231,36 @@ fun HomeScreen(
         }
     }
 
+    fun requestPreviousBeforeMovieTrend() {
+        if (hasContinueWatching) {
+            requestContinueFocus()
+        } else {
+            requestMainCategoryFocus()
+        }
+    }
+
+    fun requestPreviousBeforeSeriesTrend() {
+        when {
+            hasMovieTrends -> requestMovieTrendFocus()
+            hasContinueWatching -> requestContinueFocus()
+            else -> requestMainCategoryFocus()
+        }
+    }
+
+    fun refreshHomeFromHeader() {
+        verticalFocusJob?.cancel()
+        verticalFocusJob = focusScope.launch {
+            viewModel.refreshSlides(forceRefresh = true)
+            viewModel.refreshTrending(forceRefresh = true)
+            continueRowState.scrollToItem(0)
+            movieTrendRowState.scrollToItem(0)
+            seriesTrendRowState.scrollToItem(0)
+            scrollState.animateScrollTo(0)
+            withFrameNanos { }
+            runCatching { liveFocusRequester.requestFocus() }
+        }
+    }
+
     LaunchedEffect(Unit) {
         playStartupChimeOnHome(context)
         viewModel.refreshSlides()
@@ -256,7 +288,13 @@ fun HomeScreen(
         TvHeader(
             currentRoute = currentRoute,
             tabs = tabs,
-            onNavigate = onNavigate,
+            onNavigate = { route ->
+                if (route == currentRoute) {
+                    refreshHomeFromHeader()
+                } else {
+                    onNavigate(route)
+                }
+            },
             onSync = onSync,
             onSettings = onSettings,
             onProfile = onProfile,
@@ -277,6 +315,7 @@ fun HomeScreen(
                 .verticalScroll(scrollState)
         ) {
             HomeHeroBanner(
+                strings = strings,
                 remoteSlides = state.slides,
                 onNavigate = { route ->
                     if (xtreamCatalogBlocked && route.isHomeXtreamRoute()) {
@@ -296,15 +335,20 @@ fun HomeScreen(
                     .height(SmartVisionDimensions.HomeCategoryHeight),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                HomeNavigationData.categories.forEach { category ->
+                homeCategories.forEach { category ->
                     HomeCategoryCard(
                         category = category,
                         onClick = {
                             if (xtreamCatalogBlocked) onXtreamBlocked() else onNavigate(category.routeName)
                         },
                         blocked = xtreamCatalogBlocked,
+                        blockedMessage = strings.connectionUnavailable,
                         focusRequester = if (category.id == "live") liveFocusRequester else null,
-                        onDown = { requestFirstHomeRowFocus() },
+                        onDown = if (hasContinueWatching || hasMovieTrends || hasSeriesTrends) {
+                            { requestFirstHomeRowFocus() }
+                        } else {
+                            null
+                        },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -322,11 +366,16 @@ fun HomeScreen(
                     onItemClick = onContentClick,
                     lazyListState = continueRowState,
                     firstItemFocusRequester = continueFirstFocusRequester,
-                    onDownFromRow = { requestMovieTrendFocus() },
+                    onDownFromRow = if (hasMovieTrends || hasSeriesTrends) {
+                        { requestMovieTrendFocus() }
+                    } else {
+                        null
+                    },
                     onUpFromRow = { requestMainCategoryFocus() },
                     enablePreview = true,
                     resumeOverlayText = strings.resumePlayback,
                     blocked = xtreamCatalogBlocked,
+                    blockedMessage = strings.connectionUnavailable,
                     onBlockedClick = onXtreamBlocked,
                     modifier = Modifier
                         .fillMaxWidth(),
@@ -334,55 +383,71 @@ fun HomeScreen(
                 Spacer(Modifier.height(SmartVisionDimensions.HomeTrendFoldOffset))
             }
 
-            ContinueWatchingRow(
-                title = strings.trendingMovies,
-                items = state.trendingMovies,
-                showViewAll = true,
-                viewAllText = strings.viewAll,
-                onViewAll = onTrendingViewAll,
-                onItemClick = onContentClick,
-                lazyListState = movieTrendRowState,
-                firstItemFocusRequester = movieTrendFirstFocusRequester,
-                onDownFromRow = {
-                    if (hasSeriesTrends) {
-                        requestVerticalFocus(
-                            targetName = "trending_series",
-                            focusRequester = seriesTrendFirstFocusRequester,
-                            targetScrollPx = seriesTrendScrollPx,
-                            rowState = seriesTrendRowState,
-                        )
-                    }
-                },
-                onUpFromRow = { requestContinueFocus() },
-                enablePreview = true,
-                blocked = xtreamCatalogBlocked,
-                onBlockedClick = onXtreamBlocked,
-                modifier = Modifier
-                    .fillMaxWidth(),
-            )
+            if (hasMovieTrends) {
+                ContinueWatchingRow(
+                    title = strings.trendingMovies,
+                    items = state.trendingMovies,
+                    showViewAll = true,
+                    viewAllText = strings.viewAll,
+                    onViewAll = onTrendingViewAll,
+                    onItemClick = onContentClick,
+                    lazyListState = movieTrendRowState,
+                    firstItemFocusRequester = movieTrendFirstFocusRequester,
+                    onDownFromRow = if (hasSeriesTrends) {
+                        {
+                            requestVerticalFocus(
+                                targetName = "trending_series",
+                                focusRequester = seriesTrendFirstFocusRequester,
+                                targetScrollPx = seriesTrendScrollPx,
+                                rowState = seriesTrendRowState,
+                            )
+                        }
+                    } else {
+                        null
+                    },
+                    onUpFromRow = { requestPreviousBeforeMovieTrend() },
+                    enablePreview = true,
+                    blocked = xtreamCatalogBlocked,
+                    blockedMessage = strings.connectionUnavailable,
+                    onBlockedClick = onXtreamBlocked,
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                )
+            }
 
-            Spacer(Modifier.height(16.dp))
+            if (hasMovieTrends && hasSeriesTrends) {
+                Spacer(Modifier.height(16.dp))
+            }
 
-            ContinueWatchingRow(
-                title = strings.trendingSeries,
-                items = state.trendingSeries,
-                showViewAll = true,
-                viewAllText = strings.viewAll,
-                onViewAll = onTrendingViewAll,
-                onItemClick = onContentClick,
-                lazyListState = seriesTrendRowState,
-                firstItemFocusRequester = seriesTrendFirstFocusRequester,
-                onUpFromRow = { requestMovieTrendFocus() },
-                enablePreview = true,
-                blocked = xtreamCatalogBlocked,
-                onBlockedClick = onXtreamBlocked,
-                modifier = Modifier
-                    .fillMaxWidth(),
-            )
+            if (hasSeriesTrends) {
+                ContinueWatchingRow(
+                    title = strings.trendingSeries,
+                    items = state.trendingSeries,
+                    showViewAll = true,
+                    viewAllText = strings.viewAll,
+                    onViewAll = onTrendingViewAll,
+                    onItemClick = onContentClick,
+                    lazyListState = seriesTrendRowState,
+                    firstItemFocusRequester = seriesTrendFirstFocusRequester,
+                    onUpFromRow = { requestPreviousBeforeSeriesTrend() },
+                    enablePreview = true,
+                    blocked = xtreamCatalogBlocked,
+                    blockedMessage = strings.connectionUnavailable,
+                    onBlockedClick = onXtreamBlocked,
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                )
+            }
 
             Spacer(Modifier.height(24.dp))
         }
     }
+}
+
+@Composable
+private fun rememberHomeRowState(items: List<ContinueItem>): LazyListState {
+    val firstId = items.firstOrNull()?.id.orEmpty()
+    return remember(firstId, items.size) { LazyListState() }
 }
 
 private fun playStartupChimeOnHome(context: android.content.Context) {
@@ -400,7 +465,37 @@ private object HomeStartupSoundState {
     var played: Boolean = false
 }
 
-private val com.smartvision.svplayer.data.mock.HomeCategory.routeName: String
+private fun homeCategories(strings: SmartVisionStrings): List<HomeCategory> = listOf(
+    HomeCategory(
+        id = "live",
+        type = HomeCategoryType.Live,
+        badge = "LIVE",
+        title = strings.liveTv,
+        subtitle = strings.liveTvSubtitle,
+        actionLabel = strings.watchNow,
+        visualStyle = HomeVisualStyle.Signal,
+    ),
+    HomeCategory(
+        id = "movies",
+        type = HomeCategoryType.Movies,
+        badge = "VOD",
+        title = strings.movies,
+        subtitle = strings.moviesSubtitle,
+        actionLabel = strings.explore,
+        visualStyle = HomeVisualStyle.Cinema,
+    ),
+    HomeCategory(
+        id = "series",
+        type = HomeCategoryType.Series,
+        badge = "SERIES",
+        title = strings.series,
+        subtitle = strings.seriesSubtitle,
+        actionLabel = strings.explore,
+        visualStyle = HomeVisualStyle.Series,
+    ),
+)
+
+private val HomeCategory.routeName: String
     get() = when (id) {
         "live" -> "live_tv"
         "movies" -> "movies"

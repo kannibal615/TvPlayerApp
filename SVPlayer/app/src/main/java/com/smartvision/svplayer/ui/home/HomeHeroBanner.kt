@@ -41,6 +41,7 @@ import com.smartvision.svplayer.R
 import com.smartvision.svplayer.data.home.HomeSlide
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.profile.SmartVisionQrDialog
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
@@ -49,15 +50,17 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun HomeHeroBanner(
+    strings: SmartVisionStrings,
     remoteSlides: List<HomeSlide>,
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val slides = remember(remoteSlides) {
+    val fallbackSlides = remember(strings) { defaultHomeHeroSlides(strings) }
+    val slides = remember(remoteSlides, fallbackSlides) {
         remoteSlides.takeIf { it.isNotEmpty() }
-            ?.mapIndexed { index, slide -> slide.toHeroSlide(index) }
-            ?: DefaultHomeHeroSlides
+            ?.mapIndexed { index, slide -> slide.toHeroSlide(index, fallbackSlides) }
+            ?: fallbackSlides
     }
     var slideIndex by remember { mutableIntStateOf(0) }
     var selectedOffer by remember { mutableStateOf<HomeHeroSlide?>(null) }
@@ -128,8 +131,14 @@ fun HomeHeroBanner(
             )
             Spacer(Modifier.height(13.dp))
             TvButton(
-                text = slide.buttonLabel.ifBlank { "Voir l'offre" },
-                onClick = { selectedOffer = slide },
+                text = slide.buttonLabel.ifBlank { strings.homeHeroLearnMore },
+                onClick = {
+                    if (slide.route.isHomeAppRoute()) {
+                        onNavigate(slide.route)
+                    } else {
+                        selectedOffer = slide
+                    }
+                },
                 variant = TvButtonVariant.Primary,
                 modifier = Modifier.height(38.dp),
             )
@@ -162,7 +171,7 @@ fun HomeHeroBanner(
             subtitle = offer.subtitle,
             qrUrl = offerUrl,
             width = 720.dp,
-            actionLabel = "Recevoir l'offre par e-mail",
+            actionLabel = strings.heroOfferEmailAction,
             onAction = {
                 val subject = Uri.encode("Offre SmartVision - ${offer.title}")
                 val body = Uri.encode("Bonjour,\n\nJe souhaite recevoir cette offre SmartVision : $offerUrl")
@@ -187,14 +196,17 @@ private data class HomeHeroSlide(
     val route: String,
 )
 
-private fun HomeSlide.toHeroSlide(index: Int): HomeHeroSlide = HomeHeroSlide(
-    imageRes = DefaultHomeHeroSlides[index % DefaultHomeHeroSlides.size].imageRes,
+private fun HomeSlide.toHeroSlide(index: Int, fallbackSlides: List<HomeHeroSlide>): HomeHeroSlide = HomeHeroSlide(
+    imageRes = fallbackSlides[index % fallbackSlides.size].imageRes,
     imageUrl = imageUrl.toAbsoluteAssetUrl(),
     title = title,
     subtitle = subtitle,
     buttonLabel = buttonLabel,
     route = buttonRoute,
 )
+
+private fun String.isHomeAppRoute(): Boolean =
+    this == "home" || this == "live_tv" || this == "movies" || this == "series" || this == "youtube"
 
 private fun String.toAbsoluteAssetUrl(): String = when {
     isBlank() -> ""
@@ -208,8 +220,29 @@ private fun HomeHeroSlide.offerUrl(): String = when {
         "/account/?source=tv&intent=offer&offer=" + Uri.encode(title)
 }
 
-private val DefaultHomeHeroSlides = listOf(
-    HomeHeroSlide(R.drawable.home_hero_slide_1, "", "Welcome to SmartVision", "A smooth premium IPTV player experience built for Android TV.", "Learn more", "live_tv"),
-    HomeHeroSlide(R.drawable.home_hero_slide_2, "", "Instant Live TV", "Watch your live channels with simple remote-friendly navigation.", "View offer", "live_tv"),
-    HomeHeroSlide(R.drawable.home_hero_slide_3, "", "Movies and series", "Explore your Xtream catalogs with posters, details and resume playback.", "Discover", "movies"),
+private fun defaultHomeHeroSlides(strings: SmartVisionStrings) = listOf(
+    HomeHeroSlide(
+        R.drawable.home_hero_slide_1,
+        "",
+        strings.homeHeroWelcomeTitle,
+        strings.homeHeroWelcomeSubtitle,
+        strings.homeHeroLearnMore,
+        "live_tv",
+    ),
+    HomeHeroSlide(
+        R.drawable.home_hero_slide_2,
+        "",
+        strings.homeHeroLiveTitle,
+        strings.homeHeroLiveSubtitle,
+        strings.homeHeroViewOffer,
+        "live_tv",
+    ),
+    HomeHeroSlide(
+        R.drawable.home_hero_slide_3,
+        "",
+        strings.homeHeroCatalogTitle,
+        strings.homeHeroCatalogSubtitle,
+        strings.homeHeroDiscover,
+        "movies",
+    ),
 )
