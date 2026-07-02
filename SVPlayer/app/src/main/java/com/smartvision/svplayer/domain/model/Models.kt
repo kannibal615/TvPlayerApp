@@ -69,6 +69,17 @@ data class TvSeries(
     val isFavorite: Boolean = false,
 )
 
+data class TrendingCatalogItem(
+    val contentType: String,
+    val contentId: Int,
+    val title: String,
+    val categoryName: String,
+    val posterUrl: String?,
+    val rating: String?,
+    val year: String?,
+    val previewUrl: String?,
+)
+
 data class Episode(
     val episodeId: Int,
     val seriesId: Int,

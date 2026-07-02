@@ -9,6 +9,7 @@ import com.smartvision.svplayer.domain.model.PlaybackKind
 import com.smartvision.svplayer.domain.model.PlaybackRequest
 import com.smartvision.svplayer.domain.model.SyncStatus
 import com.smartvision.svplayer.domain.model.TvSeries
+import com.smartvision.svplayer.domain.model.TrendingCatalogItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -46,6 +47,8 @@ interface CatalogRepository {
     suspend fun getSeriesByIds(seriesIds: List<Int>): List<TvSeries>
     suspend fun getTrendingMovies(limit: Int): List<Movie>
     suspend fun getTrendingSeries(limit: Int): List<TvSeries>
+    suspend fun getTrendingMovieItems(limit: Int): List<TrendingCatalogItem>
+    suspend fun getTrendingSeriesItems(limit: Int): List<TrendingCatalogItem>
     fun invalidateLocalCatalogCache()
     suspend fun synchronize(): Result<Unit>
     suspend fun toggleFavorite(contentType: String, contentId: String)

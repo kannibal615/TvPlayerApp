@@ -29,12 +29,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -56,11 +64,15 @@ fun ContinueWatchingRow(
     showViewAll: Boolean = false,
     viewAllText: String = "View all",
     onViewAll: () -> Unit = {},
+    firstItemFocusRequester: FocusRequester? = null,
+    onDownFromRow: (() -> Unit)? = null,
+    enablePreview: Boolean = false,
     blocked: Boolean = false,
     onBlockedClick: () -> Unit = {},
 ) {
     val rowState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    var focusedPreviewId by remember { mutableStateOf<String?>(null) }
     Column(modifier = modifier) {
         Text(
             text = title,
@@ -77,15 +89,28 @@ fun ContinueWatchingRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
+                val cardWidth = if (enablePreview && focusedPreviewId == item.id) {
+                    SmartVisionDimensions.HomeContentPreviewCardWidth
+                } else {
+                    SmartVisionDimensions.HomeContentCardWidth
+                }
                 ContentProgressCard(
                     item = item,
                     onClick = { if (blocked) onBlockedClick() else onItemClick(item) },
+                    focusRequester = if (index == 0) firstItemFocusRequester else null,
                     onFocused = {
                         scope.launch { rowState.animateScrollToItem(index) }
                     },
+                    onFocusChanged = { focused ->
+                        if (enablePreview) {
+                            focusedPreviewId = if (focused) item.id else focusedPreviewId?.takeUnless { it == item.id }
+                        }
+                    },
+                    onDown = onDownFromRow,
+                    enablePreview = enablePreview,
                     blocked = blocked,
                     modifier = Modifier
-                        .width(SmartVisionDimensions.HomeContentCardWidth)
+                        .width(cardWidth)
                         .height(SmartVisionDimensions.HomeContentCardHeight),
                 )
             }
@@ -94,6 +119,7 @@ fun ContinueWatchingRow(
                     ViewAllButton(
                         text = viewAllText,
                         onClick = { if (blocked) onBlockedClick() else onViewAll() },
+                        onDown = onDownFromRow,
                         modifier = Modifier
                             .width(78.dp)
                             .height(SmartVisionDimensions.HomeContentCardHeight),
@@ -155,6 +181,7 @@ private fun RowChevronButton(
 private fun ViewAllButton(
     text: String,
     onClick: () -> Unit,
+    onDown: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val focusState = rememberTvFocusState()
@@ -166,6 +193,14 @@ private fun ViewAllButton(
     Column(
         modifier = modifier
             .zIndex(if (focusState.isFocused) 2f else 0f)
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown && onDown != null) {
+                    onDown()
+                    true
+                } else {
+                    false
+                }
+            }
             .tvFocusTarget(
                 state = focusState,
                 pressed = pressed,

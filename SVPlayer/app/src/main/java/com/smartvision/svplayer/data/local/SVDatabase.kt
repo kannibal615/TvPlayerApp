@@ -22,6 +22,7 @@ import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.local.entity.ProfileEntity
 import com.smartvision.svplayer.data.local.entity.SeriesEntity
 import com.smartvision.svplayer.data.local.entity.SyncStateEntity
+import com.smartvision.svplayer.data.local.entity.TrendingMediaEntity
 import com.smartvision.svplayer.data.local.entity.YoutubeBehaviorEventEntity
 import com.smartvision.svplayer.data.local.entity.YoutubeSearchEntity
 import com.smartvision.svplayer.data.local.entity.YoutubeSelectionEntity
@@ -38,12 +39,13 @@ import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
         FavoriteEntity::class,
         PlaybackProgressEntity::class,
         SyncStateEntity::class,
+        TrendingMediaEntity::class,
         YoutubeSearchEntity::class,
         YoutubeVideoHistoryEntity::class,
         YoutubeSelectionEntity::class,
         YoutubeBehaviorEventEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 abstract class SVDatabase : RoomDatabase() {
@@ -58,7 +60,15 @@ abstract class SVDatabase : RoomDatabase() {
     companion object {
         fun build(context: Context): SVDatabase =
             Room.databaseBuilder(context, SVDatabase::class.java, "svplayer.db")
-                .addMigrations(Migration1To2, Migration2To3, Migration3To4, Migration4To5, Migration5To6, Migration6To7)
+                .addMigrations(
+                    Migration1To2,
+                    Migration2To3,
+                    Migration3To4,
+                    Migration4To5,
+                    Migration5To6,
+                    Migration6To7,
+                    Migration7To8,
+                )
                 .build()
 
         private val Migration1To2 = object : Migration(1, 2) {
@@ -149,6 +159,24 @@ abstract class SVDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_series_categoryId ON series(categoryId)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_series_categoryId_number_title ON series(categoryId, number, title)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_episodes_seriesId ON episodes(seriesId)")
+            }
+        }
+
+        private val Migration7To8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS trending_media (" +
+                        "contentType TEXT NOT NULL, " +
+                        "contentId INTEGER NOT NULL, " +
+                        "sampleContentId INTEGER, " +
+                        "sampleExtension TEXT, " +
+                        "rating REAL NOT NULL, " +
+                        "updatedAt INTEGER NOT NULL, " +
+                        "PRIMARY KEY(contentType, contentId)" +
+                        ")",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_trending_media_contentType_rating ON trending_media(contentType, rating)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_trending_media_contentType_updatedAt ON trending_media(contentType, updatedAt)")
             }
         }
     }

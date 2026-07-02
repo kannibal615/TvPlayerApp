@@ -1,6 +1,6 @@
 # Android Architecture, Build et Release
 
-Derniere mise a jour: 2026-07-01.
+Derniere mise a jour: 2026-07-02.
 
 ## 1. Objectif
 
@@ -10,9 +10,9 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
 
-Gradle local constate le 2026-07-01:
-- `versionCode = 74`
-- `versionName = "0.1.71"`
+Gradle local constate le 2026-07-02:
+- `versionCode = 76`
+- `versionName = "0.1.73"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -21,11 +21,9 @@ Gradle local constate le 2026-07-01:
 
 Demarrage:
 - `SplashActivity` reste l'unique splash applicatif avant `MainActivity`.
-- Le splash est un ecran Compose personnalise qui affiche `R.raw.splash_wave_animation` via Media3 `ExoPlayer` en plein ecran, muet, sans controles, non focusable et en boucle.
-- Le logo, la progress bar et les statuts startup restent rendus au-dessus de la video.
-- Le theme systeme `Theme.SVPlayer.Splash` utilise `@drawable/splash_background` comme preview immediate pour eviter l'ecran noir avant que la video Compose soit prete.
-- `SplashActivity` affiche `smartvision_splash_bg` derriere la video et garde un poster identique au-dessus du `PlayerView` jusqu'a `onRenderedFirstFrame`, puis le masque par fade court; cela evite un ecran noir si Media3 tarde a produire la premiere frame.
-- `ExoPlayer.release()` est appele quand la composition du splash disparait.
+- Le splash est un ecran Compose personnalise avec `smartvision_splash_bg` en fond plein ecran, sans video de demarrage.
+- Le logo, la progress bar et les statuts startup restent rendus au-dessus de l'image.
+- Le theme systeme `Theme.SVPlayer.Splash` utilise `@drawable/splash_background` comme preview immediate; cette preview doit rester identique au fond Compose pour eviter un double splash visible.
 - L'initialisation lourde `AppContainer` dans `SVPlayerApplication` est differee au premier passage de la boucle UI pour reduire l'ecran noir avant le splash Compose.
 - Les etats transitoires de `AppNavigation` apres splash utilisent un fond sombre neutre, pas l'ancien visuel splash.
 
@@ -144,6 +142,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-06-29: migration vers documentation specialisee.
+- 2026-07-02: release publiee `0.1.73` / `versionCode 76` pour retour splash image, Home tendances films/series, liste `trending_media` validee et mini-preview tendances; APK `smartvision-tv-v76-6a70e99f.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-01: release publiee `0.1.71` / `versionCode 74` pour splash sans noir avant premiere frame, EPG streaming borne, filtre categories EPG Live TV, splash categories-only et correction crash focus D-pad; APK `smartvision-tv-v74-d76a5da8.apk`, manifeste public et hash SHA256 verifies.
 - 2026-07-01: diagnostic local Firestick pour synchro Xtream volumineuse; release installee localement par ADB, deux synchros reussies sans OOM apres traitement par sections/batchs.
 - 2026-07-01: release publiee `0.1.70` / `versionCode 73` pour source M3U/splash source-aware, badge EPG Live TV, Info compte compact et overlay player slim; APK `smartvision-tv-v73-5ab10617.apk`, manifeste public et hash SHA256 verifies.

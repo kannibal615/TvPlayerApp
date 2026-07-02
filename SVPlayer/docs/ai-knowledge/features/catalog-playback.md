@@ -1,6 +1,6 @@
 # Catalogue, Playlist et Lecture
 
-Derniere mise a jour: 2026-07-01.
+Derniere mise a jour: 2026-07-02.
 
 ## 1. Objectif
 
@@ -16,12 +16,14 @@ Depuis le 2026-06-30, la navigation Home / Live TV / Movies / Series ne doit plu
 
 Depuis le 2026-07-01, les ecrans Live TV / Movies / Series ne doivent plus ouvrir un snapshot complet du catalogue. `SplashActivity` prechauffe uniquement les categories/counts, puis les ViewModels catalogue chargent les contenus par pages depuis Room avec `LIMIT/OFFSET`. La RAM ne doit pas contenir tout le catalogue pour ouvrir un ecran.
 
-Home charge ses donnees legeres hors splash: historique recent limite, slides caches et tendances limitees via requetes Room bornees. Ne pas reutiliser les snapshots complets Movies / Series pour initialiser Home.
+Home charge ses donnees legeres en petits jeux bornes: le splash precharge uniquement l'historique recent `10`, les tendances films `10` et les tendances series `10`, puis `HomeViewModel` relit les memes limites depuis Room. Ne pas reutiliser les snapshots complets Movies / Series pour initialiser Home.
+
+Depuis le 2026-07-02, les tendances Home sont separees en films et series. La synchro Xtream alimente `trending_media` avec maximum `50` films et `50` series, en priorisant les notes `10/10`, puis `9/10` si besoin, en excluant les marqueurs adultes et en validant rapidement une URL de lecture avant insertion. Pour les series, la validation passe par un episode obtenu via `get_series_info`.
 
 Clarification stockage/performance:
 - Room est le stockage local persistant de l'application sur l'appareil; les catalogues synchronises restent disponibles apres fermeture ou redemarrage de l'app tant que les donnees de l'application ne sont pas effacees.
 - Le cache memoire applicatif est uniquement en RAM; il peut garder de petites pages deja ouvertes, mais ne doit pas garder tout le catalogue pour l'ouverture d'ecran.
-- Le chargement local au splash relit Room uniquement pour les categories/counts; il ne doit pas etre confondu avec une synchronisation reseau.
+- Le chargement local au splash relit Room pour les categories/counts et, depuis le 2026-07-02, les petits jeux Home bornes `10/10/10`; il ne doit pas etre confondu avec une synchronisation reseau.
 - Apres une vraie reouverture ou un process tue par Android, l'UI doit relire Room, mais uniquement par petits jeux de donnees pagines.
 - La synchronisation reseau complete est separee du chargement local et depend de `SyncFrequencyPolicy`: `A chaque demarrage` force une synchro a chaque ouverture, `24h`/`48h` ne resynchronisent que si la derniere synchro est obsolete, `Manuelle`/`Jamais` evitent la synchro automatique.
 - Recommandation d'optimisation: garder le prechauffage Room au splash et preferer une frequence `24h` ou `48h` pour eviter les telechargements reseau inutiles tout en gardant les catalogues frais.
@@ -65,7 +67,7 @@ M3U / EPG:
 - `DefaultCatalogRepository.kt` choisit la branche de synchronisation selon `PlaylistSource`.
 
 Room:
-- `SVDatabase.kt` version 7.
+- `SVDatabase.kt` version 8.
 - Entites: profiles, categories, live streams, movies, series, episodes, favorites, playback progress, sync state, historique YouTube.
 
 Playback:
@@ -147,7 +149,7 @@ URL de lecture:
 - Le badge EPG des lignes Live TV doit se baser sur les programmes locaux disponibles, pas seulement sur la presence d'une URL EPG.
 - Ne pas lancer de synchronisation globale pendant la navigation Home / Live TV / Movies / Series / categories / listes.
 - Ne pas charger un snapshot complet Live TV / Movies / Series pour ouvrir un ecran catalogue; utiliser categories/counts puis pages Room locales.
-- Le premier chargement local au splash doit rester leger: categories/counts uniquement. Ne pas remettre Home, EPG, tendances ou snapshots complets Movies/Series dans `SplashActivity` pour les tres gros catalogues.
+- Le premier chargement local au splash doit rester leger: categories/counts et Home borne `10 historiques / 10 tendances films / 10 tendances series`. Ne pas remettre EPG ni snapshots complets Movies/Series dans `SplashActivity` pour les tres gros catalogues.
 - Ne pas confondre prechargement local et synchro reseau: reconstruire le cache memoire depuis Room au demarrage est normal; retelecharger le catalogue complet ne doit arriver que si la politique de frequence le demande ou si l'utilisateur lance Synchroniser.
 - Ne pas promettre zero chargement local apres fermeture complete: si le process Android a ete tue, le cache RAM n'existe plus et doit etre reconstruit depuis Room.
 - AutoSync et sync manuelle doivent verifier Xtream avant de synchroniser; seules les erreurs reseau sont retentees automatiquement.

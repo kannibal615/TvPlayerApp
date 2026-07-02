@@ -9,8 +9,7 @@ import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
-import com.smartvision.svplayer.domain.model.Movie
-import com.smartvision.svplayer.domain.model.TvSeries
+import com.smartvision.svplayer.domain.model.TrendingCatalogItem
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +23,8 @@ import kotlinx.coroutines.launch
 
 data class HomeUiState(
     val continueWatching: List<ContinueItem> = emptyList(),
-    val trending: List<ContinueItem> = emptyList(),
+    val trendingMovies: List<ContinueItem> = emptyList(),
+    val trendingSeries: List<ContinueItem> = emptyList(),
     val slides: List<HomeSlide> = emptyList(),
 )
 
@@ -37,7 +37,8 @@ class HomeViewModel(
         .getCachedRecentProgressSnapshot(limit = ContinueWatchingSnapshotLimit)
         ?.toContinueItems()
         .orEmpty()
-    private val trending = MutableStateFlow<List<ContinueItem>>(emptyList())
+    private val trendingMovies = MutableStateFlow<List<ContinueItem>>(emptyList())
+    private val trendingSeries = MutableStateFlow<List<ContinueItem>>(emptyList())
     private val slides = MutableStateFlow(homeSlidesRepository.getCachedSlides().orEmpty())
     private val continueWatching = userContentRepository.observeRecentProgress(limit = ContinueWatchingSnapshotLimit)
         .map { progress ->
@@ -45,7 +46,7 @@ class HomeViewModel(
                 .filter { it.positionMs > 5_000L }
                 .map { userContentRepository.enrichProgress(it) }
                 .distinctBy(::historyGroupingKey)
-                .take(20)
+                .take(10)
                 .mapNotNull(::toContinueItem)
         }
         .onStart {
@@ -56,12 +57,14 @@ class HomeViewModel(
 
     val uiState: StateFlow<HomeUiState> = combine(
         continueWatching,
-        trending,
+        trendingMovies,
+        trendingSeries,
         slides,
-    ) { continueItems, trendItems, homeSlides ->
+    ) { continueItems, trendMovieItems, trendSeriesItems, homeSlides ->
         HomeUiState(
             continueWatching = continueItems,
-            trending = trendItems,
+            trendingMovies = trendMovieItems,
+            trendingSeries = trendSeriesItems,
             slides = homeSlides,
         )
     }.stateIn(
@@ -88,29 +91,26 @@ class HomeViewModel(
     }
 
     fun refreshTrending(forceRefresh: Boolean = false) {
-        if (!forceRefresh && trending.value.isNotEmpty()) return
+        if (!forceRefresh && trendingMovies.value.isNotEmpty() && trendingSeries.value.isNotEmpty()) return
         viewModelScope.launch {
-            val movies = async { runCatching { loadTrendingMovies() }.getOrDefault(emptyList()) }
-            val series = async { runCatching { loadTrendingSeries() }.getOrDefault(emptyList()) }
-            trending.value = (movies.await() + series.await())
-                .shuffled()
-                .take(10)
-                .map { it.item }
+            val movies = async {
+                runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingSectionLimit) }
+                    .getOrDefault(emptyList())
+                    .map { it.toMovieTrendItem() }
+            }
+            val series = async {
+                runCatching { catalogRepository.getTrendingSeriesItems(HomeTrendingSectionLimit) }
+                    .getOrDefault(emptyList())
+                    .map { it.toSeriesTrendItem() }
+            }
+            trendingMovies.value = movies.await()
+            trendingSeries.value = series.await()
         }
     }
-
-    private suspend fun loadTrendingMovies(): List<ScoredTrend> {
-        return catalogRepository.getTrendingMovies(HomeTrendingSectionLimit).toMovieTrends()
-    }
-
-    private suspend fun loadTrendingSeries(): List<ScoredTrend> {
-        return catalogRepository.getTrendingSeries(HomeTrendingSectionLimit).toSeriesTrends()
-    }
-
 }
 
-private const val ContinueWatchingSnapshotLimit = 60
-private const val HomeTrendingSectionLimit = 24
+private const val ContinueWatchingSnapshotLimit = 10
+private const val HomeTrendingSectionLimit = 10
 
 private fun toContinueItem(progress: PlaybackProgressEntity): ContinueItem? {
     val id = progress.contentId.toIntOrNull() ?: return null
@@ -156,48 +156,34 @@ private fun toContinueItem(progress: PlaybackProgressEntity): ContinueItem? {
 private fun List<PlaybackProgressEntity>.toContinueItems(): List<ContinueItem> =
     filter { it.positionMs > 5_000L }
         .distinctBy(::historyGroupingKey)
-        .take(20)
+        .take(10)
         .mapNotNull(::toContinueItem)
 
-private fun List<Movie>.toMovieTrends(): List<ScoredTrend> =
-    distinctBy { it.streamId }
-        .shuffled()
-        .take(12)
-        .map { movie ->
-            ScoredTrend(
-                score = movieTrendScore(movie),
-                item = ContinueItem(
-                    id = "movie:${movie.streamId}",
-                    title = movie.title.cleanHistoryTitle(),
-                    meta = "Film${movie.rating?.let { "  |  $it/10" }.orEmpty()}",
-                    remaining = "Tendance",
-                    progress = 0f,
-                    visualStyle = HomeVisualStyle.Cinema,
-                    imageUrl = movie.posterUrl,
-                    mediaType = "FILM",
-                ),
-            )
-        }
+private fun TrendingCatalogItem.toMovieTrendItem(): ContinueItem =
+    ContinueItem(
+        id = "movie:$contentId",
+        title = title.cleanHistoryTitle(),
+        meta = "Film${rating?.let { "  |  $it/10" }.orEmpty()}",
+        remaining = "Tendance",
+        progress = 0f,
+        visualStyle = HomeVisualStyle.Cinema,
+        imageUrl = posterUrl,
+        mediaType = "FILM",
+        previewUrl = previewUrl,
+    )
 
-private fun List<TvSeries>.toSeriesTrends(): List<ScoredTrend> =
-    distinctBy { it.seriesId }
-        .shuffled()
-        .take(12)
-        .map { series ->
-            ScoredTrend(
-                score = seriesTrendScore(series),
-                item = ContinueItem(
-                    id = "series:${series.seriesId}",
-                    title = series.title.cleanHistoryTitle(),
-                    meta = "Serie${series.rating?.let { "  |  $it/10" }.orEmpty()}",
-                    remaining = series.year?.take(4) ?: "Tendance",
-                    progress = 0f,
-                    visualStyle = HomeVisualStyle.Series,
-                    imageUrl = series.posterUrl,
-                    mediaType = "SERIE",
-                ),
-            )
-        }
+private fun TrendingCatalogItem.toSeriesTrendItem(): ContinueItem =
+    ContinueItem(
+        id = "series:$contentId",
+        title = title.cleanHistoryTitle(),
+        meta = "Serie${rating?.let { "  |  $it/10" }.orEmpty()}",
+        remaining = year?.take(4) ?: "Tendance",
+        progress = 0f,
+        visualStyle = HomeVisualStyle.Series,
+        imageUrl = posterUrl,
+        mediaType = "SERIE",
+        previewUrl = previewUrl,
+    )
 
 private fun historyGroupingKey(progress: PlaybackProgressEntity): String =
     if (progress.contentType == UserContentType.Episode) {
@@ -205,28 +191,6 @@ private fun historyGroupingKey(progress: PlaybackProgressEntity): String =
     } else {
         "${progress.contentType}:${progress.contentId}"
     }
-
-private data class ScoredTrend(val score: Float, val item: ContinueItem)
-
-private fun String.trendCategoryScore(): Int {
-    val value = lowercase()
-    return when {
-        listOf("top", "tendance", "nouveau", "new", "2026", "2025").any(value::contains) -> 3
-        listOf("netflix", "prime", "cinema", "film", "serie").any(value::contains) -> 2
-        else -> 1
-    }
-}
-
-private fun movieTrendScore(movie: Movie): Float =
-    movie.rating.toRating() * 10f + movie.categoryName.trendCategoryScore()
-
-private fun seriesTrendScore(series: TvSeries): Float {
-    val year = series.year?.take(4)?.toIntOrNull() ?: 0
-    return series.rating.toRating() * 10f + series.categoryName.trendCategoryScore() + (year - 2000).coerceAtLeast(0) / 100f
-}
-
-private fun String?.toRating(): Float =
-    this?.replace(',', '.')?.toFloatOrNull()?.coerceIn(0f, 10f) ?: 0f
 
 private fun Long.formatRemaining(): String {
     val minutes = (this / 60_000L).coerceAtLeast(1L)

@@ -65,6 +65,23 @@ data class SeriesEntity(
 )
 
 @Entity(
+    tableName = "trending_media",
+    primaryKeys = ["contentType", "contentId"],
+    indices = [
+        Index(value = ["contentType", "rating"]),
+        Index(value = ["contentType", "updatedAt"]),
+    ],
+)
+data class TrendingMediaEntity(
+    val contentType: String,
+    val contentId: Int,
+    val sampleContentId: Int?,
+    val sampleExtension: String?,
+    val rating: Float,
+    val updatedAt: Long,
+)
+
+@Entity(
     tableName = "episodes",
     indices = [
         Index(value = ["seriesId"]),

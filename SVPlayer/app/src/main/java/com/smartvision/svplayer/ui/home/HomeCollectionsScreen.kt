@@ -73,8 +73,8 @@ fun HomeCollectionsScreen(
             CollectionSection(strings.series, state.continueWatching.filter { it.id.startsWith("episode:") }),
         )
         HomeCollectionKind.Trending -> listOf(
-            CollectionSection(strings.bestMovies, state.trending.filter { it.id.startsWith("movie:") }),
-            CollectionSection(strings.bestSeries, state.trending.filter { it.id.startsWith("series:") }),
+            CollectionSection(strings.trendingMovies, state.trendingMovies),
+            CollectionSection(strings.trendingSeries, state.trendingSeries),
         )
     }
 

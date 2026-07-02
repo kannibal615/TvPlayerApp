@@ -1,5 +1,29 @@
 # AI Changelog
 
+## 2026-07-02 - Splash image et tendances Home separees
+
+Type:
+- android
+- ui-tv
+- catalogue
+- release-prep
+
+Resume:
+- Retour du splash sur le fond image `smartvision_splash_bg`, sans video Compose et sans second splash applicatif.
+- Home separe les tendances en `Trending movies` et `Trending series`, limite l'historique a `10` items et precharge au splash uniquement les jeux Home bornes `10/10/10`.
+- Ajout de `trending_media` en Room pour stocker maximum `50` films et `50` series valides pendant la synchro Xtream, avec selection note `10/10` puis `9/10`, exclusion adulte et controle court d'URL de lecture.
+- Les cards tendances passent en 16:9 au focus, gardent le poster immediat puis lancent un mini-player Media3 muet par segments avec fondu.
+- D-pad bas sur Home cible le premier item de la ligne suivante: categories -> premiere ligne disponible, Continue watching -> Trending movies, Trending movies -> Trending series.
+- Release prod publiee en `0.1.73` / `versionCode 76` avec APK `smartvision-tv-v76-6a70e99f.apk`, hash SHA256 `6a70e99fda1ee40aaf14d45791cd8fde93ef9b8c6833e121e99e1c2a4df686e9`.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
 ## 2026-07-01 - Pagination Room des catalogues
 
 Type:

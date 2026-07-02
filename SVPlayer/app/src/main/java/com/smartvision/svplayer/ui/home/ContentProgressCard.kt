@@ -1,6 +1,10 @@
 package com.smartvision.svplayer.ui.home
 
+import android.graphics.Color as AndroidColor
+import android.view.View
+import android.view.ViewGroup
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -26,20 +30,37 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
@@ -48,6 +69,7 @@ import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import kotlinx.coroutines.delay
 import kotlin.math.max
 import kotlin.math.min
 
@@ -56,7 +78,11 @@ fun ContentProgressCard(
     item: ContinueItem,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
     onFocused: () -> Unit = {},
+    onFocusChanged: (Boolean) -> Unit = {},
+    onDown: (() -> Unit)? = null,
+    enablePreview: Boolean = false,
     blocked: Boolean = false,
 ) {
     val focusState = rememberTvFocusState()
@@ -70,16 +96,36 @@ fun ContentProgressCard(
         label = "contentCardBorder",
     )
     val isLive = item.mediaType == "LIVE"
+    val previewActive = enablePreview && focusState.isFocused && !blocked && !item.previewUrl.isNullOrBlank()
+    var showPreview by remember(item.id, item.previewUrl) { mutableStateOf(false) }
 
     LaunchedEffect(focusState.isFocused) {
+        onFocusChanged(focusState.isFocused)
         if (focusState.isFocused) onFocused()
+    }
+
+    LaunchedEffect(previewActive, item.previewUrl) {
+        showPreview = false
+        if (previewActive) {
+            delay(TrendPreviewStartDelayMillis)
+            showPreview = true
+        }
     }
 
     Box(
         modifier = modifier
             .zIndex(if (focusState.isFocused) 2f else 0f)
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown && onDown != null) {
+                    onDown()
+                    true
+                } else {
+                    false
+                }
+            }
             .tvFocusTarget(
                 state = focusState,
+                focusRequester = focusRequester,
                 pressed = pressed,
                 focusedScale = 1.045f,
                 glowColor = SmartVisionColors.Primary,
@@ -105,6 +151,12 @@ fun ContentProgressCard(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(if (isLive) 16.dp else 0.dp),
+            )
+        }
+        if (showPreview && item.previewUrl != null) {
+            TrendingMutedPreviewPlayer(
+                url = item.previewUrl,
+                modifier = Modifier.fillMaxSize(),
             )
         }
         Box(
@@ -254,3 +306,98 @@ private fun ProgressBar(progress: Float) {
         )
     }
 }
+
+@Composable
+private fun TrendingMutedPreviewPlayer(
+    url: String,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    var transitionVisible by remember(url) { mutableStateOf(true) }
+    val transitionAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (transitionVisible) 0.72f else 0f,
+        animationSpec = tween(TrendPreviewFadeMillis.toInt(), easing = FastOutSlowInEasing),
+        label = "trendPreviewFade",
+    )
+    val player = remember(url) {
+        ExoPlayer.Builder(context)
+            .build()
+            .apply {
+                volume = 0f
+                repeatMode = Player.REPEAT_MODE_OFF
+                playWhenReady = true
+                setMediaItem(MediaItem.fromUri(url))
+                prepare()
+            }
+    }
+
+    DisposableEffect(player) {
+        onDispose { player.release() }
+    }
+
+    LaunchedEffect(player, url) {
+        var duration = player.duration
+        var attempts = 0
+        while ((duration <= 0L || duration == C.TIME_UNSET) && attempts < 35) {
+            delay(200L)
+            duration = player.duration
+            attempts++
+        }
+        if (duration <= 0L || duration == C.TIME_UNSET) {
+            duration = TrendPreviewFallbackDurationMillis
+        }
+        while (true) {
+            for (positionRatio in TrendPreviewPositions) {
+                transitionVisible = true
+                delay(TrendPreviewFadeMillis)
+                val targetPosition = (duration * positionRatio)
+                    .toLong()
+                    .coerceIn(0L, (duration - 1_000L).coerceAtLeast(0L))
+                player.seekTo(targetPosition)
+                player.volume = 0f
+                player.playWhenReady = true
+                player.play()
+                transitionVisible = false
+                delay(TrendPreviewSegmentMillis)
+            }
+        }
+    }
+
+    Box(modifier = modifier.background(Color.Black)) {
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { viewContext ->
+                PlayerView(viewContext).apply {
+                    useController = false
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    setBackgroundColor(AndroidColor.BLACK)
+                    setShutterBackgroundColor(AndroidColor.BLACK)
+                    setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
+                    isFocusable = false
+                    isFocusableInTouchMode = false
+                    isClickable = false
+                    isLongClickable = false
+                    descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                    this.player = player
+                }
+            },
+            update = { playerView ->
+                if (playerView.player !== player) {
+                    playerView.player = player
+                }
+            },
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = transitionAlpha)),
+        )
+    }
+}
+
+private const val TrendPreviewStartDelayMillis = 650L
+private const val TrendPreviewSegmentMillis = 8_000L
+private const val TrendPreviewFadeMillis = 220L
+private const val TrendPreviewFallbackDurationMillis = 60 * 60_000L
+private val TrendPreviewPositions = listOf(0.10f, 0.25f, 0.45f, 0.65f, 0.80f)

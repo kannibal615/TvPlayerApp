@@ -38,6 +38,7 @@ data class ContinueItem(
     val visualStyle: HomeVisualStyle,
     val imageUrl: String? = null,
     val mediaType: String = "",
+    val previewUrl: String? = null,
 )
 
 object HomeNavigationData {

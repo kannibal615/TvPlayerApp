@@ -36,6 +36,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -55,6 +60,7 @@ fun HomeCategoryCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
+    onDown: (() -> Unit)? = null,
     blocked: Boolean = false,
 ) {
     val focusState = rememberTvFocusState()
@@ -73,6 +79,14 @@ fun HomeCategoryCard(
     Box(
         modifier = modifier
             .zIndex(if (focusState.isFocused) 3f else 0f)
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown && onDown != null) {
+                    onDown()
+                    true
+                } else {
+                    false
+                }
+            }
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,

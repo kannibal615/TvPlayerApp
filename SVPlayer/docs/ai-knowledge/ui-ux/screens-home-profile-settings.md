@@ -1,6 +1,6 @@
 # Ecrans Home, Catalogues, Profile, Settings et YouTube
 
-Derniere mise a jour: 2026-07-01.
+Derniere mise a jour: 2026-07-02.
 
 ## 1. Objectif
 
@@ -12,10 +12,11 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 
 ## 3. Workflow utilisateur
 
-- Home: hero, cartes Live/Movies/Series, continue watching, tendances, notifications/profil/settings.
+- Home: hero, cartes Live/Movies/Series, continue watching si disponible, `Trending movies`, `Trending series`, notifications/profil/settings.
 - Home affiche un overlay "Connexion indisponible" sur les cartes et reprises de lecture quand Xtream est indisponible.
 - Home ne doit pas afficher cet overlay pendant un simple refresh rapide si la derniere verification Xtream est encore `CONNECTED`.
-- Home affiche ses donnees a partir de petits jeux locaux: slides caches, historique recent limite et tendances issues de requetes Room bornees. Il ne doit pas relire les snapshots complets Movies / Series.
+- Home affiche ses donnees a partir de petits jeux locaux: slides caches, historique recent limite a `10`, tendances films `10` et tendances series `10` issues de `trending_media`. Il ne doit pas relire les snapshots complets Movies / Series.
+- Sur Home, les cards tendances films/series passent en largeur 16:9 au focus en gardant la hauteur actuelle; le poster reste affiche immediatement puis un mini-player Media3 muet demarre apres environ 650 ms avec segments a 10%, 25%, 45%, 65% et 80% du media.
 - Home routes secondaires: `continue_watching` et `trending` via `HomeCollectionsScreen`.
 - Live TV: categories, chaines, apercu puis plein ecran.
 - Movies: grille de films, detail, lecture.

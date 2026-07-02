@@ -92,7 +92,7 @@ class SplashActivity : ComponentActivity() {
                 }
             }
 
-            SplashVideoScreen(
+            SplashImageScreen(
                 statusLabel = statusLabel,
                 progress = progress,
             )
@@ -100,18 +100,12 @@ class SplashActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun SplashVideoScreen(statusLabel: String, progress: Float) {
+    private fun SplashImageScreen(statusLabel: String, progress: Float) {
         var loadingVisible by remember { mutableStateOf(true) }
-        var videoFrameReady by remember { mutableStateOf(false) }
         val loadingAlpha by animateFloatAsState(
             targetValue = if (loadingVisible) 1f else 0f,
             animationSpec = tween(LoadingFadeMillis.toInt(), easing = FastOutSlowInEasing),
             label = "splashLoadingAlpha",
-        )
-        val posterAlpha by animateFloatAsState(
-            targetValue = if (videoFrameReady) 0f else 1f,
-            animationSpec = tween(VideoPosterFadeMillis.toInt(), easing = FastOutSlowInEasing),
-            label = "splashVideoPosterAlpha",
         )
 
         Box(
@@ -125,20 +119,6 @@ class SplashActivity : ComponentActivity() {
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
-            SplashVideoBackground(
-                modifier = Modifier.fillMaxSize(),
-                onFirstFrame = { videoFrameReady = true },
-            )
-            if (posterAlpha > 0.01f) {
-                Image(
-                    painter = painterResource(R.drawable.smartvision_splash_bg),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .alpha(posterAlpha),
-                )
-            }
             SplashLoadingOverlay(
                 statusLabel = statusLabel,
                 progress = progress,
@@ -146,65 +126,6 @@ class SplashActivity : ComponentActivity() {
                 modifier = Modifier.align(Alignment.Center),
             )
         }
-    }
-
-    @Composable
-    private fun SplashVideoBackground(
-        modifier: Modifier = Modifier,
-        onFirstFrame: () -> Unit,
-    ) {
-        val context = LocalContext.current
-        val currentOnFirstFrame = rememberUpdatedState(onFirstFrame)
-        val player = remember {
-            ExoPlayer.Builder(context)
-                .build()
-                .apply {
-                    volume = 0f
-                    repeatMode = Player.REPEAT_MODE_ALL
-                    playWhenReady = true
-                    setMediaItem(MediaItem.fromUri(RawResourceDataSource.buildRawResourceUri(R.raw.splash_wave_animation)))
-                    prepare()
-                }
-        }
-
-        DisposableEffect(player) {
-            val listener = object : Player.Listener {
-                override fun onRenderedFirstFrame() {
-                    currentOnFirstFrame.value()
-                }
-            }
-            player.addListener(listener)
-            onDispose {
-                player.removeListener(listener)
-                player.release()
-            }
-        }
-
-        AndroidView(
-            modifier = modifier,
-            factory = { viewContext ->
-                PlayerView(viewContext).apply {
-                    useController = false
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                    setBackgroundColor(AndroidColor.TRANSPARENT)
-                    setShutterBackgroundColor(AndroidColor.TRANSPARENT)
-                    setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
-                    setKeepContentOnPlayerReset(true)
-                    isFocusable = false
-                    isFocusableInTouchMode = false
-                    isClickable = false
-                    isLongClickable = false
-                    descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
-                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
-                    this.player = player
-                }
-            },
-            update = { playerView ->
-                if (playerView.player !== player) {
-                    playerView.player = player
-                }
-            },
-        )
     }
 
     @Composable
@@ -354,6 +275,8 @@ class SplashActivity : ComponentActivity() {
                 update("Chargement des categories (SERIES)...", step++, totalSteps)
                 runCatching { container.catalogRepository.observeSeriesCategories().first() }
             }
+            update("Chargement Home...", step++, totalSteps)
+            runCatching { preloadHomeContent(container) }
             update("Demarrage en cours...", totalSteps, totalSteps)
         }
         val elapsed = SystemClock.elapsedRealtime() - startedAt
@@ -371,7 +294,14 @@ class SplashActivity : ComponentActivity() {
         if (shouldSync) total += 2
         total += 1 // Live TV categories
         if (source == PlaylistSource.Xtream) total += 2 // Movies + Series
+        total += 1 // Home lightweight preload
         return total + 1 // startup handoff
+    }
+
+    private suspend fun preloadHomeContent(container: AppContainer) {
+        container.userContentRepository.getRecentProgressSnapshot(limit = 10)
+        container.catalogRepository.getTrendingMovieItems(limit = 10)
+        container.catalogRepository.getTrendingSeriesItems(limit = 10)
     }
 
     private suspend fun shouldRunStartupCatalogSync(container: AppContainer): Boolean {
@@ -409,7 +339,6 @@ class SplashActivity : ComponentActivity() {
         const val LogoPulseMaxAlpha = 1.0f
         const val LogoPulseMillis = 760L
         const val LoadingFadeMillis = 260L
-        const val VideoPosterFadeMillis = 220L
         const val MinimumSplashDurationMillis = 2_400L
         const val StatusStepPauseMillis = 80L
         const val ProgressStepMillis = 180L

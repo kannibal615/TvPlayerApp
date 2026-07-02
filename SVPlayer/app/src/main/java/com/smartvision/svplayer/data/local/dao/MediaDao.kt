@@ -7,6 +7,7 @@ import com.smartvision.svplayer.data.local.entity.EpisodeEntity
 import com.smartvision.svplayer.data.local.entity.LiveStreamEntity
 import com.smartvision.svplayer.data.local.entity.MovieEntity
 import com.smartvision.svplayer.data.local.entity.SeriesEntity
+import com.smartvision.svplayer.data.local.entity.TrendingMediaEntity
 import kotlinx.coroutines.flow.Flow
 
 data class CategoryItemCount(
@@ -76,8 +77,21 @@ interface MediaDao {
     @Query("SELECT * FROM movies WHERE streamId = :streamId")
     suspend fun getMovie(streamId: Int): MovieEntity?
 
-    @Query("SELECT * FROM movies ORDER BY number DESC, title LIMIT :limit")
+    @Query(
+        "SELECT movies.* FROM trending_media " +
+            "INNER JOIN movies ON movies.streamId = trending_media.contentId " +
+            "WHERE trending_media.contentType = 'movie' " +
+            "ORDER BY RANDOM() LIMIT :limit",
+    )
     suspend fun getTrendingMovies(limit: Int): List<MovieEntity>
+
+    @Query(
+        "SELECT * FROM movies " +
+            "WHERE CAST(REPLACE(COALESCE(rating, '0'), ',', '.') AS REAL) >= 9.0 " +
+            "ORDER BY CAST(REPLACE(COALESCE(rating, '0'), ',', '.') AS REAL) DESC, RANDOM() " +
+            "LIMIT :limit",
+    )
+    suspend fun getBestRatedMovies(limit: Int): List<MovieEntity>
 
     @Query("DELETE FROM movies")
     suspend fun clearMovies()
@@ -112,8 +126,33 @@ interface MediaDao {
     @Query("SELECT * FROM series WHERE seriesId = :seriesId")
     suspend fun getSeries(seriesId: Int): SeriesEntity?
 
-    @Query("SELECT * FROM series ORDER BY number DESC, title LIMIT :limit")
+    @Query(
+        "SELECT series.* FROM trending_media " +
+            "INNER JOIN series ON series.seriesId = trending_media.contentId " +
+            "WHERE trending_media.contentType = 'series' " +
+            "ORDER BY RANDOM() LIMIT :limit",
+    )
     suspend fun getTrendingSeries(limit: Int): List<SeriesEntity>
+
+    @Query(
+        "SELECT * FROM series " +
+            "WHERE CAST(REPLACE(COALESCE(rating, '0'), ',', '.') AS REAL) >= 9.0 " +
+            "ORDER BY CAST(REPLACE(COALESCE(rating, '0'), ',', '.') AS REAL) DESC, RANDOM() " +
+            "LIMIT :limit",
+    )
+    suspend fun getBestRatedSeries(limit: Int): List<SeriesEntity>
+
+    @Query("SELECT * FROM trending_media WHERE contentType = :contentType")
+    suspend fun getTrendingMedia(contentType: String): List<TrendingMediaEntity>
+
+    @Query("SELECT contentId FROM trending_media WHERE contentType = :contentType")
+    suspend fun getTrendingContentIds(contentType: String): List<Int>
+
+    @Query("DELETE FROM trending_media WHERE contentType = :contentType")
+    suspend fun clearTrendingMedia(contentType: String)
+
+    @Upsert
+    suspend fun upsertTrendingMedia(items: List<TrendingMediaEntity>)
 
     @Query("DELETE FROM series")
     suspend fun clearSeries()

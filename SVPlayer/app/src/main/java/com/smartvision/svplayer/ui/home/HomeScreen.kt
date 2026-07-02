@@ -68,7 +68,27 @@ fun HomeScreen(
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val liveFocusRequester = remember { FocusRequester() }
+    val continueFirstFocusRequester = remember { FocusRequester() }
+    val movieTrendFirstFocusRequester = remember { FocusRequester() }
+    val seriesTrendFirstFocusRequester = remember { FocusRequester() }
     val hasContinueWatching = state.continueWatching.isNotEmpty()
+    val hasMovieTrends = state.trendingMovies.isNotEmpty()
+    val hasSeriesTrends = state.trendingSeries.isNotEmpty()
+
+    fun requestFirstHomeRowFocus() {
+        when {
+            hasContinueWatching -> runCatching { continueFirstFocusRequester.requestFocus() }
+            hasMovieTrends -> runCatching { movieTrendFirstFocusRequester.requestFocus() }
+            hasSeriesTrends -> runCatching { seriesTrendFirstFocusRequester.requestFocus() }
+        }
+    }
+
+    fun requestMovieTrendFocus() {
+        when {
+            hasMovieTrends -> runCatching { movieTrendFirstFocusRequester.requestFocus() }
+            hasSeriesTrends -> runCatching { seriesTrendFirstFocusRequester.requestFocus() }
+        }
+    }
 
     LaunchedEffect(Unit) {
         playStartupChimeOnHome(context)
@@ -145,6 +165,7 @@ fun HomeScreen(
                         },
                         blocked = xtreamCatalogBlocked,
                         focusRequester = if (category.id == "live") liveFocusRequester else null,
+                        onDown = { requestFirstHomeRowFocus() },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -152,33 +173,55 @@ fun HomeScreen(
 
             Spacer(Modifier.height(12.dp))
 
+            if (hasContinueWatching) {
+                ContinueWatchingRow(
+                    title = strings.continueWatching,
+                    items = state.continueWatching,
+                    showViewAll = true,
+                    viewAllText = strings.viewAll,
+                    onViewAll = onContinueViewAll,
+                    onItemClick = onContentClick,
+                    firstItemFocusRequester = continueFirstFocusRequester,
+                    onDownFromRow = { requestMovieTrendFocus() },
+                    blocked = xtreamCatalogBlocked,
+                    onBlockedClick = onXtreamBlocked,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(SmartVisionDimensions.HomeTrendFoldOffset))
+            }
+
             ContinueWatchingRow(
-                title = if (hasContinueWatching) strings.continueWatching else strings.trending,
-                items = if (hasContinueWatching) state.continueWatching else state.trending,
+                title = strings.trendingMovies,
+                items = state.trendingMovies,
                 showViewAll = true,
                 viewAllText = strings.viewAll,
-                onViewAll = if (hasContinueWatching) onContinueViewAll else onTrendingViewAll,
+                onViewAll = onTrendingViewAll,
                 onItemClick = onContentClick,
+                firstItemFocusRequester = movieTrendFirstFocusRequester,
+                onDownFromRow = {
+                    if (hasSeriesTrends) runCatching { seriesTrendFirstFocusRequester.requestFocus() }
+                },
+                enablePreview = true,
                 blocked = xtreamCatalogBlocked,
                 onBlockedClick = onXtreamBlocked,
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            if (hasContinueWatching) {
-                Spacer(Modifier.height(SmartVisionDimensions.HomeTrendFoldOffset))
+            Spacer(Modifier.height(16.dp))
 
-                ContinueWatchingRow(
-                    title = strings.trending,
-                    items = state.trending,
-                    onItemClick = onContentClick,
-                    showViewAll = true,
-                    viewAllText = strings.viewAll,
-                    onViewAll = onTrendingViewAll,
-                    blocked = xtreamCatalogBlocked,
-                    onBlockedClick = onXtreamBlocked,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
+            ContinueWatchingRow(
+                title = strings.trendingSeries,
+                items = state.trendingSeries,
+                showViewAll = true,
+                viewAllText = strings.viewAll,
+                onViewAll = onTrendingViewAll,
+                onItemClick = onContentClick,
+                firstItemFocusRequester = seriesTrendFirstFocusRequester,
+                enablePreview = true,
+                blocked = xtreamCatalogBlocked,
+                onBlockedClick = onXtreamBlocked,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             Spacer(Modifier.height(24.dp))
         }
