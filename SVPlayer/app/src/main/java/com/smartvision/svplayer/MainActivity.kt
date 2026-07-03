@@ -231,7 +231,7 @@ class MainActivity : ComponentActivity() {
                 StartupProgressBar(
                     progress = state.progress,
                     modifier = Modifier
-                        .padding(start = 20.dp)
+                        .padding(start = 30.dp)
                         .width(progressWidth)
                         .height(progressHeight),
                 )
