@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -63,6 +65,7 @@ fun HomeCategoryCard(
     onDown: (() -> Unit)? = null,
     blocked: Boolean = false,
     blockedMessage: String = "Connection unavailable",
+    workOverlay: HomeCategoryWorkOverlay? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -102,6 +105,7 @@ fun HomeCategoryCard(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
+                enabled = workOverlay?.active != true,
                 onClick = onClick,
             )
             .focusable(interactionSource = interactionSource),
@@ -193,8 +197,57 @@ fun HomeCategoryCard(
                 }
             }
         }
+        if (workOverlay != null) {
+            val remainingOverlay = 1f - workOverlay.progress.coerceIn(0f, 1f)
+            if (remainingOverlay > 0.001f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(remainingOverlay)
+                        .align(Alignment.CenterEnd)
+                        .background(Color.Black.copy(alpha = if (workOverlay.error) 0.70f else 0.62f)),
+                )
+            }
+            if (workOverlay.active || workOverlay.error) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF020712).copy(alpha = 0.78f))
+                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 14.dp, vertical = 9.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = workOverlay.label,
+                            color = if (workOverlay.error) SmartVisionColors.Warning else Color.White,
+                            style = SmartVisionType.Caption,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                        )
+                        if (!workOverlay.error) {
+                            Text(
+                                text = "${(workOverlay.progress * 100f).toInt().coerceIn(0, 100)}%",
+                                color = Color.White,
+                                style = SmartVisionType.Label,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
+
+data class HomeCategoryWorkOverlay(
+    val progress: Float,
+    val active: Boolean,
+    val error: Boolean,
+    val label: String,
+)
 
 @Composable
 private fun CategoryBadge(

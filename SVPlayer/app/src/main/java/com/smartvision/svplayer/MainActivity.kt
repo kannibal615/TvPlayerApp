@@ -52,17 +52,13 @@ import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.data.AppContainer
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
-import com.smartvision.svplayer.domain.model.SyncStatus
+import com.smartvision.svplayer.startup.StartupCatalogWorkKind
 import com.smartvision.svplayer.sync.SyncFrequencyPolicy
 import com.smartvision.svplayer.ui.navigation.AppNavigation
 import com.smartvision.svplayer.ui.theme.SmartVisionTheme
-import kotlinx.coroutines.async
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
@@ -235,6 +231,7 @@ class MainActivity : ComponentActivity() {
                 StartupProgressBar(
                     progress = state.progress,
                     modifier = Modifier
+                        .padding(start = 20.dp)
                         .width(progressWidth)
                         .height(progressHeight),
                 )
@@ -286,7 +283,7 @@ class MainActivity : ComponentActivity() {
         startedAtMs: Long,
         updateStatus: (StartupProgressState) -> Unit,
     ) {
-        var totalSteps = startupStepCount(PlaylistSource.Xtream, shouldSync = true)
+        var totalSteps = startupStepCount()
         suspend fun update(label: String, step: Int, total: Int = totalSteps) {
             Log.i(TAG_STARTUP, "startup status: $label")
             // PERF_DIAG: one row per visible splash status, with memory at that moment.
@@ -361,7 +358,21 @@ class MainActivity : ComponentActivity() {
                 }
             }
             val shouldSync = connectionReady && shouldRunStartupCatalogSync(container)
-            totalSteps = startupStepCount(source, shouldSync)
+            val catalogCounts = runCatching { container.catalogRepository.getCatalogContentCounts() }.getOrNull()
+            val hasLocalCatalog = when (source) {
+                PlaylistSource.Xtream -> catalogCounts?.hasAnyContent == true
+                PlaylistSource.M3u -> (catalogCounts?.live ?: 0) > 0
+            }
+            val startupWork = when {
+                shouldSync -> StartupCatalogWorkKind.Synchronize
+                connectionReady && hasLocalCatalog -> StartupCatalogWorkKind.LoadLocal
+                else -> StartupCatalogWorkKind.None
+            }
+            if (startupWork == StartupCatalogWorkKind.None) {
+                container.clearStartupCatalogWork(container.startupCatalogWork.value.requestedAtMs)
+            } else {
+                container.requestStartupCatalogWork(startupWork)
+            }
             PerformanceDiagnosticRecorder.record(
                 sheet = PerformanceDiagnosticRecorder.SHEET_STARTUP_STEPS,
                 event = "startup_sync_decision",
@@ -369,6 +380,10 @@ class MainActivity : ComponentActivity() {
                     "source" to source.storageValue,
                     "connectionReady" to connectionReady,
                     "shouldSync" to shouldSync,
+                    "startupWork" to startupWork.name,
+                    "localLive" to (catalogCounts?.live ?: 0),
+                    "localMovies" to (catalogCounts?.movies ?: 0),
+                    "localSeries" to (catalogCounts?.series ?: 0),
                     "totalSteps" to totalSteps,
                 ),
             )
@@ -379,109 +394,6 @@ class MainActivity : ComponentActivity() {
             )
 
             var step = 6
-            if (shouldSync) {
-                update(
-                    if (source == PlaylistSource.M3u) "Synchronisation M3U en cours..." else "Synchronisation Xtream en cours...",
-                    step++,
-                    totalSteps,
-                )
-                container.xtreamRepository.clearCaches()
-                container.catalogRepository.invalidateLocalCatalogCache()
-                val syncStep = step - 1
-                val syncResult = collectCatalogSyncStartupProgress(
-                    container = container,
-                    startedAtMs = startedAtMs,
-                    step = syncStep,
-                    totalSteps = totalSteps,
-                    fallbackLabel = if (source == PlaylistSource.M3u) {
-                        "Synchronisation M3U en cours..."
-                    } else {
-                        "Synchronisation Xtream en cours..."
-                    },
-                    updateStatus = updateStatus,
-                )
-                update(
-                    label = if (syncResult.isSuccess) {
-                        if (source == PlaylistSource.M3u) "Chargement catalogue M3U termine." else "Chargement catalogue Xtream termine."
-                    } else {
-                        "Synchronisation catalogue indisponible."
-                    },
-                    step = step++,
-                    total = totalSteps,
-                )
-            }
-
-            update("Chargement des categories (LIVE TV)...", step++, totalSteps)
-            val liveLoadStart = SystemClock.elapsedRealtime()
-            runCatching {
-                val categories = container.catalogRepository.getLiveCategoriesSnapshot()
-                val page = container.catalogRepository.getAllLiveChannelsPage(offset = 0, limit = StartupLivePageLimit)
-                PerformanceDiagnosticRecorder.recordDuration(
-                    sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                    event = "startup_live_loaded",
-                    startedAtMs = liveLoadStart,
-                    fields = mapOf(
-                        "categories" to categories.size,
-                        "pageLimit" to StartupLivePageLimit,
-                        "pageItems" to page.size,
-                    ),
-                )
-            }.onFailure { error ->
-                PerformanceDiagnosticRecorder.recordDuration(
-                    sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
-                    event = "startup_live_load_failed",
-                    startedAtMs = liveLoadStart,
-                    error = error,
-                )
-            }
-            if (source == PlaylistSource.Xtream) {
-                update("Chargement des categories (FILMS)...", step++, totalSteps)
-                val moviesLoadStart = SystemClock.elapsedRealtime()
-                runCatching {
-                    val categories = container.catalogRepository.getMovieCategoriesSnapshot()
-                    val page = container.catalogRepository.getAllMoviesPage(offset = 0, limit = StartupMoviePageLimit)
-                    PerformanceDiagnosticRecorder.recordDuration(
-                        sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                        event = "startup_movies_loaded",
-                        startedAtMs = moviesLoadStart,
-                        fields = mapOf(
-                            "categories" to categories.size,
-                            "pageLimit" to StartupMoviePageLimit,
-                            "pageItems" to page.size,
-                        ),
-                    )
-                }.onFailure { error ->
-                    PerformanceDiagnosticRecorder.recordDuration(
-                        sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
-                        event = "startup_movies_load_failed",
-                        startedAtMs = moviesLoadStart,
-                        error = error,
-                    )
-                }
-                update("Chargement des categories (SERIES)...", step++, totalSteps)
-                val seriesLoadStart = SystemClock.elapsedRealtime()
-                runCatching {
-                    val categories = container.catalogRepository.getSeriesCategoriesSnapshot()
-                    val page = container.catalogRepository.getAllSeriesPage(offset = 0, limit = StartupSeriesPageLimit)
-                    PerformanceDiagnosticRecorder.recordDuration(
-                        sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                        event = "startup_series_loaded",
-                        startedAtMs = seriesLoadStart,
-                        fields = mapOf(
-                            "categories" to categories.size,
-                            "pageLimit" to StartupSeriesPageLimit,
-                            "pageItems" to page.size,
-                        ),
-                    )
-                }.onFailure { error ->
-                    PerformanceDiagnosticRecorder.recordDuration(
-                        sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
-                        event = "startup_series_load_failed",
-                        startedAtMs = seriesLoadStart,
-                        error = error,
-                    )
-                }
-            }
             update("Chargement Home...", step++, totalSteps)
             val homePreloadStart = SystemClock.elapsedRealtime()
             runCatching { preloadHomeContent(container) }
@@ -519,46 +431,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private suspend fun collectCatalogSyncStartupProgress(
-        container: AppContainer,
-        startedAtMs: Long,
-        step: Int,
-        totalSteps: Int,
-        fallbackLabel: String,
-        updateStatus: (StartupProgressState) -> Unit,
-    ): Result<Unit> = coroutineScope {
-        val syncJob = async { runCatching { container.synchronizeCatalog().getOrThrow() } }
-        val statusJob = launch {
-            container.catalogRepository.syncStatus.collect { status ->
-                val state = status.toStartupProgressState(
-                    fallbackLabel = fallbackLabel,
-                    startedAtMs = startedAtMs,
-                    step = step,
-                    totalSteps = totalSteps,
-                ) ?: return@collect
-                updateStatus(state)
-            }
-        }
-        val result = syncJob.await()
-        statusJob.cancelAndJoin()
-        result
-    }
-
     private fun startupProgress(step: Int, total: Int): Float =
         (step.toFloat() / total.toFloat()).coerceIn(MinimumProgressScale, 1f)
 
-    private fun startupProgressForStep(step: Int, total: Int, stepFraction: Float): Float =
-        (((step - 1).toFloat() + stepFraction.coerceIn(0f, 1f)) / total.toFloat())
-            .coerceIn(MinimumProgressScale, 1f)
-
-    private fun startupStepCount(source: PlaylistSource, shouldSync: Boolean): Int {
-        var total = 5
-        if (shouldSync) total += 2
-        total += 1
-        if (source == PlaylistSource.Xtream) total += 2
-        total += 1
-        return total + 1
-    }
+    private fun startupStepCount(): Int = 7
 
     private suspend fun preloadHomeContent(container: AppContainer) {
         val progressStart = SystemClock.elapsedRealtime()
@@ -633,57 +509,6 @@ class MainActivity : ComponentActivity() {
         return System.currentTimeMillis() - lastSync >= TimeUnit.HOURS.toMillis(repeatHours)
     }
 
-    private fun SyncStatus.toStartupProgressState(
-        fallbackLabel: String,
-        startedAtMs: Long,
-        step: Int,
-        totalSteps: Int,
-    ): StartupProgressState? = when (this) {
-        SyncStatus.Idle -> null
-        is SyncStatus.Running -> StartupProgressState(
-            label = message.ifBlank { fallbackLabel },
-            progress = startupProgressForStep(step, totalSteps, percent.toFloat() / 100f),
-            currentStep = step,
-            totalSteps = totalSteps,
-            completedItems = completedItems.takeIf { totalItems > 0 },
-            totalItems = totalItems.takeIf { it > 0 },
-            sections = catalogProgress.toStartupSections(),
-            startedAtMs = startedAtMs,
-        )
-        is SyncStatus.Success -> StartupProgressState(
-            label = message.ifBlank { fallbackLabel },
-            progress = startupProgressForStep(step, totalSteps, 1f),
-            currentStep = step,
-            totalSteps = totalSteps,
-            sections = catalogProgress.toStartupSections(),
-            startedAtMs = startedAtMs,
-        )
-        is SyncStatus.Error -> StartupProgressState(
-            label = message.ifBlank { fallbackLabel },
-            progress = startupProgressForStep(step, totalSteps, 1f),
-            currentStep = step,
-            totalSteps = totalSteps,
-            sections = catalogProgress.toStartupSections(),
-            startedAtMs = startedAtMs,
-        )
-    }
-
-    private fun SyncStatus.CatalogProgress.toStartupSections(): List<StartupSectionProgress> =
-        listOf(
-            live.toStartupSection("Live"),
-            movies.toStartupSection("Films"),
-            series.toStartupSection("Series"),
-        )
-
-    private fun SyncStatus.SyncSectionProgress.toStartupSection(label: String): StartupSectionProgress =
-        StartupSectionProgress(
-            label = label,
-            currentItems = currentItems,
-            previousItems = previousItems,
-            percent = percent,
-            completed = completed,
-        )
-
     companion object {
         private const val TAG = "SmartVisionFocus"
         private const val TAG_STARTUP = "SVStartup"
@@ -691,7 +516,7 @@ class MainActivity : ComponentActivity() {
         private const val REQUEST_NOTIFICATIONS = 7041
         private const val SplashProgressWidthRatio = 0.32f
         private const val SplashProgressHeightRatio = 0.008f
-        private const val SplashProgressTopRatio = 0.30f
+        private const val SplashProgressTopRatio = 0.50f
         private const val SplashStatusTopMarginRatio = 0.014f
         private val MinimumProgressHeight: Dp = 5.dp
         private const val MinimumSplashDurationMillis = 2_400L
@@ -700,9 +525,6 @@ class MainActivity : ComponentActivity() {
         private const val MinimumProgressScale = 0.03f
         private const val FirstFrameStartupDelayMillis = 60L
         private const val StartupTickerMillis = 1_000L
-        private const val StartupLivePageLimit = 96
-        private const val StartupMoviePageLimit = 72
-        private const val StartupSeriesPageLimit = 72
     }
 }
 

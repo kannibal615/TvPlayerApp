@@ -25,7 +25,7 @@ class DefaultSettingsRepository(
             PlayerSettings(
                 displaySize = preferences[DISPLAY_SIZE] ?: "Normal",
                 language = preferences[LANGUAGE] ?: "English",
-                syncFrequency = preferences[SYNC_FREQUENCY] ?: "A chaque demarrage",
+                syncFrequency = preferences[SYNC_FREQUENCY] ?: "24h",
                 autostartEnabled = preferences[AUTOSTART_ENABLED] ?: startupStateStore.isAutostartEnabled(),
                 backgroundSyncEnabled = preferences[BACKGROUND_SYNC_ENABLED] ?: startupStateStore.isBackgroundSyncEnabled(),
                 focusStyle = preferences[FOCUS_STYLE] ?: "Default",

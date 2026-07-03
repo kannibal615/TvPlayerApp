@@ -19,6 +19,15 @@ data class LocalCatalogSnapshot<T>(
     val fromCache: Boolean = false,
 )
 
+data class CatalogContentCounts(
+    val live: Int = 0,
+    val movies: Int = 0,
+    val series: Int = 0,
+) {
+    val hasAnyContent: Boolean
+        get() = live > 0 || movies > 0 || series > 0
+}
+
 interface CatalogRepository {
     val syncStatus: StateFlow<SyncStatus>
 
@@ -55,6 +64,7 @@ interface CatalogRepository {
     suspend fun getTrendingSeries(limit: Int): List<TvSeries>
     suspend fun getTrendingMovieItems(limit: Int): List<TrendingCatalogItem>
     suspend fun getTrendingSeriesItems(limit: Int): List<TrendingCatalogItem>
+    suspend fun getCatalogContentCounts(): CatalogContentCounts
     fun invalidateLocalCatalogCache()
     suspend fun synchronize(): Result<Unit>
     suspend fun toggleFavorite(contentType: String, contentId: String)

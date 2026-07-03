@@ -1,5 +1,48 @@
 # AI Changelog
 
+## 2026-07-03 - Deplacement synchro/catalogue Splash vers Home et release locale 0.1.82
+
+Type:
+- android
+- ui-tv
+- catalogue
+- release
+
+Resume:
+- `MainActivity` ne lance plus la synchronisation catalogue complete et ne charge plus categories/pages catalogue pendant le splash.
+- Ajout de `StartupCatalogWorkRequest` dans `AppContainer` pour transmettre a Home `Synchronize`, `LoadLocal` ou aucun travail.
+- Home orchestre les traitements section par section avec overlays sombres progressifs sur Live TV / Films / Series, blocage telecommande pendant traitement et deblocage en succes ou erreur.
+- `SyncStatus` expose maintenant les phases `WAITING`, `RUNNING`, `IMPORTING`, `LOADING_TRENDS`, `COMPLETED`, `ERROR` et un pourcentage par section.
+- Les tendances sauvegardees sont chargees explicitement par section; le recalcul `trending_media` reste limite a la synchronisation catalogue.
+- Frequence de synchronisation par defaut ramenee a `24h`.
+- Release locale `0.1.82` / `versionCode 85` construite et installee sur Firestick `192.168.1.33:5555`.
+
+Fichiers code/scripts:
+- `app/build.gradle.kts`
+- `app/src/main/java/com/smartvision/svplayer/MainActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/core/data/AppContainer.kt`
+- `app/src/main/java/com/smartvision/svplayer/startup/StartupCatalogWork.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/home/HomeContentRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeCategoryCard.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+- `TROUBLESHOOTING.md`
+
+Verification:
+- `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\scripts\guard_release_version.ps1` OK.
+- `.\gradlew.bat :app:assembleRelease --console=plain --no-daemon '-Dkotlin.compiler.execution.strategy=in-process' '-Dorg.gradle.workers.max=1'` OK.
+- `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\scripts\guard_release_version.ps1 -RequireBuildMetadata` OK.
+- `adb -s 192.168.1.33:5555 install -r app\build\outputs\apk\release\app-release.apk` OK.
+- `adb -s 192.168.1.33:5555 shell monkey -p com.smartvision.svplayer 1` OK.
+
 ## 2026-07-03 - Corrections performance Splash/Home diagnostic
 
 Type:

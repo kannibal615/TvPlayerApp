@@ -117,13 +117,26 @@ data class PlaybackRequest(
 
 sealed interface SyncStatus {
     data object Idle : SyncStatus
+
+    enum class SyncSectionPhase {
+        WAITING,
+        RUNNING,
+        IMPORTING,
+        LOADING_TRENDS,
+        COMPLETED,
+        ERROR,
+    }
+
     data class SyncSectionProgress(
         val currentItems: Int = 0,
         val previousItems: Int = 0,
         val completed: Boolean = false,
+        val phase: SyncSectionPhase = SyncSectionPhase.WAITING,
+        val progressPercent: Int? = null,
     ) {
         val percent: Int
             get() = when {
+                progressPercent != null -> progressPercent.coerceIn(0, 100)
                 completed -> 100
                 previousItems > 0 -> ((currentItems.toFloat() / previousItems.toFloat()) * 100)
                     .toInt()
@@ -173,7 +186,7 @@ sealed interface SyncStatus {
 data class PlayerSettings(
     val displaySize: String = "Normal",
     val language: String = "English",
-    val syncFrequency: String = "A chaque demarrage",
+    val syncFrequency: String = "24h",
     val autostartEnabled: Boolean = true,
     val backgroundSyncEnabled: Boolean = true,
     val focusStyle: String = "Default",

@@ -68,6 +68,68 @@ class HomeContentRepository(
 
     suspend fun preloadTrending(): HomeTrendingSnapshot = refreshTrending(forceRefresh = true)
 
+    suspend fun refreshTrendingMovies(forceRefresh: Boolean = false): List<ContinueItem> {
+        val startedAt = SystemClock.elapsedRealtime()
+        val key = currentCacheKey()
+        if (!forceRefresh) {
+            cachedTrending
+                ?.takeIf { it.key == key }
+                ?.snapshot
+                ?.movies
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { return it }
+        }
+        if (key.source != PlaylistSource.Xtream.storageValue || key.accountSignature.isBlank()) {
+            return updateCachedTrending(key = key, movies = emptyList()).movies
+        }
+        return withContext(Dispatchers.IO) {
+            val trendingConfig = loadTrendingConfig()
+            runCatching { catalogRepository.getTrendingMovieItems(trendingConfig.candidateLimit) }
+                .getOrDefault(emptyList())
+                .also { candidates ->
+                    PerformanceDiagnosticRecorder.recordDuration(
+                        sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
+                        event = "home_trending_movie_saved_candidates",
+                        startedAtMs = startedAt,
+                        fields = mapOf("candidates" to candidates.size),
+                    )
+                }
+                .mapTrendsUntilLimit(trendingConfig) { it.toMovieTrendItem(trendingConfig) }
+                .let { movies -> updateCachedTrending(key = key, movies = movies).movies }
+        }
+    }
+
+    suspend fun refreshTrendingSeries(forceRefresh: Boolean = false): List<ContinueItem> {
+        val startedAt = SystemClock.elapsedRealtime()
+        val key = currentCacheKey()
+        if (!forceRefresh) {
+            cachedTrending
+                ?.takeIf { it.key == key }
+                ?.snapshot
+                ?.series
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { return it }
+        }
+        if (key.source != PlaylistSource.Xtream.storageValue || key.accountSignature.isBlank()) {
+            return updateCachedTrending(key = key, series = emptyList()).series
+        }
+        return withContext(Dispatchers.IO) {
+            val trendingConfig = loadTrendingConfig()
+            runCatching { catalogRepository.getTrendingSeriesItems(trendingConfig.candidateLimit) }
+                .getOrDefault(emptyList())
+                .also { candidates ->
+                    PerformanceDiagnosticRecorder.recordDuration(
+                        sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
+                        event = "home_trending_series_saved_candidates",
+                        startedAtMs = startedAt,
+                        fields = mapOf("candidates" to candidates.size),
+                    )
+                }
+                .mapTrendsUntilLimit(trendingConfig) { it.toSeriesTrendItem(trendingConfig) }
+                .let { series -> updateCachedTrending(key = key, series = series).series }
+        }
+    }
+
     suspend fun refreshTrending(forceRefresh: Boolean = false): HomeTrendingSnapshot {
         // PERF_DIAG: captures the expensive Home trends path: config, candidates, details and filters.
         val startedAt = SystemClock.elapsedRealtime()
@@ -99,19 +161,7 @@ class HomeContentRepository(
                 }
         }
         return withContext(Dispatchers.IO) {
-            val trendingConfig = runCatching { appConfigRepository.loadConfig().trending }
-                .getOrDefault(defaultTrendingConfig())
-            PerformanceDiagnosticRecorder.record(
-                sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                event = "home_trending_config_loaded",
-                fields = mapOf(
-                    "candidateLimit" to trendingConfig.candidateLimit,
-                    "sectionLimit" to trendingConfig.sectionLimit,
-                    "useRatingFilter" to trendingConfig.useRatingFilter,
-                    "minimumRating" to trendingConfig.minimumRating,
-                    "requireLandscapeImage" to trendingConfig.requireLandscapeImage,
-                ),
-            )
+            val trendingConfig = loadTrendingConfig()
             coroutineScope {
                 val movies = async {
                     val candidatesStart = SystemClock.elapsedRealtime()
@@ -165,6 +215,39 @@ class HomeContentRepository(
             },
             lastSync = syncStateDao.get()?.lastSync ?: 0L,
         )
+
+    private suspend fun loadTrendingConfig(): TrendingConfig =
+        runCatching { appConfigRepository.loadConfig().trending }
+            .getOrDefault(defaultTrendingConfig())
+            .also { trendingConfig ->
+                PerformanceDiagnosticRecorder.record(
+                    sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
+                    event = "home_trending_config_loaded",
+                    fields = mapOf(
+                        "candidateLimit" to trendingConfig.candidateLimit,
+                        "sectionLimit" to trendingConfig.sectionLimit,
+                        "useRatingFilter" to trendingConfig.useRatingFilter,
+                        "minimumRating" to trendingConfig.minimumRating,
+                        "requireLandscapeImage" to trendingConfig.requireLandscapeImage,
+                    ),
+                )
+            }
+
+    private fun updateCachedTrending(
+        key: HomeTrendingCacheKey,
+        movies: List<ContinueItem>? = null,
+        series: List<ContinueItem>? = null,
+    ): HomeTrendingSnapshot {
+        val existing = cachedTrending
+            ?.takeIf { it.key == key }
+            ?.snapshot
+        val snapshot = HomeTrendingSnapshot(
+            movies = movies ?: existing?.movies.orEmpty(),
+            series = series ?: existing?.series.orEmpty(),
+        )
+        cachedTrending = CachedHomeTrending(key, snapshot)
+        return snapshot
+    }
 
     private suspend fun TrendingCatalogItem.toMovieTrendItem(
         config: TrendingConfig,

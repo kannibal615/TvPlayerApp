@@ -12,6 +12,6 @@ object SyncFrequencyPolicy {
             "48h" -> SyncSchedulePolicy(repeatHours = 48L)
             "A chaque demarrage" -> SyncSchedulePolicy(runOnStartup = true)
             "Manuelle", "Jamais" -> SyncSchedulePolicy()
-            else -> SyncSchedulePolicy(runOnStartup = true)
+            else -> SyncSchedulePolicy(repeatHours = 24L)
         }
 }

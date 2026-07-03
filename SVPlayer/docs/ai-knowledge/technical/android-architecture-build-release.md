@@ -26,6 +26,7 @@ Demarrage:
 - Les diagnostics startup visibles incluent pourcentage, etape courante/total, elements traites/restants quand connus, temps ecoule, ETA estimee et details Live/Films/Series pendant une synchronisation catalogue.
 - `MainActivity` attend la premiere frame Compose avant de lancer les checks startup, pour afficher immediatement la barre et les statuts au-dessus de la preview systeme.
 - `MainActivity` applique le theme normal et remplace le `windowBackground` par un fond opaque neutre juste avant `AppNavigation`, afin que le fond/logo splash ne restent pas visibles derriere Home.
+- Depuis le 2026-07-03, `MainActivity` ne synchronise plus le catalogue et ne charge plus les categories/pages catalogue pendant le splash. Il calcule seulement la decision de fraicheur via `SyncFrequencyPolicy` et les compteurs locaux, puis publie `StartupCatalogWorkRequest` dans `AppContainer` pour que Home affiche les cards et orchestre `Synchronize` ou `LoadLocal`.
 - Le splash systeme affiche le logo wide plus petit et plus haut; l'overlay Compose place la barre de progression centree sous ce logo et affiche une seule ligne `pourcentage + statut`.
 - L'initialisation diagnostic `AppContainer` dans `SVPlayerApplication` est differee et lancee hors thread UI, pour ne pas bloquer le rendu initial du splash Compose.
 - `AppNavigation` ne contient plus de `StartupHandoffScreen`; apres le statut `Demarrage en cours...`, `MainActivity` rend directement la navigation.
@@ -147,6 +148,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-03: release locale `0.1.82` / `versionCode 85` construite avec `:app:assembleRelease`, garde-fou `guard_release_version.ps1 -RequireBuildMetadata` OK, APK `app-release.apk` installe et lance sur Firestick `192.168.1.33:5555`; pas de deploiement backend/prod effectue dans cette intervention.
 - 2026-07-02: release publiee `0.1.81` / `versionCode 84` pour splash hybride: fond + logo reduit dans la preview systeme, barre/statuts/diagnostics en Compose, nettoyage du fond avant Home; APK `smartvision-tv-v84-1577e450.apk`, SHA256 `1577e4508feb3ae94d5ba672f67ff851d0a1779b6b94a34dd257044b4a65afb0`, manifeste public, `app_update.php`, APK stable et hash verifies.
 - 2026-07-03: optimisation locale `releaseDiagnostic`: recorder diagnostic asynchrone, splash logo plus petit/remonte, progress bar centree sous le logo et statut simplifie avec pourcentage.
 - 2026-07-02: release publiee `0.1.80` / `versionCode 83` pour splash systeme fond + logo immediat, anti-flash activation, cache final tendances startup, mini-player Continue watching immediat, ordre initial des tendances Home, refresh local du menu HOME et ancrage horizontal Home; APK `smartvision-tv-v83-90e2e35d.apk`, SHA256 `90e2e35df36f5b33bc20d6aaa19c366904989784f9c676915368909d9daff28f`, manifeste public, `app_update.php`, APK stable et hash verifies.

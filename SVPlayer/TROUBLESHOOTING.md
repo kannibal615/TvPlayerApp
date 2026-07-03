@@ -191,3 +191,27 @@ Working solution:
 Avoid next time:
 - When admin navigation changes, update deploy smoke-test markers in the same change.
 - After a partial deploy stop, check `downloads/smartvision-tv.version.json` before re-running APK upload.
+
+## 2026-07-03 - Release build JBR incomplet et Kotlin daemon AccessDenied
+
+Problem:
+- `assembleRelease` peut echouer avant ou pendant Kotlin/KAPT avec:
+  `could not open C:\Program Files\Android\Android Studio\jbr\lib\jvm.cfg`
+  ou `AccessDeniedException: C:\Users\ONEDEV\AppData\Local\kotlin\daemon\...tmp`.
+
+Context:
+- Le JBR Android Studio local peut etre incomplet: `jbr\lib` ne contient que `modules`.
+- Un JDK 21 utilisable existe dans `C:\Users\ONEDEV\.codex\cache\jdk21\extracted\jdk-21.0.11+10`.
+- KAPT/Kotlin peut avoir besoin d'ecrire dans `AppData\Local\kotlin\daemon`, ce qui peut echouer dans le sandbox.
+
+Working solution:
+- Utiliser le JDK 21 cache:
+  `$env:JAVA_HOME='C:\Users\ONEDEV\.codex\cache\jdk21\extracted\jdk-21.0.11+10'`
+  `$env:Path="$env:JAVA_HOME\bin;$env:Path"`
+- Lancer la release:
+  `.\gradlew.bat :app:assembleRelease --console=plain --no-daemon '-Dkotlin.compiler.execution.strategy=in-process' '-Dorg.gradle.workers.max=1'`
+- Si `AccessDeniedException` apparait dans `AppData\Local\kotlin\daemon`, relancer la meme commande hors sandbox avec validation utilisateur.
+
+Avoid next time:
+- Ne pas insister avec `C:\Program Files\Android\Android Studio\jbr` si `jvm.cfg` manque.
+- Ne pas considerer l'erreur Kotlin daemon comme une erreur applicative sans verifier les permissions `AppData`.

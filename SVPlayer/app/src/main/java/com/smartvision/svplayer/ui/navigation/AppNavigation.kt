@@ -54,7 +54,6 @@ import com.smartvision.svplayer.data.xtream.XtreamConnectionState
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import com.smartvision.svplayer.sync.CatalogSyncScheduler
-import com.smartvision.svplayer.sync.SyncFrequencyPolicy
 import com.smartvision.svplayer.ui.activation.ActivationScreen
 import com.smartvision.svplayer.ui.activation.ActivationViewModel
 import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
@@ -375,10 +374,8 @@ fun AppNavigation(
             lastXtreamAccountSignature = xtreamAccountSignature
             val accountChanged = previousSignature != null && previousSignature != xtreamAccountSignature
             val firstAccountCheck = previousSignature == null
-            val startupSync = firstAccountCheck &&
-                SyncFrequencyPolicy.from(playerSettings.syncFrequency).runOnStartup
-            val shouldVerifyXtream = accountChanged || firstAccountCheck || startupSync
-            val shouldSyncCatalog = accountChanged || startupSync
+            val shouldVerifyXtream = accountChanged || firstAccountCheck
+            val shouldSyncCatalog = accountChanged
             val startupAlreadyHandled = firstAccountCheck && container.xtreamConnectionManager.hasFreshConnectedState()
             if (shouldVerifyXtream && !startupAlreadyHandled) {
                 val connection = container.xtreamConnectionManager.verifyQuick("startup")

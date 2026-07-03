@@ -34,6 +34,7 @@ import com.smartvision.svplayer.domain.model.PlaybackRequest
 import com.smartvision.svplayer.domain.model.SyncStatus
 import com.smartvision.svplayer.domain.model.TrendingCatalogItem
 import com.smartvision.svplayer.domain.model.TvSeries
+import com.smartvision.svplayer.domain.repository.CatalogContentCounts
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.LocalCatalogSnapshot
 import kotlinx.coroutines.Dispatchers
@@ -383,6 +384,14 @@ class DefaultCatalogRepository(
         }
     }
 
+    override suspend fun getCatalogContentCounts(): CatalogContentCounts = withContext(Dispatchers.IO) {
+        CatalogContentCounts(
+            live = mediaDao.countLiveStreams(),
+            movies = mediaDao.countMovies(),
+            series = mediaDao.countSeries(),
+        )
+    }
+
     override fun invalidateLocalCatalogCache() {
         localCatalogSnapshotCache.invalidate()
     }
@@ -420,11 +429,32 @@ class DefaultCatalogRepository(
         var liveCompleted = false
         var moviesCompleted = false
         var seriesCompleted = false
+        var livePhase = SyncStatus.SyncSectionPhase.WAITING
+        var moviesPhase = SyncStatus.SyncSectionPhase.WAITING
+        var seriesPhase = SyncStatus.SyncSectionPhase.WAITING
+        var livePercent = 0
+        var moviesPercent = 0
+        var seriesPercent = 0
         fun currentCatalogProgress(): SyncStatus.CatalogProgress =
             SyncStatus.CatalogProgress(
-                live = previousCatalogProgress.live.copy(currentItems = liveItems, completed = liveCompleted),
-                movies = previousCatalogProgress.movies.copy(currentItems = movieItems, completed = moviesCompleted),
-                series = previousCatalogProgress.series.copy(currentItems = seriesItems, completed = seriesCompleted),
+                live = previousCatalogProgress.live.copy(
+                    currentItems = liveItems,
+                    completed = liveCompleted,
+                    phase = livePhase,
+                    progressPercent = livePercent,
+                ),
+                movies = previousCatalogProgress.movies.copy(
+                    currentItems = movieItems,
+                    completed = moviesCompleted,
+                    phase = moviesPhase,
+                    progressPercent = moviesPercent,
+                ),
+                series = previousCatalogProgress.series.copy(
+                    currentItems = seriesItems,
+                    completed = seriesCompleted,
+                    phase = seriesPhase,
+                    progressPercent = seriesPercent,
+                ),
             )
 
         _syncStatus.value = SyncStatus.Running(catalogProgress = previousCatalogProgress)
@@ -448,6 +478,37 @@ class DefaultCatalogRepository(
                     catalogProgress = currentCatalogProgress(),
                 )
             }
+            suspend fun updateSectionProgress(
+                message: String,
+                section: MediaSection,
+                phase: SyncStatus.SyncSectionPhase,
+                percent: Int,
+                currentItems: Int? = null,
+                fetched: Int = 0,
+                remainingSteps: Int = 0,
+            ) {
+                when (section) {
+                    MediaSection.Live -> {
+                        livePhase = phase
+                        livePercent = percent.coerceIn(0, 100)
+                        currentItems?.let { liveItems = it }
+                        liveCompleted = phase == SyncStatus.SyncSectionPhase.COMPLETED
+                    }
+                    MediaSection.Movies -> {
+                        moviesPhase = phase
+                        moviesPercent = percent.coerceIn(0, 100)
+                        currentItems?.let { movieItems = it }
+                        moviesCompleted = phase == SyncStatus.SyncSectionPhase.COMPLETED
+                    }
+                    MediaSection.Series -> {
+                        seriesPhase = phase
+                        seriesPercent = percent.coerceIn(0, 100)
+                        currentItems?.let { seriesItems = it }
+                        seriesCompleted = phase == SyncStatus.SyncSectionPhase.COMPLETED
+                    }
+                }
+                updateProgress(message = message, fetched = fetched, remainingSteps = remainingSteps)
+            }
 
             database.withTransaction {
                 logSyncMemory(stage = "before_get_account")
@@ -459,26 +520,23 @@ class DefaultCatalogRepository(
                 liveItems = synchronizeLiveSection(
                     username = credentials.username,
                     password = credentials.password,
-                    updateProgress = ::updateProgress,
+                    updateSectionProgress = ::updateSectionProgress,
                 )
-                liveCompleted = true
 
                 movieItems = synchronizeMovieSection(
                     username = credentials.username,
                     password = credentials.password,
                     liveItems = liveItems,
-                    updateProgress = ::updateProgress,
+                    updateSectionProgress = ::updateSectionProgress,
                 )
-                moviesCompleted = true
 
                 seriesItems = synchronizeSeriesSection(
                     username = credentials.username,
                     password = credentials.password,
                     liveItems = liveItems,
                     movieItems = movieItems,
-                    updateProgress = ::updateProgress,
+                    updateSectionProgress = ::updateSectionProgress,
                 )
-                seriesCompleted = true
 
                 logSyncMemory(stage = "before_sync_state_write", live = liveItems, movies = movieItems, series = seriesItems)
                 syncStateDao.upsert(
@@ -501,6 +559,13 @@ class DefaultCatalogRepository(
             Result.success(Unit)
         } catch (error: Exception) {
             logSyncMemory(stage = "xtream_sync_error_${error.javaClass.simpleName}")
+            if (!liveCompleted && livePhase != SyncStatus.SyncSectionPhase.WAITING) {
+                livePhase = SyncStatus.SyncSectionPhase.ERROR
+            } else if (!moviesCompleted && moviesPhase != SyncStatus.SyncSectionPhase.WAITING) {
+                moviesPhase = SyncStatus.SyncSectionPhase.ERROR
+            } else if (!seriesCompleted && seriesPhase != SyncStatus.SyncSectionPhase.WAITING) {
+                seriesPhase = SyncStatus.SyncSectionPhase.ERROR
+            }
             syncStateDao.upsert(
                 SyncStateEntity(
                     id = "catalog",
@@ -520,27 +585,70 @@ class DefaultCatalogRepository(
     private suspend fun synchronizeLiveSection(
         username: String,
         password: String,
-        updateProgress: suspend (String, Int, Int) -> Unit,
+        updateSectionProgress: suspend (String, MediaSection, SyncStatus.SyncSectionPhase, Int, Int?, Int, Int) -> Unit,
     ): Int {
+        updateSectionProgress(
+            "Telechargement des categories Live TV...",
+            MediaSection.Live,
+            SyncStatus.SyncSectionPhase.RUNNING,
+            8,
+            null,
+            0,
+            4,
+        )
         logSyncMemory(stage = "before_get_live_categories")
         val liveCategories = api.getCategories(username, password, "get_live_categories")
         logSyncMemory(stage = "after_get_live_categories", liveCategories = liveCategories.size)
-        updateProgress("Telechargement des categories Live TV...", liveCategories.size, 4)
+        updateSectionProgress(
+            "Import des categories Live TV...",
+            MediaSection.Live,
+            SyncStatus.SyncSectionPhase.IMPORTING,
+            24,
+            null,
+            liveCategories.size,
+            4,
+        )
         categoryDao.deleteByType(MediaSection.Live.storageName)
         upsertMappedInBatches(liveCategories, { it.toEntity(MediaSection.Live) }) { entities ->
             categoryDao.upsertAll(entities)
         }
 
+        updateSectionProgress(
+            "Telechargement des chaines Live TV...",
+            MediaSection.Live,
+            SyncStatus.SyncSectionPhase.RUNNING,
+            38,
+            null,
+            0,
+            3,
+        )
         logSyncMemory(stage = "before_get_live_streams", liveCategories = liveCategories.size)
         val liveStreams = api.getLiveStreams(username, password)
         val liveItems = liveStreams.size
         logSyncMemory(stage = "after_get_live_streams", live = liveItems, liveCategories = liveCategories.size)
-        updateProgress("Telechargement des chaines Live TV...", liveItems, 3)
+        updateSectionProgress(
+            "Import des chaines Live TV...",
+            MediaSection.Live,
+            SyncStatus.SyncSectionPhase.IMPORTING,
+            78,
+            liveItems,
+            liveItems,
+            3,
+        )
         mediaDao.clearLiveStreams()
         upsertMappedInBatches(liveStreams, { it.toEntity() }) { entities ->
             mediaDao.upsertLiveStreams(entities)
         }
         logSyncMemory(stage = "after_live_room_write", live = liveItems)
+        updateSectionProgress(
+            "Live TV terminee",
+            MediaSection.Live,
+            SyncStatus.SyncSectionPhase.COMPLETED,
+            100,
+            liveItems,
+            0,
+            3,
+        )
         return liveItems
     }
 
@@ -548,34 +656,85 @@ class DefaultCatalogRepository(
         username: String,
         password: String,
         liveItems: Int,
-        updateProgress: suspend (String, Int, Int) -> Unit,
+        updateSectionProgress: suspend (String, MediaSection, SyncStatus.SyncSectionPhase, Int, Int?, Int, Int) -> Unit,
     ): Int {
+        updateSectionProgress(
+            "Telechargement des categories Films...",
+            MediaSection.Movies,
+            SyncStatus.SyncSectionPhase.RUNNING,
+            8,
+            null,
+            0,
+            2,
+        )
         logSyncMemory(stage = "before_get_movie_categories", live = liveItems)
         val movieCategories = api.getCategories(username, password, "get_vod_categories")
         logSyncMemory(stage = "after_get_movie_categories", live = liveItems, movieCategories = movieCategories.size)
-        updateProgress("Telechargement des categories Films...", movieCategories.size, 2)
+        updateSectionProgress(
+            "Import des categories Films...",
+            MediaSection.Movies,
+            SyncStatus.SyncSectionPhase.IMPORTING,
+            24,
+            null,
+            movieCategories.size,
+            2,
+        )
         categoryDao.deleteByType(MediaSection.Movies.storageName)
         upsertMappedInBatches(movieCategories, { it.toEntity(MediaSection.Movies) }) { entities ->
             categoryDao.upsertAll(entities)
         }
 
+        updateSectionProgress(
+            "Telechargement des films...",
+            MediaSection.Movies,
+            SyncStatus.SyncSectionPhase.RUNNING,
+            38,
+            null,
+            0,
+            1,
+        )
         logSyncMemory(stage = "before_get_movies", live = liveItems, movieCategories = movieCategories.size)
         val movies = api.getMovies(username, password)
         val movieItems = movies.size
         logSyncMemory(stage = "after_get_movies", live = liveItems, movies = movieItems, movieCategories = movieCategories.size)
-        updateProgress("Telechargement des films...", movieItems, 1)
+        updateSectionProgress(
+            "Import des films...",
+            MediaSection.Movies,
+            SyncStatus.SyncSectionPhase.IMPORTING,
+            72,
+            movieItems,
+            movieItems,
+            1,
+        )
         val previousTrendingIds = mediaDao.getTrendingContentIds(TrendingMovieType).toSet()
         mediaDao.clearMovies()
         upsertMappedInBatches(movies, { it.toEntity() }) { entities ->
             mediaDao.upsertMovies(entities)
         }
+        updateSectionProgress(
+            "Mise a jour tendances films...",
+            MediaSection.Movies,
+            SyncStatus.SyncSectionPhase.LOADING_TRENDS,
+            88,
+            movieItems,
+            0,
+            1,
+        )
         val trendingItems = updateTrendingMovies(
             categories = movieCategories,
             movies = movies,
             previousTrendingIds = previousTrendingIds,
             now = System.currentTimeMillis(),
         )
-        updateProgress("Mise a jour tendances films...", trendingItems, 1)
+        updateSectionProgress(
+            "Tendances films chargees",
+            MediaSection.Movies,
+            SyncStatus.SyncSectionPhase.COMPLETED,
+            100,
+            movieItems,
+            trendingItems,
+            1,
+        )
         logSyncMemory(stage = "after_movies_room_write", live = liveItems, movies = movieItems)
         return movieItems
     }
@@ -585,8 +744,17 @@ class DefaultCatalogRepository(
         password: String,
         liveItems: Int,
         movieItems: Int,
-        updateProgress: suspend (String, Int, Int) -> Unit,
+        updateSectionProgress: suspend (String, MediaSection, SyncStatus.SyncSectionPhase, Int, Int?, Int, Int) -> Unit,
     ): Int {
+        updateSectionProgress(
+            "Telechargement des categories Series...",
+            MediaSection.Series,
+            SyncStatus.SyncSectionPhase.RUNNING,
+            8,
+            null,
+            0,
+            1,
+        )
         logSyncMemory(stage = "before_get_series_categories", live = liveItems, movies = movieItems)
         val seriesCategories = api.getCategories(username, password, "get_series_categories")
         logSyncMemory(
@@ -595,22 +763,56 @@ class DefaultCatalogRepository(
             movies = movieItems,
             seriesCategories = seriesCategories.size,
         )
-        updateProgress("Telechargement des categories Series...", seriesCategories.size, 1)
+        updateSectionProgress(
+            "Import des categories Series...",
+            MediaSection.Series,
+            SyncStatus.SyncSectionPhase.IMPORTING,
+            24,
+            null,
+            seriesCategories.size,
+            1,
+        )
         categoryDao.deleteByType(MediaSection.Series.storageName)
         upsertMappedInBatches(seriesCategories, { it.toEntity(MediaSection.Series) }) { entities ->
             categoryDao.upsertAll(entities)
         }
 
+        updateSectionProgress(
+            "Telechargement des series...",
+            MediaSection.Series,
+            SyncStatus.SyncSectionPhase.RUNNING,
+            38,
+            null,
+            0,
+            0,
+        )
         logSyncMemory(stage = "before_get_series", live = liveItems, movies = movieItems, seriesCategories = seriesCategories.size)
         val series = api.getSeries(username, password)
         val seriesItems = series.size
         logSyncMemory(stage = "after_get_series", live = liveItems, movies = movieItems, series = seriesItems)
-        updateProgress("Telechargement des series...", seriesItems, 0)
+        updateSectionProgress(
+            "Import des series...",
+            MediaSection.Series,
+            SyncStatus.SyncSectionPhase.IMPORTING,
+            70,
+            seriesItems,
+            seriesItems,
+            0,
+        )
         val previousTrendingIds = mediaDao.getTrendingContentIds(TrendingSeriesType).toSet()
         mediaDao.clearSeries()
         upsertMappedInBatches(series, { it.toEntity() }) { entities ->
             mediaDao.upsertSeries(entities)
         }
+        updateSectionProgress(
+            "Mise a jour tendances series...",
+            MediaSection.Series,
+            SyncStatus.SyncSectionPhase.LOADING_TRENDS,
+            86,
+            seriesItems,
+            0,
+            0,
+        )
         val trendingItems = updateTrendingSeries(
             username = username,
             password = password,
@@ -619,7 +821,15 @@ class DefaultCatalogRepository(
             previousTrendingIds = previousTrendingIds,
             now = System.currentTimeMillis(),
         )
-        updateProgress("Mise a jour tendances series...", trendingItems, 0)
+        updateSectionProgress(
+            "Tendances series chargees",
+            MediaSection.Series,
+            SyncStatus.SyncSectionPhase.COMPLETED,
+            100,
+            seriesItems,
+            trendingItems,
+            0,
+        )
         logSyncMemory(stage = "after_series_room_write", live = liveItems, movies = movieItems, series = seriesItems)
         return seriesItems
     }
@@ -768,7 +978,16 @@ class DefaultCatalogRepository(
             _syncStatus.value = SyncStatus.Error(message)
             return Result.failure(IllegalStateException(message))
         }
-        _syncStatus.value = SyncStatus.Running(message = "Synchronisation M3U...", totalItems = 2)
+        _syncStatus.value = SyncStatus.Running(
+            message = "Synchronisation M3U...",
+            totalItems = 2,
+            catalogProgress = SyncStatus.CatalogProgress(
+                live = SyncStatus.SyncSectionProgress(
+                    phase = SyncStatus.SyncSectionPhase.RUNNING,
+                    progressPercent = 8,
+                ),
+            ),
+        )
         return try {
             val now = System.currentTimeMillis()
             val playlist = m3uPlaylistClient.fetch(m3uUrl)
@@ -777,7 +996,11 @@ class DefaultCatalogRepository(
                 completedItems = 1,
                 totalItems = 2,
                 catalogProgress = SyncStatus.CatalogProgress(
-                    live = SyncStatus.SyncSectionProgress(currentItems = playlist.channels.size),
+                    live = SyncStatus.SyncSectionProgress(
+                        currentItems = playlist.channels.size,
+                        phase = SyncStatus.SyncSectionPhase.IMPORTING,
+                        progressPercent = 72,
+                    ),
                 ),
             )
             categoryDao.deleteByType(MediaSection.Live.storageName)
@@ -801,12 +1024,24 @@ class DefaultCatalogRepository(
             _syncStatus.value = SyncStatus.Success(
                 message = "Synchronisation M3U terminee",
                 catalogProgress = SyncStatus.CatalogProgress(
-                    live = SyncStatus.SyncSectionProgress(currentItems = playlist.channels.size, completed = true),
+                    live = SyncStatus.SyncSectionProgress(
+                        currentItems = playlist.channels.size,
+                        completed = true,
+                        phase = SyncStatus.SyncSectionPhase.COMPLETED,
+                        progressPercent = 100,
+                    ),
                 ),
             )
             Result.success(Unit)
         } catch (error: Exception) {
-            _syncStatus.value = SyncStatus.Error("Synchronisation M3U indisponible")
+            _syncStatus.value = SyncStatus.Error(
+                "Synchronisation M3U indisponible",
+                catalogProgress = SyncStatus.CatalogProgress(
+                    live = SyncStatus.SyncSectionProgress(
+                        phase = SyncStatus.SyncSectionPhase.ERROR,
+                    ),
+                ),
+            )
             Result.failure(error)
         }
     }

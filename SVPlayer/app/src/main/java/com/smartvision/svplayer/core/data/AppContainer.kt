@@ -51,7 +51,11 @@ import com.smartvision.svplayer.domain.usecase.SavePlaybackProgressUseCase
 import com.smartvision.svplayer.domain.usecase.SynchronizeCatalogUseCase
 import com.smartvision.svplayer.domain.usecase.ToggleFavoriteUseCase
 import com.smartvision.svplayer.startup.StartupStateStore
+import com.smartvision.svplayer.startup.StartupCatalogWorkKind
+import com.smartvision.svplayer.startup.StartupCatalogWorkRequest
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import okhttp3.OkHttpClient
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import retrofit2.Retrofit
@@ -64,6 +68,8 @@ private val Context.appConfigDataStore by preferencesDataStore(name = "smartvisi
 
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
+    private val _startupCatalogWork = MutableStateFlow(StartupCatalogWorkRequest.None)
+    val startupCatalogWork: StateFlow<StartupCatalogWorkRequest> = _startupCatalogWork
     val accountManager = XtreamAccountManager(appContext)
     private val credentialsProvider = accountManager
     private val database = SVDatabase.build(appContext)
@@ -242,6 +248,20 @@ class AppContainer(context: Context) {
     val toggleFavorite = ToggleFavoriteUseCase(catalogRepository)
     val buildPlaybackRequest = BuildPlaybackRequestUseCase(catalogRepository)
     val savePlaybackProgress = SavePlaybackProgressUseCase(catalogRepository)
+
+    fun requestStartupCatalogWork(kind: StartupCatalogWorkKind) {
+        _startupCatalogWork.value = StartupCatalogWorkRequest(
+            kind = kind,
+            source = accountManager.activePlaylistSource.value,
+            requestedAtMs = System.currentTimeMillis(),
+        )
+    }
+
+    fun clearStartupCatalogWork(requestedAtMs: Long) {
+        if (_startupCatalogWork.value.requestedAtMs == requestedAtMs) {
+            _startupCatalogWork.value = StartupCatalogWorkRequest.None
+        }
+    }
 
     private fun activationBaseUrl(): String =
         BuildConfig.ACTIVATION_BASE_URL.ifBlank { "https://smartvisions.net/" }

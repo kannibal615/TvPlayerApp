@@ -116,7 +116,6 @@ class HomeViewModel(
                 "cachedSlides" to slides.value.size,
             ),
         )
-        refreshTrending()
         refreshSlides()
     }
 
@@ -202,6 +201,14 @@ class HomeViewModel(
                 ),
             )
         }
+    }
+
+    suspend fun loadSavedTrendingMovies(forceRefresh: Boolean = false) {
+        trendingMovies.value = homeContentRepository.refreshTrendingMovies(forceRefresh)
+    }
+
+    suspend fun loadSavedTrendingSeries(forceRefresh: Boolean = false) {
+        trendingSeries.value = homeContentRepository.refreshTrendingSeries(forceRefresh)
     }
 }
 

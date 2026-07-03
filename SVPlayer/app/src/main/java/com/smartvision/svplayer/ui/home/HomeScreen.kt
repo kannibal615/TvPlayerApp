@@ -2,7 +2,9 @@ package com.smartvision.svplayer.ui.home
 
 import android.media.MediaPlayer
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,12 +29,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.smartvision.svplayer.R
+import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
 import com.smartvision.svplayer.core.ui.viewModelFactory
@@ -40,11 +44,16 @@ import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.mock.HomeCategory
 import com.smartvision.svplayer.data.mock.HomeCategoryType
 import com.smartvision.svplayer.data.mock.HomeVisualStyle
+import com.smartvision.svplayer.domain.model.MediaSection
+import com.smartvision.svplayer.domain.model.SyncStatus
+import com.smartvision.svplayer.startup.StartupCatalogWorkKind
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 @Composable
@@ -86,6 +95,9 @@ fun HomeScreen(
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val startupWorkRequest by container.startupCatalogWork.collectAsStateWithLifecycle()
+    var catalogWorkUiState by remember { mutableStateOf(HomeCatalogWorkUiState.Idle) }
+    val catalogWorkActive = catalogWorkUiState.active
     val liveFocusRequester = remember { FocusRequester() }
     val continueFirstFocusRequester = remember { FocusRequester() }
     val movieTrendFirstFocusRequester = remember { FocusRequester() }
@@ -163,6 +175,10 @@ fun HomeScreen(
 
     DisposableEffect(Unit) {
         onDispose { verticalFocusJob?.cancel() }
+    }
+
+    BackHandler(enabled = catalogWorkActive) {
+        // Startup catalog work owns the remote until it finishes or fails.
     }
 
     suspend fun animateRowToFirst(targetName: String, rowState: LazyListState) {
@@ -366,7 +382,6 @@ fun HomeScreen(
         )
         playStartupChimeOnHome(context)
         viewModel.refreshSlides()
-        viewModel.refreshTrending()
         withFrameNanos { }
         liveFocusRequester.requestFocus()
         PerformanceDiagnosticRecorder.record(
@@ -375,9 +390,122 @@ fun HomeScreen(
         )
     }
 
+    suspend fun runLocalCatalogLoad(
+        source: PlaylistSource,
+        strings: SmartVisionStrings,
+        update: (HomeCatalogWorkUiState) -> Unit,
+        current: () -> HomeCatalogWorkUiState,
+        loadMovieTrends: suspend () -> Unit,
+        loadSeriesTrends: suspend () -> Unit,
+    ) {
+        fun setSection(section: MediaSection, phase: SyncStatus.SyncSectionPhase, progress: Int, message: String? = null) {
+            update(current().withSection(section, phase, progress, message))
+        }
+
+        setSection(MediaSection.Live, SyncStatus.SyncSectionPhase.RUNNING, 10, strings.catalogLoadInProgress)
+        container.catalogRepository.getLiveCategoriesSnapshot()
+        setSection(MediaSection.Live, SyncStatus.SyncSectionPhase.IMPORTING, 60, strings.catalogLoadInProgress)
+        container.catalogRepository.getAllLiveChannelsPage(offset = 0, limit = HomeStartupLivePageLimit)
+        setSection(MediaSection.Live, SyncStatus.SyncSectionPhase.COMPLETED, 100)
+
+        if (source != PlaylistSource.Xtream) return
+
+        setSection(MediaSection.Movies, SyncStatus.SyncSectionPhase.RUNNING, 10, strings.catalogLoadInProgress)
+        container.catalogRepository.getMovieCategoriesSnapshot()
+        setSection(MediaSection.Movies, SyncStatus.SyncSectionPhase.IMPORTING, 58, strings.catalogLoadInProgress)
+        container.catalogRepository.getAllMoviesPage(offset = 0, limit = HomeStartupMoviePageLimit)
+        setSection(MediaSection.Movies, SyncStatus.SyncSectionPhase.LOADING_TRENDS, 84, strings.catalogLoadInProgress)
+        loadMovieTrends()
+        setSection(MediaSection.Movies, SyncStatus.SyncSectionPhase.COMPLETED, 100)
+
+        setSection(MediaSection.Series, SyncStatus.SyncSectionPhase.RUNNING, 10, strings.catalogLoadInProgress)
+        container.catalogRepository.getSeriesCategoriesSnapshot()
+        setSection(MediaSection.Series, SyncStatus.SyncSectionPhase.IMPORTING, 58, strings.catalogLoadInProgress)
+        container.catalogRepository.getAllSeriesPage(offset = 0, limit = HomeStartupSeriesPageLimit)
+        setSection(MediaSection.Series, SyncStatus.SyncSectionPhase.LOADING_TRENDS, 84, strings.catalogLoadInProgress)
+        loadSeriesTrends()
+        setSection(MediaSection.Series, SyncStatus.SyncSectionPhase.COMPLETED, 100)
+    }
+
+    LaunchedEffect(startupWorkRequest.requestedAtMs) {
+        if (!startupWorkRequest.active) return@LaunchedEffect
+        val request = startupWorkRequest
+        catalogWorkUiState = HomeCatalogWorkUiState.initial(request.kind, request.source)
+        runCatching {
+            when (request.kind) {
+                StartupCatalogWorkKind.Synchronize -> {
+                    var moviesTrendsLoaded = false
+                    var seriesTrendsLoaded = false
+                    val statusJob = launch {
+                        container.catalogRepository.syncStatus.collect { status ->
+                            val nextState = status.toHomeCatalogWorkUiState(request.kind, request.source)
+                            if (nextState != null) {
+                                catalogWorkUiState = nextState
+                                if (request.source == PlaylistSource.Xtream &&
+                                    nextState.movies.phase == SyncStatus.SyncSectionPhase.COMPLETED &&
+                                    !moviesTrendsLoaded
+                                ) {
+                                    moviesTrendsLoaded = true
+                                    launch { viewModel.loadSavedTrendingMovies(forceRefresh = true) }
+                                }
+                                if (request.source == PlaylistSource.Xtream &&
+                                    nextState.series.phase == SyncStatus.SyncSectionPhase.COMPLETED &&
+                                    !seriesTrendsLoaded
+                                ) {
+                                    seriesTrendsLoaded = true
+                                    launch { viewModel.loadSavedTrendingSeries(forceRefresh = true) }
+                                }
+                            }
+                        }
+                    }
+                    try {
+                        if (container.accountManager.activePlaylistSource.value == PlaylistSource.Xtream) {
+                            val connection = container.xtreamConnectionManager.verifyQuick("home_startup_sync")
+                            if (!connection.isConnected) {
+                                throw IllegalStateException(connection.message.ifBlank { "Xtream unavailable" })
+                            }
+                        }
+                        container.xtreamRepository.clearCaches()
+                        container.catalogRepository.invalidateLocalCatalogCache()
+                        container.synchronizeCatalog().getOrThrow()
+                        if (request.source == PlaylistSource.Xtream) {
+                            if (!moviesTrendsLoaded) viewModel.loadSavedTrendingMovies(forceRefresh = true)
+                            if (!seriesTrendsLoaded) viewModel.loadSavedTrendingSeries(forceRefresh = true)
+                        }
+                    } finally {
+                        statusJob.cancel()
+                    }
+                }
+                StartupCatalogWorkKind.LoadLocal -> {
+                    runLocalCatalogLoad(
+                        source = request.source,
+                        strings = strings,
+                        update = { catalogWorkUiState = it },
+                        current = { catalogWorkUiState },
+                        loadMovieTrends = { viewModel.loadSavedTrendingMovies(forceRefresh = false) },
+                        loadSeriesTrends = { viewModel.loadSavedTrendingSeries(forceRefresh = false) },
+                    )
+                }
+                StartupCatalogWorkKind.None -> Unit
+            }
+        }.onSuccess {
+            catalogWorkUiState = catalogWorkUiState.completed()
+            container.clearStartupCatalogWork(request.requestedAtMs)
+        }.onFailure { error ->
+            Log.w(HomeFocusLogTag, "startup catalog work failed: ${error.javaClass.simpleName}", error)
+            catalogWorkUiState = catalogWorkUiState.failed(strings.catalogWorkFailed)
+            container.clearStartupCatalogWork(request.requestedAtMs)
+            delay(4_000L)
+            if (catalogWorkUiState.errorMessage != null) {
+                catalogWorkUiState = HomeCatalogWorkUiState.Idle
+            }
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
+            .onPreviewKeyEvent { catalogWorkActive }
             .background(
                 Brush.radialGradient(
                     colors = listOf(
@@ -445,10 +573,17 @@ fun HomeScreen(
                     HomeCategoryCard(
                         category = category,
                         onClick = {
-                            if (xtreamCatalogBlocked) onXtreamBlocked() else onNavigate(category.routeName)
+                            if (catalogWorkActive) {
+                                Unit
+                            } else if (xtreamCatalogBlocked) {
+                                onXtreamBlocked()
+                            } else {
+                                onNavigate(category.routeName)
+                            }
                         },
                         blocked = xtreamCatalogBlocked,
                         blockedMessage = strings.connectionUnavailable,
+                        workOverlay = catalogWorkUiState.overlayFor(category.id, strings),
                         focusRequester = if (category.id == "live") liveFocusRequester else null,
                         onDown = if (hasContinueWatching || hasMovieTrends || hasSeriesTrends) {
                             { requestFirstHomeRowFocus() }
@@ -611,4 +746,150 @@ private val HomeCategory.routeName: String
 private fun String.isHomeXtreamRoute(): Boolean =
     this == "live_tv" || this == "movies" || this == "series"
 
+private data class HomeCatalogWorkUiState(
+    val kind: StartupCatalogWorkKind = StartupCatalogWorkKind.None,
+    val source: PlaylistSource = PlaylistSource.Xtream,
+    val active: Boolean = false,
+    val live: HomeCatalogSectionUiState = HomeCatalogSectionUiState(),
+    val movies: HomeCatalogSectionUiState = HomeCatalogSectionUiState(),
+    val series: HomeCatalogSectionUiState = HomeCatalogSectionUiState(),
+    val errorMessage: String? = null,
+) {
+    fun withSection(
+        section: MediaSection,
+        phase: SyncStatus.SyncSectionPhase,
+        progress: Int,
+        message: String? = null,
+    ): HomeCatalogWorkUiState =
+        when (section) {
+            MediaSection.Live -> copy(live = live.copy(phase = phase, progress = progress, message = message))
+            MediaSection.Movies -> copy(movies = movies.copy(phase = phase, progress = progress, message = message))
+            MediaSection.Series -> copy(series = series.copy(phase = phase, progress = progress, message = message))
+        }
+
+    fun completed(): HomeCatalogWorkUiState =
+        copy(
+            active = false,
+            live = live.takeIf { source == PlaylistSource.Xtream || it.phase != SyncStatus.SyncSectionPhase.WAITING }
+                ?.copy(phase = SyncStatus.SyncSectionPhase.COMPLETED, progress = 100)
+                ?: live,
+            movies = movies.copy(phase = SyncStatus.SyncSectionPhase.COMPLETED, progress = 100),
+            series = series.copy(phase = SyncStatus.SyncSectionPhase.COMPLETED, progress = 100),
+        )
+
+    fun failed(message: String): HomeCatalogWorkUiState {
+        fun HomeCatalogSectionUiState.markFailedIfRunning(): HomeCatalogSectionUiState =
+            if (phase != SyncStatus.SyncSectionPhase.COMPLETED && phase != SyncStatus.SyncSectionPhase.WAITING) {
+                copy(phase = SyncStatus.SyncSectionPhase.ERROR, message = message)
+            } else {
+                this
+            }
+        return copy(
+            active = false,
+            live = live.markFailedIfRunning(),
+            movies = movies.markFailedIfRunning(),
+            series = series.markFailedIfRunning(),
+            errorMessage = message,
+        )
+    }
+
+    fun overlayFor(categoryId: String, strings: SmartVisionStrings): HomeCategoryWorkOverlay? {
+        val section = when (categoryId) {
+            "live" -> live
+            "movies" -> movies
+            "series" -> series
+            else -> return null
+        }
+        if (section.phase == SyncStatus.SyncSectionPhase.COMPLETED) return null
+        if (!active && section.phase != SyncStatus.SyncSectionPhase.ERROR) return null
+        val running = section.phase != SyncStatus.SyncSectionPhase.WAITING &&
+            section.phase != SyncStatus.SyncSectionPhase.ERROR
+        val label = when {
+            section.phase == SyncStatus.SyncSectionPhase.ERROR -> section.message ?: strings.catalogWorkFailed
+            kind == StartupCatalogWorkKind.LoadLocal -> strings.catalogLoadInProgress
+            else -> strings.catalogDownloadInProgress
+        }
+        return HomeCategoryWorkOverlay(
+            progress = section.progress.toFloat() / 100f,
+            active = active && running,
+            error = section.phase == SyncStatus.SyncSectionPhase.ERROR,
+            label = label,
+        )
+    }
+
+    companion object {
+        val Idle = HomeCatalogWorkUiState()
+
+        fun initial(kind: StartupCatalogWorkKind, source: PlaylistSource): HomeCatalogWorkUiState =
+            HomeCatalogWorkUiState(
+                kind = kind,
+                source = source,
+                active = true,
+                live = HomeCatalogSectionUiState(),
+                movies = if (source == PlaylistSource.Xtream) HomeCatalogSectionUiState() else HomeCatalogSectionUiState(
+                    phase = SyncStatus.SyncSectionPhase.COMPLETED,
+                    progress = 100,
+                ),
+                series = if (source == PlaylistSource.Xtream) HomeCatalogSectionUiState() else HomeCatalogSectionUiState(
+                    phase = SyncStatus.SyncSectionPhase.COMPLETED,
+                    progress = 100,
+                ),
+            )
+    }
+}
+
+private data class HomeCatalogSectionUiState(
+    val phase: SyncStatus.SyncSectionPhase = SyncStatus.SyncSectionPhase.WAITING,
+    val progress: Int = 0,
+    val message: String? = null,
+)
+
+private fun SyncStatus.toHomeCatalogWorkUiState(
+    kind: StartupCatalogWorkKind,
+    source: PlaylistSource,
+): HomeCatalogWorkUiState? =
+    when (this) {
+        SyncStatus.Idle -> null
+        is SyncStatus.Running -> HomeCatalogWorkUiState(
+            kind = kind,
+            source = source,
+            active = true,
+            live = catalogProgress.live.toHomeSectionUiState(),
+            movies = if (source == PlaylistSource.Xtream) catalogProgress.movies.toHomeSectionUiState() else HomeCatalogSectionUiState(
+                phase = SyncStatus.SyncSectionPhase.COMPLETED,
+                progress = 100,
+            ),
+            series = if (source == PlaylistSource.Xtream) catalogProgress.series.toHomeSectionUiState() else HomeCatalogSectionUiState(
+                phase = SyncStatus.SyncSectionPhase.COMPLETED,
+                progress = 100,
+            ),
+        )
+        is SyncStatus.Success -> HomeCatalogWorkUiState(
+            kind = kind,
+            source = source,
+            active = false,
+            live = catalogProgress.live.toHomeSectionUiState().copy(phase = SyncStatus.SyncSectionPhase.COMPLETED, progress = 100),
+            movies = catalogProgress.movies.toHomeSectionUiState().copy(phase = SyncStatus.SyncSectionPhase.COMPLETED, progress = 100),
+            series = catalogProgress.series.toHomeSectionUiState().copy(phase = SyncStatus.SyncSectionPhase.COMPLETED, progress = 100),
+        )
+        is SyncStatus.Error -> HomeCatalogWorkUiState(
+            kind = kind,
+            source = source,
+            active = false,
+            live = catalogProgress.live.toHomeSectionUiState(),
+            movies = catalogProgress.movies.toHomeSectionUiState(),
+            series = catalogProgress.series.toHomeSectionUiState(),
+            errorMessage = message,
+        ).failed(message)
+    }
+
+private fun SyncStatus.SyncSectionProgress.toHomeSectionUiState(): HomeCatalogSectionUiState =
+    HomeCatalogSectionUiState(
+        phase = phase,
+        progress = percent,
+    )
+
+private const val HomeStartupLivePageLimit = 96
+private const val HomeStartupMoviePageLimit = 72
+private const val HomeStartupSeriesPageLimit = 72
 private const val HomeFocusLogTag = "SVHomeFocus"
