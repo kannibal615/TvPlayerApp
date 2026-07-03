@@ -10,9 +10,9 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
 
-Gradle local constate le 2026-07-02:
-- `versionCode = 84`
-- `versionName = "0.1.81"`
+Gradle local constate le 2026-07-03:
+- `versionCode = 86`
+- `versionName = "0.1.83"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -26,7 +26,7 @@ Demarrage:
 - Les diagnostics startup visibles incluent pourcentage, etape courante/total, elements traites/restants quand connus, temps ecoule, ETA estimee et details Live/Films/Series pendant une synchronisation catalogue.
 - `MainActivity` attend la premiere frame Compose avant de lancer les checks startup, pour afficher immediatement la barre et les statuts au-dessus de la preview systeme.
 - `MainActivity` applique le theme normal et remplace le `windowBackground` par un fond opaque neutre juste avant `AppNavigation`, afin que le fond/logo splash ne restent pas visibles derriere Home.
-- Depuis le 2026-07-03, `MainActivity` ne synchronise plus le catalogue et ne charge plus les categories/pages catalogue pendant le splash. Il calcule seulement la decision de fraicheur via `SyncFrequencyPolicy` et les compteurs locaux, puis publie `StartupCatalogWorkRequest` dans `AppContainer` pour que Home affiche les cards et orchestre `Synchronize` ou `LoadLocal`.
+- Depuis le 2026-07-03, `MainActivity` ne synchronise plus le catalogue et ne charge plus les categories/pages catalogue pendant le splash. Il lit seulement l'activation locale, efface toute demande startup residuelle, termine le splash rapidement et rend directement `AppNavigation` / Home. La decision de synchro automatique est deplacee apres le premier rendu Home; seule une vraie `Synchronize` peut bloquer la telecommande.
 - Le splash systeme affiche le logo wide plus petit et plus haut; l'overlay Compose place la barre de progression centree sous ce logo et affiche une seule ligne `pourcentage + statut`.
 - L'initialisation diagnostic `AppContainer` dans `SVPlayerApplication` est differee et lancee hors thread UI, pour ne pas bloquer le rendu initial du splash Compose.
 - `AppNavigation` ne contient plus de `StartupHandoffScreen`; apres le statut `Demarrage en cours...`, `MainActivity` rend directement la navigation.
@@ -148,6 +148,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-03: release publiee `0.1.83` / `versionCode 86` pour splash sans synchro ni chargement catalogue, Home immediat, synchro post-Home uniquement, categories initiales limitees a `20` par section et tendances `10 + 10` aleatoires Room hors adulte. APK `smartvision-tv-v86-9fcd8f69.apk`, SHA256 `9fcd8f69555e3c7e99b495d8c136134f6d3814ef758afc21e17d97dd26568751`, manifeste public, `app_update.php`, APK stable et hash verifies.
 - 2026-07-03: release locale `0.1.82` / `versionCode 85` construite avec `:app:assembleRelease`, garde-fou `guard_release_version.ps1 -RequireBuildMetadata` OK, APK `app-release.apk` installe et lance sur Firestick `192.168.1.33:5555`; pas de deploiement backend/prod effectue dans cette intervention.
 - 2026-07-02: release publiee `0.1.81` / `versionCode 84` pour splash hybride: fond + logo reduit dans la preview systeme, barre/statuts/diagnostics en Compose, nettoyage du fond avant Home; APK `smartvision-tv-v84-1577e450.apk`, SHA256 `1577e4508feb3ae94d5ba672f67ff851d0a1779b6b94a34dd257044b4a65afb0`, manifeste public, `app_update.php`, APK stable et hash verifies.
 - 2026-07-03: optimisation locale `releaseDiagnostic`: recorder diagnostic asynchrone, splash logo plus petit/remonte, progress bar centree sous le logo et statut simplifie avec pourcentage.

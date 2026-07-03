@@ -124,21 +124,28 @@ class SeriesViewModel(
         val cachedCategories = catalogRepository.getCachedSeriesCategories()
         if (!cachedCategories.isNullOrEmpty()) {
             applyCategories(cachedCategories)
+            return
         }
         viewModelScope.launch {
-            if (cachedCategories.isNullOrEmpty()) {
-                _uiState.value = SeriesScreenState(categoriesLoading = true)
-            }
-            runCatching {
-                catalogRepository.getSeriesCategoriesSnapshot()
-            }.onSuccess { categories ->
-                applyCategories(categories)
-            }.onFailure { error ->
-                _uiState.value = SeriesScreenState(
-                    categoriesLoading = false,
-                    errorMessage = error.userMessage("Impossible de charger les categories Series."),
-                )
-            }
+            _uiState.value = SeriesScreenState(categoriesLoading = true)
+            var initialApplied = false
+            runCatching { catalogRepository.getInitialSeriesCategoriesSnapshot(InitialCategoryLimit) }
+                .onSuccess { categories ->
+                    if (categories.isNotEmpty()) {
+                        initialApplied = true
+                        applyCategories(categories)
+                    }
+                }
+            runCatching { catalogRepository.getSeriesCategoriesSnapshot() }
+                .onSuccess { categories -> applyCategories(categories) }
+                .onFailure { error ->
+                    if (!initialApplied) {
+                        _uiState.value = SeriesScreenState(
+                            categoriesLoading = false,
+                            errorMessage = error.userMessage("Impossible de charger les categories Series."),
+                        )
+                    }
+                }
         }
     }
 
@@ -589,6 +596,7 @@ private data class PageLoadResult<T>(
 )
 
 private const val SeriesItemsPageSize = 72
+private const val InitialCategoryLimit = 20
 private const val FavoriteSeriesCategoryId = "__favorites_series__"
 private const val HistorySeriesCategoryId = "__history_series__"
 private const val AllSeriesCategoryId = "__all_series__"

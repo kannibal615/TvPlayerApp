@@ -1,5 +1,52 @@
 # AI Changelog
 
+## 2026-07-03 - Splash sans synchro, Home immediat et release prod 0.1.83
+
+Type:
+- android
+- performance
+- ui-tv
+- catalogue
+- release-prod
+
+Resume:
+- `MainActivity` ne lance plus aucune synchro, aucun `LoadLocal`, aucun prechargement Home et aucun chargement catalogue pendant le splash.
+- Le splash garde seulement les controles legers indispensables, lit l'activation locale, efface les demandes startup residuelles et rend directement `AppNavigation` / Home.
+- Home decide la synchronisation automatique apres premier rendu et bloque la telecommande uniquement pendant une vraie `Synchronize`.
+- Live TV / Movies / Series chargent d'abord `20` categories Room maximum, puis completent discretement la liste complete dans chaque ViewModel.
+- Les tendances Home utilisent `10` films + `10` series aleatoires depuis Room, hors adulte, sans recalcul `trending_media`, sans validation URL et sans appels details Xtream.
+- Version release incrementee a `0.1.83` / `versionCode 86`.
+
+Fichiers code/version:
+- `app/build.gradle.kts`
+- `app/src/main/java/com/smartvision/svplayer/MainActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/core/data/AppContainer.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/home/HomeContentRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/dao/CategoryDao.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/dao/MediaDao.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/domain/repository/CatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeCollectionsScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/LiveTvViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/movies/MoviesViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/series/SeriesViewModel.kt`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Verification:
+- `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\scripts\guard_release_version.ps1` OK.
+- `.\gradlew.bat :app:assembleRelease --console=plain --no-daemon '-Dkotlin.compiler.execution.strategy=in-process' '-Dorg.gradle.workers.max=1'` OK en 13m30.
+- `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\scripts\guard_release_version.ps1 -RequireBuildMetadata` OK.
+- `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\scripts\deploy_activation_phase1.ps1 -SkipInstall` OK.
+- Prod verifiee: `downloads/smartvision-tv.version.json`, `api/app_update.php`, APK versionne `smartvision-tv-v86-9fcd8f69.apk` et APK stable cache-buste publient `0.1.83` / `versionCode 86`.
+- SHA256 local/versionne/stable: `9fcd8f69555e3c7e99b495d8c136134f6d3814ef758afc21e17d97dd26568751`.
+
 ## 2026-07-03 - Deplacement synchro/catalogue Splash vers Home et release locale 0.1.82
 
 Type:

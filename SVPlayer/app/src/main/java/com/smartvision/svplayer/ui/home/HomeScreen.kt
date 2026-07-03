@@ -47,6 +47,7 @@ import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import com.smartvision.svplayer.domain.model.MediaSection
 import com.smartvision.svplayer.domain.model.SyncStatus
 import com.smartvision.svplayer.startup.StartupCatalogWorkKind
+import com.smartvision.svplayer.sync.SyncFrequencyPolicy
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
@@ -54,7 +55,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 
 @Composable
 fun HomeScreen(
@@ -88,7 +91,6 @@ fun HomeScreen(
             HomeViewModel(
                 userContentRepository = container.userContentRepository,
                 catalogRepository = container.catalogRepository,
-                xtreamRepository = container.xtreamRepository,
                 homeSlidesRepository = container.homeSlidesRepository,
                 homeContentRepository = container.homeContentRepository,
             )
@@ -98,6 +100,7 @@ fun HomeScreen(
     val startupWorkRequest by container.startupCatalogWork.collectAsStateWithLifecycle()
     var catalogWorkUiState by remember { mutableStateOf(HomeCatalogWorkUiState.Idle) }
     val catalogWorkActive = catalogWorkUiState.active
+    val catalogSyncActive = catalogWorkActive && catalogWorkUiState.kind == StartupCatalogWorkKind.Synchronize
     val liveFocusRequester = remember { FocusRequester() }
     val continueFirstFocusRequester = remember { FocusRequester() }
     val movieTrendFirstFocusRequester = remember { FocusRequester() }
@@ -177,8 +180,8 @@ fun HomeScreen(
         onDispose { verticalFocusJob?.cancel() }
     }
 
-    BackHandler(enabled = catalogWorkActive) {
-        // Startup catalog work owns the remote until it finishes or fails.
+    BackHandler(enabled = catalogSyncActive) {
+        // A real synchronization owns the remote until it finishes or fails.
     }
 
     suspend fun animateRowToFirst(targetName: String, rowState: LazyListState) {
@@ -388,43 +391,13 @@ fun HomeScreen(
             sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
             event = "home_initial_focus_requested",
         )
-    }
-
-    suspend fun runLocalCatalogLoad(
-        source: PlaylistSource,
-        strings: SmartVisionStrings,
-        update: (HomeCatalogWorkUiState) -> Unit,
-        current: () -> HomeCatalogWorkUiState,
-        loadMovieTrends: suspend () -> Unit,
-        loadSeriesTrends: suspend () -> Unit,
-    ) {
-        fun setSection(section: MediaSection, phase: SyncStatus.SyncSectionPhase, progress: Int, message: String? = null) {
-            update(current().withSection(section, phase, progress, message))
+        if (shouldRequestPostHomeCatalogSync(container)) {
+            PerformanceDiagnosticRecorder.record(
+                sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+                event = "home_post_render_sync_requested",
+            )
+            container.requestStartupCatalogWork(StartupCatalogWorkKind.Synchronize)
         }
-
-        setSection(MediaSection.Live, SyncStatus.SyncSectionPhase.RUNNING, 10, strings.catalogLoadInProgress)
-        container.catalogRepository.getLiveCategoriesSnapshot()
-        setSection(MediaSection.Live, SyncStatus.SyncSectionPhase.IMPORTING, 60, strings.catalogLoadInProgress)
-        container.catalogRepository.getAllLiveChannelsPage(offset = 0, limit = HomeStartupLivePageLimit)
-        setSection(MediaSection.Live, SyncStatus.SyncSectionPhase.COMPLETED, 100)
-
-        if (source != PlaylistSource.Xtream) return
-
-        setSection(MediaSection.Movies, SyncStatus.SyncSectionPhase.RUNNING, 10, strings.catalogLoadInProgress)
-        container.catalogRepository.getMovieCategoriesSnapshot()
-        setSection(MediaSection.Movies, SyncStatus.SyncSectionPhase.IMPORTING, 58, strings.catalogLoadInProgress)
-        container.catalogRepository.getAllMoviesPage(offset = 0, limit = HomeStartupMoviePageLimit)
-        setSection(MediaSection.Movies, SyncStatus.SyncSectionPhase.LOADING_TRENDS, 84, strings.catalogLoadInProgress)
-        loadMovieTrends()
-        setSection(MediaSection.Movies, SyncStatus.SyncSectionPhase.COMPLETED, 100)
-
-        setSection(MediaSection.Series, SyncStatus.SyncSectionPhase.RUNNING, 10, strings.catalogLoadInProgress)
-        container.catalogRepository.getSeriesCategoriesSnapshot()
-        setSection(MediaSection.Series, SyncStatus.SyncSectionPhase.IMPORTING, 58, strings.catalogLoadInProgress)
-        container.catalogRepository.getAllSeriesPage(offset = 0, limit = HomeStartupSeriesPageLimit)
-        setSection(MediaSection.Series, SyncStatus.SyncSectionPhase.LOADING_TRENDS, 84, strings.catalogLoadInProgress)
-        loadSeriesTrends()
-        setSection(MediaSection.Series, SyncStatus.SyncSectionPhase.COMPLETED, 100)
     }
 
     LaunchedEffect(startupWorkRequest.requestedAtMs) {
@@ -477,14 +450,7 @@ fun HomeScreen(
                     }
                 }
                 StartupCatalogWorkKind.LoadLocal -> {
-                    runLocalCatalogLoad(
-                        source = request.source,
-                        strings = strings,
-                        update = { catalogWorkUiState = it },
-                        current = { catalogWorkUiState },
-                        loadMovieTrends = { viewModel.loadSavedTrendingMovies(forceRefresh = false) },
-                        loadSeriesTrends = { viewModel.loadSavedTrendingSeries(forceRefresh = false) },
-                    )
+                    Unit
                 }
                 StartupCatalogWorkKind.None -> Unit
             }
@@ -505,7 +471,7 @@ fun HomeScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .onPreviewKeyEvent { catalogWorkActive }
+            .onPreviewKeyEvent { catalogSyncActive }
             .background(
                 Brush.radialGradient(
                     colors = listOf(
@@ -573,7 +539,7 @@ fun HomeScreen(
                     HomeCategoryCard(
                         category = category,
                         onClick = {
-                            if (catalogWorkActive) {
+                            if (catalogSyncActive) {
                                 Unit
                             } else if (xtreamCatalogBlocked) {
                                 onXtreamBlocked()
@@ -889,7 +855,18 @@ private fun SyncStatus.SyncSectionProgress.toHomeSectionUiState(): HomeCatalogSe
         progress = percent,
     )
 
-private const val HomeStartupLivePageLimit = 96
-private const val HomeStartupMoviePageLimit = 72
-private const val HomeStartupSeriesPageLimit = 72
 private const val HomeFocusLogTag = "SVHomeFocus"
+
+private suspend fun shouldRequestPostHomeCatalogSync(
+    container: com.smartvision.svplayer.core.data.AppContainer,
+): Boolean {
+    val source = container.accountManager.activePlaylistSource.value
+    if (source == PlaylistSource.Xtream && !container.accountManager.current().isConfigured) return false
+    if (source == PlaylistSource.M3u && container.accountManager.m3uUrl.value.isBlank()) return false
+    val settings = container.settingsRepository.settings.first()
+    val policy = SyncFrequencyPolicy.from(settings.syncFrequency)
+    if (policy.runOnStartup) return true
+    val repeatHours = policy.repeatHours ?: return false
+    val lastSync = container.syncStateDao.get()?.lastSync ?: return true
+    return System.currentTimeMillis() - lastSync >= TimeUnit.HOURS.toMillis(repeatHours)
+}

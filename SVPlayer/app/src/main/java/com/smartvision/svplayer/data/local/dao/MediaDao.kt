@@ -78,10 +78,7 @@ interface MediaDao {
     suspend fun getMovie(streamId: Int): MovieEntity?
 
     @Query(
-        "SELECT movies.* FROM trending_media " +
-            "INNER JOIN movies ON movies.streamId = trending_media.contentId " +
-            "WHERE trending_media.contentType = 'movie' " +
-            "ORDER BY RANDOM() LIMIT :limit",
+        "SELECT * FROM movies ORDER BY RANDOM() LIMIT :limit",
     )
     suspend fun getTrendingMovies(limit: Int): List<MovieEntity>
 
@@ -127,10 +124,7 @@ interface MediaDao {
     suspend fun getSeries(seriesId: Int): SeriesEntity?
 
     @Query(
-        "SELECT series.* FROM trending_media " +
-            "INNER JOIN series ON series.seriesId = trending_media.contentId " +
-            "WHERE trending_media.contentType = 'series' " +
-            "ORDER BY RANDOM() LIMIT :limit",
+        "SELECT * FROM series ORDER BY RANDOM() LIMIT :limit",
     )
     suspend fun getTrendingSeries(limit: Int): List<SeriesEntity>
 

@@ -95,21 +95,28 @@ class MoviesViewModel(
         val cachedCategories = catalogRepository.getCachedMovieCategories()
         if (!cachedCategories.isNullOrEmpty()) {
             applyCategories(cachedCategories)
+            return
         }
         viewModelScope.launch {
-            if (cachedCategories.isNullOrEmpty()) {
-                _uiState.value = MoviesScreenState(categoriesLoading = true)
-            }
-            runCatching {
-                catalogRepository.getMovieCategoriesSnapshot()
-            }.onSuccess { categories ->
-                applyCategories(categories)
-            }.onFailure { error ->
-                _uiState.value = MoviesScreenState(
-                    categoriesLoading = false,
-                    errorMessage = error.userMessage("Impossible de charger les categories Films."),
-                )
-            }
+            _uiState.value = MoviesScreenState(categoriesLoading = true)
+            var initialApplied = false
+            runCatching { catalogRepository.getInitialMovieCategoriesSnapshot(InitialCategoryLimit) }
+                .onSuccess { categories ->
+                    if (categories.isNotEmpty()) {
+                        initialApplied = true
+                        applyCategories(categories)
+                    }
+                }
+            runCatching { catalogRepository.getMovieCategoriesSnapshot() }
+                .onSuccess { categories -> applyCategories(categories) }
+                .onFailure { error ->
+                    if (!initialApplied) {
+                        _uiState.value = MoviesScreenState(
+                            categoriesLoading = false,
+                            errorMessage = error.userMessage("Impossible de charger les categories Films."),
+                        )
+                    }
+                }
         }
     }
 
@@ -459,6 +466,7 @@ private data class PageLoadResult<T>(
 )
 
 private const val MovieItemsPageSize = 72
+private const val InitialCategoryLimit = 20
 private const val FavoriteMovieCategoryId = "__favorites_movies__"
 private const val HistoryMovieCategoryId = "__history_movies__"
 private const val AllMovieCategoryId = "__all_movies__"

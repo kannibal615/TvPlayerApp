@@ -234,8 +234,6 @@ class AppContainer(context: Context) {
     )
     val homeContentRepository = HomeContentRepository(
         catalogRepository = catalogRepository,
-        xtreamRepository = xtreamRepository,
-        appConfigRepository = appConfigRepository,
         accountManager = accountManager,
         syncStateDao = database.syncStateDao(),
     )

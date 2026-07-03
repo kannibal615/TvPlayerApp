@@ -13,7 +13,6 @@ import com.smartvision.svplayer.data.mock.HomePreviewMode
 import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
-import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.domain.model.PlaybackKind
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import kotlinx.coroutines.Job
@@ -36,7 +35,6 @@ data class HomeUiState(
 class HomeViewModel(
     private val userContentRepository: UserContentRepository,
     private val catalogRepository: CatalogRepository,
-    private val xtreamRepository: XtreamRepository,
     private val homeSlidesRepository: HomeSlidesRepository,
     private val homeContentRepository: HomeContentRepository,
 ) : ViewModel() {
@@ -59,7 +57,7 @@ class HomeViewModel(
                 .distinctBy(::historyGroupingKey)
                 .take(10)
             val items = recent.mapNotNull { item ->
-                toContinueItemWithPreview(item, catalogRepository, xtreamRepository)
+                toContinueItemWithPreview(item, catalogRepository)
             }
             PerformanceDiagnosticRecorder.recordDuration(
                 sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
@@ -258,7 +256,6 @@ private fun toContinueItem(progress: PlaybackProgressEntity): ContinueItem? {
 private suspend fun toContinueItemWithPreview(
     progress: PlaybackProgressEntity,
     catalogRepository: CatalogRepository,
-    xtreamRepository: XtreamRepository,
 ): ContinueItem? {
     val base = toContinueItem(progress) ?: return null
     val previewKind = progress.contentType.toPreviewPlaybackKind() ?: return base
@@ -271,18 +268,9 @@ private suspend fun toContinueItemWithPreview(
         UserContentType.Movie, UserContentType.Episode -> HomePreviewMode.ResumeLoop
         else -> HomePreviewMode.None
     }
-    val previewImageUrl = when (progress.contentType) {
-        UserContentType.Movie -> progress.contentId.toIntOrNull()?.let { movieId ->
-            runCatching { xtreamRepository.getMovieDetails(movieId).backdropUrl }.getOrNull()
-        }
-        UserContentType.Episode -> progress.parentContentId?.toIntOrNull()?.let { seriesId ->
-            runCatching { xtreamRepository.getSeriesDetails(seriesId).backdropUrl }.getOrNull()
-        }
-        else -> null
-    }?.takeIf { it.isNotBlank() }
     return base.copy(
         previewUrl = url,
-        previewImageUrl = previewImageUrl ?: base.previewImageUrl,
+        previewImageUrl = base.previewImageUrl,
         previewMode = previewMode,
         previewStartPositionMs = if (previewMode == HomePreviewMode.ResumeLoop) {
             (request.resumePositionMs.takeIf { it > 0L } ?: progress.positionMs).coerceAtLeast(0L)

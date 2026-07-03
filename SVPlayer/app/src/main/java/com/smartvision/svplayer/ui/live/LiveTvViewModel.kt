@@ -124,22 +124,29 @@ class LiveTvViewModel(
         val cachedCategories = catalogRepository.getCachedLiveCategories()
         if (!cachedCategories.isNullOrEmpty()) {
             applyCategories(cachedCategories)
+            return
         }
         viewModelScope.launch {
-            if (cachedCategories.isNullOrEmpty()) {
-                _uiState.value = LiveTvUiState(categoriesLoading = true)
+            _uiState.value = LiveTvUiState(categoriesLoading = true)
+            var initialApplied = false
+            runCatching { catalogRepository.getInitialLiveCategoriesSnapshot(InitialCategoryLimit) }
+                .onSuccess { categories ->
+                    if (categories.isNotEmpty()) {
+                        initialApplied = true
+                        applyCategories(categories)
+                    }
+                }
+            runCatching { catalogRepository.getLiveCategoriesSnapshot() }
+                .onSuccess { categories -> applyCategories(categories) }
+                .onFailure { error ->
+                    if (!initialApplied) {
+                        _uiState.value = LiveTvUiState(
+                            categoriesLoading = false,
+                            errorMessage = error.userMessage("Impossible de charger les categories Xtream."),
+                        )
+                    }
+                }
             }
-            runCatching {
-                catalogRepository.getLiveCategoriesSnapshot()
-            }.onSuccess { categories ->
-                applyCategories(categories)
-            }.onFailure { error ->
-                _uiState.value = LiveTvUiState(
-                    categoriesLoading = false,
-                    errorMessage = error.userMessage("Impossible de charger les categories Xtream."),
-                )
-            }
-        }
     }
 
     private fun applyCategories(categoriesSnapshot: List<Category>) {
@@ -554,6 +561,7 @@ private data class PageLoadResult<T>(
 
 private const val LiveItemsPageSize = 96
 private const val EpgCategoryScanPageSize = 500
+private const val InitialCategoryLimit = 20
 private const val FavoriteLiveCategoryId = "__favorites_live__"
 private const val HistoryLiveCategoryId = "__history_live__"
 private const val AllLiveCategoryId = "__all_live__"

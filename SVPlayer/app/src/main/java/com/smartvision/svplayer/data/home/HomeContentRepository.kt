@@ -3,20 +3,15 @@ package com.smartvision.svplayer.data.home
 import android.os.SystemClock
 import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.config.XtreamAccountManager
-import com.smartvision.svplayer.data.appconfig.AppConfigRepository
-import com.smartvision.svplayer.data.appconfig.TrendingConfig
-import com.smartvision.svplayer.data.appconfig.defaultTrendingConfig
 import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
 import com.smartvision.svplayer.data.local.dao.SyncStateDao
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.mock.HomePreviewMode
 import com.smartvision.svplayer.data.mock.HomeVisualStyle
-import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.domain.model.TrendingCatalogItem
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 
@@ -27,8 +22,6 @@ data class HomeTrendingSnapshot(
 
 class HomeContentRepository(
     private val catalogRepository: CatalogRepository,
-    private val xtreamRepository: XtreamRepository,
-    private val appConfigRepository: AppConfigRepository,
     private val accountManager: XtreamAccountManager,
     private val syncStateDao: SyncStateDao,
 ) {
@@ -83,8 +76,7 @@ class HomeContentRepository(
             return updateCachedTrending(key = key, movies = emptyList()).movies
         }
         return withContext(Dispatchers.IO) {
-            val trendingConfig = loadTrendingConfig()
-            runCatching { catalogRepository.getTrendingMovieItems(trendingConfig.candidateLimit) }
+            runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingSectionLimit) }
                 .getOrDefault(emptyList())
                 .also { candidates ->
                     PerformanceDiagnosticRecorder.recordDuration(
@@ -94,7 +86,8 @@ class HomeContentRepository(
                         fields = mapOf("candidates" to candidates.size),
                     )
                 }
-                .mapTrendsUntilLimit(trendingConfig) { it.toMovieTrendItem(trendingConfig) }
+                .mapNotNull { it.toMovieTrendItem() }
+                .take(HomeTrendingSectionLimit)
                 .let { movies -> updateCachedTrending(key = key, movies = movies).movies }
         }
     }
@@ -114,8 +107,7 @@ class HomeContentRepository(
             return updateCachedTrending(key = key, series = emptyList()).series
         }
         return withContext(Dispatchers.IO) {
-            val trendingConfig = loadTrendingConfig()
-            runCatching { catalogRepository.getTrendingSeriesItems(trendingConfig.candidateLimit) }
+            runCatching { catalogRepository.getTrendingSeriesItems(HomeTrendingSectionLimit) }
                 .getOrDefault(emptyList())
                 .also { candidates ->
                     PerformanceDiagnosticRecorder.recordDuration(
@@ -125,7 +117,8 @@ class HomeContentRepository(
                         fields = mapOf("candidates" to candidates.size),
                     )
                 }
-                .mapTrendsUntilLimit(trendingConfig) { it.toSeriesTrendItem(trendingConfig) }
+                .mapNotNull { it.toSeriesTrendItem() }
+                .take(HomeTrendingSectionLimit)
                 .let { series -> updateCachedTrending(key = key, series = series).series }
         }
     }
@@ -161,11 +154,10 @@ class HomeContentRepository(
                 }
         }
         return withContext(Dispatchers.IO) {
-            val trendingConfig = loadTrendingConfig()
             coroutineScope {
                 val movies = async {
                     val candidatesStart = SystemClock.elapsedRealtime()
-                    runCatching { catalogRepository.getTrendingMovieItems(trendingConfig.candidateLimit) }
+                    runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingSectionLimit) }
                         .getOrDefault(emptyList())
                         .also { candidates ->
                             PerformanceDiagnosticRecorder.recordDuration(
@@ -175,11 +167,12 @@ class HomeContentRepository(
                                 fields = mapOf("candidates" to candidates.size),
                             )
                         }
-                        .mapTrendsUntilLimit(trendingConfig) { it.toMovieTrendItem(trendingConfig) }
+                        .mapNotNull { it.toMovieTrendItem() }
+                        .take(HomeTrendingSectionLimit)
                 }
                 val series = async {
                     val candidatesStart = SystemClock.elapsedRealtime()
-                    runCatching { catalogRepository.getTrendingSeriesItems(trendingConfig.candidateLimit) }
+                    runCatching { catalogRepository.getTrendingSeriesItems(HomeTrendingSectionLimit) }
                         .getOrDefault(emptyList())
                         .also { candidates ->
                             PerformanceDiagnosticRecorder.recordDuration(
@@ -189,7 +182,8 @@ class HomeContentRepository(
                                 fields = mapOf("candidates" to candidates.size),
                             )
                         }
-                        .mapTrendsUntilLimit(trendingConfig) { it.toSeriesTrendItem(trendingConfig) }
+                        .mapNotNull { it.toSeriesTrendItem() }
+                        .take(HomeTrendingSectionLimit)
                 }
                 HomeTrendingSnapshot(
                     movies = movies.await(),
@@ -216,23 +210,6 @@ class HomeContentRepository(
             lastSync = syncStateDao.get()?.lastSync ?: 0L,
         )
 
-    private suspend fun loadTrendingConfig(): TrendingConfig =
-        runCatching { appConfigRepository.loadConfig().trending }
-            .getOrDefault(defaultTrendingConfig())
-            .also { trendingConfig ->
-                PerformanceDiagnosticRecorder.record(
-                    sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                    event = "home_trending_config_loaded",
-                    fields = mapOf(
-                        "candidateLimit" to trendingConfig.candidateLimit,
-                        "sectionLimit" to trendingConfig.sectionLimit,
-                        "useRatingFilter" to trendingConfig.useRatingFilter,
-                        "minimumRating" to trendingConfig.minimumRating,
-                        "requireLandscapeImage" to trendingConfig.requireLandscapeImage,
-                    ),
-                )
-            }
-
     private fun updateCachedTrending(
         key: HomeTrendingCacheKey,
         movies: List<ContinueItem>? = null,
@@ -249,32 +226,9 @@ class HomeContentRepository(
         return snapshot
     }
 
-    private suspend fun TrendingCatalogItem.toMovieTrendItem(
-        config: TrendingConfig,
-    ): ContinueItem? {
+    private fun TrendingCatalogItem.toMovieTrendItem(): ContinueItem? {
         // PERF_DIAG: per-candidate details are intentionally data-only; URLs/secrets are not written.
         val startedAt = SystemClock.elapsedRealtime()
-        if (config.useRatingFilter && rating.toTrendRatingValue() < config.minimumRating) {
-            PerformanceDiagnosticRecorder.recordDuration(
-                sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                event = "home_trending_movie_rejected",
-                startedAtMs = startedAt,
-                fields = mapOf("contentId" to contentId, "title" to title, "reason" to "rating_filter", "rating" to rating),
-            )
-            return null
-        }
-        val backdropUrl = runCatching { xtreamRepository.getMovieDetails(contentId).backdropUrl }
-            .getOrNull()
-            ?.takeIf { it.isNotBlank() }
-        if (config.requireLandscapeImage && backdropUrl.isNullOrBlank()) {
-            PerformanceDiagnosticRecorder.recordDuration(
-                sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                event = "home_trending_movie_rejected",
-                startedAtMs = startedAt,
-                fields = mapOf("contentId" to contentId, "title" to title, "reason" to "missing_backdrop"),
-            )
-            return null
-        }
         PerformanceDiagnosticRecorder.recordDuration(
             sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
             event = "home_trending_movie_accepted",
@@ -286,7 +240,6 @@ class HomeContentRepository(
                 "rating" to rating,
                 "year" to year,
                 "hasPoster" to !posterUrl.isNullOrBlank(),
-                "hasBackdrop" to !backdropUrl.isNullOrBlank(),
                 "hasPreviewUrl" to !previewUrl.isNullOrBlank(),
             ),
         )
@@ -298,39 +251,16 @@ class HomeContentRepository(
             progress = 0f,
             visualStyle = HomeVisualStyle.Cinema,
             imageUrl = posterUrl,
-            previewImageUrl = backdropUrl,
+            previewImageUrl = posterUrl,
             mediaType = "FILM",
             previewUrl = previewUrl,
             previewMode = HomePreviewMode.TrendSegments,
         )
     }
 
-    private suspend fun TrendingCatalogItem.toSeriesTrendItem(
-        config: TrendingConfig,
-    ): ContinueItem? {
+    private fun TrendingCatalogItem.toSeriesTrendItem(): ContinueItem? {
         // PERF_DIAG: per-candidate details are intentionally data-only; URLs/secrets are not written.
         val startedAt = SystemClock.elapsedRealtime()
-        if (config.useRatingFilter && rating.toTrendRatingValue() < config.minimumRating) {
-            PerformanceDiagnosticRecorder.recordDuration(
-                sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                event = "home_trending_series_rejected",
-                startedAtMs = startedAt,
-                fields = mapOf("contentId" to contentId, "title" to title, "reason" to "rating_filter", "rating" to rating),
-            )
-            return null
-        }
-        val backdropUrl = runCatching { xtreamRepository.getSeriesDetails(contentId).backdropUrl }
-            .getOrNull()
-            ?.takeIf { it.isNotBlank() }
-        if (config.requireLandscapeImage && backdropUrl.isNullOrBlank()) {
-            PerformanceDiagnosticRecorder.recordDuration(
-                sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                event = "home_trending_series_rejected",
-                startedAtMs = startedAt,
-                fields = mapOf("contentId" to contentId, "title" to title, "reason" to "missing_backdrop"),
-            )
-            return null
-        }
         PerformanceDiagnosticRecorder.recordDuration(
             sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
             event = "home_trending_series_accepted",
@@ -342,7 +272,6 @@ class HomeContentRepository(
                 "rating" to rating,
                 "year" to year,
                 "hasPoster" to !posterUrl.isNullOrBlank(),
-                "hasBackdrop" to !backdropUrl.isNullOrBlank(),
                 "hasPreviewUrl" to !previewUrl.isNullOrBlank(),
             ),
         )
@@ -354,7 +283,7 @@ class HomeContentRepository(
             progress = 0f,
             visualStyle = HomeVisualStyle.Series,
             imageUrl = posterUrl,
-            previewImageUrl = backdropUrl,
+            previewImageUrl = posterUrl,
             mediaType = "SERIE",
             previewUrl = previewUrl,
             previewMode = HomePreviewMode.TrendSegments,
@@ -380,29 +309,6 @@ private data class HomeTrendingCacheKey(
     val lastSync: Long,
 )
 
-private suspend fun List<TrendingCatalogItem>.mapTrendsUntilLimit(
-    config: TrendingConfig,
-    transform: suspend (TrendingCatalogItem) -> ContinueItem?,
-): List<ContinueItem> {
-    if (isEmpty()) return emptyList()
-    val results = mutableListOf<ContinueItem>()
-    for (chunk in chunked(TrendingDetailParallelism)) {
-        val mapped = coroutineScope {
-            chunk.map { item -> async { transform(item) } }.awaitAll()
-        }.filterNotNull()
-        results += mapped
-        if (results.size >= config.sectionLimit) break
-    }
-    return results.take(config.sectionLimit)
-}
-
-private fun String?.toTrendRatingValue(): Float =
-    this
-        ?.replace(',', '.')
-        ?.toFloatOrNull()
-        ?.coerceIn(0f, 10f)
-        ?: 0f
-
 private fun String.cleanHistoryTitle(): String =
     replace(Regex("\\s+"), " ")
         .replace(" FHD", "", ignoreCase = true)
@@ -410,4 +316,4 @@ private fun String.cleanHistoryTitle(): String =
         .replace(" 4K", "", ignoreCase = true)
         .trim()
 
-private const val TrendingDetailParallelism = 6
+private const val HomeTrendingSectionLimit = 10

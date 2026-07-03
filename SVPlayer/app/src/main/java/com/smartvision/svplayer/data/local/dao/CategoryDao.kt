@@ -14,6 +14,9 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE type = :type ORDER BY name")
     suspend fun getByType(type: String): List<CategoryEntity>
 
+    @Query("SELECT * FROM categories WHERE type = :type ORDER BY name LIMIT :limit")
+    suspend fun getByTypeLimit(type: String, limit: Int): List<CategoryEntity>
+
     @Query("DELETE FROM categories WHERE type = :type")
     suspend fun deleteByType(type: String)
 

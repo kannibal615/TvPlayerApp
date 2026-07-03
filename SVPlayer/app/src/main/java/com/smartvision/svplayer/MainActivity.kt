@@ -48,19 +48,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.data.AppContainer
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
-import com.smartvision.svplayer.startup.StartupCatalogWorkKind
-import com.smartvision.svplayer.sync.SyncFrequencyPolicy
 import com.smartvision.svplayer.ui.navigation.AppNavigation
 import com.smartvision.svplayer.ui.theme.SmartVisionTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -311,108 +307,25 @@ class MainActivity : ComponentActivity() {
 
         runCatching {
             update("Initialisation en cours...", 1)
-            update("Verification de la licence...", 2)
-            update("Verification de l'activation...", 3)
-            val activationStart = SystemClock.elapsedRealtime()
-            runCatching { container.activationRepository.checkStatus() }
-                .onSuccess {
-                    PerformanceDiagnosticRecorder.recordDuration(
-                        sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                        event = "activation_status_loaded",
-                        startedAtMs = activationStart,
-                    )
-                }
-                .onFailure { error ->
-                    PerformanceDiagnosticRecorder.recordDuration(
-                        sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
-                        event = "activation_status_failed",
-                        startedAtMs = activationStart,
-                        error = error,
-                    )
-                }
-            val source = container.accountManager.activePlaylistSource.value
-            PerformanceDiagnosticRecorder.record(
-                sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                event = "active_playlist_source",
-                fields = mapOf("source" to source.storageValue),
-            )
-            val connectionReady = if (source == PlaylistSource.Xtream) {
-                update("Verification du serveur Xtream...", 4)
-                val checkStart = SystemClock.elapsedRealtime()
-                container.xtreamConnectionManager.verifyQuick("splash").isConnected.also { connected ->
-                    PerformanceDiagnosticRecorder.recordDuration(
-                        sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                        event = "xtream_quick_check",
-                        startedAtMs = checkStart,
-                        fields = mapOf("connected" to connected),
-                    )
-                }
-            } else {
-                update("Verification du lien M3U...", 4)
-                container.accountManager.m3uUrl.value.isNotBlank().also { configured ->
-                    PerformanceDiagnosticRecorder.record(
-                        sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                        event = "m3u_link_check",
-                        fields = mapOf("configured" to configured),
-                    )
-                }
-            }
-            val shouldSync = connectionReady && shouldRunStartupCatalogSync(container)
-            val catalogCounts = runCatching { container.catalogRepository.getCatalogContentCounts() }.getOrNull()
-            val hasLocalCatalog = when (source) {
-                PlaylistSource.Xtream -> catalogCounts?.hasAnyContent == true
-                PlaylistSource.M3u -> (catalogCounts?.live ?: 0) > 0
-            }
-            val startupWork = when {
-                shouldSync -> StartupCatalogWorkKind.Synchronize
-                connectionReady && hasLocalCatalog -> StartupCatalogWorkKind.LoadLocal
-                else -> StartupCatalogWorkKind.None
-            }
-            if (startupWork == StartupCatalogWorkKind.None) {
-                container.clearStartupCatalogWork(container.startupCatalogWork.value.requestedAtMs)
-            } else {
-                container.requestStartupCatalogWork(startupWork)
-            }
+            update("Verification de l'activation locale...", 2)
+            val localActivationStart = SystemClock.elapsedRealtime()
+            val localActivation = runCatching { container.activationRepository.localState.first() }.getOrNull()
             PerformanceDiagnosticRecorder.record(
                 sheet = PerformanceDiagnosticRecorder.SHEET_STARTUP_STEPS,
-                event = "startup_sync_decision",
+                event = "startup_local_activation_loaded",
                 fields = mapOf(
-                    "source" to source.storageValue,
-                    "connectionReady" to connectionReady,
-                    "shouldSync" to shouldSync,
-                    "startupWork" to startupWork.name,
-                    "localLive" to (catalogCounts?.live ?: 0),
-                    "localMovies" to (catalogCounts?.movies ?: 0),
-                    "localSeries" to (catalogCounts?.series ?: 0),
-                    "totalSteps" to totalSteps,
+                    "durationMs" to (SystemClock.elapsedRealtime() - localActivationStart),
+                    "activated" to (localActivation?.activated ?: false),
+                    "hasDeviceId" to !localActivation?.deviceId.isNullOrBlank(),
                 ),
             )
+            update("Preparation de l'accueil...", 3)
+            container.clearStartupCatalogWork(container.startupCatalogWork.value.requestedAtMs)
             update(
-                label = "Verification derniere synchronisation... ${if (shouldSync) "KO" else "OK"}",
-                step = 5,
+                label = "Demarrage en cours...",
+                step = totalSteps,
                 total = totalSteps,
             )
-
-            var step = 6
-            update("Chargement Home...", step++, totalSteps)
-            val homePreloadStart = SystemClock.elapsedRealtime()
-            runCatching { preloadHomeContent(container) }
-                .onSuccess {
-                    PerformanceDiagnosticRecorder.recordDuration(
-                        sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                        event = "startup_home_preloaded",
-                        startedAtMs = homePreloadStart,
-                    )
-                }
-                .onFailure { error ->
-                    PerformanceDiagnosticRecorder.recordDuration(
-                        sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
-                        event = "startup_home_preload_failed",
-                        startedAtMs = homePreloadStart,
-                        error = error,
-                    )
-                }
-            update("Demarrage en cours...", totalSteps, totalSteps)
         }.onFailure { error ->
             Log.w(TAG_STARTUP, "startup checks failed: ${error.javaClass.simpleName}", error)
             updateStatus(
@@ -434,80 +347,7 @@ class MainActivity : ComponentActivity() {
     private fun startupProgress(step: Int, total: Int): Float =
         (step.toFloat() / total.toFloat()).coerceIn(MinimumProgressScale, 1f)
 
-    private fun startupStepCount(): Int = 7
-
-    private suspend fun preloadHomeContent(container: AppContainer) {
-        val progressStart = SystemClock.elapsedRealtime()
-        val recentProgress = container.userContentRepository.getRecentProgressSnapshot(limit = 10)
-        PerformanceDiagnosticRecorder.recordDuration(
-            sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-            event = "startup_home_recent_progress",
-            startedAtMs = progressStart,
-            fields = mapOf("items" to recentProgress.size, "limit" to 10),
-        )
-        val slidesStart = SystemClock.elapsedRealtime()
-        runCatching { container.homeSlidesRepository.refresh() }
-            .onSuccess { slides ->
-                PerformanceDiagnosticRecorder.recordDuration(
-                    sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                    event = "startup_home_slides",
-                    startedAtMs = slidesStart,
-                    fields = mapOf("items" to slides.size),
-                )
-            }
-            .onFailure { error ->
-                PerformanceDiagnosticRecorder.recordDuration(
-                    sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
-                    event = "startup_home_slides_failed",
-                    startedAtMs = slidesStart,
-                    error = error,
-                )
-            }
-        if (container.accountManager.activePlaylistSource.value == PlaylistSource.Xtream &&
-            container.accountManager.accounts.value.isNotEmpty()
-        ) {
-            // PERF_FIX: do not block the splash on Xtream detail/backdrop calls.
-            // Home consumes any in-memory trend cache immediately, then refreshes missing details after first render.
-            val snapshot = container.homeContentRepository.getLastCachedTrendingSnapshot()
-            PerformanceDiagnosticRecorder.record(
-                sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                event = "startup_home_trending_deferred",
-                fields = mapOf(
-                    "cachedMovies" to snapshot?.movies.orEmpty().size,
-                    "cachedSeries" to snapshot?.series.orEmpty().size,
-                    "reason" to "deferred_after_home_render",
-                ),
-            )
-        } else {
-            container.homeContentRepository.cacheEmptyTrending()
-            PerformanceDiagnosticRecorder.record(
-                sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                event = "startup_home_trending_empty",
-                fields = mapOf("reason" to "no_xtream_source_or_account"),
-            )
-        }
-    }
-
-    private suspend fun shouldRunStartupCatalogSync(container: AppContainer): Boolean {
-        val source = container.accountManager.activePlaylistSource.value
-        if (source == PlaylistSource.Xtream && !container.accountManager.current().isConfigured) return false
-        if (source == PlaylistSource.M3u && container.accountManager.m3uUrl.value.isBlank()) return false
-        val settings = container.settingsRepository.settings.first()
-        val policy = SyncFrequencyPolicy.from(settings.syncFrequency)
-        PerformanceDiagnosticRecorder.record(
-            sheet = PerformanceDiagnosticRecorder.SHEET_STARTUP_STEPS,
-            event = "sync_policy_loaded",
-            fields = mapOf(
-                "syncFrequency" to settings.syncFrequency,
-                "runOnStartup" to policy.runOnStartup,
-                "repeatHours" to (policy.repeatHours ?: ""),
-            ),
-        )
-        if (policy.runOnStartup) return true
-        val repeatHours = policy.repeatHours ?: return false
-        val lastSync = container.syncStateDao.get()?.lastSync ?: return true
-        return System.currentTimeMillis() - lastSync >= TimeUnit.HOURS.toMillis(repeatHours)
-    }
+    private fun startupStepCount(): Int = 3
 
     companion object {
         private const val TAG = "SmartVisionFocus"
@@ -519,7 +359,7 @@ class MainActivity : ComponentActivity() {
         private const val SplashProgressTopRatio = 0.50f
         private const val SplashStatusTopMarginRatio = 0.014f
         private val MinimumProgressHeight: Dp = 5.dp
-        private const val MinimumSplashDurationMillis = 2_400L
+        private const val MinimumSplashDurationMillis = 900L
         private const val StatusStepPauseMillis = 80L
         private const val ProgressStepMillis = 180L
         private const val MinimumProgressScale = 0.03f

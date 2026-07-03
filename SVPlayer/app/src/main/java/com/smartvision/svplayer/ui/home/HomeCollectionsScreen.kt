@@ -59,7 +59,6 @@ fun HomeCollectionsScreen(
             HomeViewModel(
                 userContentRepository = container.userContentRepository,
                 catalogRepository = container.catalogRepository,
-                xtreamRepository = container.xtreamRepository,
                 homeSlidesRepository = container.homeSlidesRepository,
                 homeContentRepository = container.homeContentRepository,
             )

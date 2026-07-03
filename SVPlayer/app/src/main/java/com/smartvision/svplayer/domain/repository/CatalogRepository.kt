@@ -48,6 +48,9 @@ interface CatalogRepository {
     suspend fun getLiveCategoriesSnapshot(): List<Category>
     suspend fun getMovieCategoriesSnapshot(): List<Category>
     suspend fun getSeriesCategoriesSnapshot(): List<Category>
+    suspend fun getInitialLiveCategoriesSnapshot(limit: Int): List<Category>
+    suspend fun getInitialMovieCategoriesSnapshot(limit: Int): List<Category>
+    suspend fun getInitialSeriesCategoriesSnapshot(limit: Int): List<Category>
     suspend fun getLiveCatalogSnapshot(): LocalCatalogSnapshot<LiveChannel>
     suspend fun getMovieCatalogSnapshot(): LocalCatalogSnapshot<Movie>
     suspend fun getSeriesCatalogSnapshot(): LocalCatalogSnapshot<TvSeries>
