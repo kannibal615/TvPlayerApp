@@ -79,6 +79,7 @@ Playback:
 - `FullScreenPlayerScreen.kt` gere Live, Movie et Episode.
 - Live peut utiliser `.ts` et fallback `.m3u8`.
 - Films/series sauvegardent la progression.
+- Depuis le 2026-07-03, la sauvegarde d'un episode conserve les metadonnees d'historique existantes et enrichit depuis Room quand possible: titre de serie, label saison/episode, poster de serie et `parentContentId`. La categorie speciale Series > Historique ne doit plus afficher des episodes sous forme `Episode <id>` sans image quand les metadonnees serie sont disponibles.
 - Overlay plein ecran Live/Films/Series: bandeau haut glassmorphism avec logo, badge type contenu, titre et meta droite; le nom dossier/categorie n'est pas affiche dans le bandeau haut. Bandeau bas glassmorphism bleu tres transparent avec boutons circulaires distingues, bordure/glow neon et barre de progression uniquement pour Films/Series.
 
 ## 5. Ecrans concernes
@@ -218,3 +219,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-03: correction performance Splash/Home: les details tendances Xtream ne bloquent plus le splash; Home demarre depuis les caches disponibles et rafraichit les tendances apres le rendu initial.
 - 2026-07-03: suppression de toute synchro et de tout chargement catalogue dans le splash; Home s'affiche immediatement, decide la synchro automatique apres premier rendu, bloque la telecommande uniquement pendant `Synchronize`, les categories initiales sont limitees a `20` par section et les tendances deviennent `10` films + `10` series aleatoires depuis Room hors adulte.
 - 2026-07-03: ajout du cache `home_trending_preview_cache` pour enrichir progressivement les cards Tendances HOME avec backdrop, duree et preview 15%, sans prechargement splash ni URL brute stockee.
+- 2026-07-03: correction historique Series: les progres episodes preservent/enrichissent titre de serie, poster, label episode et parent serie avant upsert Room.

@@ -1,5 +1,40 @@
 # AI Changelog
 
+## 2026-07-03 - Correction historique Series et release prod 0.1.84
+
+Type:
+- android
+- catalogue
+- playback
+- release-prod
+- documentation
+
+Resume:
+- Correction de la sauvegarde `playback_progress` pour les episodes Series.
+- Les sauvegardes player conservent les metadonnees d'historique existantes au lieu de les remplacer par des champs vides.
+- Les entrees `episode` sont enrichies depuis Room quand possible avec titre de serie, label saison/episode, poster de serie et `parentContentId`.
+- Les titres generiques `Episode <id>` / `Series` / `Serie` et les sous-titres generiques sont remplaces par les metadonnees serie/episode disponibles.
+- Publication prod `0.1.84` / `versionCode 87`.
+
+Fichiers code:
+- `app/src/main/java/com/smartvision/svplayer/data/repository/UserContentRepository.kt`
+- `app/build.gradle.kts`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Verification:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain` OK.
+- `.\scripts\guard_release_version.ps1` OK avant build: local `0.1.84` / `87`, prod `0.1.83` / `86`.
+- `.\gradlew.bat assembleRelease --no-daemon --max-workers=1 --console=plain` OK en 12m13s.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata` OK apres build.
+- `.\scripts\deploy_activation_phase1.ps1` OK, tests publics et admin OK.
+- Prod verifiee: `smartvision-tv.version.json` et `api/app_update.php` annoncent `0.1.84` / `87`, APK `smartvision-tv-v87-60b47236.apk`, SHA256 `60b472366e98c48e33b7c23f0ae495bdd9e7fc07a672aa18c5bffa631d76a109`.
+- Hash de `https://smartvisions.net/downloads/smartvision-tv.apk` verifie identique au build local.
+
 ## 2026-07-03 - HOME Tendances premium
 
 Type:

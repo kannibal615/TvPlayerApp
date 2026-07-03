@@ -88,9 +88,14 @@ class UserContentRepository(
         val id = progress.contentId.toIntOrNull() ?: return@withContext progress
         val titleAlreadyStable = when (progress.contentType) {
             UserContentType.Live -> !progress.title.isFallbackLiveTitle(id)
+            UserContentType.Episode -> !progress.title.isFallbackEpisodeTitle(id)
             else -> !progress.title.isNullOrBlank()
         }
-        if (titleAlreadyStable && !progress.imageUrl.isNullOrBlank()) return@withContext progress
+        val metadataAlreadyStable = titleAlreadyStable &&
+            !progress.imageUrl.isNullOrBlank() &&
+            (progress.contentType != UserContentType.Episode ||
+                (!progress.parentContentId.isNullOrBlank() && !progress.subtitle.isGenericEpisodeSubtitle()))
+        if (metadataAlreadyStable) return@withContext progress
         when (progress.contentType) {
             UserContentType.Live -> mediaDao.getLiveStream(id)?.let { stream ->
                 progress.copy(
@@ -108,9 +113,18 @@ class UserContentRepository(
             }
             UserContentType.Episode -> mediaDao.getEpisode(id)?.let { episode ->
                 val series = mediaDao.getSeries(episode.seriesId)
+                val seasonEpisodeLabel = "S${episode.seasonNumber} E${episode.episodeNumber}"
+                val episodeSubtitle = listOf(seasonEpisodeLabel, episode.title)
+                    .filter { it.isNotBlank() }
+                    .joinToString(" - ")
                 progress.copy(
-                    title = progress.title ?: series?.title ?: episode.title,
-                    subtitle = progress.subtitle ?: "S${episode.seasonNumber} E${episode.episodeNumber}",
+                    title = progress.title
+                        .takeUnless { it.isFallbackEpisodeTitle(id, episode.title) }
+                        ?: series?.title
+                        ?: episode.title,
+                    subtitle = progress.subtitle
+                        .takeUnless { it.isGenericEpisodeSubtitle() }
+                        ?: episodeSubtitle,
                     imageUrl = progress.imageUrl ?: series?.posterUrl,
                     parentContentId = progress.parentContentId ?: episode.seriesId.toString(),
                 )
@@ -149,17 +163,25 @@ class UserContentRepository(
             return@withContext
         }
         val stablePositionMs = positionMs.coerceAtLeast(0L)
+        val stableDurationMs = durationMs.coerceAtLeast(0L)
+        val existing = progressDao.get(contentType, contentId.toString())
+        val candidate = PlaybackProgressEntity(
+            contentType = contentType,
+            contentId = contentId.toString(),
+            positionMs = stablePositionMs,
+            durationMs = stableDurationMs,
+            updatedAt = System.currentTimeMillis(),
+            title = title?.takeIf { it.isNotBlank() } ?: existing?.title,
+            subtitle = subtitle?.takeIf { it.isNotBlank() } ?: existing?.subtitle,
+            imageUrl = imageUrl?.takeIf { it.isNotBlank() } ?: existing?.imageUrl,
+            parentContentId = parentContentId?.toString() ?: existing?.parentContentId,
+        )
+        val enriched = enrichProgress(candidate)
         progressDao.upsert(
-            PlaybackProgressEntity(
-                contentType = contentType,
-                contentId = contentId.toString(),
+            enriched.copy(
                 positionMs = stablePositionMs,
-                durationMs = durationMs.coerceAtLeast(0L),
-                updatedAt = System.currentTimeMillis(),
-                title = title?.takeIf { it.isNotBlank() },
-                subtitle = subtitle?.takeIf { it.isNotBlank() },
-                imageUrl = imageUrl?.takeIf { it.isNotBlank() },
-                parentContentId = parentContentId?.toString(),
+                durationMs = stableDurationMs,
+                updatedAt = candidate.updatedAt,
             ),
         )
         recentProgressSnapshot = null
@@ -170,6 +192,22 @@ private data class RecentProgressSnapshot(
     val limit: Int,
     val items: List<PlaybackProgressEntity>,
 )
+
+private fun String?.isFallbackEpisodeTitle(contentId: Int, episodeTitle: String? = null): Boolean {
+    val value = this?.trim() ?: return true
+    if (value.isBlank()) return true
+    if (value.equals("Episode $contentId", ignoreCase = true)) return true
+    if (value.equals("Series", ignoreCase = true) || value.equals("Serie", ignoreCase = true)) return true
+    return !episodeTitle.isNullOrBlank() && value.equals(episodeTitle.trim(), ignoreCase = true)
+}
+
+private fun String?.isGenericEpisodeSubtitle(): Boolean {
+    val value = this?.trim() ?: return true
+    if (value.isBlank()) return true
+    return value.equals("Episode", ignoreCase = true) ||
+        value.equals("Series", ignoreCase = true) ||
+        value.equals("Serie", ignoreCase = true)
+}
 
 private fun String?.isFallbackLiveTitle(contentId: Int): Boolean {
     val value = this?.trim() ?: return true

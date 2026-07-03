@@ -11,8 +11,8 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
 
 Gradle local constate le 2026-07-03:
-- `versionCode = 86`
-- `versionName = "0.1.83"`
+- `versionCode = 87`
+- `versionName = "0.1.84"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -149,6 +149,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-03: release publiee `0.1.84` / `versionCode 87` pour corriger les historiques Series: sauvegarde/enrichissement des episodes avec titre de serie, poster, label saison/episode et parent serie. APK `smartvision-tv-v87-60b47236.apk`, SHA256 `60b472366e98c48e33b7c23f0ae495bdd9e7fc07a672aa18c5bffa631d76a109`, manifeste public, `app_update.php`, APK stable et hash verifies.
 - 2026-07-03: release publiee `0.1.83` / `versionCode 86` pour splash sans synchro ni chargement catalogue, Home immediat, synchro post-Home uniquement, categories initiales limitees a `20` par section et tendances `10 + 10` aleatoires Room hors adulte. APK `smartvision-tv-v86-9fcd8f69.apk`, SHA256 `9fcd8f69555e3c7e99b495d8c136134f6d3814ef758afc21e17d97dd26568751`, manifeste public, `app_update.php`, APK stable et hash verifies.
 - 2026-07-03: release locale `0.1.82` / `versionCode 85` construite avec `:app:assembleRelease`, garde-fou `guard_release_version.ps1 -RequireBuildMetadata` OK, APK `app-release.apk` installe et lance sur Firestick `192.168.1.33:5555`; pas de deploiement backend/prod effectue dans cette intervention.
 - 2026-07-02: release publiee `0.1.81` / `versionCode 84` pour splash hybride: fond + logo reduit dans la preview systeme, barre/statuts/diagnostics en Compose, nettoyage du fond avant Home; APK `smartvision-tv-v84-1577e450.apk`, SHA256 `1577e4508feb3ae94d5ba672f67ff851d0a1779b6b94a34dd257044b4a65afb0`, manifeste public, `app_update.php`, APK stable et hash verifies.
