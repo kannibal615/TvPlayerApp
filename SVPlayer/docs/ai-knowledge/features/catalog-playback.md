@@ -1,6 +1,6 @@
 # Catalogue, Playlist et Lecture
 
-Derniere mise a jour: 2026-07-02.
+Derniere mise a jour: 2026-07-03.
 
 ## 1. Objectif
 
@@ -16,7 +16,7 @@ Depuis le 2026-06-30, la navigation Home / Live TV / Movies / Series ne doit plu
 
 Depuis le 2026-07-01, les ecrans Live TV / Movies / Series ne doivent plus ouvrir un snapshot complet du catalogue. Le startup Compose de `MainActivity` prechauffe uniquement les categories/counts, puis les ViewModels catalogue chargent les contenus par pages depuis Room avec `LIMIT/OFFSET`. La RAM ne doit pas contenir tout le catalogue pour ouvrir un ecran.
 
-Home charge ses donnees legeres en petits jeux bornes: le splash precharge l'historique recent `10` et construit le cache final des tendances films/series via `HomeContentRepository` avec config distante, details `backdropUrl` et mapping `ContinueItem`. `HomeViewModel` consomme ce cache si disponible et ne relance pas le chargement tendances a l'ouverture Home. La cle de cache depend de la source active, du compte Xtream actif et de `SyncState.lastSync`; un changement de compte/source ou une nouvelle synchro invalide donc les tendances Home. Ne pas reutiliser les snapshots complets Movies / Series pour initialiser Home.
+Home charge ses donnees legeres en petits jeux bornes: le splash precharge l'historique recent `10` et les slides, mais ne construit plus le cache final des tendances films/series car les details `backdropUrl` Xtream peuvent bloquer plusieurs secondes. `HomeViewModel` consomme le cache `HomeContentRepository` s'il existe, initialise `HomeUiState` avec les caches disponibles, puis lance le chargement tendances apres le premier rendu Home si necessaire. La cle de cache depend de la source active, du compte Xtream actif et de `SyncState.lastSync`; un changement de compte/source ou une nouvelle synchro invalide donc les tendances Home. Ne pas reutiliser les snapshots complets Movies / Series pour initialiser Home.
 
 Depuis le 2026-07-02, apres une synchro splash ou un demarrage sans synchro, le splash prechauffe aussi les categories Live/Films/Series et la premiere page locale bornee des catalogues (`96` Live, `72` Films, `72` Series). `DefaultCatalogRepository` garde ces categories et premieres pages en cache memoire jusqu'a invalidation; les ViewModels catalogue les utilisent pour eviter un loader initial inutile, puis continuent la pagination Room normale.
 
@@ -25,7 +25,7 @@ Depuis le 2026-07-02, les tendances Home sont separees en films et series. La sy
 Clarification stockage/performance:
 - Room est le stockage local persistant de l'application sur l'appareil; les catalogues synchronises restent disponibles apres fermeture ou redemarrage de l'app tant que les donnees de l'application ne sont pas effacees.
 - Le cache memoire applicatif est uniquement en RAM; il peut garder de petites pages deja ouvertes, mais ne doit pas garder tout le catalogue pour l'ouverture d'ecran.
-- Le chargement local au startup relit Room pour les categories/counts et, depuis le 2026-07-02, le cache Home borne `10 historiques / config tendances -> 10 films + 10 series`; les details tendances sont resolus avec une concurrence bornee pour garder le splash reactif. Ce prechargement ne doit pas etre confondu avec une synchronisation reseau.
+- Le chargement local au startup relit Room pour les categories/counts, premieres pages locales bornees et l'historique Home `10`. Les details tendances Home sont differes apres rendu Home pour garder le splash reactif. Ce prechargement ne doit pas etre confondu avec une synchronisation reseau.
 - Apres une vraie reouverture ou un process tue par Android, l'UI doit relire Room, mais uniquement par petits jeux de donnees pagines.
 - La synchronisation reseau complete est separee du chargement local et depend de `SyncFrequencyPolicy`: `A chaque demarrage` force une synchro a chaque ouverture, `24h`/`48h` ne resynchronisent que si la derniere synchro est obsolete, `Manuelle`/`Jamais` evitent la synchro automatique.
 - Recommandation d'optimisation: garder le prechauffage Room au splash et preferer une frequence `24h` ou `48h` pour eviter les telechargements reseau inutiles tout en gardant les catalogues frais.
@@ -151,7 +151,7 @@ URL de lecture:
 - Le badge EPG des lignes Live TV doit se baser sur les programmes locaux disponibles, pas seulement sur la presence d'une URL EPG.
 - Ne pas lancer de synchronisation globale pendant la navigation Home / Live TV / Movies / Series / categories / listes.
 - Ne pas charger un snapshot complet Live TV / Movies / Series pour ouvrir un ecran catalogue; utiliser categories/counts puis pages Room locales.
-- Le premier chargement local au startup doit rester leger: categories/counts, premieres pages locales bornees `96/72/72` et Home borne `10 historiques / tendances finales configurees depuis `trending_media` + details `backdropUrl`. Ne pas remettre EPG reseau ni snapshots complets Movies/Series dans `MainActivity` pour les tres gros catalogues.
+- Le premier chargement local au startup doit rester leger: categories/counts, premieres pages locales bornees `96/72/72`, historique Home `10` et slides. Ne pas remettre les details tendances Xtream, EPG reseau ni snapshots complets Movies/Series dans `MainActivity` pour les tres gros catalogues.
 - Ne pas confondre prechargement local et synchro reseau: reconstruire le cache memoire depuis Room au demarrage est normal; retelecharger le catalogue complet ne doit arriver que si la politique de frequence le demande ou si l'utilisateur lance Synchroniser.
 - Ne pas promettre zero chargement local apres fermeture complete: si le process Android a ete tue, le cache RAM n'existe plus et doit etre reconstruit depuis Room.
 - AutoSync et sync manuelle doivent verifier Xtream avant de synchroniser; seules les erreurs reseau sont retentees automatiquement.
@@ -210,3 +210,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-02: tendances Home sans filtre note par defaut; filtre adulte conserve, validation lecture conservee, filtre poster paysage applique au chargement Home et parametres exposes par `api/app_config.php`.
 - 2026-07-02: prechauffage startup deplace dans `MainActivity`; `SplashActivity` et l'ecran handoff Compose ne sont plus utilises.
 - 2026-07-02: tendances Home prechargees en cache final pendant le startup via `HomeContentRepository`; `HomeViewModel` consomme ce cache pour eviter une deuxieme passe details/backdrop a l'ouverture Home. La cle de cache tient compte source/compte/derniere synchro et les details sont charges avec concurrence bornee.
+- 2026-07-03: correction performance Splash/Home: les details tendances Xtream ne bloquent plus le splash; Home demarre depuis les caches disponibles et rafraichit les tendances apres le rendu initial.

@@ -28,6 +28,9 @@
         android:theme="@style/Theme.SVPlayer"
         android:usesCleartextTraffic="true">
 
+        <!-- PERF_DIAG: true only for releaseDiagnostic so adb/Perfetto can inspect the local diagnostic build. -->
+        <profileable android:shell="${profileableByShell}" />
+
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="${googleAdsApplicationId}" />

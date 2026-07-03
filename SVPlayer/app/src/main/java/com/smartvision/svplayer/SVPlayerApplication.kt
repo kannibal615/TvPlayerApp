@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Handler
 import android.os.Looper
 import com.smartvision.svplayer.core.data.AppContainer
+import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
 import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import com.smartvision.svplayer.startup.StartupStateStore
 import kotlinx.coroutines.CoroutineScope
@@ -17,6 +18,8 @@ class SVPlayerApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // PERF_DIAG: no-op outside releaseDiagnostic; initializes the local artifact directory early.
+        PerformanceDiagnosticRecorder.init(this)
         Handler(Looper.getMainLooper()).postDelayed({
             startupScope.launch {
                 val container = appContainer

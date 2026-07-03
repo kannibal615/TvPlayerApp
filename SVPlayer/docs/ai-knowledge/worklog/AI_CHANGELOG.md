@@ -1,5 +1,70 @@
 # AI Changelog
 
+## 2026-07-03 - Corrections performance Splash/Home diagnostic
+
+Type:
+- android
+- performance
+- ui-tv
+- diagnostics
+
+Resume:
+- Le splash ne bloque plus sur `HomeContentRepository.preloadTrending()` ni sur les details Xtream/backdrops des tendances; Home rafraichit les tendances apres le premier rendu si le cache est absent.
+- `HomeViewModel` initialise `HomeUiState` avec les caches disponibles pour eviter un premier rendu Home vide quand l'historique/slides/tendances sont deja en memoire.
+- Le mini-player Home attend un focus stable court avant de creer ExoPlayer, garde le poster/thumbnail jusqu'a `onRenderedFirstFrame` et ignore en poster-only les URLs Media3 non supportees pendant la session.
+- Les carrousels Home gardent des slots `LazyRow` stables quand les previews sont activees et limitent le scroll automatique aux cards non entierement visibles.
+- `PerformanceDiagnosticRecorder` ecrit les fichiers via un writer arriere-plan pour moins perturber les mesures de jank.
+- Le splash systeme a un logo plus petit/remonte, une progress bar recentree sous le logo et un status simplifie `pourcentage + statut`.
+- Build local `:app:assembleReleaseDiagnostic` OK et APK `0.1.81-diag` installe sur la Firestick `192.168.1.33:5555`.
+
+Fichiers code/scripts:
+- `app/src/main/java/com/smartvision/svplayer/MainActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/diagnostics/PerformanceDiagnosticRecorder.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/ContinueWatchingRow.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/ContentProgressCard.kt`
+- `app/src/main/res/drawable/splash_background.xml`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Verification:
+- `.\gradlew.bat :app:assembleReleaseDiagnostic --no-daemon --max-workers=1 --console=plain` OK.
+- `adb -s 192.168.1.33:5555 install -r app\build\outputs\apk\releaseDiagnostic\app-releaseDiagnostic.apk` OK.
+
+## 2026-07-03 - Diagnostic performance local Splash/Home Firestick
+
+Type:
+- android
+- diagnostics
+- perf
+- adb
+
+Resume:
+- Ajout d'un build local `releaseDiagnostic` (`0.1.81-diag`, meme `applicationId`) qui active uniquement `BuildConfig.PERF_DIAGNOSTICS_ENABLED` et `profileable` shell.
+- Ajout de `PerformanceDiagnosticRecorder`, balise `PERF_DIAG`, qui ecrit CSV/JSONL locaux sous `/sdcard/Android/data/com.smartvision.svplayer/files/diagnostics/splash-home-*`.
+- Instrumentation diagnostic non fonctionnelle sur `MainActivity`, `HomeViewModel`, `HomeContentRepository`, `HomeScreen`, `ContinueWatchingRow` et `ContentProgressCard`: statuts splash, donnees chargees, cache Home, focus/scroll LazyRow, mini-player Media3 et premiere frame.
+- Ajout du script `scripts/capture_firestick_splash_home_perf.ps1` pour installer l'APK diagnostic, capturer logcat/gfxinfo/meminfo/screenshots, pull les fichiers app, generer `perf-diagnostics.xlsx` et creer un ZIP.
+- Capture Firestick produite sous `diagnostics/firestick-splash-home-perf-20260703-001037.zip`; Perfetto indisponible sur cette Firestick via CLI ancienne, erreurs conservees dans les logs bruts.
+
+Fichiers code/scripts:
+- `app/build.gradle.kts`
+- `app/src/main/AndroidManifest.xml`
+- `app/src/main/java/com/smartvision/svplayer/data/diagnostics/PerformanceDiagnosticRecorder.kt`
+- `app/src/main/java/com/smartvision/svplayer/MainActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/*`
+- `app/src/main/java/com/smartvision/svplayer/data/home/HomeContentRepository.kt`
+- `scripts/capture_firestick_splash_home_perf.ps1`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+- `TROUBLESHOOTING.md`
+
 ## 2026-07-02 - Splash hybride et diagnostic startup
 
 Type:

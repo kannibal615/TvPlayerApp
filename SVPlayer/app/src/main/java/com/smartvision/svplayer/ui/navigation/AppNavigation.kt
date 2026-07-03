@@ -280,10 +280,20 @@ fun AppNavigation(
         )
     }
     if (!activationState.localStateReady) {
+        // PERF_FIX: avoid the visible grey/blank frame between the splash handoff and Home.
+        // ActivationViewModel only needs a very short local cache read here; keep a real app background.
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(SmartVisionColors.Background),
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFF01040C),
+                            Color(0xFF061426),
+                            Color(0xFF01040C),
+                        ),
+                    ),
+                ),
         )
         return
     }

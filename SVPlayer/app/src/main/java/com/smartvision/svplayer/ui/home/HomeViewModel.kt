@@ -1,7 +1,9 @@
 package com.smartvision.svplayer.ui.home
 
+import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
 import com.smartvision.svplayer.data.home.HomeContentRepository
 import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.home.HomeSlide
@@ -49,14 +51,28 @@ class HomeViewModel(
     private var trendingRefreshJob: Job? = null
     private val continueWatching = userContentRepository.observeRecentProgress(limit = ContinueWatchingSnapshotLimit)
         .map { progress ->
+            // PERF_DIAG: measures why Continue watching can appear after Home is already visible.
+            val startedAt = SystemClock.elapsedRealtime()
             val recent = progress
                 .filter { it.positionMs > 5_000L }
                 .map { userContentRepository.enrichProgress(it) }
                 .distinctBy(::historyGroupingKey)
                 .take(10)
-            recent.mapNotNull { item ->
+            val items = recent.mapNotNull { item ->
                 toContinueItemWithPreview(item, catalogRepository, xtreamRepository)
             }
+            PerformanceDiagnosticRecorder.recordDuration(
+                sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+                event = "continue_watching_flow_mapped",
+                startedAtMs = startedAt,
+                fields = mapOf(
+                    "rawItems" to progress.size,
+                    "recentItems" to recent.size,
+                    "mappedItems" to items.size,
+                    "previewReadyItems" to items.count { !it.previewUrl.isNullOrBlank() },
+                ),
+            )
+            items
         }
         .onStart {
             if (cachedContinueWatching.isNotEmpty()) {
@@ -79,40 +95,112 @@ class HomeViewModel(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = HomeUiState(),
+        // PERF_FIX: first Home composition should not be empty when startup/repositories already hold caches.
+        initialValue = HomeUiState(
+            continueWatching = cachedContinueWatching,
+            trendingMovies = cachedTrending?.movies.orEmpty(),
+            trendingSeries = cachedTrending?.series.orEmpty(),
+            slides = slides.value,
+        ),
     )
 
     init {
+        // PERF_DIAG: initial cache state seen by Home before any refresh coroutine finishes.
+        PerformanceDiagnosticRecorder.record(
+            sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+            event = "home_viewmodel_init",
+            fields = mapOf(
+                "cachedContinueWatching" to cachedContinueWatching.size,
+                "cachedTrendingMovies" to trendingMovies.value.size,
+                "cachedTrendingSeries" to trendingSeries.value.size,
+                "cachedSlides" to slides.value.size,
+            ),
+        )
         refreshTrending()
         refreshSlides()
     }
 
     fun refreshSlides(forceRefresh: Boolean = false) {
         viewModelScope.launch {
+            // PERF_DIAG: tells whether Home uses cached slides or waits for network refresh.
+            val startedAt = SystemClock.elapsedRealtime()
             val cached = homeSlidesRepository.getCachedSlides()
             if (!forceRefresh && !cached.isNullOrEmpty()) {
                 slides.value = cached
+                PerformanceDiagnosticRecorder.recordDuration(
+                    sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+                    event = "home_slides_cache_hit",
+                    startedAtMs = startedAt,
+                    fields = mapOf("items" to cached.size),
+                )
                 return@launch
             }
             runCatching { homeSlidesRepository.refresh() }
-                .onSuccess { refreshed -> slides.value = refreshed }
+                .onSuccess { refreshed ->
+                    slides.value = refreshed
+                    PerformanceDiagnosticRecorder.recordDuration(
+                        sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+                        event = "home_slides_refreshed",
+                        startedAtMs = startedAt,
+                        fields = mapOf("items" to refreshed.size, "forceRefresh" to forceRefresh),
+                    )
+                }
+                .onFailure { error ->
+                    PerformanceDiagnosticRecorder.recordDuration(
+                        sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
+                        event = "home_slides_refresh_failed",
+                        startedAtMs = startedAt,
+                        fields = mapOf("forceRefresh" to forceRefresh),
+                        error = error,
+                    )
+                }
         }
     }
 
     fun refreshTrending(forceRefresh: Boolean = false) {
         if (!forceRefresh && trendingRefreshJob?.isActive == true) return
         trendingRefreshJob = viewModelScope.launch {
+            // PERF_DIAG: tells whether trends are consumed from startup cache or recomputed on Home.
+            val startedAt = SystemClock.elapsedRealtime()
             val cached = if (forceRefresh) null else homeContentRepository.getCachedTrending()
             if (cached != null) {
                 trendingMovies.value = cached.movies
                 trendingSeries.value = cached.series
+                PerformanceDiagnosticRecorder.recordDuration(
+                    sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+                    event = "home_trending_cache_hit",
+                    startedAtMs = startedAt,
+                    fields = mapOf(
+                        "movies" to cached.movies.size,
+                        "series" to cached.series.size,
+                    ),
+                )
                 return@launch
             }
             val snapshot = runCatching { homeContentRepository.refreshTrending(forceRefresh) }
+                .onFailure { error ->
+                    PerformanceDiagnosticRecorder.recordDuration(
+                        sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
+                        event = "home_trending_refresh_failed",
+                        startedAtMs = startedAt,
+                        fields = mapOf("forceRefresh" to forceRefresh),
+                        error = error,
+                    )
+                }
                 .getOrNull()
                 ?: return@launch
             trendingMovies.value = snapshot.movies
             trendingSeries.value = snapshot.series
+            PerformanceDiagnosticRecorder.recordDuration(
+                sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+                event = "home_trending_refreshed",
+                startedAtMs = startedAt,
+                fields = mapOf(
+                    "movies" to snapshot.movies.size,
+                    "series" to snapshot.series.size,
+                    "forceRefresh" to forceRefresh,
+                ),
+            )
         }
     }
 }

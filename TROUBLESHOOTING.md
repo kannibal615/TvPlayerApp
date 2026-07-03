@@ -1,5 +1,27 @@
 # Troubleshooting
 
+## 2026-07-03 - Capture Perfetto Firestick ancienne CLI et generation XLSX PowerShell
+
+Probleme rencontre :
+Pendant le diagnostic Splash/Home sur Firestick `192.168.1.33:5555`, la capture principale a installe l APK diagnostic et recupere logcat/gfxinfo/meminfo/fichiers app, mais Perfetto a echoue et la premiere generation XLSX a echoue.
+
+Contexte :
+Firestick `AFTSSS/sheldonp`, app `com.smartvision.svplayer` en `0.1.81-diag`, script `scripts/capture_firestick_splash_home_perf.ps1`. La CLI Perfetto de l appareil ne supporte pas `--background-wait` ni `--txt`; `--config -` attend une config binaire, et une config poussee sur `/data/local/tmp` ou `/sdcard` est refusee avec `Permission denied`. PowerShell `Compress-Archive` refuse aussi une destination directe `.xlsx`.
+
+Cause probable :
+- Version Perfetto Fire OS trop ancienne/restrictive pour les options modernes et les configs texte.
+- `Compress-Archive` sur Windows accepte uniquement l extension `.zip`, meme si le format XLSX est un ZIP OpenXML.
+
+Solution qui fonctionne :
+- Conserver les erreurs Perfetto dans les artefacts bruts et s appuyer sur `SVPerf`/logcat, `dumpsys gfxinfo framestats`, `dumpsys meminfo`, screenshots et CSV/JSONL applicatifs pour ce run.
+- Generer l XLSX en creant d abord un ZIP temporaire puis en le renommant en `.xlsx`.
+- Si une vraie trace Perfetto est indispensable sur cette Firestick, generer une config binaire compatible hors appareil ou passer par Android Studio/System Trace si l appareil l autorise.
+
+Erreurs a eviter :
+- Ne pas supposer que les commandes Perfetto recentes fonctionnent sur Fire OS.
+- Ne pas ecrire directement un `.xlsx` avec `Compress-Archive`; creer un `.zip` temporaire puis renommer.
+- Ne pas relancer de longues captures sans verifier d abord que le ZIP/XLSX final est cree.
+
 ## 2026-06-30 - Micro-coupures et ecran noir entre videos YouTube
 
 Probleme rencontre :

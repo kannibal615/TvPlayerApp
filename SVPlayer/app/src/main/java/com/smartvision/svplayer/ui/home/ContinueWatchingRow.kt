@@ -52,6 +52,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
@@ -61,6 +62,7 @@ import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -85,6 +87,7 @@ fun ContinueWatchingRow(
     val fallbackRowState = rememberLazyListState()
     val rowState = lazyListState ?: fallbackRowState
     val rowScope = rememberCoroutineScope()
+    var focusedItemId by remember { mutableStateOf<String?>(null) }
     var focusedPreviewId by remember { mutableStateOf<String?>(null) }
     var anchorJob by remember { mutableStateOf<Job?>(null) }
     val totalFocusableItems = items.size + if (showViewAll) 1 else 0
@@ -97,27 +100,84 @@ fun ContinueWatchingRow(
     }
 
     LaunchedEffect(itemsSignature) {
+        focusedItemId = null
         focusedPreviewId = null
+        // PERF_DIAG: row reset marker for diagnosing delayed section display and stale scroll state.
+        PerformanceDiagnosticRecorder.record(
+            sheet = PerformanceDiagnosticRecorder.SHEET_ROW_FOCUS,
+            event = "home_row_items_signature",
+            fields = mapOf(
+                "row" to title,
+                "items" to items.size,
+                "showViewAll" to showViewAll,
+                "totalFocusableItems" to totalFocusableItems,
+            ),
+        )
         if (rowState.firstVisibleItemIndex != 0 || rowState.firstVisibleItemScrollOffset != 0) {
             rowState.scrollToItem(0)
         }
     }
 
+    LaunchedEffect(enablePreview, focusedItemId) {
+        focusedPreviewId = null
+        val pendingId = focusedItemId ?: return@LaunchedEffect
+        if (!enablePreview) return@LaunchedEffect
+        // PERF_FIX: do not transform portrait cards to landscape while the user is still moving fast.
+        delay(HomeCardPreviewTransformDelayMillis)
+        if (focusedItemId == pendingId) {
+            focusedPreviewId = pendingId
+        }
+    }
+
     fun anchorFocusedItem(index: Int) {
         if (index < 0 || totalFocusableItems <= 0) return
-        val visibleCount = rowState.layoutInfo.visibleItemsInfo.size.coerceAtLeast(1)
-        val lastUsefulFirstIndex = (totalFocusableItems - visibleCount).coerceAtLeast(0)
-        val targetIndex = index.coerceAtMost(lastUsefulFirstIndex)
+        val targetIndex = index
+        // PERF_DIAG: captures end-of-list math that can cause right-side clipping.
+        PerformanceDiagnosticRecorder.record(
+            sheet = PerformanceDiagnosticRecorder.SHEET_ROW_FOCUS,
+            event = "home_row_anchor_decision",
+            fields = mapOf(
+                "row" to title,
+                "focusedIndex" to index,
+                "targetFirstIndex" to targetIndex,
+                "visibleCount" to rowState.layoutInfo.visibleItemsInfo.size,
+                "firstVisibleItemIndex" to rowState.firstVisibleItemIndex,
+                "viewportStartOffset" to rowState.layoutInfo.viewportStartOffset,
+                "viewportEndOffset" to rowState.layoutInfo.viewportEndOffset,
+            ),
+        )
         if (rowState.firstVisibleItemIndex == targetIndex && rowState.firstVisibleItemScrollOffset == 0) return
         anchorJob?.cancel()
         anchorJob = rowScope.launch {
             try {
                 rowState.animateScrollToItem(targetIndex)
                 Log.i(HomeRowLogTag, "anchor row=$title focused=$index first=$targetIndex")
+                PerformanceDiagnosticRecorder.record(
+                    sheet = PerformanceDiagnosticRecorder.SHEET_ROW_FOCUS,
+                    event = "home_row_anchor_done",
+                    fields = mapOf(
+                        "row" to title,
+                        "focusedIndex" to index,
+                        "targetFirstIndex" to targetIndex,
+                        "firstVisibleItemIndex" to rowState.firstVisibleItemIndex,
+                        "firstVisibleItemScrollOffset" to rowState.firstVisibleItemScrollOffset,
+                    ),
+                )
             } catch (cancellation: CancellationException) {
+                PerformanceDiagnosticRecorder.record(
+                    sheet = PerformanceDiagnosticRecorder.SHEET_ROW_FOCUS,
+                    event = "home_row_anchor_canceled",
+                    fields = mapOf("row" to title, "focusedIndex" to index),
+                )
                 throw cancellation
             } catch (error: Throwable) {
                 Log.w(HomeRowLogTag, "anchor failed row=$title focused=$index", error)
+                PerformanceDiagnosticRecorder.record(
+                    sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
+                    event = "home_row_anchor_failed",
+                    fields = mapOf("row" to title, "focusedIndex" to index),
+                    error = error,
+                )
             }
         }
     }
@@ -157,17 +217,42 @@ fun ContinueWatchingRow(
                     focusRequester = if (index == 0) firstItemFocusRequester else null,
                     onFocused = {
                         Log.i(HomeRowLogTag, "focused row=$title index=$index id=${item.id}")
+                        // PERF_DIAG: one row per focused card, including width target and visible LazyRow state.
+                        PerformanceDiagnosticRecorder.record(
+                            sheet = PerformanceDiagnosticRecorder.SHEET_ROW_FOCUS,
+                            event = "home_row_item_focused",
+                            fields = mapOf(
+                                "row" to title,
+                                "index" to index,
+                                "id" to item.id,
+                                "title" to item.title,
+                                "previewMode" to item.previewMode.name,
+                                "hasPreviewUrl" to !item.previewUrl.isNullOrBlank(),
+                                "targetCardWidthDp" to targetCardWidth.value,
+                                "transformDelayMs" to HomeCardPreviewTransformDelayMillis,
+                                "firstVisibleItemIndex" to rowState.firstVisibleItemIndex,
+                                "visibleItems" to rowState.layoutInfo.visibleItemsInfo.size,
+                            ),
+                        )
                         anchorFocusedItem(index)
                     },
                     onFocusChanged = { focused ->
                         if (enablePreview) {
-                            focusedPreviewId = if (focused) item.id else focusedPreviewId?.takeUnless { it == item.id }
+                            focusedItemId = if (focused) item.id else focusedItemId?.takeUnless { it == item.id }
+                            if (!focused && focusedPreviewId == item.id) {
+                                focusedPreviewId = null
+                            }
                         }
+                        PerformanceDiagnosticRecorder.record(
+                            sheet = PerformanceDiagnosticRecorder.SHEET_ROW_FOCUS,
+                            event = "home_row_item_focus_changed",
+                            fields = mapOf("row" to title, "index" to index, "id" to item.id, "focused" to focused),
+                        )
                     },
                     onDown = onDownFromRow,
                     onUp = onUpFromRow,
                     blockLeft = index == 0,
-                    enablePreview = enablePreview,
+                    enablePreview = enablePreview && focusedPreviewId == item.id,
                     resumeOverlayText = resumeOverlayText,
                     blocked = blocked,
                     blockedMessage = blockedMessage,
@@ -189,11 +274,19 @@ fun ContinueWatchingRow(
                     )
                 }
             }
+            item(key = "tail_spacer_$title") {
+                Spacer(
+                    modifier = Modifier
+                        .width(SmartVisionDimensions.HomeContentPreviewCardWidth * 3)
+                        .height(SmartVisionDimensions.HomeContentCardHeight),
+                )
+            }
         }
     }
 }
 
 private const val HomeRowLogTag = "SVHomeFocus"
+private const val HomeCardPreviewTransformDelayMillis = 1_000L
 
 @Composable
 private fun RowChevronButton(

@@ -11,9 +11,11 @@
             android:src="@drawable/smartvision_splash_bg" />
     </item>
     <item
-        android:width="560dp"
-        android:height="142dp"
-        android:gravity="center">
+        android:width="440dp"
+        android:height="112dp"
+        android:gravity="top|center_horizontal"
+        android:top="120dp"
+        android:bottom="848dp">
         <bitmap
             android:gravity="fill"
             android:src="@drawable/smartvision_logo_wide" />

@@ -1,6 +1,6 @@
 # Android Architecture, Build et Release
 
-Derniere mise a jour: 2026-07-02.
+Derniere mise a jour: 2026-07-03.
 
 ## 1. Objectif
 
@@ -26,6 +26,7 @@ Demarrage:
 - Les diagnostics startup visibles incluent pourcentage, etape courante/total, elements traites/restants quand connus, temps ecoule, ETA estimee et details Live/Films/Series pendant une synchronisation catalogue.
 - `MainActivity` attend la premiere frame Compose avant de lancer les checks startup, pour afficher immediatement la barre et les statuts au-dessus de la preview systeme.
 - `MainActivity` applique le theme normal et remplace le `windowBackground` par un fond opaque neutre juste avant `AppNavigation`, afin que le fond/logo splash ne restent pas visibles derriere Home.
+- Le splash systeme affiche le logo wide plus petit et plus haut; l'overlay Compose place la barre de progression centree sous ce logo et affiche une seule ligne `pourcentage + statut`.
 - L'initialisation diagnostic `AppContainer` dans `SVPlayerApplication` est differee et lancee hors thread UI, pour ne pas bloquer le rendu initial du splash Compose.
 - `AppNavigation` ne contient plus de `StartupHandoffScreen`; apres le statut `Demarrage en cours...`, `MainActivity` rend directement la navigation.
 - `MainActivity` ne pose plus `@drawable/splash_background` comme fond de fenetre permanent afin d'eviter que le fond splash reapparaisse derriere Home; les logs `SVStartup` suivent les statuts startup.
@@ -52,6 +53,7 @@ Build:
 - pas de `compileDebugKotlin` ni `testDebugUnitTest` avant release sauf demande explicite.
 - avant le build, verifier que `versionCode` est strictement superieur a la prod et aux appareils ADB connectes avec `.\scripts\guard_release_version.ps1`;
 - apres le build, relancer `.\scripts\guard_release_version.ps1 -RequireBuildMetadata` pour verifier `output-metadata.json`.
+- Diagnostic performance local: `.\gradlew.bat :app:assembleReleaseDiagnostic --no-daemon --max-workers=1 --console=plain` genere un APK `0.1.81-diag` avec `PERF_DIAGNOSTICS_ENABLED=true` et `profileable` shell. Ce variant est uniquement pour ADB/Firestick et ne doit pas etre deployee en prod. `PerformanceDiagnosticRecorder` ecrit les CSV/JSONL via un writer arriere-plan pour limiter la perturbation des mesures UI.
 
 Deploy:
 - le script `scripts/deploy_activation_phase1.ps1` n'assemble pas l'APK;
@@ -96,6 +98,7 @@ Diagnostic Firestick / ADB:
 - ADB Windows de reference pour ce workspace: `C:\Users\ONEDEV\AppData\Local\Android\Sdk\platform-tools\adb.exe`.
 - Firestick Wi-Fi connue: `192.168.1.33:5555` (`AFTSSS`, `sheldonp`) apres autorisation RSA cote TV.
 - Pour les mesures de synchro Xtream, utiliser `scripts/capture_firestick_xtream_sync.ps1`; le script nettoie `logcat`, capture `SVSyncMemory`, releve `dumpsys meminfo com.smartvision.svplayer` et ecrit les resultats sous `diagnostics/firestick-sync-*`.
+- Pour le diagnostic Splash/Home, utiliser `scripts/capture_firestick_splash_home_perf.ps1`; il installe l'APK `releaseDiagnostic`, force un cold start, capture `SVPerf`/`SVStartup`/`SVHomeFocus`, `gfxinfo`, `meminfo`, screenshots, fichiers app CSV/JSONL, genere `perf-diagnostics.xlsx` puis un ZIP sous `diagnostics/firestick-splash-home-perf-*`.
 - Capture de reference apres optimisation candidate: `diagnostics/firestick-sync-20260701-123758`, deux synchronisations reussies sans OOM/ANR sur `21769 Live / 104005 Movies / 24325 Series`, pic `SVSyncMemory` environ `59 Mo`.
 
 ## 8. Dependances
@@ -114,6 +117,7 @@ Diagnostic Firestick / ADB:
 - Ne pas exposer les secrets de signature.
 - Ne pas activer minify/shrink sur le release urgent sans investigation separee.
 - Garder `releaseOptimized` comme chemin distinct si optimisation lourde.
+- Le variant `releaseDiagnostic` et les appels `PERF_DIAG` doivent rester faciles a supprimer apres analyse; ils ne doivent pas changer la logique utilisateur et ne doivent pas etre publies via `deploy_activation_phase1.ps1`.
 
 ## 10. Problemes connus
 
@@ -144,6 +148,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-07-02: release publiee `0.1.81` / `versionCode 84` pour splash hybride: fond + logo reduit dans la preview systeme, barre/statuts/diagnostics en Compose, nettoyage du fond avant Home; APK `smartvision-tv-v84-1577e450.apk`, SHA256 `1577e4508feb3ae94d5ba672f67ff851d0a1779b6b94a34dd257044b4a65afb0`, manifeste public, `app_update.php`, APK stable et hash verifies.
+- 2026-07-03: optimisation locale `releaseDiagnostic`: recorder diagnostic asynchrone, splash logo plus petit/remonte, progress bar centree sous le logo et statut simplifie avec pourcentage.
 - 2026-07-02: release publiee `0.1.80` / `versionCode 83` pour splash systeme fond + logo immediat, anti-flash activation, cache final tendances startup, mini-player Continue watching immediat, ordre initial des tendances Home, refresh local du menu HOME et ancrage horizontal Home; APK `smartvision-tv-v83-90e2e35d.apk`, SHA256 `90e2e35df36f5b33bc20d6aaa19c366904989784f9c676915368909d9daff28f`, manifeste public, `app_update.php`, APK stable et hash verifies.
 - 2026-07-02: release publiee `0.1.78` / `versionCode 81` pour stabiliser le scroll/focus vertical Home Continue watching et Trending; APK `smartvision-tv-v81-bcf5a8d7.apk`, manifeste public, `app_update.php`, APK stable et hash SHA256 verifies.
 - 2026-06-29: migration vers documentation specialisee.

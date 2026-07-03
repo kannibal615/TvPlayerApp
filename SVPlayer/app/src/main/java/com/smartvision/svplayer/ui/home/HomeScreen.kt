@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.data.LocalAppContainer
+import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.mock.HomeCategory
@@ -97,6 +98,43 @@ fun HomeScreen(
     val seriesTrendRowState = rememberHomeRowState(state.trendingSeries)
     val homeCategories = remember(strings) { homeCategories(strings) }
 
+    // PERF_DIAG: Home lifecycle and visible section counts for the splash-to-home handoff.
+    DisposableEffect(Unit) {
+        PerformanceDiagnosticRecorder.recordMemory(
+            sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+            event = "home_screen_composed",
+            fields = mapOf("currentRoute" to currentRoute),
+        )
+        onDispose {
+            PerformanceDiagnosticRecorder.record(
+                sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+                event = "home_screen_disposed",
+            )
+        }
+    }
+
+    LaunchedEffect(
+        state.continueWatching.size,
+        state.trendingMovies.size,
+        state.trendingSeries.size,
+        state.slides.size,
+    ) {
+        // PERF_DIAG: records when history/trends/slides actually become visible to Compose.
+        PerformanceDiagnosticRecorder.recordMemory(
+            sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+            event = "home_state_visible",
+            fields = mapOf(
+                "continueWatching" to state.continueWatching.size,
+                "trendingMovies" to state.trendingMovies.size,
+                "trendingSeries" to state.trendingSeries.size,
+                "slides" to state.slides.size,
+                "hasContinueWatching" to hasContinueWatching,
+                "hasMovieTrends" to hasMovieTrends,
+                "hasSeriesTrends" to hasSeriesTrends,
+            ),
+        )
+    }
+
     val categoryScrollPx = 0
     val continueScrollPx = with(density) { (SmartVisionDimensions.HomeHeroHeight + 16.dp).roundToPx() }
         .coerceAtLeast(0)
@@ -149,24 +187,75 @@ fun HomeScreen(
                     HomeFocusLogTag,
                     "scroll start target=$targetName from=${scrollState.value} to=$clampedScroll max=${scrollState.maxValue}",
                 )
+                // PERF_DIAG: vertical focus route timing helps diagnose non-Netflix-like transitions.
+                PerformanceDiagnosticRecorder.record(
+                    sheet = PerformanceDiagnosticRecorder.SHEET_ROW_FOCUS,
+                    event = "home_vertical_scroll_start",
+                    fields = mapOf(
+                        "targetName" to targetName,
+                        "from" to scrollState.value,
+                        "to" to clampedScroll,
+                        "max" to scrollState.maxValue,
+                    ),
+                )
                 if (rowState != null) {
                     try {
                         animateRowToFirst(targetName, rowState)
                         Log.i(HomeFocusLogTag, "requestRowFocus target=$targetName rowScrolledToFirst")
+                        PerformanceDiagnosticRecorder.record(
+                            sheet = PerformanceDiagnosticRecorder.SHEET_ROW_FOCUS,
+                            event = "home_row_scrolled_to_first",
+                            fields = mapOf(
+                                "targetName" to targetName,
+                                "firstVisibleItemIndex" to rowState.firstVisibleItemIndex,
+                                "firstVisibleItemScrollOffset" to rowState.firstVisibleItemScrollOffset,
+                            ),
+                        )
                     } catch (cancellation: CancellationException) {
                         throw cancellation
                     } catch (error: Throwable) {
                         Log.w(HomeFocusLogTag, "requestRowFocus target=$targetName rowScrollFailed", error)
+                        PerformanceDiagnosticRecorder.record(
+                            sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
+                            event = "home_row_scroll_to_first_failed",
+                            fields = mapOf("targetName" to targetName),
+                            error = error,
+                        )
                     }
                 }
                 scrollState.animateScrollTo(clampedScroll)
                 Log.i(HomeFocusLogTag, "scroll end target=$targetName value=${scrollState.value}")
+                PerformanceDiagnosticRecorder.record(
+                    sheet = PerformanceDiagnosticRecorder.SHEET_ROW_FOCUS,
+                    event = "home_vertical_scroll_end",
+                    fields = mapOf("targetName" to targetName, "value" to scrollState.value),
+                )
                 withFrameNanos { }
                 runCatching { focusRequester.requestFocus() }
-                    .onSuccess { Log.i(HomeFocusLogTag, "focus requested target=$targetName") }
-                    .onFailure { error -> Log.w(HomeFocusLogTag, "focus request failed target=$targetName", error) }
+                    .onSuccess {
+                        Log.i(HomeFocusLogTag, "focus requested target=$targetName")
+                        PerformanceDiagnosticRecorder.record(
+                            sheet = PerformanceDiagnosticRecorder.SHEET_ROW_FOCUS,
+                            event = "home_focus_requested",
+                            fields = mapOf("targetName" to targetName),
+                        )
+                    }
+                    .onFailure { error ->
+                        Log.w(HomeFocusLogTag, "focus request failed target=$targetName", error)
+                        PerformanceDiagnosticRecorder.record(
+                            sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
+                            event = "home_focus_request_failed",
+                            fields = mapOf("targetName" to targetName),
+                            error = error,
+                        )
+                    }
             } catch (cancellation: CancellationException) {
                 Log.i(HomeFocusLogTag, "scroll canceled target=$targetName")
+                PerformanceDiagnosticRecorder.record(
+                    sheet = PerformanceDiagnosticRecorder.SHEET_ROW_FOCUS,
+                    event = "home_vertical_scroll_canceled",
+                    fields = mapOf("targetName" to targetName),
+                )
                 throw cancellation
             }
         }
@@ -250,6 +339,11 @@ fun HomeScreen(
     fun refreshHomeFromHeader() {
         verticalFocusJob?.cancel()
         verticalFocusJob = focusScope.launch {
+            // PERF_DIAG: distinguishes HOME-header refresh from cold-start Home load.
+            PerformanceDiagnosticRecorder.record(
+                sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+                event = "home_header_refresh_started",
+            )
             viewModel.refreshSlides(forceRefresh = true)
             viewModel.refreshTrending(forceRefresh = true)
             continueRowState.scrollToItem(0)
@@ -258,15 +352,27 @@ fun HomeScreen(
             scrollState.animateScrollTo(0)
             withFrameNanos { }
             runCatching { liveFocusRequester.requestFocus() }
+            PerformanceDiagnosticRecorder.record(
+                sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+                event = "home_header_refresh_focus_restored",
+            )
         }
     }
 
     LaunchedEffect(Unit) {
+        PerformanceDiagnosticRecorder.record(
+            sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+            event = "home_first_launched_effect",
+        )
         playStartupChimeOnHome(context)
         viewModel.refreshSlides()
         viewModel.refreshTrending()
         withFrameNanos { }
         liveFocusRequester.requestFocus()
+        PerformanceDiagnosticRecorder.record(
+            sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+            event = "home_initial_focus_requested",
+        )
     }
 
     Column(

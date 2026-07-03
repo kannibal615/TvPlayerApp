@@ -53,9 +53,13 @@ android {
         targetSdk = 36
         versionCode = 84
         versionName = "0.1.81"
+        manifestPlaceholders["profileableByShell"] = "false"
 
         buildConfigField("String", "ACTIVATION_BASE_URL", buildConfigString(activationBaseUrl()))
         buildConfigField("String", "YOUTUBE_API_KEY", buildConfigString(localAdString("YOUTUBE_API_KEY")))
+        // PERF_DIAG: disabled by default; only releaseDiagnostic writes local performance artifacts.
+        buildConfigField("boolean", "PERF_DIAGNOSTICS_ENABLED", "false")
+        buildConfigField("String", "PERF_DIAGNOSTICS_LABEL", buildConfigString(""))
     }
 
     signingConfigs {
@@ -113,6 +117,18 @@ android {
             initWith(getByName("release"))
             matchingFallbacks += listOf("release")
             signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
+        create("releaseDiagnostic") {
+            // PERF_DIAG: local-only build used for Firestick Splash/Home captures. Do not deploy this variant.
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            signingConfig = signingConfigs.getByName("release")
+            versionNameSuffix = "-diag"
+            manifestPlaceholders["profileableByShell"] = "true"
+            buildConfigField("boolean", "PERF_DIAGNOSTICS_ENABLED", "true")
+            buildConfigField("String", "PERF_DIAGNOSTICS_LABEL", buildConfigString("splash-home"))
             isMinifyEnabled = false
             isShrinkResources = false
         }
