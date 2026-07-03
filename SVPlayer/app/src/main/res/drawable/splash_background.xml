@@ -14,8 +14,8 @@
     android:width="374dp"
     android:height="95dp"
     android:gravity="top|center_horizontal"
-    android:top="120dp"
-    android:bottom="848dp">
+    android:top="214dp"
+    android:bottom="754dp">
     <bitmap
         android:gravity="fill"
         android:src="@drawable/smartvision_logo_wide" />

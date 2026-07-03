@@ -357,7 +357,7 @@ class MainActivity : ComponentActivity() {
         private const val REQUEST_NOTIFICATIONS = 7041
         private const val SplashProgressWidthRatio = 0.30f
         private const val SplashProgressHeightRatio = 0.010f
-        private const val SplashProgressTopRatio = 0.43f
+        private const val SplashProgressTopRatio = 0.48f
         private const val SplashStatusTopMarginRatio = 0.014f
         private val MinimumProgressHeight: Dp = 5.dp
         private const val MinimumSplashDurationMillis = 900L

@@ -74,6 +74,7 @@ fun HomeScreen(
     notificationBadgeCount: Int,
     strings: SmartVisionStrings,
     xtreamCatalogBlocked: Boolean,
+    xtreamCatalogNavigationBlocked: Boolean,
     onXtreamBlocked: () -> Unit,
     onContentClick: (ContinueItem) -> Unit,
     onContinueViewAll: () -> Unit,
@@ -387,6 +388,7 @@ fun HomeScreen(
         viewModel.refreshSlides()
         withFrameNanos { }
         liveFocusRequester.requestFocus()
+        viewModel.refreshTrending(forceRefresh = false)
         PerformanceDiagnosticRecorder.record(
             sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
             event = "home_initial_focus_requested",
@@ -518,7 +520,7 @@ fun HomeScreen(
                 strings = strings,
                 remoteSlides = state.slides,
                 onNavigate = { route ->
-                    if (xtreamCatalogBlocked && route.isHomeXtreamRoute()) {
+                    if (xtreamCatalogNavigationBlocked && route.isHomeXtreamRoute()) {
                         onXtreamBlocked()
                     } else {
                         onNavigate(route)
@@ -541,7 +543,7 @@ fun HomeScreen(
                         onClick = {
                             if (catalogSyncActive) {
                                 Unit
-                            } else if (xtreamCatalogBlocked) {
+                            } else if (xtreamCatalogNavigationBlocked) {
                                 onXtreamBlocked()
                             } else {
                                 onNavigate(category.routeName)

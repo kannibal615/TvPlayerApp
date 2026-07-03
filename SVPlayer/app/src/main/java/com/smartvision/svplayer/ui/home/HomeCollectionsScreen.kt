@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,6 +68,11 @@ fun HomeCollectionsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val settings by container.settingsRepository.settings.collectAsStateWithLifecycle(initialValue = PlayerSettings())
     val strings = smartVisionStrings(settings.language)
+    LaunchedEffect(kind) {
+        if (kind == HomeCollectionKind.Trending) {
+            viewModel.refreshTrending(forceRefresh = false)
+        }
+    }
     val sections = when (kind) {
         HomeCollectionKind.ContinueWatching -> listOf(
             CollectionSection(strings.liveTv, state.continueWatching.filter { it.id.startsWith("live:") }),

@@ -1,5 +1,28 @@
 # AI Changelog
 
+## 2026-07-03 - Correction warnings Home transitoires et retour tendances
+
+Type:
+- android
+- ui-tv
+- catalogue
+
+Resume:
+- `AppNavigation` separe le blocage navigation Xtream du blocage visuel Home/Header.
+- Les warnings jaunes et overlays "Connexion indisponible" ne sont plus affiches pendant le simple etat `checking`; ils restent visibles apres echec Xtream confirme.
+- `HomeScreen` relance les tendances en cache-first apres la premiere frame Home, sans repasser par le splash ni forcer de synchronisation catalogue.
+- `HomeCollectionsScreen` relance aussi ce chargement cache-first sur la route `Trending`.
+
+Fichiers code:
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeCollectionsScreen.kt`
+
+Verification:
+- `.\gradlew.bat :app:assembleRelease --no-daemon --max-workers=1 --console=plain` OK.
+- `adb -s 192.168.1.33:5555 install -r app\build\outputs\apk\release\app-release.apk` OK.
+- Firestick `0.1.83` / `versionCode 86`: captures sous `diagnostics/home-badges-trending-fix-20260703-055415`, Home sans badge jaune transitoire et lignes `Trending movies` / `Trending series` visibles apres D-pad bas.
+
 ## 2026-07-03 - Suppression du tampon bleu fonce entre splash et Home
 
 Type:

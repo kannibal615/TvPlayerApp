@@ -145,6 +145,7 @@ fun AppNavigation(
     val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
     val xtreamConnectionState by container.xtreamConnectionManager.state.collectAsStateWithLifecycle()
     val xtreamCatalogBlocked = activePlaylistSource == PlaylistSource.Xtream && xtreamConnectionState.blocksCatalogForNavigation
+    val xtreamCatalogVisualBlocked = activePlaylistSource == PlaylistSource.Xtream && xtreamConnectionState.blocksCatalog
     val context = LocalContext.current
     val activity = context as? Activity
     val monetizationStatus = resolveMonetizationStatus(
@@ -164,11 +165,11 @@ fun AppNavigation(
         featureKey = "parental_control",
         status = monetizationStatus,
     )
-    val tabs = remember(youtubeAllowed, strings, xtreamCatalogBlocked) {
+    val tabs = remember(youtubeAllowed, strings, xtreamCatalogVisualBlocked) {
         headerTabs(strings).map { tab ->
             when {
                 tab.route == AppRoute.Youtube.route -> tab.copy(locked = !youtubeAllowed)
-                tab.route.isXtreamCatalogRoute() -> tab.copy(warning = xtreamCatalogBlocked)
+                tab.route.isXtreamCatalogRoute() -> tab.copy(warning = xtreamCatalogVisualBlocked)
                 else -> tab
             }
         }
@@ -452,7 +453,8 @@ fun AppNavigation(
                 hasNewNotifications = hasNewNotifications,
                 notificationBadgeCount = notificationBadgeCount,
                 strings = strings,
-                xtreamCatalogBlocked = xtreamCatalogBlocked,
+                xtreamCatalogBlocked = xtreamCatalogVisualBlocked,
+                xtreamCatalogNavigationBlocked = xtreamCatalogBlocked,
                 onXtreamBlocked = { showXtreamConnectionDialog = true },
                 onContentClick = { item ->
                     if (xtreamCatalogBlocked) {
