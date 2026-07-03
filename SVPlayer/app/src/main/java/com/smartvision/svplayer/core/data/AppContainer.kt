@@ -240,6 +240,9 @@ class AppContainer(context: Context) {
         catalogRepository = catalogRepository,
         accountManager = accountManager,
         syncStateDao = database.syncStateDao(),
+        mediaDao = database.mediaDao(),
+        xtreamRepository = xtreamRepository,
+        urlFactory = urlFactory,
     )
     val syncStateDao = database.syncStateDao()
 

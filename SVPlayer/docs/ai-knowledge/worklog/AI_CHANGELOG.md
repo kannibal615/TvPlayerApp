@@ -1,5 +1,37 @@
 # AI Changelog
 
+## 2026-07-03 - HOME Tendances premium
+
+Type:
+- android
+- ui-tv
+- catalogue
+- documentation
+
+Resume:
+- `Trending movies` et `Trending series` utilisent maintenant `TrendingContentRow`, separe de `ContinueWatchingRow`.
+- Les cards Tendances restent portrait au focus court, attendent `1,3s`, s'ancrent a gauche, passent en 16:9, affichent backdrop/fallback poster floute, puis lancent un mini-preview Media3 muet.
+- Les previews demarrent a 15% de la duree connue avec tentative fallback 30% si la premiere frame n'arrive pas.
+- Les details premium sont prepares seulement pour les items visibles/proches ou focussees, avec concurrence bornee a `2`.
+- Ajout du cache Room `home_trending_preview_cache` metadata-only; aucune URL de lecture brute n'est stockee en base.
+- Ajout de la feuille de route `ui-ux/home-trending-premium-roadmap.md` et d'une decision cache metadata-only.
+
+Fichiers code/schema:
+- `app/src/main/java/com/smartvision/svplayer/ui/home/TrendingContentRow.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/home/HomeContentRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/SVDatabase.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/dao/MediaDao.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/entity/MediaEntities.kt`
+- `app/schemas/com.smartvision.svplayer.data.local.SVDatabase/9.json`
+
+Verification:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain` OK.
+- `.\gradlew.bat assembleRelease --no-daemon --max-workers=1 --console=plain` OK.
+- `adb -s 192.168.1.33:5555 install -r app\build\outputs\apk\release\app-release.apk` OK.
+- TV verifiee: `versionName=0.1.83`, `versionCode=86`.
+
 ## 2026-07-03 - Correction warnings Home transitoires et retour tendances
 
 Type:

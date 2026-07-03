@@ -152,6 +152,7 @@ Lire les fichiers suivants si la demande concerne:
 Fichiers detailles:
 - `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
 - `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/ui-ux/home-trending-premium-roadmap.md` si la demande touche les cards Tendances HOME, le mini-preview, le backdrop ou le cache preview.
 
 Dependances:
 - Catalogue, synchro, playlist et lecteur
@@ -295,6 +296,7 @@ Fichiers detailles:
 - `docs/ai-knowledge/decisions/2026-06-29-ai-knowledge-router.md`
 - `docs/ai-knowledge/decisions/2026-06-29-native-tv-player.md`
 - `docs/ai-knowledge/decisions/2026-06-29-documentation-update-policy.md`
+- `docs/ai-knowledge/decisions/2026-07-03-home-trending-preview-cache.md`
 
 Dependances:
 - tous les domaines

@@ -82,6 +82,32 @@ data class TrendingMediaEntity(
 )
 
 @Entity(
+    tableName = "home_trending_preview_cache",
+    primaryKeys = ["contentType", "contentId"],
+    indices = [
+        Index(value = ["contentType", "preparedAt"]),
+        Index(value = ["lastSync"]),
+    ],
+)
+data class HomeTrendingPreviewCacheEntity(
+    val contentType: String,
+    val contentId: Int,
+    val posterUrl: String?,
+    val backdropUrl: String?,
+    val durationLabel: String?,
+    val durationMs: Long?,
+    val previewKind: String,
+    val previewContentId: Int?,
+    val previewExtension: String?,
+    val previewStartPositionMs: Long,
+    val sampleLabel: String?,
+    val backdropState: String,
+    val previewState: String,
+    val preparedAt: Long,
+    val lastSync: Long,
+)
+
+@Entity(
     tableName = "episodes",
     indices = [
         Index(value = ["seriesId"]),

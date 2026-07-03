@@ -4,6 +4,7 @@ import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
+import com.smartvision.svplayer.data.home.HomeTrendingPreparedPreview
 import com.smartvision.svplayer.data.home.HomeContentRepository
 import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.home.HomeSlide
@@ -23,7 +24,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 data class HomeUiState(
     val continueWatching: List<ContinueItem> = emptyList(),
@@ -47,6 +51,8 @@ class HomeViewModel(
     private val trendingSeries = MutableStateFlow(cachedTrending?.series.orEmpty())
     private val slides = MutableStateFlow(homeSlidesRepository.getCachedSlides().orEmpty())
     private var trendingRefreshJob: Job? = null
+    private val trendingPreviewPrepareJobs = mutableMapOf<String, Job>()
+    private val trendingPreviewPrepareSemaphore = Semaphore(TrendingPreviewPrepareConcurrency)
     private val continueWatching = userContentRepository.observeRecentProgress(limit = ContinueWatchingSnapshotLimit)
         .map { progress ->
             // PERF_DIAG: measures why Continue watching can appear after Home is already visible.
@@ -208,9 +214,73 @@ class HomeViewModel(
     suspend fun loadSavedTrendingSeries(forceRefresh: Boolean = false) {
         trendingSeries.value = homeContentRepository.refreshTrendingSeries(forceRefresh)
     }
+
+    fun prefetchTrendingPreviews(items: List<ContinueItem>) {
+        items.forEach(::prepareTrendingPreview)
+    }
+
+    fun prepareTrendingPreview(item: ContinueItem) {
+        val key = item.trendingPreviewKey() ?: return
+        if (isTrendingPreviewPrepared(item.id)) return
+        if (trendingPreviewPrepareJobs[key.jobKey]?.isActive == true) return
+        trendingPreviewPrepareJobs[key.jobKey] = viewModelScope.launch {
+            trendingPreviewPrepareSemaphore.withPermit {
+                val prepared = homeContentRepository.prepareTrendingPreview(
+                    contentType = key.contentType,
+                    contentId = key.contentId,
+                    fallbackPosterUrl = item.imageUrl,
+                ) ?: return@withPermit
+                applyPreparedTrendingPreview(prepared)
+            }
+        }
+    }
+
+    private fun isTrendingPreviewPrepared(itemId: String): Boolean =
+        trendingMovies.value.any { it.id == itemId && it.previewPrepared } ||
+            trendingSeries.value.any { it.id == itemId && it.previewPrepared }
+
+    private fun applyPreparedTrendingPreview(prepared: HomeTrendingPreparedPreview) {
+        val itemId = "${prepared.contentType}:${prepared.contentId}"
+        when (prepared.contentType) {
+            TrendingMovieType -> trendingMovies.update { items ->
+                items.map { item -> if (item.id == itemId) prepared.applyTo(item) else item }
+            }
+            TrendingSeriesType -> trendingSeries.update { items ->
+                items.map { item -> if (item.id == itemId) prepared.applyTo(item) else item }
+            }
+        }
+        PerformanceDiagnosticRecorder.record(
+            sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+            event = "home_trending_preview_applied",
+            fields = mapOf(
+                "contentType" to prepared.contentType,
+                "contentId" to prepared.contentId,
+                "hasBackdrop" to prepared.backdropAvailable,
+                "hasPreview" to prepared.previewAvailable,
+            ),
+        )
+    }
 }
 
 private const val ContinueWatchingSnapshotLimit = 10
+private const val TrendingPreviewPrepareConcurrency = 2
+private const val TrendingMovieType = "movie"
+private const val TrendingSeriesType = "series"
+
+private data class TrendingPreviewKey(
+    val contentType: String,
+    val contentId: Int,
+) {
+    val jobKey: String = "$contentType:$contentId"
+}
+
+private fun ContinueItem.trendingPreviewKey(): TrendingPreviewKey? {
+    val parts = id.split(":", limit = 2)
+    if (parts.size != 2) return null
+    val contentType = parts[0].takeIf { it == TrendingMovieType || it == TrendingSeriesType } ?: return null
+    val contentId = parts[1].toIntOrNull() ?: return null
+    return TrendingPreviewKey(contentType, contentId)
+}
 
 private fun toContinueItem(progress: PlaybackProgressEntity): ContinueItem? {
     val id = progress.contentId.toIntOrNull() ?: return null

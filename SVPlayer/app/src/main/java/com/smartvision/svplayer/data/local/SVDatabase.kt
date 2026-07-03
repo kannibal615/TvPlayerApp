@@ -16,6 +16,7 @@ import com.smartvision.svplayer.data.local.dao.YoutubeDao
 import com.smartvision.svplayer.data.local.entity.CategoryEntity
 import com.smartvision.svplayer.data.local.entity.EpisodeEntity
 import com.smartvision.svplayer.data.local.entity.FavoriteEntity
+import com.smartvision.svplayer.data.local.entity.HomeTrendingPreviewCacheEntity
 import com.smartvision.svplayer.data.local.entity.LiveStreamEntity
 import com.smartvision.svplayer.data.local.entity.MovieEntity
 import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
@@ -40,12 +41,13 @@ import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
         PlaybackProgressEntity::class,
         SyncStateEntity::class,
         TrendingMediaEntity::class,
+        HomeTrendingPreviewCacheEntity::class,
         YoutubeSearchEntity::class,
         YoutubeVideoHistoryEntity::class,
         YoutubeSelectionEntity::class,
         YoutubeBehaviorEventEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 abstract class SVDatabase : RoomDatabase() {
@@ -68,6 +70,7 @@ abstract class SVDatabase : RoomDatabase() {
                     Migration5To6,
                     Migration6To7,
                     Migration7To8,
+                    Migration8To9,
                 )
                 .build()
 
@@ -177,6 +180,33 @@ abstract class SVDatabase : RoomDatabase() {
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_trending_media_contentType_rating ON trending_media(contentType, rating)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_trending_media_contentType_updatedAt ON trending_media(contentType, updatedAt)")
+            }
+        }
+
+        private val Migration8To9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS home_trending_preview_cache (" +
+                        "contentType TEXT NOT NULL, " +
+                        "contentId INTEGER NOT NULL, " +
+                        "posterUrl TEXT, " +
+                        "backdropUrl TEXT, " +
+                        "durationLabel TEXT, " +
+                        "durationMs INTEGER, " +
+                        "previewKind TEXT NOT NULL, " +
+                        "previewContentId INTEGER, " +
+                        "previewExtension TEXT, " +
+                        "previewStartPositionMs INTEGER NOT NULL, " +
+                        "sampleLabel TEXT, " +
+                        "backdropState TEXT NOT NULL, " +
+                        "previewState TEXT NOT NULL, " +
+                        "preparedAt INTEGER NOT NULL, " +
+                        "lastSync INTEGER NOT NULL, " +
+                        "PRIMARY KEY(contentType, contentId)" +
+                        ")",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_home_trending_preview_cache_contentType_preparedAt ON home_trending_preview_cache(contentType, preparedAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_home_trending_preview_cache_lastSync ON home_trending_preview_cache(lastSync)")
             }
         }
     }

@@ -369,7 +369,7 @@ class DefaultCatalogRepository(
                     posterUrl = movie.posterUrl,
                     rating = movie.rating,
                     year = movie.year,
-                    previewUrl = urlFactory.movie(movie.streamId, movie.containerExtension),
+                    previewUrl = null,
                 )
             }
             .filterNot { it.containsAdultMarker() }

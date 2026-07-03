@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
 import com.smartvision.svplayer.data.local.entity.EpisodeEntity
+import com.smartvision.svplayer.data.local.entity.HomeTrendingPreviewCacheEntity
 import com.smartvision.svplayer.data.local.entity.LiveStreamEntity
 import com.smartvision.svplayer.data.local.entity.MovieEntity
 import com.smartvision.svplayer.data.local.entity.SeriesEntity
@@ -147,6 +148,22 @@ interface MediaDao {
 
     @Upsert
     suspend fun upsertTrendingMedia(items: List<TrendingMediaEntity>)
+
+    @Query(
+        "SELECT * FROM home_trending_preview_cache " +
+            "WHERE contentType = :contentType AND contentId = :contentId AND lastSync = :lastSync",
+    )
+    suspend fun getHomeTrendingPreviewCache(
+        contentType: String,
+        contentId: Int,
+        lastSync: Long,
+    ): HomeTrendingPreviewCacheEntity?
+
+    @Upsert
+    suspend fun upsertHomeTrendingPreviewCache(item: HomeTrendingPreviewCacheEntity)
+
+    @Query("DELETE FROM home_trending_preview_cache WHERE lastSync != :lastSync")
+    suspend fun deleteStaleHomeTrendingPreviewCache(lastSync: Long)
 
     @Query("DELETE FROM series")
     suspend fun clearSeries()

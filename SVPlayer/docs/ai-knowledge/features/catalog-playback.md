@@ -22,6 +22,8 @@ Depuis le 2026-07-03, le startup Compose de `MainActivity` ne lance aucune synch
 
 Depuis le 2026-07-03, les tendances Home ne recalculent plus `trending_media`, ne valident plus les URL de lecture et ne demandent plus les details Xtream. Home affiche `10` films et `10` series aleatoires depuis Room, hors marqueurs adultes, avec uniquement les metadonnees locales disponibles.
 
+Depuis le 2026-07-03, les cards Tendances HOME peuvent preparer des metadonnees premium apres affichage: `get_vod_info` pour les films, `get_series_info` pour les series, premier episode disponible pour le sample preview. Cette preparation est bornee aux items visibles/proches ou focussees et utilise le cache Room `home_trending_preview_cache`. Ce cache ne stocke pas les URLs de lecture brutes contenant les credentials; il stocke seulement type/id/extension/position de depart, puis l'URL est reconstruite en memoire.
+
 Clarification stockage/performance:
 - Room est le stockage local persistant de l'application sur l'appareil; les catalogues synchronises restent disponibles apres fermeture ou redemarrage de l'app tant que les donnees de l'application ne sont pas effacees.
 - Le cache memoire applicatif est uniquement en RAM; il peut garder de petites pages deja ouvertes, mais ne doit pas garder tout le catalogue pour l'ouverture d'ecran.
@@ -71,6 +73,7 @@ M3U / EPG:
 Room:
 - `SVDatabase.kt` version 8.
 - Entites: profiles, categories, live streams, movies, series, episodes, favorites, playback progress, sync state, historique YouTube.
+- `home_trending_preview_cache` stocke les metadonnees premium des cards Tendances HOME: poster, backdrop, duree, sample preview, extension, position 15%/fallback, etats backdrop/preview, `lastSync`.
 
 Playback:
 - `FullScreenPlayerScreen.kt` gere Live, Movie et Episode.
@@ -154,6 +157,7 @@ URL de lecture:
 - Le premier chargement local ne doit plus etre dans `MainActivity`: les categories initiales sont limitees a `20` par section dans les ViewModels Live TV / Movies / Series, puis le reste charge discretement apres premier affichage. Ne pas remettre les details tendances Xtream, EPG reseau ni snapshots complets Movies/Series dans `MainActivity` pour les tres gros catalogues.
 - Ne pas confondre prechargement local et synchro reseau: reconstruire le cache memoire depuis Room au demarrage est normal; retelecharger le catalogue complet ne doit arriver que si la politique de frequence le demande ou si l'utilisateur lance Synchroniser.
 - Ne pas bloquer la telecommande pendant un chargement local Room; le blocage Home est reserve aux synchronisations reseau catalogue.
+- Ne pas stocker d'URL de lecture brute en base pour les previews HOME; garder uniquement les ids/extensions et reconstruire via `XtreamUrlFactory`.
 - Ne pas promettre zero chargement local apres fermeture complete: si le process Android a ete tue, le cache RAM n'existe plus et doit etre reconstruit depuis Room.
 - AutoSync et sync manuelle doivent verifier Xtream avant de synchroniser; seules les erreurs reseau sont retentees automatiquement.
 - La verification de connexion Xtream est obligatoire au premier affichage actif, mais ne doit pas forcer une resynchronisation globale si la politique de frequence ne la demande pas.
@@ -213,3 +217,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-02: tendances Home prechargees en cache final pendant le startup via `HomeContentRepository`; `HomeViewModel` consomme ce cache pour eviter une deuxieme passe details/backdrop a l'ouverture Home. La cle de cache tient compte source/compte/derniere synchro et les details sont charges avec concurrence bornee.
 - 2026-07-03: correction performance Splash/Home: les details tendances Xtream ne bloquent plus le splash; Home demarre depuis les caches disponibles et rafraichit les tendances apres le rendu initial.
 - 2026-07-03: suppression de toute synchro et de tout chargement catalogue dans le splash; Home s'affiche immediatement, decide la synchro automatique apres premier rendu, bloque la telecommande uniquement pendant `Synchronize`, les categories initiales sont limitees a `20` par section et les tendances deviennent `10` films + `10` series aleatoires depuis Room hors adulte.
+- 2026-07-03: ajout du cache `home_trending_preview_cache` pour enrichir progressivement les cards Tendances HOME avec backdrop, duree et preview 15%, sans prechargement splash ni URL brute stockee.

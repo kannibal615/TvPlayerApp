@@ -593,13 +593,15 @@ fun HomeScreen(
             }
 
             if (hasMovieTrends) {
-                ContinueWatchingRow(
+                TrendingContentRow(
                     title = strings.trendingMovies,
                     items = state.trendingMovies,
                     showViewAll = true,
                     viewAllText = strings.viewAll,
                     onViewAll = onTrendingViewAll,
                     onItemClick = onContentClick,
+                    onPrepareItem = viewModel::prepareTrendingPreview,
+                    onPrepareItems = viewModel::prefetchTrendingPreviews,
                     lazyListState = movieTrendRowState,
                     firstItemFocusRequester = movieTrendFirstFocusRequester,
                     onDownFromRow = if (hasSeriesTrends) {
@@ -615,7 +617,6 @@ fun HomeScreen(
                         null
                     },
                     onUpFromRow = { requestPreviousBeforeMovieTrend() },
-                    enablePreview = true,
                     blocked = xtreamCatalogBlocked,
                     blockedMessage = strings.connectionUnavailable,
                     onBlockedClick = onXtreamBlocked,
@@ -629,17 +630,18 @@ fun HomeScreen(
             }
 
             if (hasSeriesTrends) {
-                ContinueWatchingRow(
+                TrendingContentRow(
                     title = strings.trendingSeries,
                     items = state.trendingSeries,
                     showViewAll = true,
                     viewAllText = strings.viewAll,
                     onViewAll = onTrendingViewAll,
                     onItemClick = onContentClick,
+                    onPrepareItem = viewModel::prepareTrendingPreview,
+                    onPrepareItems = viewModel::prefetchTrendingPreviews,
                     lazyListState = seriesTrendRowState,
                     firstItemFocusRequester = seriesTrendFirstFocusRequester,
                     onUpFromRow = { requestPreviousBeforeSeriesTrend() },
-                    enablePreview = true,
                     blocked = xtreamCatalogBlocked,
                     blockedMessage = strings.connectionUnavailable,
                     onBlockedClick = onXtreamBlocked,

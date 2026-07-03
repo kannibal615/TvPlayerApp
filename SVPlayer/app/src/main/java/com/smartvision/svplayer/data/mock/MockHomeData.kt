@@ -49,6 +49,11 @@ data class ContinueItem(
     val previewUrl: String? = null,
     val previewMode: HomePreviewMode = HomePreviewMode.None,
     val previewStartPositionMs: Long = 0L,
+    val previewFallbackStartPositionMs: Long = 0L,
+    val previewDurationLabel: String? = null,
+    val previewDurationMs: Long? = null,
+    val previewPrepared: Boolean = false,
+    val previewBackdropAvailable: Boolean = false,
 )
 
 object HomeNavigationData {

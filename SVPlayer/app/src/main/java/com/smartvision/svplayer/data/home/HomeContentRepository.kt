@@ -4,29 +4,70 @@ import android.os.SystemClock
 import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
+import com.smartvision.svplayer.data.local.dao.MediaDao
 import com.smartvision.svplayer.data.local.dao.SyncStateDao
+import com.smartvision.svplayer.data.local.entity.HomeTrendingPreviewCacheEntity
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.mock.HomePreviewMode
 import com.smartvision.svplayer.data.mock.HomeVisualStyle
+import com.smartvision.svplayer.data.models.XtreamSeriesEpisode
+import com.smartvision.svplayer.data.remote.XtreamUrlFactory
+import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.domain.model.TrendingCatalogItem
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToLong
 
 data class HomeTrendingSnapshot(
     val movies: List<ContinueItem>,
     val series: List<ContinueItem>,
 )
 
+data class HomeTrendingPreparedPreview(
+    val contentType: String,
+    val contentId: Int,
+    val posterUrl: String?,
+    val backdropUrl: String?,
+    val durationLabel: String?,
+    val durationMs: Long?,
+    val previewUrl: String?,
+    val previewStartPositionMs: Long,
+    val previewFallbackStartPositionMs: Long,
+    val sampleLabel: String?,
+    val backdropAvailable: Boolean,
+    val previewAvailable: Boolean,
+) {
+    fun applyTo(item: ContinueItem): ContinueItem =
+        item.copy(
+            imageUrl = item.imageUrl ?: posterUrl,
+            previewImageUrl = backdropUrl ?: posterUrl ?: item.imageUrl,
+            remaining = durationLabel ?: sampleLabel ?: item.remaining,
+            previewUrl = previewUrl,
+            previewStartPositionMs = previewStartPositionMs,
+            previewFallbackStartPositionMs = previewFallbackStartPositionMs,
+            previewDurationLabel = durationLabel ?: sampleLabel,
+            previewDurationMs = durationMs,
+            previewPrepared = true,
+            previewBackdropAvailable = backdropAvailable,
+            previewMode = if (previewAvailable) HomePreviewMode.TrendSegments else HomePreviewMode.None,
+        )
+}
+
 class HomeContentRepository(
     private val catalogRepository: CatalogRepository,
     private val accountManager: XtreamAccountManager,
     private val syncStateDao: SyncStateDao,
+    private val mediaDao: MediaDao,
+    private val xtreamRepository: XtreamRepository,
+    private val urlFactory: XtreamUrlFactory,
 ) {
     @Volatile
     private var cachedTrending: CachedHomeTrending? = null
+    @Volatile
+    private var previewCacheCleanedForLastSync: Long? = null
 
     fun getLastCachedTrendingSnapshot(): HomeTrendingSnapshot? = cachedTrending?.snapshot
 
@@ -201,6 +242,67 @@ class HomeContentRepository(
         }
     }
 
+    suspend fun prepareTrendingPreview(
+        contentType: String,
+        contentId: Int,
+        fallbackPosterUrl: String?,
+    ): HomeTrendingPreparedPreview? = withContext(Dispatchers.IO) {
+        val startedAt = SystemClock.elapsedRealtime()
+        val key = currentCacheKey()
+        if (key.source != PlaylistSource.Xtream.storageValue || key.accountSignature.isBlank()) {
+            return@withContext null
+        }
+        cleanPreviewCacheIfNeeded(key.lastSync)
+        mediaDao.getHomeTrendingPreviewCache(contentType, contentId, key.lastSync)
+            ?.toPreparedPreview()
+            ?.also { prepared ->
+                PerformanceDiagnosticRecorder.recordDuration(
+                    sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
+                    event = "home_trending_preview_cache_hit",
+                    startedAtMs = startedAt,
+                    fields = mapOf(
+                        "contentType" to contentType,
+                        "contentId" to contentId,
+                        "hasBackdrop" to prepared.backdropAvailable,
+                        "hasPreview" to prepared.previewAvailable,
+                    ),
+                )
+            }
+            ?.let { return@withContext it }
+
+        val entity = runCatching {
+            when (contentType) {
+                TrendingMovieType -> buildMoviePreviewCache(contentId, fallbackPosterUrl, key.lastSync)
+                TrendingSeriesType -> buildSeriesPreviewCache(contentId, fallbackPosterUrl, key.lastSync)
+                else -> null
+            }
+        }.onFailure { error ->
+            PerformanceDiagnosticRecorder.recordDuration(
+                sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
+                event = "home_trending_preview_prepare_failed",
+                startedAtMs = startedAt,
+                fields = mapOf("contentType" to contentType, "contentId" to contentId),
+                error = error,
+            )
+        }.getOrNull() ?: return@withContext null
+
+        mediaDao.upsertHomeTrendingPreviewCache(entity)
+        entity.toPreparedPreview().also { prepared ->
+            PerformanceDiagnosticRecorder.recordDuration(
+                sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
+                event = "home_trending_preview_prepared",
+                startedAtMs = startedAt,
+                fields = mapOf(
+                    "contentType" to contentType,
+                    "contentId" to contentId,
+                    "hasBackdrop" to prepared.backdropAvailable,
+                    "hasPreview" to prepared.previewAvailable,
+                    "durationMs" to (prepared.durationMs ?: 0L),
+                ),
+            )
+        }
+    }
+
     private suspend fun currentCacheKey(): HomeTrendingCacheKey =
         HomeTrendingCacheKey(
             source = accountManager.activePlaylistSource.value.storageValue,
@@ -226,6 +328,97 @@ class HomeContentRepository(
         return snapshot
     }
 
+    private suspend fun cleanPreviewCacheIfNeeded(lastSync: Long) {
+        if (previewCacheCleanedForLastSync == lastSync) return
+        mediaDao.deleteStaleHomeTrendingPreviewCache(lastSync)
+        previewCacheCleanedForLastSync = lastSync
+    }
+
+    private suspend fun buildMoviePreviewCache(
+        contentId: Int,
+        fallbackPosterUrl: String?,
+        lastSync: Long,
+    ): HomeTrendingPreviewCacheEntity {
+        val details = xtreamRepository.getMovieDetails(contentId)
+        val durationMs = details.duration.parseDurationMs()
+        val startPositionMs = durationMs.previewStartAt(PreviewStartRatio)
+        return HomeTrendingPreviewCacheEntity(
+            contentType = TrendingMovieType,
+            contentId = contentId,
+            posterUrl = details.posterUrl ?: fallbackPosterUrl,
+            backdropUrl = details.backdropUrl?.takeIf { it.isNotBlank() },
+            durationLabel = durationMs?.formatDurationLabel() ?: details.duration?.takeIf { it.isNotBlank() },
+            durationMs = durationMs,
+            previewKind = PreviewKindMovie,
+            previewContentId = contentId,
+            previewExtension = details.containerExtension.ifBlank { "mp4" },
+            previewStartPositionMs = startPositionMs,
+            sampleLabel = null,
+            backdropState = if (!details.backdropUrl.isNullOrBlank()) BackdropAvailable else BackdropMissing,
+            previewState = PreviewAvailable,
+            preparedAt = System.currentTimeMillis(),
+            lastSync = lastSync,
+        )
+    }
+
+    private suspend fun buildSeriesPreviewCache(
+        contentId: Int,
+        fallbackPosterUrl: String?,
+        lastSync: Long,
+    ): HomeTrendingPreviewCacheEntity {
+        val details = xtreamRepository.getSeriesDetails(contentId)
+        val firstEpisode = xtreamRepository.getSeriesEpisodes(contentId)
+            .sortedWith(compareBy<XtreamSeriesEpisode> { it.seasonNumber }.thenBy { it.episodeNumber })
+            .firstOrNull()
+        val durationMs = details.episodeRunTime.parseDurationMs()
+            ?: firstEpisode?.duration.parseDurationMs()
+        val sampleLabel = firstEpisode?.let { "S${it.seasonNumber} E${it.episodeNumber}" }
+        return HomeTrendingPreviewCacheEntity(
+            contentType = TrendingSeriesType,
+            contentId = contentId,
+            posterUrl = details.coverUrl ?: fallbackPosterUrl,
+            backdropUrl = details.backdropUrl?.takeIf { it.isNotBlank() },
+            durationLabel = durationMs?.formatDurationLabel(),
+            durationMs = durationMs,
+            previewKind = if (firstEpisode != null) PreviewKindEpisode else PreviewKindNone,
+            previewContentId = firstEpisode?.episodeId,
+            previewExtension = firstEpisode?.containerExtension?.ifBlank { "mp4" },
+            previewStartPositionMs = durationMs.previewStartAt(PreviewStartRatio),
+            sampleLabel = durationMs?.formatDurationLabel() ?: sampleLabel,
+            backdropState = if (!details.backdropUrl.isNullOrBlank()) BackdropAvailable else BackdropMissing,
+            previewState = if (firstEpisode != null) PreviewAvailable else PreviewUnavailable,
+            preparedAt = System.currentTimeMillis(),
+            lastSync = lastSync,
+        )
+    }
+
+    private fun HomeTrendingPreviewCacheEntity.toPreparedPreview(): HomeTrendingPreparedPreview {
+        val previewUrl = when (previewKind) {
+            PreviewKindMovie -> previewContentId?.let { id ->
+                urlFactory.movie(id, previewExtension.orEmpty().ifBlank { "mp4" })
+            }
+            PreviewKindEpisode -> previewContentId?.let { id ->
+                urlFactory.episode(id, previewExtension.orEmpty().ifBlank { "mp4" })
+            }
+            else -> null
+        }.takeIf { previewState == PreviewAvailable }
+        val fallbackStart = durationMs.previewStartAt(PreviewFallbackStartRatio)
+        return HomeTrendingPreparedPreview(
+            contentType = contentType,
+            contentId = contentId,
+            posterUrl = posterUrl,
+            backdropUrl = backdropUrl,
+            durationLabel = durationLabel,
+            durationMs = durationMs,
+            previewUrl = previewUrl,
+            previewStartPositionMs = previewStartPositionMs,
+            previewFallbackStartPositionMs = fallbackStart,
+            sampleLabel = sampleLabel,
+            backdropAvailable = backdropState == BackdropAvailable && !backdropUrl.isNullOrBlank(),
+            previewAvailable = previewUrl != null,
+        )
+    }
+
     private fun TrendingCatalogItem.toMovieTrendItem(): ContinueItem? {
         // PERF_DIAG: per-candidate details are intentionally data-only; URLs/secrets are not written.
         val startedAt = SystemClock.elapsedRealtime()
@@ -240,7 +433,7 @@ class HomeContentRepository(
                 "rating" to rating,
                 "year" to year,
                 "hasPoster" to !posterUrl.isNullOrBlank(),
-                "hasPreviewUrl" to !previewUrl.isNullOrBlank(),
+                "hasPreviewUrl" to false,
             ),
         )
         return ContinueItem(
@@ -253,8 +446,8 @@ class HomeContentRepository(
             imageUrl = posterUrl,
             previewImageUrl = posterUrl,
             mediaType = "FILM",
-            previewUrl = previewUrl,
-            previewMode = HomePreviewMode.TrendSegments,
+            previewUrl = null,
+            previewMode = HomePreviewMode.None,
         )
     }
 
@@ -272,7 +465,7 @@ class HomeContentRepository(
                 "rating" to rating,
                 "year" to year,
                 "hasPoster" to !posterUrl.isNullOrBlank(),
-                "hasPreviewUrl" to !previewUrl.isNullOrBlank(),
+                "hasPreviewUrl" to false,
             ),
         )
         return ContinueItem(
@@ -285,8 +478,8 @@ class HomeContentRepository(
             imageUrl = posterUrl,
             previewImageUrl = posterUrl,
             mediaType = "SERIE",
-            previewUrl = previewUrl,
-            previewMode = HomePreviewMode.TrendSegments,
+            previewUrl = null,
+            previewMode = HomePreviewMode.None,
         )
     }
 }
@@ -316,4 +509,53 @@ private fun String.cleanHistoryTitle(): String =
         .replace(" 4K", "", ignoreCase = true)
         .trim()
 
+private fun String?.parseDurationMs(): Long? {
+    val value = this?.trim()?.lowercase()?.takeIf { it.isNotBlank() } ?: return null
+    if (":" in value) {
+        val parts = value.split(":")
+            .mapNotNull { it.trim().toLongOrNull() }
+        return when (parts.size) {
+            3 -> ((parts[0] * 3_600L) + (parts[1] * 60L) + parts[2]) * 1_000L
+            2 -> ((parts[0] * 60L) + parts[1]) * 1_000L
+            else -> null
+        }
+    }
+    val hours = Regex("(\\d+)\\s*h").find(value)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
+    val minutes = Regex("(\\d+)\\s*(m|min)").find(value)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
+    val seconds = Regex("(\\d+)\\s*s").find(value)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
+    if (hours > 0L || minutes > 0L || seconds > 0L) {
+        return ((hours * 3_600L) + (minutes * 60L) + seconds) * 1_000L
+    }
+    val numeric = value.filter { it.isDigit() }.toLongOrNull() ?: return null
+    val secondsValue = if (numeric <= 360L) numeric * 60L else numeric
+    return secondsValue * 1_000L
+}
+
+private fun Long?.previewStartAt(ratio: Double): Long =
+    this?.takeIf { it > 0L }
+        ?.let { (it * ratio).roundToLong().coerceIn(0L, (it - 1_000L).coerceAtLeast(0L)) }
+        ?: 0L
+
+private fun Long.formatDurationLabel(): String {
+    val totalMinutes = (this / 60_000L).coerceAtLeast(0L)
+    val hours = totalMinutes / 60L
+    val minutes = totalMinutes % 60L
+    return when {
+        hours > 0L && minutes > 0L -> "${hours}h ${minutes}min"
+        hours > 0L -> "${hours}h"
+        else -> "${minutes}min"
+    }
+}
+
 private const val HomeTrendingSectionLimit = 10
+private const val TrendingMovieType = "movie"
+private const val TrendingSeriesType = "series"
+private const val PreviewKindMovie = "movie"
+private const val PreviewKindEpisode = "episode"
+private const val PreviewKindNone = "none"
+private const val BackdropAvailable = "available"
+private const val BackdropMissing = "missing"
+private const val PreviewAvailable = "available"
+private const val PreviewUnavailable = "unavailable"
+private const val PreviewStartRatio = 0.15
+private const val PreviewFallbackStartRatio = 0.30
