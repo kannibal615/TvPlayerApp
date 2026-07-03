@@ -99,7 +99,10 @@ fun AppNavigation(
     val scope = rememberCoroutineScope()
     val activationViewModel: ActivationViewModel = viewModel(
         factory = viewModelFactory {
-            ActivationViewModel(container.activationRepository)
+            ActivationViewModel(
+                repository = container.activationRepository,
+                initialLocalState = container.startupActivationState,
+            )
         },
     )
     val appUpdateViewModel: AppUpdateViewModel = viewModel(

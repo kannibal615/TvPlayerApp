@@ -1,5 +1,28 @@
 # AI Changelog
 
+## 2026-07-03 - Suppression du tampon bleu fonce entre splash et Home
+
+Type:
+- android
+- startup
+- ui-tv
+
+Resume:
+- `MainActivity` conserve le snapshot d'activation locale lu pendant le splash dans `AppContainer`.
+- `ActivationViewModel` demarre avec ce snapshot quand il est disponible, avec `localStateReady=true` des sa creation.
+- `AppNavigation` ne passe plus par l'etat tampon `localReady=false` sur le chemin Home deja active, ce qui supprime l'ecran bleu fonce intermediaire apres le splash.
+
+Fichiers code:
+- `app/src/main/java/com/smartvision/svplayer/MainActivity.kt`
+- `app/src/main/java/com/smartvision/svplayer/core/data/AppContainer.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/activation/ActivationViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+
+Verification:
+- `.\gradlew.bat :app:assembleRelease --no-daemon --max-workers=1 --console=plain` OK.
+- `adb -s 192.168.1.33:5555 install -r app\build\outputs\apk\release\app-release.apk` OK.
+- Logcat Firestick: apres `startup complete: rendering AppNavigation`, premier etat observe `state localReady=true checking=false activated=true playableSource=true route=home`.
+
 ## 2026-07-03 - Splash sans synchro, Home immediat et release prod 0.1.83
 
 Type:

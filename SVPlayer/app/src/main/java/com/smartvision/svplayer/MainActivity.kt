@@ -310,6 +310,7 @@ class MainActivity : ComponentActivity() {
             update("Verification de l'activation locale...", 2)
             val localActivationStart = SystemClock.elapsedRealtime()
             val localActivation = runCatching { container.activationRepository.localState.first() }.getOrNull()
+            container.cacheStartupActivationState(localActivation)
             PerformanceDiagnosticRecorder.record(
                 sheet = PerformanceDiagnosticRecorder.SHEET_STARTUP_STEPS,
                 event = "startup_local_activation_loaded",
@@ -354,9 +355,9 @@ class MainActivity : ComponentActivity() {
         private const val TAG_STARTUP = "SVStartup"
         const val ACTION_SHOW_XTREAM_CONNECTION_ALERT = "com.smartvision.svplayer.SHOW_XTREAM_CONNECTION_ALERT"
         private const val REQUEST_NOTIFICATIONS = 7041
-        private const val SplashProgressWidthRatio = 0.32f
-        private const val SplashProgressHeightRatio = 0.008f
-        private const val SplashProgressTopRatio = 0.50f
+        private const val SplashProgressWidthRatio = 0.30f
+        private const val SplashProgressHeightRatio = 0.010f
+        private const val SplashProgressTopRatio = 0.43f
         private const val SplashStatusTopMarginRatio = 0.014f
         private val MinimumProgressHeight: Dp = 5.dp
         private const val MinimumSplashDurationMillis = 900L

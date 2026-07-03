@@ -7,6 +7,7 @@ import com.smartvision.svplayer.data.activation.ActivationException
 import com.smartvision.svplayer.data.activation.ActivationRepository
 import com.smartvision.svplayer.data.activation.ActivationSession
 import com.smartvision.svplayer.data.activation.ActivationStatus
+import com.smartvision.svplayer.data.activation.StoredActivationState
 import com.smartvision.svplayer.data.monetization.MonetizationStatus
 import com.smartvision.svplayer.data.monetization.monetizationStatus
 import kotlinx.coroutines.Job
@@ -57,11 +58,13 @@ data class ActivationUiState(
 
 class ActivationViewModel(
     private val repository: ActivationRepository,
+    private val initialLocalState: StoredActivationState? = null,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(ActivationUiState())
+    private val _uiState = MutableStateFlow(initialLocalState.toActivationUiState())
     val uiState: StateFlow<ActivationUiState> = _uiState.asStateFlow()
 
     private var pollingJob: Job? = null
+    private var pendingInitialLocalState: StoredActivationState? = initialLocalState
 
     init {
         start()
@@ -164,7 +167,8 @@ class ActivationViewModel(
         pollingJob?.cancel()
         viewModelScope.launch {
             val localPublicCode = repository.getOrCreateLocalPublicCode()
-            val cached = repository.localState.first()
+            val cached = pendingInitialLocalState ?: repository.localState.first()
+            pendingInitialLocalState = null
             val cachedMonetization = cached.monetizationStatus()
             val cachedHasAccess =
                 cached.activated &&
@@ -492,6 +496,36 @@ class ActivationViewModel(
         pollingJob?.cancel()
         super.onCleared()
     }
+}
+
+private fun StoredActivationState?.toActivationUiState(): ActivationUiState {
+    if (this == null) return ActivationUiState()
+    val monetization = monetizationStatus()
+    val hasAccess = activated &&
+        ActivationStatus.fromValue(status) == ActivationStatus.Active &&
+        monetization.hasRuntimeAccess()
+    return ActivationUiState(
+        localStateReady = true,
+        checking = !hasAccess,
+        activated = hasAccess,
+        blocked = false,
+        deviceId = deviceId,
+        publicDeviceCode = publicDeviceCode,
+        expiresAt = expiresAt.orEmpty(),
+        activationType = activationType,
+        licenseStatus = licenseStatus,
+        trialStatus = trialStatus,
+        freeWithAdsStatus = freeWithAdsStatus,
+        playlistConfigured = playlistConfigured,
+        showFreeWithAdsChoice = false,
+        activationBusy = false,
+        statusLabel = if (hasAccess) {
+            monetization.accessStatusLabel()
+        } else {
+            "Initialisation de l appareil..."
+        },
+        errorMessage = null,
+    )
 }
 
 private fun MonetizationStatus?.hasRuntimeAccess(): Boolean =

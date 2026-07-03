@@ -8,6 +8,7 @@ import com.smartvision.svplayer.data.anomaly.AnomalyApiService
 import com.smartvision.svplayer.data.anomaly.AnomalyReporter
 import com.smartvision.svplayer.data.activation.ActivationApiService
 import com.smartvision.svplayer.data.activation.ActivationRepository
+import com.smartvision.svplayer.data.activation.StoredActivationState
 import com.smartvision.svplayer.data.appconfig.AppConfigApiService
 import com.smartvision.svplayer.data.appconfig.AppConfigRepository
 import com.smartvision.svplayer.data.behavior.BehaviorApiService
@@ -69,6 +70,9 @@ private val Context.appConfigDataStore by preferencesDataStore(name = "smartvisi
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
     private val _startupCatalogWork = MutableStateFlow(StartupCatalogWorkRequest.None)
+    @Volatile
+    var startupActivationState: StoredActivationState? = null
+        private set
     val startupCatalogWork: StateFlow<StartupCatalogWorkRequest> = _startupCatalogWork
     val accountManager = XtreamAccountManager(appContext)
     private val credentialsProvider = accountManager
@@ -259,6 +263,10 @@ class AppContainer(context: Context) {
         if (_startupCatalogWork.value.requestedAtMs == requestedAtMs) {
             _startupCatalogWork.value = StartupCatalogWorkRequest.None
         }
+    }
+
+    fun cacheStartupActivationState(state: StoredActivationState?) {
+        startupActivationState = state
     }
 
     private fun activationBaseUrl(): String =
