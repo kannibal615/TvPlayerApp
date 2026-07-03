@@ -1,5 +1,76 @@
 # AI Changelog
 
+## 2026-07-03 - Normalisation images catalogue et release prod 0.1.85
+
+Type:
+- android
+- catalogue
+- ui-tv
+- release-prod
+- documentation
+
+Resume:
+- Ajout d'une normalisation commune des URL d'images catalogue pour Xtream: URL absolues, `//`, chemins `/...`, chemins relatifs, espaces et slashes echappes.
+- Application a l'ingestion Room et a la lecture Room pour Live TV, Movies, Series, historiques et tendances Home.
+- Application aux details Xtream utilises par les backdrops/posters Home premium.
+- Les logos M3U `tvg-logo` relatifs sont resolus contre l'URL de la playlist.
+- Bump release `0.1.85` / `versionCode 88`.
+
+Fichiers code:
+- `app/src/main/java/com/smartvision/svplayer/data/repository/ImageUrlNormalizer.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/Mappers.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/XtreamRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/remote/XtreamUrlFactory.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/playlist/M3uPlaylistClient.kt`
+- `app/build.gradle.kts`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Verification:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain` OK.
+- `.\scripts\guard_release_version.ps1` OK avant build: local `0.1.85` / `88`, prod `0.1.84` / `87`.
+- `.\gradlew.bat assembleRelease --no-daemon --max-workers=1 --console=plain` OK en 13m53s.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata` OK apres build: metadata `0.1.85` / `88`.
+- `.\scripts\deploy_activation_phase1.ps1` OK, tests publics et admin OK.
+- Prod verifiee: `smartvision-tv.version.json` et `api/app_update.php` annoncent `0.1.85` / `88`, APK `smartvision-tv-v88-57ca0938.apk`, SHA256 `57ca0938ddb1b75cf22ff4afddc4c894e059cf5d9e14bb0cf88bc7a9511aa2cb`.
+- Hash de `https://smartvisions.net/downloads/smartvision-tv.apk` verifie identique au build local.
+
+## 2026-07-03 - Synchro Films Info compte et corrections EPG Live TV
+
+Type:
+- android
+- catalogue
+- ui-tv
+- focus
+- documentation
+
+Resume:
+- La synchro catalogue Films garde l'appel global `get_vod_streams`, puis bascule sur un fallback par `category_id` si le provider renvoie `0` film alors que des categories VOD existent.
+- Les films recuperes par categorie sont rattaches a leur dossier quand la reponse ne porte pas `category_id`, puis dedupliques par `stream_id`.
+- Live TV > Historique rehydrate les lignes depuis Room via les ids regardes, ce qui restaure `epgChannelId`, programmes EPG, badge `E` et details EPG sous mini-player.
+- Les dossiers Live TV avec EPG affichent leur compteur dans un cadre bleu au lieu d'un badge `E` supplementaire.
+- Le panneau details EPG sous le mini-player est focusable: D-pad haut/bas scrolle les programmes, puis D-pad bas va vers `Regarder` quand le bas est atteint.
+
+Fichiers code:
+- `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/LiveTvViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/LiveTvScreen.kt`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Verification:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain` OK.
+
 ## 2026-07-03 - Correction historique Series et release prod 0.1.84
 
 Type:

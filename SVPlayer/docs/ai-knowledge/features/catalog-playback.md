@@ -43,7 +43,7 @@ Depuis le 2026-07-01, l'URL EPG XMLTV est telechargee dans un cache local borne 
 
 Depuis le 2026-07-03, le splash ne verifie plus le lien M3U, ne synchronise plus et ne precharge plus Home/Live TV. Les ecrans Movies et Series affichent toujours un etat vide explicite quand M3U est actif, au lieu d'une erreur Xtream. Live TV reconnait un lien M3U comme source jouable meme sans compte Xtream local.
 
-Depuis le 2026-07-01, les lignes Live TV affichent un petit badge bleu `E` a droite quand des programmes EPG locaux sont disponibles pour la chaine. Le header des categories Live TV remplace la recherche dossier par un bouton `EPG`; active, il n'affiche que les dossiers contenant au moins une chaine avec EPG local disponible.
+Depuis le 2026-07-01, les lignes Live TV affichent un petit badge bleu `E` a droite quand des programmes EPG locaux sont disponibles pour la chaine. Depuis le 2026-07-03, les dossiers Live TV avec EPG n'ajoutent plus de badge separe: leur compteur de chaines est affiche dans un cadre bleu. Le header des categories Live TV remplace la recherche dossier par un bouton `EPG`; active, il n'affiche que les dossiers contenant au moins une chaine avec EPG local disponible.
 
 ## 3. Workflow utilisateur
 
@@ -61,12 +61,15 @@ Xtream:
 - `XtreamApiService.kt` appelle `player_api.php`.
 - `XtreamRepository.kt` gere les appels remote.
 - `DefaultCatalogRepository.kt` consolide remote/cache.
+- La synchronisation Films tente d'abord `get_vod_streams` global. Si le fournisseur renvoie `0` film alors que des categories VOD existent, elle recharge les films par `category_id`, assigne le dossier aux reponses sans `category_id`, deduplique par `stream_id`, puis importe Room. Ne pas remplacer ce fallback sans verifier les providers Xtream qui ne servent pas l'endpoint VOD global.
+- Depuis le 2026-07-03, les URL d'images catalogue sont normalisees a l'entree et a la sortie Room: `stream_icon`, `cover`, posters et backdrops Xtream acceptent URL absolue, URL `//`, chemin absolu `/...`, chemin relatif, espaces et slashes echappes. Les valeurs vides comme `null`, `n/a`, `none` ou `0` sont ignorees. Cette logique restaure les logos Live TV et posters Films/Series quand un fournisseur ne renvoie pas directement une URL HTTP complete.
 - `SynchronizeCatalogUseCase` declenche la synchro.
 - `XtreamUrlFactory.kt` construit les URL de lecture.
 - `data/xtream/XtreamConnectionManager.kt` centralise l'etat connecte / erreur reseau / identifiants invalides / reponse invalide.
 
 M3U / EPG:
 - `data/playlist/M3uPlaylistClient.kt` telecharge et parse les playlists M3U.
+- Les logos `tvg-logo` M3U relatifs sont resolus contre l'URL du fichier M3U avant stockage Room.
 - `data/playlist/EpgRepository.kt` telecharge, parse et cache les programmes XMLTV.
 - `DefaultCatalogRepository.kt` choisit la branche de synchronisation selon `PlaylistSource`.
 
@@ -80,6 +83,7 @@ Playback:
 - Live peut utiliser `.ts` et fallback `.m3u8`.
 - Films/series sauvegardent la progression.
 - Depuis le 2026-07-03, la sauvegarde d'un episode conserve les metadonnees d'historique existantes et enrichit depuis Room quand possible: titre de serie, label saison/episode, poster de serie et `parentContentId`. La categorie speciale Series > Historique ne doit plus afficher des episodes sous forme `Episode <id>` sans image quand les metadonnees serie sont disponibles.
+- Depuis le 2026-07-03, Live TV > Historique rehydrate ses lignes depuis Room via les ids regardes quand possible. Les lignes historiques recuperent ainsi `epgChannelId`, programmes EPG, badge `E` et details sous mini-player comme les dossiers Live TV normaux.
 - Overlay plein ecran Live/Films/Series: bandeau haut glassmorphism avec logo, badge type contenu, titre et meta droite; le nom dossier/categorie n'est pas affiche dans le bandeau haut. Bandeau bas glassmorphism bleu tres transparent avec boutons circulaires distingues, bordure/glow neon et barre de progression uniquement pour Films/Series.
 
 ## 5. Ecrans concernes
@@ -220,3 +224,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-03: suppression de toute synchro et de tout chargement catalogue dans le splash; Home s'affiche immediatement, decide la synchro automatique apres premier rendu, bloque la telecommande uniquement pendant `Synchronize`, les categories initiales sont limitees a `20` par section et les tendances deviennent `10` films + `10` series aleatoires depuis Room hors adulte.
 - 2026-07-03: ajout du cache `home_trending_preview_cache` pour enrichir progressivement les cards Tendances HOME avec backdrop, duree et preview 15%, sans prechargement splash ni URL brute stockee.
 - 2026-07-03: correction historique Series: les progres episodes preservent/enrichissent titre de serie, poster, label episode et parent serie avant upsert Room.
+- 2026-07-03: correction synchro Films Xtream avec fallback `get_vod_streams` par categorie quand l'endpoint global renvoie 0, et correction Live TV EPG pour historique, compteurs dossiers et details scrollables.
+- 2026-07-03: normalisation des URL d'images catalogue Xtream/M3U pour restaurer logos chaines, posters Films/Series et backdrops details/Home quand les providers renvoient des chemins relatifs ou echappes.

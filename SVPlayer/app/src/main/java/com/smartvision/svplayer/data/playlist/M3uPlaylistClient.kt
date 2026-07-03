@@ -7,6 +7,7 @@ import java.util.Locale
 import java.util.zip.CRC32
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -22,11 +23,11 @@ class M3uPlaylistClient(
             if (!response.isSuccessful) {
                 error("Lien M3U indisponible (${response.code}).")
             }
-            parse(response.body?.string().orEmpty())
+            parse(response.body?.string().orEmpty(), url)
         }
     }
 
-    fun parse(content: String): M3uPlaylist {
+    fun parse(content: String, baseUrl: String? = null): M3uPlaylist {
         val channels = mutableListOf<M3uChannel>()
         var pendingInfo: ExtInf? = null
         content.lineSequence()
@@ -46,7 +47,7 @@ class M3uPlaylistClient(
                                 number = channels.size + 1,
                                 name = info.name.ifBlank { "Chaine ${channels.size + 1}" },
                                 group = info.group.ifBlank { "M3U" },
-                                logoUrl = info.logoUrl,
+                                logoUrl = normalizeM3uLogoUrl(info.logoUrl, baseUrl),
                                 epgChannelId = info.tvgId.ifBlank { info.name },
                                 streamUrl = line,
                             )
@@ -74,6 +75,30 @@ class M3uPlaylistClient(
         val crc = CRC32()
         crc.update(value.toByteArray(Charsets.UTF_8))
         return (crc.value and 0x7FFFFFFF).toInt().takeIf { it != 0 } ?: 1
+    }
+
+    private fun normalizeM3uLogoUrl(rawUrl: String?, baseUrl: String?): String? {
+        val raw = rawUrl
+            ?.trim()
+            ?.replace("\\/", "/")
+            ?.replace(" ", "%20")
+            ?.takeIf { it.isNotBlank() }
+            ?: return null
+        if (raw.equals("null", ignoreCase = true) ||
+            raw.equals("n/a", ignoreCase = true) ||
+            raw.equals("none", ignoreCase = true) ||
+            raw == "0"
+        ) {
+            return null
+        }
+        if (raw.startsWith("http://") || raw.startsWith("https://")) return raw
+
+        val base = baseUrl?.toHttpUrlOrNull() ?: return when {
+            raw.startsWith("//") -> "http:$raw"
+            raw.startsWith("www.") -> "http://$raw"
+            else -> raw
+        }
+        return base.resolve(raw)?.toString() ?: raw
     }
 
     private companion object {

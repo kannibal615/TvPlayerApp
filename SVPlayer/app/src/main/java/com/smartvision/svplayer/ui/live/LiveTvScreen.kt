@@ -63,6 +63,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
@@ -71,6 +72,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -195,6 +201,7 @@ fun LiveTvScreen(
     val hasPlayableSource = accounts.isNotEmpty() || (activePlaylistSource == PlaylistSource.M3u && m3uUrl.isNotBlank())
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstChannelFocusRequester = remember { FocusRequester() }
+    val epgDetailsFocusRequester = remember { FocusRequester() }
     val firstPreviewActionFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
@@ -351,7 +358,7 @@ fun LiveTvScreen(
                     firstChannelFocusRequester = firstChannelFocusRequester,
                     searchQuery = contentSearchQuery,
                     onSearchQueryChange = { contentSearchQuery = it },
-                    previewActionFocusRequester = firstPreviewActionFocusRequester.takeIf {
+                    previewActionFocusRequester = epgDetailsFocusRequester.takeIf {
                         state.selectedChannel != null
                     },
                     onChannelFocused = viewModel::focusChannel,
@@ -385,6 +392,7 @@ fun LiveTvScreen(
                     idleVastAdLoader = container.idleVastAdLoader,
                     monetizationManager = container.monetizationManager,
                     firstActionFocusRequester = firstPreviewActionFocusRequester,
+                    epgDetailsFocusRequester = epgDetailsFocusRequester,
                     onWatch = {
                         if (inputReady) {
                             state.selectedChannel?.let { channel ->
@@ -625,6 +633,7 @@ private fun PreviewPanel(
     idleVastAdLoader: IdleVastAdLoader,
     monetizationManager: MonetizationManager,
     firstActionFocusRequester: FocusRequester,
+    epgDetailsFocusRequester: FocusRequester,
     onWatch: () -> Unit,
     onFavorite: () -> Unit,
     modifier: Modifier = Modifier,
@@ -669,6 +678,8 @@ private fun PreviewPanel(
 
             ProgramInfoCard(
                 channel = channel,
+                focusRequester = epgDetailsFocusRequester,
+                downFocusRequester = firstActionFocusRequester,
                 modifier = Modifier.weight(1f),
             )
 
@@ -1243,32 +1254,33 @@ private fun CategoryRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        if (category.hasEpg) {
+        val countText = category.count?.toString().orEmpty()
+        if (category.hasEpg && countText.isNotBlank()) {
             Box(
                 modifier = Modifier
                     .height(18.dp)
-                    .width(24.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(Color(0xFF0876FF).copy(alpha = if (active) 0.95f else 0.72f))
-                    .border(BorderStroke(1.dp, Color(0xFF1FDDFF).copy(alpha = 0.76f)), RoundedCornerShape(4.dp)),
+                    .border(BorderStroke(1.dp, Color(0xFF1FDDFF).copy(alpha = 0.76f)), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 7.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "E",
+                    text = countText,
                     color = Color.White,
                     style = LiveTvItemMetaStyle,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                 )
             }
-            Spacer(Modifier.width(8.dp))
+        } else {
+            Text(
+                text = countText,
+                color = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+                style = LiveTvItemMetaStyle,
+                maxLines = 1,
+            )
         }
-        Text(
-            text = category.count?.toString().orEmpty(),
-            color = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
-            style = LiveTvItemMetaStyle,
-            maxLines = 1,
-        )
     }
 }
 
@@ -1686,13 +1698,60 @@ private fun MiniPreviewPlayer(
 @Composable
 private fun ProgramInfoCard(
     channel: LiveTvChannel,
+    focusRequester: FocusRequester,
+    downFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+    var focused by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(LiveTvDimens.ItemRadius)
+    val focusStyle = LocalTvFocusStyle.current
     Column(
         modifier = modifier
             .fillMaxWidth()
             .height(185.dp)
-            .verticalScroll(rememberScrollState()),
+            .focusRequester(focusRequester)
+            .focusProperties { down = downFocusRequester }
+            .onFocusChanged { focused = it.isFocused }
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                val delta = 64
+                when (event.key) {
+                    Key.DirectionDown -> {
+                        if (scrollState.value < scrollState.maxValue) {
+                            coroutineScope.launch {
+                                scrollState.animateScrollTo((scrollState.value + delta).coerceAtMost(scrollState.maxValue))
+                            }
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    Key.DirectionUp -> {
+                        if (scrollState.value > 0) {
+                            coroutineScope.launch {
+                                scrollState.animateScrollTo((scrollState.value - delta).coerceAtLeast(0))
+                            }
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    else -> false
+                }
+            }
+            .clip(shape)
+            .border(
+                BorderStroke(
+                    if (focused) focusStyle.borderWidth else SmartVisionDimensions.PanelBorder,
+                    if (focused) focusStyle.accent else Color.Transparent,
+                ),
+                shape,
+            )
+            .focusable()
+            .verticalScroll(scrollState)
+            .padding(6.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             LiveBadge(text = "EN COURS", color = SmartVisionColors.Primary)

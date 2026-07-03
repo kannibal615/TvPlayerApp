@@ -5,6 +5,9 @@ import com.smartvision.svplayer.core.config.XtreamCredentialsProvider
 class XtreamUrlFactory(
     private val credentialsProvider: XtreamCredentialsProvider,
 ) {
+    fun baseHost(): String =
+        credentialsProvider.current().normalizedHost
+
     fun live(streamId: Int): String {
         val credentials = credentialsProvider.current()
         return "${credentials.normalizedHost}/live/${credentials.username}/${credentials.password}/$streamId.ts"

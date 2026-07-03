@@ -374,26 +374,28 @@ class LiveTvViewModel(
 
     private fun loadHistoryChannels() {
         channelsJob?.cancel()
-        val channels = historyChannels()
-        _uiState.update { state ->
-            state.copy(
-                channelsLoading = false,
-                itemsLoading = false,
-                nextPageLoading = false,
-                hasMoreItems = false,
-                currentOffset = channels.size,
-                errorMessage = null,
-                selectedCategoryId = HistoryLiveCategoryId,
-                categories = state.categories.withSpecialCategories(
-                    allCount = catalogTotalCount(),
-                    favoriteCount = favoriteIds.size,
-                    historyCount = channels.size,
-                    historySignals = historyCategorySignals,
-                ),
-                channels = channels,
-                focusedChannelId = channels.firstOrNull()?.streamId,
-                selectedChannelId = null,
-            )
+        channelsJob = viewModelScope.launch {
+            val channels = historyChannels()
+            _uiState.update { state ->
+                state.copy(
+                    channelsLoading = false,
+                    itemsLoading = false,
+                    nextPageLoading = false,
+                    hasMoreItems = false,
+                    currentOffset = channels.size,
+                    errorMessage = null,
+                    selectedCategoryId = HistoryLiveCategoryId,
+                    categories = state.categories.withSpecialCategories(
+                        allCount = catalogTotalCount(),
+                        favoriteCount = favoriteIds.size,
+                        historyCount = channels.size,
+                        historySignals = historyCategorySignals,
+                    ),
+                    channels = channels,
+                    focusedChannelId = channels.firstOrNull()?.streamId,
+                    selectedChannelId = null,
+                )
+            }
         }
     }
 
@@ -422,9 +424,22 @@ class LiveTvViewModel(
         }
     }
 
-    private fun historyChannels(): List<LiveTvChannel> =
-        historyProgress.mapIndexedNotNull { index, progress ->
+    private suspend fun historyChannels(): List<LiveTvChannel> {
+        val historyIds = historyProgress.mapNotNull { it.contentId.toIntOrNull() }
+        val localById = catalogRepository.getLiveChannelsByIds(historyIds).associateBy { it.streamId }
+        return historyProgress.mapIndexedNotNull { index, progress ->
             val id = progress.contentId.toIntOrNull() ?: return@mapIndexedNotNull null
+            val local = localById[id]
+            if (local != null) {
+                val categoryLabel = local.categoryName.ifBlank { progress.subtitle ?: "Historique" }
+                return@mapIndexedNotNull local.toUiChannel(
+                    index = index,
+                    categoryLabel = categoryLabel,
+                    xtreamRepository = xtreamRepository,
+                    epgRepository = epgRepository,
+                    favoriteIds = favoriteIds,
+                )
+            }
             val name = progress.title?.takeUnless { it.isGeneratedLiveTitle(id) }
                 ?: "Chaine $id"
             val categoryLabel = progress.subtitle
@@ -450,6 +465,7 @@ class LiveTvViewModel(
                 isFavorite = id in favoriteIds,
             )
         }
+    }
 
     private suspend fun favoriteChannels(): List<LiveTvChannel> =
         catalogRepository.getLiveChannelsByIds(favoriteIds.toList())

@@ -84,7 +84,8 @@ class DefaultCatalogRepository(
         ) { categories, streams, source, m3uUrl, accounts ->
             if (!source.hasConfiguredCatalog(m3uUrl, accounts.isNotEmpty())) return@combine emptyList()
             val names = categories.associate { it.id to it.name }
-            streams.map { it.toDomain(names[it.categoryId] ?: "Live TV").withEpg(epgRepository) }
+            val imageBaseHost = imageBaseHost()
+            streams.map { it.toDomain(names[it.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository) }
         }
 
     override fun observeMovieCategories(): Flow<List<Category>> =
@@ -110,7 +111,8 @@ class DefaultCatalogRepository(
         ) { categories, movies, source, accounts ->
             if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
             val names = categories.associate { it.id to it.name }
-            movies.map { it.toDomain(names[it.categoryId] ?: "Films") }
+            val imageBaseHost = imageBaseHost()
+            movies.map { it.toDomain(names[it.categoryId] ?: "Films", imageBaseHost) }
         }
 
     override fun observeSeriesCategories(): Flow<List<Category>> =
@@ -136,7 +138,8 @@ class DefaultCatalogRepository(
         ) { categories, series, source, accounts ->
             if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
             val names = categories.associate { it.id to it.name }
-            series.map { it.toDomain(names[it.categoryId] ?: "Series") }
+            val imageBaseHost = imageBaseHost()
+            series.map { it.toDomain(names[it.categoryId] ?: "Series", imageBaseHost) }
         }
 
     override fun observeAccount(): Flow<AccountProfile> =
@@ -241,6 +244,7 @@ class DefaultCatalogRepository(
             val safeOffset = offset.coerceAtLeast(0)
             localCatalogSnapshotCache.getLivePage(categoryId, safeOffset, safeLimit)?.let { return@withContext it }
             val categoryNames = categoryDao.getByType(MediaSection.Live.storageName).associate { it.id to it.name }
+            val imageBaseHost = imageBaseHost()
             val streams = categoryId
                 ?.takeIf { it.isNotBlank() }
                 ?.let { mediaDao.getLiveStreamsByCategoryPage(it, safeLimit, safeOffset) }
@@ -250,7 +254,7 @@ class DefaultCatalogRepository(
                 offset = safeOffset,
                 limit = safeLimit,
                 items = streams.map { stream ->
-                    stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV").withEpg(epgRepository)
+                    stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository)
                 },
             )
         }
@@ -262,6 +266,7 @@ class DefaultCatalogRepository(
             val safeOffset = offset.coerceAtLeast(0)
             localCatalogSnapshotCache.getMoviePage(categoryId, safeOffset, safeLimit)?.let { return@withContext it }
             val categoryNames = categoryDao.getByType(MediaSection.Movies.storageName).associate { it.id to it.name }
+            val imageBaseHost = imageBaseHost()
             val movies = categoryId
                 ?.takeIf { it.isNotBlank() }
                 ?.let { mediaDao.getMoviesByCategoryPage(it, safeLimit, safeOffset) }
@@ -270,7 +275,7 @@ class DefaultCatalogRepository(
                 categoryId = categoryId,
                 offset = safeOffset,
                 limit = safeLimit,
-                items = movies.map { movie -> movie.toDomain(categoryNames[movie.categoryId] ?: "Films") },
+                items = movies.map { movie -> movie.toDomain(categoryNames[movie.categoryId] ?: "Films", imageBaseHost) },
             )
         }
 
@@ -281,6 +286,7 @@ class DefaultCatalogRepository(
             val safeOffset = offset.coerceAtLeast(0)
             localCatalogSnapshotCache.getSeriesPage(categoryId, safeOffset, safeLimit)?.let { return@withContext it }
             val categoryNames = categoryDao.getByType(MediaSection.Series.storageName).associate { it.id to it.name }
+            val imageBaseHost = imageBaseHost()
             val series = categoryId
                 ?.takeIf { it.isNotBlank() }
                 ?.let { mediaDao.getSeriesByCategoryPage(it, safeLimit, safeOffset) }
@@ -289,7 +295,7 @@ class DefaultCatalogRepository(
                 categoryId = categoryId,
                 offset = safeOffset,
                 limit = safeLimit,
-                items = series.map { item -> item.toDomain(categoryNames[item.categoryId] ?: "Series") },
+                items = series.map { item -> item.toDomain(categoryNames[item.categoryId] ?: "Series", imageBaseHost) },
             )
         }
 
@@ -308,9 +314,10 @@ class DefaultCatalogRepository(
             val distinctIds = streamIds.distinct()
             val order = distinctIds.withIndex().associate { it.value to it.index }
             val categoryNames = categoryDao.getByType(MediaSection.Live.storageName).associate { it.id to it.name }
+            val imageBaseHost = imageBaseHost()
             mediaDao.getLiveStreamsByIds(distinctIds)
                 .sortedBy { order[it.streamId] ?: Int.MAX_VALUE }
-                .map { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV").withEpg(epgRepository) }
+                .map { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository) }
         }
 
     override suspend fun getMoviesByIds(streamIds: List<Int>): List<Movie> =
@@ -319,9 +326,10 @@ class DefaultCatalogRepository(
             val distinctIds = streamIds.distinct()
             val order = distinctIds.withIndex().associate { it.value to it.index }
             val categoryNames = categoryDao.getByType(MediaSection.Movies.storageName).associate { it.id to it.name }
+            val imageBaseHost = imageBaseHost()
             mediaDao.getMoviesByIds(distinctIds)
                 .sortedBy { order[it.streamId] ?: Int.MAX_VALUE }
-                .map { movie -> movie.toDomain(categoryNames[movie.categoryId] ?: "Films") }
+                .map { movie -> movie.toDomain(categoryNames[movie.categoryId] ?: "Films", imageBaseHost) }
         }
 
     override suspend fun getSeriesByIds(seriesIds: List<Int>): List<TvSeries> =
@@ -330,9 +338,10 @@ class DefaultCatalogRepository(
             val distinctIds = seriesIds.distinct()
             val order = distinctIds.withIndex().associate { it.value to it.index }
             val categoryNames = categoryDao.getByType(MediaSection.Series.storageName).associate { it.id to it.name }
+            val imageBaseHost = imageBaseHost()
             mediaDao.getSeriesByIds(distinctIds)
                 .sortedBy { order[it.seriesId] ?: Int.MAX_VALUE }
-                .map { series -> series.toDomain(categoryNames[series.categoryId] ?: "Series") }
+                .map { series -> series.toDomain(categoryNames[series.categoryId] ?: "Series", imageBaseHost) }
         }
 
     override suspend fun getTrendingMovies(limit: Int): List<Movie> = withContext(Dispatchers.IO) {
@@ -340,8 +349,9 @@ class DefaultCatalogRepository(
             return@withContext emptyList()
         }
         val categoryNames = categoryDao.getByType(MediaSection.Movies.storageName).associate { it.id to it.name }
+        val imageBaseHost = imageBaseHost()
         mediaDao.getTrendingMovies(limit)
-            .map { movie -> movie.toDomain(categoryNames[movie.categoryId] ?: "Films") }
+            .map { movie -> movie.toDomain(categoryNames[movie.categoryId] ?: "Films", imageBaseHost) }
     }
 
     override suspend fun getTrendingSeries(limit: Int): List<TvSeries> = withContext(Dispatchers.IO) {
@@ -349,8 +359,9 @@ class DefaultCatalogRepository(
             return@withContext emptyList()
         }
         val categoryNames = categoryDao.getByType(MediaSection.Series.storageName).associate { it.id to it.name }
+        val imageBaseHost = imageBaseHost()
         mediaDao.getTrendingSeries(limit)
-            .map { series -> series.toDomain(categoryNames[series.categoryId] ?: "Series") }
+            .map { series -> series.toDomain(categoryNames[series.categoryId] ?: "Series", imageBaseHost) }
     }
 
     override suspend fun getTrendingMovieItems(limit: Int): List<TrendingCatalogItem> = withContext(Dispatchers.IO) {
@@ -358,6 +369,7 @@ class DefaultCatalogRepository(
             return@withContext emptyList()
         }
         val categoryNames = categoryDao.getByType(MediaSection.Movies.storageName).associate { it.id to it.name }
+        val imageBaseHost = imageBaseHost()
         mediaDao.getTrendingMovies(randomTrendCandidateLimit(limit))
             .asSequence()
             .map { movie ->
@@ -366,7 +378,7 @@ class DefaultCatalogRepository(
                     contentId = movie.streamId,
                     title = movie.title,
                     categoryName = categoryNames[movie.categoryId] ?: "Films",
-                    posterUrl = movie.posterUrl,
+                    posterUrl = normalizeCatalogImageUrl(movie.posterUrl, imageBaseHost),
                     rating = movie.rating,
                     year = movie.year,
                     previewUrl = null,
@@ -382,6 +394,7 @@ class DefaultCatalogRepository(
             return@withContext emptyList()
         }
         val categoryNames = categoryDao.getByType(MediaSection.Series.storageName).associate { it.id to it.name }
+        val imageBaseHost = imageBaseHost()
         mediaDao.getTrendingSeries(randomTrendCandidateLimit(limit))
             .asSequence()
             .map { series ->
@@ -390,7 +403,7 @@ class DefaultCatalogRepository(
                     contentId = series.seriesId,
                     title = series.title,
                     categoryName = categoryNames[series.categoryId] ?: "Series",
-                    posterUrl = series.posterUrl,
+                    posterUrl = normalizeCatalogImageUrl(series.posterUrl, imageBaseHost),
                     rating = series.rating,
                     year = series.year,
                     previewUrl = null,
@@ -422,6 +435,9 @@ class DefaultCatalogRepository(
     private fun isXtreamCatalogConfigured(): Boolean =
         accountManager.activePlaylistSource.value == PlaylistSource.Xtream &&
             accountManager.accounts.value.isNotEmpty()
+
+    private fun imageBaseHost(): String =
+        accountManager.current().normalizedHost
 
     override suspend fun synchronize(): Result<Unit> = withContext(Dispatchers.IO) {
         if (accountManager.activePlaylistSource.value == PlaylistSource.M3u) {
@@ -653,7 +669,8 @@ class DefaultCatalogRepository(
             3,
         )
         mediaDao.clearLiveStreams()
-        upsertMappedInBatches(liveStreams, { it.toEntity() }) { entities ->
+        val imageBaseHost = imageBaseHost()
+        upsertMappedInBatches(liveStreams, { it.toEntity(imageBaseHost) }) { entities ->
             mediaDao.upsertLiveStreams(entities)
         }
         logSyncMemory(stage = "after_live_room_write", live = liveItems)
@@ -711,7 +728,29 @@ class DefaultCatalogRepository(
             1,
         )
         logSyncMemory(stage = "before_get_movies", live = liveItems, movieCategories = movieCategories.size)
-        val movies = api.getMovies(username, password)
+        var movies = api.getMovies(username, password)
+        if (movies.isEmpty() && movieCategories.isNotEmpty()) {
+            updateSectionProgress(
+                "Telechargement des films par categories...",
+                MediaSection.Movies,
+                SyncStatus.SyncSectionPhase.RUNNING,
+                44,
+                null,
+                0,
+                1,
+            )
+            logSyncMemory(stage = "before_get_movies_by_category", live = liveItems, movieCategories = movieCategories.size)
+            movies = movieCategories
+                .mapNotNull { category -> category.id?.takeIf { it.isNotBlank() } }
+                .flatMap { categoryId ->
+                    api.getMovies(username = username, password = password, categoryId = categoryId)
+                        .map { movie ->
+                            if (movie.categoryId.isNullOrBlank()) movie.copy(categoryId = categoryId) else movie
+                        }
+                }
+                .distinctBy { it.streamId }
+            logSyncMemory(stage = "after_get_movies_by_category", live = liveItems, movies = movies.size, movieCategories = movieCategories.size)
+        }
         val movieItems = movies.size
         logSyncMemory(stage = "after_get_movies", live = liveItems, movies = movieItems, movieCategories = movieCategories.size)
         updateSectionProgress(
@@ -724,7 +763,8 @@ class DefaultCatalogRepository(
             1,
         )
         mediaDao.clearMovies()
-        upsertMappedInBatches(movies, { it.toEntity() }) { entities ->
+        val imageBaseHost = imageBaseHost()
+        upsertMappedInBatches(movies, { it.toEntity(imageBaseHost) }) { entities ->
             mediaDao.upsertMovies(entities)
         }
         updateSectionProgress(
@@ -801,7 +841,8 @@ class DefaultCatalogRepository(
             0,
         )
         mediaDao.clearSeries()
-        upsertMappedInBatches(series, { it.toEntity() }) { entities ->
+        val imageBaseHost = imageBaseHost()
+        upsertMappedInBatches(series, { it.toEntity(imageBaseHost) }) { entities ->
             mediaDao.upsertSeries(entities)
         }
         updateSectionProgress(

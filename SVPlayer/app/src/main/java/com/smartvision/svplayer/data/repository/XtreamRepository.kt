@@ -66,8 +66,9 @@ class XtreamRepository(
     }
 
     suspend fun getLiveStreams(categoryId: String): List<XtreamLiveStream> = withContext(Dispatchers.IO) {
+        val imageBaseHost = urlFactory.baseHost()
         val streams = apiClient.getLiveStreams(categoryId)
-            .mapNotNull { it.toLiveStream() }
+            .mapNotNull { it.toLiveStream(imageBaseHost) }
         streamsByCategory[categoryId] = streams
         streams.forEach { stream -> streamsById[stream.streamId] = stream }
         liveCategoriesCache = liveCategoriesCache.map { category ->
@@ -87,8 +88,9 @@ class XtreamRepository(
     }
 
     suspend fun getMovies(categoryId: String): List<XtreamMovieStream> = withContext(Dispatchers.IO) {
+        val imageBaseHost = urlFactory.baseHost()
         val movies = apiClient.getMovies(categoryId)
-            .mapNotNull { it.toMovieStream() }
+            .mapNotNull { it.toMovieStream(imageBaseHost) }
         moviesByCategory[categoryId] = movies
         movies.forEach { movie -> moviesById[movie.streamId] = movie }
         movieCategoriesCache = movieCategoriesCache.map { category ->
@@ -103,16 +105,22 @@ class XtreamRepository(
         val response = apiClient.getMovieInfo(movieId)
         val info = response.info.asObjectOrNull()
         val movieData = response.movieData.asObjectOrNull()
+        val imageBaseHost = urlFactory.baseHost()
         val details = XtreamMovieDetails(
             movieId = movieId,
             title = info.string("name", "title")
                 ?: movieData.string("name", "title")
                 ?: cachedMovie?.title
                 ?: "Film $movieId",
-            posterUrl = info.string("movie_image", "cover", "poster_path", "image")
-                ?: cachedMovie?.posterUrl,
-            backdropUrl = info.string("backdrop_path", "backdrop", "background_image", "cover_big")
-                ?: info.firstStringFromArray("backdrop_path"),
+            posterUrl = normalizeCatalogImageUrl(
+                info.string("movie_image", "cover", "poster_path", "image") ?: cachedMovie?.posterUrl,
+                imageBaseHost,
+            ),
+            backdropUrl = normalizeCatalogImageUrl(
+                info.string("backdrop_path", "backdrop", "background_image", "cover_big")
+                    ?: info.firstStringFromArray("backdrop_path"),
+                imageBaseHost,
+            ),
             plot = info.string("plot", "description", "overview"),
             genre = info.string("genre"),
             releaseDate = info.string("releasedate", "releaseDate", "release_date", "year"),
@@ -140,8 +148,9 @@ class XtreamRepository(
     }
 
     suspend fun getSeries(categoryId: String): List<XtreamSeriesStream> = withContext(Dispatchers.IO) {
+        val imageBaseHost = urlFactory.baseHost()
         val series = apiClient.getSeries(categoryId)
-            .mapNotNull { it.toSeriesStream() }
+            .mapNotNull { it.toSeriesStream(imageBaseHost) }
         seriesByCategory[categoryId] = series
         series.forEach { item -> seriesById[item.seriesId] = item }
         seriesCategoriesCache = seriesCategoriesCache.map { category ->
@@ -158,15 +167,21 @@ class XtreamRepository(
         val episodes = response.toSeriesEpisodes(seriesId)
         episodesBySeriesId[seriesId] = episodes
         episodes.forEach { episode -> episodesById[episode.episodeId] = episode }
+        val imageBaseHost = urlFactory.baseHost()
         val details = XtreamSeriesDetails(
             seriesId = seriesId,
             title = info.string("name", "title")
                 ?: cachedSeries?.title
                 ?: "Serie $seriesId",
-            coverUrl = info.string("cover", "movie_image", "poster_path", "image")
-                ?: cachedSeries?.coverUrl,
-            backdropUrl = info.string("backdrop_path", "backdrop", "background_image", "cover_big")
-                ?: info.firstStringFromArray("backdrop_path"),
+            coverUrl = normalizeCatalogImageUrl(
+                info.string("cover", "movie_image", "poster_path", "image") ?: cachedSeries?.coverUrl,
+                imageBaseHost,
+            ),
+            backdropUrl = normalizeCatalogImageUrl(
+                info.string("backdrop_path", "backdrop", "background_image", "cover_big")
+                    ?: info.firstStringFromArray("backdrop_path"),
+                imageBaseHost,
+            ),
             plot = info.string("plot", "description", "overview") ?: cachedSeries?.plot,
             genre = info.string("genre") ?: cachedSeries?.genre,
             releaseDate = info.string("releaseDate", "releasedate", "release_date", "year")
@@ -299,14 +314,14 @@ private fun XtreamCategoryDto.toLiveCategory(): XtreamLiveCategory? {
     )
 }
 
-private fun XtreamLiveStreamDto.toLiveStream(): XtreamLiveStream? {
+private fun XtreamLiveStreamDto.toLiveStream(imageBaseHost: String? = null): XtreamLiveStream? {
     val safeStreamId = streamId ?: return null
     return XtreamLiveStream(
         number = number ?: safeStreamId,
         name = name.orEmpty().ifBlank { "Chaine $safeStreamId" },
         streamType = streamType,
         streamId = safeStreamId,
-        streamIcon = icon?.takeIf { it.isNotBlank() },
+        streamIcon = normalizeCatalogImageUrl(icon, imageBaseHost),
         epgChannelId = epgChannelId,
         added = added,
         categoryId = categoryId,
@@ -325,13 +340,13 @@ private fun XtreamCategoryDto.toMovieCategory(): XtreamMovieCategory? {
     )
 }
 
-private fun XtreamMovieDto.toMovieStream(): XtreamMovieStream? {
+private fun XtreamMovieDto.toMovieStream(imageBaseHost: String? = null): XtreamMovieStream? {
     val safeStreamId = streamId ?: return null
     return XtreamMovieStream(
         number = number ?: safeStreamId,
         title = name.orEmpty().ifBlank { "Film $safeStreamId" },
         streamId = safeStreamId,
-        posterUrl = icon?.takeIf { it.isNotBlank() },
+        posterUrl = normalizeCatalogImageUrl(icon, imageBaseHost),
         categoryId = categoryId,
         containerExtension = containerExtension.orEmpty().ifBlank { "mp4" },
         rating = ratingFiveBased ?: rating,
@@ -348,13 +363,13 @@ private fun XtreamCategoryDto.toSeriesCategory(): XtreamSeriesCategory? {
     )
 }
 
-private fun XtreamSeriesDto.toSeriesStream(): XtreamSeriesStream? {
+private fun XtreamSeriesDto.toSeriesStream(imageBaseHost: String? = null): XtreamSeriesStream? {
     val safeSeriesId = seriesId ?: return null
     return XtreamSeriesStream(
         number = number ?: safeSeriesId,
         title = name.orEmpty().ifBlank { "Serie $safeSeriesId" },
         seriesId = safeSeriesId,
-        coverUrl = cover?.takeIf { it.isNotBlank() },
+        coverUrl = normalizeCatalogImageUrl(cover, imageBaseHost),
         plot = plot?.takeIf { it.isNotBlank() },
         genre = genre?.takeIf { it.isNotBlank() },
         releaseDate = releaseDate?.takeIf { it.isNotBlank() },

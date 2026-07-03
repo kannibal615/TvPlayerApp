@@ -11,8 +11,8 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
 
 Gradle local constate le 2026-07-03:
-- `versionCode = 87`
-- `versionName = "0.1.84"`
+- `versionCode = 88`
+- `versionName = "0.1.85"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`

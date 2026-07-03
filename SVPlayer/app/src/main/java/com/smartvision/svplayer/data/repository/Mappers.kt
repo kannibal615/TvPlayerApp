@@ -32,26 +32,26 @@ fun XtreamCategoryDto.toEntity(type: MediaSection): CategoryEntity? {
     return CategoryEntity(id = safeId, type = type.storageName, name = name.orEmpty().ifBlank { "Sans categorie" })
 }
 
-fun XtreamLiveStreamDto.toEntity(): LiveStreamEntity? {
+fun XtreamLiveStreamDto.toEntity(imageBaseHost: String? = null): LiveStreamEntity? {
     val safeId = streamId ?: return null
     return LiveStreamEntity(
         streamId = safeId,
         number = number ?: safeId,
         name = name.orEmpty().ifBlank { "Chaine $safeId" },
         categoryId = categoryId,
-        logoUrl = icon?.takeIf { it.isNotBlank() },
+        logoUrl = normalizeCatalogImageUrl(icon, imageBaseHost),
         epgChannelId = epgChannelId,
     )
 }
 
-fun XtreamMovieDto.toEntity(): MovieEntity? {
+fun XtreamMovieDto.toEntity(imageBaseHost: String? = null): MovieEntity? {
     val safeId = streamId ?: return null
     return MovieEntity(
         streamId = safeId,
         number = number ?: safeId,
         title = name.orEmpty().ifBlank { "Film $safeId" },
         categoryId = categoryId,
-        posterUrl = icon?.takeIf { it.isNotBlank() },
+        posterUrl = normalizeCatalogImageUrl(icon, imageBaseHost),
         year = added?.take(4),
         genre = null,
         rating = ratingFiveBased ?: rating,
@@ -61,14 +61,14 @@ fun XtreamMovieDto.toEntity(): MovieEntity? {
     )
 }
 
-fun XtreamSeriesDto.toEntity(): SeriesEntity? {
+fun XtreamSeriesDto.toEntity(imageBaseHost: String? = null): SeriesEntity? {
     val safeId = seriesId ?: return null
     return SeriesEntity(
         seriesId = safeId,
         number = number ?: safeId,
         title = name.orEmpty().ifBlank { "Serie $safeId" },
         categoryId = categoryId,
-        posterUrl = cover?.takeIf { it.isNotBlank() },
+        posterUrl = normalizeCatalogImageUrl(cover, imageBaseHost),
         year = releaseDate?.take(4),
         genre = genre,
         rating = rating,
@@ -91,28 +91,28 @@ fun XtreamEpisodeDto.toEntity(seriesId: Int, seasonNumber: Int): EpisodeEntity? 
     )
 }
 
-fun LiveStreamEntity.toDomain(categoryName: String): LiveChannel =
+fun LiveStreamEntity.toDomain(categoryName: String, imageBaseHost: String? = null): LiveChannel =
     LiveChannel(
         streamId = streamId,
         number = number,
         name = name,
         categoryId = categoryId,
         categoryName = categoryName,
-        logoUrl = logoUrl,
+        logoUrl = normalizeCatalogImageUrl(logoUrl, imageBaseHost),
         currentProgram = categoryName,
         timeRange = null,
         epgChannelId = epgChannelId,
         directStreamUrl = directStreamUrl,
     )
 
-fun MovieEntity.toDomain(categoryName: String): Movie =
+fun MovieEntity.toDomain(categoryName: String, imageBaseHost: String? = null): Movie =
     Movie(
         streamId = streamId,
         number = number,
         title = title,
         categoryId = categoryId,
         categoryName = categoryName,
-        posterUrl = posterUrl,
+        posterUrl = normalizeCatalogImageUrl(posterUrl, imageBaseHost),
         year = year,
         genre = genre,
         rating = rating,
@@ -121,14 +121,14 @@ fun MovieEntity.toDomain(categoryName: String): Movie =
         containerExtension = containerExtension,
     )
 
-fun SeriesEntity.toDomain(categoryName: String): TvSeries =
+fun SeriesEntity.toDomain(categoryName: String, imageBaseHost: String? = null): TvSeries =
     TvSeries(
         seriesId = seriesId,
         number = number,
         title = title,
         categoryId = categoryId,
         categoryName = categoryName,
-        posterUrl = posterUrl,
+        posterUrl = normalizeCatalogImageUrl(posterUrl, imageBaseHost),
         year = year,
         genre = genre,
         rating = rating,

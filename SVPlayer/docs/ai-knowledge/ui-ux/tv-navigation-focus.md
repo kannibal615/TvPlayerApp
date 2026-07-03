@@ -52,6 +52,7 @@ Attention:
 - `MainActivity.dispatchKeyEvent()` absorbe par securite le crash Compose `FocusRequester is not initialized` pendant une recherche D-pad, mais cette protection ne doit pas remplacer un routage de focus propre.
 - Les handlers D-pad doivent tenir compte des surfaces visibles.
 - Le popup manuel Info compte > Synchroniser bloque Back/D-pad uniquement pendant `SyncStatus.Running`; a la fin ou en erreur, le focus va sur `Retour`.
+- Depuis le 2026-07-03, dans Live TV, D-pad droite depuis une ligne chaine selectionnee va vers le panneau details EPG sous le mini-player. Ce panneau est focusable: D-pad haut/bas scrolle les programmes si possible, puis D-pad bas passe au bouton `Regarder` quand le bas est atteint.
 
 ## 5. Ecrans concernes
 
@@ -165,3 +166,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-02: Home remplace le recentrage vertical par `BringIntoViewRequester` par un scroll vertical deterministe annulable, focus apres scroll et hauteurs fixes Continue/Trending pour stopper les corrections continues liees a l'animation de largeur.
 - 2026-07-02: Home ajoute l'ancrage horizontal des cards focussees avec `LazyListState.animateScrollToItem`, borne en fin de liste pour conserver les items restants visibles.
 - 2026-07-03: Home Tendances separe `TrendingContentRow` de `ContinueWatchingRow`; les previews tendances sont declenchees apres focus stable `1,3s`, avec ancrage gauche et annulation propre au changement de focus.
+- 2026-07-03: Live TV rend le panneau details EPG sous mini-player focusable et scrollable au D-pad, avec routage bas vers `Regarder`.
