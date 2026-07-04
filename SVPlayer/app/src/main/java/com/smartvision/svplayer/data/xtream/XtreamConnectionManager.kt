@@ -4,16 +4,21 @@ import android.content.Context
 import com.google.gson.JsonParseException
 import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.data.anomaly.AnomalyReporter
-import com.smartvision.svplayer.data.remote.XtreamApiClient
+import com.smartvision.svplayer.data.remote.XtreamConnectionApi
 import java.io.EOFException
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import retrofit2.HttpException
@@ -35,22 +40,27 @@ data class XtreamConnectionState(
     val technicalDetail: String = "",
     val serverUrl: String = "",
     val checkedAt: Long = 0L,
+    val confirmedFailure: Boolean = false,
+    val attempt: Int = 0,
+    val maxAttempts: Int = 0,
 ) {
     val isConnected: Boolean = status == XtreamConnectionStatus.CONNECTED
     val blocksCatalog: Boolean =
-        status == XtreamConnectionStatus.NETWORK_ERROR ||
-            status == XtreamConnectionStatus.INVALID_CREDENTIALS ||
-            status == XtreamConnectionStatus.INVALID_RESPONSE ||
-            status == XtreamConnectionStatus.UNKNOWN_ERROR
-    val blocksCatalogForNavigation: Boolean = blocksCatalog || (checking && !isConnected)
+        confirmedFailure && (
+            status == XtreamConnectionStatus.NETWORK_ERROR ||
+                status == XtreamConnectionStatus.INVALID_CREDENTIALS ||
+                status == XtreamConnectionStatus.INVALID_RESPONSE ||
+                status == XtreamConnectionStatus.UNKNOWN_ERROR
+        )
+    val blocksCatalogForNavigation: Boolean = blocksCatalog
 
-    val shouldRetryInBackground: Boolean = status == XtreamConnectionStatus.NETWORK_ERROR
+    val shouldRetryInBackground: Boolean = confirmedFailure && status == XtreamConnectionStatus.NETWORK_ERROR
 }
 
 class XtreamConnectionManager(
     context: Context,
     private val accountManager: XtreamAccountManager,
-    private val apiClient: XtreamApiClient,
+    private val apiClient: XtreamConnectionApi,
     private val anomalyReporter: AnomalyReporter,
 ) {
     private val appContext = context.applicationContext
@@ -60,11 +70,18 @@ class XtreamConnectionManager(
     private val _state = MutableStateFlow(XtreamConnectionState())
     val state: StateFlow<XtreamConnectionState> = _state
 
-    private val _alertRequests = MutableSharedFlow<Unit>(replay = 1, extraBufferCapacity = 1)
+    private val _alertRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val alertRequests: SharedFlow<Unit> = _alertRequests
+    private val verificationMutex = Mutex()
     private var lastConnectedAccountSignature: String = ""
 
     suspend fun verifyQuick(source: String): XtreamConnectionState = withContext(Dispatchers.IO) {
+        verificationMutex.withLock {
+            verifyQuickLocked(source)
+        }
+    }
+
+    private suspend fun verifyQuickLocked(source: String): XtreamConnectionState {
         val credentials = accountManager.current()
         if (!credentials.isConfigured) {
             val notConfigured = XtreamConnectionState(
@@ -76,46 +93,26 @@ class XtreamConnectionManager(
             )
             _state.value = notConfigured
             notifier.clear()
-            return@withContext notConfigured
+            return notConfigured
         }
 
         _state.value = _state.value.copy(
             checking = true,
             message = "Verification de la connexion Xtream...",
             serverUrl = credentials.normalizedHost,
+            confirmedFailure = false,
+            attempt = 0,
+            maxAttempts = CONNECTION_CHECK_ATTEMPTS,
         )
 
-        val checked = runCatching {
-            withTimeout(QUICK_CHECK_TIMEOUT_MS) {
-                val account = apiClient.getAccount()
-                val userInfo = account.userInfo
-                    ?: throw InvalidXtreamResponseException("user_info absent")
-                val status = userInfo.status.orEmpty().trim().lowercase()
-                if (status != "active") {
-                    throw InvalidXtreamCredentialsException("Compte Xtream non actif: ${userInfo.status ?: "unknown"}")
-                }
-
-                val hasCatalogRoot = listOf(
-                    runCatching { apiClient.getLiveCategories().isNotEmpty() },
-                    runCatching { apiClient.getMovieCategories().isNotEmpty() },
-                    runCatching { apiClient.getSeriesCategories().isNotEmpty() },
-                ).any { it.getOrDefault(false) }
-
-                if (!hasCatalogRoot) {
-                    throw InvalidXtreamResponseException("Aucune categorie Xtream exploitable")
-                }
-
-                XtreamConnectionState(
-                    status = XtreamConnectionStatus.CONNECTED,
-                    checking = false,
-                    message = "Connexion Xtream valide.",
-                    serverUrl = credentials.normalizedHost,
-                    checkedAt = System.currentTimeMillis(),
-                )
-            }
-        }.getOrElse { error ->
-            error.toConnectionState(credentials.normalizedHost)
-        }
+        val checked = runConfirmedXtreamVerification(
+            maxAttempts = CONNECTION_CHECK_ATTEMPTS,
+            retryDelayMillis = CONNECTION_CHECK_RETRY_DELAY_MS,
+            checkOnce = { verifyAccountOnce(credentials.normalizedHost) },
+            onPendingFailure = { pendingState ->
+                _state.value = pendingState
+            },
+        )
 
         _state.value = checked
         if (checked.isConnected) {
@@ -125,12 +122,37 @@ class XtreamConnectionManager(
             lastConnectedAccountSignature = ""
             reportFailureIfNeeded(checked, source)
             notifier.showIssue()
-            if (source == "splash" || source == "startup") {
+            if (source.shouldRequestForegroundAlert()) {
                 requestAlert()
             }
         }
-        checked
+        return checked
     }
+
+    private suspend fun verifyAccountOnce(serverUrl: String): XtreamConnectionState =
+        try {
+            withTimeout(ACCOUNT_CHECK_TIMEOUT_MS) {
+                val account = apiClient.getAccount()
+                val userInfo = account.userInfo
+                    ?: throw InvalidXtreamResponseException("user_info absent")
+                val status = userInfo.status.orEmpty().trim().lowercase()
+                if (status != "active") {
+                    throw InvalidXtreamCredentialsException("Compte Xtream non actif: ${userInfo.status ?: "unknown"}")
+                }
+                XtreamConnectionState(
+                    status = XtreamConnectionStatus.CONNECTED,
+                    checking = false,
+                    message = "Connexion Xtream valide.",
+                    serverUrl = serverUrl,
+                    checkedAt = System.currentTimeMillis(),
+                )
+            }
+        } catch (error: Throwable) {
+            if (error is CancellationException && error !is TimeoutCancellationException) {
+                throw error
+            }
+            error.toConnectionState(serverUrl)
+        }
 
     fun hasFreshConnectedState(maxAgeMillis: Long = FRESH_CONNECTED_WINDOW_MS): Boolean {
         val current = _state.value
@@ -140,7 +162,9 @@ class XtreamConnectionManager(
     }
 
     fun requestAlert() {
-        _alertRequests.tryEmit(Unit)
+        if (_state.value.blocksCatalog) {
+            _alertRequests.tryEmit(Unit)
+        }
     }
 
     fun markPlaybackUnavailable(
@@ -152,21 +176,27 @@ class XtreamConnectionManager(
         val credentials = accountManager.current()
         val state = XtreamConnectionState(
             status = XtreamConnectionStatus.NETWORK_ERROR,
-            checking = false,
-            message = "Flux Xtream indisponible ou serveur inaccessible.",
+            checking = true,
+            message = "Verification Xtream en arriere-plan apres incident de lecture...",
             technicalDetail = detail.take(180),
             serverUrl = credentials.normalizedHost,
             checkedAt = System.currentTimeMillis(),
+            confirmedFailure = false,
+            attempt = 0,
+            maxAttempts = CONNECTION_CHECK_ATTEMPTS,
         )
         _state.value = state
-        reportFailureIfNeeded(
-            state.copy(
-                technicalDetail = "contentType=$contentType streamId=$streamId ${state.technicalDetail}",
-            ),
-            source,
+        anomalyReporter.reportAsync(
+            anomalyType = "PLAYER_STREAM_UNAVAILABLE",
+            message = "Flux Xtream bloque en lecture.",
+            context = listOf(
+                "source=$source",
+                "server=${state.serverUrl}",
+                "contentType=$contentType",
+                "streamId=$streamId",
+                "detail=${state.technicalDetail}",
+            ).joinToString(" | "),
         )
-        notifier.showIssue()
-        requestAlert()
         return state
     }
 
@@ -198,6 +228,7 @@ class XtreamConnectionManager(
         val status = when (this) {
             is InvalidXtreamCredentialsException -> XtreamConnectionStatus.INVALID_CREDENTIALS
             is InvalidXtreamResponseException -> XtreamConnectionStatus.INVALID_RESPONSE
+            is TimeoutCancellationException,
             is SocketTimeoutException,
             is UnknownHostException,
             is IOException -> XtreamConnectionStatus.NETWORK_ERROR
@@ -230,7 +261,9 @@ class XtreamConnectionManager(
     }
 
     private companion object {
-        const val QUICK_CHECK_TIMEOUT_MS = 8_000L
+        const val ACCOUNT_CHECK_TIMEOUT_MS = 8_000L
+        const val CONNECTION_CHECK_ATTEMPTS = 3
+        const val CONNECTION_CHECK_RETRY_DELAY_MS = 1_200L
         const val ANOMALY_DEDUP_WINDOW_MS = 15 * 60 * 1_000L
         const val FRESH_CONNECTED_WINDOW_MS = 30_000L
         const val KEY_LAST_ANOMALY = "last_anomaly_key"
@@ -238,8 +271,58 @@ class XtreamConnectionManager(
     }
 }
 
+internal suspend fun runConfirmedXtreamVerification(
+    maxAttempts: Int,
+    retryDelayMillis: Long,
+    checkOnce: suspend () -> XtreamConnectionState,
+    onPendingFailure: (XtreamConnectionState) -> Unit,
+    delayBeforeRetry: suspend (Long) -> Unit = { delay(it) },
+): XtreamConnectionState {
+    require(maxAttempts > 0) { "maxAttempts must be positive" }
+    var lastFailure: XtreamConnectionState? = null
+    for (attempt in 1..maxAttempts) {
+        val result = checkOnce().copy(
+            attempt = attempt,
+            maxAttempts = maxAttempts,
+        )
+        if (result.isConnected || result.status == XtreamConnectionStatus.NOT_CONFIGURED) {
+            return result.copy(
+                checking = false,
+                confirmedFailure = false,
+            )
+        }
+
+        lastFailure = result
+        if (attempt < maxAttempts) {
+            onPendingFailure(
+                result.copy(
+                    checking = true,
+                    confirmedFailure = false,
+                    message = "Verification de la connexion Xtream... tentative $attempt/$maxAttempts",
+                ),
+            )
+            delayBeforeRetry(retryDelayMillis)
+        }
+    }
+    return requireNotNull(lastFailure).copy(
+        checking = false,
+        confirmedFailure = true,
+        attempt = maxAttempts,
+        maxAttempts = maxAttempts,
+    )
+}
+
 private fun com.smartvision.svplayer.core.config.XtreamCredentials.connectionSignature(): String =
     "${normalizedHost}|$username|${password.hashCode()}"
+
+private fun String.shouldRequestForegroundAlert(): Boolean =
+    this == "splash" ||
+        this == "startup" ||
+        this == "home_startup_sync" ||
+        this == "manual_sync" ||
+        this == "user_retry" ||
+        this == "credentials_edit" ||
+        this == "player_buffering"
 
 private class InvalidXtreamCredentialsException(message: String) : RuntimeException(message)
 private class InvalidXtreamResponseException(message: String) : RuntimeException(message)

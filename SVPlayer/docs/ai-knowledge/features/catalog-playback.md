@@ -52,8 +52,8 @@ Depuis le 2026-07-01, les lignes Live TV affichent un petit badge bleu `E` a dro
 - Series: categories conservees, detail serie avec saisons/episodes, puis lecteur episode.
 - Favoris et Historiques sont des categories speciales.
 - Si aucun compte Xtream n'est configure, l'utilisateur voit un QR de configuration.
-- Si la verification Xtream de demarrage echoue, Home reste accessible mais Live TV / Movies / Series et les reprises de lecture sont bloques avec popup et overlay.
-- Si une route lecteur est atteinte malgre un ancien cache local, un buffering persistant doit etre converti en etat Xtream indisponible, message utilisateur et anomalie; le spinner ne doit pas tourner indefiniment.
+- Si la verification Xtream de demarrage echoue apres 3 essais confirmes, Home reste accessible mais Live TV / Movies / Series et les reprises de lecture sont bloques avec popup et overlay.
+- Si une route lecteur est atteinte malgre un ancien cache local, un buffering persistant doit afficher une erreur locale puis lancer une confirmation Xtream; il ne doit pas marquer toute la connexion KO avant les 3 essais.
 
 ## 4. Workflow technique
 
@@ -164,8 +164,8 @@ URL de lecture:
 - Ne pas bloquer la telecommande pendant un chargement local Room; le blocage Home est reserve aux synchronisations reseau catalogue.
 - Ne pas stocker d'URL de lecture brute en base pour les previews HOME; garder uniquement les ids/extensions et reconstruire via `XtreamUrlFactory`.
 - Ne pas promettre zero chargement local apres fermeture complete: si le process Android a ete tue, le cache RAM n'existe plus et doit etre reconstruit depuis Room.
-- AutoSync et sync manuelle doivent verifier Xtream avant de synchroniser; seules les erreurs reseau sont retentees automatiquement.
-- La verification de connexion Xtream est obligatoire au premier affichage actif, mais ne doit pas forcer une resynchronisation globale si la politique de frequence ne la demande pas.
+- AutoSync et sync manuelle doivent verifier Xtream avant de synchroniser; seules les erreurs reseau confirmees sont retentees automatiquement.
+- La verification de connexion Xtream est obligatoire au premier affichage actif, mais elle reste non bloquante pendant ses essais silencieux et ne doit pas forcer une resynchronisation globale si la politique de frequence ne la demande pas.
 - Les routes player/detail doivent aussi respecter le blocage Xtream; ne pas compter uniquement sur Home/Header pour bloquer l'acces.
 - Les diagnostics de synchro doivent rester non intrusifs: pas de credentials dans `logcat`, seulement les compteurs catalogue et les valeurs memoire Runtime.
 
@@ -226,3 +226,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-03: correction historique Series: les progres episodes preservent/enrichissent titre de serie, poster, label episode et parent serie avant upsert Room; le lecteur relit aussi le cache details Xtream et les anciennes lignes avec `parentContentId` peuvent etre reparees depuis la serie Room.
 - 2026-07-03: correction synchro Films Xtream avec fallback `get_vod_streams` par categorie quand l'endpoint global renvoie 0, et correction Live TV EPG pour historique, compteurs dossiers et details scrollables.
 - 2026-07-03: normalisation des URL d'images catalogue Xtream/M3U pour restaurer logos chaines, posters Films/Series et backdrops details/Home quand les providers renvoient des chemins relatifs ou echappes.
+- 2026-07-04: verification Xtream durcie contre les faux positifs: 3 essais silencieux, test principal sur `user_info`, pas de blocage/popup avant echec confirme, et buffering lecteur separe d'une panne globale.

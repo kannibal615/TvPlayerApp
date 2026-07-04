@@ -570,6 +570,9 @@ private fun FullScreenPlayerScreen(
                 streamId = playback.streamId,
                 detail = "Flux bloque en buffering apres ${stalledRefreshCount + 1} tentatives",
             )
+            coroutineScope.launch {
+                xtreamConnectionManager.verifyQuick("player_buffering")
+            }
             return
         }
         stalledRefreshCount += 1

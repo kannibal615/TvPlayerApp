@@ -16,20 +16,31 @@ class XtreamConnectionStateTest {
     }
 
     @Test
-    fun `unknown state blocks catalog while quick check is running`() {
+    fun `unknown state does not block catalog while quick check is running`() {
         val state = XtreamConnectionState(
             status = XtreamConnectionStatus.UNKNOWN,
             checking = true,
         )
 
-        assertTrue(state.blocksCatalogForNavigation)
+        assertFalse(state.blocksCatalogForNavigation)
     }
 
     @Test
-    fun `connection error blocks catalog navigation`() {
+    fun `unconfirmed connection error does not block catalog navigation`() {
         val state = XtreamConnectionState(
             status = XtreamConnectionStatus.NETWORK_ERROR,
             checking = false,
+        )
+
+        assertFalse(state.blocksCatalogForNavigation)
+    }
+
+    @Test
+    fun `confirmed connection error blocks catalog navigation`() {
+        val state = XtreamConnectionState(
+            status = XtreamConnectionStatus.NETWORK_ERROR,
+            checking = false,
+            confirmedFailure = true,
         )
 
         assertTrue(state.blocksCatalogForNavigation)

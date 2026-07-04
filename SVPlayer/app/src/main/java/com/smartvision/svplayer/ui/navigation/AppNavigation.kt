@@ -191,7 +191,9 @@ fun AppNavigation(
     }
     LaunchedEffect(Unit) {
         container.xtreamConnectionManager.alertRequests.collect {
-            showXtreamConnectionDialog = true
+            if (container.xtreamConnectionManager.state.value.blocksCatalog) {
+                showXtreamConnectionDialog = true
+            }
         }
     }
     LaunchedEffect(

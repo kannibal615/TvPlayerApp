@@ -1,5 +1,31 @@
 # AI Changelog
 
+## 2026-07-04 - Verification Xtream confirmee avant popup
+
+Type:
+- android
+- xtream
+- playback
+- documentation
+
+Resume:
+- `XtreamConnectionManager.verifyQuick()` confirme maintenant les echecs Xtream sur 3 essais silencieux avant notification, popup ou blocage catalogue.
+- La verification principale s'appuie sur `player_api.php` sans `action` et `user_info.status == active`; les categories ne sont plus utilisees pour decider si les identifiants sont valides.
+- Un buffering lecteur signale d'abord un incident de flux puis lance une confirmation Xtream, sans transformer immediatement un flux bloque en panne globale.
+
+Fichiers code:
+- `app/src/main/java/com/smartvision/svplayer/data/xtream/XtreamConnectionManager.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/remote/XtreamApiClient.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/player/FullScreenPlayerScreen.kt`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Verification:
+- En attente: le shell actuel n'a pas de `JAVA_HOME` ni de `java` disponible.
+
 ## 2026-07-03 - Robustesse historique Series
 
 Type:

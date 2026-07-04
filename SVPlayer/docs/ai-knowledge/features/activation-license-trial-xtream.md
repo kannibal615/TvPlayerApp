@@ -21,7 +21,7 @@ Flux observe:
 - envoi web direct via `/playlist/` avec code TV pour pousser des identifiants Xtream et/ou une URL EPG;
 - recuperation de `playlist_config` dans `device_status.php`, incluant `epg_url` si fourni;
 - creation locale du compte Xtream et synchro catalogue.
-- verification rapide Xtream au demarrage via `XtreamConnectionManager` avant synchro globale; en cas d'erreur, Home reste accessible mais les sections catalogue sont bloquees.
+- verification rapide Xtream au demarrage via `XtreamConnectionManager` avant synchro globale; elle teste principalement `player_api.php` sans `action` (`user_info.status == active`) et confirme une panne sur 3 essais discrets avant popup, notification ou blocage catalogue.
 - au splash, `device_status.php` doit etre relu avant `XtreamConnectionManager.verifyQuick()` afin d'importer la derniere playlist configuree cote serveur avant le test, meme si un ancien compte local et un ancien catalogue Room existent deja.
 - `MainActivity` porte tout le statut de demarrage avec un seul visuel et une seule progress bar; `SplashActivity`, `StartupVerificationPanel` et `StartupHandoffScreen` ne sont plus utilises au demarrage.
 - depuis le 2026-07-02, ce startup applicatif est hybride: le theme systeme `Theme.SVPlayer.Splash` affiche le fond + logo reduit, et Compose affiche uniquement progress bar, statuts et diagnostics au-dessus.

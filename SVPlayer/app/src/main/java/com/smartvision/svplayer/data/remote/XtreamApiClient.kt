@@ -12,11 +12,15 @@ import com.smartvision.svplayer.data.remote.dto.XtreamSeriesInfoDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+interface XtreamConnectionApi {
+    suspend fun getAccount(): XtreamAccountDto
+}
+
 class XtreamApiClient(
     private val api: XtreamApiService,
     private val credentialsProvider: XtreamCredentialsProvider,
-) {
-    suspend fun getAccount(): XtreamAccountDto = withContext(Dispatchers.IO) {
+) : XtreamConnectionApi {
+    override suspend fun getAccount(): XtreamAccountDto = withContext(Dispatchers.IO) {
         val credentials = configuredCredentials()
         api.getAccount(
             username = credentials.username,
