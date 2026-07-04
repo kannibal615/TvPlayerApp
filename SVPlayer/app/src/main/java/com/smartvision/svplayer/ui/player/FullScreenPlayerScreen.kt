@@ -354,8 +354,11 @@ class FullScreenPlayerViewModel(
     ): FullScreenPlayback =
         xtreamRepository.getCachedEpisode(episodeId)?.let { episode ->
             val series = xtreamRepository.getCachedSeries(episode.seriesId)
-            val seriesName = series?.title?.cleanTitle() ?: "Series"
-            val seriesCover = series?.coverUrl
+            val seriesDetails = xtreamRepository.getCachedSeriesDetails(episode.seriesId)
+            val seriesName = seriesDetails?.title?.cleanTitle()
+                ?: series?.title?.cleanTitle()
+                ?: "Serie ${episode.seriesId}"
+            val seriesCover = seriesDetails?.coverUrl ?: series?.coverUrl
             val previousEpisode = xtreamRepository.getCachedPreviousEpisode(episodeId)
             val nextEpisode = xtreamRepository.getCachedNextEpisode(episodeId)
             FullScreenPlayback(
@@ -2088,7 +2091,9 @@ private fun String.isGeneratedTitleFor(kind: FullScreenContentKind, id: Int): Bo
         FullScreenContentKind.Live -> normalized.equals("Chaine $id", ignoreCase = true) ||
             normalized.matches(Regex("(?i)^chaine\\s+\\d+$"))
         FullScreenContentKind.Movie -> normalized.equals("Film $id", ignoreCase = true)
-        FullScreenContentKind.Episode -> normalized.equals("Episode $id", ignoreCase = true)
+        FullScreenContentKind.Episode -> normalized.equals("Episode $id", ignoreCase = true) ||
+            normalized.equals("Series", ignoreCase = true) ||
+            normalized.equals("Serie", ignoreCase = true)
     }
 }
 

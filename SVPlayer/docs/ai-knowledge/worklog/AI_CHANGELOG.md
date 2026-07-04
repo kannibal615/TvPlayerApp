@@ -1,5 +1,30 @@
 # AI Changelog
 
+## 2026-07-03 - Robustesse historique Series
+
+Type:
+- android
+- catalogue
+- playback
+- documentation
+
+Resume:
+- Le lecteur episode utilise les details Xtream deja charges pour sauvegarder l'historique avec le vrai titre de serie et le poster, meme si la liste serie Xtream en memoire ne contient pas la serie.
+- L'enrichissement historique repare aussi les anciennes lignes episode qui ont `parentContentId` en retrouvant titre/image depuis la serie Room, meme sans entite episode locale.
+- Les titres generiques `Series` / `Serie` sont traites comme des fallbacks episode.
+
+Fichiers code:
+- `app/src/main/java/com/smartvision/svplayer/data/repository/XtreamRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/UserContentRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/player/FullScreenPlayerScreen.kt`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Verification:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain` OK.
+
 ## 2026-07-03 - Normalisation images catalogue et release prod 0.1.85
 
 Type:

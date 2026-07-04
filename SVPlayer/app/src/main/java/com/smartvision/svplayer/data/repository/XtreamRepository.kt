@@ -225,6 +225,9 @@ class XtreamRepository(
     fun getCachedSeries(seriesId: Int): XtreamSeriesStream? =
         seriesById[seriesId]
 
+    fun getCachedSeriesDetails(seriesId: Int): XtreamSeriesDetails? =
+        seriesDetailsById[seriesId]
+
     fun getCachedSeriesList(): List<XtreamSeriesStream> =
         seriesById.values.toList()
 

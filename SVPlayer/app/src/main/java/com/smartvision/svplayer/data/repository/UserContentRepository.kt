@@ -128,6 +128,19 @@ class UserContentRepository(
                     imageUrl = progress.imageUrl ?: series?.posterUrl,
                     parentContentId = progress.parentContentId ?: episode.seriesId.toString(),
                 )
+            } ?: progress.parentContentId?.toIntOrNull()?.let { seriesId ->
+                mediaDao.getSeries(seriesId)?.let { series ->
+                    progress.copy(
+                        title = progress.title
+                            .takeUnless { it.isFallbackEpisodeTitle(id) }
+                            ?: series.title,
+                        subtitle = progress.subtitle
+                            .takeUnless { it.isGenericEpisodeSubtitle() }
+                            ?: "Serie",
+                        imageUrl = progress.imageUrl ?: series.posterUrl,
+                        parentContentId = progress.parentContentId,
+                    )
+                }
             }
             else -> null
         } ?: progress
