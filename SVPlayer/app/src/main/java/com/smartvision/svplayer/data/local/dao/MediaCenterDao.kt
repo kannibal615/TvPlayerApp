@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Update
 import com.smartvision.svplayer.data.local.entity.MediaFileEntity
 import com.smartvision.svplayer.data.local.entity.MediaFolderEntity
+import com.smartvision.svplayer.data.local.entity.RecordingJobEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -79,4 +80,35 @@ interface MediaCenterDao {
 
     @Query("UPDATE media_files SET deletedAt = :deletedAt, updatedAt = :deletedAt WHERE deletedAt IS NULL AND relativePath NOT IN (:activePaths)")
     suspend fun markMissingFilesDeleted(activePaths: List<String>, deletedAt: Long)
+
+    @Query("SELECT * FROM recording_jobs WHERE status IN (:statuses) ORDER BY updatedAt DESC LIMIT 1")
+    suspend fun getLatestRecordingJobByStatuses(statuses: List<String>): RecordingJobEntity?
+
+    @Query("SELECT * FROM recording_jobs WHERE id = :id LIMIT 1")
+    suspend fun getRecordingJob(id: String): RecordingJobEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertRecordingJob(job: RecordingJobEntity)
+
+    @Query(
+        "UPDATE recording_jobs SET " +
+            "status = :status, " +
+            "mediaFileId = :mediaFileId, " +
+            "outputRelativePath = :outputRelativePath, " +
+            "startedAt = :startedAt, " +
+            "endedAt = :endedAt, " +
+            "updatedAt = :updatedAt, " +
+            "errorMessage = :errorMessage " +
+            "WHERE id = :id",
+    )
+    suspend fun updateRecordingJobState(
+        id: String,
+        status: String,
+        mediaFileId: Long?,
+        outputRelativePath: String?,
+        startedAt: Long?,
+        endedAt: Long?,
+        updatedAt: Long,
+        errorMessage: String?,
+    )
 }

@@ -55,6 +55,9 @@ import com.smartvision.svplayer.domain.usecase.SynchronizeCatalogUseCase
 import com.smartvision.svplayer.domain.usecase.ToggleFavoriteUseCase
 import com.smartvision.svplayer.media.MediaRepository
 import com.smartvision.svplayer.media.MediaStorageManager
+import com.smartvision.svplayer.recorder.RecorderController
+import com.smartvision.svplayer.recorder.RecordingEngine
+import com.smartvision.svplayer.recorder.RecordingRepository
 import com.smartvision.svplayer.startup.StartupStateStore
 import com.smartvision.svplayer.startup.StartupCatalogWorkKind
 import com.smartvision.svplayer.startup.StartupCatalogWorkRequest
@@ -216,9 +219,21 @@ class AppContainer(context: Context) {
         progressDao = database.progressDao(),
         mediaDao = database.mediaDao(),
     )
+    val mediaStorageManager = MediaStorageManager(appContext)
     val mediaRepository: MediaRepository = MediaRepository(
         dao = database.mediaCenterDao(),
-        storageManager = MediaStorageManager(appContext),
+        storageManager = mediaStorageManager,
+    )
+    val recordingRepository = RecordingRepository(database.mediaCenterDao())
+    private val recorderOkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(0, TimeUnit.MILLISECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
+        .build()
+    val recordingEngine = RecordingEngine(recorderOkHttpClient)
+    val recorderController = RecorderController(
+        context = appContext,
+        repository = recordingRepository,
     )
 
     private val youtubeBehaviorReporter = YoutubeBehaviorReporter(

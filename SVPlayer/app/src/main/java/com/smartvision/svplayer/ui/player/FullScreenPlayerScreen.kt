@@ -634,6 +634,7 @@ private fun FullScreenPlayerScreen(
     onRecorderLocked: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val container = LocalAppContainer.current
     val coroutineScope = rememberCoroutineScope()
     val latestUrl by rememberUpdatedState(playback.url)
     val latestFallbackUrl by rememberUpdatedState(playback.fallbackUrl)
@@ -1470,10 +1471,30 @@ private fun FullScreenPlayerScreen(
                     showRecordDialog = false
                     showOverlay(requestPlayFocus = true)
                 },
-                onPendingStart = {
-                    Toast.makeText(context, strings.recorderEnginePending, Toast.LENGTH_SHORT).show()
-                    showRecordDialog = false
-                    showOverlay(requestPlayFocus = true)
+                onStart = { selection ->
+                    coroutineScope.launch {
+                        val result = container.recorderController.startLiveRecording(
+                            title = playback.title,
+                            streamUrl = playback.url,
+                            durationMs = selection.durationMs,
+                            programTitle = selection.programTitle,
+                            programStartMs = selection.programStartMs,
+                            programStopMs = selection.programStopMs,
+                        )
+                        val message = result.fold(
+                            onSuccess = { strings.recorderStarted },
+                            onFailure = { throwable ->
+                                if (throwable.message?.contains("already running", ignoreCase = true) == true) {
+                                    strings.recorderAlreadyRunning
+                                } else {
+                                    throwable.message ?: strings.recorderStartFailed
+                                }
+                            },
+                        )
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                        showRecordDialog = false
+                        showOverlay(requestPlayFocus = true)
+                    }
                 },
             )
         }
@@ -1810,12 +1831,19 @@ private enum class RecordingDurationChoice {
     Minutes120,
 }
 
+private data class RecordingDialogSelection(
+    val durationMs: Long,
+    val programTitle: String?,
+    val programStartMs: Long?,
+    val programStopMs: Long?,
+)
+
 @Composable
 private fun LiveRecordDialog(
     playback: FullScreenPlayback,
     strings: SmartVisionStrings,
     onDismiss: () -> Unit,
-    onPendingStart: () -> Unit,
+    onStart: (RecordingDialogSelection) -> Unit,
 ) {
     val firstFocusRequester = remember { FocusRequester() }
     val currentProgram = playback.epgPrograms.firstOrNull { it.isCurrent } ?: playback.epgPrograms.firstOrNull()
@@ -1902,9 +1930,9 @@ private fun LiveRecordDialog(
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TvButton(
-                    text = strings.recorderStartUnavailable,
-                    onClick = onPendingStart,
-                    variant = TvButtonVariant.Secondary,
+                    text = strings.recorderStartRecording,
+                    onClick = { onStart(selectedChoice.toRecordingSelection(currentProgram)) },
+                    variant = TvButtonVariant.Primary,
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp),
@@ -1920,6 +1948,22 @@ private fun LiveRecordDialog(
             }
         }
     }
+}
+
+private fun RecordingDurationChoice.toRecordingSelection(program: FullScreenEpgProgram?): RecordingDialogSelection {
+    val now = System.currentTimeMillis()
+    val durationMs = when (this) {
+        RecordingDurationChoice.ProgramEnd -> program?.stopMillis?.minus(now) ?: 60 * 60 * 1000L
+        RecordingDurationChoice.Minutes30 -> 30 * 60 * 1000L
+        RecordingDurationChoice.Minutes60 -> 60 * 60 * 1000L
+        RecordingDurationChoice.Minutes120 -> 120 * 60 * 1000L
+    }.coerceAtLeast(60_000L)
+    return RecordingDialogSelection(
+        durationMs = durationMs,
+        programTitle = program?.title,
+        programStartMs = program?.startMillis,
+        programStopMs = program?.stopMillis,
+    )
 }
 
 @Composable

@@ -2,7 +2,7 @@
 
 Derniere mise a jour: 2026-07-05.
 
-Statut: Lot 8 - Media Center lit maintenant les fichiers locaux video/audio/photo via `media_player/{mediaFileId}` et le bouton Recorder Live ouvre une popup MVP gatee Premium/admin avec choix EPG/duree. Le service d'enregistrement reel et le transfert telephone/TV restent des lots separes.
+Statut: Lot 11 - Media Center lit les fichiers locaux video/audio/photo et le bouton Recorder Live lance maintenant un enregistrement reel MVP via foreground service, jobs Room, durees manuelles 30/60/120 min et option EPG jusqu'a fin programme. Le transfert telephone/TV et la stabilisation avancee restent des lots separes.
 
 ## 1. Objectif
 
@@ -430,7 +430,7 @@ Implementation Lot 8:
 - `AppNavigation.kt` evalue `PremiumFeature.RECORDER` et le transmet au player Live.
 - Le bouton `Record` du fullscreen Live affiche un etat lock/couronne quand l'acces est bloque mais visible.
 - Au clic avec acces autorise, une popup Recorder affiche le programme courant, l'option `Jusqu'a la fin du programme` si EPG start/stop disponible, et des durees manuelles 30/60/120 minutes.
-- Le bouton de demarrage indique que le moteur Recorder est en attente: aucun service DVR reel n'est lance dans ce lot.
+- Le bouton de demarrage lance un enregistrement reel depuis le Lot 9/10/11.
 - Les bornes `startMillis`/`stopMillis` sont conservees dans `FullScreenEpgProgram`.
 
 ### Lot 9 - RecordingService + controller + jobs
@@ -443,15 +443,33 @@ Validation:
 - duree maximale obligatoire;
 - temp cleanup en erreur.
 
+Implementation Lot 9:
+- Ajout du package `recorder` avec `RecorderController`, `RecordingService`, `RecordingEngine`, `RecordingRepository` et modeles de requete/job.
+- `RecordingService` est declare en foreground service `dataSync` avec notification visible et action `Stop`.
+- Les jobs sont persistés dans `recording_jobs` avec statuts `queued`, `running`, `completed`, `failed`, `cancelled`.
+- Le stockage utilise un fichier temporaire `.part`, puis finalise seulement si des donnees media ont ete ecrites.
+
 ### Lot 10 - Enregistrement Live TV manuel
 
 Objectif:
 - enregistrer un flux compatible pendant une duree choisie, finaliser fichier, indexer dans Media.
 
+Implementation Lot 10:
+- Le bouton `Record` Live demarre le Recorder si le gate Premium/admin autorise l'acces.
+- Les durees manuelles 30/60/120 minutes lancent un job unique; un second job simultane est bloque.
+- Les fichiers finalises sont places dans `SmartVisionMedia/Recordings` puis indexes via `MediaRepository`, donc visibles dans Media apres refresh/observation Room.
+- Le moteur supporte les flux progressifs et HLS simple non chiffre; les HLS chiffres ou playlists exotiques echouent proprement dans le job.
+
 ### Lot 11 - Integration EPG
 
 Objectif:
 - enregistrer jusqu'a fin programme + marge configurable.
+
+Implementation Lot 11:
+- `FullScreenEpgProgram` conserve `startMillis` et `stopMillis`.
+- La popup Recorder propose `Jusqu'a la fin du programme` seulement si `stopMillis` est futur.
+- Le job Recorder recoit le titre et les bornes EPG pour nommer le fichier et borner la duree.
+- La marge configurable n'est pas encore exposee; le MVP s'arrete a la fin programme connue.
 
 ### Lot 12 - Import telephone vers TV
 
@@ -473,7 +491,7 @@ Objectif:
 - HLS vs progressive: ne pas supposer que tous les flux Xtream sont enregistrables proprement par copie HTTP simple.
 - Identifiants Xtream: ne jamais stocker ni logguer d'URL de lecture brute dans Room ou logs persistants; les chemins fichiers locaux peuvent etre stockes, pas les credentials.
 - EPG: le modele fullscreen doit conserver les timestamps ou relire `EpgRepository`.
-- Android foreground service: verifier type/permissions et duree avant implementation, surtout avec `targetSdk = 36`.
+- Android foreground service: type `dataSync` et permissions manifest ajoutes; verifier le comportement reel sur Firestick/Android TV pendant un enregistrement long.
 - Stockage: rester en app-specific storage pour eviter permissions larges et suppression hors perimetre.
 - Room: migration additive uniquement, pas de refonte des tables catalogue.
 - Focus TV: pas de `FocusRequester` vers items lazy non composes; suivre les regles existantes.

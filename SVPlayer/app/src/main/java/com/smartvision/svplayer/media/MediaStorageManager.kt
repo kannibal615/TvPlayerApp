@@ -3,6 +3,7 @@ package com.smartvision.svplayer.media
 import android.content.Context
 import android.net.Uri
 import android.webkit.MimeTypeMap
+import com.smartvision.svplayer.recorder.RecordingOutputTarget
 import java.io.File
 import java.util.Locale
 
@@ -97,6 +98,38 @@ class MediaStorageManager(
         val file = resolve(relativePath)
         require(file.isFile) { "File not found." }
         return Uri.fromFile(file)
+    }
+
+    internal fun prepareRecordingTarget(title: String, extension: String): RecordingOutputTarget {
+        ensureStorage()
+        val recordings = resolveDirectory("Recordings").apply { mkdirs() }
+        val safeExtension = extension.trim().trimStart('.').lowercase(Locale.US).ifBlank { "ts" }
+        val baseName = sanitizeFileName(title, "SmartVision recording.$safeExtension")
+            .substringBeforeLast('.', title)
+            .ifBlank { "SmartVision recording" }
+        val finalFile = uniqueDestination(recordings, "$baseName.$safeExtension", File(recordings, ".new-recording-placeholder"))
+        val tempFile = File(finalFile.parentFile ?: recordings, "${finalFile.name}.part").canonicalFile
+        if (tempFile.exists()) tempFile.delete()
+        val relativePath = finalFile.toRelativeMediaPath(rootDirectory().canonicalFile) ?: error("Path outside media storage.")
+        return RecordingOutputTarget(
+            tempAbsolutePath = tempFile.absolutePath,
+            finalAbsolutePath = finalFile.absolutePath,
+            finalRelativePath = relativePath,
+        )
+    }
+
+    internal fun finalizeRecording(output: RecordingOutputTarget): ScannedMediaFile {
+        val temp = File(output.tempAbsolutePath).canonicalFile
+        val final = File(output.finalAbsolutePath).canonicalFile
+        require(temp.isFile && temp.length() > 0L) { "Recording produced no media data." }
+        final.parentFile?.mkdirs()
+        if (final.exists()) final.delete()
+        moveFile(temp, final)
+        return final.toScannedFile()
+    }
+
+    internal fun discardRecording(output: RecordingOutputTarget) {
+        runCatching { File(output.tempAbsolutePath).delete() }
     }
 
     private fun rootDirectory(): File {

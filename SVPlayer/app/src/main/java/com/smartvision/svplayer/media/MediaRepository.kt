@@ -85,6 +85,11 @@ class MediaRepository(
             }
         }
 
+    suspend fun indexRecording(relativePath: String): Long? = withContext(Dispatchers.IO) {
+        refreshStorage()
+        dao.getFileByRelativePath(relativePath)?.takeIf { it.deletedAt == null }?.id
+    }
+
     private suspend fun upsertFolders(folders: List<ScannedMediaFolder>) {
         val createdIds = mutableMapOf<String, Long>()
         folders.forEach { folder ->

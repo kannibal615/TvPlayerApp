@@ -1,5 +1,24 @@
 # AI Changelog
 
+## 2026-07-05 - Lots 9, 10 et 11 Recorder Live MVP reel
+
+Type:
+- android
+- recorder
+- media-center
+- documentation
+
+Resume:
+- Ajout du package `recorder`: `RecorderController`, `RecordingService`, `RecordingEngine`, `RecordingRepository` et modeles Recorder.
+- Ajout du foreground service `dataSync` avec notification Recorder et action `Stop`.
+- Persistance des jobs dans `recording_jobs` avec statuts `queued`, `running`, `completed`, `failed`, `cancelled`.
+- Branchement du bouton `Record` Live: durees 30/60/120 min et option EPG jusqu'a fin programme demarrent un vrai enregistrement.
+- Ecriture dans `SmartVisionMedia/Recordings` via fichier temporaire `.part`, finalisation atomique puis indexation Media Center.
+- Support MVP des flux progressifs et HLS simple non chiffre; echec propre pour HLS chiffre/non supporte.
+
+Validation:
+- `.\gradlew.bat --% :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK en 5m26, warnings deprecation uniquement.
+
 ## 2026-07-05 - Release prod 0.1.92 (96) pour Lots 7 et 8 Recorder + Media
 
 Type:

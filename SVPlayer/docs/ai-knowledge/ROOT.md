@@ -166,7 +166,7 @@ Ne pas lire par defaut si la demande concerne uniquement:
 - correction locale d'un ecran existant sans Recorder/Media
 
 Statut rapide:
-- Lot 8 ajoute la lecture locale Media: route `media_player/{mediaFileId}`, bouton `Lire` actif pour video/audio/photo, viewer photo plein ecran et reuse du player fullscreen pour video/audio sans preroll ni verification Xtream. Le bouton `Record` Live est branche au gate `recorder` et ouvre une popup MVP EPG/duree sans service DVR reel. Le transfert telephone/TV et le RecordingService restent a implementer.
+- Lot 11 ajoute le Recorder Live reel MVP: foreground service `RecordingService`, `RecorderController`, jobs Room `recording_jobs`, notification Stop, durees manuelles 30/60/120 min et option EPG jusqu'a fin programme. Les fichiers finalises vont dans `SmartVisionMedia/Recordings` puis sont indexes par Media Center. Le transfert telephone/TV, la marge EPG configurable et la stabilisation longue duree restent a implementer.
 
 ## UI TV, focus et navigation telecommande
 
