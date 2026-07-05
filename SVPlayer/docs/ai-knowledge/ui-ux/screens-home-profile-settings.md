@@ -8,7 +8,7 @@ Cartographier les principaux ecrans utilisateur et les chemins de code pour orie
 
 ## 2. Fonctionnement actuel
 
-Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header principal expose Home, Live TV, Movies, Series et YouTube. Le bouton licence apparait selon le statut. Les ecrans de contenu affichent un QR Xtream si aucun compte n'est configure. Si un compte Xtream existe mais que la verification rapide echoue, Home reste accessible et les entrees Live TV / Movies / Series sont bloquees par popup et overlay. Pendant une verification Xtream en cours, la navigation catalogue peut rester temporairement protegee si aucun etat connecte valide n'est deja connu, mais Home et le header ne doivent afficher les warnings/overlays "Connexion indisponible" qu'apres un echec Xtream confirme.
+Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header principal expose Home, Live TV, Movies, Series et YouTube, les actions globales, puis la date/heure non focusable a droite sur deux lignes (`HH:mm:ss`, `dd/MM/yyyy`). Le bouton licence apparait selon le statut. Les ecrans de contenu affichent un QR Xtream si aucun compte n'est configure. Si un compte Xtream existe mais que la verification rapide echoue, Home reste accessible et les entrees Live TV / Movies / Series sont bloquees par popup et overlay. Pendant une verification Xtream en cours, la navigation catalogue peut rester temporairement protegee si aucun etat connecte valide n'est deja connu, mais Home et le header ne doivent afficher les warnings/overlays "Connexion indisponible" qu'apres un echec Xtream confirme.
 
 ## 3. Workflow utilisateur
 
@@ -192,3 +192,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-03: les ecrans catalogue consomment des logos/posters/backdrops normalises depuis les repositories pour supporter les URL Xtream/M3U absolues, relatives ou echappees.
 - 2026-07-05: Settings ajoute le menu `Network Activity` / `Activite reseau`, base sur `NetworkActivityTracker`, et Home corrige la duree de vie du fade-in audio des mini-players Continue watching LiveImmediate et Tendances.
 - 2026-07-05: Settings > Activite reseau rend le panneau droit focusable et scrollable au D-pad pour parcourir toute la liste active/recente.
+- 2026-07-05: le header principal affiche date/heure sur deux lignes a droite, avec logo/onglets/boutons legerement compactes pour conserver l'espace sans changer les actions.

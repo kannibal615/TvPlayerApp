@@ -18,8 +18,8 @@ Observabilite reseau:
 - Ne jamais exposer les query params, tokens, identifiants Xtream, mots de passe ou URLs de lecture dans ce tracker.
 
 Gradle local constate le 2026-07-05:
-- `versionCode = 92`
-- `versionName = "0.1.88"`
+- `versionCode = 93`
+- `versionName = "0.1.89"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -160,6 +160,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-05: release publiee `0.1.89` / `versionCode 93` pour affiner l'overlay plein ecran Live TV: bandeau rectangulaire compact, logo chaine sans cadre, numero reel, EPG local courant, zapping haut/bas prioritaire, panneau Settings focusable/aspect ratio enrichi et retour focus liste sur la chaine ouverte. APK `smartvision-tv-v93-36ec0343.apk`, SHA256 `36ec03430e065b5234252ee2142cf7b057e8429a62894fa15d90e3e737a03bcb`, manifeste public, `app_update.php`, APK stable et taille verifies.
 - 2026-07-05: release publiee `0.1.88` / `versionCode 92` pour remplacer l'overlay plein ecran Live TV par le bandeau bas glassmorphism dedie direct, EPG lateral, panneau Settings aspect ratio et Record placeholder. APK `smartvision-tv-v92-4709cf61.apk`, SHA256 `4709cf614b68ae0c489efb7323e9aca9a9f096a7a2979bfc2007b0e28c2e95c7`, manifeste public, `app_update.php`, APK stable et taille verifies.
 - 2026-07-03: release publiee `0.1.84` / `versionCode 87` pour corriger les historiques Series: sauvegarde/enrichissement des episodes avec titre de serie, poster, label saison/episode et parent serie. APK `smartvision-tv-v87-60b47236.apk`, SHA256 `60b472366e98c48e33b7c23f0ae495bdd9e7fc07a672aa18c5bffa631d76a109`, manifeste public, `app_update.php`, APK stable et hash verifies.
 - 2026-07-05: release publiee `0.1.86` / `versionCode 90` pour correction audio mini-players Home Continue/Tendances et Settings `Network Activity` / `Activite reseau`; APK `smartvision-tv-v90-80b95e80.apk`, SHA256 `80b95e80e07d5f4786e1fb5247f60d014a66324399db4ed4c9ad10c8a51e5df0`, manifeste public, `app_update.php`, APK stable et hash verifies.

@@ -45,6 +45,22 @@ interface MediaDao {
     @Query("SELECT * FROM live_streams WHERE streamId = :streamId")
     suspend fun getLiveStream(streamId: Int): LiveStreamEntity?
 
+    @Query(
+        "SELECT * FROM live_streams " +
+            "WHERE ((:categoryId IS NULL AND categoryId IS NULL) OR categoryId = :categoryId) " +
+            "AND (number < :number OR (number = :number AND name < :name) OR (number = :number AND name = :name AND streamId < :streamId)) " +
+            "ORDER BY number DESC, name DESC, streamId DESC LIMIT 1",
+    )
+    suspend fun getPreviousLiveStream(categoryId: String?, number: Int, name: String, streamId: Int): LiveStreamEntity?
+
+    @Query(
+        "SELECT * FROM live_streams " +
+            "WHERE ((:categoryId IS NULL AND categoryId IS NULL) OR categoryId = :categoryId) " +
+            "AND (number > :number OR (number = :number AND name > :name) OR (number = :number AND name = :name AND streamId > :streamId)) " +
+            "ORDER BY number ASC, name ASC, streamId ASC LIMIT 1",
+    )
+    suspend fun getNextLiveStream(categoryId: String?, number: Int, name: String, streamId: Int): LiveStreamEntity?
+
     @Query("DELETE FROM live_streams")
     suspend fun clearLiveStreams()
 

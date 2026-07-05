@@ -114,12 +114,15 @@ import com.smartvision.svplayer.data.monetization.MonetizationManager
 import com.smartvision.svplayer.data.monetization.PlayerAdPlan
 import com.smartvision.svplayer.data.monetization.PlayerContentType
 import com.smartvision.svplayer.data.monetization.smartVisionMediaSourceFactory
+import com.smartvision.svplayer.data.playlist.EpgProgram
 import com.smartvision.svplayer.data.playlist.EpgRepository
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.data.xtream.XtreamConnectionManager
+import com.smartvision.svplayer.domain.model.LiveChannel
 import com.smartvision.svplayer.domain.model.PlaybackKind
+import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.usecase.BuildPlaybackRequestUseCase
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
@@ -146,11 +149,13 @@ private const val MinimumLiveHistoryMs = 5_000L
 private const val PlayerReleaseDelayMs = 80L
 
 private val LiveAspectModes = listOf(
+    LiveAspectMode("Auto", AspectRatioFrameLayout.RESIZE_MODE_FIT),
     LiveAspectMode("Fit", AspectRatioFrameLayout.RESIZE_MODE_FIT),
+    LiveAspectMode("16:9", AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH),
     LiveAspectMode("Fill", AspectRatioFrameLayout.RESIZE_MODE_FILL),
     LiveAspectMode("Zoom", AspectRatioFrameLayout.RESIZE_MODE_ZOOM),
-    LiveAspectMode("16:9", AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH),
-    LiveAspectMode("Auto", AspectRatioFrameLayout.RESIZE_MODE_FIT),
+    LiveAspectMode("Center crop", AspectRatioFrameLayout.RESIZE_MODE_ZOOM),
+    LiveAspectMode("Stretch", AspectRatioFrameLayout.RESIZE_MODE_FILL),
 )
 
 data class FullScreenPlayback(
@@ -217,6 +222,7 @@ class FullScreenPlayerViewModel(
     private val kind: FullScreenContentKind,
     private val xtreamRepository: XtreamRepository,
     private val epgRepository: EpgRepository,
+    private val catalogRepository: CatalogRepository,
     private val userContentRepository: UserContentRepository,
     private val buildPlaybackRequest: BuildPlaybackRequestUseCase,
 ) : ViewModel() {
@@ -242,6 +248,9 @@ class FullScreenPlayerViewModel(
                         localPlayback.resumePositionMs
                     },
                 )
+            }
+            if (kind == FullScreenContentKind.Live) {
+                refreshLivePlaybackFromLocalCatalog()
             }
         }
     }
@@ -290,15 +299,7 @@ class FullScreenPlayerViewModel(
                 .firstOrNull { it.id == stream.categoryId }
                 ?.name
                 ?: "Live TV"
-            val epgPrograms = epgRepository.loadPrograms(stream.epgChannelId, stream.name)
-                .mapIndexed { index, program ->
-                    FullScreenEpgProgram(
-                        title = program.title,
-                        description = program.description,
-                        timeRange = program.timeRange,
-                        isCurrent = index == 0,
-                    )
-                }
+            val epgPrograms = epgRepository.loadPrograms(stream.epgChannelId, stream.name).toFullScreenPrograms()
             val previous = xtreamRepository.getCachedPreviousLiveStream(streamId)
             val next = xtreamRepository.getCachedNextLiveStream(streamId)
             FullScreenPlayback(
@@ -309,23 +310,23 @@ class FullScreenPlayerViewModel(
                 url = xtreamRepository.buildLiveStreamUrl(stream),
                 fallbackUrl = xtreamRepository.buildLiveStreamFallbackUrl(stream.streamId),
                 badge = "LIVE",
-                status = epgPrograms.firstOrNull()?.title ?: "Direct",
+                status = epgPrograms.firstOrNull { it.isCurrent }?.title ?: epgPrograms.firstOrNull()?.title ?: "Direct",
                 infoPills = listOf("16+", "HD", "5.1"),
                 imageUrl = stream.streamIcon,
                 categoryId = stream.categoryId,
-                overlayRightText = stream.number.toString(),
+                overlayRightText = stream.number.toLiveChannelNumber(stream.streamId),
                 previousItem = previous?.let {
                     AdjacentPlayback(
                         streamId = it.streamId,
                         title = it.name.cleanTitle(),
-                        label = it.number.toString().padStart(3, '0'),
+                        label = it.number.toLiveChannelNumber(it.streamId),
                     )
                 },
                 nextItem = next?.let {
                     AdjacentPlayback(
                         streamId = it.streamId,
                         title = it.name.cleanTitle(),
-                        label = it.number.toString().padStart(3, '0'),
+                        label = it.number.toLiveChannelNumber(it.streamId),
                     )
                 },
                 epgPrograms = epgPrograms,
@@ -341,6 +342,19 @@ class FullScreenPlayerViewModel(
             status = "Direct",
             infoPills = listOf("16+", "HD", "5.1"),
         )
+
+    private suspend fun refreshLivePlaybackFromLocalCatalog() {
+        val current = catalogRepository.getLiveChannelById(contentId) ?: return
+        val previous = catalogRepository.getPreviousLiveChannel(contentId)
+        val next = catalogRepository.getNextLiveChannel(contentId)
+        val epgPrograms = epgRepository.loadPrograms(current.epgChannelId, current.name).toFullScreenPrograms()
+        _uiState.value = current.toFullScreenPlayback(
+            previous = previous,
+            next = next,
+            epgPrograms = epgPrograms,
+            fallback = _uiState.value,
+        )
+    }
 
     private fun resolveMovie(
         movieId: Int,
@@ -460,6 +474,7 @@ fun FullScreenPlayerRoute(
     streamId: Int,
     kind: FullScreenContentKind = FullScreenContentKind.Live,
     onBack: () -> Unit,
+    onBackWithCurrentContent: (Int) -> Unit = { onBack() },
     onPlayLive: (Int) -> Unit = {},
     onPlayMovie: (Int) -> Unit = {},
     onPlayEpisode: (Int) -> Unit = {},
@@ -473,6 +488,7 @@ fun FullScreenPlayerRoute(
                 kind = kind,
                 xtreamRepository = container.xtreamRepository,
                 epgRepository = container.epgRepository,
+                catalogRepository = container.catalogRepository,
                 userContentRepository = container.userContentRepository,
                 buildPlaybackRequest = container.buildPlaybackRequest,
             )
@@ -497,6 +513,7 @@ fun FullScreenPlayerRoute(
         behaviorReporter = container.behaviorReporter,
         adRequestTimeoutSeconds = container.adConfigProvider.current().requestTimeoutSeconds,
         onBack = onBack,
+        onBackWithCurrentContent = onBackWithCurrentContent,
         onPlayLive = onPlayLive,
         onPlayMovie = onPlayMovie,
         onPlayEpisode = onPlayEpisode,
@@ -515,6 +532,7 @@ private fun FullScreenPlayerScreen(
     behaviorReporter: BehaviorReporter,
     adRequestTimeoutSeconds: Long,
     onBack: () -> Unit,
+    onBackWithCurrentContent: (Int) -> Unit,
     onPlayLive: (Int) -> Unit,
     onPlayMovie: (Int) -> Unit,
     onPlayEpisode: (Int) -> Unit,
@@ -538,7 +556,7 @@ private fun FullScreenPlayerScreen(
     var bufferedPositionMs by remember { mutableLongStateOf(0L) }
     var activeMenu by remember { mutableStateOf(PlayerOverlayMenu.None) }
     var playbackSpeed by remember { mutableStateOf(1f) }
-    var liveAspectMode by remember { mutableStateOf(LiveAspectModes.first { it.resizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM }) }
+    var liveAspectMode by remember { mutableStateOf(LiveAspectModes.first()) }
     var subtitleTracks by remember { mutableStateOf<List<SubtitleTrackOption>>(emptyList()) }
     var selectedSubtitleId by remember { mutableStateOf<String?>(null) }
     var nextEpisodeCountdown by remember { mutableStateOf<Int?>(null) }
@@ -650,13 +668,13 @@ private fun FullScreenPlayerScreen(
     fun handleLiveChannelKey(keyCode: Int): Boolean {
         if (playback.contentType != UserContentType.Live) return false
         if (keyCode != AndroidKeyEvent.KEYCODE_DPAD_UP && keyCode != AndroidKeyEvent.KEYCODE_DPAD_DOWN) return false
-        if (activeMenu != PlayerOverlayMenu.None) return false
         if (adGateActive) return true
         val target = if (keyCode == AndroidKeyEvent.KEYCODE_DPAD_UP) {
             playback.previousItem
         } else {
             playback.nextItem
         }
+        activeMenu = PlayerOverlayMenu.None
         playAdjacent(target)
         showOverlay()
         return true
@@ -808,7 +826,7 @@ private fun FullScreenPlayerScreen(
             }
             releasePlayerBeforeNavigation(source)
             reportPlayerExitStep("before_onBack", "source=$source")
-            onBack()
+            onBackWithCurrentContent(playback.streamId)
         }
     }
 
@@ -938,7 +956,11 @@ private fun FullScreenPlayerScreen(
         if (overlayVisible && activeMenu == PlayerOverlayMenu.None && nextEpisodeCountdown == null) {
             if (focusPlayWhenOverlayShows) {
                 delay(120)
-                playFocusRequester.requestFocus()
+                if (playback.contentType == UserContentType.Live) {
+                    playFocusRequester.requestFocus()
+                } else {
+                    playFocusRequester.requestFocus()
+                }
                 focusPlayWhenOverlayShows = false
             }
             delay(4_800)
@@ -1540,9 +1562,9 @@ private fun LiveTvFullscreenOverlay(
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(start = 22.dp, top = 18.dp)
-                .width(224.dp)
-                .height(58.dp),
+                .padding(start = 26.dp, top = 20.dp)
+                .width(214.dp)
+                .height(54.dp),
         )
 
         Text(
@@ -1552,7 +1574,7 @@ private fun LiveTvFullscreenOverlay(
             fontWeight = FontWeight.Black,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(end = 34.dp, top = 22.dp),
+                .padding(end = 36.dp, top = 20.dp),
         )
 
         errorText?.let { message ->
@@ -1597,32 +1619,39 @@ private fun LiveTvBottomGlassBanner(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(154.dp)
-            .clip(LiveTvBottomBannerShape)
-            .background(Color.Black.copy(alpha = 0.38f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), LiveTvBottomBannerShape)
-            .padding(horizontal = 44.dp, vertical = 22.dp),
+            .height(118.dp)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        Color.Black.copy(alpha = 0.66f),
+                        Color(0xFF081324).copy(alpha = 0.58f),
+                        Color.Black.copy(alpha = 0.54f),
+                    ),
+                ),
+            )
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)))
+            .padding(start = 22.dp, end = 34.dp, top = 14.dp, bottom = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         LiveTvChannelLogo(
             title = playback.title,
             imageUrl = playback.imageUrl,
-            modifier = Modifier.size(width = 118.dp, height = 82.dp),
+            modifier = Modifier.size(width = 88.dp, height = 62.dp),
         )
         Box(
             modifier = Modifier
-                .padding(horizontal = 24.dp)
+                .padding(start = 18.dp, end = 22.dp)
                 .width(1.dp)
-                .height(76.dp)
-                .background(Color.White.copy(alpha = 0.16f)),
+                .height(62.dp)
+                .background(Color.White.copy(alpha = 0.13f)),
         )
         LiveTvChannelInfo(
             playback = playback,
             modifier = Modifier.weight(1f),
         )
-        Spacer(Modifier.width(28.dp))
+        Spacer(Modifier.width(20.dp))
         Row(
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             LiveTvActionButton(
@@ -1661,10 +1690,7 @@ private fun LiveTvChannelLogo(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(7.dp))
-            .background(Color.White.copy(alpha = 0.13f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(7.dp))
-            .padding(8.dp),
+            .padding(end = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
         if (!imageUrl.isNullOrBlank()) {
@@ -1679,7 +1705,7 @@ private fun LiveTvChannelLogo(
                 imageVector = Icons.Default.Tv,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = 0.72f),
-                modifier = Modifier.size(38.dp),
+                modifier = Modifier.size(36.dp),
             )
         }
     }
@@ -1693,7 +1719,8 @@ private fun LiveTvChannelInfo(
     val currentProgram = playback.epgPrograms.firstOrNull { it.isCurrent }
     val secondary = currentProgram
         ?.let { listOf(it.timeRange, it.title).filter { value -> value.isNotBlank() }.joinToString("  |  ") }
-        ?: "Program unavailable"
+        ?: playback.status.takeUnless { it.equals("Direct", ignoreCase = true) }
+        ?: playback.subtitle
 
     Column(modifier = modifier) {
         Text(
@@ -1704,11 +1731,11 @@ private fun LiveTvChannelInfo(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             text = secondary,
             color = Color.White.copy(alpha = 0.76f),
-            style = PlayerMetaStyle.copy(fontSize = 18.sp, lineHeight = 23.sp),
+            style = PlayerMetaStyle.copy(fontSize = 16.sp, lineHeight = 21.sp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -1750,7 +1777,7 @@ private fun LiveTvActionButton(
     Column(
         modifier = modifier
             .width(82.dp)
-            .height(86.dp)
+            .height(76.dp)
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -1773,7 +1800,7 @@ private fun LiveTvActionButton(
     ) {
         Box(
             modifier = Modifier
-                .size(52.dp)
+                .size(46.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .background(backgroundColor)
                 .border(BorderStroke(if (focusState.isFocused) 2.dp else 1.dp, borderColor), RoundedCornerShape(10.dp)),
@@ -1783,10 +1810,10 @@ private fun LiveTvActionButton(
                 imageVector = icon,
                 contentDescription = label,
                 tint = if (enabled) iconTint else Color.White.copy(alpha = 0.28f),
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(25.dp),
             )
         }
-        Spacer(Modifier.height(7.dp))
+        Spacer(Modifier.height(5.dp))
         Text(
             text = label,
             color = when {
@@ -1794,7 +1821,7 @@ private fun LiveTvActionButton(
                 focusState.isFocused -> Color.White
                 else -> Color.White.copy(alpha = 0.74f)
             },
-            style = PlayerMetaStyle.copy(fontSize = 12.sp, lineHeight = 14.sp),
+            style = PlayerMetaStyle.copy(fontSize = 11.sp, lineHeight = 13.sp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -1913,7 +1940,7 @@ private fun LiveTvSettingsPanel(
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight()
                 .width(360.dp)
-                .padding(top = 112.dp, end = 30.dp, bottom = 174.dp)
+                .padding(top = 96.dp, end = 30.dp, bottom = 134.dp)
                 .clip(RoundedCornerShape(18.dp))
                 .background(Color.Black.copy(alpha = 0.42f))
                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(18.dp))
@@ -1926,24 +1953,6 @@ private fun LiveTvSettingsPanel(
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(16.dp))
-            Text(
-                text = "Playback speed",
-                color = Color.White.copy(alpha = 0.64f),
-                style = PlayerMetaStyle.copy(fontSize = 13.sp, lineHeight = 16.sp),
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Unavailable for Live TV",
-                color = Color.White.copy(alpha = 0.42f),
-                style = PlayerMetaStyle.copy(fontSize = 13.sp, lineHeight = 16.sp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.White.copy(alpha = 0.05f))
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-            )
-            Spacer(Modifier.height(18.dp))
             Text(
                 text = "Aspect ratio",
                 color = Color.White.copy(alpha = 0.64f),
@@ -2603,7 +2612,6 @@ private val PlayerTinyStyle = TextStyle(
 )
 
 private val PlayerGlassShape = RoundedCornerShape(14.dp)
-private val LiveTvBottomBannerShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
 private val PlayerGlassBackground = Color(0x26071222)
 private val PlayerGlassBorder = Color.White.copy(alpha = 0.22f)
 private val PlayerNeonBlue = Color(0xFF0A84FF)
@@ -2617,6 +2625,61 @@ private fun String.cleanTitle(): String =
         .replace(" SD", "", ignoreCase = true)
         .trim()
         .ifBlank { "Live TV" }
+
+private fun Int.toLiveChannelNumber(fallbackId: Int): String =
+    (takeIf { it > 0 } ?: fallbackId).toString().padStart(3, '0')
+
+private fun List<EpgProgram>.toFullScreenPrograms(): List<FullScreenEpgProgram> {
+    if (isEmpty()) return emptyList()
+    val now = System.currentTimeMillis()
+    val currentIndex = indexOfFirst { program ->
+        val start = program.startMillis
+        val stop = program.stopMillis
+        start != null && stop != null && now in start..stop
+    }.takeIf { it >= 0 } ?: 0
+    return mapIndexed { index, program ->
+        FullScreenEpgProgram(
+            title = program.title,
+            description = program.description,
+            timeRange = program.timeRange,
+            isCurrent = index == currentIndex,
+        )
+    }
+}
+
+private fun LiveChannel.toFullScreenPlayback(
+    previous: LiveChannel?,
+    next: LiveChannel?,
+    epgPrograms: List<FullScreenEpgProgram>,
+    fallback: FullScreenPlayback,
+): FullScreenPlayback {
+    val currentProgram = epgPrograms.firstOrNull { it.isCurrent } ?: epgPrograms.firstOrNull()
+    return FullScreenPlayback(
+        streamId = streamId,
+        contentType = UserContentType.Live,
+        title = name.cleanTitle(),
+        subtitle = categoryName,
+        url = directStreamUrl?.takeIf { it.isNotBlank() } ?: fallback.url,
+        fallbackUrl = fallback.fallbackUrl,
+        badge = "LIVE",
+        status = currentProgram?.title ?: currentProgram?.timeRange ?: "Direct",
+        infoPills = fallback.infoPills,
+        imageUrl = logoUrl?.takeIf { it.isNotBlank() } ?: fallback.imageUrl,
+        categoryId = categoryId,
+        overlayRightText = number.toLiveChannelNumber(streamId),
+        previousItem = previous?.toAdjacentPlayback(),
+        nextItem = next?.toAdjacentPlayback(),
+        resumePositionMs = fallback.resumePositionMs,
+        epgPrograms = epgPrograms,
+    )
+}
+
+private fun LiveChannel.toAdjacentPlayback(): AdjacentPlayback =
+    AdjacentPlayback(
+        streamId = streamId,
+        title = name.cleanTitle(),
+        label = number.toLiveChannelNumber(streamId),
+    )
 
 private fun String?.extractReleaseYear(): String? =
     this

@@ -142,6 +142,7 @@ fun AppNavigation(
     var showXtreamConnectionDialog by remember { mutableStateOf(false) }
     var showXtreamSetupDialog by remember { mutableStateOf(false) }
     var premiumLicenseCode by remember { mutableStateOf("") }
+    var liveReturnFocusChannelId by remember { mutableStateOf<Int?>(null) }
     val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
     val xtreamConnectionState by container.xtreamConnectionManager.state.collectAsStateWithLifecycle()
     val xtreamCatalogBlocked = activePlaylistSource == PlaylistSource.Xtream && xtreamConnectionState.blocksCatalogForNavigation
@@ -524,6 +525,8 @@ fun AppNavigation(
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
                 notificationBadgeCount = notificationBadgeCount,
+                returnFocusChannelId = liveReturnFocusChannelId,
+                onReturnFocusConsumed = { liveReturnFocusChannelId = null },
                 onWatch = { channelId -> navController.navigate("player/$channelId") },
             )
         }
@@ -619,6 +622,10 @@ fun AppNavigation(
                     streamId = channelId,
                     kind = FullScreenContentKind.Live,
                     onBack = { navController.popBackStack() },
+                    onBackWithCurrentContent = { currentChannelId ->
+                        liveReturnFocusChannelId = currentChannelId
+                        navController.popBackStack()
+                    },
                     onPlayLive = { nextChannelId ->
                         navController.navigate("player/$nextChannelId") {
                             popUpTo("player/{channelId}") { inclusive = true }

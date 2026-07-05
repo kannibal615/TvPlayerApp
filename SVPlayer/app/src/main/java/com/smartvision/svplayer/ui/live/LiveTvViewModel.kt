@@ -251,6 +251,33 @@ class LiveTvViewModel(
         }
     }
 
+    fun restoreFocusToChannel(streamId: Int) {
+        viewModelScope.launch {
+            val existing = _uiState.value.channels.firstOrNull { it.streamId == streamId }
+            if (existing != null) {
+                startPreview(existing)
+                return@launch
+            }
+            val local = catalogRepository.getLiveChannelById(streamId) ?: return@launch
+            if (!playerSettings.allowsContent(local.name, local.categoryName)) return@launch
+            val channel = local.toUiChannel(
+                index = _uiState.value.channels.size,
+                categoryLabel = local.categoryName.ifBlank { _uiState.value.selectedCategory?.label ?: "Live TV" },
+                xtreamRepository = xtreamRepository,
+                epgRepository = epgRepository,
+                favoriteIds = favoriteIds,
+            )
+            _uiState.update { state ->
+                state.copy(
+                    channels = (state.channels + channel).distinctBy { it.streamId },
+                    selectedChannelId = channel.streamId,
+                    focusedChannelId = channel.streamId,
+                    errorMessage = null,
+                )
+            }
+        }
+    }
+
     fun toggleFavorite(channel: LiveTvChannel) {
         viewModelScope.launch {
             userContentRepository.toggleFavorite(UserContentType.Live, channel.streamId)

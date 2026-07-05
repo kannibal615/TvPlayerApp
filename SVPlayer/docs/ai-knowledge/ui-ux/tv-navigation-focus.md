@@ -23,6 +23,7 @@ Le focus global est derive des settings utilisateur:
 - L'utilisateur navigue avec la telecommande.
 - Les actions doivent etre focusables et pas seulement clickables.
 - Home, Live TV, Movies, Series, YouTube, Settings, Profile et Notifications partagent une logique de header.
+- Le header principal affiche aussi une date/heure non focusable a droite (`HH:mm:ss` puis `dd/MM/yyyy`), separee des boutons globaux par un trait vertical discret.
 - Les formulaires doivent permettre Haut/Bas entre champs.
 - Les popups doivent etre navigables au D-pad.
 
@@ -54,7 +55,7 @@ Attention:
 - Le popup manuel Info compte > Synchroniser bloque Back/D-pad uniquement pendant `SyncStatus.Running`; a la fin ou en erreur, le focus va sur `Retour`.
 - Depuis le 2026-07-03, dans Live TV, D-pad droite depuis une ligne chaine selectionnee va vers le panneau details EPG sous le mini-player. Ce panneau est focusable: D-pad haut/bas scrolle les programmes si possible, puis D-pad bas passe au bouton `Regarder` quand le bas est atteint.
 - Les mini-players Home Continue watching, Home Tendances et Live TV apercu ont un fade-in audio local: volume player `0f`, attente 1 seconde apres `play()`, puis montee a `1f` sur 1 seconde. Cette logique ne doit pas modifier le focus, le D-pad, le fallback video ni les routes plein ecran. Le job audio doit rester vivant jusqu'a disparition/changement du composable; ne pas remettre `volume = 0f` juste apres la premiere frame.
-- Depuis le 2026-07-05, le player plein ecran Live TV a un overlay dedie: D-pad haut/bas zappe chaine precedente/suivante quand aucun panneau modal n'est ouvert; gauche/droite navigue les boutons du bandeau bas (`EPG`, `Settings`, `Record`, `Back to List`); Back ferme d'abord EPG/Settings puis revient a la liste Live TV.
+- Depuis le 2026-07-05, le player plein ecran Live TV a un overlay dedie: D-pad haut/bas zappe chaine precedente/suivante en priorite et ferme tout panneau EPG/Settings ouvert; gauche/droite navigue les boutons du bandeau bas (`EPG`, `Settings`, `Record`, `Back to List`); Back ferme d'abord EPG/Settings puis revient a la liste Live TV. A la sortie du fullscreen Live, la liste restaure le focus sur la derniere chaine ouverte, y compris apres zapping.
 
 ## 5. Ecrans concernes
 
@@ -171,4 +172,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-03: Live TV rend le panneau details EPG sous mini-player focusable et scrollable au D-pad, avec routage bas vers `Regarder`.
 - 2026-07-05: Home Tendances aligne sa transition de focus visuelle sur Continue watching et les mini-players Home/Live TV ajoutent le fade-in audio 1s + 1s sans changer la navigation.
 - 2026-07-05: correction du cycle de vie audio Home: les players Continue watching LiveImmediate et Tendances ne coupent plus le fade-in juste apres demarrage.
-- 2026-07-05: remplacement de l'overlay plein ecran Live TV par un bandeau bas glassmorphism full-width avec boutons focusables compacts, EPG lateral et panneau Settings aspect ratio.
+- 2026-07-05: remplacement et affinage de l'overlay plein ecran Live TV par un bandeau bas rectangulaire glassmorphism compact, boutons focusables, zapping haut/bas prioritaire, EPG lateral, panneau Settings aspect ratio enrichi et retour focus liste sur la chaine ouverte.
+- 2026-07-05: le header principal ajoute date/heure non focusables a droite et compacte legerement logo, onglets et boutons icones sans changer le routage D-pad.

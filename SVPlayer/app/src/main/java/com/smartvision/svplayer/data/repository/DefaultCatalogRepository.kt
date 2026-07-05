@@ -264,6 +264,38 @@ class DefaultCatalogRepository(
             )
         }
 
+    override suspend fun getLiveChannelById(streamId: Int): LiveChannel? =
+        withContext(Dispatchers.IO) {
+            if (!isLiveCatalogConfigured()) return@withContext null
+            val categoryNames = categoryDao.getByType(MediaSection.Live.storageName).associate { it.id to it.name }
+            val imageBaseHost = imageBaseHost()
+            mediaDao.getLiveStream(streamId)
+                ?.let { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost) }
+                ?.withEpg(epgRepository)
+        }
+
+    override suspend fun getPreviousLiveChannel(streamId: Int): LiveChannel? =
+        withContext(Dispatchers.IO) {
+            if (!isLiveCatalogConfigured()) return@withContext null
+            val current = mediaDao.getLiveStream(streamId) ?: return@withContext null
+            val categoryNames = categoryDao.getByType(MediaSection.Live.storageName).associate { it.id to it.name }
+            val imageBaseHost = imageBaseHost()
+            mediaDao.getPreviousLiveStream(current.categoryId, current.number, current.name, current.streamId)
+                ?.let { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost) }
+                ?.withEpg(epgRepository)
+        }
+
+    override suspend fun getNextLiveChannel(streamId: Int): LiveChannel? =
+        withContext(Dispatchers.IO) {
+            if (!isLiveCatalogConfigured()) return@withContext null
+            val current = mediaDao.getLiveStream(streamId) ?: return@withContext null
+            val categoryNames = categoryDao.getByType(MediaSection.Live.storageName).associate { it.id to it.name }
+            val imageBaseHost = imageBaseHost()
+            mediaDao.getNextLiveStream(current.categoryId, current.number, current.name, current.streamId)
+                ?.let { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost) }
+                ?.withEpg(epgRepository)
+        }
+
     override suspend fun getMoviesPage(categoryId: String?, offset: Int, limit: Int): List<Movie> =
         withContext(Dispatchers.IO) {
             if (!isXtreamCatalogConfigured()) return@withContext emptyList()

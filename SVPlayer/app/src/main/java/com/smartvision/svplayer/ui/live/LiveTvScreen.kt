@@ -180,6 +180,8 @@ fun LiveTvScreen(
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
     notificationBadgeCount: Int,
+    returnFocusChannelId: Int? = null,
+    onReturnFocusConsumed: () -> Unit = {},
     onWatch: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -221,6 +223,12 @@ fun LiveTvScreen(
     LaunchedEffect(Unit) {
         delay(260)
         inputReady = true
+    }
+
+    LaunchedEffect(returnFocusChannelId) {
+        val channelId = returnFocusChannelId ?: return@LaunchedEffect
+        viewModel.restoreFocusToChannel(channelId)
+        onReturnFocusConsumed()
     }
 
     LaunchedEffect(container.activationRepository) {
@@ -519,6 +527,9 @@ private fun ChannelList(
         ?: visibleChannels.firstOrNull()?.streamId
     LaunchedEffect(focusChannelId, state.channelsLoading, visibleChannels.size) {
         if (!state.channelsLoading && focusChannelId != null) {
+            visibleChannels.indexOfFirst { it.streamId == focusChannelId }
+                .takeIf { it >= 0 }
+                ?.let { index -> listState.animateScrollToItem(index) }
             withFrameNanos { }
             delay(80)
             runCatching { firstChannelFocusRequester.requestFocus() }

@@ -1,5 +1,71 @@
 # AI Changelog
 
+## 2026-07-05 - Affinage overlay Live TV et release 0.1.89
+
+Type:
+- android
+- ui-tv
+- playback
+- release
+- documentation
+
+Resume:
+- Le bandeau Live plein ecran devient rectangulaire, plus compact et plus sobre visuellement.
+- Le logo de chaine est affiche sans cadre et les infos chaine sont decalees vers la gauche.
+- Le numero affiche en haut a droite reprend le numero reel/pad de la liste Live.
+- L'EPG sous le nom de chaine utilise le programme local courant quand il existe.
+- Haut/Bas zappe en priorite sur Live TV, meme si un panneau EPG/Settings est ouvert.
+- Le panneau Settings Live recupere le focus, retire la ligne vitesse indisponible et expose plus de choix d'aspect ratio.
+- A la sortie du fullscreen Live, la liste restaure le focus sur la derniere chaine ouverte, y compris apres zapping.
+
+Fichiers code:
+- `app/src/main/java/com/smartvision/svplayer/ui/player/FullScreenPlayerScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/LiveTvScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/LiveTvViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/dao/MediaDao.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/domain/repository/CatalogRepository.kt`
+- `app/build.gradle.kts`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Validation:
+- `.\scripts\guard_release_version.ps1`: OK, local `0.1.89 (93)` > prod `0.1.88 (92)`.
+- `.\gradlew.bat assembleRelease`: premier essai KO sur `firstLiveActionFocusRequester` manquant, corrige; second essai OK en 9m.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK, metadata `0.1.89 (93)`.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall`: OK.
+- `apksigner verify --verbose --print-certs`: OK, signatures v1/v2 valides, certificat `CN=SmartVision`.
+- Production verifiee: `api/app_update.php` sert `latest_version_code=93`, APK versionne `smartvision-tv-v93-36ec0343.apk` et APK stable `smartvision-tv.apk` repondent `200`, taille `40133779`, SHA256 `36ec03430e065b5234252ee2142cf7b057e8429a62894fa15d90e3e737a03bcb`.
+
+## 2026-07-05 - Header date et heure
+
+Type:
+- android
+- ui-tv
+- documentation
+
+Resume:
+- Le header principal affiche maintenant l'heure `HH:mm:ss` et la date `dd/MM/yyyy` sur deux lignes tout a droite.
+- Le logo, les espacements d'onglets et les boutons icones du header sont legerement compactes pour conserver le rendu sur une seule ligne.
+- Le bloc date/heure reste non focusable et ne change pas le routage D-pad ni les callbacks de navigation existants.
+
+Fichiers code:
+- `app/src/main/java/com/smartvision/svplayer/ui/home/TvHeader.kt`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin`: OK en 23s apres ajustement final.
+
 ## 2026-07-05 - Overlay player Live TV et release 0.1.88
 
 Type:

@@ -10,6 +10,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,8 +29,11 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -40,6 +44,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -52,6 +57,10 @@ import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlinx.coroutines.delay
 
 data class HomeHeaderTab(
     val label: String,
@@ -82,10 +91,10 @@ fun TvHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SmartVisionLogo()
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(10.dp))
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             tabs.forEach { tab ->
@@ -126,9 +135,9 @@ fun TvHeader(
                         null
                     },
                     enabled = true,
-                    contentPadding = PaddingValues(horizontal = 10.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp),
                     modifier = Modifier
-                        .height(40.dp)
+                        .height(38.dp)
                         .alpha(if (tab.locked || tab.warning) 0.42f else 1f),
                 )
             }
@@ -158,7 +167,7 @@ fun HeaderControls(
 ) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showLicenseKey) {
@@ -186,6 +195,7 @@ fun HeaderControls(
             contentDescription = "Parametres",
             onClick = onSettings,
         )
+        HeaderDateTime()
     }
 }
 
@@ -204,10 +214,10 @@ private fun HeaderIconButton(
     val focusStyle = LocalTvFocusStyle.current
     val shape = RoundedCornerShape(10.dp)
 
-    Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(38.dp)
                 .tvFocusTarget(
                     state = focusState,
                     pressed = pressed,
@@ -243,7 +253,7 @@ private fun HeaderIconButton(
                     accent != SmartVisionColors.Primary -> accent
                     else -> SmartVisionColors.TextSecondary
                 },
-                modifier = Modifier.size(21.dp),
+                modifier = Modifier.size(20.dp),
             )
         }
         if (showBadge) {
@@ -270,13 +280,74 @@ private fun HeaderIconButton(
 }
 
 @Composable
+private fun HeaderDateTime() {
+    var dateTime by remember { mutableStateOf(formatHeaderDateTime()) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            dateTime = formatHeaderDateTime()
+            delay(1_000)
+        }
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .height(34.dp)
+                .width(1.dp)
+                .background(SmartVisionColors.Border.copy(alpha = 0.72f)),
+        )
+        Column(
+            modifier = Modifier.width(82.dp),
+            horizontalAlignment = Alignment.End,
+        ) {
+            Text(
+                text = dateTime.time,
+                color = SmartVisionColors.TextPrimary,
+                fontSize = 13.sp,
+                lineHeight = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.End,
+                maxLines = 1,
+            )
+            Text(
+                text = dateTime.date,
+                color = SmartVisionColors.TextSecondary,
+                fontSize = 11.sp,
+                lineHeight = 13.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.End,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
 private fun SmartVisionLogo() {
     Image(
         painter = painterResource(R.drawable.smartvision_logo_wide),
         contentDescription = "SmartVision IPTV Player",
         contentScale = ContentScale.Fit,
         modifier = Modifier
-            .width(190.dp)
+            .offset(x = (-6).dp)
+            .width(178.dp)
             .fillMaxHeight(),
+    )
+}
+
+private data class HeaderDateTimeText(
+    val time: String,
+    val date: String,
+)
+
+private fun formatHeaderDateTime(): HeaderDateTimeText {
+    val now = Date()
+    return HeaderDateTimeText(
+        time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(now),
+        date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(now),
     )
 }
