@@ -1,6 +1,6 @@
 # Android Architecture, Build et Release
 
-Derniere mise a jour: 2026-07-03.
+Derniere mise a jour: 2026-07-05.
 
 ## 1. Objectif
 
@@ -9,6 +9,13 @@ Documenter l'architecture Android active, les points d'entree techniques, le bui
 ## 2. Fonctionnement actuel
 
 L'application Android est dans `app/`. La navigation active est Compose dans `ui/navigation/AppNavigation.kt`. Les dependances sont creees dans `core/data/AppContainer.kt`. Le projet demande JDK 21.
+
+Observabilite reseau:
+- `AppContainer` cree un singleton `NetworkActivityTracker`.
+- `NetworkActivityInterceptor` instrumente les clients OkHttp Xtream et SmartVision avec des titres sanitises host/chemin uniquement.
+- Les travaux metier catalogue, M3U, EPG, Home slides/tendances, update APK et verification Xtream publient aussi des etats applicatifs dans le tracker.
+- `SettingsScreen` affiche ces etats dans `Network Activity` / `Activite reseau`: actifs, recents, progression, taille, debit, duree, source/section et erreurs.
+- Ne jamais exposer les query params, tokens, identifiants Xtream, mots de passe ou URLs de lecture dans ce tracker.
 
 Gradle local constate le 2026-07-03:
 - `versionCode = 88`
@@ -48,6 +55,7 @@ Points d'entree:
 - `SVPlayerApplication.kt`
 - `AppNavigation.kt`
 - `AppContainer.kt`
+- `data/network/NetworkActivityTracker.kt`
 
 Build:
 - `.\gradlew.bat assembleRelease`
@@ -80,6 +88,8 @@ Deploy:
 - `app/src/main/java/com/smartvision/svplayer/SVPlayerApplication.kt`
 - `app/src/main/java/com/smartvision/svplayer/core/data/AppContainer.kt`
 - `app/src/main/java/com/smartvision/svplayer/data/home/HomeContentRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/network/NetworkActivityTracker.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/playlist/EpgRepository.kt`
 - `app/src/main/java/com/smartvision/svplayer/ui/update/*`
 - `scripts/deploy_activation_phase1.ps1`
 
@@ -151,7 +161,9 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-07-03: release publiee `0.1.84` / `versionCode 87` pour corriger les historiques Series: sauvegarde/enrichissement des episodes avec titre de serie, poster, label saison/episode et parent serie. APK `smartvision-tv-v87-60b47236.apk`, SHA256 `60b472366e98c48e33b7c23f0ae495bdd9e7fc07a672aa18c5bffa631d76a109`, manifeste public, `app_update.php`, APK stable et hash verifies.
+- 2026-07-05: release publiee `0.1.86` / `versionCode 90` pour correction audio mini-players Home Continue/Tendances et Settings `Network Activity` / `Activite reseau`; APK `smartvision-tv-v90-80b95e80.apk`, SHA256 `80b95e80e07d5f4786e1fb5247f60d014a66324399db4ed4c9ad10c8a51e5df0`, manifeste public, `app_update.php`, APK stable et hash verifies.
 - 2026-07-03: release publiee `0.1.83` / `versionCode 86` pour splash sans synchro ni chargement catalogue, Home immediat, synchro post-Home uniquement, categories initiales limitees a `20` par section et tendances `10 + 10` aleatoires Room hors adulte. APK `smartvision-tv-v86-9fcd8f69.apk`, SHA256 `9fcd8f69555e3c7e99b495d8c136134f6d3814ef758afc21e17d97dd26568751`, manifeste public, `app_update.php`, APK stable et hash verifies.
+- 2026-07-05: ajout local de `NetworkActivityTracker` et du menu Settings `Network Activity` / `Activite reseau`; instrumentation OkHttp SmartVision/Xtream sans query params, plus travaux metier catalogue, M3U, EPG, Home et update APK.
 - 2026-07-03: release locale `0.1.82` / `versionCode 85` construite avec `:app:assembleRelease`, garde-fou `guard_release_version.ps1 -RequireBuildMetadata` OK, APK `app-release.apk` installe et lance sur Firestick `192.168.1.33:5555`; pas de deploiement backend/prod effectue dans cette intervention.
 - 2026-07-02: release publiee `0.1.81` / `versionCode 84` pour splash hybride: fond + logo reduit dans la preview systeme, barre/statuts/diagnostics en Compose, nettoyage du fond avant Home; APK `smartvision-tv-v84-1577e450.apk`, SHA256 `1577e4508feb3ae94d5ba672f67ff851d0a1779b6b94a34dd257044b4a65afb0`, manifeste public, `app_update.php`, APK stable et hash verifies.
 - 2026-07-03: optimisation locale `releaseDiagnostic`: recorder diagnostic asynchrone, splash logo plus petit/remonte, progress bar centree sous le logo et statut simplifie avec pourcentage.

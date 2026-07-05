@@ -85,6 +85,7 @@ import com.smartvision.svplayer.ui.theme.SmartVisionType
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToLong
@@ -543,6 +544,8 @@ private fun TrendingMutedPreviewPlayer(
                 videoVisible = false
                 player.pause()
                 onPreviewUnavailable()
+            } else {
+                awaitCancellation()
             }
         } finally {
             volumeFadeJob?.cancel()

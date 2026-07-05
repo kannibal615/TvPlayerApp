@@ -20,8 +20,8 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 - Depuis le 2026-07-03, Home decide la synchronisation automatique apres son premier rendu. `Synchronize` lance une synchro catalogue complete sur Home; `LoadLocal` n'est plus utilise pour bloquer ou charger l'interface depuis le splash. Pendant une vraie synchro, Home intercepte Back/D-pad/OK, empeche la navigation/clics et affiche un overlay sombre progressif sur les cards Live TV / Films / Series.
 - Les overlays Home agissent comme une progression inversee pendant `Synchronize`: la card commence sombre, puis la partie gauche redevient normale selon le pourcentage de section. Les cards terminees perdent leur overlay; les cards en attente restent sombres. Les phases visibles viennent de `SyncStatus.SyncSectionPhase`: `WAITING`, `RUNNING`, `IMPORTING`, `COMPLETED`, `ERROR`; `LOADING_TRENDS` n'est plus declenche par la synchro allegee.
 - `HomeViewModel` ne rafraichit plus automatiquement les tendances lourdes a l'initialisation. Les tendances Home sont tirees aleatoirement depuis Room via `HomeContentRepository`, sans recalcul `trending_media`, sans appels details Xtream et sans validation URL.
-- Sur Home, les cards tendances films/series utilisent `TrendingContentRow`: portrait par defaut, focus court sans player, stabilisation `1s`, ancrage gauche de la card focussee, transformation 16:9 avec la meme transition visuelle que Continue watching, crossfade vers backdrop, fallback poster floute si aucun backdrop, puis mini-player Media3 apres transformation. Le preview demarre a environ 15% de la duree connue et tente 30% si la premiere frame n'arrive pas. Le son du mini-player demarre a `0f`, attend 1 seconde apres lancement, puis monte progressivement a `1f` sur 1 seconde.
-- Sur Home, Continue watching utilise aussi le mini-player Media3 au focus: le mini-player est cree seulement apres un focus stable court, le poster/thumbnail reste visible jusqu'a `onRenderedFirstFrame`, puis Films et Episodes lisent depuis la position de reprise; la boucle reste de 20 secondes avec overlay i18n `Resume playback` / `Reprendre la lecture`. Le son suit le meme fade-in local: 1 seconde muet, puis montee de 1 seconde vers le volume player complet. Les URLs preview qui echouent avec un conteneur Media3 non supporte sont ignorees en poster-only pour le reste de la session.
+- Sur Home, les cards tendances films/series utilisent `TrendingContentRow`: portrait par defaut, focus court sans player, stabilisation `1s`, ancrage gauche de la card focussee, transformation 16:9 avec la meme transition visuelle que Continue watching, crossfade vers backdrop, fallback poster floute si aucun backdrop, puis mini-player Media3 apres transformation. Le preview demarre a environ 15% de la duree connue et tente 30% si la premiere frame n'arrive pas. Le son du mini-player demarre a `0f`, attend 1 seconde apres lancement, puis monte progressivement a `1f` sur 1 seconde; l'effet reste vivant jusqu'a disparition/changement du composable.
+- Sur Home, Continue watching utilise aussi le mini-player Media3 au focus: le mini-player est cree seulement apres un focus stable court, le poster/thumbnail reste visible jusqu'a `onRenderedFirstFrame`, puis Films et Episodes lisent depuis la position de reprise; la boucle reste de 20 secondes avec overlay i18n `Resume playback` / `Reprendre la lecture`. Le son suit le meme fade-in local: 1 seconde muet, puis montee de 1 seconde vers le volume player complet. Pour les apercus LiveImmediate, l'effet audio ne doit pas etre annule juste apres `play()`. Les URLs preview qui echouent avec un conteneur Media3 non supporte sont ignorees en poster-only pour le reste de la session.
 - Sur Home, les tendances Films/Series utilisent les posters locaux disponibles pour construire les lignes. Les details Xtream, backdrops, durees et samples series ne sont demandes que pour les items visibles/proches ou focussees, avec cache local `home_trending_preview_cache`.
 - Sur Home, les lignes Continue watching / Trending movies / Trending series ont un padding interne horizontal pour que la premiere card, sa bordure focus et le mini-player ne soient pas tronques a gauche. Les slots `LazyRow` gardent une largeur stable quand les previews sont activees; le focus ne doit plus animer la largeur d'item lazy. Le scroll automatique horizontal est limite aux cas ou la card focussee n'est pas deja entierement visible.
 - Les `LazyListState` des lignes Home ne sont pas sauvegardes/restaures entre jeux de donnees; ils sont recrees par signature de liste et remis a l'index `0`, afin que les tendances ne s'ouvrent pas sur un ancien item comme le 14e.
@@ -38,7 +38,8 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 - Info compte compacte la section source: icone utilisateur bleue pour le panneau, badge d'usage dans l'en-tete Licence SmartVision, expiration Xtream dans l'en-tete Info compte, identifiants Xtream sur une ligne, boutons Xtream en icones et bascules source plus petites.
 - Quand M3U est actif, Movies et Series affichent un etat vide source-aware au lieu d'une erreur Xtream.
 - Live TV affiche un badge bleu `E` a droite des lignes de chaines qui ont des programmes EPG locaux, y compris dans le dossier Historique quand la chaine existe encore en Room. Les dossiers Live TV avec EPG affichent leur compteur dans un cadre bleu au lieu d'ajouter un badge EPG separe. Le panneau details EPG sous le mini-player est focusable et scrollable au D-pad.
-- Settings: experience video, personnalisation focus, langue, synchro, comptes Xtream, parental.
+- Settings: experience video, personnalisation focus, langue, synchro, activite reseau, comptes Xtream, parental.
+- Settings > Activite reseau affiche un panneau compact alimente par `NetworkActivityTracker`: travaux actifs, historique recent, progression, debit, taille de donnees, duree, source/section et erreurs. Les activites instrumentees incluent synchro catalogue Live/Films/Series, M3U, EPG, Home slides/tendances, verification Xtream, update APK et requetes HTTP SmartVision/Xtream sans exposer les query params ni secrets.
 - YouTube: recherche/suggestions/player, favoris, parametres YouTube et queue autoplay, soumis a feature lock.
 - Notifications: liste et ouverture du popup update si notification release.
 
@@ -56,6 +57,7 @@ Etat:
 - `AppConfigViewModel` pour feature flags et consent;
 - `AppUpdateViewModel` pour update;
 - `SettingsRepository` pour preferences.
+- `NetworkActivityTracker` est cree dans `AppContainer` et survit aux changements d'ecran; `SettingsScreen` consomme son `StateFlow` pour afficher les travaux reseau en cours et recents.
 - `HomeViewModel` seme son etat initial depuis `HomeSlidesRepository`, `UserContentRepository` et le cache `HomeContentRepository`; il recharge les tendances apres le rendu initial seulement si ce cache est absent ou si un refresh force est demande.
 - `HomeViewModel` prepare les previews premium de tendances avec une concurrence bornee a `2`, deduplique les jobs par item et met a jour progressivement les listes sans bloquer HOME.
 - `HomeHeroBanner` route les CTA applicatifs via la navigation active et n'ouvre le QR offre que pour les liens externes/non-routes.
@@ -89,6 +91,7 @@ Etat:
 - `ui/profile/ProfileScreen.kt`
 - `ui/settings/SettingsScreen.kt`
 - `ui/settings/ParentalContentFilter.kt`
+- `data/network/NetworkActivityTracker.kt`
 - `ui/youtube/*`
 - `ui/notifications/*`
 - `ui/update/*`
@@ -103,6 +106,7 @@ Sources:
 - `api/notifications.php` pour notifications.
 - `api/app_config.php` pour feature flags/consentement.
 - `api/app_update.php` pour update in-app.
+- `NetworkActivityInterceptor` mesure les requetes OkHttp avec titre sanitise host/chemin uniquement; ne jamais afficher les query params Xtream, tokens, mots de passe ou URLs brutes de lecture.
 
 ## 8. Dependances
 
@@ -186,3 +190,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-03: Home Tendances premium ajoute `TrendingContentRow`, focus stable `1,3s`, transformation 16:9, backdrop/fallback, mini-preview muet a 15% et cache Room `home_trending_preview_cache` sans URL brute stockee.
 - 2026-07-03: Live TV corrige l'affichage EPG: historique rehydrate depuis Room, badges `E` conserves sur lignes de chaines, compteur dossier bleu quand EPG disponible et details EPG scrollables au D-pad.
 - 2026-07-03: les ecrans catalogue consomment des logos/posters/backdrops normalises depuis les repositories pour supporter les URL Xtream/M3U absolues, relatives ou echappees.
+- 2026-07-05: Settings ajoute le menu `Network Activity` / `Activite reseau`, base sur `NetworkActivityTracker`, et Home corrige la duree de vie du fade-in audio des mini-players Continue watching LiveImmediate et Tendances.

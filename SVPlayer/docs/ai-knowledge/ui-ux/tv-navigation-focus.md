@@ -53,7 +53,7 @@ Attention:
 - Les handlers D-pad doivent tenir compte des surfaces visibles.
 - Le popup manuel Info compte > Synchroniser bloque Back/D-pad uniquement pendant `SyncStatus.Running`; a la fin ou en erreur, le focus va sur `Retour`.
 - Depuis le 2026-07-03, dans Live TV, D-pad droite depuis une ligne chaine selectionnee va vers le panneau details EPG sous le mini-player. Ce panneau est focusable: D-pad haut/bas scrolle les programmes si possible, puis D-pad bas passe au bouton `Regarder` quand le bas est atteint.
-- Les mini-players Home Continue watching, Home Tendances et Live TV apercu ont un fade-in audio local: volume player `0f`, attente 1 seconde apres `play()`, puis montee a `1f` sur 1 seconde. Cette logique ne doit pas modifier le focus, le D-pad, le fallback video ni les routes plein ecran.
+- Les mini-players Home Continue watching, Home Tendances et Live TV apercu ont un fade-in audio local: volume player `0f`, attente 1 seconde apres `play()`, puis montee a `1f` sur 1 seconde. Cette logique ne doit pas modifier le focus, le D-pad, le fallback video ni les routes plein ecran. Le job audio doit rester vivant jusqu'a disparition/changement du composable; ne pas remettre `volume = 0f` juste apres la premiere frame.
 
 ## 5. Ecrans concernes
 
@@ -169,3 +169,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-03: Home Tendances separe `TrendingContentRow` de `ContinueWatchingRow`; les previews tendances sont declenchees apres focus stable `1,3s`, avec ancrage gauche et annulation propre au changement de focus.
 - 2026-07-03: Live TV rend le panneau details EPG sous mini-player focusable et scrollable au D-pad, avec routage bas vers `Regarder`.
 - 2026-07-05: Home Tendances aligne sa transition de focus visuelle sur Continue watching et les mini-players Home/Live TV ajoutent le fade-in audio 1s + 1s sans changer la navigation.
+- 2026-07-05: correction du cycle de vie audio Home: les players Continue watching LiveImmediate et Tendances ne coupent plus le fade-in juste apres demarrage.

@@ -27,6 +27,8 @@ import com.smartvision.svplayer.data.monetization.AdConfigApiService
 import com.smartvision.svplayer.data.monetization.AdsEventReporter
 import com.smartvision.svplayer.data.monetization.AdsEventsApiService
 import com.smartvision.svplayer.data.monetization.RemoteAdConfigProvider
+import com.smartvision.svplayer.data.network.NetworkActivityInterceptor
+import com.smartvision.svplayer.data.network.NetworkActivityTracker
 import com.smartvision.svplayer.data.notifications.NotificationsApiService
 import com.smartvision.svplayer.data.notifications.NotificationsRepository
 import com.smartvision.svplayer.data.playlist.EpgRepository
@@ -74,6 +76,7 @@ class AppContainer(context: Context) {
     var startupActivationState: StoredActivationState? = null
         private set
     val startupCatalogWork: StateFlow<StartupCatalogWorkRequest> = _startupCatalogWork
+    val networkActivityTracker = NetworkActivityTracker()
     val accountManager = XtreamAccountManager(appContext)
     private val credentialsProvider = accountManager
     private val database = SVDatabase.build(appContext)
@@ -94,6 +97,7 @@ class AppContainer(context: Context) {
                 chain.proceed(request.newBuilder().url(redirected).build())
             }
         }
+        .addInterceptor(NetworkActivityInterceptor(networkActivityTracker, "Xtream"))
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(40, TimeUnit.SECONDS)
         .writeTimeout(20, TimeUnit.SECONDS)
@@ -109,12 +113,13 @@ class AppContainer(context: Context) {
     private val xtreamApiClient = XtreamApiClient(api, credentialsProvider)
 
     private val activationOkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(NetworkActivityInterceptor(networkActivityTracker, "SmartVision"))
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS)
         .build()
     val m3uPlaylistClient = M3uPlaylistClient(activationOkHttpClient)
-    val epgRepository = EpgRepository(appContext, activationOkHttpClient)
+    val epgRepository = EpgRepository(appContext, activationOkHttpClient, networkActivityTracker)
 
     private val activationRetrofit = Retrofit.Builder()
         .baseUrl(activationBaseUrl())
@@ -162,9 +167,10 @@ class AppContainer(context: Context) {
         appContext = appContext,
         api = appUpdateApi,
         okHttpClient = activationOkHttpClient,
+        networkActivityTracker = networkActivityTracker,
     )
 
-    val homeSlidesRepository = HomeSlidesRepository(homeSlidesApi)
+    val homeSlidesRepository = HomeSlidesRepository(homeSlidesApi, networkActivityTracker)
     val notificationsRepository = NotificationsRepository(
         activationRepository = activationRepository,
         api = notificationsApi,
@@ -184,6 +190,7 @@ class AppContainer(context: Context) {
         accountManager = accountManager,
         apiClient = xtreamApiClient,
         anomalyReporter = anomalyReporter,
+        networkActivityTracker = networkActivityTracker,
     )
     private val startupStateStore = StartupStateStore(appContext)
     val deviceDiagnosticsReporter = DeviceDiagnosticsReporter(
@@ -235,6 +242,7 @@ class AppContainer(context: Context) {
         favoriteDao = database.favoriteDao(),
         progressDao = database.progressDao(),
         syncStateDao = database.syncStateDao(),
+        networkActivityTracker = networkActivityTracker,
     )
     val homeContentRepository = HomeContentRepository(
         catalogRepository = catalogRepository,
@@ -243,6 +251,7 @@ class AppContainer(context: Context) {
         mediaDao = database.mediaDao(),
         xtreamRepository = xtreamRepository,
         urlFactory = urlFactory,
+        networkActivityTracker = networkActivityTracker,
     )
     val syncStateDao = database.syncStateDao()
 

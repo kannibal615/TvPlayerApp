@@ -77,6 +77,9 @@ import com.smartvision.svplayer.R
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.config.XtreamAccount
 import com.smartvision.svplayer.core.data.LocalAppContainer
+import com.smartvision.svplayer.data.network.NetworkActivityItem
+import com.smartvision.svplayer.data.network.NetworkActivitySnapshot
+import com.smartvision.svplayer.data.network.NetworkActivityStatus
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
@@ -110,6 +113,7 @@ fun SettingsScreen(
     val settings by container.settingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = com.smartvision.svplayer.domain.model.PlayerSettings(),
     )
+    val networkSnapshot by container.networkActivityTracker.snapshot.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var selectedSection by remember { mutableStateOf(SettingsSection.Preferences) }
     val strings = smartVisionStrings(settings.language)
@@ -157,6 +161,7 @@ fun SettingsScreen(
             settings = settings,
             accountsCount = accounts.size,
             activeAccount = activeAccount,
+            networkSnapshot = networkSnapshot,
             updateState = updateState,
             onCheckForUpdate = onCheckForUpdate,
             onSyncCatalog = onSyncCatalog,
@@ -329,6 +334,7 @@ private fun SettingsMenuLayout(
     settings: PlayerSettings,
     accountsCount: Int,
     activeAccount: XtreamAccount?,
+    networkSnapshot: NetworkActivitySnapshot,
     updateState: AppUpdateUiState,
     onCheckForUpdate: () -> Unit,
     onSyncCatalog: () -> Unit,
@@ -516,6 +522,12 @@ private fun SettingsMenuLayout(
                     SettingsInfoRow(strings.currentFrequency, settings.syncFrequency.localizedSyncFrequency(strings))
                     SettingsInfoRow(strings.activeAccount, activeAccount?.let { "${it.name} - ${it.username}" } ?: strings.none)
                     SettingsInfoRow(strings.activeServer, activeAccount?.host ?: strings.notConfigured)
+                }
+                SettingsSection.Network -> {
+                    NetworkActivityPanel(
+                        snapshot = networkSnapshot,
+                        strings = strings,
+                    )
                 }
                 SettingsSection.Personalization -> {
                     SettingsChoice(
@@ -790,6 +802,7 @@ private enum class SettingsSection(
 ) {
     Preferences(Icons.Default.Settings),
     Sync(Icons.Default.CloudSync),
+    Network(Icons.Default.CloudSync),
     Personalization(Icons.Default.Settings),
     Updates(Icons.Default.Refresh),
     Parental(Icons.Default.Person),
@@ -799,6 +812,7 @@ private enum class SettingsSection(
 private fun SettingsSection.label(strings: SmartVisionStrings): String = when (this) {
     SettingsSection.Preferences -> strings.generalPreferences
     SettingsSection.Sync -> strings.sync
+    SettingsSection.Network -> strings.networkActivity
     SettingsSection.Personalization -> strings.personalization
     SettingsSection.Updates -> strings.updates
     SettingsSection.Parental -> strings.parentalControl
@@ -838,6 +852,163 @@ private fun Context.smartVisionLastUpdateLabel(): String {
 }
 
 @Composable
+private fun NetworkActivityPanel(
+    snapshot: NetworkActivitySnapshot,
+    strings: SmartVisionStrings,
+) {
+    Text(
+        text = strings.networkActivitySubtitle,
+        color = SmartVisionColors.TextSecondary,
+        style = SmartVisionType.Body,
+    )
+    Spacer(Modifier.height(14.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        NetworkMetricCard(strings.networkActive, snapshot.activeCount.toString(), Modifier.weight(1f))
+        NetworkMetricCard(strings.networkThroughput, snapshot.bytesPerSecond.formatByteRate(), Modifier.weight(1f))
+        NetworkMetricCard(strings.networkErrors, snapshot.errorCount.toString(), Modifier.weight(1f))
+    }
+    Spacer(Modifier.height(18.dp))
+
+    Text(strings.networkActive, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Label, fontWeight = FontWeight.Bold)
+    Spacer(Modifier.height(8.dp))
+    if (snapshot.active.isEmpty()) {
+        Text(strings.networkNoActivity, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            snapshot.active.take(NetworkActivityVisibleLimit).forEach { item ->
+                NetworkActivityRow(item = item, strings = strings)
+            }
+        }
+    }
+
+    Spacer(Modifier.height(18.dp))
+    Text(strings.networkRecent, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Label, fontWeight = FontWeight.Bold)
+    Spacer(Modifier.height(8.dp))
+    if (snapshot.recent.isEmpty()) {
+        Text(strings.networkNoActivity, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            snapshot.recent.take(NetworkActivityVisibleLimit).forEach { item ->
+                NetworkActivityRow(item = item, strings = strings)
+            }
+        }
+    }
+}
+
+@Composable
+private fun NetworkMetricCard(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .background(SmartVisionColors.Surface.copy(alpha = 0.72f), RoundedCornerShape(7.dp))
+            .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(7.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+    ) {
+        Text(label, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1)
+        Spacer(Modifier.height(4.dp))
+        Text(value, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Label, fontWeight = FontWeight.Bold, maxLines = 1)
+    }
+}
+
+@Composable
+private fun NetworkActivityRow(
+    item: NetworkActivityItem,
+    strings: SmartVisionStrings,
+) {
+    val statusColor = item.status.statusColor()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xB80D1828), RoundedCornerShape(7.dp))
+            .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.82f)), RoundedCornerShape(7.dp))
+            .padding(10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = item.title,
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.Caption,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = item.status.name,
+                color = statusColor,
+                style = SmartVisionType.Caption,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
+        if (item.message.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(item.message, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1)
+        }
+        Spacer(Modifier.height(7.dp))
+        NetworkProgressBar(item.progressPercent ?: 0, statusColor)
+        Spacer(Modifier.height(7.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            NetworkTinyInfo(strings.networkProgress, "${item.progressPercent ?: 0}%", Modifier.weight(1f))
+            NetworkTinyInfo(strings.networkData, item.formatData(), Modifier.weight(1f))
+            NetworkTinyInfo(strings.networkDuration, item.durationMs.formatDuration(), Modifier.weight(1f))
+        }
+        val section = item.section
+        val source = item.source
+        if (!section.isNullOrBlank() || !source.isNullOrBlank() || item.currentItems != null) {
+            Spacer(Modifier.height(5.dp))
+            Text(
+                text = listOfNotNull(
+                    section?.let { "${strings.networkSection}: $it" },
+                    source?.let { "${strings.networkSource}: $it" },
+                    item.currentItems?.let { current ->
+                        "${strings.networkItems}: " + item.totalItems?.let { "$current/$it" }.orEmpty().ifBlank { current.toString() }
+                    },
+                ).joinToString("  |  "),
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Caption,
+                maxLines = 1,
+            )
+        }
+        item.errorMessage?.takeIf { it.isNotBlank() }?.let { error ->
+            Spacer(Modifier.height(5.dp))
+            Text(error, color = SmartVisionColors.Error, style = SmartVisionType.Caption, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun NetworkTinyInfo(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Text(label, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1)
+        Text(value, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 1)
+    }
+}
+
+@Composable
+private fun NetworkProgressBar(percent: Int, color: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(5.dp)
+            .background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(50)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(percent.coerceIn(0, 100) / 100f)
+                .height(5.dp)
+                .background(color, RoundedCornerShape(50)),
+        )
+    }
+}
+
+@Composable
 private fun SettingsPanel(
     title: String,
     modifier: Modifier,
@@ -872,6 +1043,46 @@ private fun SettingsPanel(
         }
     }
 }
+
+private const val NetworkActivityVisibleLimit = 10
+
+private fun NetworkActivityStatus.statusColor(): Color =
+    when (this) {
+        NetworkActivityStatus.Queued -> SmartVisionColors.TextSecondary
+        NetworkActivityStatus.Running -> SmartVisionColors.CyanAccent
+        NetworkActivityStatus.Importing -> SmartVisionColors.Primary
+        NetworkActivityStatus.Completed -> SmartVisionColors.Success
+        NetworkActivityStatus.Error -> SmartVisionColors.Error
+    }
+
+private fun NetworkActivityItem.formatData(): String {
+    val read = bytesRead
+    val total = totalBytes
+    return when {
+        read != null && total != null -> "${read.formatBytes()}/${total.formatBytes()}"
+        read != null -> read.formatBytes()
+        currentItems != null && totalItems != null -> "$currentItems/$totalItems"
+        currentItems != null -> currentItems.toString()
+        else -> "-"
+    }
+}
+
+private fun Long.formatByteRate(): String =
+    if (this <= 0L) "-" else "${formatBytes()}/s"
+
+private fun Long.formatBytes(): String =
+    when {
+        this >= 1024L * 1024L -> "${this / (1024L * 1024L)} MB"
+        this >= 1024L -> "${this / 1024L} KB"
+        else -> "$this B"
+    }
+
+private fun Long.formatDuration(): String =
+    when {
+        this < 1_000L -> "<1s"
+        this < 60_000L -> "${this / 1_000L}s"
+        else -> "${this / 60_000L}m ${(this % 60_000L) / 1_000L}s"
+    }
 
 @Composable
 private fun SettingsChoice(

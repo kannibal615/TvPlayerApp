@@ -1,5 +1,45 @@
 # AI Changelog
 
+## 2026-07-05 - Activite reseau Settings et correction audio Home
+
+Type:
+- android
+- ui-tv
+- playback
+- observability
+- release
+- documentation
+
+Resume:
+- Home garde maintenant le fade-in audio des mini-players jusqu'a disparition/changement du composable pour `Continue watching` LiveImmediate et Tendances; le volume n'est plus remis a `0f` juste apres la premiere frame.
+- Ajout de `NetworkActivityTracker`, centralise dans `AppContainer`, avec travaux actifs/recents, progression, taille, debit, duree, source/section et erreurs.
+- Instrumentation OkHttp SmartVision/Xtream via titres sanitises host/chemin uniquement; les query params, tokens, identifiants Xtream, mots de passe et URLs de lecture ne sont pas affiches.
+- Settings ajoute le menu `Network Activity` / `Activite reseau`, compact et extensible, pour visualiser catalogue Live/Films/Series, M3U, EPG, Home slides/tendances, verification Xtream, update APK et requetes HTTP.
+
+Fichiers code:
+- `app/src/main/java/com/smartvision/svplayer/data/network/NetworkActivityTracker.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/settings/SettingsScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/ContentProgressCard.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/TrendingContentRow.kt`
+- `app/src/main/java/com/smartvision/svplayer/core/data/AppContainer.kt`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Verification:
+- `.\gradlew.bat :app:compileReleaseKotlin` OK.
+- Version bump release `0.1.86` / `versionCode 90` car la prod servait deja `0.1.85 (89)`.
+- `.\scripts\guard_release_version.ps1 -SkipAdb` OK: local `90` > prod `89`.
+- `.\gradlew.bat --% :app:assembleRelease --no-daemon --console=plain -Dkotlin.compiler.execution.strategy=in-process` OK.
+- `.\scripts\guard_release_version.ps1 -SkipAdb -RequireBuildMetadata` OK: metadata `0.1.86 (90)`.
+- `apksigner verify --verbose --print-certs` OK: signatures v1/v2 valides, certificat `CN=SmartVision`.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall` OK.
+- Production verifiee: `smartvision-tv.version.json`, `api/app_update.php`, APK versionne `smartvision-tv-v90-80b95e80.apk` et APK stable `smartvision-tv.apk` servent SHA256 `80b95e80e07d5f4786e1fb5247f60d014a66324399db4ed4c9ad10c8a51e5df0`.
+
 ## 2026-07-05 - Mini-players audio Home/Live et release 0.1.85 non publiee
 
 Type:

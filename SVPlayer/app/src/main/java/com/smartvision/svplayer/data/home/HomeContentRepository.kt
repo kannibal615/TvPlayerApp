@@ -11,6 +11,8 @@ import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.mock.HomePreviewMode
 import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import com.smartvision.svplayer.data.models.XtreamSeriesEpisode
+import com.smartvision.svplayer.data.network.NetworkActivityTracker
+import com.smartvision.svplayer.data.network.NetworkActivityType
 import com.smartvision.svplayer.data.remote.XtreamUrlFactory
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.domain.model.TrendingCatalogItem
@@ -63,6 +65,7 @@ class HomeContentRepository(
     private val mediaDao: MediaDao,
     private val xtreamRepository: XtreamRepository,
     private val urlFactory: XtreamUrlFactory,
+    private val networkActivityTracker: NetworkActivityTracker,
 ) {
     @Volatile
     private var cachedTrending: CachedHomeTrending? = null
@@ -194,53 +197,78 @@ class HomeContentRepository(
                     )
                 }
         }
+        val work = networkActivityTracker.begin(
+            id = "home-trending-${System.currentTimeMillis()}",
+            title = "Home trends",
+            type = NetworkActivityType.Home,
+            message = "Preparing trending rows",
+            progressPercent = 0,
+        )
         return withContext(Dispatchers.IO) {
-            coroutineScope {
-                val movies = async {
-                    val candidatesStart = SystemClock.elapsedRealtime()
-                    runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingSectionLimit) }
-                        .getOrDefault(emptyList())
-                        .also { candidates ->
-                            PerformanceDiagnosticRecorder.recordDuration(
-                                sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                                event = "home_trending_movie_candidates",
-                                startedAtMs = candidatesStart,
-                                fields = mapOf("candidates" to candidates.size),
-                            )
-                        }
-                        .mapNotNull { it.toMovieTrendItem() }
-                        .take(HomeTrendingSectionLimit)
+            try {
+                coroutineScope {
+                    val movies = async {
+                        val candidatesStart = SystemClock.elapsedRealtime()
+                        runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingSectionLimit) }
+                            .getOrDefault(emptyList())
+                            .also { candidates ->
+                                PerformanceDiagnosticRecorder.recordDuration(
+                                    sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
+                                    event = "home_trending_movie_candidates",
+                                    startedAtMs = candidatesStart,
+                                    fields = mapOf("candidates" to candidates.size),
+                                )
+                            }
+                            .mapNotNull { it.toMovieTrendItem() }
+                            .take(HomeTrendingSectionLimit)
+                    }
+                    val series = async {
+                        val candidatesStart = SystemClock.elapsedRealtime()
+                        runCatching { catalogRepository.getTrendingSeriesItems(HomeTrendingSectionLimit) }
+                            .getOrDefault(emptyList())
+                            .also { candidates ->
+                                PerformanceDiagnosticRecorder.recordDuration(
+                                    sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
+                                    event = "home_trending_series_candidates",
+                                    startedAtMs = candidatesStart,
+                                    fields = mapOf("candidates" to candidates.size),
+                                )
+                            }
+                            .mapNotNull { it.toSeriesTrendItem() }
+                            .take(HomeTrendingSectionLimit)
+                    }
+                    HomeTrendingSnapshot(
+                        movies = movies.await(),
+                        series = series.await(),
+                    ).also {
+                        cachedTrending = CachedHomeTrending(key, it)
+                        val total = it.movies.size + it.series.size
+                        work.update(currentItems = total, totalItems = HomeTrendingSectionLimit * 2, progressPercent = 100)
+                        work.complete("Home trends ready")
+                        PerformanceDiagnosticRecorder.recordDuration(
+                            sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
+                            event = "home_trending_snapshot_ready",
+                            startedAtMs = startedAt,
+                            fields = mapOf("movies" to it.movies.size, "series" to it.series.size),
+                        )
+                    }
                 }
-                val series = async {
-                    val candidatesStart = SystemClock.elapsedRealtime()
-                    runCatching { catalogRepository.getTrendingSeriesItems(HomeTrendingSectionLimit) }
-                        .getOrDefault(emptyList())
-                        .also { candidates ->
-                            PerformanceDiagnosticRecorder.recordDuration(
-                                sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                                event = "home_trending_series_candidates",
-                                startedAtMs = candidatesStart,
-                                fields = mapOf("candidates" to candidates.size),
-                            )
-                        }
-                        .mapNotNull { it.toSeriesTrendItem() }
-                        .take(HomeTrendingSectionLimit)
-                }
-                HomeTrendingSnapshot(
-                    movies = movies.await(),
-                    series = series.await(),
-                ).also {
-                    cachedTrending = CachedHomeTrending(key, it)
-                    PerformanceDiagnosticRecorder.recordDuration(
-                        sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
-                        event = "home_trending_snapshot_ready",
-                        startedAtMs = startedAt,
-                        fields = mapOf("movies" to it.movies.size, "series" to it.series.size),
-                    )
-                }
+            } catch (error: Throwable) {
+                work.fail(error.message ?: error.javaClass.simpleName)
+                throw error
             }
         }
     }
+
+    private fun beginTrendingPreviewWork(contentType: String, contentId: Int) =
+        networkActivityTracker.begin(
+            id = "home-trending-preview-$contentType-$contentId-${System.currentTimeMillis()}",
+            title = "Trending preview",
+            type = NetworkActivityType.Home,
+            section = contentType,
+            message = "Preparing preview metadata",
+            progressPercent = 0,
+        )
 
     suspend fun prepareTrendingPreview(
         contentType: String,
@@ -270,6 +298,7 @@ class HomeContentRepository(
             }
             ?.let { return@withContext it }
 
+        val previewWork = beginTrendingPreviewWork(contentType, contentId)
         val entity = runCatching {
             when (contentType) {
                 TrendingMovieType -> buildMoviePreviewCache(contentId, fallbackPosterUrl, key.lastSync)
@@ -277,6 +306,7 @@ class HomeContentRepository(
                 else -> null
             }
         }.onFailure { error ->
+            previewWork.fail(error.message ?: error.javaClass.simpleName)
             PerformanceDiagnosticRecorder.recordDuration(
                 sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
                 event = "home_trending_preview_prepare_failed",
@@ -284,10 +314,15 @@ class HomeContentRepository(
                 fields = mapOf("contentType" to contentType, "contentId" to contentId),
                 error = error,
             )
-        }.getOrNull() ?: return@withContext null
+        }.getOrNull() ?: run {
+            previewWork.complete("Preview unavailable")
+            return@withContext null
+        }
 
         mediaDao.upsertHomeTrendingPreviewCache(entity)
         entity.toPreparedPreview().also { prepared ->
+            previewWork.update(progressPercent = 100)
+            previewWork.complete("Preview metadata ready")
             PerformanceDiagnosticRecorder.recordDuration(
                 sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
                 event = "home_trending_preview_prepared",
