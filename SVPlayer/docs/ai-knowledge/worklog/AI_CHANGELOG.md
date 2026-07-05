@@ -1,5 +1,100 @@
 # AI Changelog
 
+## 2026-07-05 - Media compact, mini-player local et anti-flash couronne
+
+Type:
+- android
+- media-center
+- ui-tv
+- navigation
+- documentation
+
+Resume:
+- Media aligne ses proportions sur Live TV (`0.24 / 0.42 / 0.34`).
+- Suppression du hero `Premium media studio`, du sous-titre `Library snapshot` et des cards stats colorees du panneau central.
+- Le hub `Telephone -> TV` devient une tuile focusable unique visible, sans bouton QR cache hors ecran.
+- Le panneau gauche expose aussi `TV -> Phone` avec le meme QR de transfert que l'export du fichier selectionne.
+- Le panneau apercu lance un mini-player local ExoPlayer quand le fichier selectionne est une video, avec cadre noir et remplissage type mini-player Live TV.
+- Les details fichier sont simplifies: taille, date de mise a jour et type uniquement.
+- `AppNavigation` applique le meme comportement que YouTube pendant le chargement app-config: pas de couronne Media provisoire avant la config reelle.
+
+Validation:
+- `.\gradlew.bat --no-daemon :app:compileReleaseKotlin`: OK.
+- `.\gradlew.bat --no-daemon :app:assembleRelease`: OK.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK, local/built `0.1.99` / `versionCode 103`, remote precedent `0.1.98` / `102`.
+- `apksigner verify --verbose --print-certs`: OK, v1=true, v2=true, certificat `CN=SmartVision, OU=Android TV, O=SmartVision, C=FR`.
+- Firestick `192.168.1.33:5555`: APK release installe, route Media lancee, pas de crash fatal, mini-player video rendu dans `diagnostics/media-screen-firestick/sv_media_miniplayer_live_style.png`.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall`: OK.
+- Verification publique OK: manifeste `smartvision-tv.version.json`, `api/app_update.php`, APK versionne `smartvision-tv-v103-b1f73b9d.apk` et APK stable en `200`, SHA256 `b1f73b9df54227edc898c640f84aef49abbcbbab66c607341a32feb3767ee4a6`, taille `40314076`.
+## 2026-07-05 - Release prod 0.1.96 (100) refonte premium Media
+
+Type:
+- android
+- media-center
+- ui-tv
+- release
+- deploy
+- documentation
+
+Resume:
+- Incrementation Android en `0.1.96` / `versionCode 100`.
+- Refonte premium de l'ecran Media: hero `Studio media premium`, compteurs de zones, carte stockage, hub transfert telephone, stats bibliotheque, lignes fichiers enrichies et preview hero.
+- Conservation des comportements existants: lecture locale, renommer, deplacer, supprimer, import/export telephone, focus DPAD et gates Premium/admin.
+- Aucun changement volontaire des parametres admin.
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK avant release.
+- `.\scripts\guard_release_version.ps1`: OK, local `0.1.96 (100)` > prod `0.1.95 (99)`.
+- `.\gradlew.bat --% :app:assembleRelease --no-daemon --max-workers=1 --console=plain`: OK en 12m54.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK, metadata `0.1.96 (100)`.
+- `apksigner verify --verbose --print-certs`: OK, v1=true, v2=true, certificat `CN=SmartVision, OU=Android TV, O=SmartVision, C=FR`.
+- APK local `app/build/outputs/apk/release/app-release.apk`: taille `40330472`, SHA256 `bd7812fbabd30519b6810c9b80364097a582b0a43818edf9c29574a4b38a5c8f`.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall`: OK.
+- Production verifiee: `smartvision-tv.version.json` et `api/app_update.php` annoncent `0.1.96` / `100`; APK versionne `smartvision-tv-v100-bd7812fb.apk` et APK stable ont taille `40330472` et SHA256 `bd7812fbabd30519b6810c9b80364097a582b0a43818edf9c29574a4b38a5c8f`.
+- Parametres admin: non modifies volontairement pendant cette intervention.
+
+## 2026-07-05 - UX import telephone Media
+
+Type:
+- android
+- media-center
+- ui-tv
+- documentation
+
+Resume:
+- Remplacement du bouton lateral `Importer tel.` par un panneau `Telephone -> TV` dans Media Center.
+- Le panneau explique le fonctionnement QR/Wi-Fi quand l'acces est autorise.
+- En cas de verrou `media_phone_transfer`, le bouton reste comprehensible (`Debloquer`) et affiche la raison Premium/essai au lieu d'apparaitre comme un bouton gris muet.
+- Ajout des libelles EN/FR correspondants.
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK.
+
+## 2026-07-05 - Release prod 0.1.95 (99) accessibilite actions Media
+
+Type:
+- android
+- release
+- deploy
+- media-center
+- ui-tv
+- documentation
+
+Resume:
+- Incrementation Android en `0.1.95` / `versionCode 99`.
+- Media Center: `Supprimer` est remonte dans la premiere rangee d'actions avec `Lire` et `Renommer`.
+- Les dialogs Renommer/Deplacer/Supprimer ciblent le fichier par id explicite, au lieu de dependre de la selection courante.
+- Le dialog de suppression prend le focus TV sur la confirmation.
+- Correction post-deploy de `app_feature_access`: `recorder`, `media_center`, `media_file_management` et `media_phone_transfer` restent `premium=true`, `trial=true`, `free_ads=false`.
+
+Validation:
+- `.\scripts\guard_release_version.ps1`: OK, local `0.1.95 (99)` > prod `0.1.94 (98)`.
+- `.\gradlew.bat --% :app:assembleRelease --no-daemon --max-workers=1 --console=plain`: OK en 12m42.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK, metadata `0.1.95 (99)`.
+- `apksigner verify --verbose --print-certs`: OK, v1=true, v2=true, certificat `CN=SmartVision, OU=Android TV, O=SmartVision, C=FR`.
+- Production verifiee: `smartvision-tv.version.json` et `api/app_update.php` annoncent `0.1.95` / `99`; APK versionne `smartvision-tv-v99-a8450f83.apk` et APK stable ont taille `40314082` et SHA256 `a8450f83e6e06c8b4f912094acb2a8a63a7020405a994244c336bec8d4f18536`.
+- `api/app_config.php`: flags Recorder/Media/gestion fichiers/transfert `premium=true`, `trial=true`, `free_ads=false`.
+
 ## 2026-07-05 - Release prod 0.1.94 (98) stabilisation Recorder
 
 Type:

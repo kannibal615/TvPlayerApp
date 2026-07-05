@@ -51,8 +51,8 @@ android {
         applicationId = "com.smartvision.svplayer"
         minSdk = 23
         targetSdk = 36
-        versionCode = 98
-        versionName = "0.1.94"
+        versionCode = 103
+        versionName = "0.1.99"
         manifestPlaceholders["profileableByShell"] = "false"
 
         buildConfigField("String", "ACTIVATION_BASE_URL", buildConfigString(activationBaseUrl()))

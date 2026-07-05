@@ -53,6 +53,8 @@ import com.smartvision.svplayer.data.monetization.resolveMonetizationStatus
 import com.smartvision.svplayer.data.xtream.XtreamConnectionState
 import com.smartvision.svplayer.domain.access.PremiumFeature
 import com.smartvision.svplayer.domain.access.PremiumFeatureGate
+import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
+import com.smartvision.svplayer.domain.access.PremiumFeatureGateState
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import com.smartvision.svplayer.sync.CatalogSyncScheduler
@@ -165,21 +167,31 @@ fun AppNavigation(
         status = monetizationStatus,
     )
     val youtubeAllowed = if (appConfigState.loading) true else loadedYoutubeAllowed
-    val mediaCenterGate = PremiumFeatureGate.evaluate(
+    val loadedMediaCenterGate = PremiumFeatureGate.evaluate(
         config = appConfigState.config,
         feature = PremiumFeature.MEDIA_CENTER,
         status = monetizationStatus,
     )
+    val mediaCenterGate = if (appConfigState.loading) {
+        PremiumFeatureGateResult(PremiumFeature.MEDIA_CENTER, PremiumFeatureGateState.Allowed)
+    } else {
+        loadedMediaCenterGate
+    }
     val recorderGate = PremiumFeatureGate.evaluate(
         config = appConfigState.config,
         feature = PremiumFeature.RECORDER,
         status = monetizationStatus,
     )
-    val mediaPhoneTransferGate = PremiumFeatureGate.evaluate(
+    val loadedMediaPhoneTransferGate = PremiumFeatureGate.evaluate(
         config = appConfigState.config,
         feature = PremiumFeature.MEDIA_PHONE_TRANSFER,
         status = monetizationStatus,
     )
+    val mediaPhoneTransferGate = if (appConfigState.loading) {
+        PremiumFeatureGateResult(PremiumFeature.MEDIA_PHONE_TRANSFER, PremiumFeatureGateState.Allowed)
+    } else {
+        loadedMediaPhoneTransferGate
+    }
     val parentalControlAllowed = container.appConfigRepository.isFeatureAllowed(
         config = appConfigState.config,
         featureKey = "parental_control",

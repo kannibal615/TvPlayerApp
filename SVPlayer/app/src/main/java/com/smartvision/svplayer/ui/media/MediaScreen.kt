@@ -1,6 +1,7 @@
 package com.smartvision.svplayer.ui.media
 
 import android.graphics.Bitmap
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -28,16 +29,28 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +62,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -58,9 +72,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
+import android.view.ViewGroup
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
@@ -84,7 +107,10 @@ import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
+import java.io.File
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun MediaScreen(
@@ -208,7 +234,7 @@ fun MediaScreen(
             onDismiss = { renameTarget = null },
             onRename = { requestedName ->
                 renameTarget = null
-                viewModel.renameSelected(requestedName)
+                viewModel.renameFile(file.id, requestedName)
             },
         )
     }
@@ -220,7 +246,7 @@ fun MediaScreen(
             onDismiss = { moveTarget = null },
             onMove = { targetFolderId ->
                 moveTarget = null
-                viewModel.moveSelected(targetFolderId)
+                viewModel.moveFile(file.id, targetFolderId)
             },
         )
     }
@@ -231,7 +257,7 @@ fun MediaScreen(
             onDismiss = { deleteTarget = null },
             onDelete = {
                 deleteTarget = null
-                viewModel.deleteSelected()
+                viewModel.deleteFile(file.id)
             },
         )
     }
@@ -335,7 +361,7 @@ private fun MediaWorkspace(
 
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(MediaCatalogDimens.PanelGap),
     ) {
         MediaLibraryPanel(
             strings = strings,
@@ -346,9 +372,10 @@ private fun MediaWorkspace(
             },
             transferAccess = transferAccess,
             onImportPhone = onImportPhone,
+            onExportPhone = onExportPhone,
             firstFocusRequester = firstFocusRequester,
             modifier = Modifier
-                .width(252.dp)
+                .weight(0.24f)
                 .fillMaxHeight(),
         )
 
@@ -360,7 +387,7 @@ private fun MediaWorkspace(
             firstContentFocusRequester = firstContentFocusRequester,
             onMoveRightToPreview = { focusPreviewAction() },
             modifier = Modifier
-                .weight(1f)
+                .weight(0.42f)
                 .fillMaxHeight(),
         )
 
@@ -375,7 +402,7 @@ private fun MediaWorkspace(
             onExportPhone = onExportPhone,
             previewActionFocusRequester = previewActionFocusRequester,
             modifier = Modifier
-                .width(336.dp)
+                .weight(0.34f)
                 .fillMaxHeight(),
         )
     }
@@ -388,6 +415,7 @@ private fun MediaLibraryPanel(
     onAreaSelected: (MediaArea) -> Unit,
     transferAccess: PremiumFeatureGateResult,
     onImportPhone: () -> Unit,
+    onExportPhone: () -> Unit,
     firstFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
@@ -395,43 +423,501 @@ private fun MediaLibraryPanel(
         title = strings.mediaLibrary,
         modifier = modifier,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            MediaArea.values().forEachIndexed { index, area ->
-                TvButton(
-                    text = "${area.label(strings)}  ${state.countFor(area)}",
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            MediaArea.values().filterNot { it == MediaArea.Folders }.forEachIndexed { index, area ->
+                MediaAreaButton(
+                    label = area.label(strings),
+                    count = state.countFor(area),
+                    icon = area.icon(),
                     onClick = { onAreaSelected(area) },
                     selected = state.selectedArea == area,
-                    variant = if (state.selectedArea == area) TvButtonVariant.Primary else TvButtonVariant.Secondary,
                     focusRequester = if (index == 0) firstFocusRequester else null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(42.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp),
                 )
             }
         }
 
-        Spacer(Modifier.height(18.dp))
-
-        MediaLibraryInfoCard(text = strings.mediaMvpNotice)
-
-        Spacer(Modifier.height(12.dp))
-
-        MediaLibraryInfoCard(text = storageLabel(strings, state), emphasized = true)
-
         if (transferAccess.showDisabledControl) {
-            Spacer(Modifier.height(12.dp))
-            TvButton(
-                text = strings.mediaImportPhone,
-                onClick = onImportPhone,
-                enabled = !state.transferInProgress,
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(42.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp),
+            Spacer(Modifier.height(8.dp))
+            PhoneImportPanel(
+                strings = strings,
+                state = state,
+                transferAccess = transferAccess,
+                onImportPhone = onImportPhone,
             )
         }
+
+        Spacer(Modifier.height(8.dp))
+
+        PhoneExportPanel(
+            strings = strings,
+            state = state,
+            transferAccess = transferAccess,
+            onExportPhone = onExportPhone,
+        )
+    }
+}
+
+@Composable
+private fun MediaLibraryHero(
+    strings: SmartVisionStrings,
+    state: MediaScreenState,
+) {
+    val shape = RoundedCornerShape(14.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(
+                Brush.radialGradient(
+                    listOf(
+                        SmartVisionColors.CyanAccent.copy(alpha = 0.24f),
+                        SmartVisionColors.Primary.copy(alpha = 0.22f),
+                        Color(0xAA07101E),
+                    ),
+                    center = Offset(220f, 20f),
+                    radius = 360f,
+                ),
+            )
+            .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent.copy(alpha = 0.32f)), shape)
+            .padding(9.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color.White.copy(alpha = 0.10f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Storage,
+                        contentDescription = null,
+                        tint = SmartVisionColors.CyanAccent,
+                        modifier = Modifier.size(19.dp),
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = strings.mediaPremiumStudio,
+                        color = SmartVisionColors.TextPrimary,
+                        style = SmartVisionType.Label,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = "${state.files.size} ${strings.mediaTotalFiles.lowercase()}",
+                        color = SmartVisionColors.CyanAccent,
+                        style = SmartVisionType.Caption,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Text(
+                text = strings.mediaLocalVaultSubtitle,
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Caption,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MediaAreaButton(
+    label: String,
+    count: Int,
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+    focusRequester: FocusRequester?,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val active = selected || focusState.isFocused
+    val shape = RoundedCornerShape(10.dp)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                pressed = pressed,
+                focusedScale = 1.018f,
+                glowColor = SmartVisionColors.Primary,
+                cornerRadius = 10.dp,
+            )
+            .clip(shape)
+            .background(
+                if (active) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            SmartVisionColors.Primary.copy(alpha = 0.72f),
+                            SmartVisionColors.PrimaryDark.copy(alpha = 0.58f),
+                        ),
+                    )
+                } else {
+                    Brush.horizontalGradient(
+                        listOf(
+                            SmartVisionColors.SurfaceElevated.copy(alpha = 0.72f),
+                            Color.White.copy(alpha = 0.035f),
+                        ),
+                    )
+                },
+            )
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                    if (active) SmartVisionColors.CyanAccent.copy(alpha = 0.88f) else SmartVisionColors.Border,
+                ),
+                shape,
+            )
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(interactionSource = interactionSource)
+            .padding(horizontal = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = label,
+            color = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+            style = SmartVisionType.Label,
+            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        MediaCountPill(
+            text = count.toString(),
+            active = active,
+        )
+    }
+}
+
+@Composable
+private fun MediaCountPill(
+    text: String,
+    active: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(if (active) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.07f))
+            .border(
+                BorderStroke(1.dp, if (active) Color.White.copy(alpha = 0.30f) else SmartVisionColors.Border),
+                RoundedCornerShape(999.dp),
+            )
+            .padding(horizontal = 7.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+            style = SmartVisionType.Caption,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun MediaStorageCard(
+    strings: SmartVisionStrings,
+    state: MediaScreenState,
+) {
+    val shape = RoundedCornerShape(12.dp)
+    val storage = state.storageInfo
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Color.White.copy(alpha = 0.055f))
+            .border(BorderStroke(1.dp, SmartVisionColors.Border), shape)
+            .padding(horizontal = 9.dp, vertical = 7.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.CloudSync,
+                contentDescription = null,
+                tint = SmartVisionColors.Success,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = strings.mediaSmartStorage,
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.Label,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Text(
+            text = storage?.let { formatBytes(it.availableBytes) } ?: strings.mediaStorageReady,
+            color = SmartVisionColors.CyanAccent,
+            style = SmartVisionType.Caption,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = storage?.rootPath ?: strings.mediaMvpNotice,
+            color = SmartVisionColors.TextSecondary,
+            style = SmartVisionType.Caption,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun PhoneImportPanel(
+    strings: SmartVisionStrings,
+    state: MediaScreenState,
+    transferAccess: PremiumFeatureGateResult,
+    onImportPhone: () -> Unit,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val enabled = !state.transferInProgress
+    val focused = focusState.isFocused
+    val shape = RoundedCornerShape(10.dp)
+    val subtitle = when {
+        state.transferInProgress -> strings.mediaTransferInProgress
+        transferAccess.allowed -> strings.mediaPhoneTransferReady
+        transferAccess.state == PremiumFeatureGateState.BlockedExpired -> strings.mediaPhoneTransferExpired
+        else -> strings.mediaPhoneTransferLocked
+    }
+    val buttonText = if (transferAccess.allowed) {
+        strings.mediaPhoneTransferReceive
+    } else {
+        strings.mediaPhoneTransferUpgrade
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(76.dp)
+            .tvFocusTarget(
+                state = focusState,
+                pressed = pressed,
+                focusedScale = 1.018f,
+                glowColor = if (transferAccess.allowed) SmartVisionColors.CyanAccent else SmartVisionColors.Warning,
+                cornerRadius = 10.dp,
+            )
+            .clip(shape)
+            .background(
+                Brush.radialGradient(
+                    if (transferAccess.allowed) {
+                        listOf(
+                            SmartVisionColors.CyanAccent.copy(alpha = 0.20f),
+                            SmartVisionColors.PrimaryDark.copy(alpha = 0.26f),
+                            Color.White.copy(alpha = 0.05f),
+                        )
+                    } else {
+                        listOf(
+                            SmartVisionColors.Warning.copy(alpha = 0.14f),
+                            Color.White.copy(alpha = 0.06f),
+                            Color.Transparent,
+                        )
+                    },
+                    center = Offset(245f, 0f),
+                    radius = 320f,
+                ),
+            )
+            .border(
+                BorderStroke(
+                    1.dp,
+                    if (transferAccess.allowed) SmartVisionColors.CyanAccent.copy(alpha = 0.34f) else SmartVisionColors.Warning.copy(alpha = 0.30f),
+                ),
+                shape,
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                onClick = onImportPhone,
+            )
+            .focusable(enabled = enabled, interactionSource = interactionSource)
+            .padding(horizontal = 9.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .background(Color.White.copy(alpha = if (focused) 0.18f else 0.10f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.QrCode2,
+                contentDescription = null,
+                tint = if (transferAccess.allowed) SmartVisionColors.CyanAccent else SmartVisionColors.Warning,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Spacer(Modifier.width(9.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = strings.mediaTransferHub,
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Caption,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = strings.mediaPhoneTransferTitle,
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.Label,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = subtitle,
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Caption,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        MediaCountPill(
+            text = buttonText,
+            active = focused || transferAccess.allowed,
+        )
+    }
+}
+
+@Composable
+private fun PhoneExportPanel(
+    strings: SmartVisionStrings,
+    state: MediaScreenState,
+    transferAccess: PremiumFeatureGateResult,
+    onExportPhone: () -> Unit,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val selected = state.selectedFile
+    val enabled = selected != null && !state.transferInProgress
+    val focused = focusState.isFocused
+    val shape = RoundedCornerShape(10.dp)
+    val subtitle = when {
+        state.transferInProgress -> strings.mediaTransferInProgress
+        selected == null -> strings.mediaNoSelection
+        transferAccess.allowed -> selected.displayName
+        transferAccess.state == PremiumFeatureGateState.BlockedExpired -> strings.mediaPhoneTransferExpired
+        else -> strings.mediaPhoneTransferLocked
+    }
+    val actionLabel = if (transferAccess.allowed) strings.mediaExportPhone else strings.mediaPhoneTransferUpgrade
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(76.dp)
+            .tvFocusTarget(
+                state = focusState,
+                pressed = pressed,
+                focusedScale = 1.018f,
+                glowColor = if (transferAccess.allowed) SmartVisionColors.Success else SmartVisionColors.Warning,
+                cornerRadius = 10.dp,
+            )
+            .clip(shape)
+            .background(
+                Brush.radialGradient(
+                    if (transferAccess.allowed) {
+                        listOf(
+                            SmartVisionColors.Success.copy(alpha = 0.18f),
+                            SmartVisionColors.PrimaryDark.copy(alpha = 0.24f),
+                            Color.White.copy(alpha = 0.045f),
+                        )
+                    } else {
+                        listOf(
+                            SmartVisionColors.Warning.copy(alpha = 0.14f),
+                            Color.White.copy(alpha = 0.06f),
+                            Color.Transparent,
+                        )
+                    },
+                    center = Offset(245f, 0f),
+                    radius = 320f,
+                ),
+            )
+            .border(
+                BorderStroke(
+                    1.dp,
+                    if (transferAccess.allowed) SmartVisionColors.Success.copy(alpha = 0.36f) else SmartVisionColors.Warning.copy(alpha = 0.30f),
+                ),
+                shape,
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                onClick = onExportPhone,
+            )
+            .focusable(enabled = enabled, interactionSource = interactionSource)
+            .padding(horizontal = 9.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .background(Color.White.copy(alpha = if (focused) 0.18f else 0.10f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Devices,
+                contentDescription = null,
+                tint = if (transferAccess.allowed) SmartVisionColors.Success else SmartVisionColors.Warning,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Spacer(Modifier.width(9.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = strings.mediaTransferHub,
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Caption,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "TV -> Phone",
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.Label,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = subtitle,
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Caption,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        MediaCountPill(
+            text = actionLabel,
+            active = focused || transferAccess.allowed,
+        )
     }
 }
 
@@ -484,45 +970,43 @@ private fun MediaContentPanel(
     MediaCatalogPanel(
         title = if (state.selectedArea == MediaArea.Folders) strings.mediaFolders else strings.mediaRecentFiles,
         modifier = modifier,
+        titleContent = {
+            Column {
+                Text(
+                    text = if (state.selectedArea == MediaArea.Folders) strings.mediaFolders else strings.mediaRecentFiles,
+                    color = SmartVisionColors.TextPrimary,
+                    style = SmartVisionType.TitleS,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = state.selectedArea.label(strings),
+                    color = SmartVisionColors.CyanAccent,
+                    style = SmartVisionType.Caption,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        },
+        trailing = {
+            TvButton(
+                text = if (state.refreshing) strings.refreshing else strings.refresh,
+                onClick = onRefresh,
+                enabled = !state.refreshing && !state.operationInProgress,
+                variant = TvButtonVariant.Secondary,
+                leadingIcon = Icons.Default.CloudSync,
+                modifier = Modifier
+                    .width(150.dp)
+                    .height(38.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp),
+            )
+        },
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = strings.mediaCenterTitle,
-                        color = SmartVisionColors.TextPrimary,
-                        style = SmartVisionType.TitleM,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                    )
-                    Text(
-                        text = String.format(strings.mediaFilesFound, state.files.size) +
-                            " | " +
-                            String.format(strings.mediaFoldersFound, state.folders.size),
-                        color = SmartVisionColors.TextSecondary,
-                        style = SmartVisionType.Caption,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                TvButton(
-                    text = if (state.refreshing) strings.refreshing else strings.refresh,
-                    onClick = onRefresh,
-                    enabled = !state.refreshing && !state.operationInProgress,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier
-                        .width(142.dp)
-                        .height(42.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp),
-                )
-            }
-
             state.errorMessage?.let { message ->
                 MediaStatusMessage(message = message, error = true)
             }
@@ -558,6 +1042,89 @@ private fun MediaContentPanel(
                         .weight(1f),
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun MediaStatsStrip(
+    strings: SmartVisionStrings,
+    state: MediaScreenState,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        MediaStatTile(
+            label = strings.mediaTotalFiles,
+            value = state.files.size.toString(),
+            icon = Icons.Default.Menu,
+            color = SmartVisionColors.CyanAccent,
+            modifier = Modifier.weight(1f),
+        )
+        MediaStatTile(
+            label = strings.mediaRecordings,
+            value = state.countFor(MediaArea.Recordings).toString(),
+            icon = Icons.Default.Theaters,
+            color = SmartVisionColors.Warning,
+            modifier = Modifier.weight(1f),
+        )
+        MediaStatTile(
+            label = strings.mediaTransferHub,
+            value = state.countFor(MediaArea.Transfers).toString(),
+            icon = Icons.Default.Devices,
+            color = SmartVisionColors.Success,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun MediaStatTile(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .height(58.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        color.copy(alpha = 0.16f),
+                        Color.White.copy(alpha = 0.045f),
+                    ),
+                ),
+            )
+            .border(BorderStroke(1.dp, color.copy(alpha = 0.30f)), RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = value,
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.Label,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+            Text(
+                text = label,
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Caption,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -649,7 +1216,7 @@ private fun MediaFileRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(76.dp)
+            .height(72.dp)
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -667,11 +1234,20 @@ private fun MediaFileRow(
             }
             .clip(shape)
             .background(
-                if (active) {
-                    SmartVisionColors.PrimaryDark.copy(alpha = 0.58f)
-                } else {
-                    SmartVisionColors.SurfaceElevated.copy(alpha = 0.68f)
-                },
+                Brush.horizontalGradient(
+                    if (active) {
+                        listOf(
+                            mediaTypeColor(file.mediaType).copy(alpha = 0.24f),
+                            SmartVisionColors.PrimaryDark.copy(alpha = 0.56f),
+                            Color(0xAA07101E),
+                        )
+                    } else {
+                        listOf(
+                            SmartVisionColors.SurfaceElevated.copy(alpha = 0.76f),
+                            Color(0x990A1323),
+                        )
+                    },
+                ),
             )
             .border(
                 BorderStroke(
@@ -682,16 +1258,28 @@ private fun MediaFileRow(
             )
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .focusable(interactionSource = interactionSource)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = Icons.Default.Theaters,
-            contentDescription = null,
-            tint = mediaTypeColor(file.mediaType),
-            modifier = Modifier.size(30.dp),
-        )
-        Spacer(Modifier.width(12.dp))
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(mediaTypeColor(file.mediaType).copy(alpha = if (active) 0.22f else 0.12f))
+                .border(
+                    BorderStroke(1.dp, mediaTypeColor(file.mediaType).copy(alpha = if (active) 0.70f else 0.30f)),
+                    RoundedCornerShape(10.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = file.mediaIcon(),
+                contentDescription = null,
+                tint = mediaTypeColor(file.mediaType),
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = file.displayName,
@@ -701,19 +1289,55 @@ private fun MediaFileRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = "${file.source.label(strings)} | ${file.sizeLabel} | ${file.updatedLabel}",
-                color = SmartVisionColors.TextSecondary,
-                style = SmartVisionType.Caption,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Spacer(Modifier.height(4.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                MediaTinyPill(text = file.source.label(strings), active = active)
+                MediaTinyPill(text = file.sizeLabel, active = false)
+                Text(
+                    text = file.updatedLabel,
+                    color = SmartVisionColors.TextSecondary,
+                    style = SmartVisionType.Caption,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
-        Text(
+        MediaTinyPill(
             text = file.mediaType.label(strings),
-            color = SmartVisionColors.TextSecondary,
+            active = active,
+            accent = mediaTypeColor(file.mediaType),
+        )
+    }
+}
+
+@Composable
+private fun MediaTinyPill(
+    text: String,
+    active: Boolean,
+    modifier: Modifier = Modifier,
+    accent: Color = SmartVisionColors.CyanAccent,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(if (active) accent.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.055f))
+            .border(
+                BorderStroke(1.dp, if (active) accent.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.08f)),
+                RoundedCornerShape(999.dp),
+            )
+            .padding(horizontal = 7.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
             style = SmartVisionType.Caption,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -838,6 +1462,205 @@ private fun MediaEmptyState(
 }
 
 @Composable
+private fun MediaPreviewHero(
+    strings: SmartVisionStrings,
+    selected: MediaFileUi?,
+    fallbackTitle: String,
+    storageRootPath: String?,
+) {
+    val accent = selected?.let { mediaTypeColor(it.mediaType) } ?: SmartVisionColors.Primary
+    val shape = RoundedCornerShape(16.dp)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(146.dp)
+            .clip(shape)
+            .background(
+                Brush.radialGradient(
+                    listOf(
+                        accent.copy(alpha = 0.34f),
+                        SmartVisionColors.PrimaryDark.copy(alpha = 0.30f),
+                        Color(0xDD07101E),
+                        Color.Black.copy(alpha = 0.72f),
+                    ),
+                    center = Offset(270f, 22f),
+                    radius = 560f,
+                ),
+            )
+            .border(BorderStroke(1.dp, accent.copy(alpha = 0.45f)), shape)
+            .padding(11.dp),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Top,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                if (selected?.mediaType == MediaCenterFileType.Video && storageRootPath != null) {
+                    MediaLocalMiniPlayer(
+                        file = selected,
+                        storageRootPath = storageRootPath,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(104.dp),
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color.White.copy(alpha = 0.09f))
+                            .border(BorderStroke(1.dp, accent.copy(alpha = 0.38f)), RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = selected?.mediaIcon() ?: Icons.Default.Theaters,
+                            contentDescription = null,
+                            tint = accent,
+                            modifier = Modifier.size(28.dp),
+                        )
+                    }
+                    Spacer(Modifier.height(7.dp))
+                    Text(
+                        text = selected?.displayName ?: fallbackTitle,
+                        color = SmartVisionColors.TextPrimary,
+                        style = SmartVisionType.Label,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaLocalMiniPlayer(
+    file: MediaFileUi,
+    storageRootPath: String,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val audioScope = rememberCoroutineScope()
+    var buffering by remember(file.id) { mutableStateOf(true) }
+    var errorText by remember(file.id) { mutableStateOf<String?>(null) }
+    val volumeFadeJob = remember { arrayOfNulls<Job>(1) }
+    val localFile = remember(file.id, file.relativePath, storageRootPath) {
+        File(storageRootPath, file.relativePath).canonicalFile
+    }
+    val player = remember {
+        ExoPlayer.Builder(context).build().apply {
+            volume = 0f
+            playWhenReady = true
+            repeatMode = Player.REPEAT_MODE_ONE
+        }
+    }
+
+    fun restartPreviewAudioFade() {
+        volumeFadeJob[0]?.cancel()
+        player.volume = 0f
+        volumeFadeJob[0] = audioScope.launch {
+            delay(700L)
+            repeat(8) { step ->
+                delay(90L)
+                player.volume = (step + 1).toFloat() / 8f
+            }
+        }
+    }
+
+    LaunchedEffect(localFile.absolutePath) {
+        buffering = true
+        errorText = null
+        player.stop()
+        player.clearMediaItems()
+        player.setMediaItem(MediaItem.fromUri(Uri.fromFile(localFile)))
+        player.prepare()
+        player.playWhenReady = true
+        restartPreviewAudioFade()
+    }
+
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                buffering = playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE
+                if (playbackState == Player.STATE_READY) errorText = null
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                buffering = false
+                errorText = error.message ?: "Preview unavailable"
+                volumeFadeJob[0]?.cancel()
+                player.volume = 0f
+            }
+        }
+        player.addListener(listener)
+        onDispose {
+            volumeFadeJob[0]?.cancel()
+            player.removeListener(listener)
+            player.release()
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color.Black)
+            .border(BorderStroke(1.dp, mediaTypeColor(file.mediaType).copy(alpha = 0.45f)), RoundedCornerShape(10.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(Color.Black),
+        )
+        AndroidView(
+            factory = {
+                PlayerView(it).apply {
+                    setBackgroundColor(android.graphics.Color.BLACK)
+                    useController = false
+                    setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
+                    setShutterBackgroundColor(android.graphics.Color.BLACK)
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
+                    this.player = player
+                }
+            },
+            update = {
+                it.setBackgroundColor(android.graphics.Color.BLACK)
+                it.player = player
+                it.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            },
+            modifier = Modifier.matchParentSize(),
+        )
+        if (buffering) {
+            CircularProgressIndicator(
+                color = SmartVisionColors.CyanAccent,
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(26.dp),
+            )
+        }
+        errorText?.let { message ->
+            Text(
+                text = message,
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.Caption,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color.Black.copy(alpha = 0.72f))
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+            )
+        }
+    }
+}
+
+@Composable
 private fun MediaPreviewPanel(
     strings: SmartVisionStrings,
     state: MediaScreenState,
@@ -866,45 +1689,14 @@ private fun MediaPreviewPanel(
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(150.dp)
-                    .clip(RoundedCornerShape(MediaCatalogDimens.ItemRadius))
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                SmartVisionColors.Primary.copy(alpha = 0.30f),
-                                Color(0xAA0A1323),
-                                Color.Black.copy(alpha = 0.58f),
-                            ),
-                            radius = 520f,
-                        ),
-                    )
-                    .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(MediaCatalogDimens.ItemRadius)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.Theaters,
-                        contentDescription = null,
-                        tint = selected?.let { mediaTypeColor(it.mediaType) } ?: SmartVisionColors.TextSecondary,
-                        modifier = Modifier.size(44.dp),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = selected?.displayName ?: state.selectedArea.label(strings),
-                        color = SmartVisionColors.TextPrimary,
-                        style = SmartVisionType.TitleS,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
+            MediaPreviewHero(
+                strings = strings,
+                selected = selected,
+                fallbackTitle = state.selectedArea.label(strings),
+                storageRootPath = state.storageInfo?.rootPath,
+            )
 
             if (selected == null) {
                 Text(
@@ -915,53 +1707,78 @@ private fun MediaPreviewPanel(
                     overflow = TextOverflow.Ellipsis,
                 )
             } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    TvButton(
+                        text = strings.mediaPlay,
+                        onClick = onPlay,
+                        enabled = playEnabled,
+                        leadingIcon = Icons.Default.PlayArrow,
+                        focusRequester = if (firstPreviewAction == MediaPreviewAction.Play) previewActionFocusRequester else null,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp),
+                    )
+                    TvButton(
+                        text = strings.mediaRename,
+                        onClick = onRename,
+                        enabled = editEnabled,
+                        leadingIcon = Icons.Default.Edit,
+                        focusRequester = if (firstPreviewAction == MediaPreviewAction.Rename) previewActionFocusRequester else null,
+                        variant = TvButtonVariant.Secondary,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp),
+                    )
+                    TvButton(
+                        text = strings.delete,
+                        onClick = onDelete,
+                        enabled = editEnabled,
+                        leadingIcon = Icons.Default.Delete,
+                        variant = TvButtonVariant.Danger,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp),
+                    )
+                }
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0x660A1323))
-                        .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.055f))
+                        .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(12.dp))
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
+                    Text(
+                        text = strings.mediaDetails,
+                        color = SmartVisionColors.TextPrimary,
+                        style = SmartVisionType.Label,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     MediaInfoRow(strings.mediaFileSize, selected.sizeLabel)
                     MediaInfoRow(strings.mediaUpdatedAt, selected.updatedLabel)
-                    MediaInfoRow(strings.mediaFolderLabel, selected.folderName ?: strings.mediaRootFolder)
-                    MediaInfoRow(strings.mediaFileSource, selected.source.label(strings))
                     MediaInfoRow(strings.mediaFileType, selected.mediaType.label(strings))
-                    MediaInfoRow(strings.mediaStoragePath, selected.relativePath)
                 }
             }
 
             state.storageInfo?.let { storage ->
-                Spacer(Modifier.height(4.dp))
                 MediaInfoRow(strings.mediaAvailableSpace, formatBytes(storage.availableBytes))
             }
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(2.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TvButton(
-                    text = strings.mediaPlay,
-                    onClick = onPlay,
-                    enabled = playEnabled,
-                    focusRequester = if (firstPreviewAction == MediaPreviewAction.Play) previewActionFocusRequester else null,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp),
-                )
-                TvButton(
-                    text = strings.mediaRename,
-                    onClick = onRename,
-                    enabled = editEnabled,
-                    focusRequester = if (firstPreviewAction == MediaPreviewAction.Rename) previewActionFocusRequester else null,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp),
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 TvButton(
                     text = strings.mediaMove,
                     onClick = onMove,
@@ -969,29 +1786,21 @@ private fun MediaPreviewPanel(
                     variant = TvButtonVariant.Secondary,
                     modifier = Modifier
                         .weight(1f)
-                        .height(42.dp),
+                        .height(36.dp),
                 )
-                TvButton(
-                    text = strings.delete,
-                    onClick = onDelete,
-                    enabled = editEnabled,
-                    variant = TvButtonVariant.Danger,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp),
-                )
-            }
-            if (transferAccess.showDisabledControl) {
-                TvButton(
-                    text = strings.mediaExportPhone,
-                    onClick = onExportPhone,
-                    enabled = transferEnabled,
-                    focusRequester = if (firstPreviewAction == MediaPreviewAction.Export) previewActionFocusRequester else null,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(42.dp),
-                )
+                if (transferAccess.showDisabledControl) {
+                    TvButton(
+                        text = strings.mediaExportPhone,
+                        onClick = onExportPhone,
+                        enabled = transferEnabled,
+                        focusRequester = if (firstPreviewAction == MediaPreviewAction.Export) previewActionFocusRequester else null,
+                        variant = TvButtonVariant.Secondary,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp),
+                    )
+                }
             }
         }
     }
@@ -1188,6 +1997,7 @@ private fun MediaDeleteDialog(
             confirmText = strings.delete,
             confirmEnabled = true,
             confirmVariant = TvButtonVariant.Danger,
+            focusConfirmOnOpen = true,
             onDismiss = onDismiss,
             onConfirm = onDelete,
         )
@@ -1230,7 +2040,17 @@ private fun DialogActions(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     confirmVariant: TvButtonVariant = TvButtonVariant.Primary,
+    focusConfirmOnOpen: Boolean = false,
 ) {
+    val confirmFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(focusConfirmOnOpen, confirmEnabled) {
+        if (focusConfirmOnOpen && confirmEnabled) {
+            delay(120)
+            runCatching { confirmFocusRequester.requestFocus() }
+        }
+    }
+
     Spacer(Modifier.height(18.dp))
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1249,6 +2069,7 @@ private fun DialogActions(
             onClick = onConfirm,
             enabled = confirmEnabled,
             variant = confirmVariant,
+            focusRequester = if (focusConfirmOnOpen) confirmFocusRequester else null,
             modifier = Modifier
                 .weight(1f)
                 .height(42.dp),
@@ -1376,6 +2197,23 @@ private fun MediaCenterFileType.label(strings: SmartVisionStrings): String =
         MediaCenterFileType.Photo -> strings.mediaTypePhoto
         MediaCenterFileType.Audio -> strings.mediaTypeAudio
         MediaCenterFileType.Other -> strings.mediaTypeFile
+    }
+
+private fun MediaArea.icon(): ImageVector =
+    when (this) {
+        MediaArea.AllFiles -> Icons.Default.Menu
+        MediaArea.Recordings -> Icons.Default.Theaters
+        MediaArea.Imports -> Icons.Default.FileDownload
+        MediaArea.Folders -> Icons.Default.Storage
+        MediaArea.Transfers -> Icons.Default.Devices
+    }
+
+private fun MediaFileUi.mediaIcon(): ImageVector =
+    when (mediaType) {
+        MediaCenterFileType.Video -> Icons.Default.Theaters
+        MediaCenterFileType.Photo -> Icons.Default.FileDownload
+        MediaCenterFileType.Audio -> Icons.Default.PlayArrow
+        MediaCenterFileType.Other -> Icons.Default.Storage
     }
 
 private val MediaFileUi.isPlayable: Boolean

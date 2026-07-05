@@ -2,7 +2,7 @@
 
 Derniere mise a jour: 2026-07-05.
 
-Statut: Lot 13 - Media Center lit les fichiers locaux video/audio/photo, le bouton Recorder Live lance un enregistrement reel MVP, et le transfert telephone/TV existe en MVP via serveur HTTP local temporaire + QR upload/download. La stabilisation avancee reste un lot separe.
+Statut: Lot 16 - Media Center lit les fichiers locaux video/audio/photo, le bouton Recorder Live lance un enregistrement reel MVP, le transfert telephone/TV existe en MVP via serveur HTTP local temporaire + QR upload/download, les actions fichier du panneau apercu sont reorganisees pour rendre `Supprimer` directement accessible avec `Lire` et `Renommer`, et l'ecran Media a maintenant un agencement compact aligne sur Live TV: panneau gauche/liste/apercu en ratios `0.24 / 0.42 / 0.34`, hubs `Telephone -> TV` et `TV -> Phone` visibles sans bouton cache, liste centrale sans cards stats colorees ni ligne `Folders`, details fichier simplifies et mini-player local video remplissant son cadre comme Live TV.
 
 ## 1. Objectif
 
@@ -505,7 +505,20 @@ Implementation Lot 14:
 - Network Activity affiche une activite `Recorder` sanitisee pendant l'enregistrement Live: titre chaine, section Live TV, source Recorder, progression temporelle, octets ecrits, debit et statut final, sans URL Xtream ni credentials.
 - Media Center corrige le routage DPAD droite liste -> apercu: le focus vise le premier bouton reellement actif (`Lire`, `Renommer` ou `Exporter tel.`) et ne demande plus un `FocusRequester` absent quand aucun fichier n'est selectionne.
 - Media Center affiche un etat `Preparation du transfert telephone...` pendant l'ouverture import/export, ferme automatiquement la session QR apres upload reussi, et remet l'etat session a null en cas d'echec de demarrage.
+- Media Center remplace l'ancien bouton lateral `Importer tel.` par un panneau `Telephone -> TV`: si l'acces est autorise, le bouton `Recevoir fichier` explique le QR et le Wi-Fi; si l'acces est verrouille, le bouton reste focusable sous `Debloquer` et affiche la raison Premium/essai.
 - Les libelles techniques `Source`, `Type`, `Video/Photo/Audio/File` passent par i18n EN/FR.
+
+### Lot 16 - Refonte premium Media Center
+
+Objectif:
+- Donner a la fonctionnalite premium un rendu TV premium sans changer la logique stockage/transfert.
+
+Implementation Lot 16:
+- Colonne bibliotheque: hero `Studio media premium`, compteurs par zone, carte `Stockage intelligent` et module `Hub transfert`.
+- Zone centrale: header contextualise, bouton Actualiser plus discret, bandeau de statistiques `Fichiers total` / `Recordings` / `Hub transfert`.
+- Lignes fichiers: icone badgee par type, fond gradient actif, pills source/taille/type, date conservee.
+- Apercu: hero media avec etat `Pret pour lecture locale`, details regroupes et actions `Lire`, `Renommer`, `Supprimer`, `Deplacer`, `Exporter tel.` conservees.
+- La logique de suppression, renommage, deplacement, lecture locale, import/export telephone et gates Premium/admin n'est pas modifiee.
 
 ## 6. Risques et points de vigilance
 

@@ -18,8 +18,8 @@ Observabilite reseau:
 - Ne jamais exposer les query params, tokens, identifiants Xtream, mots de passe ou URLs de lecture dans ce tracker.
 
 Gradle local constate le 2026-07-05:
-- `versionCode = 98`
-- `versionName = "0.1.94"`
+- `versionCode = 103`
+- `versionName = "0.1.99"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -160,6 +160,9 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-05: release publiee `0.1.99` / `versionCode 103` pour Media compact aligne Live TV: ratios `0.24 / 0.42 / 0.34`, suppression hero/snapshot/stats, hub `Telephone -> TV` sans bouton cache, tuile `TV -> Phone`, details fichier simplifies, mini-player local video remplissant son cadre comme Live TV et anti-flash couronne Media pendant le chargement app-config. APK `smartvision-tv-v103-b1f73b9d.apk`, SHA256 `b1f73b9df54227edc898c640f84aef49abbcbbab66c607341a32feb3767ee4a6`, taille `40314076`, manifeste public, `app_update.php`, APK stable et APK versionne verifies.
+- 2026-07-05: release publiee `0.1.96` / `versionCode 100` pour refonte premium Media Center: hero studio, compteurs, stockage intelligent, hub transfert telephone, stats bibliotheque, lignes fichiers enrichies et preview hero. APK `smartvision-tv-v100-bd7812fb.apk`, SHA256 `bd7812fbabd30519b6810c9b80364097a582b0a43818edf9c29574a4b38a5c8f`, manifeste public, `app_update.php`, APK stable et versionne verifies. Parametres admin non modifies volontairement.
+- 2026-07-05: release publiee `0.1.95` / `versionCode 99` pour rendre les actions Media Center plus accessibles: `Supprimer` est aligne avec `Lire` et `Renommer`, les dialogs ciblent le fichier par id explicite et la confirmation de suppression prend le focus TV. APK `smartvision-tv-v99-a8450f83.apk`, SHA256 `a8450f83e6e06c8b4f912094acb2a8a63a7020405a994244c336bec8d4f18536`, manifeste public, `app_update.php`, APK stable et flags Recorder/Media verifies.
 - 2026-07-05: release publiee `0.1.94` / `versionCode 98` pour stabilisation Recorder Live: fermeture player/chaine sans arret Recorder, reconnexion progressive prolongee, activite `Recorder` dans Network Activity sans URL Xtream, et polish Media UI/focus/transfert. APK `smartvision-tv-v98-f861e960.apk`, SHA256 `f861e960078050444cf323de1719b0ce1594c92e3f9101b391e6de2d2568b936`, manifeste public, `app_update.php`, APK stable et flags Recorder/Media verifies.
 - 2026-07-05: release publiee `0.1.93` / `versionCode 97` pour Lots 12 et 13 Media Transfer: serveur HTTP local temporaire `MediaTransferServer`, QR import telephone vers TV dans `SmartVisionMedia/Transfers`, QR export du fichier Media selectionne, gate `media_phone_transfer`. APK `smartvision-tv-v97-68adc147.apk`, SHA256 `68adc147ebd988359f7402e6b77dc9f4fa7917c92d4f897955ee858bf21c3a9b`, manifeste public, `app_update.php`, APK stable et flags app_config verifies.
 - 2026-07-05: release publiee `0.1.92` / `versionCode 96` pour lots 7 et 8 Recorder + Media: lecture locale video/audio/photo, route `media_player/{mediaFileId}`, viewer photo plein ecran, bouton Record Live gate/couronne/dialog MVP et retouches focus/design header/Media. APK `smartvision-tv-v96-c91c7b49.apk`, SHA256 `c91c7b49f87e9a6f41d83c40ed58c3c9ca94e1bdb0bb974c4600875df77655e8`, manifeste public, `app_update.php`, APK stable et taille verifies.

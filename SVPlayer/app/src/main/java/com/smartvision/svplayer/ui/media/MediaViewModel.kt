@@ -99,9 +99,13 @@ class MediaViewModel(
 
     fun renameSelected(requestedName: String) {
         val selectedId = _uiState.value.selectedFileId ?: return
+        renameFile(selectedId, requestedName)
+    }
+
+    fun renameFile(fileId: Long, requestedName: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(operationInProgress = true, errorMessage = null, message = null) }
-            repository.renameFile(selectedId, requestedName)
+            repository.renameFile(fileId, requestedName)
                 .onSuccess {
                     _uiState.update { it.copy(operationInProgress = false, message = MediaActionMessage.Renamed) }
                 }
@@ -118,9 +122,13 @@ class MediaViewModel(
 
     fun moveSelected(targetFolderId: Long?) {
         val selectedId = _uiState.value.selectedFileId ?: return
+        moveFile(selectedId, targetFolderId)
+    }
+
+    fun moveFile(fileId: Long, targetFolderId: Long?) {
         viewModelScope.launch {
             _uiState.update { it.copy(operationInProgress = true, errorMessage = null, message = null) }
-            repository.moveFile(selectedId, targetFolderId)
+            repository.moveFile(fileId, targetFolderId)
                 .onSuccess {
                     _uiState.update { it.copy(operationInProgress = false, message = MediaActionMessage.Moved) }
                 }
@@ -137,12 +145,16 @@ class MediaViewModel(
 
     fun deleteSelected() {
         val selectedId = _uiState.value.selectedFileId ?: return
+        deleteFile(selectedId)
+    }
+
+    fun deleteFile(fileId: Long) {
         viewModelScope.launch {
             _uiState.update { it.copy(operationInProgress = true, errorMessage = null, message = null) }
-            repository.deleteFile(selectedId)
+            repository.deleteFile(fileId)
                 .onSuccess {
                     _uiState.update { current ->
-                        val nextFiles = current.files.filterNot { it.id == selectedId }
+                        val nextFiles = current.files.filterNot { it.id == fileId }
                         current.copy(
                             operationInProgress = false,
                             selectedFileId = nextFiles.firstOrNull { it.matches(current.selectedArea) }?.id

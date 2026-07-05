@@ -292,7 +292,7 @@ fun MediaCatalogPanel(
                 ),
             )
             .border(BorderStroke(1.dp, SmartVisionColors.Border), shape)
-            .padding(MediaCatalogDimens.PanelPadding),
+            .padding(horizontal = MediaCatalogDimens.PanelPadding, vertical = MediaCatalogDimens.PanelVerticalPadding),
     ) {
         Row(
             modifier = Modifier
@@ -316,7 +316,7 @@ fun MediaCatalogPanel(
             trailing?.invoke()
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(6.dp))
 
         content()
     }
@@ -1020,6 +1020,7 @@ object MediaCatalogDimens {
     val HeaderGap = 16.dp
     val PanelGap = 8.dp
     val PanelPadding = 14.dp
+    val PanelVerticalPadding = 10.dp
     val PanelRadius = 8.dp
     val ItemRadius = 7.dp
     val ListGap = 5.dp

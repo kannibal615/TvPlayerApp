@@ -7,755 +7,800 @@ fun smartVisionStrings(language: String): SmartVisionStrings {
     return if (language.equals("Francais", ignoreCase = true)) frenchStrings else englishStrings
 }
 
-data class SmartVisionStrings(
-    val back: String,
-    val settings: String,
-    val home: String,
-    val liveTv: String,
-    val movies: String,
-    val series: String,
-    val youtube: String,
-    val media: String,
-    val generalPreferences: String,
-    val sync: String,
-    val updates: String,
-    val personalization: String,
-    val parentalControl: String,
-    val localData: String,
-    val networkActivity: String,
-    val networkActivitySubtitle: String,
-    val networkActive: String,
-    val networkRecent: String,
-    val networkNoActivity: String,
-    val networkThroughput: String,
-    val networkErrors: String,
-    val networkProgress: String,
-    val networkData: String,
-    val networkDuration: String,
-    val networkSection: String,
-    val networkSource: String,
-    val networkItems: String,
-    val language: String,
-    val english: String,
-    val french: String,
-    val videoFormat: String,
-    val animations: String,
-    val enabled: String,
-    val reduced: String,
-    val automaticReconnect: String,
-    val disabled: String,
-    val automaticSync: String,
-    val launchOnStartup: String,
-    val backgroundSync: String,
-    val focusStyle: String,
-    val focusDefault: String,
-    val focusSoft: String,
-    val focusCompact: String,
-    val focusColor: String,
-    val focusWhite: String,
-    val focusCyanNeon: String,
-    val focusElectricBlue: String,
-    val focusEffect: String,
-    val focusFrame: String,
-    val focusNeonGlow: String,
-    val focusGoldSweep: String,
-    val focusBackground: String,
-    val focusBackgroundBlue: String,
-    val focusBackgroundGold: String,
-    val focusBackgroundWhite: String,
-    val currentFrequency: String,
-    val activeAccount: String,
-    val activeXtreamAccount: String,
-    val activeServer: String,
-    val notConfigured: String,
-    val none: String,
-    val installedVersion: String,
-    val lastUpdate: String,
-    val portal: String,
-    val checking: String,
-    val checkForUpdate: String,
-    val appUpToDate: String,
-    val bufferMode: String,
-    val localXtreamAccounts: String,
-    val localCredentialsInfo: String,
-    val clearLocalData: String,
-    val pinCode: String,
-    val hiddenKeywords: String,
-    val parentalHelp: String,
-    val lockedPremiumFeature: String,
-    val unlockParentalControl: String,
-    val createPin: String,
-    val changePin: String,
-    val enterPin: String,
-    val newPin: String,
-    val confirmPin: String,
-    val pinRequired: String,
-    val pinIncorrect: String,
-    val pinsDoNotMatch: String,
-    val apply: String,
-    val active: String,
-    val inactive: String,
-    val forgotPinByEmail: String,
-    val pinEmailUnavailable: String,
-    val connect: String,
-    val edit: String,
-    val delete: String,
-    val xtreamAccount: String,
-    val accountName: String,
-    val host: String,
-    val user: String,
-    val password: String,
-    val cancel: String,
-    val saveAndConnect: String,
-    val accountRequiredError: String,
-    val sync24h: String,
-    val sync48h: String,
-    val syncOnStartup: String,
-    val syncManual: String,
-    val syncNever: String,
-    val notifications: String,
-    val refresh: String,
-    val refreshing: String,
-    val noNotifications: String,
-    val notificationLoadError: String,
-    val updateAvailableTitle: String,
-    val updateAvailableMessage: String,
-    val updateDialogMessage: String,
-    val installUpdate: String,
-    val downloadInProgress: String,
-    val later: String,
-    val continueWatching: String,
-    val trending: String,
-    val trendingMovies: String,
-    val trendingSeries: String,
-    val viewAll: String,
-    val resumePlayback: String,
-    val connectionUnavailable: String,
-    val catalogDownloadInProgress: String,
-    val catalogLoadInProgress: String,
-    val catalogWorkFailed: String,
-    val liveTvSubtitle: String,
-    val moviesSubtitle: String,
-    val seriesSubtitle: String,
-    val watchNow: String,
-    val explore: String,
-    val homeHeroWelcomeTitle: String,
-    val homeHeroWelcomeSubtitle: String,
-    val homeHeroLearnMore: String,
-    val homeHeroLiveTitle: String,
-    val homeHeroLiveSubtitle: String,
-    val homeHeroViewOffer: String,
-    val homeHeroCatalogTitle: String,
-    val homeHeroCatalogSubtitle: String,
-    val homeHeroDiscover: String,
-    val heroOfferEmailAction: String,
-    val bestMovies: String,
-    val bestSeries: String,
-    val configureXtreamTitle: String,
-    val youtubePremiumTitle: String,
-    val youtubePremiumSubtitle: String,
-    val premiumPurchaseTitle: String,
-    val premiumPurchaseSubtitle: String,
-    val premiumFeatureLockedTitle: String,
-    val premiumFeatureLockedSubtitle: String,
-    val premiumFeatureExpiredSubtitle: String,
-    val recorderUnavailableForSource: String,
-    val recorderTitle: String,
-    val recorderSubtitle: String,
-    val recorderCurrentProgram: String,
-    val recorderManualDuration: String,
-    val recorderUntilProgramEnd: String,
-    val recorderDuration30: String,
-    val recorderDuration60: String,
-    val recorderDuration120: String,
-    val recorderStartRecording: String,
-    val recorderStarted: String,
-    val recorderAlreadyRunning: String,
-    val recorderStartFailed: String,
-    val recorderStartUnavailable: String,
-    val recorderEnginePending: String,
-    val recorderClose: String,
-    val mediaCenterTitle: String,
-    val mediaCenterSubtitle: String,
-    val mediaLibrary: String,
-    val mediaRecentFiles: String,
-    val mediaPreview: String,
-    val mediaAllFiles: String,
-    val mediaRecordings: String,
-    val mediaImports: String,
-    val mediaFolders: String,
-    val mediaTransfers: String,
-    val mediaEmptyTitle: String,
-    val mediaEmptySubtitle: String,
-    val mediaStorageReady: String,
-    val mediaMvpNotice: String,
-    val mediaNoSelection: String,
-    val mediaZeroFiles: String,
-    val mediaPlay: String,
-    val mediaRename: String,
-    val mediaMove: String,
-    val mediaImportPhone: String,
-    val mediaExportPhone: String,
-    val mediaImportPhoneTitle: String,
-    val mediaImportPhoneSubtitle: String,
-    val mediaExportPhoneTitle: String,
-    val mediaExportPhoneSubtitle: String,
-    val mediaExportPhoneSubtitleWithFile: String,
-    val mediaTransferSameWifi: String,
-    val mediaTransferUploadSuccess: String,
-    val mediaTransferInProgress: String,
-    val mediaStoragePath: String,
-    val mediaAvailableSpace: String,
-    val mediaFilesFound: String,
-    val mediaFoldersFound: String,
-    val mediaNoFilesInArea: String,
-    val mediaRootFolder: String,
-    val mediaFileSize: String,
-    val mediaUpdatedAt: String,
-    val mediaFolderLabel: String,
-    val mediaFileSource: String,
-    val mediaFileType: String,
-    val mediaTypeVideo: String,
-    val mediaTypePhoto: String,
-    val mediaTypeAudio: String,
-    val mediaTypeFile: String,
-    val mediaRenameTitle: String,
-    val mediaMoveTitle: String,
-    val mediaDeleteTitle: String,
-    val mediaDeleteSubtitle: String,
-    val mediaNewName: String,
-    val mediaChooseFolder: String,
-    val mediaRenameSuccess: String,
-    val mediaMoveSuccess: String,
-    val mediaDeleteSuccess: String,
-    val mediaOperationInProgress: String,
-    val mediaPlaybackUnavailable: String,
-    val mediaDisabledByAdmin: String,
-    val youtubeCategories: String,
-    val youtubeSuggestions: String,
-    val youtubeVideosLoaded: String,
-    val youtubeLoading: String,
-    val youtubeNoVideo: String,
-    val youtubeNoVideoSubtitle: String,
-    val youtubeSearchPlaceholder: String,
-    val youtubeLoadingMore: String,
-    val youtubeVideoUnavailable: String,
-    val youtubeCategoryHistory: String,
-    val youtubeCategoryFavorites: String,
-    val youtubeFavorite: String,
-    val youtubeSettings: String,
-    val youtubeAutoplay: String,
-    val youtubeAutoplayHint: String,
-    val youtubeClearSearchHistory: String,
-    val youtubeClearWatchHistory: String,
-    val youtubeClearFavorites: String,
-    val youtubeQueueStatus: String,
-    val youtubeCategoryMusic: String,
-    val youtubeCategorySport: String,
-    val youtubeCategoryGaming: String,
-    val youtubeCategoryNews: String,
-    val youtubeCategoryDocumentaries: String,
-    val youtubeCategoryKids: String,
-)
+class SmartVisionStrings {
+    var back: String = ""
+    var settings: String = ""
+    var home: String = ""
+    var liveTv: String = ""
+    var movies: String = ""
+    var series: String = ""
+    var youtube: String = ""
+    var media: String = ""
+    var generalPreferences: String = ""
+    var sync: String = ""
+    var updates: String = ""
+    var personalization: String = ""
+    var parentalControl: String = ""
+    var localData: String = ""
+    var networkActivity: String = ""
+    var networkActivitySubtitle: String = ""
+    var networkActive: String = ""
+    var networkRecent: String = ""
+    var networkNoActivity: String = ""
+    var networkThroughput: String = ""
+    var networkErrors: String = ""
+    var networkProgress: String = ""
+    var networkData: String = ""
+    var networkDuration: String = ""
+    var networkSection: String = ""
+    var networkSource: String = ""
+    var networkItems: String = ""
+    var language: String = ""
+    var english: String = ""
+    var french: String = ""
+    var videoFormat: String = ""
+    var animations: String = ""
+    var enabled: String = ""
+    var reduced: String = ""
+    var automaticReconnect: String = ""
+    var disabled: String = ""
+    var automaticSync: String = ""
+    var launchOnStartup: String = ""
+    var backgroundSync: String = ""
+    var focusStyle: String = ""
+    var focusDefault: String = ""
+    var focusSoft: String = ""
+    var focusCompact: String = ""
+    var focusColor: String = ""
+    var focusWhite: String = ""
+    var focusCyanNeon: String = ""
+    var focusElectricBlue: String = ""
+    var focusEffect: String = ""
+    var focusFrame: String = ""
+    var focusNeonGlow: String = ""
+    var focusGoldSweep: String = ""
+    var focusBackground: String = ""
+    var focusBackgroundBlue: String = ""
+    var focusBackgroundGold: String = ""
+    var focusBackgroundWhite: String = ""
+    var currentFrequency: String = ""
+    var activeAccount: String = ""
+    var activeXtreamAccount: String = ""
+    var activeServer: String = ""
+    var notConfigured: String = ""
+    var none: String = ""
+    var installedVersion: String = ""
+    var lastUpdate: String = ""
+    var portal: String = ""
+    var checking: String = ""
+    var checkForUpdate: String = ""
+    var appUpToDate: String = ""
+    var bufferMode: String = ""
+    var localXtreamAccounts: String = ""
+    var localCredentialsInfo: String = ""
+    var clearLocalData: String = ""
+    var pinCode: String = ""
+    var hiddenKeywords: String = ""
+    var parentalHelp: String = ""
+    var lockedPremiumFeature: String = ""
+    var unlockParentalControl: String = ""
+    var createPin: String = ""
+    var changePin: String = ""
+    var enterPin: String = ""
+    var newPin: String = ""
+    var confirmPin: String = ""
+    var pinRequired: String = ""
+    var pinIncorrect: String = ""
+    var pinsDoNotMatch: String = ""
+    var apply: String = ""
+    var active: String = ""
+    var inactive: String = ""
+    var forgotPinByEmail: String = ""
+    var pinEmailUnavailable: String = ""
+    var connect: String = ""
+    var edit: String = ""
+    var delete: String = ""
+    var xtreamAccount: String = ""
+    var accountName: String = ""
+    var host: String = ""
+    var user: String = ""
+    var password: String = ""
+    var cancel: String = ""
+    var saveAndConnect: String = ""
+    var accountRequiredError: String = ""
+    var sync24h: String = ""
+    var sync48h: String = ""
+    var syncOnStartup: String = ""
+    var syncManual: String = ""
+    var syncNever: String = ""
+    var notifications: String = ""
+    var refresh: String = ""
+    var refreshing: String = ""
+    var noNotifications: String = ""
+    var notificationLoadError: String = ""
+    var updateAvailableTitle: String = ""
+    var updateAvailableMessage: String = ""
+    var updateDialogMessage: String = ""
+    var installUpdate: String = ""
+    var downloadInProgress: String = ""
+    var later: String = ""
+    var continueWatching: String = ""
+    var trending: String = ""
+    var trendingMovies: String = ""
+    var trendingSeries: String = ""
+    var viewAll: String = ""
+    var resumePlayback: String = ""
+    var connectionUnavailable: String = ""
+    var catalogDownloadInProgress: String = ""
+    var catalogLoadInProgress: String = ""
+    var catalogWorkFailed: String = ""
+    var liveTvSubtitle: String = ""
+    var moviesSubtitle: String = ""
+    var seriesSubtitle: String = ""
+    var watchNow: String = ""
+    var explore: String = ""
+    var homeHeroWelcomeTitle: String = ""
+    var homeHeroWelcomeSubtitle: String = ""
+    var homeHeroLearnMore: String = ""
+    var homeHeroLiveTitle: String = ""
+    var homeHeroLiveSubtitle: String = ""
+    var homeHeroViewOffer: String = ""
+    var homeHeroCatalogTitle: String = ""
+    var homeHeroCatalogSubtitle: String = ""
+    var homeHeroDiscover: String = ""
+    var heroOfferEmailAction: String = ""
+    var bestMovies: String = ""
+    var bestSeries: String = ""
+    var configureXtreamTitle: String = ""
+    var youtubePremiumTitle: String = ""
+    var youtubePremiumSubtitle: String = ""
+    var premiumPurchaseTitle: String = ""
+    var premiumPurchaseSubtitle: String = ""
+    var premiumFeatureLockedTitle: String = ""
+    var premiumFeatureLockedSubtitle: String = ""
+    var premiumFeatureExpiredSubtitle: String = ""
+    var recorderUnavailableForSource: String = ""
+    var recorderTitle: String = ""
+    var recorderSubtitle: String = ""
+    var recorderCurrentProgram: String = ""
+    var recorderManualDuration: String = ""
+    var recorderUntilProgramEnd: String = ""
+    var recorderDuration30: String = ""
+    var recorderDuration60: String = ""
+    var recorderDuration120: String = ""
+    var recorderStartRecording: String = ""
+    var recorderStarted: String = ""
+    var recorderAlreadyRunning: String = ""
+    var recorderStartFailed: String = ""
+    var recorderStartUnavailable: String = ""
+    var recorderEnginePending: String = ""
+    var recorderClose: String = ""
+    var mediaCenterTitle: String = ""
+    var mediaCenterSubtitle: String = ""
+    var mediaLibrary: String = ""
+    var mediaRecentFiles: String = ""
+    var mediaPreview: String = ""
+    var mediaAllFiles: String = ""
+    var mediaRecordings: String = ""
+    var mediaImports: String = ""
+    var mediaFolders: String = ""
+    var mediaTransfers: String = ""
+    var mediaEmptyTitle: String = ""
+    var mediaEmptySubtitle: String = ""
+    var mediaStorageReady: String = ""
+    var mediaMvpNotice: String = ""
+    var mediaNoSelection: String = ""
+    var mediaZeroFiles: String = ""
+    var mediaPlay: String = ""
+    var mediaRename: String = ""
+    var mediaMove: String = ""
+    var mediaPremiumStudio: String = ""
+    var mediaLocalVaultSubtitle: String = ""
+    var mediaQuickStats: String = ""
+    var mediaTotalFiles: String = ""
+    var mediaSmartStorage: String = ""
+    var mediaTransferHub: String = ""
+    var mediaSelectedAsset: String = ""
+    var mediaReadyToPlay: String = ""
+    var mediaDetails: String = ""
+    var mediaPhoneTransferTitle: String = ""
+    var mediaPhoneTransferReady: String = ""
+    var mediaPhoneTransferLocked: String = ""
+    var mediaPhoneTransferExpired: String = ""
+    var mediaPhoneTransferReceive: String = ""
+    var mediaPhoneTransferUpgrade: String = ""
+    var mediaImportPhone: String = ""
+    var mediaExportPhone: String = ""
+    var mediaImportPhoneTitle: String = ""
+    var mediaImportPhoneSubtitle: String = ""
+    var mediaExportPhoneTitle: String = ""
+    var mediaExportPhoneSubtitle: String = ""
+    var mediaExportPhoneSubtitleWithFile: String = ""
+    var mediaTransferSameWifi: String = ""
+    var mediaTransferUploadSuccess: String = ""
+    var mediaTransferInProgress: String = ""
+    var mediaStoragePath: String = ""
+    var mediaAvailableSpace: String = ""
+    var mediaFilesFound: String = ""
+    var mediaFoldersFound: String = ""
+    var mediaNoFilesInArea: String = ""
+    var mediaRootFolder: String = ""
+    var mediaFileSize: String = ""
+    var mediaUpdatedAt: String = ""
+    var mediaFolderLabel: String = ""
+    var mediaFileSource: String = ""
+    var mediaFileType: String = ""
+    var mediaTypeVideo: String = ""
+    var mediaTypePhoto: String = ""
+    var mediaTypeAudio: String = ""
+    var mediaTypeFile: String = ""
+    var mediaRenameTitle: String = ""
+    var mediaMoveTitle: String = ""
+    var mediaDeleteTitle: String = ""
+    var mediaDeleteSubtitle: String = ""
+    var mediaNewName: String = ""
+    var mediaChooseFolder: String = ""
+    var mediaRenameSuccess: String = ""
+    var mediaMoveSuccess: String = ""
+    var mediaDeleteSuccess: String = ""
+    var mediaOperationInProgress: String = ""
+    var mediaPlaybackUnavailable: String = ""
+    var mediaDisabledByAdmin: String = ""
+    var youtubeCategories: String = ""
+    var youtubeSuggestions: String = ""
+    var youtubeVideosLoaded: String = ""
+    var youtubeLoading: String = ""
+    var youtubeNoVideo: String = ""
+    var youtubeNoVideoSubtitle: String = ""
+    var youtubeSearchPlaceholder: String = ""
+    var youtubeLoadingMore: String = ""
+    var youtubeVideoUnavailable: String = ""
+    var youtubeCategoryHistory: String = ""
+    var youtubeCategoryFavorites: String = ""
+    var youtubeFavorite: String = ""
+    var youtubeSettings: String = ""
+    var youtubeAutoplay: String = ""
+    var youtubeAutoplayHint: String = ""
+    var youtubeClearSearchHistory: String = ""
+    var youtubeClearWatchHistory: String = ""
+    var youtubeClearFavorites: String = ""
+    var youtubeQueueStatus: String = ""
+    var youtubeCategoryMusic: String = ""
+    var youtubeCategorySport: String = ""
+    var youtubeCategoryGaming: String = ""
+    var youtubeCategoryNews: String = ""
+    var youtubeCategoryDocumentaries: String = ""
+    var youtubeCategoryKids: String = ""
+}
 
-private val englishStrings = SmartVisionStrings(
-    back = "Back",
-    settings = "Settings",
-    home = "Home",
-    liveTv = "Live TV",
-    movies = "Movies",
-    series = "Series",
-    youtube = "YouTube",
-    media = "Media",
-    generalPreferences = "General preferences",
-    sync = "Synchronization",
-    updates = "Updates",
-    personalization = "Personalization",
-    parentalControl = "Parental control",
-    localData = "Local data",
-    networkActivity = "Network Activity",
-    networkActivitySubtitle = "Background transfers, checks and catalog work",
-    networkActive = "Active",
-    networkRecent = "Recent",
-    networkNoActivity = "No network activity recorded yet.",
-    networkThroughput = "Throughput",
-    networkErrors = "Errors",
-    networkProgress = "Progress",
-    networkData = "Data",
-    networkDuration = "Duration",
-    networkSection = "Section",
-    networkSource = "Source",
-    networkItems = "Items",
-    language = "Language",
-    english = "English",
-    french = "French",
-    videoFormat = "Video format",
-    animations = "Animations",
-    enabled = "Enabled",
-    reduced = "Reduced",
-    automaticReconnect = "Automatic reconnect",
-    disabled = "Disabled",
-    automaticSync = "Automatic synchronization",
-    launchOnStartup = "Launch SmartVision at startup",
-    backgroundSync = "Background playlist sync",
-    focusStyle = "Focus style",
-    focusDefault = "Default",
-    focusSoft = "Soft",
-    focusCompact = "Compact",
-    focusColor = "Focus color",
-    focusWhite = "White",
-    focusCyanNeon = "Cyan neon",
-    focusElectricBlue = "Electric blue",
-    focusEffect = "Focus effect",
-    focusFrame = "Frame",
-    focusNeonGlow = "Frame + neon glow",
-    focusGoldSweep = "Animated gold reflection",
-    focusBackground = "Focus background",
-    focusBackgroundBlue = "Transparent blue",
-    focusBackgroundGold = "Transparent gold",
-    focusBackgroundWhite = "Transparent white",
-    currentFrequency = "Current frequency",
-    activeAccount = "Active account",
-    activeXtreamAccount = "Active Xtream account",
-    activeServer = "Active server",
-    notConfigured = "Not configured",
-    none = "None",
-    installedVersion = "Installed version",
-    lastUpdate = "Last update",
-    portal = "Portal",
-    checking = "Checking...",
-    checkForUpdate = "Check for update",
-    appUpToDate = "App is up to date.",
-    bufferMode = "Buffer mode",
-    localXtreamAccounts = "Local Xtream accounts",
-    localCredentialsInfo = "Xtream credentials are managed from Account info to keep app settings separate from customer data.",
-    clearLocalData = "Clear local data",
-    pinCode = "PIN code",
-    hiddenKeywords = "Hidden keywords",
-    parentalHelp = "Separate words with commas, semicolons or line breaks. Filtering applies to Live TV, Movies and Series titles, descriptions and categories.",
-    lockedPremiumFeature = "This feature is not available for the current licence.",
-    unlockParentalControl = "Unlock parental control",
-    createPin = "Create PIN",
-    changePin = "Change PIN",
-    enterPin = "Enter PIN",
-    newPin = "New PIN",
-    confirmPin = "Confirm PIN",
-    pinRequired = "Enter at least 4 digits.",
-    pinIncorrect = "Incorrect PIN.",
-    pinsDoNotMatch = "PIN codes do not match.",
-    apply = "Apply",
-    active = "Active",
-    inactive = "Inactive",
-    forgotPinByEmail = "Forgot PIN by email",
-    pinEmailUnavailable = "Email recovery requires a linked customer email and will be completed from the backend.",
-    connect = "Connect",
-    edit = "Edit",
-    delete = "Delete",
-    xtreamAccount = "Xtream account",
-    accountName = "Account name",
-    host = "Host",
-    user = "User",
-    password = "Password",
-    cancel = "Cancel",
-    saveAndConnect = "Save and connect",
-    accountRequiredError = "Host, user and password are required.",
-    sync24h = "24h",
-    sync48h = "48h",
-    syncOnStartup = "On every startup",
-    syncManual = "Manual",
-    syncNever = "Never",
-    notifications = "Notifications",
-    refresh = "Refresh",
-    refreshing = "Refreshing...",
-    noNotifications = "No notifications for this device.",
-    notificationLoadError = "Unable to load notifications.",
-    updateAvailableTitle = "Update available",
-    updateAvailableMessage = "SmartVision %s is available. Open this notification to install the update.",
-    updateDialogMessage = "SmartVision %s is available. Install this version to get the latest fixes.",
-    installUpdate = "Update",
-    downloadInProgress = "Downloading...",
-    later = "Later",
-    continueWatching = "Continue watching",
-    trending = "Trending",
-    trendingMovies = "Trending movies",
-    trendingSeries = "Trending series",
-    viewAll = "View all",
-    resumePlayback = "Resume playback",
-    connectionUnavailable = "Connection unavailable",
-    catalogDownloadInProgress = "download in progress...",
-    catalogLoadInProgress = "catalog loading...",
-    catalogWorkFailed = "Catalog update failed",
-    liveTvSubtitle = "Watch your live channels.",
-    moviesSubtitle = "Browse your movie catalog.",
-    seriesSubtitle = "Browse your series catalog.",
-    watchNow = "Watch now",
-    explore = "Explore",
-    homeHeroWelcomeTitle = "Welcome to SmartVision",
-    homeHeroWelcomeSubtitle = "A smooth premium IPTV player experience built for Android TV.",
-    homeHeroLearnMore = "Learn more",
-    homeHeroLiveTitle = "Instant Live TV",
-    homeHeroLiveSubtitle = "Watch your live channels with simple remote-friendly navigation.",
-    homeHeroViewOffer = "View offer",
-    homeHeroCatalogTitle = "Movies and series",
-    homeHeroCatalogSubtitle = "Explore your Xtream catalogs with posters, details and resume playback.",
-    homeHeroDiscover = "Discover",
-    heroOfferEmailAction = "Send offer by email",
-    bestMovies = "Best movies",
-    bestSeries = "Best series",
-    configureXtreamTitle = "Configure Xtream credentials",
-    youtubePremiumTitle = "YouTube Premium",
-    youtubePremiumSubtitle = "This feature requires Premium or an active trial.",
-    premiumPurchaseTitle = "Upgrade to SmartVision Premium",
-    premiumPurchaseSubtitle = "Scan this QR code to buy a licence. Premium removes ads and keeps access active for the selected duration.",
-    premiumFeatureLockedTitle = "Premium feature",
-    premiumFeatureLockedSubtitle = "This feature requires Premium or an active trial.",
-    premiumFeatureExpiredSubtitle = "Your local files are preserved, but this feature requires an active Premium licence or trial.",
-    recorderUnavailableForSource = "Recording is not available for this source.",
-    recorderTitle = "Recorder",
-    recorderSubtitle = "Choose an EPG or manual duration. The recording will be saved in Media > Recordings.",
-    recorderCurrentProgram = "Current program",
-    recorderManualDuration = "Manual duration",
-    recorderUntilProgramEnd = "Until program end",
-    recorderDuration30 = "30 minutes",
-    recorderDuration60 = "60 minutes",
-    recorderDuration120 = "120 minutes",
-    recorderStartRecording = "Start recording",
-    recorderStarted = "Recording started.",
-    recorderAlreadyRunning = "A recording is already running.",
-    recorderStartFailed = "Unable to start recording.",
-    recorderStartUnavailable = "Start recording is not enabled yet.",
-    recorderEnginePending = "Recorder service pending. No recording was started.",
-    recorderClose = "Close",
-    mediaCenterTitle = "Media Center",
-    mediaCenterSubtitle = "Your local recordings, imports and transfers will be grouped here.",
-    mediaLibrary = "Library",
-    mediaRecentFiles = "Recent media",
-    mediaPreview = "Preview",
-    mediaAllFiles = "All files",
-    mediaRecordings = "Recordings",
-    mediaImports = "Imports",
-    mediaFolders = "Folders",
-    mediaTransfers = "Transfers",
-    mediaEmptyTitle = "No local media yet",
-    mediaEmptySubtitle = "Recordings and imported files will appear here after the storage lot.",
-    mediaStorageReady = "Storage area ready",
-    mediaMvpNotice = "Local storage is connected. Use refresh to rescan SmartVisionMedia.",
-    mediaNoSelection = "Select a media area to preview its future content.",
-    mediaZeroFiles = "0 files",
-    mediaPlay = "Play",
-    mediaRename = "Rename",
-    mediaMove = "Move",
-    mediaImportPhone = "Import phone",
-    mediaExportPhone = "Export phone",
-    mediaImportPhoneTitle = "Import from phone",
-    mediaImportPhoneSubtitle = "Scan this QR code with a phone on the same Wi-Fi network, then choose a file to send to the TV.",
-    mediaExportPhoneTitle = "Export to phone",
-    mediaExportPhoneSubtitle = "Scan this QR code with a phone on the same Wi-Fi network to download the selected file.",
-    mediaExportPhoneSubtitleWithFile = "Scan this QR code with a phone on the same Wi-Fi network to download %s.",
-    mediaTransferSameWifi = "The phone and TV must stay on the same local network while this window is open.",
-    mediaTransferUploadSuccess = "File received from phone.",
-    mediaTransferInProgress = "Preparing phone transfer...",
-    mediaStoragePath = "Storage path",
-    mediaAvailableSpace = "Available space",
-    mediaFilesFound = "%d files",
-    mediaFoldersFound = "%d folders",
-    mediaNoFilesInArea = "No file in this area yet.",
-    mediaRootFolder = "Root folder",
-    mediaFileSize = "Size",
-    mediaUpdatedAt = "Updated",
-    mediaFolderLabel = "Folder",
-    mediaFileSource = "Source",
-    mediaFileType = "Type",
-    mediaTypeVideo = "Video",
-    mediaTypePhoto = "Photo",
-    mediaTypeAudio = "Audio",
-    mediaTypeFile = "File",
-    mediaRenameTitle = "Rename file",
-    mediaMoveTitle = "Move file",
-    mediaDeleteTitle = "Delete file",
-    mediaDeleteSubtitle = "This removes the local file from SmartVision storage.",
-    mediaNewName = "New file name",
-    mediaChooseFolder = "Choose destination",
-    mediaRenameSuccess = "File renamed.",
-    mediaMoveSuccess = "File moved.",
-    mediaDeleteSuccess = "File deleted.",
-    mediaOperationInProgress = "Operation in progress...",
-    mediaPlaybackUnavailable = "This local file cannot be opened by the Media player yet.",
-    mediaDisabledByAdmin = "Media Center is disabled from Admin > Features.",
-    youtubeCategories = "Categories",
-    youtubeSuggestions = "Suggestions",
-    youtubeVideosLoaded = "%d videos loaded",
-    youtubeLoading = "Loading YouTube",
-    youtubeNoVideo = "No video",
-    youtubeNoVideoSubtitle = "Select a category or start a search.",
-    youtubeSearchPlaceholder = "Search on YouTube",
-    youtubeLoadingMore = "Loading...",
-    youtubeVideoUnavailable = "YouTube video unavailable",
-    youtubeCategoryHistory = "History",
-    youtubeCategoryFavorites = "Favorites",
-    youtubeFavorite = "Favorite",
-    youtubeSettings = "YouTube settings",
-    youtubeAutoplay = "Autoplay",
-    youtubeAutoplayHint = "Keeps the next-video queue ready for continuous playback.",
-    youtubeClearSearchHistory = "Clear search history",
-    youtubeClearWatchHistory = "Clear watch history",
-    youtubeClearFavorites = "Clear YouTube favorites",
-    youtubeQueueStatus = "%d queued | %d watched | %d favorites | %d searches",
-    youtubeCategoryMusic = "Music",
-    youtubeCategorySport = "Sport",
-    youtubeCategoryGaming = "Gaming",
-    youtubeCategoryNews = "News",
-    youtubeCategoryDocumentaries = "Documentaries",
-    youtubeCategoryKids = "Kids",
-)
+private val englishStrings = SmartVisionStrings().apply {
+    back = "Back"
+    settings = "Settings"
+    home = "Home"
+    liveTv = "Live TV"
+    movies = "Movies"
+    series = "Series"
+    youtube = "YouTube"
+    media = "Media"
+    generalPreferences = "General preferences"
+    sync = "Synchronization"
+    updates = "Updates"
+    personalization = "Personalization"
+    parentalControl = "Parental control"
+    localData = "Local data"
+    networkActivity = "Network Activity"
+    networkActivitySubtitle = "Background transfers, checks and catalog work"
+    networkActive = "Active"
+    networkRecent = "Recent"
+    networkNoActivity = "No network activity recorded yet."
+    networkThroughput = "Throughput"
+    networkErrors = "Errors"
+    networkProgress = "Progress"
+    networkData = "Data"
+    networkDuration = "Duration"
+    networkSection = "Section"
+    networkSource = "Source"
+    networkItems = "Items"
+    language = "Language"
+    english = "English"
+    french = "French"
+    videoFormat = "Video format"
+    animations = "Animations"
+    enabled = "Enabled"
+    reduced = "Reduced"
+    automaticReconnect = "Automatic reconnect"
+    disabled = "Disabled"
+    automaticSync = "Automatic synchronization"
+    launchOnStartup = "Launch SmartVision at startup"
+    backgroundSync = "Background playlist sync"
+    focusStyle = "Focus style"
+    focusDefault = "Default"
+    focusSoft = "Soft"
+    focusCompact = "Compact"
+    focusColor = "Focus color"
+    focusWhite = "White"
+    focusCyanNeon = "Cyan neon"
+    focusElectricBlue = "Electric blue"
+    focusEffect = "Focus effect"
+    focusFrame = "Frame"
+    focusNeonGlow = "Frame + neon glow"
+    focusGoldSweep = "Animated gold reflection"
+    focusBackground = "Focus background"
+    focusBackgroundBlue = "Transparent blue"
+    focusBackgroundGold = "Transparent gold"
+    focusBackgroundWhite = "Transparent white"
+    currentFrequency = "Current frequency"
+    activeAccount = "Active account"
+    activeXtreamAccount = "Active Xtream account"
+    activeServer = "Active server"
+    notConfigured = "Not configured"
+    none = "None"
+    installedVersion = "Installed version"
+    lastUpdate = "Last update"
+    portal = "Portal"
+    checking = "Checking..."
+    checkForUpdate = "Check for update"
+    appUpToDate = "App is up to date."
+    bufferMode = "Buffer mode"
+    localXtreamAccounts = "Local Xtream accounts"
+    localCredentialsInfo = "Xtream credentials are managed from Account info to keep app settings separate from customer data."
+    clearLocalData = "Clear local data"
+    pinCode = "PIN code"
+    hiddenKeywords = "Hidden keywords"
+    parentalHelp = "Separate words with commas, semicolons or line breaks. Filtering applies to Live TV, Movies and Series titles, descriptions and categories."
+    lockedPremiumFeature = "This feature is not available for the current licence."
+    unlockParentalControl = "Unlock parental control"
+    createPin = "Create PIN"
+    changePin = "Change PIN"
+    enterPin = "Enter PIN"
+    newPin = "New PIN"
+    confirmPin = "Confirm PIN"
+    pinRequired = "Enter at least 4 digits."
+    pinIncorrect = "Incorrect PIN."
+    pinsDoNotMatch = "PIN codes do not match."
+    apply = "Apply"
+    active = "Active"
+    inactive = "Inactive"
+    forgotPinByEmail = "Forgot PIN by email"
+    pinEmailUnavailable = "Email recovery requires a linked customer email and will be completed from the backend."
+    connect = "Connect"
+    edit = "Edit"
+    delete = "Delete"
+    xtreamAccount = "Xtream account"
+    accountName = "Account name"
+    host = "Host"
+    user = "User"
+    password = "Password"
+    cancel = "Cancel"
+    saveAndConnect = "Save and connect"
+    accountRequiredError = "Host, user and password are required."
+    sync24h = "24h"
+    sync48h = "48h"
+    syncOnStartup = "On every startup"
+    syncManual = "Manual"
+    syncNever = "Never"
+    notifications = "Notifications"
+    refresh = "Refresh"
+    refreshing = "Refreshing..."
+    noNotifications = "No notifications for this device."
+    notificationLoadError = "Unable to load notifications."
+    updateAvailableTitle = "Update available"
+    updateAvailableMessage = "SmartVision %s is available. Open this notification to install the update."
+    updateDialogMessage = "SmartVision %s is available. Install this version to get the latest fixes."
+    installUpdate = "Update"
+    downloadInProgress = "Downloading..."
+    later = "Later"
+    continueWatching = "Continue watching"
+    trending = "Trending"
+    trendingMovies = "Trending movies"
+    trendingSeries = "Trending series"
+    viewAll = "View all"
+    resumePlayback = "Resume playback"
+    connectionUnavailable = "Connection unavailable"
+    catalogDownloadInProgress = "download in progress..."
+    catalogLoadInProgress = "catalog loading..."
+    catalogWorkFailed = "Catalog update failed"
+    liveTvSubtitle = "Watch your live channels."
+    moviesSubtitle = "Browse your movie catalog."
+    seriesSubtitle = "Browse your series catalog."
+    watchNow = "Watch now"
+    explore = "Explore"
+    homeHeroWelcomeTitle = "Welcome to SmartVision"
+    homeHeroWelcomeSubtitle = "A smooth premium IPTV player experience built for Android TV."
+    homeHeroLearnMore = "Learn more"
+    homeHeroLiveTitle = "Instant Live TV"
+    homeHeroLiveSubtitle = "Watch your live channels with simple remote-friendly navigation."
+    homeHeroViewOffer = "View offer"
+    homeHeroCatalogTitle = "Movies and series"
+    homeHeroCatalogSubtitle = "Explore your Xtream catalogs with posters, details and resume playback."
+    homeHeroDiscover = "Discover"
+    heroOfferEmailAction = "Send offer by email"
+    bestMovies = "Best movies"
+    bestSeries = "Best series"
+    configureXtreamTitle = "Configure Xtream credentials"
+    youtubePremiumTitle = "YouTube Premium"
+    youtubePremiumSubtitle = "This feature requires Premium or an active trial."
+    premiumPurchaseTitle = "Upgrade to SmartVision Premium"
+    premiumPurchaseSubtitle = "Scan this QR code to buy a licence. Premium removes ads and keeps access active for the selected duration."
+    premiumFeatureLockedTitle = "Premium feature"
+    premiumFeatureLockedSubtitle = "This feature requires Premium or an active trial."
+    premiumFeatureExpiredSubtitle = "Your local files are preserved, but this feature requires an active Premium licence or trial."
+    recorderUnavailableForSource = "Recording is not available for this source."
+    recorderTitle = "Recorder"
+    recorderSubtitle = "Choose an EPG or manual duration. The recording will be saved in Media > Recordings."
+    recorderCurrentProgram = "Current program"
+    recorderManualDuration = "Manual duration"
+    recorderUntilProgramEnd = "Until program end"
+    recorderDuration30 = "30 minutes"
+    recorderDuration60 = "60 minutes"
+    recorderDuration120 = "120 minutes"
+    recorderStartRecording = "Start recording"
+    recorderStarted = "Recording started."
+    recorderAlreadyRunning = "A recording is already running."
+    recorderStartFailed = "Unable to start recording."
+    recorderStartUnavailable = "Start recording is not enabled yet."
+    recorderEnginePending = "Recorder service pending. No recording was started."
+    recorderClose = "Close"
+    mediaCenterTitle = "Media Center"
+    mediaCenterSubtitle = "Your local recordings, imports and transfers will be grouped here."
+    mediaLibrary = "Library"
+    mediaRecentFiles = "Recent media"
+    mediaPreview = "Preview"
+    mediaAllFiles = "All files"
+    mediaRecordings = "Recordings"
+    mediaImports = "Imports"
+    mediaFolders = "Folders"
+    mediaTransfers = "Transfers"
+    mediaEmptyTitle = "No local media yet"
+    mediaEmptySubtitle = "Recordings and imported files will appear here after the storage lot."
+    mediaStorageReady = "Storage area ready"
+    mediaMvpNotice = "Local storage is connected. Use refresh to rescan SmartVisionMedia."
+    mediaNoSelection = "Select a media area to preview its future content."
+    mediaZeroFiles = "0 files"
+    mediaPlay = "Play"
+    mediaRename = "Rename"
+    mediaMove = "Move"
+    mediaPremiumStudio = "Premium media studio"
+    mediaLocalVaultSubtitle = "Recordings, local files and phone transfers in one TV workspace."
+    mediaQuickStats = "Library snapshot"
+    mediaTotalFiles = "Total files"
+    mediaSmartStorage = "Smart storage"
+    mediaTransferHub = "Transfer hub"
+    mediaSelectedAsset = "Selected asset"
+    mediaReadyToPlay = "Ready to play locally"
+    mediaDetails = "Details"
+    mediaPhoneTransferTitle = "Phone -> TV"
+    mediaPhoneTransferReady = "Open a QR code to send one file from a phone on the same Wi-Fi."
+    mediaPhoneTransferLocked = "Premium or an active trial is required. Press OK to see access options."
+    mediaPhoneTransferExpired = "Your files are preserved, but phone transfer needs an active licence or trial."
+    mediaPhoneTransferReceive = "Receive file"
+    mediaPhoneTransferUpgrade = "Unlock"
+    mediaImportPhone = "Import phone"
+    mediaExportPhone = "Export phone"
+    mediaImportPhoneTitle = "Import from phone"
+    mediaImportPhoneSubtitle = "Scan this QR code with a phone on the same Wi-Fi network, then choose a file to send to the TV."
+    mediaExportPhoneTitle = "Export to phone"
+    mediaExportPhoneSubtitle = "Scan this QR code with a phone on the same Wi-Fi network to download the selected file."
+    mediaExportPhoneSubtitleWithFile = "Scan this QR code with a phone on the same Wi-Fi network to download %s."
+    mediaTransferSameWifi = "The phone and TV must stay on the same local network while this window is open."
+    mediaTransferUploadSuccess = "File received from phone."
+    mediaTransferInProgress = "Preparing phone transfer..."
+    mediaStoragePath = "Storage path"
+    mediaAvailableSpace = "Available space"
+    mediaFilesFound = "%d files"
+    mediaFoldersFound = "%d folders"
+    mediaNoFilesInArea = "No file in this area yet."
+    mediaRootFolder = "Root folder"
+    mediaFileSize = "Size"
+    mediaUpdatedAt = "Updated"
+    mediaFolderLabel = "Folder"
+    mediaFileSource = "Source"
+    mediaFileType = "Type"
+    mediaTypeVideo = "Video"
+    mediaTypePhoto = "Photo"
+    mediaTypeAudio = "Audio"
+    mediaTypeFile = "File"
+    mediaRenameTitle = "Rename file"
+    mediaMoveTitle = "Move file"
+    mediaDeleteTitle = "Delete file"
+    mediaDeleteSubtitle = "This removes the local file from SmartVision storage."
+    mediaNewName = "New file name"
+    mediaChooseFolder = "Choose destination"
+    mediaRenameSuccess = "File renamed."
+    mediaMoveSuccess = "File moved."
+    mediaDeleteSuccess = "File deleted."
+    mediaOperationInProgress = "Operation in progress..."
+    mediaPlaybackUnavailable = "This local file cannot be opened by the Media player yet."
+    mediaDisabledByAdmin = "Media Center is disabled from Admin > Features."
+    youtubeCategories = "Categories"
+    youtubeSuggestions = "Suggestions"
+    youtubeVideosLoaded = "%d videos loaded"
+    youtubeLoading = "Loading YouTube"
+    youtubeNoVideo = "No video"
+    youtubeNoVideoSubtitle = "Select a category or start a search."
+    youtubeSearchPlaceholder = "Search on YouTube"
+    youtubeLoadingMore = "Loading..."
+    youtubeVideoUnavailable = "YouTube video unavailable"
+    youtubeCategoryHistory = "History"
+    youtubeCategoryFavorites = "Favorites"
+    youtubeFavorite = "Favorite"
+    youtubeSettings = "YouTube settings"
+    youtubeAutoplay = "Autoplay"
+    youtubeAutoplayHint = "Keeps the next-video queue ready for continuous playback."
+    youtubeClearSearchHistory = "Clear search history"
+    youtubeClearWatchHistory = "Clear watch history"
+    youtubeClearFavorites = "Clear YouTube favorites"
+    youtubeQueueStatus = "%d queued | %d watched | %d favorites | %d searches"
+    youtubeCategoryMusic = "Music"
+    youtubeCategorySport = "Sport"
+    youtubeCategoryGaming = "Gaming"
+    youtubeCategoryNews = "News"
+    youtubeCategoryDocumentaries = "Documentaries"
+    youtubeCategoryKids = "Kids"
+}
 
-private val frenchStrings = SmartVisionStrings(
-    back = "Retour",
-    settings = "Parametres",
-    home = "Accueil",
-    liveTv = "Live TV",
-    movies = "Films",
-    series = "Series",
-    youtube = "YouTube",
-    media = "Media",
-    generalPreferences = "Preferences generales",
-    sync = "Synchronisation",
-    updates = "Mises a jour",
-    personalization = "Personnalisation",
-    parentalControl = "Controle parental",
-    localData = "Donnees locales",
-    networkActivity = "Activite reseau",
-    networkActivitySubtitle = "Transferts, verifications et travaux catalogue en arriere-plan",
-    networkActive = "Actifs",
-    networkRecent = "Recents",
-    networkNoActivity = "Aucune activite reseau enregistree pour le moment.",
-    networkThroughput = "Debit",
-    networkErrors = "Erreurs",
-    networkProgress = "Avancement",
-    networkData = "Donnees",
-    networkDuration = "Duree",
-    networkSection = "Section",
-    networkSource = "Source",
-    networkItems = "Elements",
-    language = "Langue",
-    english = "Anglais",
-    french = "Francais",
-    videoFormat = "Format video",
-    animations = "Animations",
-    enabled = "Active",
-    reduced = "Reduites",
-    automaticReconnect = "Reconnexion automatique",
-    disabled = "Desactive",
-    automaticSync = "Synchronisation automatique",
-    launchOnStartup = "Lancer SmartVision au demarrage",
-    backgroundSync = "Sync playlist en arriere-plan",
-    focusStyle = "Style du focus",
-    focusDefault = "Standard",
-    focusSoft = "Doux",
-    focusCompact = "Compact",
-    focusColor = "Couleur du focus",
-    focusWhite = "Blanc",
-    focusCyanNeon = "Cyan neon",
-    focusElectricBlue = "Bleu electrique",
-    focusEffect = "Effet du focus",
-    focusFrame = "Cadre",
-    focusNeonGlow = "Cadre + glow neon",
-    focusGoldSweep = "Reflet gold anime",
-    focusBackground = "Fond du focus",
-    focusBackgroundBlue = "Bleu transparent",
-    focusBackgroundGold = "Dore transparent",
-    focusBackgroundWhite = "Blanc transparent",
-    currentFrequency = "Frequence actuelle",
-    activeAccount = "Compte actif",
-    activeXtreamAccount = "Compte Xtream actif",
-    activeServer = "Serveur actif",
-    notConfigured = "Non configure",
-    none = "Aucun",
-    installedVersion = "Version installee",
-    lastUpdate = "Derniere mise a jour",
-    portal = "Portail",
-    checking = "Recherche...",
-    checkForUpdate = "Chercher une mise a jour",
-    appUpToDate = "Application a jour.",
-    bufferMode = "Mode buffer",
-    localXtreamAccounts = "Comptes Xtream locaux",
-    localCredentialsInfo = "Les identifiants Xtream se gerent depuis Info compte pour separer les reglages de l'application et les donnees client.",
-    clearLocalData = "Vider les donnees locales",
-    pinCode = "Code PIN",
-    hiddenKeywords = "Mots cles masques",
-    parentalHelp = "Separez les mots par virgule, point-virgule ou retour a la ligne. Le filtrage s applique aux titres, descriptions et categories Live, Films et Series.",
-    lockedPremiumFeature = "Cette fonctionnalite n est pas disponible avec la licence actuelle.",
-    unlockParentalControl = "Deverrouiller le controle parental",
-    createPin = "Creer le PIN",
-    changePin = "Changer le PIN",
-    enterPin = "Saisir le PIN",
-    newPin = "Nouveau PIN",
-    confirmPin = "Confirmer le PIN",
-    pinRequired = "Saisissez au moins 4 chiffres.",
-    pinIncorrect = "Code PIN incorrect.",
-    pinsDoNotMatch = "Les codes PIN ne correspondent pas.",
-    apply = "Appliquer",
-    active = "Actif",
-    inactive = "Inactif",
-    forgotPinByEmail = "PIN oublie par email",
-    pinEmailUnavailable = "La recuperation email necessite un email client lie et sera finalisee cote backend.",
-    connect = "Connecter",
-    edit = "Modifier",
-    delete = "Supprimer",
-    xtreamAccount = "Compte Xtream",
-    accountName = "Nom du compte",
-    host = "Hote",
-    user = "Utilisateur",
-    password = "Mot de passe",
-    cancel = "Annuler",
-    saveAndConnect = "Enregistrer et connecter",
-    accountRequiredError = "Hote, utilisateur et mot de passe sont obligatoires.",
-    sync24h = "24h",
-    sync48h = "48h",
-    syncOnStartup = "A chaque demarrage",
-    syncManual = "Manuelle",
-    syncNever = "Jamais",
-    notifications = "Notifications",
-    refresh = "Actualiser",
-    refreshing = "Actualisation...",
-    noNotifications = "Aucune notification pour cet appareil.",
-    notificationLoadError = "Impossible de charger les notifications.",
-    updateAvailableTitle = "Mise a jour disponible",
-    updateAvailableMessage = "SmartVision %s est disponible. Ouvrez cette notification pour installer la mise a jour.",
-    updateDialogMessage = "SmartVision %s est disponible. Installez cette version pour profiter des derniers correctifs.",
-    installUpdate = "Mettre a jour",
-    downloadInProgress = "Telechargement...",
-    later = "Plus tard",
-    continueWatching = "Reprendre la lecture",
-    trending = "Tendances",
-    trendingMovies = "Tendances films",
-    trendingSeries = "Tendances series",
-    viewAll = "Voir tout",
-    resumePlayback = "Reprendre la lecture",
-    connectionUnavailable = "Connexion indisponible",
-    catalogDownloadInProgress = "telechargement en cours...",
-    catalogLoadInProgress = "chargement catalogue...",
-    catalogWorkFailed = "Echec de mise a jour catalogue",
-    liveTvSubtitle = "Regardez vos chaines en direct.",
-    moviesSubtitle = "Parcourez votre catalogue de films.",
-    seriesSubtitle = "Parcourez votre catalogue de series.",
-    watchNow = "Voir maintenant",
-    explore = "Explorer",
-    homeHeroWelcomeTitle = "Bienvenue sur SmartVision",
-    homeHeroWelcomeSubtitle = "Une experience IPTV premium fluide concue pour Android TV.",
-    homeHeroLearnMore = "En savoir plus",
-    homeHeroLiveTitle = "Live TV instantanee",
-    homeHeroLiveSubtitle = "Regardez vos chaines avec une navigation simple a la telecommande.",
-    homeHeroViewOffer = "Voir l'offre",
-    homeHeroCatalogTitle = "Films et series",
-    homeHeroCatalogSubtitle = "Explorez vos catalogues Xtream avec posters, details et reprise de lecture.",
-    homeHeroDiscover = "Decouvrir",
-    heroOfferEmailAction = "Recevoir l'offre par e-mail",
-    bestMovies = "Meilleurs films",
-    bestSeries = "Meilleures series",
-    configureXtreamTitle = "Configurer les identifiants Xtream",
-    youtubePremiumTitle = "YouTube Premium",
-    youtubePremiumSubtitle = "Cette fonctionnalite necessite Premium ou un essai actif.",
-    premiumPurchaseTitle = "Passer a SmartVision Premium",
-    premiumPurchaseSubtitle = "Scannez ce QR code pour acheter une licence. Premium supprime les publicites et conserve l'acces pendant la duree choisie.",
-    premiumFeatureLockedTitle = "Fonctionnalite Premium",
-    premiumFeatureLockedSubtitle = "Cette fonctionnalite est reservee aux utilisateurs Premium ou en essai actif.",
-    premiumFeatureExpiredSubtitle = "Vos fichiers locaux sont conserves, mais cette fonctionnalite necessite une licence Premium ou un essai actif.",
-    recorderUnavailableForSource = "L'enregistrement n'est pas disponible pour cette source.",
-    recorderTitle = "Recorder",
-    recorderSubtitle = "Choisissez une duree EPG ou manuelle. L'enregistrement sera ajoute dans Media > Enregistrements.",
-    recorderCurrentProgram = "Programme en cours",
-    recorderManualDuration = "Duree manuelle",
-    recorderUntilProgramEnd = "Jusqu'a la fin du programme",
-    recorderDuration30 = "30 minutes",
-    recorderDuration60 = "60 minutes",
-    recorderDuration120 = "120 minutes",
-    recorderStartRecording = "Demarrer l'enregistrement",
-    recorderStarted = "Enregistrement demarre.",
-    recorderAlreadyRunning = "Un enregistrement est deja en cours.",
-    recorderStartFailed = "Impossible de demarrer l'enregistrement.",
-    recorderStartUnavailable = "Le demarrage de l'enregistrement n'est pas encore active.",
-    recorderEnginePending = "Service Recorder en attente. Aucun enregistrement n'a ete lance.",
-    recorderClose = "Fermer",
-    mediaCenterTitle = "Media Center",
-    mediaCenterSubtitle = "Vos enregistrements, imports et transferts locaux seront regroupes ici.",
-    mediaLibrary = "Bibliotheque",
-    mediaRecentFiles = "Medias recents",
-    mediaPreview = "Apercu",
-    mediaAllFiles = "Tous les fichiers",
-    mediaRecordings = "Enregistrements",
-    mediaImports = "Imports",
-    mediaFolders = "Dossiers",
-    mediaTransfers = "Transferts",
-    mediaEmptyTitle = "Aucun media local pour le moment",
-    mediaEmptySubtitle = "Les enregistrements et fichiers importes apparaitront ici apres le lot stockage.",
-    mediaStorageReady = "Zone de stockage prete",
-    mediaMvpNotice = "Stockage local connecte. Utilisez Actualiser pour rescanner SmartVisionMedia.",
-    mediaNoSelection = "Selectionnez une zone media pour previsualiser son futur contenu.",
-    mediaZeroFiles = "0 fichier",
-    mediaPlay = "Lire",
-    mediaRename = "Renommer",
-    mediaMove = "Deplacer",
-    mediaImportPhone = "Importer tel.",
-    mediaExportPhone = "Exporter tel.",
-    mediaImportPhoneTitle = "Importer depuis le telephone",
-    mediaImportPhoneSubtitle = "Scannez ce QR code avec un telephone sur le meme Wi-Fi, puis choisissez un fichier a envoyer vers la TV.",
-    mediaExportPhoneTitle = "Exporter vers le telephone",
-    mediaExportPhoneSubtitle = "Scannez ce QR code avec un telephone sur le meme Wi-Fi pour telecharger le fichier selectionne.",
-    mediaExportPhoneSubtitleWithFile = "Scannez ce QR code avec un telephone sur le meme Wi-Fi pour telecharger %s.",
-    mediaTransferSameWifi = "Le telephone et la TV doivent rester sur le meme reseau local tant que cette fenetre est ouverte.",
-    mediaTransferUploadSuccess = "Fichier recu depuis le telephone.",
-    mediaTransferInProgress = "Preparation du transfert telephone...",
-    mediaStoragePath = "Chemin de stockage",
-    mediaAvailableSpace = "Espace disponible",
-    mediaFilesFound = "%d fichiers",
-    mediaFoldersFound = "%d dossiers",
-    mediaNoFilesInArea = "Aucun fichier dans cette zone pour le moment.",
-    mediaRootFolder = "Dossier racine",
-    mediaFileSize = "Taille",
-    mediaUpdatedAt = "Mis a jour",
-    mediaFolderLabel = "Dossier",
-    mediaFileSource = "Source",
-    mediaFileType = "Type",
-    mediaTypeVideo = "Video",
-    mediaTypePhoto = "Photo",
-    mediaTypeAudio = "Audio",
-    mediaTypeFile = "Fichier",
-    mediaRenameTitle = "Renommer le fichier",
-    mediaMoveTitle = "Deplacer le fichier",
-    mediaDeleteTitle = "Supprimer le fichier",
-    mediaDeleteSubtitle = "Cette action supprime le fichier local du stockage SmartVision.",
-    mediaNewName = "Nouveau nom du fichier",
-    mediaChooseFolder = "Choisir la destination",
-    mediaRenameSuccess = "Fichier renomme.",
-    mediaMoveSuccess = "Fichier deplace.",
-    mediaDeleteSuccess = "Fichier supprime.",
-    mediaOperationInProgress = "Operation en cours...",
-    mediaPlaybackUnavailable = "Ce fichier local ne peut pas encore etre ouvert par le lecteur Media.",
-    mediaDisabledByAdmin = "Media Center est desactive depuis Admin > Fonctionnalites.",
-    youtubeCategories = "Categories",
-    youtubeSuggestions = "Suggestions",
-    youtubeVideosLoaded = "%d videos chargees",
-    youtubeLoading = "Chargement YouTube",
-    youtubeNoVideo = "Aucune video",
-    youtubeNoVideoSubtitle = "Selectionnez une categorie ou lancez une recherche.",
-    youtubeSearchPlaceholder = "Rechercher sur YouTube",
-    youtubeLoadingMore = "Chargement...",
-    youtubeVideoUnavailable = "Video YouTube indisponible",
-    youtubeCategoryHistory = "Historique",
-    youtubeCategoryFavorites = "Favoris",
-    youtubeFavorite = "Favori",
-    youtubeSettings = "Parametres YouTube",
-    youtubeAutoplay = "Lecture auto",
-    youtubeAutoplayHint = "Garde la file de videos suivante prete pour une lecture continue.",
-    youtubeClearSearchHistory = "Supprimer l'historique de recherche",
-    youtubeClearWatchHistory = "Supprimer l'historique de visionnage",
-    youtubeClearFavorites = "Supprimer les favoris YouTube",
-    youtubeQueueStatus = "%d en file | %d vues | %d favoris | %d recherches",
-    youtubeCategoryMusic = "Musique",
-    youtubeCategorySport = "Sport",
-    youtubeCategoryGaming = "Gaming",
-    youtubeCategoryNews = "Actualites",
-    youtubeCategoryDocumentaries = "Documentaires",
-    youtubeCategoryKids = "Enfants",
-)
+private val frenchStrings = SmartVisionStrings().apply {
+    back = "Retour"
+    settings = "Parametres"
+    home = "Accueil"
+    liveTv = "Live TV"
+    movies = "Films"
+    series = "Series"
+    youtube = "YouTube"
+    media = "Media"
+    generalPreferences = "Preferences generales"
+    sync = "Synchronisation"
+    updates = "Mises a jour"
+    personalization = "Personnalisation"
+    parentalControl = "Controle parental"
+    localData = "Donnees locales"
+    networkActivity = "Activite reseau"
+    networkActivitySubtitle = "Transferts, verifications et travaux catalogue en arriere-plan"
+    networkActive = "Actifs"
+    networkRecent = "Recents"
+    networkNoActivity = "Aucune activite reseau enregistree pour le moment."
+    networkThroughput = "Debit"
+    networkErrors = "Erreurs"
+    networkProgress = "Avancement"
+    networkData = "Donnees"
+    networkDuration = "Duree"
+    networkSection = "Section"
+    networkSource = "Source"
+    networkItems = "Elements"
+    language = "Langue"
+    english = "Anglais"
+    french = "Francais"
+    videoFormat = "Format video"
+    animations = "Animations"
+    enabled = "Active"
+    reduced = "Reduites"
+    automaticReconnect = "Reconnexion automatique"
+    disabled = "Desactive"
+    automaticSync = "Synchronisation automatique"
+    launchOnStartup = "Lancer SmartVision au demarrage"
+    backgroundSync = "Sync playlist en arriere-plan"
+    focusStyle = "Style du focus"
+    focusDefault = "Standard"
+    focusSoft = "Doux"
+    focusCompact = "Compact"
+    focusColor = "Couleur du focus"
+    focusWhite = "Blanc"
+    focusCyanNeon = "Cyan neon"
+    focusElectricBlue = "Bleu electrique"
+    focusEffect = "Effet du focus"
+    focusFrame = "Cadre"
+    focusNeonGlow = "Cadre + glow neon"
+    focusGoldSweep = "Reflet gold anime"
+    focusBackground = "Fond du focus"
+    focusBackgroundBlue = "Bleu transparent"
+    focusBackgroundGold = "Dore transparent"
+    focusBackgroundWhite = "Blanc transparent"
+    currentFrequency = "Frequence actuelle"
+    activeAccount = "Compte actif"
+    activeXtreamAccount = "Compte Xtream actif"
+    activeServer = "Serveur actif"
+    notConfigured = "Non configure"
+    none = "Aucun"
+    installedVersion = "Version installee"
+    lastUpdate = "Derniere mise a jour"
+    portal = "Portail"
+    checking = "Recherche..."
+    checkForUpdate = "Chercher une mise a jour"
+    appUpToDate = "Application a jour."
+    bufferMode = "Mode buffer"
+    localXtreamAccounts = "Comptes Xtream locaux"
+    localCredentialsInfo = "Les identifiants Xtream se gerent depuis Info compte pour separer les reglages de l'application et les donnees client."
+    clearLocalData = "Vider les donnees locales"
+    pinCode = "Code PIN"
+    hiddenKeywords = "Mots cles masques"
+    parentalHelp = "Separez les mots par virgule, point-virgule ou retour a la ligne. Le filtrage s applique aux titres, descriptions et categories Live, Films et Series."
+    lockedPremiumFeature = "Cette fonctionnalite n est pas disponible avec la licence actuelle."
+    unlockParentalControl = "Deverrouiller le controle parental"
+    createPin = "Creer le PIN"
+    changePin = "Changer le PIN"
+    enterPin = "Saisir le PIN"
+    newPin = "Nouveau PIN"
+    confirmPin = "Confirmer le PIN"
+    pinRequired = "Saisissez au moins 4 chiffres."
+    pinIncorrect = "Code PIN incorrect."
+    pinsDoNotMatch = "Les codes PIN ne correspondent pas."
+    apply = "Appliquer"
+    active = "Actif"
+    inactive = "Inactif"
+    forgotPinByEmail = "PIN oublie par email"
+    pinEmailUnavailable = "La recuperation email necessite un email client lie et sera finalisee cote backend."
+    connect = "Connecter"
+    edit = "Modifier"
+    delete = "Supprimer"
+    xtreamAccount = "Compte Xtream"
+    accountName = "Nom du compte"
+    host = "Hote"
+    user = "Utilisateur"
+    password = "Mot de passe"
+    cancel = "Annuler"
+    saveAndConnect = "Enregistrer et connecter"
+    accountRequiredError = "Hote, utilisateur et mot de passe sont obligatoires."
+    sync24h = "24h"
+    sync48h = "48h"
+    syncOnStartup = "A chaque demarrage"
+    syncManual = "Manuelle"
+    syncNever = "Jamais"
+    notifications = "Notifications"
+    refresh = "Actualiser"
+    refreshing = "Actualisation..."
+    noNotifications = "Aucune notification pour cet appareil."
+    notificationLoadError = "Impossible de charger les notifications."
+    updateAvailableTitle = "Mise a jour disponible"
+    updateAvailableMessage = "SmartVision %s est disponible. Ouvrez cette notification pour installer la mise a jour."
+    updateDialogMessage = "SmartVision %s est disponible. Installez cette version pour profiter des derniers correctifs."
+    installUpdate = "Mettre a jour"
+    downloadInProgress = "Telechargement..."
+    later = "Plus tard"
+    continueWatching = "Reprendre la lecture"
+    trending = "Tendances"
+    trendingMovies = "Tendances films"
+    trendingSeries = "Tendances series"
+    viewAll = "Voir tout"
+    resumePlayback = "Reprendre la lecture"
+    connectionUnavailable = "Connexion indisponible"
+    catalogDownloadInProgress = "telechargement en cours..."
+    catalogLoadInProgress = "chargement catalogue..."
+    catalogWorkFailed = "Echec de mise a jour catalogue"
+    liveTvSubtitle = "Regardez vos chaines en direct."
+    moviesSubtitle = "Parcourez votre catalogue de films."
+    seriesSubtitle = "Parcourez votre catalogue de series."
+    watchNow = "Voir maintenant"
+    explore = "Explorer"
+    homeHeroWelcomeTitle = "Bienvenue sur SmartVision"
+    homeHeroWelcomeSubtitle = "Une experience IPTV premium fluide concue pour Android TV."
+    homeHeroLearnMore = "En savoir plus"
+    homeHeroLiveTitle = "Live TV instantanee"
+    homeHeroLiveSubtitle = "Regardez vos chaines avec une navigation simple a la telecommande."
+    homeHeroViewOffer = "Voir l'offre"
+    homeHeroCatalogTitle = "Films et series"
+    homeHeroCatalogSubtitle = "Explorez vos catalogues Xtream avec posters, details et reprise de lecture."
+    homeHeroDiscover = "Decouvrir"
+    heroOfferEmailAction = "Recevoir l'offre par e-mail"
+    bestMovies = "Meilleurs films"
+    bestSeries = "Meilleures series"
+    configureXtreamTitle = "Configurer les identifiants Xtream"
+    youtubePremiumTitle = "YouTube Premium"
+    youtubePremiumSubtitle = "Cette fonctionnalite necessite Premium ou un essai actif."
+    premiumPurchaseTitle = "Passer a SmartVision Premium"
+    premiumPurchaseSubtitle = "Scannez ce QR code pour acheter une licence. Premium supprime les publicites et conserve l'acces pendant la duree choisie."
+    premiumFeatureLockedTitle = "Fonctionnalite Premium"
+    premiumFeatureLockedSubtitle = "Cette fonctionnalite est reservee aux utilisateurs Premium ou en essai actif."
+    premiumFeatureExpiredSubtitle = "Vos fichiers locaux sont conserves, mais cette fonctionnalite necessite une licence Premium ou un essai actif."
+    recorderUnavailableForSource = "L'enregistrement n'est pas disponible pour cette source."
+    recorderTitle = "Recorder"
+    recorderSubtitle = "Choisissez une duree EPG ou manuelle. L'enregistrement sera ajoute dans Media > Enregistrements."
+    recorderCurrentProgram = "Programme en cours"
+    recorderManualDuration = "Duree manuelle"
+    recorderUntilProgramEnd = "Jusqu'a la fin du programme"
+    recorderDuration30 = "30 minutes"
+    recorderDuration60 = "60 minutes"
+    recorderDuration120 = "120 minutes"
+    recorderStartRecording = "Demarrer l'enregistrement"
+    recorderStarted = "Enregistrement demarre."
+    recorderAlreadyRunning = "Un enregistrement est deja en cours."
+    recorderStartFailed = "Impossible de demarrer l'enregistrement."
+    recorderStartUnavailable = "Le demarrage de l'enregistrement n'est pas encore active."
+    recorderEnginePending = "Service Recorder en attente. Aucun enregistrement n'a ete lance."
+    recorderClose = "Fermer"
+    mediaCenterTitle = "Media Center"
+    mediaCenterSubtitle = "Vos enregistrements, imports et transferts locaux seront regroupes ici."
+    mediaLibrary = "Bibliotheque"
+    mediaRecentFiles = "Medias recents"
+    mediaPreview = "Apercu"
+    mediaAllFiles = "Tous les fichiers"
+    mediaRecordings = "Enregistrements"
+    mediaImports = "Imports"
+    mediaFolders = "Dossiers"
+    mediaTransfers = "Transferts"
+    mediaEmptyTitle = "Aucun media local pour le moment"
+    mediaEmptySubtitle = "Les enregistrements et fichiers importes apparaitront ici apres le lot stockage."
+    mediaStorageReady = "Zone de stockage prete"
+    mediaMvpNotice = "Stockage local connecte. Utilisez Actualiser pour rescanner SmartVisionMedia."
+    mediaNoSelection = "Selectionnez une zone media pour previsualiser son futur contenu."
+    mediaZeroFiles = "0 fichier"
+    mediaPlay = "Lire"
+    mediaRename = "Renommer"
+    mediaMove = "Deplacer"
+    mediaPremiumStudio = "Studio media premium"
+    mediaLocalVaultSubtitle = "Enregistrements, fichiers locaux et transferts telephone dans un espace TV."
+    mediaQuickStats = "Vue bibliotheque"
+    mediaTotalFiles = "Fichiers total"
+    mediaSmartStorage = "Stockage intelligent"
+    mediaTransferHub = "Hub transfert"
+    mediaSelectedAsset = "Media selectionne"
+    mediaReadyToPlay = "Pret pour lecture locale"
+    mediaDetails = "Details"
+    mediaPhoneTransferTitle = "Telephone -> TV"
+    mediaPhoneTransferReady = "Ouvre un QR code pour envoyer un fichier depuis un telephone sur le meme Wi-Fi."
+    mediaPhoneTransferLocked = "Reserve Premium ou essai actif. Appuyez sur OK pour voir les options d'acces."
+    mediaPhoneTransferExpired = "Vos fichiers sont conserves, mais le transfert telephone demande une licence ou un essai actif."
+    mediaPhoneTransferReceive = "Recevoir fichier"
+    mediaPhoneTransferUpgrade = "Debloquer"
+    mediaImportPhone = "Recevoir tel."
+    mediaExportPhone = "Exporter tel."
+    mediaImportPhoneTitle = "Importer depuis le telephone"
+    mediaImportPhoneSubtitle = "Scannez ce QR code avec un telephone sur le meme Wi-Fi, puis choisissez un fichier a envoyer vers la TV."
+    mediaExportPhoneTitle = "Exporter vers le telephone"
+    mediaExportPhoneSubtitle = "Scannez ce QR code avec un telephone sur le meme Wi-Fi pour telecharger le fichier selectionne."
+    mediaExportPhoneSubtitleWithFile = "Scannez ce QR code avec un telephone sur le meme Wi-Fi pour telecharger %s."
+    mediaTransferSameWifi = "Le telephone et la TV doivent rester sur le meme reseau local tant que cette fenetre est ouverte."
+    mediaTransferUploadSuccess = "Fichier recu depuis le telephone."
+    mediaTransferInProgress = "Preparation du transfert telephone..."
+    mediaStoragePath = "Chemin de stockage"
+    mediaAvailableSpace = "Espace disponible"
+    mediaFilesFound = "%d fichiers"
+    mediaFoldersFound = "%d dossiers"
+    mediaNoFilesInArea = "Aucun fichier dans cette zone pour le moment."
+    mediaRootFolder = "Dossier racine"
+    mediaFileSize = "Taille"
+    mediaUpdatedAt = "Mis a jour"
+    mediaFolderLabel = "Dossier"
+    mediaFileSource = "Source"
+    mediaFileType = "Type"
+    mediaTypeVideo = "Video"
+    mediaTypePhoto = "Photo"
+    mediaTypeAudio = "Audio"
+    mediaTypeFile = "Fichier"
+    mediaRenameTitle = "Renommer le fichier"
+    mediaMoveTitle = "Deplacer le fichier"
+    mediaDeleteTitle = "Supprimer le fichier"
+    mediaDeleteSubtitle = "Cette action supprime le fichier local du stockage SmartVision."
+    mediaNewName = "Nouveau nom du fichier"
+    mediaChooseFolder = "Choisir la destination"
+    mediaRenameSuccess = "Fichier renomme."
+    mediaMoveSuccess = "Fichier deplace."
+    mediaDeleteSuccess = "Fichier supprime."
+    mediaOperationInProgress = "Operation en cours..."
+    mediaPlaybackUnavailable = "Ce fichier local ne peut pas encore etre ouvert par le lecteur Media."
+    mediaDisabledByAdmin = "Media Center est desactive depuis Admin > Fonctionnalites."
+    youtubeCategories = "Categories"
+    youtubeSuggestions = "Suggestions"
+    youtubeVideosLoaded = "%d videos chargees"
+    youtubeLoading = "Chargement YouTube"
+    youtubeNoVideo = "Aucune video"
+    youtubeNoVideoSubtitle = "Selectionnez une categorie ou lancez une recherche."
+    youtubeSearchPlaceholder = "Rechercher sur YouTube"
+    youtubeLoadingMore = "Chargement..."
+    youtubeVideoUnavailable = "Video YouTube indisponible"
+    youtubeCategoryHistory = "Historique"
+    youtubeCategoryFavorites = "Favoris"
+    youtubeFavorite = "Favori"
+    youtubeSettings = "Parametres YouTube"
+    youtubeAutoplay = "Lecture auto"
+    youtubeAutoplayHint = "Garde la file de videos suivante prete pour une lecture continue."
+    youtubeClearSearchHistory = "Supprimer l'historique de recherche"
+    youtubeClearWatchHistory = "Supprimer l'historique de visionnage"
+    youtubeClearFavorites = "Supprimer les favoris YouTube"
+    youtubeQueueStatus = "%d en file | %d vues | %d favoris | %d recherches"
+    youtubeCategoryMusic = "Musique"
+    youtubeCategorySport = "Sport"
+    youtubeCategoryGaming = "Gaming"
+    youtubeCategoryNews = "Actualites"
+    youtubeCategoryDocumentaries = "Documentaires"
+    youtubeCategoryKids = "Enfants"
+}

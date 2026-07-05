@@ -259,7 +259,7 @@ private fun HeaderDateTime() {
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(1.dp),
     ) {
         Box(
             modifier = Modifier
@@ -268,13 +268,13 @@ private fun HeaderDateTime() {
                 .background(SmartVisionColors.Border.copy(alpha = 0.72f)),
         )
         Column(
-            modifier = Modifier.width(76.dp),
+            modifier = Modifier.width(75.dp),
             horizontalAlignment = Alignment.End,
         ) {
             Text(
                 text = dateTime.time,
                 color = SmartVisionColors.TextPrimary,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
                 lineHeight = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.End,
