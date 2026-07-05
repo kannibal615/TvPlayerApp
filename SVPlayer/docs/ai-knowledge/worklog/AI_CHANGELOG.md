@@ -1,5 +1,23 @@
 # AI Changelog
 
+## 2026-07-05 - Lot 14 stabilisation Recorder + Media
+
+Type:
+- android
+- recorder
+- media-center
+- ui-tv
+- documentation
+
+Resume:
+- Correction Recorder: quitter la chaine/player ne doit plus arreter l'enregistrement Live; le service utilise `START_REDELIVER_INTENT`.
+- `RecordingEngine` reconnecte les flux progressifs si la socket se ferme avant la duree demandee, sauf Stop explicite ou echecs consecutifs sans donnees.
+- Media Center: correction focus DPAD droite liste -> apercu vers le premier bouton actif, message visible pendant preparation import/export telephone, fermeture de session QR apres upload reussi.
+- Ajout i18n EN/FR pour l'etat transfert et les libelles de type/source Media.
+
+Validation:
+- `.\gradlew.bat --% :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK en 5m23, warnings deprecation Android/Room kapt uniquement.
+
 ## 2026-07-05 - Release prod 0.1.93 (97) pour Lots 12 et 13 Media Transfer
 
 Type:

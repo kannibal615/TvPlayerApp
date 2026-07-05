@@ -166,7 +166,7 @@ Ne pas lire par defaut si la demande concerne uniquement:
 - correction locale d'un ecran existant sans Recorder/Media
 
 Statut rapide:
-- Lot 13 ajoute le transfert telephone/TV MVP dans Media Center: serveur HTTP local temporaire `MediaTransferServer`, QR upload vers `SmartVisionMedia/Transfers`, QR download du fichier selectionne, token aleatoire par session et controle admin `media_phone_transfer`. Le Recorder Live reel MVP utilise `RecordingService`, `RecorderController`, jobs Room `recording_jobs`, notification Stop, durees manuelles 30/60/120 min et option EPG jusqu'a fin programme. La marge EPG configurable et la stabilisation longue duree restent a implementer.
+- Lot 14 stabilise Recorder/Media: le Recorder Live doit continuer apres sortie de la chaine/player, `RecordingService` redelivre l'intent si Android recrée le service, et `RecordingEngine` reconnecte les flux progressifs fermes avant la duree demandee. Media Center corrige le focus DPAD vers les actions d'apercu et les etats de transfert telephone. Le transfert telephone/TV MVP reste base sur `MediaTransferServer`, QR upload vers `SmartVisionMedia/Transfers`, QR download du fichier selectionne, token aleatoire par session et controle admin `media_phone_transfer`. La marge EPG configurable et les tests longue duree Firestick restent a finaliser.
 
 ## UI TV, focus et navigation telecommande
 

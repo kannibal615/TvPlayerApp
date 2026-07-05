@@ -499,6 +499,13 @@ Implementation Lot 13:
 Objectif:
 - erreurs, logs, cleanup temp, polish UI/focus, tests Firestick/Android TV, doc finale.
 
+Implementation Lot 14:
+- Le Recorder Live ne depend plus de l'ecran player apres le demarrage: `RecordingService` utilise `START_REDELIVER_INTENT` pour reduire les pertes de job si Android recrée le service.
+- Les flux Live progressifs ne sont plus finalises au premier EOF avant la duree demandee: `RecordingEngine` reconnecte le flux et continue d'ecrire dans le meme fichier temporaire, sauf action Stop explicite, duree atteinte ou echecs consecutifs sans donnees.
+- Media Center corrige le routage DPAD droite liste -> apercu: le focus vise le premier bouton reellement actif (`Lire`, `Renommer` ou `Exporter tel.`) et ne demande plus un `FocusRequester` absent quand aucun fichier n'est selectionne.
+- Media Center affiche un etat `Preparation du transfert telephone...` pendant l'ouverture import/export, ferme automatiquement la session QR apres upload reussi, et remet l'etat session a null en cas d'echec de demarrage.
+- Les libelles techniques `Source`, `Type`, `Video/Photo/Audio/File` passent par i18n EN/FR.
+
 ## 6. Risques et points de vigilance
 
 - HLS vs progressive: ne pas supposer que tous les flux Xtream sont enregistrables proprement par copie HTTP simple.

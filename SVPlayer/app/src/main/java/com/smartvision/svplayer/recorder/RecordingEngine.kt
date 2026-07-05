@@ -48,24 +48,63 @@ class RecordingEngine(
         shouldStop: () -> Boolean,
         onProgress: suspend () -> Unit,
     ) {
-        execute(url).use { response ->
-            if (!response.isSuccessful) throw RecordingException("Stream request failed: HTTP ${response.code}")
-            val body = response.body ?: throw RecordingException("Stream response is empty.")
-            val contentType = body.contentType()?.toString().orEmpty().lowercase(Locale.US)
-            if (contentType.contains("mpegurl") || contentType.contains("m3u")) {
-                recordHls(url, output, deadlineMs, shouldStop, onProgress, firstPlaylist = body.string())
-                return
-            }
-            body.byteStream().use { input ->
-                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                while (!shouldStop() && System.currentTimeMillis() < deadlineMs) {
-                    val read = input.read(buffer)
-                    if (read == -1) break
-                    output.write(buffer, 0, read)
-                    onProgress()
+        var consecutiveFailures = 0
+        var hasWrittenAnyData = false
+        var lastDataAtMs = System.currentTimeMillis()
+        while (!shouldStop() && System.currentTimeMillis() < deadlineMs) {
+            var bytesWrittenThisConnection = 0L
+            try {
+                execute(url).use { response ->
+                    if (!response.isSuccessful) throw RecordingException("Stream request failed: HTTP ${response.code}")
+                    val body = response.body ?: throw RecordingException("Stream response is empty.")
+                    val contentType = body.contentType()?.toString().orEmpty().lowercase(Locale.US)
+                    if (contentType.contains("mpegurl") || contentType.contains("m3u")) {
+                        recordHls(url, output, deadlineMs, shouldStop, onProgress, firstPlaylist = body.string())
+                        return
+                    }
+                    body.byteStream().use { input ->
+                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                        while (!shouldStop() && System.currentTimeMillis() < deadlineMs) {
+                            val read = input.read(buffer)
+                            if (read == -1) break
+                            output.write(buffer, 0, read)
+                            bytesWrittenThisConnection += read
+                            hasWrittenAnyData = true
+                            lastDataAtMs = System.currentTimeMillis()
+                            onProgress()
+                        }
+                    }
+                }
+                if (bytesWrittenThisConnection > 0L) {
+                    consecutiveFailures = 0
+                } else {
+                    consecutiveFailures++
+                    if (!canRetryProgressiveReconnect(hasWrittenAnyData, lastDataAtMs, consecutiveFailures)) {
+                        throw RecordingException("Stream ended without media data.")
+                    }
+                }
+            } catch (throwable: Throwable) {
+                if (shouldStop() || System.currentTimeMillis() >= deadlineMs) throw throwable
+                consecutiveFailures++
+                if (bytesWrittenThisConnection <= 0L &&
+                    !canRetryProgressiveReconnect(hasWrittenAnyData, lastDataAtMs, consecutiveFailures)
+                ) {
+                    throw throwable
                 }
             }
+            if (!shouldStop() && System.currentTimeMillis() < deadlineMs) {
+                delay(PROGRESSIVE_RECONNECT_DELAY_MS)
+            }
         }
+    }
+
+    private fun canRetryProgressiveReconnect(
+        hasWrittenAnyData: Boolean,
+        lastDataAtMs: Long,
+        consecutiveFailures: Int,
+    ): Boolean {
+        if (!hasWrittenAnyData) return consecutiveFailures <= MAX_INITIAL_PROGRESSIVE_FAILURES
+        return System.currentTimeMillis() - lastDataAtMs <= PROGRESSIVE_RECONNECT_GRACE_MS
     }
 
     private suspend fun recordHls(
@@ -180,6 +219,9 @@ class RecordingEngine(
 
     private companion object {
         const val HLS_POLL_DELAY_MS = 2_000L
+        const val PROGRESSIVE_RECONNECT_DELAY_MS = 1_500L
+        const val PROGRESSIVE_RECONNECT_GRACE_MS = 2 * 60 * 1000L
+        const val MAX_INITIAL_PROGRESSIVE_FAILURES = 4
         const val DEFAULT_BUFFER_SIZE = 64 * 1024
     }
 }

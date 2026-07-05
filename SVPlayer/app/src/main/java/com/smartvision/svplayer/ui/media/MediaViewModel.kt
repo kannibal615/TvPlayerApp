@@ -167,9 +167,11 @@ class MediaViewModel(
         transferServer.startImportSession { result ->
             viewModelScope.launch {
                 refreshStorage()
+                transferServer.stop()
                 _uiState.update {
                     it.copy(
                         transferInProgress = false,
+                        transferSession = null,
                         selectedArea = MediaArea.Transfers,
                         selectedFileId = result.fileId ?: it.selectedFileId,
                         message = MediaActionMessage.TransferUploaded,
@@ -188,6 +190,7 @@ class MediaViewModel(
             _uiState.update {
                 it.copy(
                     transferInProgress = false,
+                    transferSession = null,
                     errorMessage = throwable.message ?: "Unable to start phone import.",
                 )
             }
@@ -211,6 +214,7 @@ class MediaViewModel(
                     _uiState.update {
                         it.copy(
                             transferInProgress = false,
+                            transferSession = null,
                             errorMessage = throwable.message ?: "Unable to start phone export.",
                         )
                     }

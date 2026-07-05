@@ -328,6 +328,7 @@ private fun MediaWorkspace(
     }
 
     fun focusPreviewAction(): Boolean {
+        if (state.selectedFile == null) return false
         runCatching { previewActionFocusRequester.requestFocus() }
         return true
     }
@@ -531,6 +532,9 @@ private fun MediaContentPanel(
             if (state.operationInProgress) {
                 MediaStatusMessage(message = strings.mediaOperationInProgress, error = false)
             }
+            if (state.transferInProgress) {
+                MediaStatusMessage(message = strings.mediaTransferInProgress, error = false)
+            }
 
             if (state.selectedArea == MediaArea.Folders) {
                 MediaFolderList(
@@ -706,7 +710,7 @@ private fun MediaFileRow(
             )
         }
         Text(
-            text = file.mediaType.label(),
+            text = file.mediaType.label(strings),
             color = SmartVisionColors.TextSecondary,
             style = SmartVisionType.Caption,
             maxLines = 1,
@@ -850,6 +854,12 @@ private fun MediaPreviewPanel(
     val playEnabled = selected?.isPlayable == true && !state.operationInProgress
     val editEnabled = selected != null && !state.operationInProgress
     val transferEnabled = selected != null && !state.operationInProgress && !state.transferInProgress
+    val firstPreviewAction = when {
+        playEnabled -> MediaPreviewAction.Play
+        editEnabled -> MediaPreviewAction.Rename
+        transferAccess.showDisabledControl && transferEnabled -> MediaPreviewAction.Export
+        else -> null
+    }
     MediaCatalogPanel(
         title = strings.mediaPreview,
         modifier = modifier,
@@ -917,8 +927,8 @@ private fun MediaPreviewPanel(
                     MediaInfoRow(strings.mediaFileSize, selected.sizeLabel)
                     MediaInfoRow(strings.mediaUpdatedAt, selected.updatedLabel)
                     MediaInfoRow(strings.mediaFolderLabel, selected.folderName ?: strings.mediaRootFolder)
-                    MediaInfoRow("Source", selected.source.label(strings))
-                    MediaInfoRow("Type", selected.mediaType.label())
+                    MediaInfoRow(strings.mediaFileSource, selected.source.label(strings))
+                    MediaInfoRow(strings.mediaFileType, selected.mediaType.label(strings))
                     MediaInfoRow(strings.mediaStoragePath, selected.relativePath)
                 }
             }
@@ -935,7 +945,7 @@ private fun MediaPreviewPanel(
                     text = strings.mediaPlay,
                     onClick = onPlay,
                     enabled = playEnabled,
-                    focusRequester = if (playEnabled) previewActionFocusRequester else null,
+                    focusRequester = if (firstPreviewAction == MediaPreviewAction.Play) previewActionFocusRequester else null,
                     modifier = Modifier
                         .weight(1f)
                         .height(42.dp),
@@ -944,7 +954,7 @@ private fun MediaPreviewPanel(
                     text = strings.mediaRename,
                     onClick = onRename,
                     enabled = editEnabled,
-                    focusRequester = if (!playEnabled && editEnabled) previewActionFocusRequester else null,
+                    focusRequester = if (firstPreviewAction == MediaPreviewAction.Rename) previewActionFocusRequester else null,
                     variant = TvButtonVariant.Secondary,
                     modifier = Modifier
                         .weight(1f)
@@ -976,6 +986,7 @@ private fun MediaPreviewPanel(
                     text = strings.mediaExportPhone,
                     onClick = onExportPhone,
                     enabled = transferEnabled,
+                    focusRequester = if (firstPreviewAction == MediaPreviewAction.Export) previewActionFocusRequester else null,
                     variant = TvButtonVariant.Secondary,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1359,12 +1370,12 @@ private fun MediaCenterSource.label(strings: SmartVisionStrings): String =
         MediaCenterSource.Local -> strings.mediaRootFolder
     }
 
-private fun MediaCenterFileType.label(): String =
+private fun MediaCenterFileType.label(strings: SmartVisionStrings): String =
     when (this) {
-        MediaCenterFileType.Video -> "Video"
-        MediaCenterFileType.Photo -> "Photo"
-        MediaCenterFileType.Audio -> "Audio"
-        MediaCenterFileType.Other -> "File"
+        MediaCenterFileType.Video -> strings.mediaTypeVideo
+        MediaCenterFileType.Photo -> strings.mediaTypePhoto
+        MediaCenterFileType.Audio -> strings.mediaTypeAudio
+        MediaCenterFileType.Other -> strings.mediaTypeFile
     }
 
 private val MediaFileUi.isPlayable: Boolean
@@ -1379,6 +1390,12 @@ private fun MediaActionMessage.label(strings: SmartVisionStrings): String =
         MediaActionMessage.Deleted -> strings.mediaDeleteSuccess
         MediaActionMessage.TransferUploaded -> strings.mediaTransferUploadSuccess
     }
+
+private enum class MediaPreviewAction {
+    Play,
+    Rename,
+    Export,
+}
 
 private fun mediaTypeColor(type: MediaCenterFileType): Color =
     when (type) {
