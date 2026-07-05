@@ -1,6 +1,6 @@
 # Catalogue, Playlist et Lecture
 
-Derniere mise a jour: 2026-07-03.
+Derniere mise a jour: 2026-07-05.
 
 ## 1. Objectif
 
@@ -39,11 +39,15 @@ Depuis le 2026-07-01, la synchronisation Xtream emet aussi des logs memoire `SVS
 
 Depuis le 2026-07-01, un lien M3U peut devenir la source active du catalogue Live TV. Les entrees M3U sont parsees depuis `#EXTINF`, groupees par `group-title`, stockees dans `live_streams` avec `source = m3u` et `directStreamUrl`, puis lues sans `XtreamUrlFactory`. Quand M3U est actif, Movies et Series sont vides pour respecter la regle une seule source active.
 
-Depuis le 2026-07-01, l'URL EPG XMLTV est telechargee dans un cache local borne lors d'une synchronisation manuelle ou catalogue, mais pas pendant le splash. Les programmes enrichissent l'apercu Live TV via `tvg-id`/nom de chaine; la zone EPG de l'apercu est scrollable si la liste est longue.
+Depuis le 2026-07-01, l'URL EPG XMLTV est telechargee dans un cache local borne lors d'une synchronisation manuelle ou catalogue, mais pas pendant le splash. Depuis le 2026-07-05, `EpgRepository.synchronizeIfStale(url, minAgeMs)` conserve `lastSuccessAt` et `urlHash`, un `EpgSyncWorker` horaire rafraichit l'EPG avec contrainte reseau sans synchronisation catalogue complete, et le clic chaine tente un refresh stale-aware avant de rafraichir uniquement la chaine selectionnee dans l'UI.
 
 Depuis le 2026-07-03, le splash ne verifie plus le lien M3U, ne synchronise plus et ne precharge plus Home/Live TV. Les ecrans Movies et Series affichent toujours un etat vide explicite quand M3U est actif, au lieu d'une erreur Xtream. Live TV reconnait un lien M3U comme source jouable meme sans compte Xtream local.
 
-Depuis le 2026-07-01, les lignes Live TV affichent un petit badge bleu `E` a droite quand des programmes EPG locaux sont disponibles pour la chaine. Depuis le 2026-07-03, les dossiers Live TV avec EPG n'ajoutent plus de badge separe: leur compteur de chaines est affiche dans un cadre bleu. Le header des categories Live TV remplace la recherche dossier par un bouton `EPG`; active, il n'affiche que les dossiers contenant au moins une chaine avec EPG local disponible.
+Depuis le 2026-07-05, Live TV conserve le layout 3 zones `Categories / Chaines / Apercu`, mais les panneaux sont plus compacts, le header categories n'a plus de bouton `EPG`, le header chaines garde seulement le titre et la recherche, et les lignes affichent une numerotation relative au dossier visible (`Tous`, `Favoris`, `Historique` ont chacune leur numerotation). Le badge EPG texte est remplace par l'image `res/drawable-nodpi/ic_epg_badge.png`, sans deformation. Les logos chaines reels n'ont plus de fond/cadre; seul le fallback texte garde un fond discret.
+
+Depuis le 2026-07-05, l'apercu Live TV met `Regarder`, `Favori` et, uniquement dans `Historique`, `Supprimer` dans le header de la zone Apercu en boutons carres icon-only. Les lignes Historique n'ont plus de bouton supprimer inline et gardent le format des autres chaines. La confirmation existante reste utilisee; apres suppression, la selection cible la chaine suivante visible, sinon la precedente, sinon vide l'apercu.
+
+Depuis le 2026-07-05, le mini-player Live TV de l'apercu est plus compact: radius reduit, plus de badge `LIVE` ni logo haut droit, overlay bas fixe transparent avec logo, separateur, nom chaine, EPG courant ou categorie et horaires. L'ancien bloc `En cours` sous le mini-player est supprime. Les programmes EPG sont des lignes focusables avec titre gras a gauche, horaires a droite, separateurs, et OK ouvre/ferme le detail en rideau seulement si une description existe.
 
 ## 3. Workflow utilisateur
 
@@ -71,6 +75,7 @@ M3U / EPG:
 - `data/playlist/M3uPlaylistClient.kt` telecharge et parse les playlists M3U.
 - Les logos `tvg-logo` M3U relatifs sont resolus contre l'URL du fichier M3U avant stockage Room.
 - `data/playlist/EpgRepository.kt` telecharge, parse et cache les programmes XMLTV.
+- `data/playlist/EpgSyncWorker.kt` planifie un refresh EPG horaire stale-aware avec contrainte reseau, separe de la synchronisation catalogue.
 - `DefaultCatalogRepository.kt` choisit la branche de synchronisation selon `PlaylistSource`.
 
 Room:
@@ -111,6 +116,7 @@ Playback:
 - `data/repository/DefaultCatalogRepository.kt`
 - `data/playlist/M3uPlaylistClient.kt`
 - `data/playlist/EpgRepository.kt`
+- `data/playlist/EpgSyncWorker.kt`
 - `data/repository/UserContentRepository.kt`
 - `data/local/SVDatabase.kt`
 - `data/local/dao/*`
@@ -166,6 +172,7 @@ URL de lecture:
 - M3U alimente Live TV uniquement; ne pas fabriquer des films/series sans structure fiable.
 - Quand M3U est actif, ne pas afficher de messages d'erreur Xtream sur Movies/Series; afficher un etat vide source-aware.
 - Le badge EPG des lignes Live TV doit se baser sur les programmes locaux disponibles, pas seulement sur la presence d'une URL EPG.
+- Ne pas remettre de filtre admin/API pour masquer les chaines par nom `###`: cette demande est explicitement exclue de la mission Live TV du 2026-07-05.
 - Ne pas lancer de synchronisation globale pendant la navigation Home / Live TV / Movies / Series / categories / listes.
 - Ne pas charger un snapshot complet Live TV / Movies / Series pour ouvrir un ecran catalogue; utiliser categories/counts puis pages Room locales.
 - Le premier chargement local ne doit plus etre dans `MainActivity`: les categories initiales sont limitees a `20` par section dans les ViewModels Live TV / Movies / Series, puis le reste charge discretement apres premier affichage. Ne pas remettre les details tendances Xtream, EPG reseau ni snapshots complets Movies/Series dans `MainActivity` pour les tres gros catalogues.

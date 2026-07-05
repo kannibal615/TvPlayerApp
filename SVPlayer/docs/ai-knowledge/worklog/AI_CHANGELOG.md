@@ -1,5 +1,36 @@
 # AI Changelog
 
+## 2026-07-05 - Release prod 0.1.100 (104) Live TV UI focus EPG
+
+Type:
+- android
+- live-tv
+- ui-tv
+- epg
+- release
+- deploy
+- documentation
+
+Resume:
+- Live TV conserve le layout 3 zones `Categories / Chaines / Apercu`, avec panneaux et lignes plus compacts.
+- Ajout des libelles Live TV EN/FR et d'un skeleton shimmer 3 panneaux au chargement.
+- Suppression du bouton `EPG` du header categories et du compteur/icone filtre du header chaines; recherche alignee avec le titre.
+- Numerotation relative au dossier visible, ancrage focus chaines autour de la 3e ligne et retour D-pad gauche vers le dossier selectionne.
+- Logos chaines sans fond/cadre quand un logo existe, badge EPG remplace par `ic_epg_badge.png`.
+- Actions `Regarder`, `Favori` et `Supprimer` de l'Historique deplacees dans le header Apercu; suppression inline retiree.
+- Mini-player Apercu compact avec overlay bas et lignes EPG focusables ouvrables en rideau.
+- EPG stale-aware via `EpgRepository.synchronizeIfStale`, Worker horaire reseau et refresh leger au clic chaine.
+- Aucun filtre admin/API `###` ni bloc `live_tv` ajoute.
+
+Validation:
+- `.\scripts\guard_release_version.ps1`: OK apres bump, local `0.1.100 (104)` > prod precedente `0.1.99 (103)`.
+- Premier `.\gradlew.bat :app:assembleRelease`: echec Kotlin sur import `key` retire; correction appliquee.
+- Deuxieme `.\gradlew.bat :app:assembleRelease`: OK en 10m50.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK avant deploy, metadata `0.1.100 (104)`.
+- `.\scripts\deploy_activation_phase1.ps1`: OK.
+- Production verifiee: `smartvision-tv.version.json` et `api/app_update.php` annoncent `0.1.100` / `104`; APK versionne `smartvision-tv-v104-b7a7822d.apk` et APK stable repondent en range `206`, taille `40351582`, SHA256 `b7a7822d4fab7dfa29e0b22468383cb23723b8c28be617be83cb932ad886f5df`.
+- `adb` absent du PATH pendant le guard: version installee TV non verifiee.
+
 ## 2026-07-05 - Media compact, mini-player local et anti-flash couronne
 
 Type:

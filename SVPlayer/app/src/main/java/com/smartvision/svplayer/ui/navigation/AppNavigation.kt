@@ -551,6 +551,7 @@ fun AppNavigation(
                 LaunchedEffect(Unit) { showXtreamConnectionDialog = true }
                 PlaceholderRouteScreen("Live TV", "Connexion Xtream indisponible.")
             } else LiveTvScreen(
+                strings = strings,
                 currentRoute = currentRoute,
                 tabs = tabs,
                 onNavigate = navigateFromHeader,

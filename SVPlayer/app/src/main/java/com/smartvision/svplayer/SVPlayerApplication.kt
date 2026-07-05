@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import com.smartvision.svplayer.core.data.AppContainer
 import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
+import com.smartvision.svplayer.data.playlist.EpgSyncScheduler
 import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import com.smartvision.svplayer.startup.StartupStateStore
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +32,7 @@ class SVPlayerApplication : Application() {
                     this@SVPlayerApplication,
                     StartupStateStore(this@SVPlayerApplication).isBackgroundSyncEnabled(),
                 )
+                EpgSyncScheduler.apply(this@SVPlayerApplication)
             }
         }, DeferredStartupDiagnosticsDelayMillis)
     }

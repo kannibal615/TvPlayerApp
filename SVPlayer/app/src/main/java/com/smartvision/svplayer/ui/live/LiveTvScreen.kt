@@ -3,8 +3,18 @@ package com.smartvision.svplayer.ui.live
 import android.graphics.Bitmap
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -13,8 +23,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,7 +46,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
@@ -123,6 +131,7 @@ import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.TvHeader
+import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -153,22 +162,9 @@ private val LiveTvItemMetaStyle = TextStyle(
     letterSpacing = 0.sp,
 )
 
-private val LiveTvPreviewTitleStyle = TextStyle(
-    fontSize = 18.sp,
-    lineHeight = 24.sp,
-    fontWeight = FontWeight.Bold,
-    letterSpacing = 0.sp,
-)
-
-private val LiveTvButtonTextStyle = TextStyle(
-    fontSize = 11.sp,
-    lineHeight = 14.sp,
-    fontWeight = FontWeight.SemiBold,
-    letterSpacing = 0.sp,
-)
-
 @Composable
 fun LiveTvScreen(
+    strings: SmartVisionStrings,
     currentRoute: String,
     tabs: List<HomeHeaderTab>,
     onNavigate: (String) -> Unit,
@@ -208,7 +204,6 @@ fun LiveTvScreen(
     val firstPreviewActionFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
-    var showEpgCategoriesOnly by remember { mutableStateOf(false) }
     var contentSearchQuery by remember { mutableStateOf("") }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
     var tvCode by remember { mutableStateOf("") }
@@ -255,27 +250,8 @@ fun LiveTvScreen(
         }
     }
 
-    LaunchedEffect(showEpgCategoriesOnly) {
-        if (showEpgCategoriesOnly) {
-            viewModel.refreshEpgCategoryAvailability()
-        }
-    }
-
-    LaunchedEffect(showEpgCategoriesOnly, state.categories) {
-        if (showEpgCategoriesOnly) {
-            val currentVisible = state.categories.any { it.id == state.selectedCategoryId && it.hasEpg }
-            if (!currentVisible) {
-                state.categories.firstOrNull { it.hasEpg }?.let(viewModel::selectCategory)
-            }
-        }
-    }
-
-    val selectedCategoryVisible = state.categories.any { category ->
-        category.id == state.selectedCategoryId && (!showEpgCategoriesOnly || category.hasEpg)
-    }
-    val categoryFocusTargetAvailable = selectedCategoryVisible || state.categories.any { category ->
-        !showEpgCategoriesOnly || category.hasEpg
-    }
+    val selectedCategoryVisible = state.categories.any { category -> category.id == state.selectedCategoryId }
+    val categoryFocusTargetAvailable = selectedCategoryVisible || state.categories.isNotEmpty()
 
     LaunchedEffect(state.categoriesLoading, hasPlayableSource, categoryFocusTargetAvailable) {
         if (hasPlayableSource && !state.categoriesLoading && categoryFocusTargetAvailable) {
@@ -322,7 +298,7 @@ fun LiveTvScreen(
         if (!hasPlayableSource) {
             XtreamQrSetupPanel(
                 activationRepository = container.activationRepository,
-                title = "Configurer vos chaînes Live TV",
+                title = strings.liveTvConfigureChannels,
                 onManualAccount = { account ->
                     val accountId = container.accountManager.upsert(account)
                     container.accountManager.select(accountId)
@@ -336,8 +312,7 @@ fun LiveTvScreen(
         }
 
         if (state.categoriesLoading) {
-            LoadingState(
-                title = "Chargement des categories",
+            LiveTvLoadingSkeleton(
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
@@ -347,15 +322,15 @@ fun LiveTvScreen(
             ) {
                 CategoryList(
                     state = state,
+                    strings = strings,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
-                    showEpgOnly = showEpgCategoriesOnly,
-                    onToggleEpgOnly = {
-                        showEpgCategoriesOnly = !showEpgCategoriesOnly
-                    },
                     contentSearchQuery = contentSearchQuery,
                     onCategory = { category ->
                         if (inputReady) {
-                            viewModel.selectCategory(category)
+                            viewModel.selectCategory(
+                                category = category,
+                                autoPreviewFirstChannel = !showFreeAdsPreview,
+                            )
                         }
                     },
                     modifier = Modifier
@@ -364,16 +339,19 @@ fun LiveTvScreen(
                 )
                 ChannelList(
                     state = state,
+                    strings = strings,
                     firstChannelFocusRequester = firstChannelFocusRequester,
+                    selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     searchQuery = contentSearchQuery,
                     onSearchQueryChange = { contentSearchQuery = it },
-                    previewActionFocusRequester = epgDetailsFocusRequester.takeIf {
+                    previewActionFocusRequester = firstPreviewActionFocusRequester.takeIf {
                         state.selectedChannel != null
                     },
                     onChannelFocused = viewModel::focusChannel,
                     onChannelClick = { channel ->
                         if (inputReady) {
                             val openFullPlayer = viewModel.activateChannel(channel)
+                            viewModel.refreshChannelEpg(channel, container.accountManager.epgUrl.value)
                             if (openFullPlayer) {
                                 container.behaviorReporter.reportAsync(
                                     behaviorScope,
@@ -384,8 +362,6 @@ fun LiveTvScreen(
                             }
                         }
                     },
-                    showHistoryDelete = state.selectedCategory?.label == "Historique",
-                    onDeleteHistoryChannel = { channel -> channelToDelete = channel },
                     onLoadNextPage = viewModel::loadNextPage,
                     onRetry = viewModel::retryCurrentCategory,
                     modifier = Modifier
@@ -394,6 +370,9 @@ fun LiveTvScreen(
                 )
                 PreviewPanel(
                     channel = state.selectedChannel,
+                    strings = strings,
+                    selectedCategoryLabel = state.selectedCategory?.label,
+                    showHistoryDelete = state.isHistoryCategory && state.selectedChannel != null,
                     showFreeAdsPreview = showFreeAdsPreview,
                     idleAdContentUrl = state.channels.firstOrNull()?.streamUrl,
                     premiumPurchaseUrl = premiumPurchaseUrl,
@@ -424,6 +403,9 @@ fun LiveTvScreen(
                             viewModel.toggleFavorite(channel)
                         }
                     },
+                    onDeleteHistory = {
+                        state.selectedChannel?.let { channel -> channelToDelete = channel }
+                    },
                     modifier = Modifier
                         .weight(0.34f)
                         .fillMaxHeight(),
@@ -434,7 +416,7 @@ fun LiveTvScreen(
 
     channelToDelete?.let { channel ->
         ConfirmHistoryDeleteDialog(
-            title = "Supprimer cette chaine de l'historique ?",
+            title = strings.liveTvDeleteHistoryTitle,
             itemName = channel.name,
             onDismiss = { channelToDelete = null },
             onConfirm = {
@@ -448,37 +430,29 @@ fun LiveTvScreen(
 @Composable
 private fun CategoryList(
     state: LiveTvUiState,
+    strings: SmartVisionStrings,
     selectedCategoryFocusRequester: FocusRequester,
-    showEpgOnly: Boolean,
-    onToggleEpgOnly: () -> Unit,
     contentSearchQuery: String,
     onCategory: (LiveTvCategory) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val visibleCategories = state.categories.filter {
-        !showEpgOnly || it.hasEpg
-    }
+    val visibleCategories = state.categories
     val focusCategoryId = visibleCategories.firstOrNull { it.id == state.selectedCategoryId }?.id
         ?: visibleCategories.firstOrNull()?.id
+    val listState = rememberLazyListState()
+    LaunchedEffect(focusCategoryId, visibleCategories.size) {
+        val index = visibleCategories.indexOfFirst { it.id == focusCategoryId }
+        if (index >= 0) {
+            runCatching { listState.animateScrollToItem(index) }
+        }
+    }
 
     LiveTvPanel(
-        title = "Categories",
+        title = strings.liveTvCategories,
         modifier = modifier,
-        trailing = {
-            TvButton(
-                text = "EPG",
-                onClick = onToggleEpgOnly,
-                selected = showEpgOnly,
-                variant = if (showEpgOnly) TvButtonVariant.Primary else TvButtonVariant.Secondary,
-                leadingIcon = Icons.Default.FilterList,
-                contentPadding = PaddingValues(horizontal = 10.dp),
-                modifier = Modifier
-                    .width(92.dp)
-                    .height(34.dp),
-            )
-        },
     ) {
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(LiveTvDimens.ListGap),
             contentPadding = PaddingValues(bottom = LiveTvDimens.ListGap),
@@ -505,14 +479,14 @@ private fun CategoryList(
 @Composable
 private fun ChannelList(
     state: LiveTvUiState,
+    strings: SmartVisionStrings,
     firstChannelFocusRequester: FocusRequester,
+    selectedCategoryFocusRequester: FocusRequester,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     previewActionFocusRequester: FocusRequester?,
     onChannelFocused: (LiveTvChannel) -> Unit,
     onChannelClick: (LiveTvChannel) -> Unit,
-    showHistoryDelete: Boolean,
-    onDeleteHistoryChannel: (LiveTvChannel) -> Unit,
     onLoadNextPage: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
@@ -529,7 +503,7 @@ private fun ChannelList(
         if (!state.channelsLoading && focusChannelId != null) {
             visibleChannels.indexOfFirst { it.streamId == focusChannelId }
                 .takeIf { it >= 0 }
-                ?.let { index -> listState.animateScrollToItem(index) }
+                ?.let { index -> listState.animateScrollToItem((index - 2).coerceAtLeast(0)) }
             withFrameNanos { }
             delay(80)
             runCatching { firstChannelFocusRequester.requestFocus() }
@@ -546,53 +520,33 @@ private fun ChannelList(
             }
     }
     LiveTvPanel(
-        title = "Chaines",
+        title = strings.liveTvChannels,
         modifier = modifier,
         trailing = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val channelCount = if (searchQuery.isBlank()) {
-                    state.selectedCategory?.count ?: state.channels.size
-                } else {
-                    visibleChannels.size
-                }
-                Text(
-                    text = if (channelCount > 0) "$channelCount chaines" else "chaines",
-                    color = SmartVisionColors.TextSecondary,
-                    style = LiveTvItemMetaStyle,
-                    maxLines = 1,
-                )
-                Spacer(Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.Default.FilterList,
-                    contentDescription = null,
-                    tint = SmartVisionColors.TextSecondary,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(Modifier.width(10.dp))
-                CatalogSearchField(
-                    query = searchQuery,
-                    onQueryChange = onSearchQueryChange,
-                    placeholder = "Chaine",
-                    modifier = Modifier.width(190.dp),
-                )
-            }
+            CatalogSearchField(
+                query = searchQuery,
+                onQueryChange = onSearchQueryChange,
+                placeholder = strings.liveTvSearchPlaceholder,
+                modifier = Modifier.width(190.dp),
+            )
         },
     ) {
         when {
             state.channelsLoading && visibleChannels.isEmpty() -> LoadingState(
-                title = "Chargement des chaines",
+                title = strings.liveTvLoadingChannels,
                 modifier = Modifier.fillMaxSize(),
             )
 
             state.errorMessage != null && visibleChannels.isEmpty() -> ErrorState(
                 message = state.errorMessage,
+                retryLabel = strings.liveTvRetry,
                 onRetry = onRetry,
                 modifier = Modifier.fillMaxSize(),
             )
 
             visibleChannels.isEmpty() -> EmptyState(
-                title = if (searchQuery.isBlank()) "Aucune chaine" else "Aucun resultat",
-                subtitle = if (searchQuery.isBlank()) "Selectionnez une autre categorie." else "Modifiez votre recherche.",
+                title = if (searchQuery.isBlank()) strings.liveTvNoChannels else strings.liveTvNoResults,
+                subtitle = if (searchQuery.isBlank()) strings.liveTvSelectAnotherCategory else strings.liveTvChangeSearch,
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -600,18 +554,17 @@ private fun ChannelList(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(LiveTvDimens.ListGap),
-                contentPadding = PaddingValues(bottom = LiveTvDimens.ListGap),
+                contentPadding = PaddingValues(top = LiveTvDimens.ChannelListTopPadding, bottom = LiveTvDimens.ListGap),
             ) {
                 itemsIndexed(visibleChannels, key = { _, channel -> channel.streamId }) { index, channel ->
                     ChannelRow(
-                        channel = channel,
+                        channel = channel.copy(number = (index + 1).toString().padStart(3, '0')),
                         selected = channel.streamId == state.selectedChannel?.streamId,
                         focusRequester = firstChannelFocusRequester.takeIf { channel.streamId == focusChannelId },
+                        leftFocusRequester = selectedCategoryFocusRequester,
                         rightFocusRequester = previewActionFocusRequester,
                         onFocused = { onChannelFocused(channel) },
                         onClick = { onChannelClick(channel) },
-                        showDelete = showHistoryDelete,
-                        onDelete = { onDeleteHistoryChannel(channel) },
                     )
                 }
                 if (state.nextPageLoading) {
@@ -638,6 +591,9 @@ private fun ChannelList(
 @Composable
 private fun PreviewPanel(
     channel: LiveTvChannel?,
+    strings: SmartVisionStrings,
+    selectedCategoryLabel: String?,
+    showHistoryDelete: Boolean,
     showFreeAdsPreview: Boolean,
     idleAdContentUrl: String?,
     premiumPurchaseUrl: String,
@@ -648,11 +604,42 @@ private fun PreviewPanel(
     epgDetailsFocusRequester: FocusRequester,
     onWatch: () -> Unit,
     onFavorite: () -> Unit,
+    onDeleteHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LiveTvPanel(
-        title = "Apercu",
+        title = strings.liveTvPreview,
         modifier = modifier,
+        trailing = {
+            if (channel != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    PreviewIconButton(
+                        contentDescription = strings.liveTvWatch,
+                        onClick = onWatch,
+                        icon = Icons.Default.PlayArrow,
+                        primary = true,
+                        focusRequester = firstActionFocusRequester,
+                        downFocusRequester = epgDetailsFocusRequester.takeIf { channel.epgPrograms.isNotEmpty() },
+                    )
+                    PreviewIconButton(
+                        contentDescription = if (channel.isFavorite) strings.liveTvRemoveFavorite else strings.liveTvFavorite,
+                        onClick = onFavorite,
+                        icon = if (channel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        selected = channel.isFavorite,
+                        downFocusRequester = epgDetailsFocusRequester.takeIf { channel.epgPrograms.isNotEmpty() },
+                    )
+                    if (showHistoryDelete) {
+                        PreviewIconButton(
+                            contentDescription = strings.liveTvDeleteHistory,
+                            onClick = onDeleteHistory,
+                            icon = Icons.Default.Delete,
+                            danger = true,
+                            downFocusRequester = epgDetailsFocusRequester.takeIf { channel.epgPrograms.isNotEmpty() },
+                        )
+                    }
+                }
+            }
+        },
     ) {
         if (channel == null) {
             if (showFreeAdsPreview) {
@@ -681,46 +668,21 @@ private fun PreviewPanel(
         Column(modifier = Modifier.fillMaxSize()) {
             VideoPreviewFrame(
                 channel = channel,
+                categoryLabel = selectedCategoryLabel.orEmpty(),
+                streamUnavailableLabel = strings.liveTvStreamUnavailable,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1.88f),
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
 
-            ProgramInfoCard(
+            EpgProgramList(
                 channel = channel,
+                strings = strings,
                 focusRequester = epgDetailsFocusRequester,
-                downFocusRequester = firstActionFocusRequester,
                 modifier = Modifier.weight(1f),
             )
-
-            Spacer(Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                PreviewActionButton(
-                    text = "Regarder",
-                    onClick = onWatch,
-                    icon = Icons.Default.PlayArrow,
-                    primary = true,
-                    focusRequester = firstActionFocusRequester,
-                    modifier = Modifier
-                        .weight(1.25f)
-                        .height(32.dp),
-                )
-                PreviewActionButton(
-                    text = "Favori",
-                    onClick = onFavorite,
-                    selected = channel.isFavorite,
-                    icon = Icons.Default.Favorite,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(32.dp),
-                )
-            }
         }
     }
 }
@@ -1090,54 +1052,58 @@ private fun createLivePreviewQrBitmap(content: String, size: Int): Bitmap {
 }
 
 @Composable
-private fun PreviewActionButton(
-    text: String,
-    icon: ImageVector,
+private fun PreviewIconButton(
+    contentDescription: String,
     onClick: () -> Unit,
+    icon: ImageVector,
     modifier: Modifier = Modifier,
     primary: Boolean = false,
     selected: Boolean = false,
+    danger: Boolean = false,
     focusRequester: FocusRequester? = null,
+    downFocusRequester: FocusRequester? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val shape = RoundedCornerShape(LiveTvDimens.ItemRadius)
-    val active = focusState.isFocused || selected
     val focusStyle = LocalTvFocusStyle.current
-    val backgroundColor by animateColorAsState(
-        targetValue = when {
-            primary -> SmartVisionColors.Primary
-            active -> SmartVisionColors.SurfaceElevated
-            else -> SmartVisionColors.Surface.copy(alpha = 0.70f)
-        },
-        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
-        label = "previewActionBackground",
-    )
+    val shape = RoundedCornerShape(6.dp)
     val borderColor by animateColorAsState(
         targetValue = when {
             focusState.isFocused -> focusStyle.accent
-            selected -> SmartVisionColors.Primary
-            else -> SmartVisionColors.Border
+            primary -> SmartVisionColors.Primary
+            danger -> SmartVisionColors.Error
+            else -> Color.White.copy(alpha = 0.62f)
         },
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
-        label = "previewActionBorder",
+        label = "previewIconBorder",
     )
-    val contentColor = if (primary || active) {
-        SmartVisionColors.TextPrimary
-    } else {
-        SmartVisionColors.TextSecondary
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            primary -> SmartVisionColors.Primary
+            focusState.isFocused -> SmartVisionColors.SurfaceElevated.copy(alpha = 0.88f)
+            else -> Color.Transparent
+        },
+        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        label = "previewIconBackground",
+    )
+    val tint = when {
+        selected -> SmartVisionColors.Error
+        danger -> SmartVisionColors.TextPrimary
+        else -> SmartVisionColors.TextPrimary
     }
 
-    Row(
+    Box(
         modifier = modifier
+            .size(34.dp)
+            .then(if (downFocusRequester != null) Modifier.focusProperties { down = downFocusRequester } else Modifier)
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
                 pressed = pressed,
-                focusedScale = 1.04f,
-                glowColor = SmartVisionColors.Primary,
-                cornerRadius = LiveTvDimens.ItemRadius,
+                focusedScale = 1.08f,
+                glowColor = if (danger) SmartVisionColors.Error else SmartVisionColors.Primary,
+                cornerRadius = 6.dp,
             )
             .zIndex(if (focusState.isFocused) 2f else 0f)
             .clip(shape)
@@ -1154,25 +1120,14 @@ private fun PreviewActionButton(
                 indication = null,
                 onClick = onClick,
             )
-            .focusable(interactionSource = interactionSource)
-            .padding(horizontal = 8.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
+            .focusable(interactionSource = interactionSource),
+        contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
-            tint = contentColor,
-            modifier = Modifier.size(14.dp),
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = text,
-            color = contentColor,
-            style = LiveTvButtonTextStyle,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            contentDescription = contentDescription,
+            tint = tint,
+            modifier = Modifier.size(19.dp),
         )
     }
 }
@@ -1301,17 +1256,15 @@ private fun ChannelRow(
     channel: LiveTvChannel,
     selected: Boolean,
     focusRequester: FocusRequester?,
+    leftFocusRequester: FocusRequester?,
     rightFocusRequester: FocusRequester?,
     onFocused: () -> Unit,
     onClick: () -> Unit,
-    showDelete: Boolean,
-    onDelete: () -> Unit,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val fallbackRowFocusRequester = remember { FocusRequester() }
     val rowFocusRequester = focusRequester ?: fallbackRowFocusRequester
-    val deleteFocusRequester = remember { FocusRequester() }
     val pressed by interactionSource.collectIsPressedAsState()
     val active = selected || focusState.isFocused
     val shape = RoundedCornerShape(LiveTvDimens.ItemRadius)
@@ -1335,20 +1288,24 @@ private fun ChannelRow(
         Row(
             modifier = Modifier
                 .weight(1f)
-            .fillMaxHeight()
+                .fillMaxHeight()
                 .then(
-                    if (showDelete || rightFocusRequester != null) {
+                    if (rightFocusRequester != null) {
                         Modifier.focusProperties {
-                            if (showDelete) {
-                                right = deleteFocusRequester
-                            } else if (rightFocusRequester != null) {
-                                right = rightFocusRequester
-                            }
+                            right = rightFocusRequester
                         }
                     } else {
                         Modifier
                     },
                 )
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft && leftFocusRequester != null) {
+                        runCatching { leftFocusRequester.requestFocus() }
+                        true
+                    } else {
+                        false
+                    }
+                }
                 .tvFocusTarget(
                     state = focusState,
                     focusRequester = rowFocusRequester,
@@ -1438,85 +1395,17 @@ private fun ChannelRow(
                 EpgAvailabilityBadge()
             }
         }
-
-        if (showDelete) {
-            Spacer(Modifier.width(8.dp))
-            HistoryDeleteButton(
-                focusRequester = deleteFocusRequester,
-                leftFocusRequester = rowFocusRequester,
-                rightFocusRequester = rightFocusRequester,
-                onClick = onDelete,
-            )
-        }
     }
 }
 
 @Composable
 private fun EpgAvailabilityBadge() {
-    Box(
-        modifier = Modifier
-            .size(width = 30.dp, height = 22.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(SmartVisionColors.Primary.copy(alpha = 0.24f))
-            .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent.copy(alpha = 0.72f)), RoundedCornerShape(4.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "E",
-            color = Color.White,
-            style = LiveTvItemMetaStyle,
-            fontWeight = FontWeight.Black,
-            maxLines = 1,
-        )
-    }
-}
-
-@Composable
-private fun HistoryDeleteButton(
-    focusRequester: FocusRequester,
-    leftFocusRequester: FocusRequester,
-    rightFocusRequester: FocusRequester?,
-    onClick: () -> Unit,
-) {
-    val focusState = rememberTvFocusState()
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val focusStyle = LocalTvFocusStyle.current
-    Box(
-        modifier = Modifier
-            .size(34.dp)
-            .focusProperties {
-                left = leftFocusRequester
-                if (rightFocusRequester != null) right = rightFocusRequester
-            }
-            .tvFocusTarget(
-                state = focusState,
-                focusRequester = focusRequester,
-                pressed = pressed,
-                focusedScale = 1.08f,
-                glowColor = SmartVisionColors.Error,
-                cornerRadius = 6.dp,
-            )
-            .clip(RoundedCornerShape(6.dp))
-            .background(if (focusState.isFocused) SmartVisionColors.Error.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.08f))
-            .border(
-                BorderStroke(
-                    if (focusState.isFocused) focusStyle.borderWidth else 1.dp,
-                    if (focusState.isFocused) focusStyle.accent else SmartVisionColors.Error.copy(alpha = 0.58f),
-                ),
-                RoundedCornerShape(6.dp),
-            )
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .focusable(interactionSource = interactionSource),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Default.Delete,
-            contentDescription = "Supprimer de l'historique",
-            tint = SmartVisionColors.TextPrimary,
-            modifier = Modifier.size(18.dp),
-        )
-    }
+    Image(
+        painter = painterResource(R.drawable.ic_epg_badge),
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
+        modifier = Modifier.size(width = 34.dp, height = 28.dp),
+    )
 }
 
 @Composable
@@ -1568,9 +1457,11 @@ private fun ConfirmHistoryDeleteDialog(
 @Composable
 private fun VideoPreviewFrame(
     channel: LiveTvChannel,
+    categoryLabel: String,
+    streamUnavailableLabel: String,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(LiveTvDimens.ItemRadius)
+    val shape = RoundedCornerShape(5.dp)
     Box(
         modifier = modifier
             .clip(shape)
@@ -1580,24 +1471,207 @@ private fun VideoPreviewFrame(
         MiniPreviewPlayer(
             streamUrl = channel.streamUrl,
             fallbackStreamUrl = channel.fallbackStreamUrl,
+            streamUnavailableLabel = streamUnavailableLabel,
             modifier = Modifier.matchParentSize(),
         )
 
-        LiveBadge(
-            text = "LIVE",
-            color = SmartVisionColors.Error,
+        MiniPlayerInfoOverlay(
+            channel = channel,
+            categoryLabel = categoryLabel,
             modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(8.dp),
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(),
         )
+    }
+}
 
+@Composable
+private fun MiniPlayerInfoOverlay(
+    channel: LiveTvChannel,
+    categoryLabel: String,
+    modifier: Modifier = Modifier,
+) {
+    val currentProgram = channel.epgPrograms.firstOrNull()
+    Row(
+        modifier = modifier
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color.Transparent,
+                        Color.Black.copy(alpha = 0.74f),
+                    ),
+                ),
+            )
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         ChannelLogo(
             channel = channel,
             active = true,
+            modifier = Modifier.size(width = 42.dp, height = 24.dp),
+        )
+        Box(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(8.dp)
-                .size(width = 44.dp, height = 24.dp),
+                .padding(horizontal = 9.dp)
+                .width(1.dp)
+                .height(28.dp)
+                .background(Color.White.copy(alpha = 0.34f)),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = channel.name,
+                color = SmartVisionColors.TextPrimary,
+                style = LiveTvItemTitleStyle,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = currentProgram?.title ?: categoryLabel.ifBlank { channel.genre },
+                color = SmartVisionColors.TextSecondary,
+                style = LiveTvItemMetaStyle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        currentProgram?.timeRange?.takeIf { it.isNotBlank() }?.let { timeRange ->
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = timeRange,
+                color = SmartVisionColors.TextPrimary,
+                style = LiveTvItemMetaStyle,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun EpgProgramList(
+    channel: LiveTvChannel,
+    strings: SmartVisionStrings,
+    focusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
+) {
+    val programs = channel.epgPrograms
+    var expandedIndex by remember(channel.streamId, programs.size) { mutableIntStateOf(-1) }
+    if (programs.isEmpty()) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = strings.liveTvEpgUnavailable,
+                color = SmartVisionColors.TextSecondary,
+                style = LiveTvItemMetaStyle,
+                maxLines = 1,
+            )
+        }
+        return
+    }
+
+    LazyColumn(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(bottom = 6.dp),
+    ) {
+        itemsIndexed(programs, key = { index, program -> "${channel.streamId}-$index-${program.timeRange}" }) { index, program ->
+            EpgProgramRow(
+                program = program,
+                expanded = expandedIndex == index,
+                focusRequester = focusRequester.takeIf { index == 0 },
+                onClick = {
+                    expandedIndex = if (expandedIndex == index) -1 else index
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun EpgProgramRow(
+    program: LiveTvProgram,
+    expanded: Boolean,
+    focusRequester: FocusRequester?,
+    onClick: () -> Unit,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val focusStyle = LocalTvFocusStyle.current
+    val borderColor by animateColorAsState(
+        targetValue = if (focusState.isFocused) focusStyle.accent else Color.Transparent,
+        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        label = "epgRowBorder",
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                pressed = pressed,
+                focusedScale = 1.015f,
+                glowColor = SmartVisionColors.Primary,
+                cornerRadius = 5.dp,
+            )
+            .zIndex(if (focusState.isFocused) 2f else 0f)
+            .clip(RoundedCornerShape(5.dp))
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) focusStyle.borderWidth else 0.dp,
+                    borderColor,
+                ),
+                RoundedCornerShape(5.dp),
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .focusable(interactionSource = interactionSource)
+            .padding(horizontal = 7.dp, vertical = 6.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = program.title,
+                color = SmartVisionColors.TextPrimary,
+                style = LiveTvItemMetaStyle,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = program.timeRange,
+                color = SmartVisionColors.TextSecondary,
+                style = LiveTvItemMetaStyle,
+                maxLines = 1,
+            )
+        }
+        AnimatedVisibility(
+            visible = expanded && program.description.isNotBlank(),
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Text(
+                text = program.description,
+                color = SmartVisionColors.TextSecondary,
+                style = LiveTvItemMetaStyle,
+                maxLines = 4,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 5.dp),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp)
+                .height(1.dp)
+                .background(SmartVisionColors.Border.copy(alpha = 0.46f)),
         )
     }
 }
@@ -1606,6 +1680,7 @@ private fun VideoPreviewFrame(
 private fun MiniPreviewPlayer(
     streamUrl: String,
     fallbackStreamUrl: String,
+    streamUnavailableLabel: String,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -1670,7 +1745,7 @@ private fun MiniPreviewPlayer(
                 buffering = false
                 volumeFadeJob[0]?.cancel()
                 player.volume = 0f
-                errorText = "Flux indisponible"
+                errorText = streamUnavailableLabel
             }
         }
         player.addListener(listener)
@@ -1734,165 +1809,6 @@ private const val MiniPlayerAudioStartDelayMillis = 1_000L
 private const val MiniPlayerAudioFadeMillis = 1_000L
 private const val MiniPlayerAudioFadeSteps = 10
 
-@Composable
-private fun ProgramInfoCard(
-    channel: LiveTvChannel,
-    focusRequester: FocusRequester,
-    downFocusRequester: FocusRequester,
-    modifier: Modifier = Modifier,
-) {
-    val scrollState = rememberScrollState()
-    val coroutineScope = rememberCoroutineScope()
-    var focused by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(LiveTvDimens.ItemRadius)
-    val focusStyle = LocalTvFocusStyle.current
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(185.dp)
-            .focusRequester(focusRequester)
-            .focusProperties { down = downFocusRequester }
-            .onFocusChanged { focused = it.isFocused }
-            .onPreviewKeyEvent { event ->
-                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                val delta = 64
-                when (event.key) {
-                    Key.DirectionDown -> {
-                        if (scrollState.value < scrollState.maxValue) {
-                            coroutineScope.launch {
-                                scrollState.animateScrollTo((scrollState.value + delta).coerceAtMost(scrollState.maxValue))
-                            }
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                    Key.DirectionUp -> {
-                        if (scrollState.value > 0) {
-                            coroutineScope.launch {
-                                scrollState.animateScrollTo((scrollState.value - delta).coerceAtLeast(0))
-                            }
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                    else -> false
-                }
-            }
-            .clip(shape)
-            .border(
-                BorderStroke(
-                    if (focused) focusStyle.borderWidth else SmartVisionDimensions.PanelBorder,
-                    if (focused) focusStyle.accent else Color.Transparent,
-                ),
-                shape,
-            )
-            .focusable()
-            .verticalScroll(scrollState)
-            .padding(6.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            LiveBadge(text = "EN COURS", color = SmartVisionColors.Primary)
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = channel.timeRange,
-                color = SmartVisionColors.TextSecondary,
-                style = LiveTvItemMetaStyle,
-                maxLines = 1,
-            )
-        }
-
-        Spacer(Modifier.height(6.dp))
-
-        Text(
-            text = if (channel.program == "Direct") channel.name else channel.program,
-            color = SmartVisionColors.TextPrimary,
-            style = LiveTvPreviewTitleStyle,
-            fontWeight = FontWeight.Bold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-
-        Spacer(Modifier.height(4.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = channel.genre,
-                color = SmartVisionColors.TextSecondary,
-                style = LiveTvItemMetaStyle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            LiveBadge(text = channel.quality, color = SmartVisionColors.PrimaryDark)
-        }
-
-        Spacer(Modifier.height(7.dp))
-
-        Text(
-            text = channel.description,
-            color = SmartVisionColors.TextSecondary,
-            style = LiveTvItemMetaStyle,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-
-        Spacer(Modifier.height(10.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(SmartVisionColors.Border.copy(alpha = 0.72f)),
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        val upcomingPrograms = channel.epgPrograms.drop(1).ifEmpty {
-            listOf(LiveTvProgram(channel.nextProgram, channel.nextTimeRange, channel.genre))
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Text(
-                text = "A suivre",
-                color = SmartVisionColors.TextPrimary,
-                style = LiveTvItemMetaStyle,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-            )
-            upcomingPrograms.forEach { program ->
-                Row(verticalAlignment = Alignment.Top) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = program.title,
-                            color = SmartVisionColors.TextPrimary,
-                            style = LiveTvItemMetaStyle,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (program.description.isNotBlank()) {
-                            Text(
-                                text = program.description,
-                                color = SmartVisionColors.TextSecondary,
-                                style = LiveTvItemMetaStyle,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                    Text(
-                        text = program.timeRange,
-                        color = SmartVisionColors.TextSecondary,
-                        style = LiveTvItemMetaStyle,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
-    }
-}
-
 private fun LiveTvCategory.specialIcon(): ImageVector? {
     val normalized = label.lowercase()
     return when {
@@ -1904,72 +1820,29 @@ private fun LiveTvCategory.specialIcon(): ImageVector? {
 }
 
 @Composable
-private fun FranceFlagIcon(active: Boolean) {
-    val shape = RoundedCornerShape(3.dp)
-    Row(
-        modifier = Modifier
-            .size(width = 22.dp, height = 16.dp)
-            .clip(shape)
-            .border(
-                BorderStroke(1.dp, if (active) Color.White.copy(alpha = 0.72f) else SmartVisionColors.Border),
-                shape,
-            ),
-    ) {
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .background(Color(0xFF1B4BFF)),
-        )
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .background(Color.White),
-        )
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .background(Color(0xFFFF3048)),
-        )
-    }
-}
-
-@Composable
 private fun ChannelLogo(
     channel: LiveTvChannel,
     active: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    if (!channel.logoUrl.isNullOrBlank()) {
+        AsyncImage(
+            model = channel.logoUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = modifier,
+        )
+        return
+    }
+
     val shape = RoundedCornerShape(4.dp)
     Box(
         modifier = modifier
             .clip(shape)
-            .background(
-                when (channel.logoText) {
-                    "2" -> Color.Transparent
-                    "3" -> Color.Transparent
-                    "arte" -> Color.Transparent
-                    "W9" -> Color.Transparent
-                    else -> Color.White.copy(alpha = if (active) 0.18f else 0.12f)
-                },
-            )
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), shape),
+            .background(Color.White.copy(alpha = if (active) 0.10f else 0.06f))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), shape),
         contentAlignment = Alignment.Center,
     ) {
-        if (!channel.logoUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = channel.logoUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(1.dp),
-            )
-            return@Box
-        }
-
         when (channel.logoText) {
             "TF1" -> Tf1Logo()
             else -> {
@@ -2092,6 +1965,160 @@ private fun ProgressLine(
 }
 
 @Composable
+private fun LiveTvLoadingSkeleton(
+    modifier: Modifier = Modifier,
+) {
+    val transition = rememberInfiniteTransition(label = "liveTvSkeleton")
+    val shimmerOffset by transition.animateFloat(
+        initialValue = -360f,
+        targetValue = 920f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1350, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "liveTvSkeletonOffset",
+    )
+    val shimmerBrush = Brush.linearGradient(
+        colors = listOf(
+            SmartVisionColors.Surface.copy(alpha = 0.34f),
+            SmartVisionColors.SurfaceElevated.copy(alpha = 0.74f),
+            SmartVisionColors.Surface.copy(alpha = 0.34f),
+        ),
+        start = Offset(shimmerOffset, 0f),
+        end = Offset(shimmerOffset + 280f, 0f),
+    )
+
+    Row(
+        modifier = modifier.focusProperties { canFocus = false },
+        horizontalArrangement = Arrangement.spacedBy(LiveTvDimens.PanelGap),
+    ) {
+        LiveTvSkeletonPanel(
+            titleWidth = 92.dp,
+            rows = 11,
+            rowHeight = LiveTvDimens.CategoryRowHeight,
+            shimmerBrush = shimmerBrush,
+            modifier = Modifier
+                .weight(0.24f)
+                .fillMaxHeight(),
+        )
+        LiveTvSkeletonPanel(
+            titleWidth = 82.dp,
+            rows = 10,
+            rowHeight = LiveTvDimens.ChannelRowHeight,
+            shimmerBrush = shimmerBrush,
+            headerTrailing = true,
+            modifier = Modifier
+                .weight(0.42f)
+                .fillMaxHeight(),
+        )
+        LiveTvSkeletonPreviewPanel(
+            shimmerBrush = shimmerBrush,
+            modifier = Modifier
+                .weight(0.34f)
+                .fillMaxHeight(),
+        )
+    }
+}
+
+@Composable
+private fun LiveTvSkeletonPanel(
+    titleWidth: androidx.compose.ui.unit.Dp,
+    rows: Int,
+    rowHeight: androidx.compose.ui.unit.Dp,
+    shimmerBrush: Brush,
+    modifier: Modifier = Modifier,
+    headerTrailing: Boolean = false,
+) {
+    LiveTvPanel(
+        title = "",
+        modifier = modifier,
+        trailing = if (headerTrailing) {
+            {
+                Box(
+                    modifier = Modifier
+                        .width(180.dp)
+                        .height(24.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(shimmerBrush),
+                )
+            }
+        } else {
+            null
+        },
+    ) {
+        Box(
+            modifier = Modifier
+                .width(titleWidth)
+                .height(18.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(shimmerBrush),
+        )
+        Spacer(Modifier.height(10.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(LiveTvDimens.ListGap)) {
+            repeat(rows) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(rowHeight)
+                        .clip(RoundedCornerShape(LiveTvDimens.ItemRadius))
+                        .background(shimmerBrush),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LiveTvSkeletonPreviewPanel(
+    shimmerBrush: Brush,
+    modifier: Modifier = Modifier,
+) {
+    LiveTvPanel(
+        title = "",
+        modifier = modifier,
+        trailing = {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                repeat(2) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(shimmerBrush),
+                    )
+                }
+            }
+        },
+    ) {
+        Box(
+            modifier = Modifier
+                .width(80.dp)
+                .height(18.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(shimmerBrush),
+        )
+        Spacer(Modifier.height(10.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1.88f)
+                .clip(RoundedCornerShape(5.dp))
+                .background(shimmerBrush),
+        )
+        Spacer(Modifier.height(8.dp))
+        repeat(5) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(28.dp)
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(shimmerBrush),
+            )
+            Spacer(Modifier.height(5.dp))
+        }
+    }
+}
+
+@Composable
 private fun LoadingState(
     title: String,
     modifier: Modifier = Modifier,
@@ -2153,6 +2180,7 @@ private fun EmptyState(
 @Composable
 private fun ErrorState(
     message: String,
+    retryLabel: String,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -2168,7 +2196,7 @@ private fun ErrorState(
             )
             Spacer(Modifier.height(14.dp))
             TvButton(
-                text = "Reessayer",
+                text = retryLabel,
                 onClick = onRetry,
                 variant = TvButtonVariant.Secondary,
                 modifier = Modifier.height(42.dp),
@@ -2202,7 +2230,7 @@ private fun LiveTvPanel(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(34.dp),
+                .height(30.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -2216,7 +2244,7 @@ private fun LiveTvPanel(
             trailing?.invoke()
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(6.dp))
 
         content()
     }
@@ -2231,12 +2259,13 @@ private object LiveTvDimens {
     val HeaderHeight = 44.dp
     val HeaderGap = 16.dp
     val PanelGap = 8.dp
-    val PanelPadding = 14.dp
+    val PanelPadding = 8.dp
     val PanelRadius = 8.dp
     val ItemRadius = 7.dp
     val ListGap = 5.dp
-    val CategoryRowHeight = 42.dp
-    val ChannelRowHeight = 46.dp
+    val CategoryRowHeight = 38.dp
+    val ChannelRowHeight = 42.dp
+    val ChannelListTopPadding = 12.dp
 }
 
 private fun LiveTvChannel.toBehaviorContent(categoryLabel: String?): BehaviorContent =

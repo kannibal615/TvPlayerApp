@@ -21,6 +21,7 @@ class EpgRepository(
     private val networkActivityTracker: NetworkActivityTracker,
 ) {
     private val cacheFile = File(context.filesDir, "smartvision_epg_cache.tsv")
+    private val metadataFile = File(context.filesDir, "smartvision_epg_cache.meta")
     @Volatile private var cache: Map<String, List<EpgProgram>> = emptyMap()
     @Volatile private var cacheLoaded: Boolean = false
 
@@ -57,6 +58,7 @@ class EpgRepository(
             cache = withLookupAliases(parsed)
             cacheLoaded = true
             persist(parsed)
+            markSynchronized(url)
             parsed.values.sumOf { it.size }.also { count ->
                 logMemory("epg_sync_success", "channels=${parsed.size} programs=$count")
                 work.update(currentItems = count, progressPercent = 100)
@@ -71,6 +73,12 @@ class EpgRepository(
             logMemory("epg_sync_error", "error=${error.javaClass.simpleName}")
             work.fail(error.message ?: error.javaClass.simpleName)
         }
+    }
+
+    suspend fun synchronizeIfStale(url: String, minAgeMs: Long): Result<Int> = withContext(Dispatchers.IO) {
+        if (url.isBlank()) return@withContext Result.success(0)
+        if (isFresh(url, minAgeMs)) return@withContext Result.success(0)
+        synchronize(url)
     }
 
     fun loadPrograms(channelId: String?, channelName: String): List<EpgProgram> {
@@ -211,6 +219,27 @@ class EpgRepository(
         return programs.mapValues { (_, items) -> items.toList() }
     }
 
+    private fun isFresh(url: String, minAgeMs: Long): Boolean {
+        if (!metadataFile.exists()) return false
+        val values = metadataFile.readLines()
+            .mapNotNull { line ->
+                val separator = line.indexOf('=')
+                if (separator <= 0) null else line.take(separator) to line.drop(separator + 1)
+            }
+            .toMap()
+        val lastSuccessAt = values["lastSuccessAt"]?.toLongOrNull() ?: return false
+        val urlHash = values["urlHash"] ?: return false
+        return urlHash == url.stableHash() && System.currentTimeMillis() - lastSuccessAt < minAgeMs
+    }
+
+    private fun markSynchronized(url: String) {
+        if (url.isBlank()) return
+        metadataFile.parentFile?.mkdirs()
+        metadataFile.writeText(
+            "lastSuccessAt=${System.currentTimeMillis()}\nurlHash=${url.stableHash()}\n",
+        )
+    }
+
     private fun withLookupAliases(programs: Map<String, List<EpgProgram>>): Map<String, List<EpgProgram>> {
         if (programs.isEmpty()) return emptyMap()
         val indexed = LinkedHashMap<String, List<EpgProgram>>(programs.size * 2)
@@ -283,6 +312,8 @@ private fun normalizeKey(value: String): String =
     value.lowercase(Locale.ROOT)
         .replace(Regex("\\s+"), " ")
         .replace(Regex("[^a-z0-9]+"), "")
+
+private fun String.stableHash(): String = hashCode().toString()
 
 private fun String.toCacheField(): String =
     replace("\t", " ")

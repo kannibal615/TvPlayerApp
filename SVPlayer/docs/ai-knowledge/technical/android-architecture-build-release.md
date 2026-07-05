@@ -18,8 +18,8 @@ Observabilite reseau:
 - Ne jamais exposer les query params, tokens, identifiants Xtream, mots de passe ou URLs de lecture dans ce tracker.
 
 Gradle local constate le 2026-07-05:
-- `versionCode = 103`
-- `versionName = "0.1.99"`
+- `versionCode = 104`
+- `versionName = "0.1.100"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -37,6 +37,7 @@ Demarrage:
 - `MainActivity` met en cache le snapshot d'activation locale lu pendant le splash dans `AppContainer`; `ActivationViewModel` l'utilise comme etat initial. Le chemin Home actif ne doit donc plus afficher l'ecran tampon `localStateReady=false` entre le splash et Home.
 - Le splash systeme affiche le logo wide plus petit et plus haut; l'overlay Compose place la barre de progression centree sous ce logo et affiche une seule ligne `pourcentage + statut`.
 - L'initialisation diagnostic `AppContainer` dans `SVPlayerApplication` est differee et lancee hors thread UI, pour ne pas bloquer le rendu initial du splash Compose.
+- Depuis le 2026-07-05, `SVPlayerApplication` planifie aussi `EpgSyncScheduler.apply(...)` apres le demarrage differe. Ce Worker rafraichit l'EPG stale-aware avec contrainte reseau et ne lance pas de synchronisation catalogue complete.
 - `AppNavigation` ne contient plus de `StartupHandoffScreen`; apres le statut `Demarrage en cours...`, `MainActivity` rend directement la navigation.
 - `MainActivity` ne pose plus `@drawable/splash_background` comme fond de fenetre permanent afin d'eviter que le fond splash reapparaisse derriere Home; les logs `SVStartup` suivent les statuts startup.
 
@@ -90,6 +91,7 @@ Deploy:
 - `app/src/main/java/com/smartvision/svplayer/data/home/HomeContentRepository.kt`
 - `app/src/main/java/com/smartvision/svplayer/data/network/NetworkActivityTracker.kt`
 - `app/src/main/java/com/smartvision/svplayer/data/playlist/EpgRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/playlist/EpgSyncWorker.kt`
 - `app/src/main/java/com/smartvision/svplayer/ui/update/*`
 - `scripts/deploy_activation_phase1.ps1`
 
@@ -160,6 +162,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-05: release publiee `0.1.100` / `versionCode 104` pour Live TV UI/focus/EPG: skeleton 3 panneaux, i18n Live TV, categories/chaines compactes, badge EPG image, logos sans fond, numerotation par dossier, suppression Historique dans le header Apercu, mini-player apercu avec overlay bas, lignes EPG focusables, refresh EPG stale-aware et Worker EPG horaire. Aucun filtre admin/API `###` ajoute. APK `smartvision-tv-v104-b7a7822d.apk`, SHA256 `b7a7822d4fab7dfa29e0b22468383cb23723b8c28be617be83cb932ad886f5df`, taille `40351582`, manifeste public, `app_update.php`, APK stable et APK versionne verifies.
 - 2026-07-05: release publiee `0.1.99` / `versionCode 103` pour Media compact aligne Live TV: ratios `0.24 / 0.42 / 0.34`, suppression hero/snapshot/stats, hub `Telephone -> TV` sans bouton cache, tuile `TV -> Phone`, details fichier simplifies, mini-player local video remplissant son cadre comme Live TV et anti-flash couronne Media pendant le chargement app-config. APK `smartvision-tv-v103-b1f73b9d.apk`, SHA256 `b1f73b9df54227edc898c640f84aef49abbcbbab66c607341a32feb3767ee4a6`, taille `40314076`, manifeste public, `app_update.php`, APK stable et APK versionne verifies.
 - 2026-07-05: release publiee `0.1.96` / `versionCode 100` pour refonte premium Media Center: hero studio, compteurs, stockage intelligent, hub transfert telephone, stats bibliotheque, lignes fichiers enrichies et preview hero. APK `smartvision-tv-v100-bd7812fb.apk`, SHA256 `bd7812fbabd30519b6810c9b80364097a582b0a43818edf9c29574a4b38a5c8f`, manifeste public, `app_update.php`, APK stable et versionne verifies. Parametres admin non modifies volontairement.
 - 2026-07-05: release publiee `0.1.95` / `versionCode 99` pour rendre les actions Media Center plus accessibles: `Supprimer` est aligne avec `Lire` et `Renommer`, les dialogs ciblent le fichier par id explicite et la confirmation de suppression prend le focus TV. APK `smartvision-tv-v99-a8450f83.apk`, SHA256 `a8450f83e6e06c8b4f912094acb2a8a63a7020405a994244c336bec8d4f18536`, manifeste public, `app_update.php`, APK stable et flags Recorder/Media verifies.

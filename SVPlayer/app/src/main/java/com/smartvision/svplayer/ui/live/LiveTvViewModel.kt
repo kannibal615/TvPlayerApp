@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 
 data class LiveTvCategory(
     val id: String,
@@ -93,6 +94,9 @@ data class LiveTvUiState(
 
     val focusedChannel: LiveTvChannel?
         get() = channels.firstOrNull { it.streamId == focusedChannelId }
+
+    val isHistoryCategory: Boolean
+        get() = selectedCategoryId == HistoryLiveCategoryId
 }
 
 class LiveTvViewModel(
@@ -111,6 +115,7 @@ class LiveTvViewModel(
     private var historyCategorySignals: List<CategoryHistorySignal> = emptyList()
     private var playerSettings = PlayerSettings()
     private var localCategories: List<Category> = emptyList()
+    private var pendingHistoryFocusAfterDelete: Int? = null
 
     init {
         observeSettings()
@@ -209,24 +214,24 @@ class LiveTvViewModel(
         }
     }
 
-    fun selectCategory(category: LiveTvCategory) {
+    fun selectCategory(category: LiveTvCategory, autoPreviewFirstChannel: Boolean = false) {
         val current = _uiState.value
         if (current.selectedCategoryId == category.id && (current.channels.isNotEmpty() || current.channelsLoading)) {
             return
         }
         if (category.id == FavoriteLiveCategoryId) {
-            loadFavoriteChannels()
+            loadFavoriteChannels(autoPreviewFirstChannel)
             return
         }
         if (category.id == HistoryLiveCategoryId) {
-            loadHistoryChannels()
+            loadHistoryChannels(autoPreviewFirstChannel)
             return
         }
         if (category.id == AllLiveCategoryId) {
-            loadAllChannels()
+            loadAllChannels(autoPreviewFirstChannel)
             return
         }
-        loadChannels(category.id)
+        loadChannels(category.id, autoPreviewFirstChannel)
     }
 
     fun focusChannel(channel: LiveTvChannel) {
@@ -281,6 +286,28 @@ class LiveTvViewModel(
     fun toggleFavorite(channel: LiveTvChannel) {
         viewModelScope.launch {
             userContentRepository.toggleFavorite(UserContentType.Live, channel.streamId)
+        }
+    }
+
+    fun refreshChannelEpg(channel: LiveTvChannel, epgUrl: String) {
+        if (epgUrl.isBlank()) return
+        viewModelScope.launch {
+            epgRepository.synchronizeIfStale(epgUrl, EpgRefreshMinAgeMs)
+            val local = catalogRepository.getLiveChannelById(channel.streamId) ?: return@launch
+            val refreshed = local.toUiChannel(
+                index = _uiState.value.channels.indexOfFirst { it.streamId == channel.streamId }.coerceAtLeast(0),
+                categoryLabel = local.categoryName.ifBlank { _uiState.value.selectedCategory?.label ?: channel.genre },
+                xtreamRepository = xtreamRepository,
+                epgRepository = epgRepository,
+                favoriteIds = favoriteIds,
+            )
+            _uiState.update { state ->
+                state.copy(
+                    channels = state.channels.map { current ->
+                        if (current.streamId == refreshed.streamId) refreshed.copy(number = current.number) else current
+                    },
+                )
+            }
         }
     }
 
@@ -351,6 +378,18 @@ class LiveTvViewModel(
                 historyCategorySignals = userContentRepository.resolveCategorySignals(historyProgress)
                 _uiState.update { state ->
                     val history = historyChannels()
+                    val pendingFocusId = pendingHistoryFocusAfterDelete?.takeIf { id ->
+                        history.any { it.streamId == id }
+                    }
+                    if (state.selectedCategoryId == HistoryLiveCategoryId) {
+                        pendingHistoryFocusAfterDelete = null
+                    }
+                    val selectedHistoryId = when {
+                        state.selectedCategoryId != HistoryLiveCategoryId -> state.selectedChannelId
+                        pendingFocusId != null -> pendingFocusId
+                        state.selectedChannelId?.let { selectedId -> history.any { it.streamId == selectedId } } == true -> state.selectedChannelId
+                        else -> null
+                    }
                     state.copy(
                         categories = state.categories.withSpecialCategories(
                             allCount = catalogTotalCount(),
@@ -360,19 +399,20 @@ class LiveTvViewModel(
                         ),
                         channels = if (state.selectedCategoryId == HistoryLiveCategoryId) history else state.channels,
                         focusedChannelId = if (state.selectedCategoryId == HistoryLiveCategoryId) {
-                            state.focusedChannelId
-                                ?.takeIf { focusedId -> history.any { it.streamId == focusedId } }
+                            pendingFocusId
+                                ?: state.focusedChannelId?.takeIf { focusedId -> history.any { it.streamId == focusedId } }
                                 ?: history.firstOrNull()?.streamId
                         } else {
                             state.focusedChannelId
                         },
+                        selectedChannelId = selectedHistoryId,
                     )
                 }
             }
         }
     }
 
-    private fun loadFavoriteChannels() {
+    private fun loadFavoriteChannels(autoPreviewFirstChannel: Boolean = false) {
         channelsJob?.cancel()
         channelsJob = viewModelScope.launch {
             val channels = favoriteChannels()
@@ -393,13 +433,13 @@ class LiveTvViewModel(
                     ),
                     channels = channels,
                     focusedChannelId = channels.firstOrNull()?.streamId,
-                    selectedChannelId = null,
+                    selectedChannelId = if (autoPreviewFirstChannel) channels.firstOrNull()?.streamId else null,
                 )
             }
         }
     }
 
-    private fun loadHistoryChannels() {
+    private fun loadHistoryChannels(autoPreviewFirstChannel: Boolean = false) {
         channelsJob?.cancel()
         channelsJob = viewModelScope.launch {
             val channels = historyChannels()
@@ -420,14 +460,14 @@ class LiveTvViewModel(
                     ),
                     channels = channels,
                     focusedChannelId = channels.firstOrNull()?.streamId,
-                    selectedChannelId = null,
+                    selectedChannelId = if (autoPreviewFirstChannel) channels.firstOrNull()?.streamId else null,
                 )
             }
         }
     }
 
-    private fun loadAllChannels() {
-        loadChannelPage(categoryId = null, selectedCategoryId = AllLiveCategoryId, categoryLabel = "Live TV", replace = true)
+    private fun loadAllChannels(autoPreviewFirstChannel: Boolean = false) {
+        loadChannelPage(categoryId = null, selectedCategoryId = AllLiveCategoryId, categoryLabel = "Live TV", replace = true, autoPreviewFirstChannel = autoPreviewFirstChannel)
     }
 
     fun loadNextPage() {
@@ -442,10 +482,15 @@ class LiveTvViewModel(
             selectedCategoryId = selectedCategoryId,
             categoryLabel = categoryLabel,
             replace = false,
+            autoPreviewFirstChannel = false,
         )
     }
 
     fun deleteHistoryChannel(channel: LiveTvChannel) {
+        val channels = _uiState.value.channels
+        val index = channels.indexOfFirst { it.streamId == channel.streamId }
+        pendingHistoryFocusAfterDelete = channels.getOrNull(index + 1)?.streamId
+            ?: channels.getOrNull(index - 1)?.streamId
         viewModelScope.launch {
             userContentRepository.deleteProgress(UserContentType.Live, channel.streamId)
         }
@@ -510,9 +555,9 @@ class LiveTvViewModel(
                 )
             }
 
-    private fun loadChannels(categoryId: String) {
+    private fun loadChannels(categoryId: String, autoPreviewFirstChannel: Boolean = false) {
         val categoryLabel = _uiState.value.categories.firstOrNull { it.id == categoryId }?.label ?: "Live TV"
-        loadChannelPage(categoryId = categoryId, selectedCategoryId = categoryId, categoryLabel = categoryLabel, replace = true)
+        loadChannelPage(categoryId = categoryId, selectedCategoryId = categoryId, categoryLabel = categoryLabel, replace = true, autoPreviewFirstChannel = autoPreviewFirstChannel)
     }
 
     private fun loadChannelPage(
@@ -520,6 +565,7 @@ class LiveTvViewModel(
         selectedCategoryId: String,
         categoryLabel: String,
         replace: Boolean,
+        autoPreviewFirstChannel: Boolean = false,
     ) {
         if (replace) channelsJob?.cancel()
         channelsJob = viewModelScope.launch {
@@ -574,6 +620,11 @@ class LiveTvViewModel(
                         categories = refreshedCategories,
                         channels = result.items,
                         focusedChannelId = state.focusedChannelId ?: result.items.firstOrNull()?.streamId,
+                        selectedChannelId = if (replace && autoPreviewFirstChannel) {
+                            result.items.firstOrNull()?.streamId
+                        } else {
+                            state.selectedChannelId
+                        },
                         errorMessage = null,
                     )
                 }
@@ -605,6 +656,7 @@ private data class PageLoadResult<T>(
 private const val LiveItemsPageSize = 96
 private const val EpgCategoryScanPageSize = 500
 private const val InitialCategoryLimit = 20
+private val EpgRefreshMinAgeMs = TimeUnit.HOURS.toMillis(1)
 private const val FavoriteLiveCategoryId = "__favorites_live__"
 private const val HistoryLiveCategoryId = "__history_live__"
 private const val AllLiveCategoryId = "__all_live__"
@@ -663,7 +715,7 @@ private fun XtreamLiveStream.toUiChannel(
     val displayName = name.cleanedChannelName()
     return LiveTvChannel(
         streamId = streamId,
-        number = (number.takeIf { it > 0 } ?: (index + 1)).toString().padStart(3, '0'),
+        number = (index + 1).toString().padStart(3, '0'),
         logoText = displayName.logoFallback(),
         logoUrl = streamIcon?.takeIf { it.isNotBlank() },
         name = displayName,
@@ -699,7 +751,7 @@ private fun LocalLiveChannel.toUiChannel(
     val next = epgPrograms.drop(1).firstOrNull()
     return LiveTvChannel(
         streamId = streamId,
-        number = (number.takeIf { it > 0 } ?: (index + 1)).toString().padStart(3, '0'),
+        number = (index + 1).toString().padStart(3, '0'),
         logoText = displayName.logoFallback(),
         logoUrl = logoUrl,
         name = displayName,
