@@ -53,6 +53,8 @@ import com.smartvision.svplayer.domain.usecase.BuildPlaybackRequestUseCase
 import com.smartvision.svplayer.domain.usecase.SavePlaybackProgressUseCase
 import com.smartvision.svplayer.domain.usecase.SynchronizeCatalogUseCase
 import com.smartvision.svplayer.domain.usecase.ToggleFavoriteUseCase
+import com.smartvision.svplayer.media.MediaRepository
+import com.smartvision.svplayer.media.MediaStorageManager
 import com.smartvision.svplayer.startup.StartupStateStore
 import com.smartvision.svplayer.startup.StartupCatalogWorkKind
 import com.smartvision.svplayer.startup.StartupCatalogWorkRequest
@@ -213,6 +215,10 @@ class AppContainer(context: Context) {
         favoriteDao = database.favoriteDao(),
         progressDao = database.progressDao(),
         mediaDao = database.mediaDao(),
+    )
+    val mediaRepository: MediaRepository = MediaRepository(
+        dao = database.mediaCenterDao(),
+        storageManager = MediaStorageManager(appContext),
     )
 
     private val youtubeBehaviorReporter = YoutubeBehaviorReporter(

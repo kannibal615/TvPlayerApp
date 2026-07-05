@@ -8,6 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.smartvision.svplayer.data.local.dao.CategoryDao
 import com.smartvision.svplayer.data.local.dao.FavoriteDao
+import com.smartvision.svplayer.data.local.dao.MediaCenterDao
 import com.smartvision.svplayer.data.local.dao.MediaDao
 import com.smartvision.svplayer.data.local.dao.ProfileDao
 import com.smartvision.svplayer.data.local.dao.ProgressDao
@@ -18,9 +19,12 @@ import com.smartvision.svplayer.data.local.entity.EpisodeEntity
 import com.smartvision.svplayer.data.local.entity.FavoriteEntity
 import com.smartvision.svplayer.data.local.entity.HomeTrendingPreviewCacheEntity
 import com.smartvision.svplayer.data.local.entity.LiveStreamEntity
+import com.smartvision.svplayer.data.local.entity.MediaFileEntity
+import com.smartvision.svplayer.data.local.entity.MediaFolderEntity
 import com.smartvision.svplayer.data.local.entity.MovieEntity
 import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.local.entity.ProfileEntity
+import com.smartvision.svplayer.data.local.entity.RecordingJobEntity
 import com.smartvision.svplayer.data.local.entity.SeriesEntity
 import com.smartvision.svplayer.data.local.entity.SyncStateEntity
 import com.smartvision.svplayer.data.local.entity.TrendingMediaEntity
@@ -46,8 +50,11 @@ import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
         YoutubeVideoHistoryEntity::class,
         YoutubeSelectionEntity::class,
         YoutubeBehaviorEventEntity::class,
+        MediaFolderEntity::class,
+        MediaFileEntity::class,
+        RecordingJobEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 abstract class SVDatabase : RoomDatabase() {
@@ -58,6 +65,7 @@ abstract class SVDatabase : RoomDatabase() {
     abstract fun progressDao(): ProgressDao
     abstract fun syncStateDao(): SyncStateDao
     abstract fun youtubeDao(): YoutubeDao
+    abstract fun mediaCenterDao(): MediaCenterDao
 
     companion object {
         fun build(context: Context): SVDatabase =
@@ -71,6 +79,7 @@ abstract class SVDatabase : RoomDatabase() {
                     Migration6To7,
                     Migration7To8,
                     Migration8To9,
+                    Migration9To10,
                 )
                 .build()
 
@@ -207,6 +216,62 @@ abstract class SVDatabase : RoomDatabase() {
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_home_trending_preview_cache_contentType_preparedAt ON home_trending_preview_cache(contentType, preparedAt)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_home_trending_preview_cache_lastSync ON home_trending_preview_cache(lastSync)")
+            }
+        }
+
+        private val Migration9To10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS media_folders (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "name TEXT NOT NULL, " +
+                        "relativePath TEXT NOT NULL, " +
+                        "parentId INTEGER, " +
+                        "createdAt INTEGER NOT NULL, " +
+                        "updatedAt INTEGER NOT NULL" +
+                        ")",
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_media_folders_relativePath ON media_folders(relativePath)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_media_folders_parentId ON media_folders(parentId)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS media_files (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "folderId INTEGER, " +
+                        "displayName TEXT NOT NULL, " +
+                        "relativePath TEXT NOT NULL, " +
+                        "mimeType TEXT, " +
+                        "mediaType TEXT NOT NULL, " +
+                        "source TEXT NOT NULL, " +
+                        "sizeBytes INTEGER NOT NULL, " +
+                        "durationMs INTEGER, " +
+                        "createdAt INTEGER NOT NULL, " +
+                        "updatedAt INTEGER NOT NULL, " +
+                        "lastIndexedAt INTEGER NOT NULL, " +
+                        "deletedAt INTEGER" +
+                        ")",
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_media_files_relativePath ON media_files(relativePath)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_media_files_folderId ON media_files(folderId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_media_files_mediaType ON media_files(mediaType)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_media_files_source ON media_files(source)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_media_files_deletedAt ON media_files(deletedAt)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS recording_jobs (" +
+                        "id TEXT NOT NULL PRIMARY KEY, " +
+                        "mediaFileId INTEGER, " +
+                        "status TEXT NOT NULL, " +
+                        "sourceType TEXT NOT NULL, " +
+                        "title TEXT NOT NULL, " +
+                        "outputRelativePath TEXT, " +
+                        "startedAt INTEGER, " +
+                        "endedAt INTEGER, " +
+                        "updatedAt INTEGER NOT NULL, " +
+                        "errorMessage TEXT" +
+                        ")",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_recording_jobs_status ON recording_jobs(status)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_recording_jobs_mediaFileId ON recording_jobs(mediaFileId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_recording_jobs_updatedAt ON recording_jobs(updatedAt)")
             }
         }
     }

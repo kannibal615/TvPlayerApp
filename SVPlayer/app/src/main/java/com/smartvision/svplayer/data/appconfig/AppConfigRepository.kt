@@ -198,4 +198,8 @@ private fun defaultFeatureAccess(): List<FeatureAccess> =
         FeatureAccess("advanced_favorites", "Favoris avances", premium = true, trial = true, freeAds = false),
         FeatureAccess("multi_screen", "Multi-ecran", premium = true, trial = false, freeAds = false),
         FeatureAccess("local_cache", "Telechargement ou cache local", premium = true, trial = false, freeAds = false),
+        FeatureAccess("recorder", "Recorder", premium = true, trial = true, freeAds = false),
+        FeatureAccess("media_center", "Media Center menu", premium = true, trial = true, freeAds = false),
+        FeatureAccess("media_file_management", "Media file management", premium = true, trial = true, freeAds = false),
+        FeatureAccess("media_phone_transfer", "Phone transfer", premium = true, trial = true, freeAds = false),
     )

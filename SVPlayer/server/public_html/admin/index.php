@@ -1986,6 +1986,10 @@ function admin_default_feature_access(): array
         ['key' => 'advanced_favorites', 'label' => 'Favoris avances', 'premium' => true, 'trial' => true, 'free_ads' => false],
         ['key' => 'multi_screen', 'label' => 'Multi-ecran', 'premium' => true, 'trial' => false, 'free_ads' => false],
         ['key' => 'local_cache', 'label' => 'Telechargement ou cache local', 'premium' => true, 'trial' => false, 'free_ads' => false],
+        ['key' => 'recorder', 'label' => 'Recorder', 'premium' => true, 'trial' => true, 'free_ads' => false],
+        ['key' => 'media_center', 'label' => 'Menu Media Center', 'premium' => true, 'trial' => true, 'free_ads' => false],
+        ['key' => 'media_file_management', 'label' => 'Gestion fichiers Media', 'premium' => true, 'trial' => true, 'free_ads' => false],
+        ['key' => 'media_phone_transfer', 'label' => 'Transfert telephone TV', 'premium' => true, 'trial' => true, 'free_ads' => false],
     ];
 }
 

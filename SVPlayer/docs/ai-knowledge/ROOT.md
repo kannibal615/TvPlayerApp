@@ -10,7 +10,7 @@ SmartVision / SVPlayer est une application Android TV native Kotlin/Compose pour
 
 Etat technique constate le 2026-07-05:
 - applicationId: `com.smartvision.svplayer`
-- version locale Gradle: `0.1.90` / `versionCode 94`
+- version locale Gradle: `0.1.91` / `versionCode 95`
 - langue officielle UI: anglais par defaut; deuxieme langue disponible: francais; futures langues a ajouter via le systeme i18n.
 - entree TV: `MainActivity -> ui/navigation/AppNavigation.kt`
 - lecture video: AndroidX Media3 ExoPlayer natif
@@ -125,6 +125,48 @@ Ne pas lire par defaut si la demande concerne uniquement:
 
 Statut rapide:
 - les ecrans actifs sont sous `ui/*`, pas sous une ancienne architecture.
+
+## Recorder, Media Center et fichiers locaux
+
+Resume:
+Recorder reutilisable, Media Center local, fichiers enregistres/importes, stockage app-specific, gestion dossiers, lecture locale et transfert telephone/TV.
+
+Lire les fichiers suivants si la demande concerne:
+- recorder
+- enregistrement
+- DVR
+- bouton Record
+- Media
+- Media Center
+- fichiers locaux
+- dossiers locaux
+- import telephone vers TV
+- export TV vers telephone
+- PremiumFeatureGate
+- recording service
+- recording jobs
+
+Fichiers detailles:
+- `docs/RECORDER_MEDIA_PLAN.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/features/monetization-consent-tracking.md`
+- `docs/ai-knowledge/technical/backend-admin-api-deploy.md`
+
+Dependances:
+- Catalogue, synchro, playlist et lecteur
+- UI TV, focus et navigation
+- Activation, licence, essai et Xtream
+- Monetisation, consentement et tracking
+- Backend/admin/API
+
+Ne pas lire par defaut si la demande concerne uniquement:
+- release APK sans changement fonctionnel
+- correction locale d'un ecran existant sans Recorder/Media
+
+Statut rapide:
+- Lot 6 ajoute le Media Center local: route/header `Media`, verrou/couronne via `media_center`, tables Room `media_folders`/`media_files`/`recording_jobs`, stockage app-specific `SmartVisionMedia`, scan fichiers/dossiers et actions renommer/deplacer/supprimer. Le Recorder, la lecture locale et le transfert telephone/TV restent a implementer.
 
 ## UI TV, focus et navigation telecommande
 
@@ -298,6 +340,7 @@ Fichiers detailles:
 - `docs/ai-knowledge/decisions/2026-06-29-native-tv-player.md`
 - `docs/ai-knowledge/decisions/2026-06-29-documentation-update-policy.md`
 - `docs/ai-knowledge/decisions/2026-07-03-home-trending-preview-cache.md`
+- `docs/ai-knowledge/decisions/2026-07-05-premium-feature-gate-recorder-media.md`
 
 Dependances:
 - tous les domaines

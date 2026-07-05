@@ -51,6 +51,8 @@ import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.monetization.resolveMonetizationStatus
 import com.smartvision.svplayer.data.xtream.XtreamConnectionState
+import com.smartvision.svplayer.domain.access.PremiumFeature
+import com.smartvision.svplayer.domain.access.PremiumFeatureGate
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import com.smartvision.svplayer.sync.CatalogSyncScheduler
@@ -68,6 +70,7 @@ import com.smartvision.svplayer.ui.home.HomeCollectionKind
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.live.LiveTvScreen
+import com.smartvision.svplayer.ui.media.MediaScreen
 import com.smartvision.svplayer.ui.movies.MoviesScreen
 import com.smartvision.svplayer.ui.notifications.NotificationBadgeViewModel
 import com.smartvision.svplayer.ui.notifications.NotificationsRoute
@@ -161,15 +164,22 @@ fun AppNavigation(
         status = monetizationStatus,
     )
     val youtubeAllowed = if (appConfigState.loading) true else loadedYoutubeAllowed
+    val mediaCenterGate = PremiumFeatureGate.evaluate(
+        config = appConfigState.config,
+        feature = PremiumFeature.MEDIA_CENTER,
+        status = monetizationStatus,
+    )
     val parentalControlAllowed = container.appConfigRepository.isFeatureAllowed(
         config = appConfigState.config,
         featureKey = "parental_control",
         status = monetizationStatus,
     )
-    val tabs = remember(youtubeAllowed, strings, xtreamCatalogVisualBlocked) {
-        headerTabs(strings).map { tab ->
+    val tabs = remember(youtubeAllowed, mediaCenterGate, strings, xtreamCatalogVisualBlocked) {
+        headerTabs(strings).mapNotNull { tab ->
             when {
                 tab.route == AppRoute.Youtube.route -> tab.copy(locked = !youtubeAllowed)
+                tab.route == AppRoute.Media.route && !mediaCenterGate.showDisabledControl -> null
+                tab.route == AppRoute.Media.route -> tab.copy(locked = mediaCenterGate.locked)
                 tab.route.isXtreamCatalogRoute() -> tab.copy(warning = xtreamCatalogVisualBlocked)
                 else -> tab
             }
@@ -180,6 +190,10 @@ fun AppNavigation(
             showXtreamConnectionDialog = true
         } else if (route == AppRoute.Youtube.route && !youtubeAllowed) {
             showLicensePurchaseQr = true
+        } else if (route == AppRoute.Media.route && !mediaCenterGate.allowed) {
+            if (mediaCenterGate.shouldShowUpgradePrompt) {
+                showLicensePurchaseQr = true
+            }
         } else {
             navController.navigateSingleTop(route)
         }
@@ -569,6 +583,32 @@ fun AppNavigation(
                 onOpenSeriesDetails = { seriesId -> navController.navigate("series_detail/$seriesId") },
                 onWatchEpisode = { episodeId -> navController.navigate("episode_player/$episodeId") },
             )
+        }
+        composable(AppRoute.Media.route) {
+            if (!mediaCenterGate.showDisabledControl) {
+                PlaceholderRouteScreen(strings.media, strings.mediaDisabledByAdmin)
+            } else {
+                MediaScreen(
+                    currentRoute = currentRoute,
+                    tabs = tabs,
+                    onNavigate = navigateFromHeader,
+                    onSync = launchSyncCatalog,
+                    onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                    onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                    onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                    onLicenseKey = { showLicensePurchaseQr = true },
+                    showLicenseKey = activationState.shouldShowLicenseKey,
+                    hasNewNotifications = hasNewNotifications,
+                    notificationBadgeCount = notificationBadgeCount,
+                    strings = strings,
+                    access = mediaCenterGate,
+                    onLockedFeature = {
+                        if (mediaCenterGate.shouldShowUpgradePrompt) {
+                            showLicensePurchaseQr = true
+                        }
+                    },
+                )
+            }
         }
         composable(AppRoute.Youtube.route) {
             if (!youtubeAllowed) {
@@ -1051,6 +1091,7 @@ private enum class AppRoute(val route: String) {
     Live("live_tv"),
     Movies("movies"),
     Series("series"),
+    Media("media"),
     Youtube("youtube"),
     Settings("settings"),
     Profile("profile"),
@@ -1064,6 +1105,7 @@ private fun headerTabs(strings: SmartVisionStrings) = listOf(
     HomeHeaderTab(strings.liveTv, AppRoute.Live.route),
     HomeHeaderTab(strings.movies, AppRoute.Movies.route),
     HomeHeaderTab(strings.series, AppRoute.Series.route),
+    HomeHeaderTab(strings.media, AppRoute.Media.route),
     HomeHeaderTab(strings.youtube, AppRoute.Youtube.route, useYoutubeLogo = true),
 )
 

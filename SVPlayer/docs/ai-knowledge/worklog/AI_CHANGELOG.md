@@ -1,5 +1,148 @@
 # AI Changelog
 
+## 2026-07-05 - Lots 5 et 6 Media Center stockage local + gestion fichiers
+
+Type:
+- android
+- ui-tv
+- room
+- documentation
+- release
+
+Resume:
+- Ajout du schema Room Media Center en version 10: `media_folders`, `media_files`, `recording_jobs`.
+- Ajout du stockage app-specific `SmartVisionMedia` avec dossiers `Recordings`, `Imports`, `Transfers`.
+- Ajout de `MediaRepository` / `MediaStorageManager` et raccord `AppContainer.mediaRepository`.
+- Remplacement du MVP visuel par un ecran Media connecte aux vrais fichiers/dossiers locaux.
+- Actions branchees: Actualiser, Renommer, Deplacer, Supprimer.
+- Version Android preparee pour release: `0.1.91` / `versionCode 95`.
+
+Fichiers code/version:
+- `app/build.gradle.kts`
+- `app/src/main/java/com/smartvision/svplayer/core/data/AppContainer.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/SVDatabase.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/dao/MediaCenterDao.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/entity/MediaCenterEntities.kt`
+- `app/src/main/java/com/smartvision/svplayer/media/MediaCenterModels.kt`
+- `app/src/main/java/com/smartvision/svplayer/media/MediaRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/media/MediaStorageManager.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/media/MediaScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/media/MediaViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/i18n/SmartVisionStrings.kt`
+
+Fichiers MD mis a jour:
+- `docs/RECORDER_MEDIA_PLAN.md`
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Validation:
+- `git diff --check`: OK, avertissements CRLF uniquement.
+- `php -l server/public_html/admin/index.php`: OK.
+- `php -l server/public_html/api/app_config.php`: OK.
+- `.\scripts\guard_release_version.ps1`: OK, local `0.1.91 (95)` > prod `0.1.90 (94)`.
+- `.\gradlew.bat assembleRelease`: OK en 12m29, APK `app/build/outputs/apk/release/app-release.apk`.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK, metadata `0.1.91 (95)`.
+- `apksigner verify --verbose --print-certs`: OK, v1=true, v2=true, certificat `CN=SmartVision, OU=Android TV, O=SmartVision, C=FR`.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall`: OK, tests site/activation/admin OK.
+- Production verifiee: `smartvision-tv.version.json` et `api/app_update.php` annoncent `0.1.91` / `95`; APK versionne `smartvision-tv-v95-f66182d2.apk` et APK stable `smartvision-tv.apk` repondent avec taille `40232068` et SHA256 `f66182d26909fac5a5011357992fdb9963878aa6ec3fcd354d0866180469a6da`.
+
+## 2026-07-05 - Lots 3 et 4 Media Center route/header + MVP visuel
+
+Type:
+- android
+- ui-tv
+- admin
+- documentation
+
+Resume:
+- Ajout de la route `media` et de l'onglet `Media` dans les headers.
+- Branchement du menu Media sur `PremiumFeatureGate` et le flag admin/API `media_center`.
+- Affichage verrouille avec couronne et popup Premium pour les statuts sans acces.
+- Alignement du header Detail avec les badges locked/warning deja presents sur Home/Catalogue.
+- Ajout d'un ecran `MediaScreen` MVP visuel avec bibliotheque, zone vide, apercu et actions fichiers desactivees.
+
+Fichiers code:
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/detail/DetailCommon.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/media/MediaScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/i18n/SmartVisionStrings.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/appconfig/AppConfigRepository.kt`
+- `server/public_html/admin/index.php`
+- `server/public_html/api/app_config.php`
+
+Fichiers MD mis a jour:
+- `docs/RECORDER_MEDIA_PLAN.md`
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/features/monetization-consent-tracking.md`
+- `docs/ai-knowledge/technical/backend-admin-api-deploy.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Validation:
+- `git diff --check`: OK, avertissements CRLF uniquement.
+- `php -l server/public_html/admin/index.php`: OK.
+- `php -l server/public_html/api/app_config.php`: OK.
+- `.\gradlew.bat :app:compileDebugKotlin`: OK en 1m49, avertissements deprecation preexistants.
+
+## 2026-07-05 - Lot 2 PremiumFeatureGate Recorder + Media Center
+
+Type:
+- android
+- backend
+- admin
+- documentation
+
+Resume:
+- Ajout d'un gate central `PremiumFeatureGate` pour les futures surfaces Recorder et Media Center.
+- Ajout des defaults Android/admin/API pour `recorder`, `media_center`, `media_file_management`, `media_phone_transfer`.
+- Ajout des strings i18n necessaires aux prochains branchements UI Media/Recorder.
+- Documentation du perimetre Lot 2 et de la decision structurante.
+
+Fichiers code:
+- `app/src/main/java/com/smartvision/svplayer/domain/access/PremiumFeatureGate.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/appconfig/AppConfigRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/i18n/SmartVisionStrings.kt`
+- `server/public_html/admin/index.php`
+- `server/public_html/api/app_config.php`
+
+Fichiers MD mis a jour:
+- `docs/RECORDER_MEDIA_PLAN.md`
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/features/monetization-consent-tracking.md`
+- `docs/ai-knowledge/technical/backend-admin-api-deploy.md`
+- `docs/ai-knowledge/decisions/2026-07-05-premium-feature-gate-recorder-media.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Validation:
+- `git diff --check`: OK, avertissements CRLF uniquement.
+- `php -l server/public_html/admin/index.php`: OK.
+- `php -l server/public_html/api/app_config.php`: OK.
+- `.\gradlew.bat :app:compileDebugKotlin`: OK, avertissements deprecation preexistants.
+
+## 2026-07-05 - Lot 1 Recorder + Media Center
+
+Type:
+- documentation
+- analyse technique
+- roadmap
+
+Resume:
+- Analyse de la demande Recorder + Media Center avant code.
+- Creation du document de suivi `docs/RECORDER_MEDIA_PLAN.md`.
+- Indexation du domaine Recorder/Media Center dans le routeur `docs/ai-knowledge/ROOT.md`.
+- Aucun changement Android/PHP/Gradle.
+
+Fichiers MD mis a jour:
+- `docs/RECORDER_MEDIA_PLAN.md`
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code:
+- aucun
+
 ## 2026-07-05 - Retouches overlay Live TV et release 0.1.90
 
 Type:

@@ -1,6 +1,6 @@
 # Backend, Admin, API et Deploiement
 
-Derniere mise a jour: 2026-06-30.
+Derniere mise a jour: 2026-07-05.
 
 ## 1. Objectif
 
@@ -106,6 +106,7 @@ Tables/settings a surveiller:
 - devices/licences/activation sessions selon schema SQL;
 - `app_settings`;
 - `app_feature_access`;
+- defaults `app_feature_access` Recorder/Media ajoutes le 2026-07-05: `recorder`, `media_center` (`Menu Media Center`), `media_file_management`, `media_phone_transfer` avec Premium oui, Trial oui, Free Ads non;
 - `app_consent_receipts`;
 - `app_notifications`;
 - `ads_settings`;
@@ -174,3 +175,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-01: ajout `/playlist/`, upload deploy associe, support `epg_url` dans le payload playlist chiffre, puis onglets Xtream/M3U/EPG et notification appareil ciblee apres push playlist.
 - 2026-07-01: `device_status.php` et `save_playlist_config.php` traitent `m3u_url` comme configuration playlist valide, tout en gardant `xtreamStatus` lie uniquement aux identifiants Xtream.
 - 2026-07-05: `api/notifications.php` evite la jointure utilisateur sauf besoin reel de ciblage `users`, afin de reduire le temps de reponse et les erreurs `SocketTimeoutException` cote Android.
+- 2026-07-05: ajout des defaults admin/API `app_feature_access` pour Recorder et Media Center sans nouveau fichier PHP.
+- 2026-07-05: `media_center` controle maintenant l'affichage/acces du menu Media Center cote Android.

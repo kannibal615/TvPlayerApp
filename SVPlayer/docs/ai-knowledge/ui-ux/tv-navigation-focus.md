@@ -22,7 +22,7 @@ Le focus global est derive des settings utilisateur:
 
 - L'utilisateur navigue avec la telecommande.
 - Les actions doivent etre focusables et pas seulement clickables.
-- Home, Live TV, Movies, Series, YouTube, Settings, Profile et Notifications partagent une logique de header.
+- Home, Live TV, Movies, Series, Media, YouTube, Settings, Profile et Notifications partagent une logique de header.
 - Le header principal affiche aussi une date/heure non focusable a droite (`HH:mm:ss` puis `dd/MM/yyyy`), separee des boutons globaux par un trait vertical discret.
 - Les formulaires doivent permettre Haut/Bas entre champs.
 - Les popups doivent etre navigables au D-pad.
@@ -56,6 +56,7 @@ Attention:
 - Depuis le 2026-07-03, dans Live TV, D-pad droite depuis une ligne chaine selectionnee va vers le panneau details EPG sous le mini-player. Ce panneau est focusable: D-pad haut/bas scrolle les programmes si possible, puis D-pad bas passe au bouton `Regarder` quand le bas est atteint.
 - Les mini-players Home Continue watching, Home Tendances et Live TV apercu ont un fade-in audio local: volume player `0f`, attente 1 seconde apres `play()`, puis montee a `1f` sur 1 seconde. Cette logique ne doit pas modifier le focus, le D-pad, le fallback video ni les routes plein ecran. Le job audio doit rester vivant jusqu'a disparition/changement du composable; ne pas remettre `volume = 0f` juste apres la premiere frame.
 - Depuis le 2026-07-05, le player plein ecran Live TV a un overlay dedie: D-pad haut/bas zappe chaine precedente/suivante uniquement quand aucun panneau Live n'est ouvert; si EPG ou Settings est ouvert, le panneau garde la priorite de navigation/focus. Gauche/droite navigue les boutons du bandeau bas (`EPG`, `Settings`, `Record`, `Back to List`); Back ferme d'abord EPG/Settings puis revient a la liste Live TV. A la sortie du fullscreen Live, la liste restaure le focus sur la derniere chaine ouverte, y compris apres zapping.
+- Depuis le 2026-07-05, la route `Media` utilise `MediaCatalogHeader` et un ecran MVP visuel 3 zones. Le focus initial va vers la bibliotheque; les zones Media sont selectionnables au D-pad, mais les actions fichiers restent desactivees tant que le lot stockage n'est pas implemente.
 
 ## 5. Ecrans concernes
 
@@ -64,6 +65,7 @@ Attention:
 - Movies
 - Series
 - YouTube
+- Media Center
 - Settings
 - Profile
 - Notifications
@@ -81,6 +83,7 @@ Attention:
 - `app/src/main/java/com/smartvision/svplayer/ui/live/*`
 - `app/src/main/java/com/smartvision/svplayer/ui/movies/*`
 - `app/src/main/java/com/smartvision/svplayer/ui/series/*`
+- `app/src/main/java/com/smartvision/svplayer/ui/media/*`
 - `app/src/main/java/com/smartvision/svplayer/ui/youtube/*`
 - `app/src/main/java/com/smartvision/svplayer/ui/settings/*`
 - `app/src/main/java/com/smartvision/svplayer/ui/profile/*`
@@ -162,6 +165,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: ajout popup de synchronisation Xtream avec focus initial sur lancement, blocage telecommande pendant synchro active et retour focus vers Appareil et catalogue apres fermeture.
 - 2026-07-01: Info compte ajoute une section URL EPG avec boutons icones focusables Modifier et Modifier par QR.
 - 2026-07-01: Info compte devient l'ecran pilote visuel: header principal, menu gauche plus etroit, icones de lignes sans cadres, focus initial sur Licence SmartVision, et badge usage dans l'en-tete du panneau droit.
+- 2026-07-05: ajout de la route/header `Media`, verrou/couronne via `media_center`, alignement du header Detail, puis ecran Media Center connecte au stockage local avec listes fichiers/dossiers focusables, panneau apercu et dialogues Renommer/Deplacer/Supprimer.
 - 2026-07-01: Info compte renforce l'approche icones focusables et l'overlay Live/Films/Series devient plus slim sans changer les actions lecteur.
 - 2026-07-02: Home corrige le D-pad bas vers Continue watching / Trending movies / Trending series avec bring-into-view avant `requestFocus`.
 - 2026-07-02: Home renforce le routage vertical avec reset horizontal vers le premier item, padding interne de `LazyRow` pour eviter le clipping gauche, et logs `SVHomeFocus`.

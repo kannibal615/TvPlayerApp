@@ -1,6 +1,6 @@
 # Monetisation, Consentement, Tracking et Publicite
 
-Derniere mise a jour: 2026-06-30.
+Derniere mise a jour: 2026-07-05.
 
 ## 1. Objectif
 
@@ -9,6 +9,8 @@ Documenter les modes d'acces monetises, le consentement TV, les feature flags, l
 ## 2. Fonctionnement actuel
 
 L'application distingue premium, essai, essai expire et gratuit avec pubs. Les fonctionnalites peuvent etre autorisees selon le statut via `api/app_config.php`. Le mode gratuit avec pubs utilise une logique player-only avec configuration distante et fallback de lecture si la pub echoue.
+
+Depuis le 2026-07-05, les nouvelles surfaces Recorder et Media Center doivent passer par `domain/access/PremiumFeatureGate.kt`. Ce gate centralise les decisions Premium/Trial/Free Ads/Expired a partir de `AppRuntimeConfig.features` et `MonetizationStatus`, et renvoie un etat reutilisable par l'UI: autorise, verrou Premium visible, expire, source non supportee ou desactive par config. La route/header `Media` consomme maintenant le flag `media_center`: visible verrouille avec couronne si upgrade requis, masque si desactive par config.
 
 Le tracking actuellement implemente couvre:
 - pub: `ads_events`;
@@ -45,6 +47,7 @@ Android:
 - `data/xtream/XtreamConnectionManager.kt`
 - `data/diagnostics/DeviceDiagnosticsReporter.kt`
 - `data/behavior/BehaviorReporter.kt`
+- `domain/access/PremiumFeatureGate.kt`
 
 Backend:
 - `api/app_config.php`
@@ -63,6 +66,7 @@ Backend:
 
 - Consentement TV popup
 - Header et placeholder YouTube premium
+- Header et ecran Media Center MVP
 - Profil licence/acces
 - Lecteur plein ecran avec preroll
 - Admin > Fonctionnalites / Consentement / Publicites / diagnostics
@@ -111,6 +115,7 @@ Evenements comportementaux actuellement acceptes cote serveur:
 Tables ou settings:
 - `app_settings`
 - `app_feature_access`
+- `app_feature_access` inclut les defaults Recorder/Media: `recorder`, `media_center`, `media_file_management`, `media_phone_transfer` avec Premium oui, Trial oui, Free Ads non.
 - `app_consent_receipts`
 - `ads_settings`
 - `ads_events`
@@ -161,6 +166,7 @@ Lire ce fichier si la demande concerne:
 - anomaly events;
 - diagnostics device;
 - future systeme de pub.
+- Recorder ou Media Center avec verrou Premium.
 
 Ne pas lire ce fichier si la demande concerne uniquement:
 - grille Movies sans lock;
@@ -176,3 +182,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: mise a jour etat actuel apres implementation segmentation admin et inference region/pays/langue/interets.
 - 2026-06-30: anomalies Xtream `XTREAM_FAILED` ajoutees avec code TV public et classification simple.
 - 2026-06-30: les blocages buffering du lecteur Xtream basculent maintenant l'etat connexion en erreur et declenchent une anomalie `XTREAM_FAILED`.
+- 2026-07-05: ajout de `PremiumFeatureGate` pour Recorder/Media Center et defaults `app_feature_access` associes.
+- 2026-07-05: route/header `Media` branchee sur `media_center` avec couronne et popup Premium.

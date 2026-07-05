@@ -74,9 +74,10 @@ M3U / EPG:
 - `DefaultCatalogRepository.kt` choisit la branche de synchronisation selon `PlaylistSource`.
 
 Room:
-- `SVDatabase.kt` version 8.
-- Entites: profiles, categories, live streams, movies, series, episodes, favorites, playback progress, sync state, historique YouTube.
+- `SVDatabase.kt` version 10.
+- Entites catalogue: profiles, categories, live streams, movies, series, episodes, favorites, playback progress, sync state, historique YouTube.
 - `home_trending_preview_cache` stocke les metadonnees premium des cards Tendances HOME: poster, backdrop, duree, sample preview, extension, position 15%/fallback, etats backdrop/preview, `lastSync`.
+- Tables Media Center separees du catalogue: `media_folders`, `media_files`, `recording_jobs` via `MediaCenterDao.kt` et `MediaCenterEntities.kt`. Ne pas les melanger avec `MediaDao.kt`.
 
 Playback:
 - `FullScreenPlayerScreen.kt` gere Live, Movie et Episode.
@@ -111,6 +112,10 @@ Playback:
 - `data/local/SVDatabase.kt`
 - `data/local/dao/*`
 - `data/local/entity/*`
+- `data/local/dao/MediaCenterDao.kt`
+- `data/local/entity/MediaCenterEntities.kt`
+- `media/MediaRepository.kt`
+- `media/MediaStorageManager.kt`
 - `domain/usecase/UseCases.kt`
 - `domain/model/CategoryHistoryPolicy.kt`
 - `sync/SyncWorker.kt`
