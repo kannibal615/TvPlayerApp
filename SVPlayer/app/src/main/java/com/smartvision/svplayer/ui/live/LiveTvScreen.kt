@@ -126,6 +126,7 @@ import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
@@ -1599,15 +1600,23 @@ private fun MiniPreviewPlayer(
     val context = LocalContext.current
     val latestStreamUrl by rememberUpdatedState(streamUrl)
     val latestFallbackStreamUrl by rememberUpdatedState(fallbackStreamUrl)
+    val audioScope = rememberCoroutineScope()
     var buffering by remember { mutableStateOf(true) }
     var errorText by remember { mutableStateOf<String?>(null) }
     var fallbackTried by remember(streamUrl) { mutableStateOf(false) }
+    val volumeFadeJob = remember { arrayOfNulls<Job>(1) }
 
     val player = remember {
         ExoPlayer.Builder(context).build().apply {
             volume = 0f
             playWhenReady = true
         }
+    }
+
+    fun restartPreviewAudioFade() {
+        volumeFadeJob[0]?.cancel()
+        player.volume = 0f
+        volumeFadeJob[0] = audioScope.launch { player.fadeInMiniPlayerVolume() }
     }
 
     LaunchedEffect(streamUrl) {
@@ -1620,6 +1629,7 @@ private fun MiniPreviewPlayer(
         player.prepare()
         player.playWhenReady = true
         player.volume = 0f
+        restartPreviewAudioFade()
     }
 
     DisposableEffect(player) {
@@ -1642,15 +1652,20 @@ private fun MiniPreviewPlayer(
                     player.setMediaItem(MediaItem.fromUri(fallback))
                     player.prepare()
                     player.playWhenReady = true
+                    restartPreviewAudioFade()
                     return
                 }
 
                 buffering = false
+                volumeFadeJob[0]?.cancel()
+                player.volume = 0f
                 errorText = "Flux indisponible"
             }
         }
         player.addListener(listener)
         onDispose {
+            volumeFadeJob[0]?.cancel()
+            player.volume = 0f
             player.removeListener(listener)
             player.release()
         }
@@ -1694,6 +1709,19 @@ private fun MiniPreviewPlayer(
         }
     }
 }
+
+private suspend fun ExoPlayer.fadeInMiniPlayerVolume() {
+    delay(MiniPlayerAudioStartDelayMillis)
+    repeat(MiniPlayerAudioFadeSteps) { step ->
+        delay(MiniPlayerAudioFadeMillis / MiniPlayerAudioFadeSteps)
+        volume = (step + 1).toFloat() / MiniPlayerAudioFadeSteps
+    }
+    volume = 1f
+}
+
+private const val MiniPlayerAudioStartDelayMillis = 1_000L
+private const val MiniPlayerAudioFadeMillis = 1_000L
+private const val MiniPlayerAudioFadeSteps = 10
 
 @Composable
 private fun ProgramInfoCard(

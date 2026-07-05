@@ -1,5 +1,40 @@
 # AI Changelog
 
+## 2026-07-05 - Mini-players audio Home/Live et release 0.1.85 non publiee
+
+Type:
+- android
+- ui-tv
+- playback
+- release-blocked
+- documentation
+
+Resume:
+- Home `Continue watching` active maintenant le son du mini-player apres 1 seconde de lecture, avec montee progressive du volume player de `0f` a `1f` sur 1 seconde.
+- Home `Trending movies` / `Trending series` alignent la transition visuelle de focus sur `Continue watching`: scale focus `1.0f`, animation largeur via `SmartVisionDimensions.FocusAnimationMillis`, stabilisation/transformation a `1_000 ms`.
+- Les mini-players tendances et l'apercu Live TV appliquent le meme fade-in audio local, annule au changement d'URL/focus, a l'erreur ou a la disparition du composable.
+- `versionCode` a ete incremente de `88` a `89` pour la prochaine release, avec `versionName` conserve a `0.1.85`.
+- Release non publiee: `assembleRelease` compile le code mais echoue a `:app:packageRelease` car `local.properties` est absent et la signature release n'a pas `RELEASE_STORE_FILE`. Le vrai `local.properties`, la keystore et les secrets de signature/deploiement doivent etre repris sur l'autre PC.
+
+Fichiers code:
+- `app/src/main/java/com/smartvision/svplayer/ui/home/ContentProgressCard.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/TrendingContentRow.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/LiveTvScreen.kt`
+- `app/build.gradle.kts`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+- `job_progress.md`
+
+Verification:
+- `.\gradlew.bat compileDebugKotlin` OK avec `JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot` et `ANDROID_HOME=C:\Users\bbess\AppData\Local\Android\Sdk`.
+- `guard_release_version.ps1 -SkipAdb` OK avant build: local `0.1.85 (89)`, prod `0.1.85 (88)`.
+- `assembleRelease` lance et compile, puis echoue au packaging: `SigningConfig "release" is missing required property "storeFile"`.
+- Aucune mise en prod effectuee depuis ce PC.
+
 ## 2026-07-04 - Verification Xtream confirmee avant popup
 
 Type:
@@ -24,7 +59,9 @@ Fichiers MD mis a jour:
 - `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
 
 Verification:
-- En attente: le shell actuel n'a pas de `JAVA_HOME` ni de `java` disponible.
+- `.\gradlew.bat :app:compileDebugKotlin --no-daemon --max-workers=1 --console=plain` OK.
+- `.\gradlew.bat :app:testDebugUnitTest --tests "com.smartvision.svplayer.data.xtream.*" --no-daemon --max-workers=1 --console=plain` OK.
+- `assembleDebug` lance puis stoppe a la demande utilisateur avant completion.
 
 ## 2026-07-03 - Robustesse historique Series
 

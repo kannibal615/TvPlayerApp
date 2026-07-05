@@ -76,7 +76,9 @@ import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.max
 import kotlin.math.min
 
@@ -524,6 +526,13 @@ private fun HomeMutedPreviewPlayer(
     }
 
     LaunchedEffect(player, url, mode, startPositionMs) {
+        var volumeFadeJob: Job? = null
+        fun restartPreviewAudioFade() {
+            volumeFadeJob?.cancel()
+            player.volume = 0f
+            volumeFadeJob = launch { player.fadeInMiniPlayerVolume() }
+        }
+
         PerformanceDiagnosticRecorder.record(
             sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
             event = "mini_player_effect_started",
@@ -534,42 +543,44 @@ private fun HomeMutedPreviewPlayer(
                 "urlHash" to url.hashCode(),
             ),
         )
-        when (mode) {
-            HomePreviewMode.TrendSegments -> {
-                resumeOverlayVisible = false
-                videoVisible = false
-                delay(TrendPreviewPosterDelayMillis)
-                PerformanceDiagnosticRecorder.recordDuration(
-                    sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
-                    event = "trend_preview_poster_delay_complete",
-                    startedAtMs = playerCreatedAt,
-                    fields = mapOf("posterDelayMs" to TrendPreviewPosterDelayMillis),
-                )
-                var duration = player.duration
-                var attempts = 0
-                while ((duration <= 0L || duration == C.TIME_UNSET) && attempts < 35) {
-                    delay(200L)
-                    duration = player.duration
-                    attempts++
-                }
-                if (duration <= 0L || duration == C.TIME_UNSET) {
-                    duration = TrendPreviewFallbackDurationMillis
-                }
-                PerformanceDiagnosticRecorder.recordDuration(
-                    sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
-                    event = "trend_preview_duration_ready",
-                    startedAtMs = playerCreatedAt,
-                    fields = mapOf("durationMs" to duration, "attempts" to attempts),
-                )
-                for (positionRatio in TrendPreviewPositions) {
-                    val targetPosition = (duration * positionRatio)
-                        .toLong()
-                        .coerceIn(0L, (duration - 1_000L).coerceAtLeast(0L))
-                    player.seekTo(targetPosition)
-                    player.volume = 0f
-                    player.playWhenReady = true
-                    player.play()
+        try {
+            when (mode) {
+                HomePreviewMode.TrendSegments -> {
+                    resumeOverlayVisible = false
+                    videoVisible = false
+                    delay(TrendPreviewPosterDelayMillis)
                     PerformanceDiagnosticRecorder.recordDuration(
+                        sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
+                        event = "trend_preview_poster_delay_complete",
+                        startedAtMs = playerCreatedAt,
+                        fields = mapOf("posterDelayMs" to TrendPreviewPosterDelayMillis),
+                    )
+                    var duration = player.duration
+                    var attempts = 0
+                    while ((duration <= 0L || duration == C.TIME_UNSET) && attempts < 35) {
+                        delay(200L)
+                        duration = player.duration
+                        attempts++
+                    }
+                    if (duration <= 0L || duration == C.TIME_UNSET) {
+                        duration = TrendPreviewFallbackDurationMillis
+                    }
+                    PerformanceDiagnosticRecorder.recordDuration(
+                        sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
+                        event = "trend_preview_duration_ready",
+                        startedAtMs = playerCreatedAt,
+                        fields = mapOf("durationMs" to duration, "attempts" to attempts),
+                    )
+                    for (positionRatio in TrendPreviewPositions) {
+                        val targetPosition = (duration * positionRatio)
+                            .toLong()
+                            .coerceIn(0L, (duration - 1_000L).coerceAtLeast(0L))
+                        player.seekTo(targetPosition)
+                        player.volume = 0f
+                        player.playWhenReady = true
+                        player.play()
+                        restartPreviewAudioFade()
+                        PerformanceDiagnosticRecorder.recordDuration(
                         sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
                         event = "trend_preview_segment_started",
                         startedAtMs = playerCreatedAt,
@@ -579,108 +590,118 @@ private fun HomeMutedPreviewPlayer(
                             "videoVisible" to videoVisible,
                             "firstFrameRendered" to firstFrameRendered,
                         ),
-                    )
-                    if (!videoVisible) {
-                        var waitAttempts = 0
-                        while (!firstFrameRendered && !playbackFailed && waitAttempts < FirstFrameWaitAttempts) {
-                            delay(50L)
-                            waitAttempts++
-                        }
-                        if (!firstFrameRendered || playbackFailed) {
+                        )
+                        if (!videoVisible) {
+                            var waitAttempts = 0
+                            while (!firstFrameRendered && !playbackFailed && waitAttempts < FirstFrameWaitAttempts) {
+                                delay(50L)
+                                waitAttempts++
+                            }
+                            if (!firstFrameRendered || playbackFailed) {
+                                volumeFadeJob?.cancel()
+                                player.volume = 0f
+                                PerformanceDiagnosticRecorder.recordDuration(
+                                    sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
+                                    event = "trend_preview_first_frame_wait_aborted",
+                                    startedAtMs = playerCreatedAt,
+                                    fields = mapOf(
+                                        "targetPositionMs" to targetPosition,
+                                        "playbackFailed" to playbackFailed,
+                                        "waitAttempts" to waitAttempts,
+                                    ),
+                                )
+                                break
+                            }
+                            videoVisible = true
                             PerformanceDiagnosticRecorder.recordDuration(
                                 sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
-                                event = "trend_preview_first_frame_wait_aborted",
+                                event = "trend_preview_video_made_visible",
                                 startedAtMs = playerCreatedAt,
-                                fields = mapOf(
-                                    "targetPositionMs" to targetPosition,
-                                    "playbackFailed" to playbackFailed,
-                                    "waitAttempts" to waitAttempts,
-                                ),
+                                fields = mapOf("targetPositionMs" to targetPosition),
                             )
-                            break
+                        } else {
+                            transitionVisible = true
+                            delay(PreviewFadeMillis)
                         }
-                        videoVisible = true
-                        PerformanceDiagnosticRecorder.recordDuration(
-                            sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
-                            event = "trend_preview_video_made_visible",
-                            startedAtMs = playerCreatedAt,
-                            fields = mapOf("targetPositionMs" to targetPosition),
-                        )
-                    } else {
-                        transitionVisible = true
-                        delay(PreviewFadeMillis)
+                        transitionVisible = false
+                        delay(TrendPreviewSegmentMillis)
                     }
+                    player.pause()
+                    volumeFadeJob?.cancel()
+                    player.volume = 0f
+                    videoVisible = false
                     transitionVisible = false
-                    delay(TrendPreviewSegmentMillis)
-                }
-                player.pause()
-                videoVisible = false
-                transitionVisible = false
-                PerformanceDiagnosticRecorder.recordDuration(
-                    sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
-                    event = "trend_preview_finished",
-                    startedAtMs = playerCreatedAt,
-                )
-            }
-
-            HomePreviewMode.LiveImmediate -> {
-                resumeOverlayVisible = false
-                transitionVisible = false
-                videoVisible = firstFrameRendered
-                player.volume = 0f
-                player.playWhenReady = true
-                player.play()
-                PerformanceDiagnosticRecorder.recordDuration(
-                    sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
-                    event = "live_preview_play_called",
-                    startedAtMs = playerCreatedAt,
-                    fields = mapOf("videoVisible" to videoVisible, "firstFrameRendered" to firstFrameRendered),
-                )
-            }
-
-            HomePreviewMode.ResumeLoop -> {
-                transitionVisible = false
-                videoVisible = firstFrameRendered
-                val requestedStart = startPositionMs.coerceAtLeast(0L)
-                player.seekTo(requestedStart)
-                player.volume = 0f
-                player.playWhenReady = true
-                player.play()
-                PerformanceDiagnosticRecorder.recordDuration(
-                    sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
-                    event = "resume_preview_play_called",
-                    startedAtMs = playerCreatedAt,
-                    fields = mapOf(
-                        "requestedStartMs" to requestedStart,
-                        "videoVisible" to videoVisible,
-                        "firstFrameRendered" to firstFrameRendered,
-                    ),
-                )
-                while (true) {
-                    delay(ContinuePreviewLoopMillis)
-                    if (playbackFailed) return@LaunchedEffect
-                    resumeOverlayVisible = true
-                    delay(ContinuePreviewOverlayMillis)
-                    resumeOverlayVisible = false
-                    val duration = player.duration
-                    val safeStart = if (duration > 0L && duration != C.TIME_UNSET) {
-                        requestedStart.coerceIn(0L, (duration - 1_000L).coerceAtLeast(0L))
-                    } else {
-                        requestedStart
-                    }
-                    player.seekTo(safeStart)
-                    player.playWhenReady = true
-                    player.play()
                     PerformanceDiagnosticRecorder.recordDuration(
                         sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
-                        event = "resume_preview_loop_restart",
+                        event = "trend_preview_finished",
                         startedAtMs = playerCreatedAt,
-                        fields = mapOf("safeStartMs" to safeStart, "durationMs" to duration),
                     )
                 }
-            }
 
-            HomePreviewMode.None -> Unit
+                HomePreviewMode.LiveImmediate -> {
+                    resumeOverlayVisible = false
+                    transitionVisible = false
+                    videoVisible = firstFrameRendered
+                    player.volume = 0f
+                    player.playWhenReady = true
+                    player.play()
+                    restartPreviewAudioFade()
+                    PerformanceDiagnosticRecorder.recordDuration(
+                        sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
+                        event = "live_preview_play_called",
+                        startedAtMs = playerCreatedAt,
+                        fields = mapOf("videoVisible" to videoVisible, "firstFrameRendered" to firstFrameRendered),
+                    )
+                }
+
+                HomePreviewMode.ResumeLoop -> {
+                    transitionVisible = false
+                    videoVisible = firstFrameRendered
+                    val requestedStart = startPositionMs.coerceAtLeast(0L)
+                    player.seekTo(requestedStart)
+                    player.volume = 0f
+                    player.playWhenReady = true
+                    player.play()
+                    restartPreviewAudioFade()
+                    PerformanceDiagnosticRecorder.recordDuration(
+                        sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
+                        event = "resume_preview_play_called",
+                        startedAtMs = playerCreatedAt,
+                        fields = mapOf(
+                            "requestedStartMs" to requestedStart,
+                            "videoVisible" to videoVisible,
+                            "firstFrameRendered" to firstFrameRendered,
+                        ),
+                    )
+                    while (true) {
+                        delay(ContinuePreviewLoopMillis)
+                        if (playbackFailed) return@LaunchedEffect
+                        resumeOverlayVisible = true
+                        delay(ContinuePreviewOverlayMillis)
+                        resumeOverlayVisible = false
+                        val duration = player.duration
+                        val safeStart = if (duration > 0L && duration != C.TIME_UNSET) {
+                            requestedStart.coerceIn(0L, (duration - 1_000L).coerceAtLeast(0L))
+                        } else {
+                            requestedStart
+                        }
+                        player.seekTo(safeStart)
+                        player.playWhenReady = true
+                        player.play()
+                        PerformanceDiagnosticRecorder.recordDuration(
+                            sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
+                            event = "resume_preview_loop_restart",
+                            startedAtMs = playerCreatedAt,
+                            fields = mapOf("safeStartMs" to safeStart, "durationMs" to duration),
+                        )
+                    }
+                }
+
+                HomePreviewMode.None -> Unit
+            }
+        } finally {
+            volumeFadeJob?.cancel()
+            player.volume = 0f
         }
     }
 
@@ -757,6 +778,15 @@ private fun Int.toPlaybackStateLabel(): String =
         else -> "UNKNOWN_$this"
     }
 
+private suspend fun ExoPlayer.fadeInMiniPlayerVolume() {
+    delay(MiniPlayerAudioStartDelayMillis)
+    repeat(MiniPlayerAudioFadeSteps) { step ->
+        delay(MiniPlayerAudioFadeMillis / MiniPlayerAudioFadeSteps)
+        volume = (step + 1).toFloat() / MiniPlayerAudioFadeSteps
+    }
+    volume = 1f
+}
+
 // PERF_FIX: session-local blacklist for Media3 containers that failed during Home preview.
 // This is intentionally memory-only and easy to remove with the diagnostic/performance preview changes.
 private object UnsupportedHomePreviewCache {
@@ -779,4 +809,7 @@ private const val PreviewCrossfadeMillis = 1_100L
 private const val TrendPreviewFallbackDurationMillis = 60 * 60_000L
 private const val ContinuePreviewLoopMillis = 20_000L
 private const val ContinuePreviewOverlayMillis = 2_000L
+private const val MiniPlayerAudioStartDelayMillis = 1_000L
+private const val MiniPlayerAudioFadeMillis = 1_000L
+private const val MiniPlayerAudioFadeSteps = 10
 private val TrendPreviewPositions = listOf(0.10f, 0.25f, 0.45f, 0.65f, 0.80f)

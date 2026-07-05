@@ -84,7 +84,9 @@ import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.roundToLong
 
 @Composable
@@ -184,7 +186,7 @@ fun TrendingContentRow(
                     } else {
                         SmartVisionDimensions.HomeContentCardWidth
                     },
-                    animationSpec = tween(TrendingTransformMillis.toInt(), easing = FastOutSlowInEasing),
+                    animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
                     label = "trendingCardWidth",
                 )
                 TrendingPreviewCard(
@@ -310,7 +312,7 @@ private fun TrendingPreviewCard(
                 state = focusState,
                 focusRequester = focusRequester,
                 pressed = pressed,
-                focusedScale = 1.025f,
+                focusedScale = 1.0f,
                 glowColor = SmartVisionColors.Primary,
                 cornerRadius = SmartVisionDimensions.HomeContentRadius,
             )
@@ -507,28 +509,44 @@ private fun TrendingMutedPreviewPlayer(
     }
 
     LaunchedEffect(player, url, startPositionMs, fallbackStartPositionMs, knownDurationMs) {
-        delay(TrendingVideoPrepareDelayMillis)
-        val firstStart = resolvePreviewStart(
-            player = player,
-            requestedStartPositionMs = startPositionMs,
-            knownDurationMs = knownDurationMs,
-            ratio = TrendingPreviewStartRatio,
-        )
-        val firstOk = player.playPreviewAt(firstStart) { firstFrameRendered || playbackFailed }
-        if (!firstOk && !playbackFailed) {
-            firstFrameRendered = false
-            val fallbackStart = resolvePreviewStart(
-                player = player,
-                requestedStartPositionMs = fallbackStartPositionMs,
-                knownDurationMs = knownDurationMs,
-                ratio = TrendingPreviewFallbackRatio,
-            )
-            player.playPreviewAt(fallbackStart) { firstFrameRendered || playbackFailed }
+        var volumeFadeJob: Job? = null
+        fun restartPreviewAudioFade() {
+            volumeFadeJob?.cancel()
+            player.volume = 0f
+            volumeFadeJob = launch { player.fadeInMiniPlayerVolume() }
         }
-        if (!firstFrameRendered || playbackFailed) {
-            videoVisible = false
-            player.pause()
-            onPreviewUnavailable()
+
+        try {
+            delay(TrendingVideoPrepareDelayMillis)
+            val firstStart = resolvePreviewStart(
+                player = player,
+                requestedStartPositionMs = startPositionMs,
+                knownDurationMs = knownDurationMs,
+                ratio = TrendingPreviewStartRatio,
+            )
+            val firstOk = player.playPreviewAt(firstStart, ::restartPreviewAudioFade) {
+                firstFrameRendered || playbackFailed
+            }
+            if (!firstOk && !playbackFailed) {
+                firstFrameRendered = false
+                val fallbackStart = resolvePreviewStart(
+                    player = player,
+                    requestedStartPositionMs = fallbackStartPositionMs,
+                    knownDurationMs = knownDurationMs,
+                    ratio = TrendingPreviewFallbackRatio,
+                )
+                player.playPreviewAt(fallbackStart, ::restartPreviewAudioFade) {
+                    firstFrameRendered || playbackFailed
+                }
+            }
+            if (!firstFrameRendered || playbackFailed) {
+                videoVisible = false
+                player.pause()
+                onPreviewUnavailable()
+            }
+        } finally {
+            volumeFadeJob?.cancel()
+            player.volume = 0f
         }
     }
 
@@ -675,18 +693,29 @@ private suspend fun resolvePreviewStart(
 
 private suspend fun ExoPlayer.playPreviewAt(
     startPositionMs: Long,
+    startAudioFade: () -> Unit,
     done: () -> Boolean,
 ): Boolean {
     seekTo(startPositionMs.coerceAtLeast(0L))
     volume = 0f
     playWhenReady = true
     play()
+    startAudioFade()
     var attempts = 0
     while (!done() && attempts < PreviewFirstFrameAttempts) {
         delay(PreviewFirstFrameDelayMillis)
         attempts++
     }
     return done()
+}
+
+private suspend fun ExoPlayer.fadeInMiniPlayerVolume() {
+    delay(MiniPlayerAudioStartDelayMillis)
+    repeat(MiniPlayerAudioFadeSteps) { step ->
+        delay(MiniPlayerAudioFadeMillis / MiniPlayerAudioFadeSteps)
+        volume = (step + 1).toFloat() / MiniPlayerAudioFadeSteps
+    }
+    volume = 1f
 }
 
 private fun Long.previewStartAt(ratio: Double): Long =
@@ -705,8 +734,8 @@ private object UnsupportedTrendingPreviewCache {
     }
 }
 
-private const val TrendingFocusStabilityMillis = 1_300L
-private const val TrendingTransformMillis = 320L
+private const val TrendingFocusStabilityMillis = 1_000L
+private const val TrendingTransformMillis = 1_000L
 private const val TrendingImageCrossfadeMillis = 260L
 private const val TrendingVideoPrepareDelayMillis = 900L
 private const val TrendingVideoCrossfadeMillis = 650L
@@ -717,3 +746,6 @@ private const val DurationProbeAttempts = 16
 private const val DurationProbeDelayMillis = 100L
 private const val PreviewFirstFrameAttempts = 50
 private const val PreviewFirstFrameDelayMillis = 50L
+private const val MiniPlayerAudioStartDelayMillis = 1_000L
+private const val MiniPlayerAudioFadeMillis = 1_000L
+private const val MiniPlayerAudioFadeSteps = 10

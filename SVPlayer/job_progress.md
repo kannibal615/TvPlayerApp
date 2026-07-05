@@ -1,3 +1,39 @@
+# REPRISE RAPIDE - 2026-07-05
+
+Objectif a reprendre:
+- Publier la release `0.1.85 (89)` depuis l'autre PC qui possede `local.properties`, la keystore release et les secrets de signature/deploiement.
+
+Etat actuel:
+- Code Android modifie et compile: `compileDebugKotlin` OK.
+- Changements faits:
+  - Home Continue watching: mini-player avec son apres 1s, fade-in 1s vers volume player `1f`.
+  - Home Trending movies/series: meme transition visuelle de focus que Continue watching, plus fade-in audio identique.
+  - Live TV apercu: fade-in audio identique, fallback video inchange.
+- `app/build.gradle.kts`: `versionCode = 89`, `versionName = "0.1.85"`.
+- Prod actuelle verifiee avant build: `0.1.85 (88)`.
+- Aucune mise en prod faite depuis ce PC.
+
+Blocage exact sur ce PC:
+- `local.properties` absent.
+- Keystore release absente.
+- `assembleRelease` compile puis echoue sur:
+  `SigningConfig "release" is missing required property "storeFile"`.
+- Le fichier `server/public_html/api/config.php` public ne contient pas les secrets; il cherche `smartvision_private/config.php`. Aucun `smartvision_private/config.php` local trouve ici.
+
+Commandes de reprise recommandees sur l'autre PC:
+```powershell
+cd "...\TvPlayerApp\SVPlayer"
+.\gradlew.bat compileDebugKotlin
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\guard_release_version.ps1 -SkipAdb
+.\gradlew.bat --no-daemon --console=plain assembleRelease
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\guard_release_version.ps1 -RequireBuildMetadata -SkipAdb
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\deploy_activation_phase1.ps1 -SkipInstall
+```
+
+Notes:
+- Ne pas exposer les secrets dans les logs/reponses.
+- Si la commande release dure longtemps, utiliser un timeout d'au moins 25 minutes cote outil, mais ne pas tuer manuellement Gradle sans verifier les artefacts.
+
 # Job progress - 2026-06-28
 
 Goal:

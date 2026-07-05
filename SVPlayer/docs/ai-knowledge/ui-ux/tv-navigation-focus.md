@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-07-02.
+Derniere mise a jour: 2026-07-05.
 
 ## 1. Objectif
 
@@ -45,7 +45,7 @@ Attention:
 - Sur Home, D-pad bas depuis Live TV / Movies / Series doit cibler le premier item de la prochaine ligne disponible; D-pad bas depuis Continue watching cible le premier item `Trending movies`; D-pad bas depuis `Trending movies` cible le premier item `Trending series`.
 - Sur Home, ce routage D-pad bas/haut annule le job vertical precedent, remet la `LazyRow` cible a l'index `0`, execute un unique `ScrollState.animateScrollTo()` vers une position calculee, puis demande le focus sur le premier item apres la fin du scroll. Ne pas reutiliser `BringIntoViewRequester` pour ces transitions verticales.
 - Sur Home, le focus horizontal dans Continue watching / Trending movies / Trending series doit ancrer l'item focus en premiere position visible via `LazyListState.animateScrollToItem(index)` tant qu'il reste assez d'items a droite; en fin de liste, utiliser le dernier premier index utile pour eviter un blanc a droite.
-- Sur Home, les lignes Tendances utilisent un composant dedie: la transformation 16:9 et le mini-preview ne demarrent qu'apres `1,3s` de focus stable. Si le focus change avant ce delai, la card reste portrait et aucun player n'est cree.
+- Sur Home, les lignes Tendances utilisent un composant dedie: la transformation 16:9 et le mini-preview ne demarrent qu'apres `1s` de focus stable. La transition visuelle de focus doit rester alignee sur Continue watching: scale `1.0f` et animation largeur courte via `SmartVisionDimensions.FocusAnimationMillis`. Si le focus change avant ce delai, la card reste portrait et aucun player n'est cree.
 - Sur Home, ne pas restaurer un ancien `LazyListState` sauvegarde pour les lignes tendances: chaque nouveau jeu d'items doit partir a l'index `0`, sinon l'ouverture peut commencer sur un ancien item milieu de liste.
 - Sur Home, les cibles D-pad doivent tenir compte des lignes réellement visibles. Si Continue watching ou une ligne Trending est vide, ne pas consommer Haut/Bas vers un `FocusRequester` absent.
 - Les logs diagnostics Home focus utilisent le tag `SVHomeFocus`; les logs du handoff splash/MainActivity utilisent `SVStartup`.
@@ -53,6 +53,7 @@ Attention:
 - Les handlers D-pad doivent tenir compte des surfaces visibles.
 - Le popup manuel Info compte > Synchroniser bloque Back/D-pad uniquement pendant `SyncStatus.Running`; a la fin ou en erreur, le focus va sur `Retour`.
 - Depuis le 2026-07-03, dans Live TV, D-pad droite depuis une ligne chaine selectionnee va vers le panneau details EPG sous le mini-player. Ce panneau est focusable: D-pad haut/bas scrolle les programmes si possible, puis D-pad bas passe au bouton `Regarder` quand le bas est atteint.
+- Les mini-players Home Continue watching, Home Tendances et Live TV apercu ont un fade-in audio local: volume player `0f`, attente 1 seconde apres `play()`, puis montee a `1f` sur 1 seconde. Cette logique ne doit pas modifier le focus, le D-pad, le fallback video ni les routes plein ecran.
 
 ## 5. Ecrans concernes
 
@@ -167,3 +168,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-02: Home ajoute l'ancrage horizontal des cards focussees avec `LazyListState.animateScrollToItem`, borne en fin de liste pour conserver les items restants visibles.
 - 2026-07-03: Home Tendances separe `TrendingContentRow` de `ContinueWatchingRow`; les previews tendances sont declenchees apres focus stable `1,3s`, avec ancrage gauche et annulation propre au changement de focus.
 - 2026-07-03: Live TV rend le panneau details EPG sous mini-player focusable et scrollable au D-pad, avec routage bas vers `Regarder`.
+- 2026-07-05: Home Tendances aligne sa transition de focus visuelle sur Continue watching et les mini-players Home/Live TV ajoutent le fade-in audio 1s + 1s sans changer la navigation.

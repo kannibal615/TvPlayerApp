@@ -124,6 +124,7 @@ Diagnostic Firestick / ADB:
 ## 10. Problemes connus
 
 - `assembleRelease` peut continuer apres timeout.
+- Reprise 2026-07-05: release locale `0.1.85` / `versionCode 89` preparee mais non publiee. Sur ce PC, `local.properties` et la keystore release sont absents; `assembleRelease` compile puis echoue a `:app:packageRelease` avec `SigningConfig "release" is missing required property "storeFile"`. Reprendre sur le PC qui possede `local.properties`, `keystore/release.keystore` et les secrets de signature/deploiement, puis relancer `assembleRelease` et `scripts/deploy_activation_phase1.ps1 -SkipInstall`.
 - Le cache CDN peut servir l'APK stable ancien; verifier avec cache-buster ou APK versionne.
 - `PROJECT_NOTES.md` peut contenir des versions obsoletes.
 - Java par defaut peut ne pas etre JDK 21.
