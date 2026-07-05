@@ -1,5 +1,16 @@
 # AI Changelog
 
+## 2026-07-05 - Scroll Activite reseau et timeout notifications
+
+### Changements
+- Settings > Activite reseau: le panneau droit devient focusable et scrollable au D-pad pour parcourir toute la liste active/recente.
+- `api/notifications.php`: la jointure utilisateur n'est plus executee pour les notifications `all` / `devices`; elle reste reservee aux candidates `target_scope = users`, ce qui reduit les risques de `SocketTimeoutException`.
+- Version Android preparee pour release: `0.1.87` / `versionCode 91`.
+
+### Validation
+- `php -l server/public_html/api/notifications.php`: OK.
+- `./gradlew :app:compileReleaseKotlin`: OK apres correction de l'import `focusable`.
+
 ## 2026-07-05 - Activite reseau Settings et correction audio Home
 
 Type:

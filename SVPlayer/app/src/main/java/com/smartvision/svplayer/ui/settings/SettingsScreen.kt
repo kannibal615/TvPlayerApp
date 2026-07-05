@@ -9,6 +9,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -457,6 +458,7 @@ private fun SettingsMenuLayout(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
+            contentFocusable = selectedSection == SettingsSection.Network,
         ) {
             when (selectedSection) {
                 SettingsSection.Preferences -> {
@@ -1013,8 +1015,12 @@ private fun SettingsPanel(
     title: String,
     modifier: Modifier,
     trailing: @Composable (() -> Unit)? = null,
+    contentFocusable: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val scrollStep = 116
     Column(
         modifier = modifier
             .background(Color(0xE60A1424), RoundedCornerShape(8.dp))
@@ -1032,11 +1038,42 @@ private fun SettingsPanel(
             trailing?.invoke()
         }
         Spacer(Modifier.height(18.dp))
-        Column(
-            modifier = Modifier
+        val contentModifier = if (contentFocusable) {
+            Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .verticalScroll(rememberScrollState()),
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when (event.key) {
+                        Key.DirectionDown -> {
+                            scope.launch {
+                                scrollState.animateScrollTo(
+                                    (scrollState.value + scrollStep).coerceAtMost(scrollState.maxValue),
+                                )
+                            }
+                            true
+                        }
+                        Key.DirectionUp -> {
+                            scope.launch {
+                                scrollState.animateScrollTo(
+                                    (scrollState.value - scrollStep).coerceAtLeast(0),
+                                )
+                            }
+                            true
+                        }
+                        else -> false
+                    }
+                }
+                .focusable()
+                .verticalScroll(scrollState)
+        } else {
+            Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(scrollState)
+        }
+        Column(
+            modifier = contentModifier,
         ) {
             content()
             Spacer(Modifier.height(12.dp))

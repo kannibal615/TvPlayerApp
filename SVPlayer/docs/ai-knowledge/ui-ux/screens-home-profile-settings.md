@@ -39,7 +39,7 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 - Quand M3U est actif, Movies et Series affichent un etat vide source-aware au lieu d'une erreur Xtream.
 - Live TV affiche un badge bleu `E` a droite des lignes de chaines qui ont des programmes EPG locaux, y compris dans le dossier Historique quand la chaine existe encore en Room. Les dossiers Live TV avec EPG affichent leur compteur dans un cadre bleu au lieu d'ajouter un badge EPG separe. Le panneau details EPG sous le mini-player est focusable et scrollable au D-pad.
 - Settings: experience video, personnalisation focus, langue, synchro, activite reseau, comptes Xtream, parental.
-- Settings > Activite reseau affiche un panneau compact alimente par `NetworkActivityTracker`: travaux actifs, historique recent, progression, debit, taille de donnees, duree, source/section et erreurs. Les activites instrumentees incluent synchro catalogue Live/Films/Series, M3U, EPG, Home slides/tendances, verification Xtream, update APK et requetes HTTP SmartVision/Xtream sans exposer les query params ni secrets.
+- Settings > Activite reseau affiche un panneau compact alimente par `NetworkActivityTracker`: travaux actifs, historique recent, progression, debit, taille de donnees, duree, source/section et erreurs. Le panneau droit est focusable et scrollable au D-pad pour voir toutes les activites. Les activites instrumentees incluent synchro catalogue Live/Films/Series, M3U, EPG, Home slides/tendances, verification Xtream, update APK et requetes HTTP SmartVision/Xtream sans exposer les query params ni secrets.
 - YouTube: recherche/suggestions/player, favoris, parametres YouTube et queue autoplay, soumis a feature lock.
 - Notifications: liste et ouverture du popup update si notification release.
 
@@ -191,3 +191,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-03: Live TV corrige l'affichage EPG: historique rehydrate depuis Room, badges `E` conserves sur lignes de chaines, compteur dossier bleu quand EPG disponible et details EPG scrollables au D-pad.
 - 2026-07-03: les ecrans catalogue consomment des logos/posters/backdrops normalises depuis les repositories pour supporter les URL Xtream/M3U absolues, relatives ou echappees.
 - 2026-07-05: Settings ajoute le menu `Network Activity` / `Activite reseau`, base sur `NetworkActivityTracker`, et Home corrige la duree de vie du fade-in audio des mini-players Continue watching LiveImmediate et Tendances.
+- 2026-07-05: Settings > Activite reseau rend le panneau droit focusable et scrollable au D-pad pour parcourir toute la liste active/recente.

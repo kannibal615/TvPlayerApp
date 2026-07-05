@@ -27,9 +27,12 @@ if ($deviceId === '' && $publicDeviceCode === '') {
 try {
     $pdo = db();
     ensure_app_notifications_table($pdo);
-    $associatedTargets = notification_associated_user_targets($pdo, $deviceId);
     $deviceTargets = array_filter([$deviceId, $publicDeviceCode], static fn(string $value): bool => $value !== '');
-    $visibleRows = notification_visible_rows($pdo, $deviceTargets, $associatedTargets);
+    $candidateRows = notification_candidate_rows($pdo);
+    $associatedTargets = notification_rows_need_user_targets($candidateRows)
+        ? notification_associated_user_targets($pdo, $deviceId)
+        : [];
+    $visibleRows = notification_visible_rows($candidateRows, $deviceTargets, $associatedTargets);
 
     if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $action = (string) ($input['action'] ?? 'mark_seen');
@@ -80,7 +83,7 @@ try {
     ], 500);
 }
 
-function notification_visible_rows(PDO $pdo, array $deviceTargets, array $associatedTargets): array
+function notification_candidate_rows(PDO $pdo): array
 {
     $statement = $pdo->query(
         "SELECT id, title, message, target_scope, target_value, priority, expires_at, created_at
@@ -90,7 +93,22 @@ function notification_visible_rows(PDO $pdo, array $deviceTargets, array $associ
          ORDER BY FIELD(priority, 'urgent', 'important', 'normal'), id DESC
          LIMIT 80"
     );
-    $rows = $statement->fetchAll();
+    return $statement->fetchAll();
+}
+
+function notification_rows_need_user_targets(array $rows): bool
+{
+    foreach ($rows as $row) {
+        if ((string) ($row['target_scope'] ?? '') === 'users') {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function notification_visible_rows(array $rows, array $deviceTargets, array $associatedTargets): array
+{
     $visible = [];
 
     foreach ($rows as $row) {
@@ -167,11 +185,15 @@ function notification_associated_user_targets(PDO $pdo, string $deviceId): array
         return [];
     }
     $statement = $pdo->prepare(
-        "SELECT DISTINCT u.id, u.email
+        "SELECT u.id, u.email
          FROM device_activations da
          INNER JOIN activation_orders o ON o.activation_code_id = da.activation_code_id
          INNER JOIN site_users u ON u.id = o.user_id
-         WHERE da.device_id = :device_id"
+         WHERE da.device_id = :device_id
+           AND da.activation_code_id IS NOT NULL
+           AND da.status = 'active'
+         ORDER BY da.id DESC
+         LIMIT 20"
     );
     $statement->execute(['device_id' => $deviceId]);
     $targets = [];

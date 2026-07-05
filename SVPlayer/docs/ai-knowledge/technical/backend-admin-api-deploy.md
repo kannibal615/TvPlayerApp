@@ -85,6 +85,7 @@ Endpoints importants:
 - `api/app_update.php`
 - `api/app_config.php`
 - `api/notifications.php`
+  - Optimisation 2026-07-05: la jointure appareil -> commande -> utilisateur n'est executee que si des notifications ciblees `users` existent dans les candidates actives. Les notifications `all` / `devices` evitent cette jointure pour reduire les risques de timeout socket sur l'app.
 - `api/home_slides.php`
 - `api/commerce.php`
 - `api/gammal-webhook.php`
@@ -172,3 +173,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-06-30: alignement du test admin `deploy_activation_phase1.ps1` sur la navigation Diagnostics apres suppression du menu Journal separe.
 - 2026-07-01: ajout `/playlist/`, upload deploy associe, support `epg_url` dans le payload playlist chiffre, puis onglets Xtream/M3U/EPG et notification appareil ciblee apres push playlist.
 - 2026-07-01: `device_status.php` et `save_playlist_config.php` traitent `m3u_url` comme configuration playlist valide, tout en gardant `xtreamStatus` lie uniquement aux identifiants Xtream.
+- 2026-07-05: `api/notifications.php` evite la jointure utilisateur sauf besoin reel de ciblage `users`, afin de reduire le temps de reponse et les erreurs `SocketTimeoutException` cote Android.
