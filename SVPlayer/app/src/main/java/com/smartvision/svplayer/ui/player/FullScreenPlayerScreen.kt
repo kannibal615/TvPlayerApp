@@ -314,7 +314,7 @@ class FullScreenPlayerViewModel(
                 infoPills = listOf("16+", "HD", "5.1"),
                 imageUrl = stream.streamIcon,
                 categoryId = stream.categoryId,
-                overlayRightText = stream.number.toLiveChannelNumber(stream.streamId),
+                overlayRightText = stream.number.takeIf { it > 0 }?.toLiveChannelNumber(stream.streamId).orEmpty(),
                 previousItem = previous?.let {
                     AdjacentPlayback(
                         streamId = it.streamId,
@@ -669,12 +669,12 @@ private fun FullScreenPlayerScreen(
         if (playback.contentType != UserContentType.Live) return false
         if (keyCode != AndroidKeyEvent.KEYCODE_DPAD_UP && keyCode != AndroidKeyEvent.KEYCODE_DPAD_DOWN) return false
         if (adGateActive) return true
+        if (activeMenu != PlayerOverlayMenu.None) return false
         val target = if (keyCode == AndroidKeyEvent.KEYCODE_DPAD_UP) {
             playback.previousItem
         } else {
             playback.nextItem
         }
-        activeMenu = PlayerOverlayMenu.None
         playAdjacent(target)
         showOverlay()
         return true
@@ -1556,26 +1556,17 @@ private fun LiveTvFullscreenOverlay(
 ) {
     val hasEpg = playback.epgPrograms.isNotEmpty()
     Box(modifier = Modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(R.drawable.smartvision_logo_wide),
-            contentDescription = "SmartVision",
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = 26.dp, top = 20.dp)
-                .width(214.dp)
-                .height(54.dp),
-        )
-
-        Text(
-            text = playback.overlayRightText.ifBlank { playback.streamId.toString() },
-            color = Color.White,
-            style = PlayerTitleStyle.copy(fontSize = 48.sp, lineHeight = 54.sp),
-            fontWeight = FontWeight.Black,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(end = 36.dp, top = 20.dp),
-        )
+        if (playback.overlayRightText.isNotBlank()) {
+            Text(
+                text = playback.overlayRightText,
+                color = Color.White,
+                style = PlayerTitleStyle.copy(fontSize = 48.sp, lineHeight = 54.sp),
+                fontWeight = FontWeight.Black,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(end = 36.dp, top = 20.dp),
+            )
+        }
 
         errorText?.let { message ->
             Text(
@@ -1649,9 +1640,9 @@ private fun LiveTvBottomGlassBanner(
             playback = playback,
             modifier = Modifier.weight(1f),
         )
-        Spacer(Modifier.width(20.dp))
+        Spacer(Modifier.width(10.dp))
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             LiveTvActionButton(
@@ -1726,7 +1717,7 @@ private fun LiveTvChannelInfo(
         Text(
             text = playback.title,
             color = Color.White,
-            style = PlayerTitleStyle.copy(fontSize = 36.sp, lineHeight = 42.sp),
+            style = PlayerTitleStyle.copy(fontSize = 34.sp, lineHeight = 40.sp),
             fontWeight = FontWeight.Black,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1757,9 +1748,9 @@ private fun LiveTvActionButton(
     val pressed by interactionSource.collectIsPressedAsState()
     val backgroundColor by animateColorAsState(
         targetValue = when {
-            !enabled -> Color.White.copy(alpha = 0.05f)
-            focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.28f)
-            else -> Color.White.copy(alpha = 0.08f)
+            !enabled -> Color.White.copy(alpha = 0.08f)
+            focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.36f)
+            else -> Color.White.copy(alpha = 0.18f)
         },
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "liveTvActionBackground",
@@ -1767,8 +1758,8 @@ private fun LiveTvActionButton(
     val borderColor by animateColorAsState(
         targetValue = when {
             !enabled -> Color.White.copy(alpha = 0.10f)
-            focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.88f)
-            else -> Color.White.copy(alpha = 0.16f)
+            focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.68f)
+            else -> Color.White.copy(alpha = 0.28f)
         },
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "liveTvActionBorder",
@@ -1776,7 +1767,7 @@ private fun LiveTvActionButton(
 
     Column(
         modifier = modifier
-            .width(82.dp)
+            .width(76.dp)
             .height(76.dp)
             .tvFocusTarget(
                 state = focusState,
@@ -1803,7 +1794,7 @@ private fun LiveTvActionButton(
                 .size(46.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .background(backgroundColor)
-                .border(BorderStroke(if (focusState.isFocused) 2.dp else 1.dp, borderColor), RoundedCornerShape(10.dp)),
+                .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(

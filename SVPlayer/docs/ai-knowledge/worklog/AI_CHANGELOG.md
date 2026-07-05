@@ -1,5 +1,40 @@
 # AI Changelog
 
+## 2026-07-05 - Retouches overlay Live TV et release 0.1.90
+
+Type:
+- android
+- ui-tv
+- playback
+- release
+- documentation
+
+Resume:
+- Haut/Bas ne zappe plus quand un panneau Live EPG/Settings est ouvert; le panneau garde la priorite de navigation.
+- Le numero haut droite n'affiche plus l'id technique temporaire avant enrichissement Room, ce qui supprime le flash a 6 chiffres.
+- Le logo SmartVision haut gauche est retire de l'overlay Live.
+- Le titre chaine est legerement reduit, les boutons sont plus rapproches/serres a droite, plus opaques et avec un focus moins epais.
+
+Fichiers code:
+- `app/src/main/java/com/smartvision/svplayer/ui/player/FullScreenPlayerScreen.kt`
+- `app/build.gradle.kts`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Validation:
+- `.\scripts\guard_release_version.ps1`: OK, local `0.1.90 (94)` > prod `0.1.89 (93)`.
+- `.\gradlew.bat assembleRelease`: OK en environ 15m25.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK, metadata `0.1.90 (94)`.
+- `git diff --check`: OK, avertissements CRLF uniquement.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall`: OK.
+- Production verifiee: `app_update.php` sert `latest_version_code=94`, manifeste public `0.1.90`, APK versionne `smartvision-tv-v94-f4ad6681.apk` et APK stable `smartvision-tv.apk` repondent `200`, taille `40133769`, SHA256 `f4ad66813f308ec109186881b731c82939aec17eec45154da56e27b57c2aa674`.
+- `apksigner verify --verbose --print-certs`: OK, signatures v1/v2 valides, certificat `CN=SmartVision`; avertissements META-INF non bloquants.
+
 ## 2026-07-05 - Affinage overlay Live TV et release 0.1.89
 
 Type:
