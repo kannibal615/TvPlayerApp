@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,6 +46,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -87,6 +93,7 @@ fun MediaScreen(
     notificationBadgeCount: Int,
     strings: SmartVisionStrings,
     access: PremiumFeatureGateResult,
+    onPlayFile: (Long) -> Unit,
     onLockedFeature: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -167,6 +174,7 @@ fun MediaScreen(
             onAreaSelected = viewModel::selectArea,
             onFileSelected = viewModel::selectFile,
             onRefresh = viewModel::refreshStorage,
+            onPlayFile = onPlayFile,
             onRename = { renameTarget = state.selectedFile },
             onMove = { moveTarget = state.selectedFile },
             onDelete = { deleteTarget = state.selectedFile },
@@ -275,23 +283,43 @@ private fun MediaWorkspace(
     onAreaSelected: (MediaArea) -> Unit,
     onFileSelected: (Long) -> Unit,
     onRefresh: () -> Unit,
+    onPlayFile: (Long) -> Unit,
     onRename: () -> Unit,
     onMove: () -> Unit,
     onDelete: () -> Unit,
     firstFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
+    val firstContentFocusRequester = remember { FocusRequester() }
+    val previewActionFocusRequester = remember { FocusRequester() }
+    var contentFocusSignal by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(contentFocusSignal, state.selectedArea, state.visibleFiles.size, state.folders.size) {
+        if (contentFocusSignal > 0) {
+            delay(120)
+            runCatching { firstContentFocusRequester.requestFocus() }
+        }
+    }
+
+    fun focusPreviewAction(): Boolean {
+        runCatching { previewActionFocusRequester.requestFocus() }
+        return true
+    }
+
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(MediaCatalogDimens.PanelGap),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         MediaLibraryPanel(
             strings = strings,
             state = state,
-            onAreaSelected = onAreaSelected,
+            onAreaSelected = { area ->
+                onAreaSelected(area)
+                contentFocusSignal += 1
+            },
             firstFocusRequester = firstFocusRequester,
             modifier = Modifier
-                .width(280.dp)
+                .width(252.dp)
                 .fillMaxHeight(),
         )
 
@@ -300,6 +328,8 @@ private fun MediaWorkspace(
             state = state,
             onFileSelected = onFileSelected,
             onRefresh = onRefresh,
+            firstContentFocusRequester = firstContentFocusRequester,
+            onMoveRightToPreview = { focusPreviewAction() },
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
@@ -308,11 +338,13 @@ private fun MediaWorkspace(
         MediaPreviewPanel(
             strings = strings,
             state = state,
+            onPlay = { state.selectedFile?.takeIf { it.isPlayable }?.id?.let(onPlayFile) },
             onRename = onRename,
             onMove = onMove,
             onDelete = onDelete,
+            previewActionFocusRequester = previewActionFocusRequester,
             modifier = Modifier
-                .width(350.dp)
+                .width(336.dp)
                 .fillMaxHeight(),
         )
     }
@@ -348,19 +380,43 @@ private fun MediaLibraryPanel(
 
         Spacer(Modifier.height(18.dp))
 
-        Text(
-            text = strings.mediaMvpNotice,
-            color = SmartVisionColors.TextSecondary,
-            style = SmartVisionType.Caption,
-            maxLines = 4,
-            overflow = TextOverflow.Ellipsis,
-        )
+        MediaLibraryInfoCard(text = strings.mediaMvpNotice)
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(12.dp))
 
+        MediaLibraryInfoCard(text = storageLabel(strings, state), emphasized = true)
+    }
+}
+
+@Composable
+private fun MediaLibraryInfoCard(
+    text: String,
+    emphasized: Boolean = false,
+) {
+    val shape = RoundedCornerShape(10.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(
+                if (emphasized) {
+                    SmartVisionColors.PrimaryDark.copy(alpha = 0.30f)
+                } else {
+                    Color.White.copy(alpha = 0.05f)
+                },
+            )
+            .border(
+                BorderStroke(
+                    1.dp,
+                    if (emphasized) SmartVisionColors.CyanAccent.copy(alpha = 0.38f) else SmartVisionColors.Border,
+                ),
+                shape,
+            )
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+    ) {
         Text(
-            text = storageLabel(strings, state),
-            color = SmartVisionColors.TextSecondary,
+            text = text,
+            color = if (emphasized) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
             style = SmartVisionType.Caption,
             maxLines = 4,
             overflow = TextOverflow.Ellipsis,
@@ -374,6 +430,8 @@ private fun MediaContentPanel(
     state: MediaScreenState,
     onFileSelected: (Long) -> Unit,
     onRefresh: () -> Unit,
+    firstContentFocusRequester: FocusRequester,
+    onMoveRightToPreview: () -> Boolean,
     modifier: Modifier = Modifier,
 ) {
     MediaCatalogPanel(
@@ -432,6 +490,7 @@ private fun MediaContentPanel(
                 MediaFolderList(
                     strings = strings,
                     folders = state.folders,
+                    firstFocusRequester = firstContentFocusRequester,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
@@ -442,6 +501,8 @@ private fun MediaContentPanel(
                     files = state.visibleFiles,
                     selectedFileId = state.selectedFileId,
                     onFileSelected = onFileSelected,
+                    firstFocusRequester = firstContentFocusRequester,
+                    onMoveRightToPreview = onMoveRightToPreview,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
@@ -457,6 +518,8 @@ private fun MediaFileList(
     files: List<MediaFileUi>,
     selectedFileId: Long?,
     onFileSelected: (Long) -> Unit,
+    firstFocusRequester: FocusRequester,
+    onMoveRightToPreview: () -> Boolean,
     modifier: Modifier = Modifier,
 ) {
     if (files.isEmpty()) {
@@ -473,11 +536,14 @@ private fun MediaFileList(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(files, key = { it.id }) { file ->
+            val index = files.indexOf(file)
             MediaFileRow(
                 strings = strings,
                 file = file,
                 selected = file.id == selectedFileId,
                 onClick = { onFileSelected(file.id) },
+                focusRequester = if (index == 0) firstFocusRequester else null,
+                onMoveRightToPreview = onMoveRightToPreview,
             )
         }
     }
@@ -487,6 +553,7 @@ private fun MediaFileList(
 private fun MediaFolderList(
     strings: SmartVisionStrings,
     folders: List<MediaFolderUi>,
+    firstFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     if (folders.isEmpty()) {
@@ -503,7 +570,12 @@ private fun MediaFolderList(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(folders, key = { it.id }) { folder ->
-            MediaFolderRow(strings = strings, folder = folder)
+            val index = folders.indexOf(folder)
+            MediaFolderRow(
+                strings = strings,
+                folder = folder,
+                focusRequester = if (index == 0) firstFocusRequester else null,
+            )
         }
     }
 }
@@ -514,6 +586,8 @@ private fun MediaFileRow(
     file: MediaFileUi,
     selected: Boolean,
     onClick: () -> Unit,
+    focusRequester: FocusRequester?,
+    onMoveRightToPreview: () -> Boolean,
     modifier: Modifier = Modifier,
 ) {
     val focusState = rememberTvFocusState()
@@ -528,11 +602,19 @@ private fun MediaFileRow(
             .height(76.dp)
             .tvFocusTarget(
                 state = focusState,
+                focusRequester = focusRequester,
                 pressed = pressed,
                 focusedScale = 1.018f,
                 glowColor = SmartVisionColors.Primary,
                 cornerRadius = MediaCatalogDimens.ItemRadius,
             )
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight) {
+                    onMoveRightToPreview()
+                } else {
+                    false
+                }
+            }
             .clip(shape)
             .background(
                 if (active) {
@@ -590,16 +672,42 @@ private fun MediaFileRow(
 private fun MediaFolderRow(
     strings: SmartVisionStrings,
     folder: MediaFolderUi,
+    focusRequester: FocusRequester?,
     modifier: Modifier = Modifier,
 ) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
     val shape = RoundedCornerShape(MediaCatalogDimens.ItemRadius)
     Row(
         modifier = modifier
             .fillMaxWidth()
             .height(70.dp)
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                pressed = pressed,
+                focusedScale = 1.018f,
+                glowColor = SmartVisionColors.Primary,
+                cornerRadius = MediaCatalogDimens.ItemRadius,
+            )
             .clip(shape)
-            .background(SmartVisionColors.SurfaceElevated.copy(alpha = 0.68f))
-            .border(BorderStroke(1.dp, SmartVisionColors.Border), shape)
+            .background(
+                if (focusState.isFocused) {
+                    SmartVisionColors.PrimaryDark.copy(alpha = 0.48f)
+                } else {
+                    SmartVisionColors.SurfaceElevated.copy(alpha = 0.68f)
+                },
+            )
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                    if (focusState.isFocused) SmartVisionColors.CyanAccent else SmartVisionColors.Border,
+                ),
+                shape,
+            )
+            .clickable(interactionSource = interactionSource, indication = null, onClick = {})
+            .focusable(interactionSource = interactionSource)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -683,12 +791,16 @@ private fun MediaEmptyState(
 private fun MediaPreviewPanel(
     strings: SmartVisionStrings,
     state: MediaScreenState,
+    onPlay: () -> Unit,
     onRename: () -> Unit,
     onMove: () -> Unit,
     onDelete: () -> Unit,
+    previewActionFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     val selected = state.selectedFile
+    val playEnabled = selected?.isPlayable == true && !state.operationInProgress
+    val editEnabled = selected != null && !state.operationInProgress
     MediaCatalogPanel(
         title = strings.mediaPreview,
         modifier = modifier,
@@ -700,7 +812,7 @@ private fun MediaPreviewPanel(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(178.dp)
+                    .height(150.dp)
                     .clip(RoundedCornerShape(MediaCatalogDimens.ItemRadius))
                     .background(
                         Brush.radialGradient(
@@ -720,9 +832,9 @@ private fun MediaPreviewPanel(
                         imageVector = Icons.Default.Theaters,
                         contentDescription = null,
                         tint = selected?.let { mediaTypeColor(it.mediaType) } ?: SmartVisionColors.TextSecondary,
-                        modifier = Modifier.size(48.dp),
+                        modifier = Modifier.size(44.dp),
                     )
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         text = selected?.displayName ?: state.selectedArea.label(strings),
                         color = SmartVisionColors.TextPrimary,
@@ -744,12 +856,22 @@ private fun MediaPreviewPanel(
                     overflow = TextOverflow.Ellipsis,
                 )
             } else {
-                MediaInfoRow(strings.mediaFileSize, selected.sizeLabel)
-                MediaInfoRow(strings.mediaUpdatedAt, selected.updatedLabel)
-                MediaInfoRow(strings.mediaFolderLabel, selected.folderName ?: strings.mediaRootFolder)
-                MediaInfoRow("Source", selected.source.label(strings))
-                MediaInfoRow("Type", selected.mediaType.label())
-                MediaInfoRow(strings.mediaStoragePath, selected.relativePath)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0x660A1323))
+                        .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    MediaInfoRow(strings.mediaFileSize, selected.sizeLabel)
+                    MediaInfoRow(strings.mediaUpdatedAt, selected.updatedLabel)
+                    MediaInfoRow(strings.mediaFolderLabel, selected.folderName ?: strings.mediaRootFolder)
+                    MediaInfoRow("Source", selected.source.label(strings))
+                    MediaInfoRow("Type", selected.mediaType.label())
+                    MediaInfoRow(strings.mediaStoragePath, selected.relativePath)
+                }
             }
 
             state.storageInfo?.let { storage ->
@@ -759,41 +881,47 @@ private fun MediaPreviewPanel(
 
             Spacer(Modifier.weight(1f))
 
-            TvButton(
-                text = strings.mediaPlay,
-                onClick = {},
-                enabled = false,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(42.dp),
-            )
-            TvButton(
-                text = strings.mediaRename,
-                onClick = onRename,
-                enabled = selected != null && !state.operationInProgress,
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(42.dp),
-            )
-            TvButton(
-                text = strings.mediaMove,
-                onClick = onMove,
-                enabled = selected != null && !state.operationInProgress,
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(42.dp),
-            )
-            TvButton(
-                text = strings.delete,
-                onClick = onDelete,
-                enabled = selected != null && !state.operationInProgress,
-                variant = TvButtonVariant.Danger,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(42.dp),
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TvButton(
+                    text = strings.mediaPlay,
+                    onClick = onPlay,
+                    enabled = playEnabled,
+                    focusRequester = if (playEnabled) previewActionFocusRequester else null,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp),
+                )
+                TvButton(
+                    text = strings.mediaRename,
+                    onClick = onRename,
+                    enabled = editEnabled,
+                    focusRequester = if (!playEnabled && editEnabled) previewActionFocusRequester else null,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp),
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TvButton(
+                    text = strings.mediaMove,
+                    onClick = onMove,
+                    enabled = editEnabled,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp),
+                )
+                TvButton(
+                    text = strings.delete,
+                    onClick = onDelete,
+                    enabled = editEnabled,
+                    variant = TvButtonVariant.Danger,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp),
+                )
+            }
         }
     }
 }
@@ -1111,6 +1239,11 @@ private fun MediaCenterFileType.label(): String =
         MediaCenterFileType.Audio -> "Audio"
         MediaCenterFileType.Other -> "File"
     }
+
+private val MediaFileUi.isPlayable: Boolean
+    get() = mediaType == MediaCenterFileType.Video ||
+        mediaType == MediaCenterFileType.Photo ||
+        mediaType == MediaCenterFileType.Audio
 
 private fun MediaActionMessage.label(strings: SmartVisionStrings): String =
     when (this) {

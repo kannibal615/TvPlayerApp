@@ -2,7 +2,7 @@
 
 Derniere mise a jour: 2026-07-05.
 
-Statut: Lot 6 - Media Center local connecte a Room et au stockage app-specific. Les vrais dossiers/fichiers sous `SmartVisionMedia` sont indexes et les actions renommer/deplacer/supprimer sont branchees. Le Recorder, la lecture locale et le transfert telephone/TV restent des lots separes.
+Statut: Lot 8 - Media Center lit maintenant les fichiers locaux video/audio/photo via `media_player/{mediaFileId}` et le bouton Recorder Live ouvre une popup MVP gatee Premium/admin avec choix EPG/duree. Le service d'enregistrement reel et le transfert telephone/TV restent des lots separes.
 
 ## 1. Objectif
 
@@ -398,7 +398,7 @@ Implementation Lot 6:
 - Le panneau apercu affiche type, source, taille, date, dossier et chemin relatif.
 - `Actualiser` rescane le stockage local.
 - `Renommer`, `Deplacer` et `Supprimer` agissent sur les fichiers app-specific et mettent Room a jour.
-- `Lire` reste desactive: la lecture locale est reservee au Lot 7.
+- `Lire` ouvre les fichiers video/audio/photo locaux depuis le Lot 7.
 
 ### Lot 7 - Lecture video/photo Media
 
@@ -407,6 +407,14 @@ Objectif:
 
 Attention:
 - le player fullscreen actuel attend des IDs Xtream. Prevoir une route separee `media_player/{mediaFileId}` ou un `PlaybackKind.Local` sans casser Live/Movie/Episode.
+
+Implementation Lot 7:
+- Route `media_player/{mediaFileId}` ajoutee dans `AppNavigation.kt`.
+- `MediaRepository.getPlayback()` expose un `MediaCenterPlayback` avec URI app-specific valide.
+- Les fichiers video/audio utilisent le player fullscreen existant avec `UserContentType.LocalMedia`, sans preroll pub ni verification Xtream.
+- Les photos utilisent un viewer plein ecran local avec retour D-pad.
+- Le bouton `Lire` est actif pour Video/Audio/Photo et reste inactif pour `Other`.
+- Navigation focus Media amelioree: passage DPAD droite liste -> actions apercu, dossiers focusables, panneau apercu plus compact.
 
 ### Lot 8 - Bouton Recorder UI Live
 
@@ -417,6 +425,13 @@ Points critiques:
 - Free Ads: bouton grise + couronne + popup.
 - YouTube: source non disponible.
 - EPG: utiliser start/end millis, pas `timeRange`.
+
+Implementation Lot 8:
+- `AppNavigation.kt` evalue `PremiumFeature.RECORDER` et le transmet au player Live.
+- Le bouton `Record` du fullscreen Live affiche un etat lock/couronne quand l'acces est bloque mais visible.
+- Au clic avec acces autorise, une popup Recorder affiche le programme courant, l'option `Jusqu'a la fin du programme` si EPG start/stop disponible, et des durees manuelles 30/60/120 minutes.
+- Le bouton de demarrage indique que le moteur Recorder est en attente: aucun service DVR reel n'est lance dans ce lot.
+- Les bornes `startMillis`/`stopMillis` sont conservees dans `FullScreenEpgProgram`.
 
 ### Lot 9 - RecordingService + controller + jobs
 

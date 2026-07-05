@@ -17,6 +17,7 @@ object UserContentType {
     const val Movie = "movie"
     const val Series = "series"
     const val Episode = "episode"
+    const val LocalMedia = "local_media"
 }
 
 class UserContentRepository(

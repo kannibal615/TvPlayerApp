@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,6 +47,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.smartvision.svplayer.R
@@ -91,54 +93,19 @@ fun TvHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SmartVisionLogo()
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(6.dp))
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             tabs.forEach { tab ->
-                TvButton(
-                    text = tab.label,
-                    onClick = { onNavigate(tab.route) },
-                    selected = tab.route == currentRoute,
-                    variant = if (tab.route == currentRoute) TvButtonVariant.Primary else TvButtonVariant.Text,
-                    leadingIcon = tab.icon,
-                    leadingContent = if (tab.useYoutubeLogo) {
-                        {
-                            YoutubeLogoIcon()
-                        }
-                    } else {
-                        null
-                    },
-                    trailingContent = if (tab.warning) {
-                        {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = "Indisponible",
-                                tint = SmartVisionColors.Warning,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                    } else if (tab.locked) {
-                        {
-                            Image(
-                                painter = painterResource(R.drawable.premium_crown),
-                                contentDescription = "Premium",
-                                modifier = Modifier
-                                    .offset(x = 2.dp, y = (-6).dp)
-                                    .graphicsLayer { rotationZ = 12f }
-                                    .size(20.dp),
-                            )
-                        }
-                    } else {
-                        null
-                    },
-                    enabled = true,
-                    contentPadding = PaddingValues(horizontal = 8.dp),
-                    modifier = Modifier
-                        .height(38.dp)
-                        .alpha(if (tab.locked || tab.warning) 0.42f else 1f),
+                HeaderTabButton(
+                    tab = tab,
+                    currentRoute = currentRoute,
+                    onNavigate = onNavigate,
+                    height = 38.dp,
+                    horizontalPadding = 6.dp,
                 )
             }
         }
@@ -167,7 +134,7 @@ fun HeaderControls(
 ) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showLicenseKey) {
@@ -292,16 +259,16 @@ private fun HeaderDateTime() {
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Box(
             modifier = Modifier
-                .height(34.dp)
+                .height(30.dp)
                 .width(1.dp)
                 .background(SmartVisionColors.Border.copy(alpha = 0.72f)),
         )
         Column(
-            modifier = Modifier.width(82.dp),
+            modifier = Modifier.width(76.dp),
             horizontalAlignment = Alignment.End,
         ) {
             Text(
@@ -334,9 +301,70 @@ private fun SmartVisionLogo() {
         contentScale = ContentScale.Fit,
         modifier = Modifier
             .offset(x = (-6).dp)
-            .width(178.dp)
+            .width(172.dp)
             .fillMaxHeight(),
     )
+}
+
+@Composable
+fun HeaderTabButton(
+    tab: HomeHeaderTab,
+    currentRoute: String,
+    onNavigate: (String) -> Unit,
+    height: Dp,
+    horizontalPadding: Dp,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .height(height + if (tab.locked) 8.dp else 0.dp)
+            .padding(top = if (tab.locked) 8.dp else 0.dp),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        TvButton(
+            text = tab.label,
+            onClick = { onNavigate(tab.route) },
+            selected = tab.route == currentRoute,
+            variant = if (tab.route == currentRoute) TvButtonVariant.Primary else TvButtonVariant.Text,
+            leadingIcon = tab.icon,
+            leadingContent = if (tab.useYoutubeLogo) {
+                {
+                    YoutubeLogoIcon()
+                }
+            } else {
+                null
+            },
+            trailingContent = if (tab.warning) {
+                {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Indisponible",
+                        tint = SmartVisionColors.Warning,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            } else {
+                null
+            },
+            enabled = true,
+            contentPadding = PaddingValues(horizontal = horizontalPadding),
+            modifier = Modifier
+                .height(height)
+                .alpha(if (tab.locked || tab.warning) 0.42f else 1f),
+        )
+        if (tab.locked) {
+            Image(
+                painter = painterResource(R.drawable.premium_crown),
+                contentDescription = "Premium",
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = (-2).dp)
+                    .graphicsLayer { rotationZ = 10f }
+                    .zIndex(4f)
+                    .size(18.dp),
+            )
+        }
+    }
 }
 
 private data class HeaderDateTimeText(

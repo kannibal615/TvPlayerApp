@@ -79,12 +79,14 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import androidx.lifecycle.ViewModel
@@ -120,14 +122,19 @@ import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.data.xtream.XtreamConnectionManager
+import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
 import com.smartvision.svplayer.domain.model.LiveChannel
 import com.smartvision.svplayer.domain.model.PlaybackKind
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.usecase.BuildPlaybackRequestUseCase
+import com.smartvision.svplayer.media.MediaCenterFileType
+import com.smartvision.svplayer.media.MediaCenterPlayback
+import com.smartvision.svplayer.media.MediaCenterSource
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -137,12 +144,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 
 enum class FullScreenContentKind {
     Live,
     Movie,
     Episode,
+    LocalMedia,
 }
 
 private const val MinimumLiveHistoryMs = 5_000L
@@ -184,6 +193,8 @@ data class FullScreenEpgProgram(
     val description: String,
     val timeRange: String,
     val isCurrent: Boolean,
+    val startMillis: Long? = null,
+    val stopMillis: Long? = null,
 )
 
 data class AdjacentPlayback(
@@ -287,6 +298,7 @@ class FullScreenPlayerViewModel(
             FullScreenContentKind.Live -> resolveLive(contentId, xtreamRepository, epgRepository)
             FullScreenContentKind.Movie -> resolveMovie(contentId, xtreamRepository)
             FullScreenContentKind.Episode -> resolveEpisode(contentId, xtreamRepository)
+            FullScreenContentKind.LocalMedia -> error("Local media playback uses LocalMediaPlayerRoute.")
         }
 
     private fun resolveLive(
@@ -478,6 +490,9 @@ fun FullScreenPlayerRoute(
     onPlayLive: (Int) -> Unit = {},
     onPlayMovie: (Int) -> Unit = {},
     onPlayEpisode: (Int) -> Unit = {},
+    recorderAccess: PremiumFeatureGateResult? = null,
+    strings: SmartVisionStrings? = null,
+    onRecorderLocked: () -> Unit = {},
 ) {
     val container = LocalAppContainer.current
     val viewModel: FullScreenPlayerViewModel = viewModel(
@@ -518,7 +533,84 @@ fun FullScreenPlayerRoute(
         onPlayMovie = onPlayMovie,
         onPlayEpisode = onPlayEpisode,
         onProgressSnapshot = viewModel::saveProgress,
+        recorderAccess = recorderAccess,
+        strings = strings,
+        onRecorderLocked = onRecorderLocked,
     )
+}
+
+@Composable
+fun LocalMediaPlayerRoute(
+    mediaFileId: Long,
+    strings: SmartVisionStrings,
+    onBack: () -> Unit,
+) {
+    val container = LocalAppContainer.current
+    var loading by remember(mediaFileId) { mutableStateOf(true) }
+    var playback by remember(mediaFileId) { mutableStateOf<MediaCenterPlayback?>(null) }
+    var error by remember(mediaFileId) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(mediaFileId) {
+        loading = true
+        error = null
+        playback = runCatching { container.mediaRepository.getPlayback(mediaFileId) }
+            .onFailure { error = it.message ?: strings.mediaPlaybackUnavailable }
+            .getOrNull()
+        if (playback == null && error == null) {
+            error = strings.mediaPlaybackUnavailable
+        }
+        loading = false
+    }
+
+    when {
+        loading -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = SmartVisionColors.Primary, strokeWidth = 3.dp)
+            }
+        }
+        playback == null -> {
+            LocalMediaErrorScreen(
+                message = error ?: strings.mediaPlaybackUnavailable,
+                backLabel = strings.back,
+                onBack = onBack,
+            )
+        }
+        playback?.mediaType == MediaCenterFileType.Photo -> {
+            LocalPhotoViewerScreen(
+                playback = playback!!,
+                strings = strings,
+                onBack = onBack,
+            )
+        }
+        playback?.mediaType == MediaCenterFileType.Video || playback?.mediaType == MediaCenterFileType.Audio -> {
+            FullScreenPlayerScreen(
+                playback = playback!!.toFullScreenPlayback(),
+                contentKind = FullScreenContentKind.LocalMedia,
+                monetizationManager = container.monetizationManager,
+                idleVastAdLoader = container.idleVastAdLoader,
+                anomalyReporter = container.anomalyReporter,
+                xtreamConnectionManager = container.xtreamConnectionManager,
+                behaviorReporter = container.behaviorReporter,
+                adRequestTimeoutSeconds = container.adConfigProvider.current().requestTimeoutSeconds,
+                onBack = onBack,
+                onBackWithCurrentContent = { onBack() },
+                strings = strings,
+                onProgressSnapshot = { _, _ -> false },
+            )
+        }
+        else -> {
+            LocalMediaErrorScreen(
+                message = strings.mediaPlaybackUnavailable,
+                backLabel = strings.back,
+                onBack = onBack,
+            )
+        }
+    }
 }
 
 @Composable
@@ -533,10 +625,13 @@ private fun FullScreenPlayerScreen(
     adRequestTimeoutSeconds: Long,
     onBack: () -> Unit,
     onBackWithCurrentContent: (Int) -> Unit,
-    onPlayLive: (Int) -> Unit,
-    onPlayMovie: (Int) -> Unit,
-    onPlayEpisode: (Int) -> Unit,
+    onPlayLive: (Int) -> Unit = {},
+    onPlayMovie: (Int) -> Unit = {},
+    onPlayEpisode: (Int) -> Unit = {},
     onProgressSnapshot: suspend (positionMs: Long, durationMs: Long) -> Boolean,
+    recorderAccess: PremiumFeatureGateResult? = null,
+    strings: SmartVisionStrings? = null,
+    onRecorderLocked: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -555,6 +650,7 @@ private fun FullScreenPlayerScreen(
     var durationMs by remember { mutableLongStateOf(0L) }
     var bufferedPositionMs by remember { mutableLongStateOf(0L) }
     var activeMenu by remember { mutableStateOf(PlayerOverlayMenu.None) }
+    var showRecordDialog by remember { mutableStateOf(false) }
     var playbackSpeed by remember { mutableStateOf(1f) }
     var liveAspectMode by remember { mutableStateOf(LiveAspectModes.first()) }
     var subtitleTracks by remember { mutableStateOf<List<SubtitleTrackOption>>(emptyList()) }
@@ -625,6 +721,12 @@ private fun FullScreenPlayerScreen(
 
     fun refreshStalledPlayback() {
         if (adGateActive || exiting) return
+        if (playback.contentType == UserContentType.LocalMedia) {
+            buffering = false
+            errorText = strings?.mediaPlaybackUnavailable ?: "Fichier local indisponible"
+            showOverlay(requestPlayFocus = true)
+            return
+        }
         if (stalledRefreshCount >= 2) {
             buffering = false
             errorText = "Connexion Xtream indisponible"
@@ -853,6 +955,10 @@ private fun FullScreenPlayerScreen(
         firedAdTrackingEvents = emptySet()
         adPositionMs = 0L
         adDurationMs = 0L
+        if (contentKind == FullScreenContentKind.LocalMedia) {
+            prepareContentWithoutAd()
+            return@LaunchedEffect
+        }
         var resolvedPlan: PlayerAdPlan? = null
         monetizationManager.maybeShowPlayerAdThenStartPlayback(
             contentType = contentKind.toPlayerContentType(),
@@ -1113,7 +1219,11 @@ private fun FullScreenPlayerScreen(
                 }
 
                 buffering = false
-                errorText = "Flux indisponible"
+                errorText = if (playback.contentType == UserContentType.LocalMedia) {
+                    strings?.mediaPlaybackUnavailable ?: "Fichier local indisponible"
+                } else {
+                    "Flux indisponible"
+                }
                 showOverlay(requestPlayFocus = true)
             }
         }
@@ -1266,6 +1376,8 @@ private fun FullScreenPlayerScreen(
                     playback = playback,
                     errorText = errorText,
                     firstActionFocusRequester = playFocusRequester,
+                    recorderLocked = recorderAccess?.locked == true,
+                    recorderCrown = recorderAccess?.showPremiumCrown == true,
                     onOpenEpg = {
                         activeMenu = PlayerOverlayMenu.Epg
                         showOverlay(requestPlayFocus = false)
@@ -1275,9 +1387,25 @@ private fun FullScreenPlayerScreen(
                         showOverlay(requestPlayFocus = false)
                     },
                     onRecord = {
-                        // TODO: brancher l'enregistrement Live TV quand le pipeline DVR sera defini.
-                        Toast.makeText(context, "Recording coming soon", Toast.LENGTH_SHORT).show()
-                        showOverlay(requestPlayFocus = true)
+                        val access = recorderAccess
+                        when {
+                            access == null || access.allowed -> {
+                                showRecordDialog = true
+                                showOverlay(requestPlayFocus = false)
+                            }
+                            access.shouldShowUpgradePrompt -> {
+                                onRecorderLocked()
+                                showOverlay(requestPlayFocus = true)
+                            }
+                            else -> {
+                                Toast.makeText(
+                                    context,
+                                    strings?.recorderUnavailableForSource ?: "Recorder indisponible",
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                                showOverlay(requestPlayFocus = true)
+                            }
+                        }
                     },
                     onBackToList = { exitPlayer("live_back_to_list_button") },
                 )
@@ -1332,6 +1460,22 @@ private fun FullScreenPlayerScreen(
                     },
                 )
             }
+        }
+
+        if (showRecordDialog && strings != null) {
+            LiveRecordDialog(
+                playback = playback,
+                strings = strings,
+                onDismiss = {
+                    showRecordDialog = false
+                    showOverlay(requestPlayFocus = true)
+                },
+                onPendingStart = {
+                    Toast.makeText(context, strings.recorderEnginePending, Toast.LENGTH_SHORT).show()
+                    showRecordDialog = false
+                    showOverlay(requestPlayFocus = true)
+                },
+            )
         }
 
         if (activeMenu == PlayerOverlayMenu.Subtitles) {
@@ -1545,10 +1689,295 @@ private fun FullScreenAdOverlay(
 }
 
 @Composable
+private fun LocalPhotoViewerScreen(
+    playback: MediaCenterPlayback,
+    strings: SmartVisionStrings,
+    onBack: () -> Unit,
+) {
+    val backFocusRequester = remember { FocusRequester() }
+    BackHandler(onBack = onBack)
+    LaunchedEffect(Unit) {
+        delay(120)
+        runCatching { backFocusRequester.requestFocus() }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+    ) {
+        AsyncImage(
+            model = playback.uri,
+            contentDescription = playback.displayName,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 46.dp, vertical = 42.dp),
+        )
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(92.dp)
+                .background(Color.Black.copy(alpha = 0.66f))
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)))
+                .padding(horizontal = 28.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = playback.displayName.cleanTitle(),
+                    color = Color.White,
+                    style = PlayerTitleStyle.copy(fontSize = 24.sp, lineHeight = 29.sp),
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    text = playback.relativePath,
+                    color = Color.White.copy(alpha = 0.64f),
+                    style = PlayerMetaStyle.copy(fontSize = 13.sp, lineHeight = 17.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            TvButton(
+                text = strings.back,
+                onClick = onBack,
+                variant = TvButtonVariant.Secondary,
+                focusRequester = backFocusRequester,
+                modifier = Modifier
+                    .width(132.dp)
+                    .height(42.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LocalMediaErrorScreen(
+    message: String,
+    backLabel: String,
+    onBack: () -> Unit,
+) {
+    val backFocusRequester = remember { FocusRequester() }
+    BackHandler(onBack = onBack)
+    LaunchedEffect(Unit) {
+        delay(120)
+        runCatching { backFocusRequester.requestFocus() }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .width(520.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color(0xDD07101E))
+                .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(14.dp))
+                .padding(horizontal = 26.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = message,
+                color = Color.White,
+                style = PlayerMetaStyle.copy(fontSize = 16.sp, lineHeight = 21.sp),
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(18.dp))
+            TvButton(
+                text = backLabel,
+                onClick = onBack,
+                variant = TvButtonVariant.Secondary,
+                focusRequester = backFocusRequester,
+                modifier = Modifier
+                    .width(132.dp)
+                    .height(42.dp),
+            )
+        }
+    }
+}
+
+private enum class RecordingDurationChoice {
+    ProgramEnd,
+    Minutes30,
+    Minutes60,
+    Minutes120,
+}
+
+@Composable
+private fun LiveRecordDialog(
+    playback: FullScreenPlayback,
+    strings: SmartVisionStrings,
+    onDismiss: () -> Unit,
+    onPendingStart: () -> Unit,
+) {
+    val firstFocusRequester = remember { FocusRequester() }
+    val currentProgram = playback.epgPrograms.firstOrNull { it.isCurrent } ?: playback.epgPrograms.firstOrNull()
+    val programEndAvailable = currentProgram?.stopMillis?.let { it > System.currentTimeMillis() } == true
+    var selectedChoice by remember(playback.streamId, programEndAvailable) {
+        mutableStateOf(if (programEndAvailable) RecordingDurationChoice.ProgramEnd else RecordingDurationChoice.Minutes60)
+    }
+
+    LaunchedEffect(Unit) {
+        delay(120)
+        runCatching { firstFocusRequester.requestFocus() }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .width(560.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(Color(0xF0061020))
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(18.dp))
+                .padding(24.dp),
+        ) {
+            Text(
+                text = strings.recorderTitle,
+                color = Color.White,
+                style = PlayerTitleStyle.copy(fontSize = 28.sp, lineHeight = 34.sp),
+                fontWeight = FontWeight.Black,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = strings.recorderSubtitle,
+                color = Color.White.copy(alpha = 0.68f),
+                style = PlayerMetaStyle.copy(fontSize = 14.sp, lineHeight = 19.sp),
+            )
+            Spacer(Modifier.height(16.dp))
+            RecordInfoCard(
+                label = strings.recorderCurrentProgram,
+                value = currentProgram?.let {
+                    listOf(it.timeRange, it.title)
+                        .filter { value -> value.isNotBlank() }
+                        .joinToString("  |  ")
+                }
+                    ?: playback.title,
+            )
+            Spacer(Modifier.height(14.dp))
+            Text(
+                text = strings.recorderManualDuration,
+                color = Color.White,
+                style = PlayerMetaStyle.copy(fontSize = 15.sp, lineHeight = 19.sp),
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(8.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (programEndAvailable) {
+                    RecorderChoiceButton(
+                        label = strings.recorderUntilProgramEnd,
+                        selected = selectedChoice == RecordingDurationChoice.ProgramEnd,
+                        focusRequester = firstFocusRequester,
+                        onClick = { selectedChoice = RecordingDurationChoice.ProgramEnd },
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    RecorderChoiceButton(
+                        label = strings.recorderDuration30,
+                        selected = selectedChoice == RecordingDurationChoice.Minutes30,
+                        focusRequester = if (!programEndAvailable) firstFocusRequester else null,
+                        onClick = { selectedChoice = RecordingDurationChoice.Minutes30 },
+                        modifier = Modifier.weight(1f),
+                    )
+                    RecorderChoiceButton(
+                        label = strings.recorderDuration60,
+                        selected = selectedChoice == RecordingDurationChoice.Minutes60,
+                        onClick = { selectedChoice = RecordingDurationChoice.Minutes60 },
+                        modifier = Modifier.weight(1f),
+                    )
+                    RecorderChoiceButton(
+                        label = strings.recorderDuration120,
+                        selected = selectedChoice == RecordingDurationChoice.Minutes120,
+                        onClick = { selectedChoice = RecordingDurationChoice.Minutes120 },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                TvButton(
+                    text = strings.recorderStartUnavailable,
+                    onClick = onPendingStart,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp),
+                )
+                TvButton(
+                    text = strings.recorderClose,
+                    onClick = onDismiss,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .width(126.dp)
+                        .height(44.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecordInfoCard(
+    label: String,
+    value: String,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.07f))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(12.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Text(
+            text = label,
+            color = Color.White.copy(alpha = 0.58f),
+            style = PlayerMetaStyle.copy(fontSize = 12.sp, lineHeight = 16.sp),
+            maxLines = 1,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = value,
+            color = Color.White,
+            style = PlayerMetaStyle.copy(fontSize = 15.sp, lineHeight = 20.sp),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun RecorderChoiceButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
+) {
+    TvButton(
+        text = label,
+        onClick = onClick,
+        selected = selected,
+        variant = if (selected) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+        focusRequester = focusRequester,
+        modifier = modifier.height(42.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp),
+    )
+}
+
+@Composable
 private fun LiveTvFullscreenOverlay(
     playback: FullScreenPlayback,
     errorText: String?,
     firstActionFocusRequester: FocusRequester,
+    recorderLocked: Boolean,
+    recorderCrown: Boolean,
     onOpenEpg: () -> Unit,
     onOpenSettings: () -> Unit,
     onRecord: () -> Unit,
@@ -1587,6 +2016,8 @@ private fun LiveTvFullscreenOverlay(
             playback = playback,
             hasEpg = hasEpg,
             firstActionFocusRequester = firstActionFocusRequester,
+            recorderLocked = recorderLocked,
+            recorderCrown = recorderCrown,
             onOpenEpg = onOpenEpg,
             onOpenSettings = onOpenSettings,
             onRecord = onRecord,
@@ -1601,6 +2032,8 @@ private fun LiveTvBottomGlassBanner(
     playback: FullScreenPlayback,
     hasEpg: Boolean,
     firstActionFocusRequester: FocusRequester,
+    recorderLocked: Boolean,
+    recorderCrown: Boolean,
     onOpenEpg: () -> Unit,
     onOpenSettings: () -> Unit,
     onRecord: () -> Unit,
@@ -1663,6 +2096,8 @@ private fun LiveTvBottomGlassBanner(
                 icon = Icons.Default.FiberManualRecord,
                 onClick = onRecord,
                 iconTint = Color(0xFFFF3737),
+                locked = recorderLocked,
+                showCrown = recorderCrown,
             )
             LiveTvActionButton(
                 label = "Back to List",
@@ -1742,6 +2177,8 @@ private fun LiveTvActionButton(
     enabled: Boolean = true,
     focusRequester: FocusRequester? = null,
     iconTint: Color = Color.White,
+    locked: Boolean = false,
+    showCrown: Boolean = false,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -1749,6 +2186,8 @@ private fun LiveTvActionButton(
     val backgroundColor by animateColorAsState(
         targetValue = when {
             !enabled -> Color.White.copy(alpha = 0.08f)
+            locked && focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.24f)
+            locked -> Color.White.copy(alpha = 0.08f)
             focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.36f)
             else -> Color.White.copy(alpha = 0.18f)
         },
@@ -1758,6 +2197,8 @@ private fun LiveTvActionButton(
     val borderColor by animateColorAsState(
         targetValue = when {
             !enabled -> Color.White.copy(alpha = 0.10f)
+            locked && focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.52f)
+            locked -> Color.White.copy(alpha = 0.16f)
             focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.68f)
             else -> Color.White.copy(alpha = 0.28f)
         },
@@ -1800,15 +2241,31 @@ private fun LiveTvActionButton(
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = if (enabled) iconTint else Color.White.copy(alpha = 0.28f),
+                tint = when {
+                    !enabled -> Color.White.copy(alpha = 0.28f)
+                    locked -> Color.White.copy(alpha = 0.42f)
+                    else -> iconTint
+                },
                 modifier = Modifier.size(25.dp),
             )
+            if (showCrown) {
+                Image(
+                    painter = painterResource(R.drawable.premium_crown),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 7.dp, y = (-9).dp)
+                        .size(19.dp)
+                        .zIndex(2f),
+                )
+            }
         }
         Spacer(Modifier.height(5.dp))
         Text(
             text = label,
             color = when {
                 !enabled -> Color.White.copy(alpha = 0.34f)
+                locked -> Color.White.copy(alpha = 0.48f)
                 focusState.isFocused -> Color.White
                 else -> Color.White.copy(alpha = 0.74f)
             },
@@ -2634,6 +3091,8 @@ private fun List<EpgProgram>.toFullScreenPrograms(): List<FullScreenEpgProgram> 
             description = program.description,
             timeRange = program.timeRange,
             isCurrent = index == currentIndex,
+            startMillis = program.startMillis,
+            stopMillis = program.stopMillis,
         )
     }
 }
@@ -2685,6 +3144,7 @@ private fun FullScreenContentKind.storageType(): String =
         FullScreenContentKind.Live -> UserContentType.Live
         FullScreenContentKind.Movie -> UserContentType.Movie
         FullScreenContentKind.Episode -> UserContentType.Episode
+        FullScreenContentKind.LocalMedia -> UserContentType.LocalMedia
     }
 
 private fun FullScreenContentKind.playbackKind(): PlaybackKind =
@@ -2692,6 +3152,7 @@ private fun FullScreenContentKind.playbackKind(): PlaybackKind =
         FullScreenContentKind.Live -> PlaybackKind.Live
         FullScreenContentKind.Movie -> PlaybackKind.Movie
         FullScreenContentKind.Episode -> PlaybackKind.Episode
+        FullScreenContentKind.LocalMedia -> PlaybackKind.Movie
     }
 
 private fun String.isGeneratedTitleFor(kind: FullScreenContentKind, id: Int): Boolean {
@@ -2703,6 +3164,7 @@ private fun String.isGeneratedTitleFor(kind: FullScreenContentKind, id: Int): Bo
         FullScreenContentKind.Episode -> normalized.equals("Episode $id", ignoreCase = true) ||
             normalized.equals("Series", ignoreCase = true) ||
             normalized.equals("Serie", ignoreCase = true)
+        FullScreenContentKind.LocalMedia -> false
     }
 }
 
@@ -2711,6 +3173,7 @@ private fun FullScreenContentKind.toPlayerContentType(): PlayerContentType =
         FullScreenContentKind.Live -> PlayerContentType.LIVE_TV
         FullScreenContentKind.Movie -> PlayerContentType.MOVIE
         FullScreenContentKind.Episode -> PlayerContentType.SERIES
+        FullScreenContentKind.LocalMedia -> PlayerContentType.MOVIE
     }
 
 private fun String.toBehaviorContentType(): String =
@@ -2719,8 +3182,48 @@ private fun String.toBehaviorContentType(): String =
         UserContentType.Movie -> "MOVIE"
         UserContentType.Episode -> "EPISODE"
         UserContentType.Series -> "SERIES"
+        UserContentType.LocalMedia -> "LOCAL_MEDIA"
         else -> "UNKNOWN"
     }
+
+private fun MediaCenterPlayback.toFullScreenPlayback(): FullScreenPlayback {
+    val mediaLabel = mediaType.name.uppercase(Locale.US)
+    return FullScreenPlayback(
+        streamId = id.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt(),
+        contentType = UserContentType.LocalMedia,
+        title = displayName.cleanTitle(),
+        subtitle = listOf(source.localLabel(), relativePath.substringBeforeLast('/', ""))
+            .filter { it.isNotBlank() }
+            .joinToString("  |  "),
+        url = uri.toString(),
+        fallbackUrl = uri.toString(),
+        badge = mediaLabel,
+        status = mimeType ?: "Local media",
+        infoPills = listOf(mediaLabel, formatLocalMediaSize(sizeBytes)).filter { it.isNotBlank() },
+        overlayRightText = "MEDIA",
+    )
+}
+
+private fun MediaCenterSource.localLabel(): String =
+    when (this) {
+        MediaCenterSource.Recording -> "Recordings"
+        MediaCenterSource.Import -> "Imports"
+        MediaCenterSource.Transfer -> "Transfers"
+        MediaCenterSource.Local -> "Local"
+    }
+
+private fun formatLocalMediaSize(bytes: Long): String {
+    if (bytes <= 0L) return ""
+    if (bytes < 1024L) return "$bytes B"
+    val units = listOf("KB", "MB", "GB", "TB")
+    var value = bytes / 1024.0
+    var unitIndex = 0
+    while (value >= 1024.0 && unitIndex < units.lastIndex) {
+        value /= 1024.0
+        unitIndex += 1
+    }
+    return String.format(Locale.US, "%.1f %s", value, units[unitIndex])
+}
 
 private fun Long.validDurationMs(): Long =
     takeIf { it > 0L && it != C.TIME_UNSET } ?: 0L

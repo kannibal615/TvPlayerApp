@@ -18,6 +18,21 @@ class MediaRepository(
     fun observeFolders(): Flow<List<MediaCenterFolder>> =
         dao.observeFolders().map { entities -> entities.map { it.toDomain() } }
 
+    suspend fun getPlayback(fileId: Long): MediaCenterPlayback? = withContext(Dispatchers.IO) {
+        val file = dao.getFile(fileId)?.takeIf { it.deletedAt == null } ?: return@withContext null
+        MediaCenterPlayback(
+            id = file.id,
+            displayName = file.displayName,
+            relativePath = file.relativePath,
+            uri = storageManager.playbackUri(file.relativePath),
+            mimeType = file.mimeType,
+            mediaType = MediaCenterFileType.entries.firstOrNull { it.key == file.mediaType } ?: MediaCenterFileType.Other,
+            source = MediaCenterSource.entries.firstOrNull { it.key == file.source } ?: MediaCenterSource.Local,
+            sizeBytes = file.sizeBytes,
+            updatedAt = file.updatedAt,
+        )
+    }
+
     suspend fun refreshStorage(): MediaCenterStorageInfo = withContext(Dispatchers.IO) {
         val scan = storageManager.scan()
         upsertFolders(scan.folders)

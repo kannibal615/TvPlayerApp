@@ -1,5 +1,53 @@
 # AI Changelog
 
+## 2026-07-05 - Release prod 0.1.92 (96) pour Lots 7 et 8 Recorder + Media
+
+Type:
+- android
+- release
+- deploy
+- documentation
+
+Resume:
+- Incrementation Android en `0.1.92` / `versionCode 96` pour depasser la prod deja en `0.1.91 (95)`.
+- Build release signe de l'etat courant incluant les lots 7 et 8 Recorder + Media et les retouches header/focus/Media demandees.
+- Deploiement prod via `deploy_activation_phase1.ps1 -SkipInstall` avec validations publiques et admin OK.
+
+Validation:
+- `.\scripts\guard_release_version.ps1`: OK, local `0.1.92 (96)` > prod `0.1.91 (95)`.
+- `.\gradlew.bat --% :app:assembleRelease --no-daemon --max-workers=1 --console=plain`: OK en 17m32.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK, metadata `0.1.92 (96)`.
+- `apksigner verify --verbose --print-certs`: OK, v1=true, v2=true, certificat `CN=SmartVision, OU=Android TV, O=SmartVision, C=FR`.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall`: OK, tests site/activation/admin OK.
+- Production verifiee: `smartvision-tv.version.json` et `api/app_update.php` annoncent `0.1.92` / `96`; APK versionne `smartvision-tv-v96-c91c7b49.apk` et APK stable `smartvision-tv.apk?v=96` repondent en HTTP 200 avec taille `40264839` et SHA256 `c91c7b49f87e9a6f41d83c40ed58c3c9ca94e1bdb0bb974c4600875df77655e8`.
+
+## 2026-07-05 - Lots 7 et 8 Media lecture locale + Recorder UI Live
+
+Type:
+- android
+- ui-tv
+- media-center
+- documentation
+
+Resume:
+- Ajout de la route `media_player/{mediaFileId}` et du bouton `Lire` actif pour les fichiers Media video/audio/photo.
+- Reutilisation du player fullscreen pour video/audio locaux via `UserContentType.LocalMedia`, sans preroll pub ni verification Xtream.
+- Ajout d'un viewer photo local plein ecran.
+- Branchement du bouton `Record` Live au gate `PremiumFeature.RECORDER` avec lock/couronne et popup MVP EPG/duree sans lancement de service DVR reel.
+- Amelioration du focus et du design Media: DPAD droite liste -> actions apercu, dossiers focusables, panneau apercu compact, boutons actions en grille.
+- Compactage des headers Home/Catalogue/Details, libelle YouTube reduit a `YT`, et couronne locked positionnee au-dessus du label.
+
+Validation:
+- `.\gradlew.bat :app:compileDebugKotlin`: OK en 2m10 apres correction d'un import `padding` manquant.
+
+Fichiers principaux:
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/media/MediaScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/player/FullScreenPlayerScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/TvHeader.kt`
+- `app/src/main/java/com/smartvision/svplayer/media/MediaRepository.kt`
+- `docs/RECORDER_MEDIA_PLAN.md`
+
 ## 2026-07-05 - Lots 5 et 6 Media Center stockage local + gestion fichiers
 
 Type:

@@ -1,6 +1,7 @@
 package com.smartvision.svplayer.media
 
 import android.content.Context
+import android.net.Uri
 import android.webkit.MimeTypeMap
 import java.io.File
 import java.util.Locale
@@ -90,6 +91,12 @@ class MediaStorageManager(
         val file = resolve(relativePath)
         require(file.isFile) { "File not found." }
         check(file.delete()) { "Unable to delete file." }
+    }
+
+    fun playbackUri(relativePath: String): Uri {
+        val file = resolve(relativePath)
+        require(file.isFile) { "File not found." }
+        return Uri.fromFile(file)
     }
 
     private fun rootDirectory(): File {

@@ -10,7 +10,7 @@ SmartVision / SVPlayer est une application Android TV native Kotlin/Compose pour
 
 Etat technique constate le 2026-07-05:
 - applicationId: `com.smartvision.svplayer`
-- version locale Gradle: `0.1.91` / `versionCode 95`
+- version locale Gradle: `0.1.92` / `versionCode 96`
 - langue officielle UI: anglais par defaut; deuxieme langue disponible: francais; futures langues a ajouter via le systeme i18n.
 - entree TV: `MainActivity -> ui/navigation/AppNavigation.kt`
 - lecture video: AndroidX Media3 ExoPlayer natif
@@ -166,7 +166,7 @@ Ne pas lire par defaut si la demande concerne uniquement:
 - correction locale d'un ecran existant sans Recorder/Media
 
 Statut rapide:
-- Lot 6 ajoute le Media Center local: route/header `Media`, verrou/couronne via `media_center`, tables Room `media_folders`/`media_files`/`recording_jobs`, stockage app-specific `SmartVisionMedia`, scan fichiers/dossiers et actions renommer/deplacer/supprimer. Le Recorder, la lecture locale et le transfert telephone/TV restent a implementer.
+- Lot 8 ajoute la lecture locale Media: route `media_player/{mediaFileId}`, bouton `Lire` actif pour video/audio/photo, viewer photo plein ecran et reuse du player fullscreen pour video/audio sans preroll ni verification Xtream. Le bouton `Record` Live est branche au gate `recorder` et ouvre une popup MVP EPG/duree sans service DVR reel. Le transfert telephone/TV et le RecordingService restent a implementer.
 
 ## UI TV, focus et navigation telecommande
 

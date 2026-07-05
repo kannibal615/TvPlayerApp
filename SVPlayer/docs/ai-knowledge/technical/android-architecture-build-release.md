@@ -18,8 +18,8 @@ Observabilite reseau:
 - Ne jamais exposer les query params, tokens, identifiants Xtream, mots de passe ou URLs de lecture dans ce tracker.
 
 Gradle local constate le 2026-07-05:
-- `versionCode = 95`
-- `versionName = "0.1.91"`
+- `versionCode = 96`
+- `versionName = "0.1.92"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -160,6 +160,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-05: release publiee `0.1.92` / `versionCode 96` pour lots 7 et 8 Recorder + Media: lecture locale video/audio/photo, route `media_player/{mediaFileId}`, viewer photo plein ecran, bouton Record Live gate/couronne/dialog MVP et retouches focus/design header/Media. APK `smartvision-tv-v96-c91c7b49.apk`, SHA256 `c91c7b49f87e9a6f41d83c40ed58c3c9ca94e1bdb0bb974c4600875df77655e8`, manifeste public, `app_update.php`, APK stable et taille verifies.
 - 2026-07-05: release publiee `0.1.91` / `versionCode 95` pour Lots 5 et 6 Media Center: Room `media_folders`/`media_files`/`recording_jobs`, stockage app-specific `SmartVisionMedia`, scan fichiers/dossiers et actions Renommer/Deplacer/Supprimer. APK `smartvision-tv-v95-f66182d2.apk`, SHA256 `f66182d26909fac5a5011357992fdb9963878aa6ec3fcd354d0866180469a6da`, manifeste public, `app_update.php`, APK stable et taille verifies.
 - 2026-07-05: release publiee `0.1.90` / `versionCode 94` pour retouches overlay Live TV: Haut/Bas rend la priorite aux panneaux EPG/Settings ouverts, suppression du flash numero technique 6 chiffres, retrait logo SmartVision haut gauche, titre chaine legerement reduit, boutons plus serres/opaques et focus moins epais. APK `smartvision-tv-v94-f4ad6681.apk`, SHA256 `f4ad66813f308ec109186881b731c82939aec17eec45154da56e27b57c2aa674`, manifeste public, `app_update.php`, APK stable et taille verifies.
 - 2026-07-05: release publiee `0.1.89` / `versionCode 93` pour affiner l'overlay plein ecran Live TV: bandeau rectangulaire compact, logo chaine sans cadre, numero reel, EPG local courant, zapping haut/bas prioritaire, panneau Settings focusable/aspect ratio enrichi et retour focus liste sur la chaine ouverte. APK `smartvision-tv-v93-36ec0343.apk`, SHA256 `36ec03430e065b5234252ee2142cf7b057e8429a62894fa15d90e3e737a03bcb`, manifeste public, `app_update.php`, APK stable et taille verifies.

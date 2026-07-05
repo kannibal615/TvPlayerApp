@@ -76,6 +76,7 @@ import com.smartvision.svplayer.ui.notifications.NotificationBadgeViewModel
 import com.smartvision.svplayer.ui.notifications.NotificationsRoute
 import com.smartvision.svplayer.ui.player.FullScreenContentKind
 import com.smartvision.svplayer.ui.player.FullScreenPlayerRoute
+import com.smartvision.svplayer.ui.player.LocalMediaPlayerRoute
 import com.smartvision.svplayer.ui.profile.ProfileRoute
 import com.smartvision.svplayer.ui.profile.SmartVisionQrDialog
 import com.smartvision.svplayer.ui.series.SeriesScreen
@@ -167,6 +168,11 @@ fun AppNavigation(
     val mediaCenterGate = PremiumFeatureGate.evaluate(
         config = appConfigState.config,
         feature = PremiumFeature.MEDIA_CENTER,
+        status = monetizationStatus,
+    )
+    val recorderGate = PremiumFeatureGate.evaluate(
+        config = appConfigState.config,
+        feature = PremiumFeature.RECORDER,
         status = monetizationStatus,
     )
     val parentalControlAllowed = container.appConfigRepository.isFeatureAllowed(
@@ -602,6 +608,7 @@ fun AppNavigation(
                     notificationBadgeCount = notificationBadgeCount,
                     strings = strings,
                     access = mediaCenterGate,
+                    onPlayFile = { mediaFileId -> navController.navigate("media_player/$mediaFileId") },
                     onLockedFeature = {
                         if (mediaCenterGate.shouldShowUpgradePrompt) {
                             showLicensePurchaseQr = true
@@ -671,6 +678,25 @@ fun AppNavigation(
                             popUpTo("player/{channelId}") { inclusive = true }
                         }
                     },
+                    recorderAccess = recorderGate,
+                    strings = strings,
+                    onRecorderLocked = {
+                        if (recorderGate.shouldShowUpgradePrompt) {
+                            showLicensePurchaseQr = true
+                        }
+                    },
+                )
+            }
+        }
+        composable("media_player/{mediaFileId}") { entry ->
+            val mediaFileId = entry.arguments?.getString("mediaFileId")?.toLongOrNull()
+            if (!mediaCenterGate.allowed || mediaFileId == null) {
+                PlaceholderRouteScreen(strings.media, strings.mediaPlaybackUnavailable)
+            } else {
+                LocalMediaPlayerRoute(
+                    mediaFileId = mediaFileId,
+                    strings = strings,
+                    onBack = { navController.popBackStack() },
                 )
             }
         }
@@ -768,7 +794,8 @@ fun AppNavigation(
 
     val playerRouteActive = currentRoute.startsWith("player/") ||
         currentRoute.startsWith("movie_player/") ||
-        currentRoute.startsWith("episode_player/")
+        currentRoute.startsWith("episode_player/") ||
+        currentRoute.startsWith("media_player/")
     BackHandler(enabled = !playerRouteActive) {
         if (currentRoute != AppRoute.Home.route) {
             val popped = navController.popBackStack()
@@ -1106,7 +1133,7 @@ private fun headerTabs(strings: SmartVisionStrings) = listOf(
     HomeHeaderTab(strings.movies, AppRoute.Movies.route),
     HomeHeaderTab(strings.series, AppRoute.Series.route),
     HomeHeaderTab(strings.media, AppRoute.Media.route),
-    HomeHeaderTab(strings.youtube, AppRoute.Youtube.route, useYoutubeLogo = true),
+    HomeHeaderTab("YT", AppRoute.Youtube.route, useYoutubeLogo = true),
 )
 
 private fun activationPortalBaseUrl(): String =

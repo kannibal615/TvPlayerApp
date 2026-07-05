@@ -79,6 +79,7 @@ import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.HeaderControls
+import com.smartvision.svplayer.ui.home.HeaderTabButton
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -132,54 +133,20 @@ fun MediaCatalogHeader(
     ) {
         MediaCatalogLogo()
 
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(8.dp))
 
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             tabs.forEach { tab ->
-                TvButton(
-                    text = tab.label,
-                    onClick = { onNavigate(tab.route) },
-                    selected = tab.route == currentRoute,
-                    variant = if (tab.route == currentRoute) TvButtonVariant.Primary else TvButtonVariant.Text,
-                    leadingIcon = tab.icon,
-                    leadingContent = if (tab.useYoutubeLogo) {
-                        {
-                            YoutubeLogoIcon()
-                        }
-                    } else {
-                        null
-                    },
-                    trailingContent = if (tab.warning) {
-                        {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = "Indisponible",
-                                tint = SmartVisionColors.Warning,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                    } else if (tab.locked) {
-                        {
-                            Image(
-                                painter = painterResource(R.drawable.premium_crown),
-                                contentDescription = "Premium",
-                                modifier = Modifier
-                                    .offset(x = 2.dp, y = (-6).dp)
-                                    .graphicsLayer { rotationZ = 12f }
-                                    .size(20.dp),
-                            )
-                        }
-                    } else {
-                        null
-                    },
-                    contentPadding = PaddingValues(horizontal = 10.dp),
-                    modifier = Modifier
-                        .height(36.dp)
-                        .alpha(if (tab.locked || tab.warning) 0.42f else 1f),
+                HeaderTabButton(
+                    tab = tab,
+                    currentRoute = currentRoute,
+                    onNavigate = onNavigate,
+                    height = 36.dp,
+                    horizontalPadding = 6.dp,
                 )
             }
         }
@@ -299,7 +266,7 @@ private fun MediaCatalogLogo() {
         contentDescription = "SmartVision IPTV Player",
         contentScale = ContentScale.Fit,
         modifier = Modifier
-            .width(190.dp)
+            .width(178.dp)
             .fillMaxHeight(),
     )
 }
