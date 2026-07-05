@@ -1139,7 +1139,7 @@ private fun headerTabs(strings: SmartVisionStrings) = listOf(
     HomeHeaderTab(strings.movies, AppRoute.Movies.route),
     HomeHeaderTab(strings.series, AppRoute.Series.route),
     HomeHeaderTab(strings.media, AppRoute.Media.route),
-    HomeHeaderTab("YT", AppRoute.Youtube.route, useYoutubeLogo = true),
+    HomeHeaderTab("YouTube", AppRoute.Youtube.route, useYoutubeLogo = true),
 )
 
 private fun activationPortalBaseUrl(): String =
