@@ -1,5 +1,41 @@
 # AI Changelog
 
+## 2026-07-05 - Overlay player Live TV et release 0.1.88
+
+Type:
+- android
+- ui-tv
+- playback
+- release
+- documentation
+
+Resume:
+- Le player plein ecran Live TV utilise maintenant un overlay dedie au direct: logo SmartVision en haut gauche, numero de chaine en haut droite et bandeau bas full-width colle au bas de l'ecran.
+- Le bandeau Live affiche logo chaine, nom, ligne EPG locale si disponible, puis les boutons compacts `EPG`, `Settings`, `Record`, `Back to List`.
+- Les controles VOD ont ete retires du Live TV plein ecran: plus de pause, -10s, +10s, fullscreen ni barre de progression.
+- Le panneau EPG lateral affiche les programmes locaux avec horaire, titre, description et mise en evidence du programme courant.
+- Le panneau Settings Live expose le mode d'affichage `Fit`, `Fill`, `Zoom`, `16:9`, `Auto`; la vitesse est affichee comme indisponible pour Live TV.
+- `Record` reste un placeholder avec TODO DVR et message court, sans developper l'enregistrement.
+
+Fichiers code:
+- `app/src/main/java/com/smartvision/svplayer/ui/player/FullScreenPlayerScreen.kt`
+- `app/build.gradle.kts`
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/technical/android-architecture-build-release.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Validation:
+- `.\scripts\guard_release_version.ps1`: OK, local `0.1.88 (92)` > prod `0.1.87 (91)`.
+- `.\gradlew.bat assembleRelease`: OK en 10m20s.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK, metadata `0.1.88 (92)`.
+- `apksigner verify --verbose --print-certs`: OK, signatures v1/v2 valides, certificat `CN=SmartVision`.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall`: OK.
+- Production verifiee: `api/app_update.php` sert `latest_version_code=92`, APK versionne `smartvision-tv-v92-4709cf61.apk` et APK stable `smartvision-tv.apk` repondent `200`, taille `40133757`, SHA256 `4709cf614b68ae0c489efb7323e9aca9a9f096a7a2979bfc2007b0e28c2e95c7`.
+
 ## 2026-07-05 - Scroll Activite reseau et timeout notifications
 
 ### Changements

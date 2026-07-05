@@ -4,6 +4,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.KeyEvent as AndroidKeyEvent
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -30,9 +31,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.EventNote
+import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -41,6 +47,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -60,6 +67,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -78,6 +86,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
+import coil.compose.AsyncImage
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -105,6 +114,7 @@ import com.smartvision.svplayer.data.monetization.MonetizationManager
 import com.smartvision.svplayer.data.monetization.PlayerAdPlan
 import com.smartvision.svplayer.data.monetization.PlayerContentType
 import com.smartvision.svplayer.data.monetization.smartVisionMediaSourceFactory
+import com.smartvision.svplayer.data.playlist.EpgRepository
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
@@ -135,6 +145,14 @@ enum class FullScreenContentKind {
 private const val MinimumLiveHistoryMs = 5_000L
 private const val PlayerReleaseDelayMs = 80L
 
+private val LiveAspectModes = listOf(
+    LiveAspectMode("Fit", AspectRatioFrameLayout.RESIZE_MODE_FIT),
+    LiveAspectMode("Fill", AspectRatioFrameLayout.RESIZE_MODE_FILL),
+    LiveAspectMode("Zoom", AspectRatioFrameLayout.RESIZE_MODE_ZOOM),
+    LiveAspectMode("16:9", AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH),
+    LiveAspectMode("Auto", AspectRatioFrameLayout.RESIZE_MODE_FIT),
+)
+
 data class FullScreenPlayback(
     val streamId: Int,
     val contentType: String,
@@ -153,6 +171,14 @@ data class FullScreenPlayback(
     val nextItem: AdjacentPlayback? = null,
     val nextEpisode: NextEpisodePlayback? = null,
     val resumePositionMs: Long = 0L,
+    val epgPrograms: List<FullScreenEpgProgram> = emptyList(),
+)
+
+data class FullScreenEpgProgram(
+    val title: String,
+    val description: String,
+    val timeRange: String,
+    val isCurrent: Boolean,
 )
 
 data class AdjacentPlayback(
@@ -170,8 +196,14 @@ data class NextEpisodePlayback(
 private enum class PlayerOverlayMenu {
     None,
     Subtitles,
+    Epg,
     Settings,
 }
+
+private data class LiveAspectMode(
+    val label: String,
+    val resizeMode: Int,
+)
 
 private data class SubtitleTrackOption(
     val id: String,
@@ -184,10 +216,11 @@ class FullScreenPlayerViewModel(
     private val contentId: Int,
     private val kind: FullScreenContentKind,
     private val xtreamRepository: XtreamRepository,
+    private val epgRepository: EpgRepository,
     private val userContentRepository: UserContentRepository,
     private val buildPlaybackRequest: BuildPlaybackRequestUseCase,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(resolvePlayback(contentId, kind, xtreamRepository))
+    private val _uiState = MutableStateFlow(resolvePlayback(contentId, kind, xtreamRepository, epgRepository))
     val uiState: StateFlow<FullScreenPlayback> = _uiState
     private val saveProgressMutex = Mutex()
 
@@ -239,9 +272,10 @@ class FullScreenPlayerViewModel(
         contentId: Int,
         kind: FullScreenContentKind,
         xtreamRepository: XtreamRepository,
+        epgRepository: EpgRepository,
     ): FullScreenPlayback =
         when (kind) {
-            FullScreenContentKind.Live -> resolveLive(contentId, xtreamRepository)
+            FullScreenContentKind.Live -> resolveLive(contentId, xtreamRepository, epgRepository)
             FullScreenContentKind.Movie -> resolveMovie(contentId, xtreamRepository)
             FullScreenContentKind.Episode -> resolveEpisode(contentId, xtreamRepository)
         }
@@ -249,12 +283,22 @@ class FullScreenPlayerViewModel(
     private fun resolveLive(
         streamId: Int,
         xtreamRepository: XtreamRepository,
+        epgRepository: EpgRepository,
     ): FullScreenPlayback =
         xtreamRepository.getCachedLiveStream(streamId)?.let { stream ->
             val categoryName = xtreamRepository.getCachedCategories()
                 .firstOrNull { it.id == stream.categoryId }
                 ?.name
                 ?: "Live TV"
+            val epgPrograms = epgRepository.loadPrograms(stream.epgChannelId, stream.name)
+                .mapIndexed { index, program ->
+                    FullScreenEpgProgram(
+                        title = program.title,
+                        description = program.description,
+                        timeRange = program.timeRange,
+                        isCurrent = index == 0,
+                    )
+                }
             val previous = xtreamRepository.getCachedPreviousLiveStream(streamId)
             val next = xtreamRepository.getCachedNextLiveStream(streamId)
             FullScreenPlayback(
@@ -265,11 +309,11 @@ class FullScreenPlayerViewModel(
                 url = xtreamRepository.buildLiveStreamUrl(stream),
                 fallbackUrl = xtreamRepository.buildLiveStreamFallbackUrl(stream.streamId),
                 badge = "LIVE",
-                status = "Direct",
+                status = epgPrograms.firstOrNull()?.title ?: "Direct",
                 infoPills = listOf("16+", "HD", "5.1"),
                 imageUrl = stream.streamIcon,
                 categoryId = stream.categoryId,
-                overlayRightText = stream.number.toString().padStart(3, '0'),
+                overlayRightText = stream.number.toString(),
                 previousItem = previous?.let {
                     AdjacentPlayback(
                         streamId = it.streamId,
@@ -284,6 +328,7 @@ class FullScreenPlayerViewModel(
                         label = it.number.toString().padStart(3, '0'),
                     )
                 },
+                epgPrograms = epgPrograms,
             )
         } ?: FullScreenPlayback(
             streamId = streamId,
@@ -427,6 +472,7 @@ fun FullScreenPlayerRoute(
                 contentId = streamId,
                 kind = kind,
                 xtreamRepository = container.xtreamRepository,
+                epgRepository = container.epgRepository,
                 userContentRepository = container.userContentRepository,
                 buildPlaybackRequest = container.buildPlaybackRequest,
             )
@@ -492,6 +538,7 @@ private fun FullScreenPlayerScreen(
     var bufferedPositionMs by remember { mutableLongStateOf(0L) }
     var activeMenu by remember { mutableStateOf(PlayerOverlayMenu.None) }
     var playbackSpeed by remember { mutableStateOf(1f) }
+    var liveAspectMode by remember { mutableStateOf(LiveAspectModes.first { it.resizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM }) }
     var subtitleTracks by remember { mutableStateOf<List<SubtitleTrackOption>>(emptyList()) }
     var selectedSubtitleId by remember { mutableStateOf<String?>(null) }
     var nextEpisodeCountdown by remember { mutableStateOf<Int?>(null) }
@@ -513,7 +560,7 @@ private fun FullScreenPlayerScreen(
     val playerView = remember {
         PlayerView(context).apply {
             useController = false
-            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            resizeMode = liveAspectMode.resizeMode
             isFocusable = true
             isFocusableInTouchMode = true
         }
@@ -534,7 +581,7 @@ private fun FullScreenPlayerScreen(
         overlayVisible = true
         overlayTick += 1
         if (!wasVisible || requestPlayFocus) {
-            focusPlayWhenOverlayShows = true
+            focusPlayWhenOverlayShows = requestPlayFocus || playback.contentType == UserContentType.Live
         }
     }
 
@@ -603,11 +650,8 @@ private fun FullScreenPlayerScreen(
     fun handleLiveChannelKey(keyCode: Int): Boolean {
         if (playback.contentType != UserContentType.Live) return false
         if (keyCode != AndroidKeyEvent.KEYCODE_DPAD_UP && keyCode != AndroidKeyEvent.KEYCODE_DPAD_DOWN) return false
+        if (activeMenu != PlayerOverlayMenu.None) return false
         if (adGateActive) return true
-        if (!overlayVisible) {
-            showOverlay(requestPlayFocus = true)
-            return true
-        }
         val target = if (keyCode == AndroidKeyEvent.KEYCODE_DPAD_UP) {
             playback.previousItem
         } else {
@@ -768,12 +812,19 @@ private fun FullScreenPlayerScreen(
         }
     }
 
-    BackHandler {
-        if (adGateActive) {
-            Unit
-        } else {
-            exitPlayer("back_handler")
+    fun handleBack(source: String) {
+        when {
+            adGateActive -> Unit
+            activeMenu == PlayerOverlayMenu.Epg || activeMenu == PlayerOverlayMenu.Settings -> {
+                activeMenu = PlayerOverlayMenu.None
+                showOverlay(requestPlayFocus = true)
+            }
+            else -> exitPlayer(source)
         }
+    }
+
+    BackHandler {
+        handleBack("back_handler")
     }
 
     LaunchedEffect(playback.url, playback.resumePositionMs, contentKind) {
@@ -1116,7 +1167,7 @@ private fun FullScreenPlayerScreen(
                                 adGateActive -> true
 
                             keyCode == AndroidKeyEvent.KEYCODE_BACK && event.action == AndroidKeyEvent.ACTION_UP -> {
-                                exitPlayer("player_view_back")
+                                handleBack("player_view_back")
                                 true
                             }
 
@@ -1137,7 +1188,7 @@ private fun FullScreenPlayerScreen(
             },
             update = {
                 it.player = player
-                it.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                it.resizeMode = liveAspectMode.resizeMode
                 it.isFocusable = !adGateActive
                 it.isFocusableInTouchMode = !adGateActive
                 if (adGateActive) it.clearFocus()
@@ -1148,7 +1199,7 @@ private fun FullScreenPlayerScreen(
                             adGateActive -> true
 
                         keyCode == AndroidKeyEvent.KEYCODE_BACK && event.action == AndroidKeyEvent.ACTION_UP -> {
-                            exitPlayer("player_view_back_update")
+                            handleBack("player_view_back_update")
                             true
                         }
 
@@ -1188,55 +1239,77 @@ private fun FullScreenPlayerScreen(
         }
 
         if (overlayVisible && !adGateActive) {
-            FullPlayerOverlay(
-                playback = playback,
-                isPlaying = isPlaying,
-                errorText = errorText,
-                positionMs = positionMs,
-                durationMs = durationMs,
-                bufferedPositionMs = bufferedPositionMs,
-                playFocusRequester = playFocusRequester,
-                onPlayPause = {
-                    if (player.isPlaying) {
-                        player.pause()
-                    } else {
-                        player.play()
-                    }
-                    showOverlay()
-                },
-                onSeekBack = {
-                    if (player.isCurrentMediaItemSeekable) {
-                        player.seekTo((player.currentPosition - 10_000L).coerceAtLeast(0L))
-                    }
-                    showOverlay()
-                },
-                onSeekForward = {
-                    if (player.isCurrentMediaItemSeekable) {
-                        player.seekTo(player.currentPosition + 10_000L)
-                    }
-                    showOverlay()
-                },
-                onSeekBy = { deltaMs ->
-                    if (player.isCurrentMediaItemSeekable) {
-                        player.seekTo((player.currentPosition + deltaMs).coerceIn(0L, durationMs.coerceAtLeast(0L)))
-                    }
-                    showOverlay()
-                },
-                onPlayPrevious = {
-                    playAdjacent(playback.previousItem)
-                },
-                onPlayNext = {
-                    playAdjacent(playback.nextItem)
-                },
-                onOpenSubtitles = {
-                    activeMenu = PlayerOverlayMenu.Subtitles
-                    showOverlay()
-                },
-                onOpenSettings = {
-                    activeMenu = PlayerOverlayMenu.Settings
-                    showOverlay()
-                },
-            )
+            if (playback.contentType == UserContentType.Live) {
+                LiveTvFullscreenOverlay(
+                    playback = playback,
+                    errorText = errorText,
+                    firstActionFocusRequester = playFocusRequester,
+                    onOpenEpg = {
+                        activeMenu = PlayerOverlayMenu.Epg
+                        showOverlay(requestPlayFocus = false)
+                    },
+                    onOpenSettings = {
+                        activeMenu = PlayerOverlayMenu.Settings
+                        showOverlay(requestPlayFocus = false)
+                    },
+                    onRecord = {
+                        // TODO: brancher l'enregistrement Live TV quand le pipeline DVR sera defini.
+                        Toast.makeText(context, "Recording coming soon", Toast.LENGTH_SHORT).show()
+                        showOverlay(requestPlayFocus = true)
+                    },
+                    onBackToList = { exitPlayer("live_back_to_list_button") },
+                )
+            } else {
+                FullPlayerOverlay(
+                    playback = playback,
+                    isPlaying = isPlaying,
+                    errorText = errorText,
+                    positionMs = positionMs,
+                    durationMs = durationMs,
+                    bufferedPositionMs = bufferedPositionMs,
+                    playFocusRequester = playFocusRequester,
+                    onPlayPause = {
+                        if (player.isPlaying) {
+                            player.pause()
+                        } else {
+                            player.play()
+                        }
+                        showOverlay()
+                    },
+                    onSeekBack = {
+                        if (player.isCurrentMediaItemSeekable) {
+                            player.seekTo((player.currentPosition - 10_000L).coerceAtLeast(0L))
+                        }
+                        showOverlay()
+                    },
+                    onSeekForward = {
+                        if (player.isCurrentMediaItemSeekable) {
+                            player.seekTo(player.currentPosition + 10_000L)
+                        }
+                        showOverlay()
+                    },
+                    onSeekBy = { deltaMs ->
+                        if (player.isCurrentMediaItemSeekable) {
+                            player.seekTo((player.currentPosition + deltaMs).coerceIn(0L, durationMs.coerceAtLeast(0L)))
+                        }
+                        showOverlay()
+                    },
+                    onPlayPrevious = {
+                        playAdjacent(playback.previousItem)
+                    },
+                    onPlayNext = {
+                        playAdjacent(playback.nextItem)
+                    },
+                    onOpenSubtitles = {
+                        activeMenu = PlayerOverlayMenu.Subtitles
+                        showOverlay()
+                    },
+                    onOpenSettings = {
+                        activeMenu = PlayerOverlayMenu.Settings
+                        showOverlay()
+                    },
+                )
+            }
         }
 
         if (activeMenu == PlayerOverlayMenu.Subtitles) {
@@ -1267,7 +1340,30 @@ private fun FullScreenPlayerScreen(
             )
         }
 
-        if (activeMenu == PlayerOverlayMenu.Settings) {
+        if (activeMenu == PlayerOverlayMenu.Epg && playback.contentType == UserContentType.Live) {
+            LiveTvEpgSidePanel(
+                programs = playback.epgPrograms,
+                onClose = {
+                    activeMenu = PlayerOverlayMenu.None
+                    showOverlay(requestPlayFocus = true)
+                },
+            )
+        }
+
+        if (activeMenu == PlayerOverlayMenu.Settings && playback.contentType == UserContentType.Live) {
+            LiveTvSettingsPanel(
+                selectedAspectMode = liveAspectMode,
+                onSelectAspectMode = { mode ->
+                    liveAspectMode = mode
+                    playerView.resizeMode = mode.resizeMode
+                    showOverlay(requestPlayFocus = true)
+                },
+                onClose = {
+                    activeMenu = PlayerOverlayMenu.None
+                    showOverlay(requestPlayFocus = true)
+                },
+            )
+        } else if (activeMenu == PlayerOverlayMenu.Settings) {
             val speeds = listOf(0.75f, 1f, 1.25f, 1.5f)
             PlayerOptionMenu(
                 title = "Vitesse de lecture",
@@ -1421,6 +1517,461 @@ private fun FullScreenAdOverlay(
                     .padding(end = 32.dp, bottom = 66.dp)
                     .height(44.dp)
                     .width(176.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LiveTvFullscreenOverlay(
+    playback: FullScreenPlayback,
+    errorText: String?,
+    firstActionFocusRequester: FocusRequester,
+    onOpenEpg: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onRecord: () -> Unit,
+    onBackToList: () -> Unit,
+) {
+    val hasEpg = playback.epgPrograms.isNotEmpty()
+    Box(modifier = Modifier.fillMaxSize()) {
+        Image(
+            painter = painterResource(R.drawable.smartvision_logo_wide),
+            contentDescription = "SmartVision",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 22.dp, top = 18.dp)
+                .width(224.dp)
+                .height(58.dp),
+        )
+
+        Text(
+            text = playback.overlayRightText.ifBlank { playback.streamId.toString() },
+            color = Color.White,
+            style = PlayerTitleStyle.copy(fontSize = 48.sp, lineHeight = 54.sp),
+            fontWeight = FontWeight.Black,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(end = 34.dp, top = 22.dp),
+        )
+
+        errorText?.let { message ->
+            Text(
+                text = message,
+                color = Color.White,
+                style = PlayerMetaStyle.copy(fontSize = 15.sp, lineHeight = 19.sp),
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.Black.copy(alpha = 0.64f))
+                    .border(BorderStroke(1.dp, SmartVisionColors.Error.copy(alpha = 0.82f)), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+            )
+        }
+
+        LiveTvBottomGlassBanner(
+            playback = playback,
+            hasEpg = hasEpg,
+            firstActionFocusRequester = firstActionFocusRequester,
+            onOpenEpg = onOpenEpg,
+            onOpenSettings = onOpenSettings,
+            onRecord = onRecord,
+            onBackToList = onBackToList,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+}
+
+@Composable
+private fun LiveTvBottomGlassBanner(
+    playback: FullScreenPlayback,
+    hasEpg: Boolean,
+    firstActionFocusRequester: FocusRequester,
+    onOpenEpg: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onRecord: () -> Unit,
+    onBackToList: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(154.dp)
+            .clip(LiveTvBottomBannerShape)
+            .background(Color.Black.copy(alpha = 0.38f))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), LiveTvBottomBannerShape)
+            .padding(horizontal = 44.dp, vertical = 22.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LiveTvChannelLogo(
+            title = playback.title,
+            imageUrl = playback.imageUrl,
+            modifier = Modifier.size(width = 118.dp, height = 82.dp),
+        )
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 24.dp)
+                .width(1.dp)
+                .height(76.dp)
+                .background(Color.White.copy(alpha = 0.16f)),
+        )
+        LiveTvChannelInfo(
+            playback = playback,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(28.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            LiveTvActionButton(
+                label = "EPG",
+                icon = Icons.Default.EventNote,
+                enabled = hasEpg,
+                focusRequester = firstActionFocusRequester.takeIf { hasEpg },
+                onClick = onOpenEpg,
+            )
+            LiveTvActionButton(
+                label = "Settings",
+                icon = Icons.Default.Settings,
+                focusRequester = firstActionFocusRequester.takeIf { !hasEpg },
+                onClick = onOpenSettings,
+            )
+            LiveTvActionButton(
+                label = "Record",
+                icon = Icons.Default.FiberManualRecord,
+                onClick = onRecord,
+                iconTint = Color(0xFFFF3737),
+            )
+            LiveTvActionButton(
+                label = "Back to List",
+                icon = Icons.Default.ArrowBack,
+                onClick = onBackToList,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LiveTvChannelLogo(
+    title: String,
+    imageUrl: String?,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(7.dp))
+            .background(Color.White.copy(alpha = 0.13f))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(7.dp))
+            .padding(8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (!imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = title,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.Tv,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.72f),
+                modifier = Modifier.size(38.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LiveTvChannelInfo(
+    playback: FullScreenPlayback,
+    modifier: Modifier = Modifier,
+) {
+    val currentProgram = playback.epgPrograms.firstOrNull { it.isCurrent }
+    val secondary = currentProgram
+        ?.let { listOf(it.timeRange, it.title).filter { value -> value.isNotBlank() }.joinToString("  |  ") }
+        ?: "Program unavailable"
+
+    Column(modifier = modifier) {
+        Text(
+            text = playback.title,
+            color = Color.White,
+            style = PlayerTitleStyle.copy(fontSize = 36.sp, lineHeight = 42.sp),
+            fontWeight = FontWeight.Black,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(14.dp))
+        Text(
+            text = secondary,
+            color = Color.White.copy(alpha = 0.76f),
+            style = PlayerMetaStyle.copy(fontSize = 18.sp, lineHeight = 23.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun LiveTvActionButton(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    focusRequester: FocusRequester? = null,
+    iconTint: Color = Color.White,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            !enabled -> Color.White.copy(alpha = 0.05f)
+            focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.28f)
+            else -> Color.White.copy(alpha = 0.08f)
+        },
+        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        label = "liveTvActionBackground",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            !enabled -> Color.White.copy(alpha = 0.10f)
+            focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.88f)
+            else -> Color.White.copy(alpha = 0.16f)
+        },
+        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        label = "liveTvActionBorder",
+    )
+
+    Column(
+        modifier = modifier
+            .width(82.dp)
+            .height(86.dp)
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                enabled = enabled,
+                pressed = pressed,
+                focusedScale = 1.04f,
+                glowColor = PlayerNeonBlue,
+                cornerRadius = 12.dp,
+            )
+            .focusProperties { canFocus = enabled }
+            .clickable(
+                enabled = enabled,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .focusable(enabled = enabled, interactionSource = interactionSource),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(backgroundColor)
+                .border(BorderStroke(if (focusState.isFocused) 2.dp else 1.dp, borderColor), RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = if (enabled) iconTint else Color.White.copy(alpha = 0.28f),
+                modifier = Modifier.size(28.dp),
+            )
+        }
+        Spacer(Modifier.height(7.dp))
+        Text(
+            text = label,
+            color = when {
+                !enabled -> Color.White.copy(alpha = 0.34f)
+                focusState.isFocused -> Color.White
+                else -> Color.White.copy(alpha = 0.74f)
+            },
+            style = PlayerMetaStyle.copy(fontSize = 12.sp, lineHeight = 14.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun LiveTvEpgSidePanel(
+    programs: List<FullScreenEpgProgram>,
+    onClose: () -> Unit,
+) {
+    val closeFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        delay(100)
+        closeFocusRequester.requestFocus()
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .width(430.dp)
+                .padding(top = 96.dp, end = 30.dp, bottom = 174.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(Color.Black.copy(alpha = 0.42f))
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(18.dp))
+                .padding(20.dp),
+        ) {
+            Text(
+                text = "EPG",
+                color = Color.White,
+                style = PlayerTitleStyle.copy(fontSize = 22.sp, lineHeight = 27.sp),
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(14.dp))
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                programs.forEach { program ->
+                    LiveTvEpgProgramRow(program)
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            TvButton(
+                text = "Close",
+                onClick = onClose,
+                focusRequester = closeFocusRequester,
+                variant = TvButtonVariant.Secondary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(42.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LiveTvEpgProgramRow(program: FullScreenEpgProgram) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (program.isCurrent) PlayerNeonBlue.copy(alpha = 0.20f) else Color.White.copy(alpha = 0.06f))
+            .border(
+                BorderStroke(1.dp, if (program.isCurrent) PlayerNeonBlue.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.08f)),
+                RoundedCornerShape(10.dp),
+            )
+            .padding(12.dp),
+    ) {
+        Text(
+            text = program.timeRange,
+            color = if (program.isCurrent) PlayerNeonBlue else Color.White.copy(alpha = 0.62f),
+            style = PlayerMetaStyle.copy(fontSize = 12.sp, lineHeight = 15.sp),
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(5.dp))
+        Text(
+            text = program.title,
+            color = Color.White,
+            style = PlayerTitleStyle.copy(fontSize = 15.sp, lineHeight = 19.sp),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (program.description.isNotBlank()) {
+            Spacer(Modifier.height(5.dp))
+            Text(
+                text = program.description,
+                color = Color.White.copy(alpha = 0.68f),
+                style = PlayerMetaStyle.copy(fontSize = 12.sp, lineHeight = 15.sp),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LiveTvSettingsPanel(
+    selectedAspectMode: LiveAspectMode,
+    onSelectAspectMode: (LiveAspectMode) -> Unit,
+    onClose: () -> Unit,
+) {
+    val selectedFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(selectedAspectMode.label) {
+        delay(100)
+        selectedFocusRequester.requestFocus()
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .width(360.dp)
+                .padding(top = 112.dp, end = 30.dp, bottom = 174.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(Color.Black.copy(alpha = 0.42f))
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(18.dp))
+                .padding(20.dp),
+        ) {
+            Text(
+                text = "Settings",
+                color = Color.White,
+                style = PlayerTitleStyle.copy(fontSize = 22.sp, lineHeight = 27.sp),
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = "Playback speed",
+                color = Color.White.copy(alpha = 0.64f),
+                style = PlayerMetaStyle.copy(fontSize = 13.sp, lineHeight = 16.sp),
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Unavailable for Live TV",
+                color = Color.White.copy(alpha = 0.42f),
+                style = PlayerMetaStyle.copy(fontSize = 13.sp, lineHeight = 16.sp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.White.copy(alpha = 0.05f))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+            )
+            Spacer(Modifier.height(18.dp))
+            Text(
+                text = "Aspect ratio",
+                color = Color.White.copy(alpha = 0.64f),
+                style = PlayerMetaStyle.copy(fontSize = 13.sp, lineHeight = 16.sp),
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(8.dp))
+            LiveAspectModes.forEach { mode ->
+                TvButton(
+                    text = mode.label,
+                    onClick = { onSelectAspectMode(mode) },
+                    selected = mode.label == selectedAspectMode.label,
+                    focusRequester = selectedFocusRequester.takeIf { mode.label == selectedAspectMode.label },
+                    variant = if (mode.label == selectedAspectMode.label) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(38.dp),
+                )
+                Spacer(Modifier.height(7.dp))
+            }
+            Spacer(Modifier.weight(1f))
+            TvButton(
+                text = "Close",
+                onClick = onClose,
+                variant = TvButtonVariant.Text,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(38.dp),
             )
         }
     }
@@ -2052,6 +2603,7 @@ private val PlayerTinyStyle = TextStyle(
 )
 
 private val PlayerGlassShape = RoundedCornerShape(14.dp)
+private val LiveTvBottomBannerShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
 private val PlayerGlassBackground = Color(0x26071222)
 private val PlayerGlassBorder = Color.White.copy(alpha = 0.22f)
 private val PlayerNeonBlue = Color(0xFF0A84FF)
