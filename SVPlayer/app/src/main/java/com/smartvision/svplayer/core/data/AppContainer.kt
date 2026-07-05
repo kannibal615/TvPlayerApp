@@ -55,6 +55,7 @@ import com.smartvision.svplayer.domain.usecase.SynchronizeCatalogUseCase
 import com.smartvision.svplayer.domain.usecase.ToggleFavoriteUseCase
 import com.smartvision.svplayer.media.MediaRepository
 import com.smartvision.svplayer.media.MediaStorageManager
+import com.smartvision.svplayer.media.transfer.MediaTransferServer
 import com.smartvision.svplayer.recorder.RecorderController
 import com.smartvision.svplayer.recorder.RecordingEngine
 import com.smartvision.svplayer.recorder.RecordingRepository
@@ -224,6 +225,7 @@ class AppContainer(context: Context) {
         dao = database.mediaCenterDao(),
         storageManager = mediaStorageManager,
     )
+    val mediaTransferServer = MediaTransferServer(mediaRepository)
     val recordingRepository = RecordingRepository(database.mediaCenterDao())
     private val recorderOkHttpClient = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)

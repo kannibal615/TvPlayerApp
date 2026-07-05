@@ -89,6 +89,7 @@ Playback:
 - Recorder Live MVP: `RecordingService` en foreground service `dataSync` telecharge le flux Live vers `SmartVisionMedia/Recordings` avec fichier temporaire `.part`, finalise le fichier puis l'indexe dans Media Center. Un seul enregistrement actif est autorise. Les flux progressifs et HLS simple non chiffre sont supportes; les HLS chiffres echouent proprement.
 - Overlay plein ecran Films/Series: conserve le modele glassmorphism avec barre de progression et controles de lecture VOD/episodes.
 - Lecture locale Media: `media_player/{mediaFileId}` charge `MediaCenterPlayback` depuis `MediaRepository`; video/audio reutilisent le player fullscreen sans preroll pub ni verification Xtream, photo ouvre un viewer plein ecran local.
+- Transfert telephone/TV Media MVP: `MediaTransferServer` demarre un serveur HTTP local temporaire depuis `MediaScreen`. Import: QR `/u/{token}`, upload mobile par `PUT`, ecriture dans `SmartVisionMedia/Transfers` puis indexation. Export: QR `/d/{token}`, download du seul fichier selectionne via `/download/{token}`. La feature est gatee par `media_phone_transfer`.
 
 ## 5. Ecrans concernes
 

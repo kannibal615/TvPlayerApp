@@ -1,5 +1,46 @@
 # AI Changelog
 
+## 2026-07-05 - Release prod 0.1.93 (97) pour Lots 12 et 13 Media Transfer
+
+Type:
+- android
+- release
+- deploy
+- media-center
+- documentation
+
+Resume:
+- Incrementation Android en `0.1.93` / `versionCode 97`.
+- Build release signe incluant les lots 12 et 13: import telephone vers TV et export TV vers telephone par QR local.
+- Deploiement prod via `deploy_activation_phase1.ps1 -SkipInstall`.
+- Correction de la configuration prod `app_feature_access`: `recorder`, `media_center`, `media_file_management` et `media_phone_transfer` restent Premium/Trial et sont bloques en Free Ads.
+
+Validation:
+- `.\scripts\guard_release_version.ps1`: OK, local `0.1.93 (97)` > prod `0.1.92 (96)`.
+- `.\gradlew.bat --% :app:assembleRelease --no-daemon --max-workers=1 --console=plain`: OK en 14m15.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK, metadata `0.1.93 (97)`.
+- `apksigner verify --verbose --print-certs`: OK, v1=true, v2=true, certificat `CN=SmartVision, OU=Android TV, O=SmartVision, C=FR`.
+- Production verifiee: `smartvision-tv.version.json` et `api/app_update.php` annoncent `0.1.93` / `97`; APK versionne `smartvision-tv-v97-68adc147.apk` et APK stable ont taille `40314069` et SHA256 `68adc147ebd988359f7402e6b77dc9f4fa7917c92d4f897955ee858bf21c3a9b`.
+- `api/app_config.php`: flags Recorder/Media/gestion fichiers/transfert `premium=true`, `trial=true`, `free_ads=false`.
+
+## 2026-07-05 - Lots 12 et 13 transfert telephone/TV Media Center
+
+Type:
+- android
+- media-center
+- ui-tv
+- documentation
+
+Resume:
+- Ajout de `MediaTransferServer`, serveur HTTP local temporaire pour sessions QR Media.
+- Import telephone vers TV: QR upload, page mobile, envoi `PUT`, ecriture streaming dans `SmartVisionMedia/Transfers` avec fichier `.part`, puis indexation Media.
+- Export TV vers telephone: QR download du fichier Media selectionne, sans exposer de listing global ni chemin arbitraire.
+- Branchement des boutons `Importer tel.` et `Exporter tel.` dans `MediaScreen`, controles par `PremiumFeature.MEDIA_PHONE_TRANSFER`.
+- Ajout des strings EN/FR et documentation Recorder/Media, catalog/playback, focus/navigation.
+
+Validation:
+- `.\gradlew.bat --% :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK en 2m31 apres correction suspend upload/export, warning Room kapt uniquement.
+
 ## 2026-07-05 - Lots 9, 10 et 11 Recorder Live MVP reel
 
 Type:

@@ -1,6 +1,7 @@
 package com.smartvision.svplayer.media
 
 import android.net.Uri
+import java.io.InputStream
 
 data class MediaCenterFolder(
     val id: Long,
@@ -39,6 +40,14 @@ data class MediaCenterPlayback(
     val source: MediaCenterSource,
     val sizeBytes: Long,
     val updatedAt: Long,
+)
+
+data class MediaCenterDownload(
+    val displayName: String,
+    val relativePath: String,
+    val mimeType: String?,
+    val sizeBytes: Long,
+    val openStream: () -> InputStream,
 )
 
 enum class MediaCenterFileType(val key: String) {

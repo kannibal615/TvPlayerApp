@@ -2,7 +2,7 @@
 
 Derniere mise a jour: 2026-07-05.
 
-Statut: Lot 11 - Media Center lit les fichiers locaux video/audio/photo et le bouton Recorder Live lance maintenant un enregistrement reel MVP via foreground service, jobs Room, durees manuelles 30/60/120 min et option EPG jusqu'a fin programme. Le transfert telephone/TV et la stabilisation avancee restent des lots separes.
+Statut: Lot 13 - Media Center lit les fichiers locaux video/audio/photo, le bouton Recorder Live lance un enregistrement reel MVP, et le transfert telephone/TV existe en MVP via serveur HTTP local temporaire + QR upload/download. La stabilisation avancee reste un lot separe.
 
 ## 1. Objectif
 
@@ -476,10 +476,23 @@ Implementation Lot 11:
 Objectif:
 - serveur local temporaire + QR upload.
 
+Implementation Lot 12:
+- Ajout de `media/transfer/MediaTransferServer`, serveur HTTP local temporaire lance uniquement depuis l'ecran Media.
+- Le bouton `Importer tel.` demarre une session QR `/u/{token}`; la page mobile envoie un fichier par `PUT /upload/{token}/{filename}`.
+- Les fichiers recus sont ecrits en streaming dans `SmartVisionMedia/Transfers` via fichier `.part`, finalises seulement si non vides, puis indexes par `MediaRepository.refreshStorage()`.
+- La session utilise une URL/token aleatoire par lancement et reste limitee au reseau local tant que le dialog QR est ouvert.
+- Le bouton respecte `PremiumFeature.MEDIA_PHONE_TRANSFER`: visible locked pour Premium/Trial requis, masque si desactive par config admin.
+
 ### Lot 13 - Export TV vers telephone
 
 Objectif:
 - lien temporaire + QR download.
+
+Implementation Lot 13:
+- Le bouton `Exporter tel.` dans l'apercu Media demarre une session QR `/d/{token}` pour le fichier selectionne.
+- La page mobile expose un lien `/download/{token}` servant uniquement ce fichier app-specific avec `Content-Disposition` et `Cache-Control: no-store`.
+- Aucun listing global ni chemin arbitraire n'est expose; le download passe par l'id Media selectionne puis `MediaRepository.getDownload()`.
+- La session est arretee a la fermeture du dialog ou a la destruction du ViewModel Media.
 
 ### Lot 14 - Stabilisation finale
 

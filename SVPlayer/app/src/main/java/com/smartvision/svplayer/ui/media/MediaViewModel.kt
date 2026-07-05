@@ -8,6 +8,8 @@ import com.smartvision.svplayer.media.MediaCenterFolder
 import com.smartvision.svplayer.media.MediaCenterSource
 import com.smartvision.svplayer.media.MediaCenterStorageInfo
 import com.smartvision.svplayer.media.MediaRepository
+import com.smartvision.svplayer.media.transfer.MediaTransferServer
+import com.smartvision.svplayer.media.transfer.MediaTransferSession
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -20,6 +22,7 @@ import kotlinx.coroutines.launch
 
 class MediaViewModel(
     private val repository: MediaRepository,
+    private val transferServer: MediaTransferServer,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MediaScreenState())
     val uiState: StateFlow<MediaScreenState> = _uiState.asStateFlow()
@@ -159,8 +162,74 @@ class MediaViewModel(
         }
     }
 
+    fun startPhoneImport() {
+        _uiState.update { it.copy(transferInProgress = true, errorMessage = null, message = null) }
+        transferServer.startImportSession { result ->
+            viewModelScope.launch {
+                refreshStorage()
+                _uiState.update {
+                    it.copy(
+                        transferInProgress = false,
+                        selectedArea = MediaArea.Transfers,
+                        selectedFileId = result.fileId ?: it.selectedFileId,
+                        message = MediaActionMessage.TransferUploaded,
+                    )
+                }
+            }
+        }.onSuccess { session ->
+            _uiState.update {
+                it.copy(
+                    transferInProgress = false,
+                    transferSession = session,
+                    selectedArea = MediaArea.Transfers,
+                )
+            }
+        }.onFailure { throwable ->
+            _uiState.update {
+                it.copy(
+                    transferInProgress = false,
+                    errorMessage = throwable.message ?: "Unable to start phone import.",
+                )
+            }
+        }
+    }
+
+    fun startPhoneExport() {
+        val selectedId = _uiState.value.selectedFileId ?: return
+        _uiState.update { it.copy(transferInProgress = true, errorMessage = null, message = null) }
+        viewModelScope.launch {
+            transferServer.startExportSession(selectedId)
+                .onSuccess { session ->
+                    _uiState.update {
+                        it.copy(
+                            transferInProgress = false,
+                            transferSession = session,
+                        )
+                    }
+                }
+                .onFailure { throwable ->
+                    _uiState.update {
+                        it.copy(
+                            transferInProgress = false,
+                            errorMessage = throwable.message ?: "Unable to start phone export.",
+                        )
+                    }
+                }
+        }
+    }
+
+    fun dismissTransferSession() {
+        transferServer.stop()
+        _uiState.update { it.copy(transferSession = null, transferInProgress = false) }
+    }
+
     fun clearTransientMessage() {
         _uiState.update { it.copy(message = null, errorMessage = null) }
+    }
+
+    override fun onCleared() {
+        transferServer.stop()
+        super.onCleared()
     }
 
     private fun MediaCenterFile.toUi(folderName: String?): MediaFileUi =
@@ -226,6 +295,8 @@ data class MediaScreenState(
     val files: List<MediaFileUi> = emptyList(),
     val folders: List<MediaFolderUi> = emptyList(),
     val storageInfo: MediaCenterStorageInfo? = null,
+    val transferSession: MediaTransferSession? = null,
+    val transferInProgress: Boolean = false,
     val message: MediaActionMessage? = null,
     val errorMessage: String? = null,
 ) {
@@ -277,6 +348,7 @@ enum class MediaActionMessage {
     Renamed,
     Moved,
     Deleted,
+    TransferUploaded,
 }
 
 fun MediaFileUi.matches(area: MediaArea): Boolean =

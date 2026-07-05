@@ -175,6 +175,11 @@ fun AppNavigation(
         feature = PremiumFeature.RECORDER,
         status = monetizationStatus,
     )
+    val mediaPhoneTransferGate = PremiumFeatureGate.evaluate(
+        config = appConfigState.config,
+        feature = PremiumFeature.MEDIA_PHONE_TRANSFER,
+        status = monetizationStatus,
+    )
     val parentalControlAllowed = container.appConfigRepository.isFeatureAllowed(
         config = appConfigState.config,
         featureKey = "parental_control",
@@ -608,9 +613,10 @@ fun AppNavigation(
                     notificationBadgeCount = notificationBadgeCount,
                     strings = strings,
                     access = mediaCenterGate,
+                    transferAccess = mediaPhoneTransferGate,
                     onPlayFile = { mediaFileId -> navController.navigate("media_player/$mediaFileId") },
                     onLockedFeature = {
-                        if (mediaCenterGate.shouldShowUpgradePrompt) {
+                        if (mediaCenterGate.shouldShowUpgradePrompt || mediaPhoneTransferGate.shouldShowUpgradePrompt) {
                             showLicensePurchaseQr = true
                         }
                     },

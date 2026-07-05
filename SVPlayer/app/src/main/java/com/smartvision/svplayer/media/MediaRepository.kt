@@ -3,6 +3,7 @@ package com.smartvision.svplayer.media
 import com.smartvision.svplayer.data.local.dao.MediaCenterDao
 import com.smartvision.svplayer.data.local.entity.MediaFileEntity
 import com.smartvision.svplayer.data.local.entity.MediaFolderEntity
+import java.io.InputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -30,6 +31,18 @@ class MediaRepository(
             source = MediaCenterSource.entries.firstOrNull { it.key == file.source } ?: MediaCenterSource.Local,
             sizeBytes = file.sizeBytes,
             updatedAt = file.updatedAt,
+        )
+    }
+
+    suspend fun getDownload(fileId: Long): MediaCenterDownload? = withContext(Dispatchers.IO) {
+        val file = dao.getFile(fileId)?.takeIf { it.deletedAt == null } ?: return@withContext null
+        val localFile = storageManager.openFile(file.relativePath)
+        MediaCenterDownload(
+            displayName = file.displayName,
+            relativePath = file.relativePath,
+            mimeType = file.mimeType,
+            sizeBytes = localFile.length().coerceAtLeast(file.sizeBytes),
+            openStream = { localFile.inputStream() },
         )
     }
 
@@ -88,6 +101,22 @@ class MediaRepository(
     suspend fun indexRecording(relativePath: String): Long? = withContext(Dispatchers.IO) {
         refreshStorage()
         dao.getFileByRelativePath(relativePath)?.takeIf { it.deletedAt == null }?.id
+    }
+
+    suspend fun importTransferredFile(
+        requestedName: String,
+        mimeType: String?,
+        input: InputStream,
+        expectedBytes: Long?,
+    ): Long? = withContext(Dispatchers.IO) {
+        val scanned = storageManager.importTransfer(
+            requestedName = requestedName,
+            mimeType = mimeType,
+            input = input,
+            expectedBytes = expectedBytes,
+        )
+        refreshStorage()
+        dao.getFileByRelativePath(scanned.relativePath)?.takeIf { it.deletedAt == null }?.id
     }
 
     private suspend fun upsertFolders(folders: List<ScannedMediaFolder>) {

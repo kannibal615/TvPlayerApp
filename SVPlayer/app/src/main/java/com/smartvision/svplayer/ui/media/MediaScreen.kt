@@ -1,6 +1,8 @@
 package com.smartvision.svplayer.ui.media
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,6 +48,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -64,6 +67,8 @@ import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
 import com.smartvision.svplayer.domain.access.PremiumFeatureGateState
 import com.smartvision.svplayer.media.MediaCenterFileType
 import com.smartvision.svplayer.media.MediaCenterSource
+import com.smartvision.svplayer.media.transfer.MediaTransferMode
+import com.smartvision.svplayer.media.transfer.MediaTransferSession
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
@@ -76,6 +81,9 @@ import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.coroutines.delay
 
 @Composable
@@ -93,6 +101,7 @@ fun MediaScreen(
     notificationBadgeCount: Int,
     strings: SmartVisionStrings,
     access: PremiumFeatureGateResult,
+    transferAccess: PremiumFeatureGateResult,
     onPlayFile: (Long) -> Unit,
     onLockedFeature: () -> Unit,
     modifier: Modifier = Modifier,
@@ -100,7 +109,7 @@ fun MediaScreen(
     val container = LocalAppContainer.current
     val viewModel: MediaViewModel = viewModel(
         factory = viewModelFactory {
-            MediaViewModel(container.mediaRepository)
+            MediaViewModel(container.mediaRepository, container.mediaTransferServer)
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -178,6 +187,13 @@ fun MediaScreen(
             onRename = { renameTarget = state.selectedFile },
             onMove = { moveTarget = state.selectedFile },
             onDelete = { deleteTarget = state.selectedFile },
+            transferAccess = transferAccess,
+            onImportPhone = {
+                if (transferAccess.allowed) viewModel.startPhoneImport() else onLockedFeature()
+            },
+            onExportPhone = {
+                if (transferAccess.allowed) viewModel.startPhoneExport() else onLockedFeature()
+            },
             firstFocusRequester = firstFocusRequester,
             modifier = Modifier
                 .fillMaxWidth()
@@ -217,6 +233,13 @@ fun MediaScreen(
                 deleteTarget = null
                 viewModel.deleteSelected()
             },
+        )
+    }
+    state.transferSession?.let { session ->
+        MediaTransferDialog(
+            session = session,
+            strings = strings,
+            onDismiss = viewModel::dismissTransferSession,
         )
     }
 }
@@ -287,6 +310,9 @@ private fun MediaWorkspace(
     onRename: () -> Unit,
     onMove: () -> Unit,
     onDelete: () -> Unit,
+    transferAccess: PremiumFeatureGateResult,
+    onImportPhone: () -> Unit,
+    onExportPhone: () -> Unit,
     firstFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
@@ -317,6 +343,8 @@ private fun MediaWorkspace(
                 onAreaSelected(area)
                 contentFocusSignal += 1
             },
+            transferAccess = transferAccess,
+            onImportPhone = onImportPhone,
             firstFocusRequester = firstFocusRequester,
             modifier = Modifier
                 .width(252.dp)
@@ -342,6 +370,8 @@ private fun MediaWorkspace(
             onRename = onRename,
             onMove = onMove,
             onDelete = onDelete,
+            transferAccess = transferAccess,
+            onExportPhone = onExportPhone,
             previewActionFocusRequester = previewActionFocusRequester,
             modifier = Modifier
                 .width(336.dp)
@@ -355,6 +385,8 @@ private fun MediaLibraryPanel(
     strings: SmartVisionStrings,
     state: MediaScreenState,
     onAreaSelected: (MediaArea) -> Unit,
+    transferAccess: PremiumFeatureGateResult,
+    onImportPhone: () -> Unit,
     firstFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
@@ -385,6 +417,20 @@ private fun MediaLibraryPanel(
         Spacer(Modifier.height(12.dp))
 
         MediaLibraryInfoCard(text = storageLabel(strings, state), emphasized = true)
+
+        if (transferAccess.showDisabledControl) {
+            Spacer(Modifier.height(12.dp))
+            TvButton(
+                text = strings.mediaImportPhone,
+                onClick = onImportPhone,
+                enabled = !state.transferInProgress,
+                variant = TvButtonVariant.Secondary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(42.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp),
+            )
+        }
     }
 }
 
@@ -795,12 +841,15 @@ private fun MediaPreviewPanel(
     onRename: () -> Unit,
     onMove: () -> Unit,
     onDelete: () -> Unit,
+    transferAccess: PremiumFeatureGateResult,
+    onExportPhone: () -> Unit,
     previewActionFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     val selected = state.selectedFile
     val playEnabled = selected?.isPlayable == true && !state.operationInProgress
     val editEnabled = selected != null && !state.operationInProgress
+    val transferEnabled = selected != null && !state.operationInProgress && !state.transferInProgress
     MediaCatalogPanel(
         title = strings.mediaPreview,
         modifier = modifier,
@@ -922,7 +971,85 @@ private fun MediaPreviewPanel(
                         .height(42.dp),
                 )
             }
+            if (transferAccess.showDisabledControl) {
+                TvButton(
+                    text = strings.mediaExportPhone,
+                    onClick = onExportPhone,
+                    enabled = transferEnabled,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(42.dp),
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun MediaTransferDialog(
+    session: MediaTransferSession,
+    strings: SmartVisionStrings,
+    onDismiss: () -> Unit,
+) {
+    val title = when (session.mode) {
+        MediaTransferMode.Import -> strings.mediaImportPhoneTitle
+        MediaTransferMode.Export -> strings.mediaExportPhoneTitle
+    }
+    val subtitle = when (session.mode) {
+        MediaTransferMode.Import -> strings.mediaImportPhoneSubtitle
+        MediaTransferMode.Export -> session.fileName?.let { String.format(strings.mediaExportPhoneSubtitleWithFile, it) }
+            ?: strings.mediaExportPhoneSubtitle
+    }
+    val qrBitmap = remember(session.url) { createTransferQrBitmap(session.url, 520) }
+
+    MediaDialogPanel(title = title, onDismiss = onDismiss) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(
+                bitmap = qrBitmap.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(190.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.White)
+                    .padding(8.dp),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = subtitle,
+                    color = SmartVisionColors.TextSecondary,
+                    style = SmartVisionType.Body,
+                )
+                Text(
+                    text = session.url,
+                    color = SmartVisionColors.CyanAccent,
+                    style = SmartVisionType.Caption,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = strings.mediaTransferSameWifi,
+                    color = SmartVisionColors.TextSecondary,
+                    style = SmartVisionType.Caption,
+                )
+            }
+        }
+        Spacer(Modifier.height(18.dp))
+        TvButton(
+            text = strings.recorderClose,
+            onClick = onDismiss,
+            variant = TvButtonVariant.Secondary,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(42.dp),
+        )
     }
 }
 
@@ -1250,6 +1377,7 @@ private fun MediaActionMessage.label(strings: SmartVisionStrings): String =
         MediaActionMessage.Renamed -> strings.mediaRenameSuccess
         MediaActionMessage.Moved -> strings.mediaMoveSuccess
         MediaActionMessage.Deleted -> strings.mediaDeleteSuccess
+        MediaActionMessage.TransferUploaded -> strings.mediaTransferUploadSuccess
     }
 
 private fun mediaTypeColor(type: MediaCenterFileType): Color =
@@ -1270,4 +1398,23 @@ private fun formatBytes(bytes: Long): String {
         unitIndex++
     }
     return java.lang.String.format(java.util.Locale.US, "%.1f %s", value, units[unitIndex])
+}
+
+private fun createTransferQrBitmap(content: String, size: Int): Bitmap {
+    val hints = mapOf(
+        EncodeHintType.MARGIN to 1,
+        EncodeHintType.CHARACTER_SET to "UTF-8",
+    )
+    val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size, hints)
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    for (x in 0 until size) {
+        for (y in 0 until size) {
+            bitmap.setPixel(
+                x,
+                y,
+                if (matrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE,
+            )
+        }
+    }
+    return bitmap
 }

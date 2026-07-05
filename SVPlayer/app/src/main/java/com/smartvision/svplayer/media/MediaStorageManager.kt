@@ -5,6 +5,7 @@ import android.net.Uri
 import android.webkit.MimeTypeMap
 import com.smartvision.svplayer.recorder.RecordingOutputTarget
 import java.io.File
+import java.io.InputStream
 import java.util.Locale
 
 class MediaStorageManager(
@@ -98,6 +99,67 @@ class MediaStorageManager(
         val file = resolve(relativePath)
         require(file.isFile) { "File not found." }
         return Uri.fromFile(file)
+    }
+
+    internal fun openFile(relativePath: String): File {
+        val file = resolve(relativePath)
+        require(file.isFile) { "File not found." }
+        return file
+    }
+
+    internal fun importTransfer(
+        requestedName: String,
+        mimeType: String?,
+        input: InputStream,
+        expectedBytes: Long?,
+    ): ScannedMediaFile {
+        ensureStorage()
+        val transfers = resolveDirectory("Transfers").apply { mkdirs() }
+        val fallbackExtension = mimeType
+            ?.let { MimeTypeMap.getSingleton().getExtensionFromMimeType(it) }
+            ?.takeIf { it.isNotBlank() }
+        val fallbackName = if (fallbackExtension.isNullOrBlank()) {
+            "SmartVision transfer"
+        } else {
+            "SmartVision transfer.$fallbackExtension"
+        }
+        val finalFile = uniqueDestination(
+            parent = transfers,
+            requestedName = sanitizeFileName(requestedName, fallbackName),
+            current = File(transfers, ".new-transfer-placeholder"),
+        )
+        val tempFile = File(finalFile.parentFile ?: transfers, "${finalFile.name}.part").canonicalFile
+        if (tempFile.exists()) tempFile.delete()
+        var written = 0L
+        try {
+            tempFile.outputStream().use { output ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                if (expectedBytes != null && expectedBytes >= 0L) {
+                    var remaining = expectedBytes
+                    while (remaining > 0L) {
+                        val read = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                        if (read == -1) break
+                        output.write(buffer, 0, read)
+                        written += read
+                        remaining -= read
+                    }
+                    require(remaining == 0L) { "Upload ended before all bytes were received." }
+                } else {
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read == -1) break
+                        output.write(buffer, 0, read)
+                        written += read
+                    }
+                }
+            }
+            require(written > 0L && tempFile.length() > 0L) { "Uploaded file is empty." }
+            moveFile(tempFile, finalFile)
+            return finalFile.toScannedFile()
+        } catch (throwable: Throwable) {
+            runCatching { tempFile.delete() }
+            throw throwable
+        }
     }
 
     internal fun prepareRecordingTarget(title: String, extension: String): RecordingOutputTarget {

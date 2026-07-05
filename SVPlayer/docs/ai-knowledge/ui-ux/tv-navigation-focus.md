@@ -167,6 +167,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-01: Info compte devient l'ecran pilote visuel: header principal, menu gauche plus etroit, icones de lignes sans cadres, focus initial sur Licence SmartVision, et badge usage dans l'en-tete du panneau droit.
 - 2026-07-05: ajout de la route/header `Media`, verrou/couronne via `media_center`, alignement du header Detail, puis ecran Media Center connecte au stockage local avec listes fichiers/dossiers focusables, panneau apercu et dialogues Renommer/Deplacer/Supprimer.
 - 2026-07-05: Media Center ajoute la lecture locale video/audio/photo, un viewer photo plein ecran, un focus DPAD droite liste -> apercu, et un agencement plus compact; le header reduit encore les espacements et positionne la couronne au-dessus du label locked.
+- 2026-07-05: Media Center ajoute Importer tel. et Exporter tel. sous gate `media_phone_transfer`. Ces actions ouvrent un dialog QR focusable; la session reseau local s'arrete a la fermeture du dialog ou a la destruction du ViewModel.
 - 2026-07-01: Info compte renforce l'approche icones focusables et l'overlay Live/Films/Series devient plus slim sans changer les actions lecteur.
 - 2026-07-02: Home corrige le D-pad bas vers Continue watching / Trending movies / Trending series avec bring-into-view avant `requestFocus`.
 - 2026-07-02: Home renforce le routage vertical avec reset horizontal vers le premier item, padding interne de `LazyRow` pour eviter le clipping gauche, et logs `SVHomeFocus`.
