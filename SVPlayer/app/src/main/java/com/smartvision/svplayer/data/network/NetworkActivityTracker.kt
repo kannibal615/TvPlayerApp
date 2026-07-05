@@ -24,6 +24,7 @@ enum class NetworkActivityType {
     Xtream,
     License,
     Diagnostics,
+    Recorder,
     Other,
 }
 

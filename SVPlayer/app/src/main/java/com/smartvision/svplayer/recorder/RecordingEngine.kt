@@ -19,7 +19,7 @@ class RecordingEngine(
     suspend fun record(
         request: RecordingEngineRequest,
         shouldStop: () -> Boolean,
-        onProgress: suspend () -> Unit,
+        onProgress: suspend (bytesWritten: Long) -> Unit,
     ) {
         try {
             val outputFile = File(request.output.tempAbsolutePath)
@@ -46,7 +46,7 @@ class RecordingEngine(
         output: OutputStream,
         deadlineMs: Long,
         shouldStop: () -> Boolean,
-        onProgress: suspend () -> Unit,
+        onProgress: suspend (bytesWritten: Long) -> Unit,
     ) {
         var consecutiveFailures = 0
         var hasWrittenAnyData = false
@@ -71,7 +71,7 @@ class RecordingEngine(
                             bytesWrittenThisConnection += read
                             hasWrittenAnyData = true
                             lastDataAtMs = System.currentTimeMillis()
-                            onProgress()
+                            onProgress(read.toLong())
                         }
                     }
                 }
@@ -112,7 +112,7 @@ class RecordingEngine(
         output: OutputStream,
         deadlineMs: Long,
         shouldStop: () -> Boolean,
-        onProgress: suspend () -> Unit,
+        onProgress: suspend (bytesWritten: Long) -> Unit,
         firstPlaylist: String? = null,
     ) {
         val downloadedSegments = LinkedHashSet<String>()
@@ -155,7 +155,7 @@ class RecordingEngine(
         output: OutputStream,
         deadlineMs: Long,
         shouldStop: () -> Boolean,
-        onProgress: suspend () -> Unit,
+        onProgress: suspend (bytesWritten: Long) -> Unit,
     ) {
         execute(url).use { response ->
             if (!response.isSuccessful) throw RecordingException("Segment request failed: HTTP ${response.code}")
@@ -166,7 +166,7 @@ class RecordingEngine(
                     val read = input.read(buffer)
                     if (read == -1) break
                     output.write(buffer, 0, read)
-                    onProgress()
+                    onProgress(read.toLong())
                 }
             }
         }

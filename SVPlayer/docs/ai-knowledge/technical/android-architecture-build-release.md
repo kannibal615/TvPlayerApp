@@ -18,8 +18,8 @@ Observabilite reseau:
 - Ne jamais exposer les query params, tokens, identifiants Xtream, mots de passe ou URLs de lecture dans ce tracker.
 
 Gradle local constate le 2026-07-05:
-- `versionCode = 97`
-- `versionName = "0.1.93"`
+- `versionCode = 98`
+- `versionName = "0.1.94"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -160,6 +160,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-05: release publiee `0.1.94` / `versionCode 98` pour stabilisation Recorder Live: fermeture player/chaine sans arret Recorder, reconnexion progressive prolongee, activite `Recorder` dans Network Activity sans URL Xtream, et polish Media UI/focus/transfert. APK `smartvision-tv-v98-f861e960.apk`, SHA256 `f861e960078050444cf323de1719b0ce1594c92e3f9101b391e6de2d2568b936`, manifeste public, `app_update.php`, APK stable et flags Recorder/Media verifies.
 - 2026-07-05: release publiee `0.1.93` / `versionCode 97` pour Lots 12 et 13 Media Transfer: serveur HTTP local temporaire `MediaTransferServer`, QR import telephone vers TV dans `SmartVisionMedia/Transfers`, QR export du fichier Media selectionne, gate `media_phone_transfer`. APK `smartvision-tv-v97-68adc147.apk`, SHA256 `68adc147ebd988359f7402e6b77dc9f4fa7917c92d4f897955ee858bf21c3a9b`, manifeste public, `app_update.php`, APK stable et flags app_config verifies.
 - 2026-07-05: release publiee `0.1.92` / `versionCode 96` pour lots 7 et 8 Recorder + Media: lecture locale video/audio/photo, route `media_player/{mediaFileId}`, viewer photo plein ecran, bouton Record Live gate/couronne/dialog MVP et retouches focus/design header/Media. APK `smartvision-tv-v96-c91c7b49.apk`, SHA256 `c91c7b49f87e9a6f41d83c40ed58c3c9ca94e1bdb0bb974c4600875df77655e8`, manifeste public, `app_update.php`, APK stable et taille verifies.
 - 2026-07-05: release publiee `0.1.91` / `versionCode 95` pour Lots 5 et 6 Media Center: Room `media_folders`/`media_files`/`recording_jobs`, stockage app-specific `SmartVisionMedia`, scan fichiers/dossiers et actions Renommer/Deplacer/Supprimer. APK `smartvision-tv-v95-f66182d2.apk`, SHA256 `f66182d26909fac5a5011357992fdb9963878aa6ec3fcd354d0866180469a6da`, manifeste public, `app_update.php`, APK stable et taille verifies.

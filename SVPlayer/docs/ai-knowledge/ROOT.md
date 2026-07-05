@@ -166,7 +166,7 @@ Ne pas lire par defaut si la demande concerne uniquement:
 - correction locale d'un ecran existant sans Recorder/Media
 
 Statut rapide:
-- Lot 14 stabilise Recorder/Media: le Recorder Live doit continuer apres sortie de la chaine/player, `RecordingService` redelivre l'intent si Android recrée le service, et `RecordingEngine` reconnecte les flux progressifs fermes avant la duree demandee. Media Center corrige le focus DPAD vers les actions d'apercu et les etats de transfert telephone. Le transfert telephone/TV MVP reste base sur `MediaTransferServer`, QR upload vers `SmartVisionMedia/Transfers`, QR download du fichier selectionne, token aleatoire par session et controle admin `media_phone_transfer`. La marge EPG configurable et les tests longue duree Firestick restent a finaliser.
+- Lot 14 stabilise Recorder/Media: le Recorder Live doit continuer apres sortie de la chaine/player, `RecordingService` redelivre l'intent si Android recrée le service, `RecordingEngine` reconnecte les flux progressifs fermes avant la duree demandee, et Network Activity affiche une activite `Recorder` sanitisee sans URL Xtream. Media Center corrige le focus DPAD vers les actions d'apercu et les etats de transfert telephone. Le transfert telephone/TV MVP reste base sur `MediaTransferServer`, QR upload vers `SmartVisionMedia/Transfers`, QR download du fichier selectionne, token aleatoire par session et controle admin `media_phone_transfer`. La marge EPG configurable et les tests longue duree Firestick restent a finaliser.
 
 ## UI TV, focus et navigation telecommande
 

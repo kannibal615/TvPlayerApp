@@ -10,9 +10,12 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import com.smartvision.svplayer.MainActivity
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.SVPlayerApplication
+import com.smartvision.svplayer.data.network.NetworkActivityStatus
+import com.smartvision.svplayer.data.network.NetworkActivityType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +36,7 @@ class RecordingService : Service() {
     private val storageManager by lazy { container.mediaStorageManager }
     private val recordingRepository by lazy { container.recordingRepository }
     private val mediaRepository by lazy { container.mediaRepository }
+    private val networkActivityTracker by lazy { container.networkActivityTracker }
 
     override fun onCreate() {
         super.onCreate()
@@ -80,35 +84,71 @@ class RecordingService : Service() {
     }
 
     private suspend fun runRecording(request: RecordingRequest) {
-        val output = storageManager.prepareRecordingTarget(
-            title = recordingFileTitle(request),
-            extension = request.streamUrl.recordingExtension(),
+        val networkWork = networkActivityTracker.begin(
+            id = "recorder-${request.jobId}",
+            title = "Recorder: ${request.title}",
+            type = NetworkActivityType.Recorder,
+            message = "Preparing recording",
+            section = "Live TV",
+            source = "Recorder",
+            progressPercent = 0,
         )
+        var recordedBytes = 0L
+        var lastNetworkUpdateMs = 0L
+        val networkStartedAtMs = SystemClock.elapsedRealtime()
+        var output: RecordingOutputTarget? = null
         try {
-            recordingRepository.markRunning(request.jobId, output.finalRelativePath)
+            val target = storageManager.prepareRecordingTarget(
+                title = recordingFileTitle(request),
+                extension = request.streamUrl.recordingExtension(),
+            )
+            output = target
+            recordingRepository.markRunning(request.jobId, target.finalRelativePath)
             notifyRecorder("Recording in progress", request.title, ongoing = true, request.jobId)
+            networkWork.update(
+                status = NetworkActivityStatus.Running,
+                message = "Recording in progress",
+                progressPercent = 0,
+            )
             engine.record(
                 request = RecordingEngineRequest(
                     jobId = request.jobId,
                     streamUrl = request.streamUrl,
                     durationMs = request.durationMs,
-                    output = output,
+                    output = target,
                 ),
                 shouldStop = { stopRequested },
-                onProgress = {},
+                onProgress = { bytesWritten ->
+                    recordedBytes += bytesWritten
+                    val now = SystemClock.elapsedRealtime()
+                    if (now - lastNetworkUpdateMs >= NETWORK_UPDATE_INTERVAL_MS) {
+                        lastNetworkUpdateMs = now
+                        networkWork.update(
+                            message = "Recording in progress",
+                            progressPercent = recordingProgressPercent(networkStartedAtMs, request.durationMs),
+                            bytesRead = recordedBytes,
+                        )
+                    }
+                },
             )
             if (stopRequested) throw CancellationException("Recording cancelled.")
-            storageManager.finalizeRecording(output)
-            val mediaFileId = mediaRepository.indexRecording(output.finalRelativePath)
-            recordingRepository.markCompleted(request.jobId, mediaFileId, output.finalRelativePath)
+            storageManager.finalizeRecording(target)
+            val mediaFileId = mediaRepository.indexRecording(target.finalRelativePath)
+            recordingRepository.markCompleted(request.jobId, mediaFileId, target.finalRelativePath)
+            networkWork.update(bytesRead = recordedBytes)
+            networkWork.complete("Recording completed")
             notifyRecorder("Recording completed", request.title, ongoing = false, request.jobId)
         } catch (cancelled: CancellationException) {
-            storageManager.discardRecording(output)
+            output?.let { storageManager.discardRecording(it) }
             recordingRepository.markCancelled(request.jobId)
+            networkWork.update(bytesRead = recordedBytes)
+            networkWork.complete("Recording cancelled")
             notifyRecorder("Recording cancelled", request.title, ongoing = false, request.jobId)
         } catch (throwable: Throwable) {
-            storageManager.discardRecording(output)
+            output?.let { storageManager.discardRecording(it) }
             recordingRepository.markFailed(request.jobId, throwable.message ?: "Recording failed.")
+            networkWork.update(bytesRead = recordedBytes)
+            networkWork.fail(throwable.message ?: "Recording failed.")
             notifyRecorder("Recording failed", throwable.message ?: request.title, ongoing = false, request.jobId)
         } finally {
             activeJob = null
@@ -217,6 +257,12 @@ class RecordingService : Service() {
         return "$base ${System.currentTimeMillis()}"
     }
 
+    private fun recordingProgressPercent(startedAtMs: Long, durationMs: Long): Int {
+        val elapsed = SystemClock.elapsedRealtime() - startedAtMs
+        if (durationMs <= 0L) return 0
+        return ((elapsed * 100L) / durationMs).toInt().coerceIn(0, 99)
+    }
+
     companion object {
         private const val ACTION_START = "com.smartvision.svplayer.recorder.START"
         private const val ACTION_STOP = "com.smartvision.svplayer.recorder.STOP"
@@ -229,6 +275,7 @@ class RecordingService : Service() {
         private const val EXTRA_PROGRAM_STOP_MS = "program_stop_ms"
         private const val CHANNEL_ID = "smartvision_recorder"
         private const val NOTIFICATION_ID = 7201
+        private const val NETWORK_UPDATE_INTERVAL_MS = 1_000L
 
         fun startIntent(context: Context, request: RecordingRequest): Intent =
             Intent(context, RecordingService::class.java).apply {

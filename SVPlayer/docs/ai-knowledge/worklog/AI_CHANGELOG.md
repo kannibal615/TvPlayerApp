@@ -1,5 +1,29 @@
 # AI Changelog
 
+## 2026-07-05 - Release prod 0.1.94 (98) stabilisation Recorder
+
+Type:
+- android
+- release
+- deploy
+- recorder
+- documentation
+
+Resume:
+- Incrementation Android en `0.1.94` / `versionCode 98`.
+- Build release signe incluant la stabilisation Recorder: quitter la chaine/player ne doit pas stopper l'enregistrement, reconnexion progressive prolongee, activite `Recorder` dans Network Activity sans URL Xtream.
+- Deploiement prod via `deploy_activation_phase1.ps1 -SkipInstall`; premier passage interrompu par reset cPanel sur upload image, deuxieme passage OK.
+- Correction post-deploy de `app_feature_access`: `recorder`, `media_center`, `media_file_management` et `media_phone_transfer` restent `premium=true`, `trial=true`, `free_ads=false`.
+
+Validation:
+- `.\scripts\guard_release_version.ps1`: OK, local `0.1.94 (98)` > prod `0.1.93 (97)`.
+- `.\gradlew.bat --% :app:assembleRelease --no-daemon --max-workers=1 --console=plain`: OK en 12m20.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK, metadata `0.1.94 (98)`.
+- `apksigner verify --verbose --print-certs`: OK, v1=true, v2=true, certificat `CN=SmartVision, OU=Android TV, O=SmartVision, C=FR`.
+- Production verifiee: `smartvision-tv.version.json` et `api/app_update.php` annoncent `0.1.94` / `98`; APK versionne `smartvision-tv-v98-f861e960.apk` et APK stable ont taille `40314086` et SHA256 `f861e960078050444cf323de1719b0ce1594c92e3f9101b391e6de2d2568b936`.
+- `api/app_config.php`: flags Recorder/Media/gestion fichiers/transfert `premium=true`, `trial=true`, `free_ads=false`.
+- `api/app/ads-config`: OK, provider `HILLTOPADS_VAST`; `api/app/ads-vast.php`: HTTP 200.
+
 ## 2026-07-05 - Lot 14 stabilisation Recorder + Media
 
 Type:
@@ -11,12 +35,13 @@ Type:
 
 Resume:
 - Correction Recorder: quitter la chaine/player ne doit plus arreter l'enregistrement Live; le service utilise `START_REDELIVER_INTENT`.
-- `RecordingEngine` reconnecte les flux progressifs si la socket se ferme avant la duree demandee, sauf Stop explicite ou echecs consecutifs sans donnees.
+- `RecordingEngine` reconnecte les flux progressifs si la socket se ferme avant la duree demandee, sauf Stop explicite, echecs initiaux sans donnees ou grace de reconnexion expiree.
+- Ajout d'une activite `Recorder` dans Settings > Network Activity: titre sanitise, section Live TV, progression, octets, debit et statut final sans URL Xtream.
 - Media Center: correction focus DPAD droite liste -> apercu vers le premier bouton actif, message visible pendant preparation import/export telephone, fermeture de session QR apres upload reussi.
 - Ajout i18n EN/FR pour l'etat transfert et les libelles de type/source Media.
 
 Validation:
-- `.\gradlew.bat --% :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK en 5m23, warnings deprecation Android/Room kapt uniquement.
+- `.\gradlew.bat --% :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK en 3m15 apres ajout Network Activity Recorder, warnings deprecation Android/Room kapt uniquement.
 
 ## 2026-07-05 - Release prod 0.1.93 (97) pour Lots 12 et 13 Media Transfer
 
