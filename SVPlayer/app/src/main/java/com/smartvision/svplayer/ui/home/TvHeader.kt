@@ -39,6 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -87,6 +89,8 @@ fun TvHeader(
     hasNewNotifications: Boolean,
     notificationBadgeCount: Int,
     modifier: Modifier = Modifier,
+    currentTabFocusRequester: FocusRequester? = null,
+    contentDownFocusRequester: FocusRequester? = null,
 ) {
     Row(
         modifier = modifier.height(SmartVisionDimensions.HomeHeaderHeight),
@@ -106,6 +110,8 @@ fun TvHeader(
                     onNavigate = onNavigate,
                     height = 38.dp,
                     horizontalPadding = 6.dp,
+                    focusRequester = currentTabFocusRequester.takeIf { tab.route == currentRoute },
+                    downFocusRequester = contentDownFocusRequester,
                 )
             }
         }
@@ -117,6 +123,7 @@ fun TvHeader(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
+            downFocusRequester = contentDownFocusRequester,
         )
     }
 }
@@ -131,6 +138,7 @@ fun HeaderControls(
     hasNewNotifications: Boolean,
     notificationBadgeCount: Int,
     modifier: Modifier = Modifier,
+    downFocusRequester: FocusRequester? = null,
 ) {
     Row(
         modifier = modifier,
@@ -140,28 +148,32 @@ fun HeaderControls(
         if (showLicenseKey) {
             HeaderIconButton(
                 icon = Icons.Default.Key,
-                contentDescription = "Acheter une licence",
-                onClick = onLicenseKey,
-                accent = SmartVisionColors.Warning,
-            )
+            contentDescription = "Acheter une licence",
+            onClick = onLicenseKey,
+            accent = SmartVisionColors.Warning,
+            downFocusRequester = downFocusRequester,
+        )
         }
         HeaderIconButton(
             icon = Icons.Default.Notifications,
             contentDescription = "Notifications",
             onClick = onNotifications,
-            showBadge = hasNewNotifications,
-            badgeCount = notificationBadgeCount,
-        )
+        showBadge = hasNewNotifications,
+        badgeCount = notificationBadgeCount,
+        downFocusRequester = downFocusRequester,
+    )
         HeaderIconButton(
             icon = Icons.Default.Person,
-            contentDescription = "Profil",
-            onClick = onProfile,
-        )
+        contentDescription = "Profil",
+        onClick = onProfile,
+        downFocusRequester = downFocusRequester,
+    )
         HeaderIconButton(
             icon = Icons.Default.Settings,
-            contentDescription = "Parametres",
-            onClick = onSettings,
-        )
+        contentDescription = "Parametres",
+        onClick = onSettings,
+        downFocusRequester = downFocusRequester,
+    )
         HeaderDateTime()
     }
 }
@@ -174,6 +186,7 @@ private fun HeaderIconButton(
     accent: Color = SmartVisionColors.Primary,
     showBadge: Boolean = false,
     badgeCount: Int = 0,
+    downFocusRequester: FocusRequester? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -185,6 +198,13 @@ private fun HeaderIconButton(
         Box(
             modifier = Modifier
                 .size(38.dp)
+                .then(
+                    if (downFocusRequester != null) {
+                        Modifier.focusProperties { down = downFocusRequester }
+                    } else {
+                        Modifier
+                    },
+                )
                 .tvFocusTarget(
                     state = focusState,
                     pressed = pressed,
@@ -314,6 +334,8 @@ fun HeaderTabButton(
     height: Dp,
     horizontalPadding: Dp,
     modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
+    downFocusRequester: FocusRequester? = null,
 ) {
     Box(
         modifier = modifier
@@ -350,7 +372,15 @@ fun HeaderTabButton(
             contentPadding = PaddingValues(horizontal = horizontalPadding),
             modifier = Modifier
                 .height(height)
+                .then(
+                    if (downFocusRequester != null) {
+                        Modifier.focusProperties { down = downFocusRequester }
+                    } else {
+                        Modifier
+                    },
+                )
                 .alpha(if (tab.locked || tab.warning) 0.42f else 1f),
+            focusRequester = focusRequester,
         )
         if (tab.locked) {
             Image(

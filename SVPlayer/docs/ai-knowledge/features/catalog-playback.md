@@ -1,6 +1,6 @@
 # Catalogue, Playlist et Lecture
 
-Derniere mise a jour: 2026-07-05.
+Derniere mise a jour: 2026-07-06.
 
 ## 1. Objectif
 
@@ -48,6 +48,8 @@ Depuis le 2026-07-05, Live TV conserve le layout 3 zones `Categories / Chaines /
 Depuis le 2026-07-05, l'apercu Live TV met `Regarder`, `Favori` et, uniquement dans `Historique`, `Supprimer` dans le header de la zone Apercu en boutons carres icon-only. Les lignes Historique n'ont plus de bouton supprimer inline et gardent le format des autres chaines. La confirmation existante reste utilisee; apres suppression, la selection cible la chaine suivante visible, sinon la precedente, sinon vide l'apercu.
 
 Depuis le 2026-07-05, le mini-player Live TV de l'apercu est plus compact: radius reduit, plus de badge `LIVE` ni logo haut droit, overlay bas fixe transparent avec logo, separateur, nom chaine, EPG courant ou categorie et horaires. L'ancien bloc `En cours` sous le mini-player est supprime. Les programmes EPG sont des lignes focusables avec titre gras a gauche, horaires a droite, separateurs, et OK ouvre/ferme le detail en rideau seulement si une description existe.
+
+Depuis le 2026-07-06, l'ouverture Live TV garde le layout reel en skeleton shimmer pendant au moins 1 seconde et jusqu'a readiness categories, sans afficher les vraies donnees avant la fin. La selection initiale ne cible plus `Historique`: elle ouvre le premier dossier situe apres `Historique`, sinon la premiere categorie disponible. L'icone EPG des lignes utilise `ic_epg_premium.png`, genere localement en PNG transparent avec halo neon, et s'affiche plus petite pour ne pas impacter la hauteur des lignes. Quand une chaine selectionnee n'a aucun programme EPG local, la zone sous mini-player affiche un panneau informatif non focusable `A propos de la chaine` avec chaine, numero visible du dossier courant, categorie, source, EPG indisponible et pays detecte simplement; si l'EPG devient disponible, la liste EPG classique remplace ce panneau.
 
 ## 3. Workflow utilisateur
 

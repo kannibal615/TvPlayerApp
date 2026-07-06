@@ -1,6 +1,6 @@
 # Android Architecture, Build et Release
 
-Derniere mise a jour: 2026-07-05.
+Derniere mise a jour: 2026-07-06.
 
 ## 1. Objectif
 
@@ -17,9 +17,9 @@ Observabilite reseau:
 - `SettingsScreen` affiche ces etats dans `Network Activity` / `Activite reseau`: actifs, recents, progression, taille, debit, duree, source/section et erreurs.
 - Ne jamais exposer les query params, tokens, identifiants Xtream, mots de passe ou URLs de lecture dans ce tracker.
 
-Gradle local constate le 2026-07-05:
-- `versionCode = 104`
-- `versionName = "0.1.100"`
+Gradle local constate le 2026-07-06:
+- `versionCode = 105`
+- `versionName = "0.1.101"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -162,6 +162,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-06: release publiee `0.1.101` / `versionCode 105` pour Live TV premium focus header et panneau sans EPG: skeleton 3 panneaux minimum 1 seconde, selection initiale hors `Historique`, focus header reusable vers onglet courant/categories, padding headers, categories compactes, noms chaines agrandis, icone EPG regeneree en PNG transparent avec halo neon, indicateur EPG non focusable dans le header Apercu, overlay mini-player plus glassmorphism, titres EPG agrandis et panneau `A propos de la chaine` sans EPG. APK `smartvision-tv-v105-34681073.apk`, SHA256 `34681073bcb47ad115d1f61afebf2af678ff359ed2d3bcf5fe7b52645496db7b`, taille `40399158`, manifeste public, `app_update.php`, APK stable et APK versionne verifies.
 - 2026-07-05: release publiee `0.1.100` / `versionCode 104` pour Live TV UI/focus/EPG: skeleton 3 panneaux, i18n Live TV, categories/chaines compactes, badge EPG image, logos sans fond, numerotation par dossier, suppression Historique dans le header Apercu, mini-player apercu avec overlay bas, lignes EPG focusables, refresh EPG stale-aware et Worker EPG horaire. Aucun filtre admin/API `###` ajoute. APK `smartvision-tv-v104-b7a7822d.apk`, SHA256 `b7a7822d4fab7dfa29e0b22468383cb23723b8c28be617be83cb932ad886f5df`, taille `40351582`, manifeste public, `app_update.php`, APK stable et APK versionne verifies.
 - 2026-07-05: release publiee `0.1.99` / `versionCode 103` pour Media compact aligne Live TV: ratios `0.24 / 0.42 / 0.34`, suppression hero/snapshot/stats, hub `Telephone -> TV` sans bouton cache, tuile `TV -> Phone`, details fichier simplifies, mini-player local video remplissant son cadre comme Live TV et anti-flash couronne Media pendant le chargement app-config. APK `smartvision-tv-v103-b1f73b9d.apk`, SHA256 `b1f73b9df54227edc898c640f84aef49abbcbbab66c607341a32feb3767ee4a6`, taille `40314076`, manifeste public, `app_update.php`, APK stable et APK versionne verifies.
 - 2026-07-05: release publiee `0.1.96` / `versionCode 100` pour refonte premium Media Center: hero studio, compteurs, stockage intelligent, hub transfert telephone, stats bibliotheque, lignes fichiers enrichies et preview hero. APK `smartvision-tv-v100-bd7812fb.apk`, SHA256 `bd7812fbabd30519b6810c9b80364097a582b0a43818edf9c29574a4b38a5c8f`, manifeste public, `app_update.php`, APK stable et versionne verifies. Parametres admin non modifies volontairement.

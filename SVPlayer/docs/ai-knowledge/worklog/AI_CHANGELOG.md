@@ -1,5 +1,36 @@
 # AI Changelog
 
+## 2026-07-06 - Live TV premium focus header et panneau sans EPG
+
+Type:
+- android
+- live-tv
+- ui-tv
+- focus
+- epg
+- release
+- deploy
+- documentation
+
+Resume:
+- Live TV garde un skeleton 3 panneaux au moins 1 seconde avant d'afficher les donnees reelles.
+- La selection initiale ouvre le premier dossier apres `Historique`, avec fallback premiere categorie.
+- Le header principal accepte un focus requester d'onglet courant et une cible D-pad bas vers le contenu; Live TV route header/contenu via `Live TV` et la categorie selectionnee.
+- Les headers Live TV recoivent un padding gauche coherent, les categories sont plus compactes, les noms chaines sont agrandis et les titres EPG sous mini-player sont plus lisibles.
+- L'icone EPG est regeneree en PNG transparent avec halo neon et affichee plus petite dans les lignes; une icone EPG informative non focusable apparait dans le header Apercu quand la chaine a de l'EPG.
+- Le mini-player Apercu renforce son overlay glassmorphism et conserve le fallback categorie quand aucun programme courant n'existe.
+- Sans EPG, la zone sous mini-player affiche `A propos de la chaine` avec chaine, numero visible, categorie, source, EPG et pays detecte simplement.
+
+Validation:
+- `git diff --check`: OK, uniquement avertissements CRLF Windows.
+- `.\scripts\guard_release_version.ps1`: OK avant build, local `0.1.101 (105)` > prod `0.1.100 (104)`, warning metadata ancien attendu.
+- `.\gradlew.bat :app:assembleRelease`: OK.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK avant deploy, metadata `0.1.101 (105)`.
+- `.\scripts\deploy_activation_phase1.ps1`: OK.
+- Production verifiee: `smartvision-tv.version.json` et `api/app_update.php` annoncent `0.1.101` / `105`; APK versionne `smartvision-tv-v105-34681073.apk` et APK stable repondent en range `206`, taille `40399158`, SHA256 `34681073bcb47ad115d1f61afebf2af678ff359ed2d3bcf5fe7b52645496db7b`.
+- Le guard `-RequireBuildMetadata` relance apres deploy echoue logiquement car la prod est maintenant egale au local `105`; c'est attendu pour une verification post-publication.
+- `adb` absent du PATH pendant le guard: version installee TV non verifiee.
+
 ## 2026-07-05 - Release prod 0.1.100 (104) Live TV UI focus EPG
 
 Type:

@@ -173,14 +173,22 @@ class LiveTvViewModel(
                 historyCount = historyProgress.size,
                 historySignals = historyCategorySignals,
             )
+            val existingSelection = it.selectedCategoryId
+                ?.takeIf { selectedId -> visibleCategories.any { category -> category.id == selectedId } }
+            val initialCategory = existingSelection
+                ?.let { selectedId -> visibleCategories.firstOrNull { category -> category.id == selectedId } }
+                ?: visibleCategories.initialCategoryAfterHistory()
             it.copy(
                 categoriesLoading = false,
                 errorMessage = null,
                 categories = visibleCategories,
-                selectedCategoryId = HistoryLiveCategoryId,
+                selectedCategoryId = initialCategory?.id,
             )
         }
-        loadHistoryChannels()
+        val state = _uiState.value
+        if (state.channels.isEmpty() && !state.channelsLoading) {
+            state.selectedCategory?.let { category -> selectCategory(category) }
+        }
     }
 
     fun refreshEpgCategoryAvailability() {
@@ -689,6 +697,15 @@ private fun List<LiveTvCategory>.withSpecialCategories(
         ),
     ) + filterNot { it.id in SpecialLiveCategoryIds }
         .sortedByHistorySignals(historySignals) { it.id }
+
+private fun List<LiveTvCategory>.initialCategoryAfterHistory(): LiveTvCategory? {
+    val historyIndex = indexOfFirst { it.id == HistoryLiveCategoryId }
+    return if (historyIndex >= 0) {
+        drop(historyIndex + 1).firstOrNull() ?: firstOrNull()
+    } else {
+        firstOrNull()
+    }
+}
 
 private fun Category.toUiCategory(): LiveTvCategory =
     LiveTvCategory(

@@ -17,6 +17,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -75,10 +76,13 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -155,10 +159,24 @@ private val LiveTvItemTitleStyle = TextStyle(
     letterSpacing = 0.sp,
 )
 
+private val LiveTvChannelTitleStyle = TextStyle(
+    fontSize = 15.sp,
+    lineHeight = 20.sp,
+    fontWeight = FontWeight.SemiBold,
+    letterSpacing = 0.sp,
+)
+
 private val LiveTvItemMetaStyle = TextStyle(
     fontSize = 10.sp,
     lineHeight = 14.sp,
     fontWeight = FontWeight.Normal,
+    letterSpacing = 0.sp,
+)
+
+private val LiveTvEpgTitleStyle = TextStyle(
+    fontSize = 13.sp,
+    lineHeight = 17.sp,
+    fontWeight = FontWeight.Bold,
     letterSpacing = 0.sp,
 )
 
@@ -202,8 +220,10 @@ fun LiveTvScreen(
     val firstChannelFocusRequester = remember { FocusRequester() }
     val epgDetailsFocusRequester = remember { FocusRequester() }
     val firstPreviewActionFocusRequester = remember { FocusRequester() }
+    val headerLiveFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
+    var minimumLoadingComplete by remember { mutableStateOf(false) }
     var contentSearchQuery by remember { mutableStateOf("") }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
     var tvCode by remember { mutableStateOf("") }
@@ -218,6 +238,11 @@ fun LiveTvScreen(
     LaunchedEffect(Unit) {
         delay(260)
         inputReady = true
+    }
+
+    LaunchedEffect(Unit) {
+        delay(1_000)
+        minimumLoadingComplete = true
     }
 
     LaunchedEffect(returnFocusChannelId) {
@@ -291,6 +316,8 @@ fun LiveTvScreen(
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
             modifier = Modifier.fillMaxWidth(),
+            currentTabFocusRequester = headerLiveFocusRequester,
+            contentDownFocusRequester = selectedCategoryFocusRequester,
         )
 
         Spacer(Modifier.height(LiveTvDimens.HeaderGap))
@@ -311,7 +338,7 @@ fun LiveTvScreen(
             return@Column
         }
 
-        if (state.categoriesLoading) {
+        if (state.categoriesLoading || !minimumLoadingComplete) {
             LiveTvLoadingSkeleton(
                 modifier = Modifier.fillMaxSize(),
             )
@@ -324,6 +351,7 @@ fun LiveTvScreen(
                     state = state,
                     strings = strings,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
+                    headerFocusRequester = headerLiveFocusRequester,
                     contentSearchQuery = contentSearchQuery,
                     onCategory = { category ->
                         if (inputReady) {
@@ -342,6 +370,7 @@ fun LiveTvScreen(
                     strings = strings,
                     firstChannelFocusRequester = firstChannelFocusRequester,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
+                    headerFocusRequester = headerLiveFocusRequester,
                     searchQuery = contentSearchQuery,
                     onSearchQueryChange = { contentSearchQuery = it },
                     previewActionFocusRequester = firstPreviewActionFocusRequester.takeIf {
@@ -381,6 +410,8 @@ fun LiveTvScreen(
                     monetizationManager = container.monetizationManager,
                     firstActionFocusRequester = firstPreviewActionFocusRequester,
                     epgDetailsFocusRequester = epgDetailsFocusRequester,
+                    selectedChannelFocusRequester = firstChannelFocusRequester,
+                    headerFocusRequester = headerLiveFocusRequester,
                     onWatch = {
                         if (inputReady) {
                             state.selectedChannel?.let { channel ->
@@ -432,6 +463,7 @@ private fun CategoryList(
     state: LiveTvUiState,
     strings: SmartVisionStrings,
     selectedCategoryFocusRequester: FocusRequester,
+    headerFocusRequester: FocusRequester,
     contentSearchQuery: String,
     onCategory: (LiveTvCategory) -> Unit,
     modifier: Modifier = Modifier,
@@ -469,6 +501,7 @@ private fun CategoryList(
                     } else {
                         null
                     },
+                    upFocusRequester = headerFocusRequester.takeIf { category.id == visibleCategories.firstOrNull()?.id },
                     onClick = { onCategory(category) },
                 )
             }
@@ -482,6 +515,7 @@ private fun ChannelList(
     strings: SmartVisionStrings,
     firstChannelFocusRequester: FocusRequester,
     selectedCategoryFocusRequester: FocusRequester,
+    headerFocusRequester: FocusRequester,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     previewActionFocusRequester: FocusRequester?,
@@ -527,7 +561,9 @@ private fun ChannelList(
                 query = searchQuery,
                 onQueryChange = onSearchQueryChange,
                 placeholder = strings.liveTvSearchPlaceholder,
-                modifier = Modifier.width(190.dp),
+                modifier = Modifier
+                    .width(190.dp)
+                    .focusProperties { up = headerFocusRequester },
             )
         },
     ) {
@@ -563,6 +599,7 @@ private fun ChannelList(
                         focusRequester = firstChannelFocusRequester.takeIf { channel.streamId == focusChannelId },
                         leftFocusRequester = selectedCategoryFocusRequester,
                         rightFocusRequester = previewActionFocusRequester,
+                        upFocusRequester = headerFocusRequester.takeIf { index == 0 },
                         onFocused = { onChannelFocused(channel) },
                         onClick = { onChannelClick(channel) },
                     )
@@ -602,6 +639,8 @@ private fun PreviewPanel(
     monetizationManager: MonetizationManager,
     firstActionFocusRequester: FocusRequester,
     epgDetailsFocusRequester: FocusRequester,
+    selectedChannelFocusRequester: FocusRequester,
+    headerFocusRequester: FocusRequester,
     onWatch: () -> Unit,
     onFavorite: () -> Unit,
     onDeleteHistory: () -> Unit,
@@ -613,6 +652,9 @@ private fun PreviewPanel(
         trailing = {
             if (channel != null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (channel.epgPrograms.isNotEmpty()) {
+                        EpgHeaderIndicator()
+                    }
                     PreviewIconButton(
                         contentDescription = strings.liveTvWatch,
                         onClick = onWatch,
@@ -620,6 +662,8 @@ private fun PreviewPanel(
                         primary = true,
                         focusRequester = firstActionFocusRequester,
                         downFocusRequester = epgDetailsFocusRequester.takeIf { channel.epgPrograms.isNotEmpty() },
+                        leftFocusRequester = selectedChannelFocusRequester,
+                        upFocusRequester = headerFocusRequester,
                     )
                     PreviewIconButton(
                         contentDescription = if (channel.isFavorite) strings.liveTvRemoveFavorite else strings.liveTvFavorite,
@@ -627,6 +671,8 @@ private fun PreviewPanel(
                         icon = if (channel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         selected = channel.isFavorite,
                         downFocusRequester = epgDetailsFocusRequester.takeIf { channel.epgPrograms.isNotEmpty() },
+                        leftFocusRequester = selectedChannelFocusRequester,
+                        upFocusRequester = headerFocusRequester,
                     )
                     if (showHistoryDelete) {
                         PreviewIconButton(
@@ -635,6 +681,8 @@ private fun PreviewPanel(
                             icon = Icons.Default.Delete,
                             danger = true,
                             downFocusRequester = epgDetailsFocusRequester.takeIf { channel.epgPrograms.isNotEmpty() },
+                            leftFocusRequester = selectedChannelFocusRequester,
+                            upFocusRequester = headerFocusRequester,
                         )
                     }
                 }
@@ -680,7 +728,10 @@ private fun PreviewPanel(
             EpgProgramList(
                 channel = channel,
                 strings = strings,
+                categoryLabel = selectedCategoryLabel.orEmpty(),
                 focusRequester = epgDetailsFocusRequester,
+                leftFocusRequester = selectedChannelFocusRequester,
+                upFocusRequester = headerFocusRequester,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -1062,6 +1113,8 @@ private fun PreviewIconButton(
     danger: Boolean = false,
     focusRequester: FocusRequester? = null,
     downFocusRequester: FocusRequester? = null,
+    leftFocusRequester: FocusRequester? = null,
+    upFocusRequester: FocusRequester? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -1096,7 +1149,17 @@ private fun PreviewIconButton(
     Box(
         modifier = modifier
             .size(34.dp)
-            .then(if (downFocusRequester != null) Modifier.focusProperties { down = downFocusRequester } else Modifier)
+            .then(
+                if (downFocusRequester != null || leftFocusRequester != null || upFocusRequester != null) {
+                    Modifier.focusProperties {
+                        if (downFocusRequester != null) down = downFocusRequester
+                        if (leftFocusRequester != null) left = leftFocusRequester
+                        if (upFocusRequester != null) up = upFocusRequester
+                    }
+                } else {
+                    Modifier
+                },
+            )
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -1137,6 +1200,7 @@ private fun CategoryRow(
     category: LiveTvCategory,
     selected: Boolean,
     focusRequester: FocusRequester?,
+    upFocusRequester: FocusRequester?,
     onClick: () -> Unit,
 ) {
     val focusState = rememberTvFocusState()
@@ -1159,6 +1223,13 @@ private fun CategoryRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(LiveTvDimens.CategoryRowHeight)
+            .then(
+                if (upFocusRequester != null) {
+                    Modifier.focusProperties { up = upFocusRequester }
+                } else {
+                    Modifier
+                },
+            )
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -1258,6 +1329,7 @@ private fun ChannelRow(
     focusRequester: FocusRequester?,
     leftFocusRequester: FocusRequester?,
     rightFocusRequester: FocusRequester?,
+    upFocusRequester: FocusRequester?,
     onFocused: () -> Unit,
     onClick: () -> Unit,
 ) {
@@ -1293,6 +1365,13 @@ private fun ChannelRow(
                     if (rightFocusRequester != null) {
                         Modifier.focusProperties {
                             right = rightFocusRequester
+                            if (upFocusRequester != null) {
+                                up = upFocusRequester
+                            }
+                        }
+                    } else if (upFocusRequester != null) {
+                        Modifier.focusProperties {
+                            up = upFocusRequester
                         }
                     } else {
                         Modifier
@@ -1375,7 +1454,7 @@ private fun ChannelRow(
                 Text(
                     text = channel.name,
                     color = SmartVisionColors.TextPrimary,
-                    style = LiveTvItemTitleStyle,
+                    style = LiveTvChannelTitleStyle,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1401,11 +1480,31 @@ private fun ChannelRow(
 @Composable
 private fun EpgAvailabilityBadge() {
     Image(
-        painter = painterResource(R.drawable.ic_epg_badge),
+        painter = painterResource(R.drawable.ic_epg_premium),
         contentDescription = null,
         contentScale = ContentScale.Fit,
-        modifier = Modifier.size(width = 34.dp, height = 28.dp),
+        modifier = Modifier.size(width = 20.dp, height = 17.dp),
     )
+}
+
+@Composable
+private fun EpgHeaderIndicator() {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .focusProperties { canFocus = false }
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color(0xA80A1B35))
+            .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.72f)), RoundedCornerShape(6.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_epg_premium),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.size(width = 28.dp, height = 24.dp),
+        )
+    }
 }
 
 @Composable
@@ -1497,11 +1596,12 @@ private fun MiniPlayerInfoOverlay(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        Color.Transparent,
-                        Color.Black.copy(alpha = 0.74f),
+                        Color(0x2D102A52),
+                        Color(0xD0081427),
                     ),
                 ),
             )
+            .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.26f)), RoundedCornerShape(0.dp))
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1551,25 +1651,21 @@ private fun MiniPlayerInfoOverlay(
 private fun EpgProgramList(
     channel: LiveTvChannel,
     strings: SmartVisionStrings,
+    categoryLabel: String,
     focusRequester: FocusRequester,
+    leftFocusRequester: FocusRequester,
+    upFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     val programs = channel.epgPrograms
     var expandedIndex by remember(channel.streamId, programs.size) { mutableIntStateOf(-1) }
     if (programs.isEmpty()) {
-        Box(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = strings.liveTvEpgUnavailable,
-                color = SmartVisionColors.TextSecondary,
-                style = LiveTvItemMetaStyle,
-                maxLines = 1,
-            )
-        }
+        ChannelAboutPanel(
+            channel = channel,
+            strings = strings,
+            categoryLabel = categoryLabel.ifBlank { channel.genre },
+            modifier = modifier,
+        )
         return
     }
 
@@ -1582,6 +1678,8 @@ private fun EpgProgramList(
                 program = program,
                 expanded = expandedIndex == index,
                 focusRequester = focusRequester.takeIf { index == 0 },
+                leftFocusRequester = leftFocusRequester,
+                upFocusRequester = upFocusRequester.takeIf { index == 0 },
                 onClick = {
                     expandedIndex = if (expandedIndex == index) -1 else index
                 },
@@ -1591,10 +1689,293 @@ private fun EpgProgramList(
 }
 
 @Composable
+private fun ChannelAboutPanel(
+    channel: LiveTvChannel,
+    strings: SmartVisionStrings,
+    categoryLabel: String,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(7.dp)
+    val country = remember(channel.name, categoryLabel) {
+        detectLiveChannelCountry(channel.name, categoryLabel)
+    }
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .focusProperties { canFocus = false }
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xB40B2344),
+                        Color(0xD0051124),
+                    ),
+                ),
+            )
+            .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.58f)), shape)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+    ) {
+        Text(
+            text = strings.liveTvAboutChannelTitle,
+            color = SmartVisionColors.TextPrimary,
+            style = LiveTvPanelTitleStyle,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 7.dp, bottom = 8.dp)
+                .height(1.dp)
+                .background(SmartVisionColors.Primary.copy(alpha = 0.45f)),
+        )
+        AboutInfoRow(
+            icon = AboutInfoIconKind.Channel,
+            label = strings.liveTvAboutChannelName,
+            valueContent = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ChannelLogo(
+                        channel = channel,
+                        active = true,
+                        modifier = Modifier.size(width = 40.dp, height = 23.dp),
+                    )
+                    Text(
+                        text = channel.name,
+                        color = SmartVisionColors.TextPrimary,
+                        style = LiveTvItemTitleStyle,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            },
+        )
+        AboutInfoRow(
+            icon = AboutInfoIconKind.Number,
+            label = strings.liveTvAboutNumber,
+            value = channel.number,
+        )
+        AboutInfoRow(
+            icon = AboutInfoIconKind.Category,
+            label = strings.liveTvAboutCategory,
+            value = categoryLabel.ifBlank { channel.genre },
+        )
+        AboutInfoRow(
+            icon = AboutInfoIconKind.Source,
+            label = strings.liveTvAboutSource,
+            value = strings.liveTv,
+        )
+        AboutInfoRow(
+            icon = AboutInfoIconKind.Epg,
+            label = strings.liveTvAboutEpg,
+            value = strings.liveTvAboutEpgUnavailable,
+            disabled = true,
+        )
+        AboutInfoRow(
+            icon = AboutInfoIconKind.Country,
+            label = strings.liveTvAboutCountry,
+            value = country ?: strings.liveTvAboutUnknownCountry,
+            disabled = country == null,
+        )
+    }
+}
+
+@Composable
+private fun AboutInfoRow(
+    icon: AboutInfoIconKind,
+    label: String,
+    value: String? = null,
+    disabled: Boolean = false,
+    valueContent: (@Composable () -> Unit)? = null,
+) {
+    val shape = RoundedCornerShape(6.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 5.dp)
+            .clip(shape)
+            .background(Color(0x61102542))
+            .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.28f)), shape)
+            .height(32.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(38.dp)
+                .background(Color(0x65113B76)),
+            contentAlignment = Alignment.Center,
+        ) {
+            AboutInfoIcon(icon)
+        }
+        Text(
+            text = label,
+            color = SmartVisionColors.TextPrimary,
+            style = LiveTvItemTitleStyle,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 10.dp),
+        )
+        Box(
+            modifier = Modifier
+                .weight(1.25f)
+                .padding(end = 10.dp),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
+            if (valueContent != null) {
+                valueContent()
+            } else {
+                Text(
+                    text = value.orEmpty(),
+                    color = if (disabled) SmartVisionColors.TextSecondary.copy(alpha = 0.72f) else SmartVisionColors.TextPrimary,
+                    style = LiveTvItemTitleStyle,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.End,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AboutInfoIcon(kind: AboutInfoIconKind) {
+    Canvas(
+        modifier = Modifier
+            .size(20.dp)
+            .focusProperties { canFocus = false },
+    ) {
+        val stroke = 2.3.dp.toPx()
+        val white = Color.White
+        when (kind) {
+            AboutInfoIconKind.Channel -> {
+                drawRoundRect(
+                    color = white,
+                    topLeft = Offset(size.width * 0.08f, size.height * 0.26f),
+                    size = Size(size.width * 0.74f, size.height * 0.54f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx(), 4.dp.toPx()),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(stroke),
+                )
+                drawLine(white, Offset(size.width * 0.32f, size.height * 0.26f), Offset(size.width * 0.18f, size.height * 0.08f), stroke)
+                drawLine(white, Offset(size.width * 0.58f, size.height * 0.26f), Offset(size.width * 0.72f, size.height * 0.08f), stroke)
+                drawPath(
+                    Path().apply {
+                        moveTo(size.width * 0.42f, size.height * 0.42f)
+                        lineTo(size.width * 0.42f, size.height * 0.64f)
+                        lineTo(size.width * 0.61f, size.height * 0.53f)
+                        close()
+                    },
+                    white,
+                )
+            }
+            AboutInfoIconKind.Number -> {
+                listOf(0.22f to "1", 0.50f to "2", 0.78f to "3").forEach { (y, text) ->
+                    drawContext.canvas.nativeCanvas.drawText(
+                        text,
+                        size.width * 0.12f,
+                        size.height * y,
+                        android.graphics.Paint().apply {
+                            color = android.graphics.Color.WHITE
+                            textSize = 8.5.dp.toPx()
+                            isFakeBoldText = true
+                            isAntiAlias = true
+                        },
+                    )
+                }
+                repeat(3) { row ->
+                    val y = size.height * (0.18f + row * 0.28f)
+                    drawLine(white, Offset(size.width * 0.45f, y), Offset(size.width * 0.90f, y), stroke)
+                }
+            }
+            AboutInfoIconKind.Category -> {
+                drawRoundRect(
+                    color = white,
+                    topLeft = Offset(size.width * 0.10f, size.height * 0.30f),
+                    size = Size(size.width * 0.80f, size.height * 0.48f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx(), 3.dp.toPx()),
+                )
+                drawRoundRect(
+                    color = white,
+                    topLeft = Offset(size.width * 0.12f, size.height * 0.20f),
+                    size = Size(size.width * 0.36f, size.height * 0.17f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx(), 2.dp.toPx()),
+                )
+            }
+            AboutInfoIconKind.Source -> {
+                drawCircle(white, radius = size.minDimension * 0.09f, center = Offset(size.width * 0.50f, size.height * 0.50f))
+                drawArc(white, 130f, 100f, false, topLeft = Offset(size.width * 0.18f, size.height * 0.22f), size = Size(size.width * 0.64f, size.height * 0.56f), style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+                drawArc(white, -50f, 100f, false, topLeft = Offset(size.width * 0.18f, size.height * 0.22f), size = Size(size.width * 0.64f, size.height * 0.56f), style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+            }
+            AboutInfoIconKind.Epg -> {
+                drawRoundRect(
+                    color = white,
+                    topLeft = Offset(size.width * 0.16f, size.height * 0.20f),
+                    size = Size(size.width * 0.68f, size.height * 0.62f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx(), 4.dp.toPx()),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(stroke),
+                )
+                repeat(2) { row ->
+                    repeat(3) { col ->
+                        drawCircle(white, radius = 1.5.dp.toPx(), center = Offset(size.width * (0.34f + col * 0.16f), size.height * (0.48f + row * 0.17f)))
+                    }
+                }
+            }
+            AboutInfoIconKind.Country -> {
+                drawLine(white, Offset(size.width * 0.22f, size.height * 0.16f), Offset(size.width * 0.22f, size.height * 0.86f), stroke)
+                drawPath(
+                    Path().apply {
+                        moveTo(size.width * 0.25f, size.height * 0.20f)
+                        cubicTo(size.width * 0.45f, size.height * 0.10f, size.width * 0.58f, size.height * 0.32f, size.width * 0.78f, size.height * 0.22f)
+                        lineTo(size.width * 0.78f, size.height * 0.58f)
+                        cubicTo(size.width * 0.58f, size.height * 0.68f, size.width * 0.45f, size.height * 0.46f, size.width * 0.25f, size.height * 0.56f)
+                        close()
+                    },
+                    white,
+                )
+            }
+        }
+    }
+}
+
+private enum class AboutInfoIconKind {
+    Channel,
+    Number,
+    Category,
+    Source,
+    Epg,
+    Country,
+}
+
+private fun detectLiveChannelCountry(channelName: String, categoryLabel: String): String? {
+    val text = "$channelName $categoryLabel".lowercase()
+    val tokens = text.split(Regex("[^a-z0-9]+")).filter { it.isNotBlank() }.toSet()
+    return when {
+        "france" in text || "french" in text || "fr" in tokens -> "France"
+        "espagne" in text || "spain" in text || "es" in tokens -> "Espagne"
+        "italia" in text || "italy" in text || "italie" in text || "it" in tokens -> "Italie"
+        "united kingdom" in text || "royaume uni" in text || "uk" in tokens || "gb" in tokens -> "Royaume-Uni"
+        else -> null
+    }
+}
+
+@Composable
 private fun EpgProgramRow(
     program: LiveTvProgram,
     expanded: Boolean,
     focusRequester: FocusRequester?,
+    leftFocusRequester: FocusRequester,
+    upFocusRequester: FocusRequester?,
     onClick: () -> Unit,
 ) {
     val focusState = rememberTvFocusState()
@@ -1609,6 +1990,12 @@ private fun EpgProgramRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .focusProperties {
+                left = leftFocusRequester
+                if (upFocusRequester != null) {
+                    up = upFocusRequester
+                }
+            }
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -1638,7 +2025,7 @@ private fun EpgProgramRow(
             Text(
                 text = program.title,
                 color = SmartVisionColors.TextPrimary,
-                style = LiveTvItemMetaStyle,
+                style = LiveTvEpgTitleStyle,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -2239,6 +2626,7 @@ private fun LiveTvPanel(
                 style = LiveTvPanelTitleStyle,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
+                modifier = Modifier.padding(start = LiveTvDimens.PanelHeaderTitleStartPadding),
             )
             Spacer(Modifier.weight(1f))
             trailing?.invoke()
@@ -2263,9 +2651,10 @@ private object LiveTvDimens {
     val PanelRadius = 8.dp
     val ItemRadius = 7.dp
     val ListGap = 5.dp
-    val CategoryRowHeight = 38.dp
+    val CategoryRowHeight = 36.dp
     val ChannelRowHeight = 42.dp
     val ChannelListTopPadding = 12.dp
+    val PanelHeaderTitleStartPadding = 8.dp
 }
 
 private fun LiveTvChannel.toBehaviorContent(categoryLabel: String?): BehaviorContent =

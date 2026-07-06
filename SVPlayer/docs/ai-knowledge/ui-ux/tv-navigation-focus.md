@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-07-05.
+Derniere mise a jour: 2026-07-06.
 
 ## 1. Objectif
 
@@ -55,6 +55,7 @@ Attention:
 - Le popup manuel Info compte > Synchroniser bloque Back/D-pad uniquement pendant `SyncStatus.Running`; a la fin ou en erreur, le focus va sur `Retour`.
 - Depuis le 2026-07-05, dans Live TV, D-pad gauche depuis une chaine revient explicitement vers le dossier ouvert/selectionne avec `runCatching` pour proteger les `FocusRequester`. La liste chaines ancre le focus autour de la 3e ligne via `LazyListState.animateScrollToItem(index - 2)` quand possible, avec marge haute pour eviter le clipping.
 - Depuis le 2026-07-05, le header Apercu Live TV porte les actions `Regarder`, `Favori` et `Supprimer` en boutons carres icon-only. D-pad droite depuis une chaine cible ces actions d'apercu; les lignes EPG sous le mini-player sont elles-memes focusables et OK ouvre/ferme le detail en rideau.
+- Depuis le 2026-07-06, `ui/home/TvHeader.kt` accepte un `FocusRequester` pour l'onglet courant et une cible D-pad bas vers le contenu. Live TV branche l'onglet `Live TV` et la categorie selectionnee: D-pad haut depuis la premiere ligne/action de contenu remonte vers l'onglet actif, et D-pad bas depuis le header revient uniquement aux categories. Les actions du header Apercu et les lignes EPG routent D-pad gauche vers la chaine selectionnee, avec fallback sur la premiere chaine composee.
 - Depuis le 2026-07-05, Live TV > Historique ne possede plus de bouton supprimer inline dans les lignes. La suppression passe uniquement par le header Apercu, garde le dialog de confirmation focusable, puis restaure la selection sur la chaine suivante visible, sinon precedente.
 - Les mini-players Home Continue watching, Home Tendances et Live TV apercu ont un fade-in audio local: volume player `0f`, attente 1 seconde apres `play()`, puis montee a `1f` sur 1 seconde. Cette logique ne doit pas modifier le focus, le D-pad, le fallback video ni les routes plein ecran. Le job audio doit rester vivant jusqu'a disparition/changement du composable; ne pas remettre `volume = 0f` juste apres la premiere frame.
 - Depuis le 2026-07-05, le player plein ecran Live TV a un overlay dedie: D-pad haut/bas zappe chaine precedente/suivante uniquement quand aucun panneau Live n'est ouvert; si EPG ou Settings est ouvert, le panneau garde la priorite de navigation/focus. Gauche/droite navigue les boutons du bandeau bas (`EPG`, `Settings`, `Record`, `Back to List`); Back ferme d'abord EPG/Settings puis revient a la liste Live TV. A la sortie du fullscreen Live, la liste restaure le focus sur la derniere chaine ouverte, y compris apres zapping.
