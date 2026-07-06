@@ -1,5 +1,34 @@
 # AI Changelog
 
+## 2026-07-06 - Live TV focus deterministe et categorie initiale corrigee
+
+Type:
+- android
+- live-tv
+- ui-tv
+- focus
+- epg
+- release
+- deploy
+- documentation
+
+Resume:
+- Correction de la selection automatique Live TV pour recalculer le premier dossier reel apres `Historique` dans l'ordre visuel final, meme apres snapshot partiel et tri `sortedByHistorySignals(...)`.
+- Les annulations normales de chargement chaines ne sont plus transformees en erreur visible `standaloneCoroutine was cancelled`.
+- Les transitions D-pad critiques restaurent le focus apres `scrollToItem(...)` et verification `visibleItemsInfo`.
+- Le champ recherche devient l'etape intermediaire entre liste chaines et header.
+- L'icone EPG utilise l'image fournie `epg a mettre.png` telle quelle, sans cadre/fond, dans les lignes et le header Apercu.
+- Les tailles texte chaines/sous-titres/titres EPG sont reduites selon la demande; le panneau sans EPG est integre au style des lignes chaines.
+
+Validation:
+- `git diff --check`: OK, uniquement avertissements CRLF Windows.
+- `.\scripts\guard_release_version.ps1`: OK avant build, local `0.1.102 (106)` > prod `0.1.101 (105)`, warning metadata ancien attendu.
+- `.\gradlew.bat :app:assembleRelease`: OK.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK avant deploy, metadata `0.1.102 (106)`.
+- `.\scripts\deploy_activation_phase1.ps1`: OK.
+- Production verifiee: `smartvision-tv.version.json` et `api/app_update.php` annoncent `0.1.102` / `106`; APK versionne `smartvision-tv-v106-73da2e18.apk` et APK stable repondent en range `206`, taille `40759019`, SHA256 `73da2e187ea9d5043599608c8268a17d3c0b1af711bfb79cb43474d3bb1edd12`.
+- `adb` absent du PATH pendant le guard: version installee TV non verifiee.
+
 ## 2026-07-06 - Live TV premium focus header et panneau sans EPG
 
 Type:

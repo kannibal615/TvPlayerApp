@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -160,9 +161,16 @@ private val LiveTvItemTitleStyle = TextStyle(
 )
 
 private val LiveTvChannelTitleStyle = TextStyle(
-    fontSize = 15.sp,
-    lineHeight = 20.sp,
+    fontSize = 14.5.sp,
+    lineHeight = 19.4.sp,
     fontWeight = FontWeight.SemiBold,
+    letterSpacing = 0.sp,
+)
+
+private val LiveTvChannelSubtitleStyle = TextStyle(
+    fontSize = 9.5.sp,
+    lineHeight = 13.3.sp,
+    fontWeight = FontWeight.Normal,
     letterSpacing = 0.sp,
 )
 
@@ -174,11 +182,20 @@ private val LiveTvItemMetaStyle = TextStyle(
 )
 
 private val LiveTvEpgTitleStyle = TextStyle(
-    fontSize = 13.sp,
-    lineHeight = 17.sp,
+    fontSize = 11.7.sp,
+    lineHeight = 15.3.sp,
     fontWeight = FontWeight.Bold,
     letterSpacing = 0.sp,
 )
+
+private enum class LiveTvFocusZone {
+    Header,
+    Search,
+    Categories,
+    Channels,
+    Preview,
+    Epg,
+}
 
 @Composable
 fun LiveTvScreen(
@@ -221,7 +238,16 @@ fun LiveTvScreen(
     val epgDetailsFocusRequester = remember { FocusRequester() }
     val firstPreviewActionFocusRequester = remember { FocusRequester() }
     val headerLiveFocusRequester = remember { FocusRequester() }
+    val searchFocusRequester = remember { FocusRequester() }
+    val categoryListState = rememberLazyListState()
+    val channelListState = rememberLazyListState()
     val behaviorScope = rememberCoroutineScope()
+    val focusScope = rememberCoroutineScope()
+    var currentFocusZone by remember { mutableStateOf(LiveTvFocusZone.Categories) }
+    var lastFocusedCategoryId by remember { mutableStateOf<String?>(null) }
+    var lastFocusedChannelId by remember { mutableStateOf<Int?>(null) }
+    var categoryFocusTargetId by remember { mutableStateOf<String?>(null) }
+    var channelFocusTargetId by remember { mutableStateOf<Int?>(null) }
     var inputReady by remember { mutableStateOf(false) }
     var minimumLoadingComplete by remember { mutableStateOf(false) }
     var contentSearchQuery by remember { mutableStateOf("") }
@@ -275,14 +301,75 @@ fun LiveTvScreen(
         }
     }
 
+    val visibleChannels = remember(state.channels, contentSearchQuery) {
+        state.channels.filter { channel ->
+            contentSearchQuery.isBlank() || channel.name.contains(contentSearchQuery, ignoreCase = true)
+        }
+    }
+
+    fun restoreHeaderFocus() {
+        focusScope.launch {
+            currentFocusZone = LiveTvFocusZone.Header
+            withFrameNanos { }
+            runCatching { headerLiveFocusRequester.requestFocus() }
+        }
+    }
+
+    fun restoreSearchFocus() {
+        focusScope.launch {
+            currentFocusZone = LiveTvFocusZone.Search
+            withFrameNanos { }
+            runCatching { searchFocusRequester.requestFocus() }
+        }
+    }
+
+    fun restoreCategoryFocus() {
+        focusScope.launch {
+            val targetId = state.selectedCategoryId
+                ?.takeIf { id -> state.categories.any { it.id == id } }
+                ?: lastFocusedCategoryId?.takeIf { id -> state.categories.any { it.id == id } }
+                ?: state.categories.firstOrNull()?.id
+                ?: return@launch
+            val targetIndex = state.categories.indexOfFirst { it.id == targetId }
+            if (targetIndex < 0) return@launch
+            categoryFocusTargetId = targetId
+            categoryListState.scrollToItem(targetIndex)
+            if (!categoryListState.awaitVisibleItem(targetIndex)) return@launch
+            withFrameNanos { }
+            currentFocusZone = LiveTvFocusZone.Categories
+            runCatching { selectedCategoryFocusRequester.requestFocus() }
+        }
+    }
+
+    fun restoreChannelFocus() {
+        focusScope.launch {
+            val targetId = state.selectedChannelId
+                ?.takeIf { id -> visibleChannels.any { it.streamId == id } }
+                ?: lastFocusedChannelId?.takeIf { id -> visibleChannels.any { it.streamId == id } }
+                ?: state.focusedChannelId?.takeIf { id -> visibleChannels.any { it.streamId == id } }
+                ?: visibleChannels.firstOrNull()?.streamId
+                ?: return@launch
+            val targetIndex = visibleChannels.indexOfFirst { it.streamId == targetId }
+            if (targetIndex < 0) return@launch
+            channelFocusTargetId = targetId
+            channelListState.scrollToItem((targetIndex - 2).coerceAtLeast(0))
+            if (!channelListState.awaitVisibleItem(targetIndex)) {
+                channelListState.scrollToItem(targetIndex)
+                if (!channelListState.awaitVisibleItem(targetIndex)) return@launch
+            }
+            withFrameNanos { }
+            currentFocusZone = LiveTvFocusZone.Channels
+            runCatching { firstChannelFocusRequester.requestFocus() }
+        }
+    }
+
     val selectedCategoryVisible = state.categories.any { category -> category.id == state.selectedCategoryId }
     val categoryFocusTargetAvailable = selectedCategoryVisible || state.categories.isNotEmpty()
 
     LaunchedEffect(state.categoriesLoading, hasPlayableSource, categoryFocusTargetAvailable) {
         if (hasPlayableSource && !state.categoriesLoading && categoryFocusTargetAvailable) {
-            withFrameNanos { }
             delay(120)
-            runCatching { selectedCategoryFocusRequester.requestFocus() }
+            restoreCategoryFocus()
         }
     }
 
@@ -317,7 +404,7 @@ fun LiveTvScreen(
             notificationBadgeCount = notificationBadgeCount,
             modifier = Modifier.fillMaxWidth(),
             currentTabFocusRequester = headerLiveFocusRequester,
-            contentDownFocusRequester = selectedCategoryFocusRequester,
+            onContentDown = ::restoreCategoryFocus,
         )
 
         Spacer(Modifier.height(LiveTvDimens.HeaderGap))
@@ -351,8 +438,19 @@ fun LiveTvScreen(
                     state = state,
                     strings = strings,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
+                    listState = categoryListState,
+                    focusCategoryId = categoryFocusTargetId?.takeIf { targetId ->
+                        state.categories.any { it.id == targetId }
+                    }
+                        ?: state.selectedCategoryId
+                        ?: state.categories.firstOrNull()?.id,
                     headerFocusRequester = headerLiveFocusRequester,
                     contentSearchQuery = contentSearchQuery,
+                    onFocused = { category ->
+                        currentFocusZone = LiveTvFocusZone.Categories
+                        lastFocusedCategoryId = category.id
+                    },
+                    onRestoreChannelFocus = ::restoreChannelFocus,
                     onCategory = { category ->
                         if (inputReady) {
                             viewModel.selectCategory(
@@ -369,7 +467,15 @@ fun LiveTvScreen(
                     state = state,
                     strings = strings,
                     firstChannelFocusRequester = firstChannelFocusRequester,
-                    selectedCategoryFocusRequester = selectedCategoryFocusRequester,
+                    searchFocusRequester = searchFocusRequester,
+                    listState = channelListState,
+                    visibleChannels = visibleChannels,
+                    focusChannelId = channelFocusTargetId?.takeIf { targetId ->
+                        visibleChannels.any { it.streamId == targetId }
+                    }
+                        ?: state.selectedChannelId?.takeIf { selectedId -> visibleChannels.any { it.streamId == selectedId } }
+                        ?: state.focusedChannelId?.takeIf { focusedId -> visibleChannels.any { it.streamId == focusedId } }
+                        ?: visibleChannels.firstOrNull()?.streamId,
                     headerFocusRequester = headerLiveFocusRequester,
                     searchQuery = contentSearchQuery,
                     onSearchQueryChange = { contentSearchQuery = it },
@@ -377,6 +483,14 @@ fun LiveTvScreen(
                         state.selectedChannel != null
                     },
                     onChannelFocused = viewModel::focusChannel,
+                    onChannelFocusObserved = { channel ->
+                        currentFocusZone = LiveTvFocusZone.Channels
+                        lastFocusedChannelId = channel.streamId
+                    },
+                    onRestoreCategoryFocus = ::restoreCategoryFocus,
+                    onRestoreSearchFocus = ::restoreSearchFocus,
+                    onRestoreChannelFocus = ::restoreChannelFocus,
+                    onRestoreHeaderFocus = ::restoreHeaderFocus,
                     onChannelClick = { channel ->
                         if (inputReady) {
                             val openFullPlayer = viewModel.activateChannel(channel)
@@ -410,8 +524,10 @@ fun LiveTvScreen(
                     monetizationManager = container.monetizationManager,
                     firstActionFocusRequester = firstPreviewActionFocusRequester,
                     epgDetailsFocusRequester = epgDetailsFocusRequester,
-                    selectedChannelFocusRequester = firstChannelFocusRequester,
                     headerFocusRequester = headerLiveFocusRequester,
+                    onRestoreChannelFocus = ::restoreChannelFocus,
+                    onPreviewFocused = { currentFocusZone = LiveTvFocusZone.Preview },
+                    onEpgFocused = { currentFocusZone = LiveTvFocusZone.Epg },
                     onWatch = {
                         if (inputReady) {
                             state.selectedChannel?.let { channel ->
@@ -463,19 +579,20 @@ private fun CategoryList(
     state: LiveTvUiState,
     strings: SmartVisionStrings,
     selectedCategoryFocusRequester: FocusRequester,
+    listState: LazyListState,
+    focusCategoryId: String?,
     headerFocusRequester: FocusRequester,
     contentSearchQuery: String,
+    onFocused: (LiveTvCategory) -> Unit,
+    onRestoreChannelFocus: () -> Unit,
     onCategory: (LiveTvCategory) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val visibleCategories = state.categories
-    val focusCategoryId = visibleCategories.firstOrNull { it.id == state.selectedCategoryId }?.id
-        ?: visibleCategories.firstOrNull()?.id
-    val listState = rememberLazyListState()
     LaunchedEffect(focusCategoryId, visibleCategories.size) {
         val index = visibleCategories.indexOfFirst { it.id == focusCategoryId }
         if (index >= 0) {
-            runCatching { listState.animateScrollToItem(index) }
+            listState.scrollToItem(index)
         }
     }
 
@@ -502,6 +619,8 @@ private fun CategoryList(
                         null
                     },
                     upFocusRequester = headerFocusRequester.takeIf { category.id == visibleCategories.firstOrNull()?.id },
+                    onFocused = { onFocused(category) },
+                    onRight = onRestoreChannelFocus,
                     onClick = { onCategory(category) },
                 )
             }
@@ -514,33 +633,30 @@ private fun ChannelList(
     state: LiveTvUiState,
     strings: SmartVisionStrings,
     firstChannelFocusRequester: FocusRequester,
-    selectedCategoryFocusRequester: FocusRequester,
+    searchFocusRequester: FocusRequester,
+    listState: LazyListState,
+    visibleChannels: List<LiveTvChannel>,
+    focusChannelId: Int?,
     headerFocusRequester: FocusRequester,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     previewActionFocusRequester: FocusRequester?,
     onChannelFocused: (LiveTvChannel) -> Unit,
+    onChannelFocusObserved: (LiveTvChannel) -> Unit,
+    onRestoreCategoryFocus: () -> Unit,
+    onRestoreSearchFocus: () -> Unit,
+    onRestoreChannelFocus: () -> Unit,
+    onRestoreHeaderFocus: () -> Unit,
     onChannelClick: (LiveTvChannel) -> Unit,
     onLoadNextPage: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val listState = rememberLazyListState()
-    val visibleChannels = state.channels.filter { channel ->
-        searchQuery.isBlank() || channel.name.contains(searchQuery, ignoreCase = true)
-    }
-    val focusChannelId = state.selectedChannelId
-        ?.takeIf { selectedId -> visibleChannels.any { it.streamId == selectedId } }
-        ?: state.focusedChannelId?.takeIf { focusedId -> visibleChannels.any { it.streamId == focusedId } }
-        ?: visibleChannels.firstOrNull()?.streamId
     LaunchedEffect(focusChannelId, state.channelsLoading, visibleChannels.size) {
         if (!state.channelsLoading && focusChannelId != null) {
             visibleChannels.indexOfFirst { it.streamId == focusChannelId }
                 .takeIf { it >= 0 }
-                ?.let { index -> listState.animateScrollToItem((index - 2).coerceAtLeast(0)) }
-            withFrameNanos { }
-            delay(80)
-            runCatching { firstChannelFocusRequester.requestFocus() }
+                ?.let { index -> listState.scrollToItem((index - 2).coerceAtLeast(0)) }
         }
     }
     LaunchedEffect(listState, visibleChannels.size, state.hasMoreItems, state.nextPageLoading, searchQuery) {
@@ -563,7 +679,22 @@ private fun ChannelList(
                 placeholder = strings.liveTvSearchPlaceholder,
                 modifier = Modifier
                     .width(190.dp)
-                    .focusProperties { up = headerFocusRequester },
+                    .focusRequester(searchFocusRequester)
+                    .focusProperties { up = headerFocusRequester }
+                    .onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                        when (event.key) {
+                            Key.DirectionDown -> {
+                                onRestoreChannelFocus()
+                                true
+                            }
+                            Key.DirectionUp -> {
+                                onRestoreHeaderFocus()
+                                true
+                            }
+                            else -> false
+                        }
+                    },
             )
         },
     ) {
@@ -597,10 +728,13 @@ private fun ChannelList(
                         channel = channel.copy(number = (index + 1).toString().padStart(3, '0')),
                         selected = channel.streamId == state.selectedChannel?.streamId,
                         focusRequester = firstChannelFocusRequester.takeIf { channel.streamId == focusChannelId },
-                        leftFocusRequester = selectedCategoryFocusRequester,
+                        onLeft = onRestoreCategoryFocus,
                         rightFocusRequester = previewActionFocusRequester,
-                        upFocusRequester = headerFocusRequester.takeIf { index == 0 },
-                        onFocused = { onChannelFocused(channel) },
+                        onUp = onRestoreSearchFocus.takeIf { index == 0 },
+                        onFocused = {
+                            onChannelFocused(channel)
+                            onChannelFocusObserved(channel)
+                        },
                         onClick = { onChannelClick(channel) },
                     )
                 }
@@ -639,8 +773,10 @@ private fun PreviewPanel(
     monetizationManager: MonetizationManager,
     firstActionFocusRequester: FocusRequester,
     epgDetailsFocusRequester: FocusRequester,
-    selectedChannelFocusRequester: FocusRequester,
     headerFocusRequester: FocusRequester,
+    onRestoreChannelFocus: () -> Unit,
+    onPreviewFocused: () -> Unit,
+    onEpgFocused: () -> Unit,
     onWatch: () -> Unit,
     onFavorite: () -> Unit,
     onDeleteHistory: () -> Unit,
@@ -662,8 +798,9 @@ private fun PreviewPanel(
                         primary = true,
                         focusRequester = firstActionFocusRequester,
                         downFocusRequester = epgDetailsFocusRequester.takeIf { channel.epgPrograms.isNotEmpty() },
-                        leftFocusRequester = selectedChannelFocusRequester,
+                        onLeft = onRestoreChannelFocus,
                         upFocusRequester = headerFocusRequester,
+                        onFocused = onPreviewFocused,
                     )
                     PreviewIconButton(
                         contentDescription = if (channel.isFavorite) strings.liveTvRemoveFavorite else strings.liveTvFavorite,
@@ -671,8 +808,9 @@ private fun PreviewPanel(
                         icon = if (channel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         selected = channel.isFavorite,
                         downFocusRequester = epgDetailsFocusRequester.takeIf { channel.epgPrograms.isNotEmpty() },
-                        leftFocusRequester = selectedChannelFocusRequester,
+                        onLeft = onRestoreChannelFocus,
                         upFocusRequester = headerFocusRequester,
+                        onFocused = onPreviewFocused,
                     )
                     if (showHistoryDelete) {
                         PreviewIconButton(
@@ -681,8 +819,9 @@ private fun PreviewPanel(
                             icon = Icons.Default.Delete,
                             danger = true,
                             downFocusRequester = epgDetailsFocusRequester.takeIf { channel.epgPrograms.isNotEmpty() },
-                            leftFocusRequester = selectedChannelFocusRequester,
+                            onLeft = onRestoreChannelFocus,
                             upFocusRequester = headerFocusRequester,
+                            onFocused = onPreviewFocused,
                         )
                     }
                 }
@@ -730,8 +869,9 @@ private fun PreviewPanel(
                 strings = strings,
                 categoryLabel = selectedCategoryLabel.orEmpty(),
                 focusRequester = epgDetailsFocusRequester,
-                leftFocusRequester = selectedChannelFocusRequester,
+                onRestoreChannelFocus = onRestoreChannelFocus,
                 upFocusRequester = headerFocusRequester,
+                onFocused = onEpgFocused,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -1113,8 +1253,9 @@ private fun PreviewIconButton(
     danger: Boolean = false,
     focusRequester: FocusRequester? = null,
     downFocusRequester: FocusRequester? = null,
-    leftFocusRequester: FocusRequester? = null,
+    onLeft: (() -> Unit)? = null,
     upFocusRequester: FocusRequester? = null,
+    onFocused: (() -> Unit)? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -1150,16 +1291,23 @@ private fun PreviewIconButton(
         modifier = modifier
             .size(34.dp)
             .then(
-                if (downFocusRequester != null || leftFocusRequester != null || upFocusRequester != null) {
+                if (downFocusRequester != null || upFocusRequester != null) {
                     Modifier.focusProperties {
                         if (downFocusRequester != null) down = downFocusRequester
-                        if (leftFocusRequester != null) left = leftFocusRequester
                         if (upFocusRequester != null) up = upFocusRequester
                     }
                 } else {
                     Modifier
                 },
             )
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft && onLeft != null) {
+                    onLeft()
+                    true
+                } else {
+                    false
+                }
+            }
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -1169,6 +1317,11 @@ private fun PreviewIconButton(
                 cornerRadius = 6.dp,
             )
             .zIndex(if (focusState.isFocused) 2f else 0f)
+            .onFocusChanged { focus ->
+                if (focus.isFocused) {
+                    onFocused?.invoke()
+                }
+            }
             .clip(shape)
             .background(backgroundColor)
             .border(
@@ -1201,6 +1354,8 @@ private fun CategoryRow(
     selected: Boolean,
     focusRequester: FocusRequester?,
     upFocusRequester: FocusRequester?,
+    onFocused: () -> Unit,
+    onRight: () -> Unit,
     onClick: () -> Unit,
 ) {
     val focusState = rememberTvFocusState()
@@ -1230,6 +1385,14 @@ private fun CategoryRow(
                     Modifier
                 },
             )
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight) {
+                    onRight()
+                    true
+                } else {
+                    false
+                }
+            }
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -1239,6 +1402,11 @@ private fun CategoryRow(
                 cornerRadius = LiveTvDimens.ItemRadius,
             )
             .zIndex(if (focusState.isFocused) 2f else 0f)
+            .onFocusChanged { focus ->
+                if (focus.isFocused) {
+                    onFocused()
+                }
+            }
             .clip(shape)
             .background(
                 if (active) {
@@ -1327,9 +1495,9 @@ private fun ChannelRow(
     channel: LiveTvChannel,
     selected: Boolean,
     focusRequester: FocusRequester?,
-    leftFocusRequester: FocusRequester?,
+    onLeft: () -> Unit,
     rightFocusRequester: FocusRequester?,
-    upFocusRequester: FocusRequester?,
+    onUp: (() -> Unit)?,
     onFocused: () -> Unit,
     onClick: () -> Unit,
 ) {
@@ -1365,24 +1533,27 @@ private fun ChannelRow(
                     if (rightFocusRequester != null) {
                         Modifier.focusProperties {
                             right = rightFocusRequester
-                            if (upFocusRequester != null) {
-                                up = upFocusRequester
-                            }
-                        }
-                    } else if (upFocusRequester != null) {
-                        Modifier.focusProperties {
-                            up = upFocusRequester
                         }
                     } else {
                         Modifier
                     },
                 )
                 .onPreviewKeyEvent { event ->
-                    if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft && leftFocusRequester != null) {
-                        runCatching { leftFocusRequester.requestFocus() }
-                        true
-                    } else {
-                        false
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when (event.key) {
+                        Key.DirectionLeft -> {
+                            onLeft()
+                            true
+                        }
+                        Key.DirectionUp -> {
+                            if (onUp != null) {
+                                onUp()
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        else -> false
                     }
                 }
                 .tvFocusTarget(
@@ -1463,7 +1634,7 @@ private fun ChannelRow(
                     Text(
                         text = channel.program,
                         color = SmartVisionColors.TextSecondary,
-                        style = LiveTvItemMetaStyle,
+                        style = LiveTvChannelSubtitleStyle,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1483,28 +1654,20 @@ private fun EpgAvailabilityBadge() {
         painter = painterResource(R.drawable.ic_epg_premium),
         contentDescription = null,
         contentScale = ContentScale.Fit,
-        modifier = Modifier.size(width = 20.dp, height = 17.dp),
+        modifier = Modifier.size(width = 24.dp, height = 20.dp),
     )
 }
 
 @Composable
 private fun EpgHeaderIndicator() {
-    Box(
+    Image(
+        painter = painterResource(R.drawable.ic_epg_premium),
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
         modifier = Modifier
-            .size(34.dp)
-            .focusProperties { canFocus = false }
-            .clip(RoundedCornerShape(6.dp))
-            .background(Color(0xA80A1B35))
-            .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.72f)), RoundedCornerShape(6.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Image(
-            painter = painterResource(R.drawable.ic_epg_premium),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier.size(width = 28.dp, height = 24.dp),
-        )
-    }
+            .size(width = 52.dp, height = 34.dp)
+            .focusProperties { canFocus = false },
+    )
 }
 
 @Composable
@@ -1653,8 +1816,9 @@ private fun EpgProgramList(
     strings: SmartVisionStrings,
     categoryLabel: String,
     focusRequester: FocusRequester,
-    leftFocusRequester: FocusRequester,
+    onRestoreChannelFocus: () -> Unit,
     upFocusRequester: FocusRequester,
+    onFocused: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val programs = channel.epgPrograms
@@ -1678,8 +1842,9 @@ private fun EpgProgramList(
                 program = program,
                 expanded = expandedIndex == index,
                 focusRequester = focusRequester.takeIf { index == 0 },
-                leftFocusRequester = leftFocusRequester,
+                onLeft = onRestoreChannelFocus,
                 upFocusRequester = upFocusRequester.takeIf { index == 0 },
+                onFocused = onFocused,
                 onClick = {
                     expandedIndex = if (expandedIndex == index) -1 else index
                 },
@@ -1695,7 +1860,6 @@ private fun ChannelAboutPanel(
     categoryLabel: String,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(7.dp)
     val country = remember(channel.name, categoryLabel) {
         detectLiveChannelCountry(channel.name, categoryLabel)
     }
@@ -1703,33 +1867,9 @@ private fun ChannelAboutPanel(
         modifier = modifier
             .fillMaxWidth()
             .focusProperties { canFocus = false }
-            .clip(shape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xB40B2344),
-                        Color(0xD0051124),
-                    ),
-                ),
-            )
-            .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.58f)), shape)
-            .padding(horizontal = 10.dp, vertical = 9.dp),
+            .padding(top = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(LiveTvDimens.ListGap),
     ) {
-        Text(
-            text = strings.liveTvAboutChannelTitle,
-            color = SmartVisionColors.TextPrimary,
-            style = LiveTvPanelTitleStyle,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 7.dp, bottom = 8.dp)
-                .height(1.dp)
-                .background(SmartVisionColors.Primary.copy(alpha = 0.45f)),
-        )
         AboutInfoRow(
             icon = AboutInfoIconKind.Channel,
             label = strings.liveTvAboutChannelName,
@@ -1799,18 +1939,24 @@ private fun AboutInfoRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 5.dp)
             .clip(shape)
-            .background(Color(0x61102542))
-            .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.28f)), shape)
-            .height(32.dp),
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        SmartVisionColors.SurfaceElevated.copy(alpha = 0.70f),
+                        SmartVisionColors.Surface.copy(alpha = 0.52f),
+                    ),
+                ),
+            )
+            .border(BorderStroke(1.dp, SmartVisionColors.Border), shape)
+            .height(34.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
                 .fillMaxHeight()
                 .width(38.dp)
-                .background(Color(0x65113B76)),
+                .background(SmartVisionColors.PrimaryDark.copy(alpha = 0.42f)),
             contentAlignment = Alignment.Center,
         ) {
             AboutInfoIcon(icon)
@@ -1974,8 +2120,9 @@ private fun EpgProgramRow(
     program: LiveTvProgram,
     expanded: Boolean,
     focusRequester: FocusRequester?,
-    leftFocusRequester: FocusRequester,
+    onLeft: () -> Unit,
     upFocusRequester: FocusRequester?,
+    onFocused: () -> Unit,
     onClick: () -> Unit,
 ) {
     val focusState = rememberTvFocusState()
@@ -1991,9 +2138,16 @@ private fun EpgProgramRow(
         modifier = Modifier
             .fillMaxWidth()
             .focusProperties {
-                left = leftFocusRequester
                 if (upFocusRequester != null) {
                     up = upFocusRequester
+                }
+            }
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft) {
+                    onLeft()
+                    true
+                } else {
+                    false
                 }
             }
             .tvFocusTarget(
@@ -2005,6 +2159,11 @@ private fun EpgProgramRow(
                 cornerRadius = 5.dp,
             )
             .zIndex(if (focusState.isFocused) 2f else 0f)
+            .onFocusChanged { focus ->
+                if (focus.isFocused) {
+                    onFocused()
+                }
+            }
             .clip(RoundedCornerShape(5.dp))
             .border(
                 BorderStroke(
@@ -2639,6 +2798,16 @@ private fun LiveTvPanel(
 }
 
 private const val LiveTvNextPageThreshold = 12
+
+private suspend fun LazyListState.awaitVisibleItem(index: Int): Boolean {
+    repeat(8) {
+        if (layoutInfo.visibleItemsInfo.any { item -> item.index == index }) {
+            return true
+        }
+        withFrameNanos { }
+    }
+    return layoutInfo.visibleItemsInfo.any { item -> item.index == index }
+}
 
 private object LiveTvDimens {
     val ScreenPadding = 14.dp

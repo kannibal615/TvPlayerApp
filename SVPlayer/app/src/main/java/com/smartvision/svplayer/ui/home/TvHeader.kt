@@ -44,6 +44,11 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -91,6 +96,7 @@ fun TvHeader(
     modifier: Modifier = Modifier,
     currentTabFocusRequester: FocusRequester? = null,
     contentDownFocusRequester: FocusRequester? = null,
+    onContentDown: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier.height(SmartVisionDimensions.HomeHeaderHeight),
@@ -112,6 +118,7 @@ fun TvHeader(
                     horizontalPadding = 6.dp,
                     focusRequester = currentTabFocusRequester.takeIf { tab.route == currentRoute },
                     downFocusRequester = contentDownFocusRequester,
+                    onDown = onContentDown,
                 )
             }
         }
@@ -124,6 +131,7 @@ fun TvHeader(
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
             downFocusRequester = contentDownFocusRequester,
+            onDown = onContentDown,
         )
     }
 }
@@ -139,6 +147,7 @@ fun HeaderControls(
     notificationBadgeCount: Int,
     modifier: Modifier = Modifier,
     downFocusRequester: FocusRequester? = null,
+    onDown: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier,
@@ -152,6 +161,7 @@ fun HeaderControls(
             onClick = onLicenseKey,
             accent = SmartVisionColors.Warning,
             downFocusRequester = downFocusRequester,
+            onDown = onDown,
         )
         }
         HeaderIconButton(
@@ -161,18 +171,21 @@ fun HeaderControls(
         showBadge = hasNewNotifications,
         badgeCount = notificationBadgeCount,
         downFocusRequester = downFocusRequester,
+        onDown = onDown,
     )
         HeaderIconButton(
             icon = Icons.Default.Person,
         contentDescription = "Profil",
         onClick = onProfile,
         downFocusRequester = downFocusRequester,
+        onDown = onDown,
     )
         HeaderIconButton(
             icon = Icons.Default.Settings,
         contentDescription = "Parametres",
         onClick = onSettings,
         downFocusRequester = downFocusRequester,
+        onDown = onDown,
     )
         HeaderDateTime()
     }
@@ -187,6 +200,7 @@ private fun HeaderIconButton(
     showBadge: Boolean = false,
     badgeCount: Int = 0,
     downFocusRequester: FocusRequester? = null,
+    onDown: (() -> Unit)? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -205,6 +219,14 @@ private fun HeaderIconButton(
                         Modifier
                     },
                 )
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown && onDown != null) {
+                        onDown()
+                        true
+                    } else {
+                        false
+                    }
+                }
                 .tvFocusTarget(
                     state = focusState,
                     pressed = pressed,
@@ -336,6 +358,7 @@ fun HeaderTabButton(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
     downFocusRequester: FocusRequester? = null,
+    onDown: (() -> Unit)? = null,
 ) {
     Box(
         modifier = modifier
@@ -379,6 +402,14 @@ fun HeaderTabButton(
                         Modifier
                     },
                 )
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown && onDown != null) {
+                        onDown()
+                        true
+                    } else {
+                        false
+                    }
+                }
                 .alpha(if (tab.locked || tab.warning) 0.42f else 1f),
             focusRequester = focusRequester,
         )

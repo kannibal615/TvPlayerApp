@@ -19,6 +19,7 @@ import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -116,6 +117,8 @@ class LiveTvViewModel(
     private var playerSettings = PlayerSettings()
     private var localCategories: List<Category> = emptyList()
     private var pendingHistoryFocusAfterDelete: Int? = null
+    private var userSelectedCategory = false
+    private var autoSelectedCategoryId: String? = null
 
     init {
         observeSettings()
@@ -134,14 +137,14 @@ class LiveTvViewModel(
         viewModelScope.launch {
             _uiState.value = LiveTvUiState(categoriesLoading = true)
             var initialApplied = false
-            runCatching { catalogRepository.getInitialLiveCategoriesSnapshot(InitialCategoryLimit) }
+            runCatchingNonCancellation { catalogRepository.getInitialLiveCategoriesSnapshot(InitialCategoryLimit) }
                 .onSuccess { categories ->
                     if (categories.isNotEmpty()) {
                         initialApplied = true
                         applyCategories(categories)
                     }
                 }
-            runCatching { catalogRepository.getLiveCategoriesSnapshot() }
+            runCatchingNonCancellation { catalogRepository.getLiveCategoriesSnapshot() }
                 .onSuccess { categories -> applyCategories(categories) }
                 .onFailure { error ->
                     if (!initialApplied) {
@@ -166,6 +169,7 @@ class LiveTvViewModel(
             return
         }
 
+        val previousSelectedCategoryId = _uiState.value.selectedCategoryId
         _uiState.update {
             val visibleCategories = categories.withSpecialCategories(
                 allCount = catalogTotalCount(),
@@ -174,10 +178,13 @@ class LiveTvViewModel(
                 historySignals = historyCategorySignals,
             )
             val existingSelection = it.selectedCategoryId
-                ?.takeIf { selectedId -> visibleCategories.any { category -> category.id == selectedId } }
+                ?.takeIf { selectedId -> userSelectedCategory && visibleCategories.any { category -> category.id == selectedId } }
             val initialCategory = existingSelection
                 ?.let { selectedId -> visibleCategories.firstOrNull { category -> category.id == selectedId } }
                 ?: visibleCategories.initialCategoryAfterHistory()
+            if (!userSelectedCategory) {
+                autoSelectedCategoryId = initialCategory?.id
+            }
             it.copy(
                 categoriesLoading = false,
                 errorMessage = null,
@@ -186,8 +193,9 @@ class LiveTvViewModel(
             )
         }
         val state = _uiState.value
-        if (state.channels.isEmpty() && !state.channelsLoading) {
-            state.selectedCategory?.let { category -> selectCategory(category) }
+        val selectedCategoryChanged = state.selectedCategoryId != previousSelectedCategoryId
+        if (selectedCategoryChanged || (state.channels.isEmpty() && !state.channelsLoading)) {
+            state.selectedCategory?.let { category -> selectCategory(category, userInitiated = false) }
         }
     }
 
@@ -222,7 +230,16 @@ class LiveTvViewModel(
         }
     }
 
-    fun selectCategory(category: LiveTvCategory, autoPreviewFirstChannel: Boolean = false) {
+    fun selectCategory(
+        category: LiveTvCategory,
+        autoPreviewFirstChannel: Boolean = false,
+        userInitiated: Boolean = true,
+    ) {
+        if (userInitiated) {
+            userSelectedCategory = true
+        } else {
+            autoSelectedCategoryId = category.id
+        }
         val current = _uiState.value
         if (current.selectedCategoryId == category.id && (current.channels.isNotEmpty() || current.channelsLoading)) {
             return
@@ -374,6 +391,7 @@ class LiveTvViewModel(
                             ?.takeIf { selectedId -> refreshedChannels.any { it.streamId == selectedId } },
                     )
                 }
+                refreshAutomaticInitialSelectionIfNeeded()
             }
         }
     }
@@ -416,7 +434,17 @@ class LiveTvViewModel(
                         selectedChannelId = selectedHistoryId,
                     )
                 }
+                refreshAutomaticInitialSelectionIfNeeded()
             }
+        }
+    }
+
+    private fun refreshAutomaticInitialSelectionIfNeeded() {
+        if (userSelectedCategory) return
+        val state = _uiState.value
+        val target = state.categories.initialCategoryAfterHistory() ?: return
+        if (target.id != state.selectedCategoryId) {
+            selectCategory(target, userInitiated = false)
         }
     }
 
@@ -592,7 +620,7 @@ class LiveTvViewModel(
                 )
             }
 
-            runCatching {
+            runCatchingNonCancellation {
                 val page = if (categoryId == null) {
                     catalogRepository.getAllLiveChannelsPage(startOffset, LiveItemsPageSize)
                 } else {
@@ -701,11 +729,20 @@ private fun List<LiveTvCategory>.withSpecialCategories(
 private fun List<LiveTvCategory>.initialCategoryAfterHistory(): LiveTvCategory? {
     val historyIndex = indexOfFirst { it.id == HistoryLiveCategoryId }
     return if (historyIndex >= 0) {
-        drop(historyIndex + 1).firstOrNull() ?: firstOrNull()
+        drop(historyIndex + 1).firstOrNull() ?: getOrNull(historyIndex)
     } else {
         firstOrNull()
     }
 }
+
+private suspend fun <T> runCatchingNonCancellation(block: suspend () -> T): Result<T> =
+    try {
+        Result.success(block())
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Throwable) {
+        Result.failure(error)
+    }
 
 private fun Category.toUiCategory(): LiveTvCategory =
     LiveTvCategory(
