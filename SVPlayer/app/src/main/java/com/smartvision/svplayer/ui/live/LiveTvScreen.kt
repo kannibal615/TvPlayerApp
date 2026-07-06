@@ -250,7 +250,6 @@ fun LiveTvScreen(
     var channelFocusTargetId by remember { mutableStateOf<Int?>(null) }
     var inputReady by remember { mutableStateOf(false) }
     var minimumLoadingComplete by remember { mutableStateOf(false) }
-    var contentSearchQuery by remember { mutableStateOf("") }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
     var tvCode by remember { mutableStateOf("") }
     var channelToDelete by remember { mutableStateOf<LiveTvChannel?>(null) }
@@ -301,11 +300,7 @@ fun LiveTvScreen(
         }
     }
 
-    val visibleChannels = remember(state.channels, contentSearchQuery) {
-        state.channels.filter { channel ->
-            contentSearchQuery.isBlank() || channel.name.contains(contentSearchQuery, ignoreCase = true)
-        }
-    }
+    val visibleChannels = state.channels
 
     fun restoreHeaderFocus() {
         focusScope.launch {
@@ -445,12 +440,17 @@ fun LiveTvScreen(
                         ?: state.selectedCategoryId
                         ?: state.categories.firstOrNull()?.id,
                     headerFocusRequester = headerLiveFocusRequester,
-                    contentSearchQuery = contentSearchQuery,
                     onFocused = { category ->
                         currentFocusZone = LiveTvFocusZone.Categories
                         lastFocusedCategoryId = category.id
                     },
-                    onRestoreChannelFocus = ::restoreChannelFocus,
+                    onRestoreChannelFocus = {
+                        if (visibleChannels.isEmpty()) {
+                            restoreSearchFocus()
+                        } else {
+                            restoreChannelFocus()
+                        }
+                    },
                     onCategory = { category ->
                         if (inputReady) {
                             viewModel.selectCategory(
@@ -477,8 +477,8 @@ fun LiveTvScreen(
                         ?: state.focusedChannelId?.takeIf { focusedId -> visibleChannels.any { it.streamId == focusedId } }
                         ?: visibleChannels.firstOrNull()?.streamId,
                     headerFocusRequester = headerLiveFocusRequester,
-                    searchQuery = contentSearchQuery,
-                    onSearchQueryChange = { contentSearchQuery = it },
+                    searchQuery = state.channelSearchQuery,
+                    onSearchQueryChange = viewModel::updateChannelSearchQuery,
                     previewActionFocusRequester = firstPreviewActionFocusRequester.takeIf {
                         state.selectedChannel != null
                     },
@@ -582,7 +582,6 @@ private fun CategoryList(
     listState: LazyListState,
     focusCategoryId: String?,
     headerFocusRequester: FocusRequester,
-    contentSearchQuery: String,
     onFocused: (LiveTvCategory) -> Unit,
     onRestoreChannelFocus: () -> Unit,
     onCategory: (LiveTvCategory) -> Unit,
@@ -660,7 +659,6 @@ private fun ChannelList(
         }
     }
     LaunchedEffect(listState, visibleChannels.size, state.hasMoreItems, state.nextPageLoading, searchQuery) {
-        if (searchQuery.isNotBlank()) return@LaunchedEffect
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
             .collect { lastVisibleIndex ->
                 val remaining = visibleChannels.lastIndex - lastVisibleIndex

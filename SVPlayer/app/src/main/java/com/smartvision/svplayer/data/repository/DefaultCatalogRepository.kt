@@ -264,6 +264,25 @@ class DefaultCatalogRepository(
             )
         }
 
+    override suspend fun searchLiveChannelsPage(categoryId: String?, query: String, offset: Int, limit: Int): List<LiveChannel> =
+        withContext(Dispatchers.IO) {
+            if (!isLiveCatalogConfigured()) return@withContext emptyList()
+            val cleanQuery = query.trim()
+            if (cleanQuery.isBlank()) return@withContext getLiveChannelsPage(categoryId, offset, limit)
+            val safeLimit = limit.coerceIn(1, CatalogPageMaxLimit)
+            val safeOffset = offset.coerceAtLeast(0)
+            val pattern = cleanQuery.toSqlLikeContainsPattern()
+            val categoryNames = categoryDao.getByType(MediaSection.Live.storageName).associate { it.id to it.name }
+            val imageBaseHost = imageBaseHost()
+            val streams = categoryId
+                ?.takeIf { it.isNotBlank() }
+                ?.let { mediaDao.searchLiveStreamsByCategoryPage(it, pattern, safeLimit, safeOffset) }
+                ?: mediaDao.searchLiveStreamsPage(pattern, safeLimit, safeOffset)
+            streams.map { stream ->
+                stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository)
+            }
+        }
+
     override suspend fun getLiveChannelById(streamId: Int): LiveChannel? =
         withContext(Dispatchers.IO) {
             if (!isLiveCatalogConfigured()) return@withContext null
@@ -1206,6 +1225,21 @@ private fun logSyncMemory(
 }
 
 private fun Long.toMiB(): Long = this / (1024L * 1024L)
+
+private fun String.toSqlLikeContainsPattern(): String =
+    buildString {
+        append('%')
+        this@toSqlLikeContainsPattern.forEach { char ->
+            when (char) {
+                '\\', '%', '_' -> {
+                    append('\\')
+                    append(char)
+                }
+                else -> append(char)
+            }
+        }
+        append('%')
+    }
 
 private const val SyncInsertBatchSize = 500
 private const val CatalogPageMaxLimit = 500

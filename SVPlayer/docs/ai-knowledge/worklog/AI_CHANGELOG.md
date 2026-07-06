@@ -1,5 +1,23 @@
 # AI Changelog
 
+## 2026-07-06 - Recherche Live TV Room et focus liste vide
+
+Type:
+- android
+- live-tv
+- room
+- focus
+- documentation
+
+Resume:
+- La recherche des chaines Live TV est deplacee dans `LiveTvViewModel` et interroge Room par pages pour `ALL` et les categories normales.
+- Le filtre local de `LiveTvScreen` sur les seules chaines deja chargees est supprime; la pagination des resultats de recherche reste active.
+- `Favoris` et `Historique` conservent un filtre local sur leurs listes deja chargees.
+- D-pad droite depuis les categories cible le champ recherche quand la liste chaines est vide.
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin`: OK.
+
 ## 2026-07-06 - Live TV focus deterministe et categorie initiale corrigee
 
 Type:

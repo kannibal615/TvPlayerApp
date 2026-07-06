@@ -39,6 +39,12 @@ interface MediaDao {
     @Query("SELECT * FROM live_streams WHERE categoryId = :categoryId ORDER BY number, name LIMIT :limit OFFSET :offset")
     suspend fun getLiveStreamsByCategoryPage(categoryId: String, limit: Int, offset: Int): List<LiveStreamEntity>
 
+    @Query("SELECT * FROM live_streams WHERE name LIKE :pattern ESCAPE '\\' ORDER BY number, name LIMIT :limit OFFSET :offset")
+    suspend fun searchLiveStreamsPage(pattern: String, limit: Int, offset: Int): List<LiveStreamEntity>
+
+    @Query("SELECT * FROM live_streams WHERE categoryId = :categoryId AND name LIKE :pattern ESCAPE '\\' ORDER BY number, name LIMIT :limit OFFSET :offset")
+    suspend fun searchLiveStreamsByCategoryPage(categoryId: String, pattern: String, limit: Int, offset: Int): List<LiveStreamEntity>
+
     @Query("SELECT * FROM live_streams WHERE streamId IN (:streamIds)")
     suspend fun getLiveStreamsByIds(streamIds: List<Int>): List<LiveStreamEntity>
 

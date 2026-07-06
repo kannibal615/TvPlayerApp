@@ -55,6 +55,7 @@ interface CatalogRepository {
     suspend fun getMovieCatalogSnapshot(): LocalCatalogSnapshot<Movie>
     suspend fun getSeriesCatalogSnapshot(): LocalCatalogSnapshot<TvSeries>
     suspend fun getLiveChannelsPage(categoryId: String?, offset: Int, limit: Int): List<LiveChannel>
+    suspend fun searchLiveChannelsPage(categoryId: String?, query: String, offset: Int, limit: Int): List<LiveChannel>
     suspend fun getLiveChannelById(streamId: Int): LiveChannel?
     suspend fun getPreviousLiveChannel(streamId: Int): LiveChannel?
     suspend fun getNextLiveChannel(streamId: Int): LiveChannel?

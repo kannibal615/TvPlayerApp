@@ -84,6 +84,7 @@ data class LiveTvUiState(
     val categories: List<LiveTvCategory> = emptyList(),
     val selectedCategoryId: String? = null,
     val channels: List<LiveTvChannel> = emptyList(),
+    val channelSearchQuery: String = "",
     val focusedChannelId: Int? = null,
     val selectedChannelId: Int? = null,
 ) {
@@ -265,6 +266,19 @@ class LiveTvViewModel(
         }
     }
 
+    fun updateChannelSearchQuery(query: String) {
+        val current = _uiState.value
+        if (current.channelSearchQuery == query) return
+        _uiState.update { state ->
+            state.copy(
+                channelSearchQuery = query,
+                focusedChannelId = null,
+                selectedChannelId = null,
+            )
+        }
+        reloadCurrentChannelList()
+    }
+
     fun activateChannel(channel: LiveTvChannel): Boolean {
         val shouldOpenFullPlayer = _uiState.value.selectedChannelId == channel.streamId
         startPreview(channel)
@@ -337,6 +351,10 @@ class LiveTvViewModel(
     }
 
     fun retryCurrentCategory() {
+        reloadCurrentChannelList()
+    }
+
+    private fun reloadCurrentChannelList() {
         val categoryId = _uiState.value.selectedCategoryId
         if (categoryId == null) {
             loadCategories()
@@ -451,7 +469,8 @@ class LiveTvViewModel(
     private fun loadFavoriteChannels(autoPreviewFirstChannel: Boolean = false) {
         channelsJob?.cancel()
         channelsJob = viewModelScope.launch {
-            val channels = favoriteChannels()
+            val allChannels = favoriteChannels()
+            val channels = allChannels.filterBySearch(_uiState.value.channelSearchQuery)
             _uiState.update { state ->
                 state.copy(
                     itemsLoading = false,
@@ -478,7 +497,8 @@ class LiveTvViewModel(
     private fun loadHistoryChannels(autoPreviewFirstChannel: Boolean = false) {
         channelsJob?.cancel()
         channelsJob = viewModelScope.launch {
-            val channels = historyChannels()
+            val allChannels = historyChannels()
+            val channels = allChannels.filterBySearch(_uiState.value.channelSearchQuery)
             _uiState.update { state ->
                 state.copy(
                     channelsLoading = false,
@@ -491,7 +511,7 @@ class LiveTvViewModel(
                     categories = state.categories.withSpecialCategories(
                         allCount = catalogTotalCount(),
                         favoriteCount = favoriteIds.size,
-                        historyCount = channels.size,
+                        historyCount = allChannels.size,
                         historySignals = historyCategorySignals,
                     ),
                     channels = channels,
@@ -621,7 +641,10 @@ class LiveTvViewModel(
             }
 
             runCatchingNonCancellation {
-                val page = if (categoryId == null) {
+                val searchQuery = _uiState.value.channelSearchQuery.trim()
+                val page = if (searchQuery.isNotBlank()) {
+                    catalogRepository.searchLiveChannelsPage(categoryId, searchQuery, startOffset, LiveItemsPageSize)
+                } else if (categoryId == null) {
                     catalogRepository.getAllLiveChannelsPage(startOffset, LiveItemsPageSize)
                 } else {
                     catalogRepository.getLiveChannelsPage(categoryId, startOffset, LiveItemsPageSize)
@@ -688,6 +711,12 @@ private data class PageLoadResult<T>(
     val items: List<T>,
     val rawPageSize: Int,
 )
+
+private fun List<LiveTvChannel>.filterBySearch(query: String): List<LiveTvChannel> {
+    val cleanQuery = query.trim()
+    if (cleanQuery.isBlank()) return this
+    return filter { channel -> channel.name.contains(cleanQuery, ignoreCase = true) }
+}
 
 private const val LiveItemsPageSize = 96
 private const val EpgCategoryScanPageSize = 500

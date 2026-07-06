@@ -53,6 +53,8 @@ Depuis le 2026-07-06, l'ouverture Live TV garde le layout reel en skeleton shimm
 
 Depuis le 2026-07-06, Live TV corrige la selection automatique initiale quand un snapshot partiel precede la liste complete: tant que l'utilisateur n'a pas choisi manuellement de dossier, le ViewModel recalcule le premier dossier reel apres `Historique` dans l'ordre visuel final incluant `sortedByHistorySignals(...)`, puis annule/recharge le job chaines si la cible change. Les annulations normales de `channelsJob` ne sont plus converties en erreur visible `standaloneCoroutine was cancelled`. L'icone EPG utilise maintenant l'image fournie `epg a mettre.png` copiee telle quelle dans `ic_epg_premium.png`; les lignes sans EPG sous le mini-player perdent le titre/cadre/fond externe et s'integrent au style des lignes chaines.
 
+Depuis le 2026-07-06, la recherche Live TV est pilotee par `LiveTvViewModel` et interroge Room par pages au lieu de filtrer uniquement les chaines deja chargees en memoire. `ALL` recherche dans tout `live_streams`, les categories normales recherchent dans leur `categoryId`, et `Favoris` / `Historique` gardent un filtre local sur leurs listes deja materialisees. La pagination reste a `96` elements et les annulations normales de recherche ne doivent pas devenir des erreurs visibles.
+
 ## 3. Workflow utilisateur
 
 - Live TV: categories a gauche, chaines, apercu/mini player; OK lance l'apercu, OK sur la meme chaine ouvre le plein ecran.
