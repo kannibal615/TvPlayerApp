@@ -51,6 +51,7 @@ Attention:
 - Sur Home, les cibles D-pad doivent tenir compte des lignes réellement visibles. Si Continue watching ou une ligne Trending est vide, ne pas consommer Haut/Bas vers un `FocusRequester` absent.
 - Les logs diagnostics Home focus utilisent le tag `SVHomeFocus`; les logs du handoff splash/MainActivity utilisent `SVStartup`.
 - `MainActivity.dispatchKeyEvent()` absorbe par securite le crash Compose `FocusRequester is not initialized` pendant une recherche D-pad, mais cette protection ne doit pas remplacer un routage de focus propre.
+- Depuis le 2026-07-06, `MainActivity.dispatchKeyEvent()` intercepte uniquement `KEYCODE_SETTINGS`, `KEYCODE_MENU` et `KEYCODE_MEDIA_TOP_MENU`: `ACTION_DOWN` est consomme sans action, `ACTION_UP` demande l'ouverture de Settings via `RemoteSettingsNavigation`, puis toutes les autres touches retournent a `super.dispatchKeyEvent(event)`.
 - Les handlers D-pad doivent tenir compte des surfaces visibles.
 - Le popup manuel Info compte > Synchroniser bloque Back/D-pad uniquement pendant `SyncStatus.Running`; a la fin ou en erreur, le focus va sur `Retour`.
 - Depuis le 2026-07-05, dans Live TV, D-pad gauche depuis une chaine revient explicitement vers le dossier ouvert/selectionne avec `runCatching` pour proteger les `FocusRequester`. La liste chaines ancre le focus autour de la 3e ligne via `LazyListState.animateScrollToItem(index - 2)` quand possible, avec marge haute pour eviter le clipping.
@@ -127,6 +128,7 @@ Backend indirect:
 - Ne pas hardcoder un focus cyan si un style global existe.
 - Ne pas auto-focus un bouton qui doit rester accessible par scroll D-pad.
 - Ne pas changer l'ordre D-pad sans valider les surfaces adjacentes.
+- Ne pas etendre l'interception globale Settings/Menu aux touches D-pad, OK, Back ou media: ces touches doivent rester gerees par les ecrans/player ou par Android via `super.dispatchKeyEvent(event)`.
 - Les transitions entre une liste de categories et une liste/grille de contenus ne doivent pas pointer directement vers le premier item lazy via `focusProperties`; si l'item sort de composition, DPAD droite/gauche peut crasher.
 - Le texte doit rester lisible a distance TV.
 - Les boutons icones d'Info compte et de l'overlay player doivent rester focusables et conserver une cible D-pad suffisante meme si le rendu visuel est compact.

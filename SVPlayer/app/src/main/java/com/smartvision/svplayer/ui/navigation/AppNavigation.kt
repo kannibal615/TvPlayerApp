@@ -227,6 +227,13 @@ fun AppNavigation(
     LaunchedEffect(currentRoute) {
         container.anomalyReporter.setCurrentRoute(currentRoute)
     }
+    LaunchedEffect(currentRoute) {
+        RemoteSettingsNavigation.requests.collect {
+            if (currentRoute != AppRoute.Settings.route) {
+                navController.navigateSingleTop(AppRoute.Settings.route)
+            }
+        }
+    }
     LaunchedEffect(Unit) {
         container.xtreamConnectionManager.alertRequests.collect {
             if (container.xtreamConnectionManager.state.value.blocksCatalog) {

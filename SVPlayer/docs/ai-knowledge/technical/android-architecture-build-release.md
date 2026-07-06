@@ -18,8 +18,8 @@ Observabilite reseau:
 - Ne jamais exposer les query params, tokens, identifiants Xtream, mots de passe ou URLs de lecture dans ce tracker.
 
 Gradle local constate le 2026-07-06:
-- `versionCode = 106`
-- `versionName = "0.1.102"`
+- `versionCode = 107`
+- `versionName = "0.1.103"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -55,6 +55,7 @@ Points d'entree:
 - `MainActivity.kt`
 - `SVPlayerApplication.kt`
 - `AppNavigation.kt`
+- `RemoteSettingsNavigation.kt` pour relayer les touches globales Settings/Menu vers la navigation Compose.
 - `AppContainer.kt`
 - `data/network/NetworkActivityTracker.kt`
 
@@ -162,6 +163,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-06: release locale `0.1.103` / `versionCode 107` construite avec `:app:assembleRelease` pour raccourcis telecommande Settings/Menu globaux. `MainActivity.dispatchKeyEvent()` intercepte uniquement `KEYCODE_SETTINGS`, `KEYCODE_MENU` et `KEYCODE_MEDIA_TOP_MENU`, consomme `ACTION_DOWN`, ouvre Settings sur `ACTION_UP` via `RemoteSettingsNavigation` et `navigateSingleTop()`, puis laisse toutes les autres touches a `super.dispatchKeyEvent(event)`. APK local `app-release.apk`, SHA256 `B05B9994123874475B9EA0F25D52878425907FE388664E9E5C754567983F20E8`, taille `40759014`. Aucun deploiement prod effectue.
 - 2026-07-06: release publiee `0.1.102` / `versionCode 106` pour correction Live TV focus/categorie initiale/EPG: selection auto recalculee apres snapshot partiel et tri `sortedByHistorySignals(...)`, annulations `channelsJob` normales non affichees comme `standaloneCoroutine was cancelled`, restauration focus Lazy via `scrollToItem` + `visibleItemsInfo`, recherche entre chaines et header, icone EPG fournie copiee telle quelle, typographies reduites et panneau sans EPG integre aux lignes. APK `smartvision-tv-v106-73da2e18.apk`, SHA256 `73da2e187ea9d5043599608c8268a17d3c0b1af711bfb79cb43474d3bb1edd12`, taille `40759019`, manifeste public, `app_update.php`, APK stable et APK versionne verifies.
 - 2026-07-06: release publiee `0.1.101` / `versionCode 105` pour Live TV premium focus header et panneau sans EPG: skeleton 3 panneaux minimum 1 seconde, selection initiale hors `Historique`, focus header reusable vers onglet courant/categories, padding headers, categories compactes, noms chaines agrandis, icone EPG regeneree en PNG transparent avec halo neon, indicateur EPG non focusable dans le header Apercu, overlay mini-player plus glassmorphism, titres EPG agrandis et panneau `A propos de la chaine` sans EPG. APK `smartvision-tv-v105-34681073.apk`, SHA256 `34681073bcb47ad115d1f61afebf2af678ff359ed2d3bcf5fe7b52645496db7b`, taille `40399158`, manifeste public, `app_update.php`, APK stable et APK versionne verifies.
 - 2026-07-05: release publiee `0.1.100` / `versionCode 104` pour Live TV UI/focus/EPG: skeleton 3 panneaux, i18n Live TV, categories/chaines compactes, badge EPG image, logos sans fond, numerotation par dossier, suppression Historique dans le header Apercu, mini-player apercu avec overlay bas, lignes EPG focusables, refresh EPG stale-aware et Worker EPG horaire. Aucun filtre admin/API `###` ajoute. APK `smartvision-tv-v104-b7a7822d.apk`, SHA256 `b7a7822d4fab7dfa29e0b22468383cb23723b8c28be617be83cb932ad886f5df`, taille `40351582`, manifeste public, `app_update.php`, APK stable et APK versionne verifies.

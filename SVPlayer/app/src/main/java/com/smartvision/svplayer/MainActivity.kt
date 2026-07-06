@@ -52,6 +52,7 @@ import com.smartvision.svplayer.core.data.AppContainer
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
 import com.smartvision.svplayer.ui.navigation.AppNavigation
+import com.smartvision.svplayer.ui.navigation.RemoteSettingsNavigation
 import com.smartvision.svplayer.ui.theme.SmartVisionTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -94,8 +95,19 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
-        try {
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.isSettingsShortcut()) {
+            Log.d(
+                TAG_REMOTE_KEYS,
+                "keyCode=${event.keyCode} key=${KeyEvent.keyCodeToString(event.keyCode)} " +
+                    "action=${event.action} deviceId=${event.deviceId}",
+            )
+            if (event.action == KeyEvent.ACTION_UP) {
+                RemoteSettingsNavigation.requestOpenSettings()
+            }
+            return true
+        }
+        return try {
             super.dispatchKeyEvent(event)
         } catch (error: IllegalStateException) {
             if (error.message?.contains("FocusRequester is not initialized") == true) {
@@ -105,6 +117,12 @@ class MainActivity : ComponentActivity() {
                 throw error
             }
         }
+    }
+
+    private fun KeyEvent.isSettingsShortcut(): Boolean =
+        keyCode == KeyEvent.KEYCODE_SETTINGS ||
+            keyCode == KeyEvent.KEYCODE_MENU ||
+            keyCode == KeyEvent.KEYCODE_MEDIA_TOP_MENU
 
     private fun handleIntent(intent: Intent?) {
         if (intent?.action == ACTION_SHOW_XTREAM_CONNECTION_ALERT) {
@@ -353,6 +371,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "SmartVisionFocus"
         private const val TAG_STARTUP = "SVStartup"
+        private const val TAG_REMOTE_KEYS = "SVRemoteKeys"
         const val ACTION_SHOW_XTREAM_CONNECTION_ALERT = "com.smartvision.svplayer.SHOW_XTREAM_CONNECTION_ALERT"
         private const val REQUEST_NOTIFICATIONS = 7041
         private const val SplashProgressWidthRatio = 0.30f

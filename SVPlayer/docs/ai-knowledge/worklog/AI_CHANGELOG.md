@@ -1,5 +1,30 @@
 # AI Changelog
 
+## 2026-07-06 - Raccourcis telecommande Settings/Menu globaux
+
+Type:
+- android
+- ui-tv
+- remote-control
+- settings
+- release-local
+- documentation
+
+Resume:
+- `MainActivity.dispatchKeyEvent()` intercepte uniquement `KEYCODE_SETTINGS`, `KEYCODE_MENU` et `KEYCODE_MEDIA_TOP_MENU`.
+- `ACTION_DOWN` est consomme sans action; `ACTION_UP` emet une demande d'ouverture Settings.
+- `AppNavigation` collecte cette demande via `RemoteSettingsNavigation` et ouvre `settings` avec `navigateSingleTop()` pour eviter l'empilement.
+- Les touches D-pad, OK, Back, Play/Pause/Rewind/FastForward et toutes les autres touches restent transmises a `super.dispatchKeyEvent(event)`.
+- Version locale preparee en `0.1.103` / `versionCode 107` pour build release local sans mise en prod.
+
+Validation:
+- `git diff --check`: OK, uniquement avertissements CRLF Windows.
+- `.\scripts\guard_release_version.ps1`: OK avant build, local `0.1.103 (107)` > prod `0.1.102 (106)`, warning metadata ancien attendu.
+- `.\gradlew.bat :app:assembleRelease`: OK.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK apres build, metadata `0.1.103 (107)`, prod toujours `0.1.102 (106)`.
+- APK local: `app/build/outputs/apk/release/app-release.apk`, taille `40759014`, SHA256 `B05B9994123874475B9EA0F25D52878425907FE388664E9E5C754567983F20E8`.
+- Aucun deploiement prod effectue.
+
 ## 2026-07-06 - Recherche Live TV Room et focus liste vide
 
 Type:

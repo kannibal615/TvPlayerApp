@@ -49,6 +49,7 @@ Navigation:
 - `AppNavigation.kt` cree les repositories/viewmodels communs.
 - `headerTabs()` definit les onglets.
 - `navigateSingleTop()` evite les doublons.
+- `RemoteSettingsNavigation` relaie les touches globales Settings/Menu recues par `MainActivity.dispatchKeyEvent()` vers la route `settings` avec `navigateSingleTop()`, sans modifier le routage D-pad, Back ou media des ecrans.
 - Les routes player sont separees par type de contenu.
 
 Etat:
