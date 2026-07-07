@@ -76,6 +76,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 data class SeriesDetailEpisodeUi(
@@ -379,7 +380,8 @@ private fun SeriesDetailScreen(
     val firstEpisodeFocusRequester = remember { FocusRequester() }
     LaunchedEffect(state.visibleEpisodes.firstOrNull()?.episodeId, state.loading) {
         if (!state.loading && state.visibleEpisodes.isNotEmpty()) {
-            firstEpisodeFocusRequester.requestFocus()
+            delay(120)
+            runCatching { firstEpisodeFocusRequester.requestFocus() }
         }
     }
 
@@ -702,6 +704,7 @@ private fun SeasonTab(
 
     Box(
         modifier = modifier
+            .detailBringIntoViewOnFocus()
             .tvFocusTarget(
                 state = focusState,
                 pressed = pressed,
@@ -742,6 +745,7 @@ private fun DetailEpisodeRow(
 
     Row(
         modifier = modifier
+            .detailBringIntoViewOnFocus()
             .fillMaxWidth()
             .height(34.dp)
             .tvFocusTarget(

@@ -63,6 +63,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 data class MovieDetailUiState(
@@ -330,7 +331,8 @@ private fun MovieDetailScreen(
 ) {
     val playFocusRequester = androidx.compose.runtime.remember { FocusRequester() }
     LaunchedEffect(state.movieId) {
-        playFocusRequester.requestFocus()
+        delay(120)
+        runCatching { playFocusRequester.requestFocus() }
     }
 
     DetailBackground(

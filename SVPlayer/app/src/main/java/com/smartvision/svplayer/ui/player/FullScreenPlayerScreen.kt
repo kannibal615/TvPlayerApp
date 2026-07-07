@@ -16,6 +16,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -36,18 +40,21 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.EventNote
-import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.Brightness5
+import androidx.compose.material.icons.filled.Brightness7
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -71,8 +78,12 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -184,6 +195,7 @@ data class FullScreenPlayback(
     val previousItem: AdjacentPlayback? = null,
     val nextItem: AdjacentPlayback? = null,
     val nextEpisode: NextEpisodePlayback? = null,
+    val seriesEpisodes: List<PlayerEpisodeItem> = emptyList(),
     val resumePositionMs: Long = 0L,
     val epgPrograms: List<FullScreenEpgProgram> = emptyList(),
 )
@@ -207,6 +219,18 @@ data class NextEpisodePlayback(
     val episodeId: Int,
     val title: String,
     val label: String,
+    val thumbnailUrl: String? = null,
+)
+
+data class PlayerEpisodeItem(
+    val episodeId: Int,
+    val seasonNumber: Int,
+    val episodeNumber: Int,
+    val label: String,
+    val title: String,
+    val duration: String?,
+    val description: String?,
+    val thumbnailUrl: String?,
 )
 
 private enum class PlayerOverlayMenu {
@@ -432,6 +456,8 @@ class FullScreenPlayerViewModel(
             val seriesCover = seriesDetails?.coverUrl ?: series?.coverUrl
             val previousEpisode = xtreamRepository.getCachedPreviousEpisode(episodeId)
             val nextEpisode = xtreamRepository.getCachedNextEpisode(episodeId)
+            val allEpisodes = xtreamRepository.getCachedSeriesEpisodes(episode.seriesId)
+                .sortedWith(compareBy<XtreamSeriesEpisode> { it.seasonNumber }.thenBy { it.episodeNumber })
             FullScreenPlayback(
                 streamId = episode.episodeId,
                 contentType = UserContentType.Episode,
@@ -465,6 +491,19 @@ class FullScreenPlayerViewModel(
                         episodeId = it.episodeId,
                         title = it.title.cleanTitle(),
                         label = it.seasonEpisodeLabel(),
+                        thumbnailUrl = seriesCover,
+                    )
+                },
+                seriesEpisodes = allEpisodes.map { item ->
+                    PlayerEpisodeItem(
+                        episodeId = item.episodeId,
+                        seasonNumber = item.seasonNumber,
+                        episodeNumber = item.episodeNumber,
+                        label = item.seasonEpisodeLabel(),
+                        title = item.title.cleanTitle(),
+                        duration = item.duration,
+                        description = item.plot?.cleanTitle(),
+                        thumbnailUrl = seriesCover,
                     )
                 },
             )
@@ -639,6 +678,8 @@ private fun FullScreenPlayerScreen(
     val latestUrl by rememberUpdatedState(playback.url)
     val latestFallbackUrl by rememberUpdatedState(playback.fallbackUrl)
     val playFocusRequester = remember { FocusRequester() }
+    val episodesButtonFocusRequester = remember { FocusRequester() }
+    val brightnessButtonFocusRequester = remember { FocusRequester() }
     var overlayVisible by remember { mutableStateOf(true) }
     var overlayTick by remember { mutableIntStateOf(0) }
     var focusPlayWhenOverlayShows by remember { mutableStateOf(true) }
@@ -656,6 +697,9 @@ private fun FullScreenPlayerScreen(
     var liveAspectMode by remember { mutableStateOf(LiveAspectModes.first()) }
     var subtitleTracks by remember { mutableStateOf<List<SubtitleTrackOption>>(emptyList()) }
     var selectedSubtitleId by remember { mutableStateOf<String?>(null) }
+    var episodesPanelVisible by remember(playback.streamId) { mutableStateOf(false) }
+    var brightnessMode by remember(playback.streamId) { mutableStateOf(false) }
+    var brightnessValue by remember(playback.streamId) { mutableStateOf(1f) }
     var nextEpisodeCountdown by remember { mutableStateOf<Int?>(null) }
     var nextEpisodeDismissed by remember(playback.streamId) { mutableStateOf(false) }
     var adGateActive by remember(playback.streamId) { mutableStateOf(false) }
@@ -714,6 +758,8 @@ private fun FullScreenPlayerScreen(
         player.playWhenReady = true
         nextEpisodeCountdown = null
         nextEpisodeDismissed = false
+        episodesPanelVisible = false
+        brightnessMode = false
     }
 
     fun prepareContentWithoutAd() {
@@ -936,6 +982,29 @@ private fun FullScreenPlayerScreen(
     fun handleBack(source: String) {
         when {
             adGateActive -> Unit
+            episodesPanelVisible -> {
+                episodesPanelVisible = false
+                overlayVisible = true
+                focusPlayWhenOverlayShows = false
+                overlayTick += 1
+                coroutineScope.launch {
+                    delay(120)
+                    runCatching { episodesButtonFocusRequester.requestFocus() }
+                }
+            }
+            brightnessMode -> {
+                brightnessMode = false
+                showOverlay(requestPlayFocus = false)
+                coroutineScope.launch {
+                    delay(120)
+                    runCatching { brightnessButtonFocusRequester.requestFocus() }
+                }
+            }
+            nextEpisodeCountdown != null -> {
+                nextEpisodeCountdown = null
+                nextEpisodeDismissed = true
+                showOverlay(requestPlayFocus = true)
+            }
             activeMenu == PlayerOverlayMenu.Epg || activeMenu == PlayerOverlayMenu.Settings -> {
                 activeMenu = PlayerOverlayMenu.None
                 showOverlay(requestPlayFocus = true)
@@ -1092,6 +1161,19 @@ private fun FullScreenPlayerScreen(
                 positionMs = player.currentPosition.coerceAtLeast(0L)
                 durationMs = player.duration.validDurationMs()
                 bufferedPositionMs = player.bufferedPosition.coerceAtLeast(0L)
+                val remainingMs = durationMs - positionMs
+                if (
+                    playback.contentType == UserContentType.Episode &&
+                    playback.nextEpisode != null &&
+                    durationMs > 0L &&
+                    remainingMs in 1L..10_000L &&
+                    !nextEpisodeDismissed &&
+                    nextEpisodeCountdown == null
+                ) {
+                    nextEpisodeCountdown = ((remainingMs + 999L) / 1_000L).toInt().coerceIn(1, 10)
+                    overlayVisible = true
+                    activeMenu = PlayerOverlayMenu.None
+                }
                 if (tick % 10 == 0) {
                     onProgressSnapshot(positionMs, durationMs)
                 }
@@ -1150,11 +1232,6 @@ private fun FullScreenPlayerScreen(
                     buffering = true
                     finishAdAndStartContent(skipped = false)
                     return
-                }
-                if (playbackState == Player.STATE_ENDED && playback.nextEpisode != null && !nextEpisodeDismissed) {
-                    nextEpisodeCountdown = 3
-                    overlayVisible = true
-                    activeMenu = PlayerOverlayMenu.None
                 }
                 if (playbackState == Player.STATE_ENDED && !adGateActive && !playbackCompletedReported) {
                     playbackCompletedReported = true
@@ -1352,6 +1429,14 @@ private fun FullScreenPlayerScreen(
             modifier = Modifier.matchParentSize(),
         )
 
+        if (brightnessValue < 1f) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(Color.Black.copy(alpha = (1f - brightnessValue).coerceIn(0f, 0.72f))),
+            )
+        }
+
         if (buffering && !adGateActive) {
             CircularProgressIndicator(
                 color = SmartVisionColors.Primary,
@@ -1371,21 +1456,40 @@ private fun FullScreenPlayerScreen(
             )
         }
 
-        if (overlayVisible && !adGateActive) {
+        if (overlayVisible && !adGateActive && !episodesPanelVisible) {
             if (playback.contentType == UserContentType.Live) {
                 LiveTvFullscreenOverlay(
                     playback = playback,
                     errorText = errorText,
                     firstActionFocusRequester = playFocusRequester,
+                    brightnessFocusRequester = brightnessButtonFocusRequester,
+                    brightnessMode = brightnessMode,
+                    brightnessValue = brightnessValue,
                     recorderLocked = recorderAccess?.locked == true,
                     recorderCrown = recorderAccess?.showPremiumCrown == true,
-                    onOpenEpg = {
-                        activeMenu = PlayerOverlayMenu.Epg
+                    onFavorite = {
                         showOverlay(requestPlayFocus = false)
                     },
                     onOpenSettings = {
+                        brightnessMode = false
                         activeMenu = PlayerOverlayMenu.Settings
                         showOverlay(requestPlayFocus = false)
+                    },
+                    onOpenBrightness = {
+                        brightnessMode = true
+                        showOverlay(requestPlayFocus = false)
+                    },
+                    onChangeBrightness = { delta ->
+                        brightnessValue = (brightnessValue + delta).coerceIn(0.25f, 1f)
+                        showOverlay(requestPlayFocus = false)
+                    },
+                    onCloseBrightness = {
+                        brightnessMode = false
+                        showOverlay(requestPlayFocus = false)
+                        coroutineScope.launch {
+                            delay(120)
+                            runCatching { brightnessButtonFocusRequester.requestFocus() }
+                        }
                     },
                     onRecord = {
                         val access = recorderAccess
@@ -1419,6 +1523,9 @@ private fun FullScreenPlayerScreen(
                     durationMs = durationMs,
                     bufferedPositionMs = bufferedPositionMs,
                     playFocusRequester = playFocusRequester,
+                    episodesButtonFocusRequester = episodesButtonFocusRequester,
+                    brightnessMode = brightnessMode,
+                    brightnessValue = brightnessValue,
                     onPlayPause = {
                         if (player.isPlaying) {
                             player.pause()
@@ -1429,13 +1536,13 @@ private fun FullScreenPlayerScreen(
                     },
                     onSeekBack = {
                         if (player.isCurrentMediaItemSeekable) {
-                            player.seekTo((player.currentPosition - 10_000L).coerceAtLeast(0L))
+                            player.seekTo((player.currentPosition - 15_000L).coerceAtLeast(0L))
                         }
                         showOverlay()
                     },
                     onSeekForward = {
                         if (player.isCurrentMediaItemSeekable) {
-                            player.seekTo(player.currentPosition + 10_000L)
+                            player.seekTo(player.currentPosition + 15_000L)
                         }
                         showOverlay()
                     },
@@ -1451,16 +1558,52 @@ private fun FullScreenPlayerScreen(
                     onPlayNext = {
                         playAdjacent(playback.nextItem)
                     },
-                    onOpenSubtitles = {
-                        activeMenu = PlayerOverlayMenu.Subtitles
+                    onOpenEpisodes = {
+                        if (playback.contentType == UserContentType.Episode && playback.seriesEpisodes.isNotEmpty()) {
+                            episodesPanelVisible = true
+                            brightnessMode = false
+                            overlayVisible = false
+                        }
+                    },
+                    onToggleFavorite = {
                         showOverlay()
+                    },
+                    onOpenBrightness = {
+                        brightnessMode = true
+                        showOverlay(requestPlayFocus = false)
+                    },
+                    onChangeBrightness = { delta ->
+                        brightnessValue = (brightnessValue + delta).coerceIn(0.25f, 1f)
+                        showOverlay(requestPlayFocus = false)
                     },
                     onOpenSettings = {
                         activeMenu = PlayerOverlayMenu.Settings
                         showOverlay()
                     },
+                    onCloseBrightness = {
+                        brightnessMode = false
+                        showOverlay(requestPlayFocus = false)
+                    },
                 )
             }
+        }
+
+        if (episodesPanelVisible && playback.contentType == UserContentType.Episode) {
+            EpisodesSidePanel(
+                playback = playback,
+                onEpisode = { episodeId -> onPlayEpisode(episodeId) },
+                onClose = {
+                    episodesPanelVisible = false
+                    overlayVisible = true
+                    focusPlayWhenOverlayShows = false
+                    overlayTick += 1
+                    coroutineScope.launch {
+                        delay(120)
+                        runCatching { episodesButtonFocusRequester.requestFocus() }
+                    }
+                },
+                modifier = Modifier.align(Alignment.CenterEnd),
+            )
         }
 
         if (showRecordDialog && strings != null) {
@@ -1577,8 +1720,8 @@ private fun FullScreenPlayerScreen(
                         nextEpisodeDismissed = true
                     },
                     modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 42.dp),
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 68.dp, bottom = 216.dp),
                 )
             }
         }
@@ -2020,14 +2163,19 @@ private fun LiveTvFullscreenOverlay(
     playback: FullScreenPlayback,
     errorText: String?,
     firstActionFocusRequester: FocusRequester,
+    brightnessFocusRequester: FocusRequester,
+    brightnessMode: Boolean,
+    brightnessValue: Float,
     recorderLocked: Boolean,
     recorderCrown: Boolean,
-    onOpenEpg: () -> Unit,
+    onFavorite: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenBrightness: () -> Unit,
+    onChangeBrightness: (Float) -> Unit,
+    onCloseBrightness: () -> Unit,
     onRecord: () -> Unit,
     onBackToList: () -> Unit,
 ) {
-    val hasEpg = playback.epgPrograms.isNotEmpty()
     Box(modifier = Modifier.fillMaxSize()) {
         if (playback.overlayRightText.isNotBlank()) {
             Text(
@@ -2058,12 +2206,17 @@ private fun LiveTvFullscreenOverlay(
 
         LiveTvBottomGlassBanner(
             playback = playback,
-            hasEpg = hasEpg,
             firstActionFocusRequester = firstActionFocusRequester,
+            brightnessFocusRequester = brightnessFocusRequester,
+            brightnessMode = brightnessMode,
+            brightnessValue = brightnessValue,
             recorderLocked = recorderLocked,
             recorderCrown = recorderCrown,
-            onOpenEpg = onOpenEpg,
+            onFavorite = onFavorite,
             onOpenSettings = onOpenSettings,
+            onOpenBrightness = onOpenBrightness,
+            onChangeBrightness = onChangeBrightness,
+            onCloseBrightness = onCloseBrightness,
             onRecord = onRecord,
             onBackToList = onBackToList,
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -2074,12 +2227,17 @@ private fun LiveTvFullscreenOverlay(
 @Composable
 private fun LiveTvBottomGlassBanner(
     playback: FullScreenPlayback,
-    hasEpg: Boolean,
     firstActionFocusRequester: FocusRequester,
+    brightnessFocusRequester: FocusRequester,
+    brightnessMode: Boolean,
+    brightnessValue: Float,
     recorderLocked: Boolean,
     recorderCrown: Boolean,
-    onOpenEpg: () -> Unit,
+    onFavorite: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenBrightness: () -> Unit,
+    onChangeBrightness: (Float) -> Unit,
+    onCloseBrightness: () -> Unit,
     onRecord: () -> Unit,
     onBackToList: () -> Unit,
     modifier: Modifier = Modifier,
@@ -2118,36 +2276,49 @@ private fun LiveTvBottomGlassBanner(
             modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(10.dp))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            LiveTvActionButton(
-                label = "EPG",
-                icon = Icons.Default.EventNote,
-                enabled = hasEpg,
-                focusRequester = firstActionFocusRequester.takeIf { hasEpg },
-                onClick = onOpenEpg,
+        if (brightnessMode) {
+            PlayerBrightnessSlider(
+                value = brightnessValue,
+                onChange = onChangeBrightness,
+                onClose = onCloseBrightness,
+                modifier = Modifier.width(440.dp),
             )
-            LiveTvActionButton(
-                label = "Settings",
-                icon = Icons.Default.Settings,
-                focusRequester = firstActionFocusRequester.takeIf { !hasEpg },
-                onClick = onOpenSettings,
-            )
-            LiveTvActionButton(
-                label = "Record",
-                icon = Icons.Default.FiberManualRecord,
-                onClick = onRecord,
-                iconTint = Color(0xFFFF3737),
-                locked = recorderLocked,
-                showCrown = recorderCrown,
-            )
-            LiveTvActionButton(
-                label = "Back to List",
-                icon = Icons.Default.ArrowBack,
-                onClick = onBackToList,
-            )
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                LiveTvActionButton(
+                    label = "Favori",
+                    icon = Icons.Default.FavoriteBorder,
+                    focusRequester = firstActionFocusRequester,
+                    onClick = onFavorite,
+                )
+                LiveTvActionButton(
+                    label = "Record",
+                    icon = Icons.Default.Videocam,
+                    onClick = onRecord,
+                    locked = recorderLocked,
+                    showCrown = recorderCrown,
+                    showRecBadge = true,
+                )
+                LiveTvActionButton(
+                    label = "Luminosite",
+                    icon = Icons.Default.Brightness7,
+                    focusRequester = brightnessFocusRequester,
+                    onClick = onOpenBrightness,
+                )
+                LiveTvActionButton(
+                    label = "Settings",
+                    icon = Icons.Default.Settings,
+                    onClick = onOpenSettings,
+                )
+                LiveTvActionButton(
+                    label = "Exit fullscreen",
+                    icon = Icons.Default.FullscreenExit,
+                    onClick = onBackToList,
+                )
+            }
         }
     }
 }
@@ -2223,47 +2394,39 @@ private fun LiveTvActionButton(
     iconTint: Color = Color.White,
     locked: Boolean = false,
     showCrown: Boolean = false,
+    showRecBadge: Boolean = false,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val backgroundColor by animateColorAsState(
+    val outlineColor by animateColorAsState(
         targetValue = when {
-            !enabled -> Color.White.copy(alpha = 0.08f)
-            locked && focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.24f)
-            locked -> Color.White.copy(alpha = 0.08f)
-            focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.36f)
-            else -> Color.White.copy(alpha = 0.18f)
-        },
-        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
-        label = "liveTvActionBackground",
-    )
-    val borderColor by animateColorAsState(
-        targetValue = when {
-            !enabled -> Color.White.copy(alpha = 0.10f)
+            !enabled -> Color.White.copy(alpha = 0.18f)
             locked && focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.52f)
-            locked -> Color.White.copy(alpha = 0.16f)
-            focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.68f)
-            else -> Color.White.copy(alpha = 0.28f)
+            locked -> Color.White.copy(alpha = 0.38f)
+            focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.78f)
+            else -> Color.Transparent
         },
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
-        label = "liveTvActionBorder",
+        label = "liveTvActionOutline",
     )
 
-    Column(
+    Box(
         modifier = modifier
-            .width(76.dp)
-            .height(76.dp)
+            .size(54.dp)
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
                 enabled = enabled,
                 pressed = pressed,
-                focusedScale = 1.04f,
+                focusedScale = 1.08f,
                 glowColor = PlayerNeonBlue,
-                cornerRadius = 12.dp,
+                cornerRadius = 50.dp,
             )
             .focusProperties { canFocus = enabled }
+            .clip(CircleShape)
+            .background(if (focusState.isFocused) PlayerNeonBlue.copy(alpha = 0.18f) else Color.Transparent)
+            .border(BorderStroke(if (focusState.isFocused) 1.5.dp else 0.dp, outlineColor), CircleShape)
             .clickable(
                 enabled = enabled,
                 interactionSource = interactionSource,
@@ -2271,52 +2434,47 @@ private fun LiveTvActionButton(
                 onClick = onClick,
             )
             .focusable(enabled = enabled, interactionSource = interactionSource),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(backgroundColor)
-                .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(10.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = when {
-                    !enabled -> Color.White.copy(alpha = 0.28f)
-                    locked -> Color.White.copy(alpha = 0.42f)
-                    else -> iconTint
-                },
-                modifier = Modifier.size(25.dp),
-            )
-            if (showCrown) {
-                Image(
-                    painter = painterResource(R.drawable.premium_crown),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 7.dp, y = (-9).dp)
-                        .size(19.dp)
-                        .zIndex(2f),
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = when {
+                !enabled -> Color.White.copy(alpha = 0.28f)
+                locked -> Color.White.copy(alpha = 0.48f)
+                else -> iconTint
+            },
+            modifier = Modifier.size(if (showRecBadge) 31.dp else 34.dp),
+        )
+        if (showRecBadge) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 2.dp, y = 0.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(Color.Black.copy(alpha = 0.78f))
+                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.76f)), RoundedCornerShape(3.dp))
+                    .padding(horizontal = 3.dp, vertical = 1.dp),
+            ) {
+                Text(
+                    text = "REC",
+                    color = Color.White,
+                    style = PlayerTinyStyle.copy(fontSize = 7.sp, lineHeight = 8.sp),
+                    fontWeight = FontWeight.Bold,
                 )
             }
         }
-        Spacer(Modifier.height(5.dp))
-        Text(
-            text = label,
-            color = when {
-                !enabled -> Color.White.copy(alpha = 0.34f)
-                locked -> Color.White.copy(alpha = 0.48f)
-                focusState.isFocused -> Color.White
-                else -> Color.White.copy(alpha = 0.74f)
-            },
-            style = PlayerMetaStyle.copy(fontSize = 11.sp, lineHeight = 13.sp),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        if (showCrown) {
+            Image(
+                painter = painterResource(R.drawable.premium_crown),
+                contentDescription = null,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 4.dp, y = (-7).dp)
+                    .size(18.dp)
+                    .zIndex(2f),
+            )
+        }
     }
 }
 
@@ -2487,25 +2645,174 @@ private fun FullPlayerOverlay(
     durationMs: Long,
     bufferedPositionMs: Long,
     playFocusRequester: FocusRequester,
+    episodesButtonFocusRequester: FocusRequester,
+    brightnessMode: Boolean,
+    brightnessValue: Float,
     onPlayPause: () -> Unit,
     onSeekBack: () -> Unit,
     onSeekForward: () -> Unit,
     onSeekBy: (Long) -> Unit,
     onPlayPrevious: () -> Unit,
     onPlayNext: () -> Unit,
-    onOpenSubtitles: () -> Unit,
+    onOpenEpisodes: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onOpenBrightness: () -> Unit,
+    onChangeBrightness: (Float) -> Unit,
     onOpenSettings: () -> Unit,
+    onCloseBrightness: () -> Unit,
 ) {
-    val showProgress = playback.contentType != UserContentType.Live
+    val isSeriesContent = playback.contentType == UserContentType.Episode
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    0f to Color.Transparent,
+                    0.52f to Color.Transparent,
+                    1f to Color.Black.copy(alpha = 0.82f),
+                ),
+            ),
     ) {
-        PlayerTopGlassBar(
-            playback = playback,
+        Row(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(start = 28.dp, end = 28.dp, top = 14.dp),
-        )
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(start = 50.dp, end = 50.dp, bottom = 26.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 34.dp),
+            ) {
+                Text(
+                    text = playback.title.uppercase(Locale.getDefault()),
+                    color = Color.White,
+                    style = PlayerTitleStyle.copy(fontSize = 30.sp, lineHeight = 34.sp),
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(7.dp))
+                Text(
+                    text = if (isSeriesContent) playback.subtitle.replace(" - ", " - ") else playback.subtitle,
+                    color = Color.White.copy(alpha = 0.82f),
+                    style = PlayerMetaStyle.copy(fontSize = 17.sp, lineHeight = 22.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(24.dp))
+                MovieSeriesProgressBar(
+                    positionMs = positionMs,
+                    durationMs = durationMs,
+                    bufferedPositionMs = bufferedPositionMs,
+                    onSeekBy = onSeekBy,
+                )
+                Spacer(Modifier.height(28.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (isSeriesContent) {
+                        PlayerControlButton(
+                            label = "Episode precedent",
+                            icon = Icons.Default.SkipPrevious,
+                            onClick = onPlayPrevious,
+                            width = 46.dp,
+                            height = 46.dp,
+                            iconSize = 25.dp,
+                        )
+                        Spacer(Modifier.width(42.dp))
+                    }
+                    PlayerControlButton(
+                        label = "- 15 sec",
+                        icon = Icons.Default.Replay10,
+                        onClick = onSeekBack,
+                        width = 48.dp,
+                        height = 48.dp,
+                        iconSize = 24.dp,
+                    )
+                    Spacer(Modifier.width(46.dp))
+                    PlayerControlButton(
+                        label = if (isPlaying) "Pause" else "Lecture",
+                        icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        onClick = onPlayPause,
+                        focusRequester = playFocusRequester,
+                        primary = true,
+                        width = 72.dp,
+                        height = 72.dp,
+                        iconSize = 34.dp,
+                    )
+                    Spacer(Modifier.width(46.dp))
+                    PlayerControlButton(
+                        label = "+ 15 sec",
+                        icon = Icons.Default.Forward10,
+                        onClick = onSeekForward,
+                        width = 48.dp,
+                        height = 48.dp,
+                        iconSize = 24.dp,
+                    )
+                    if (isSeriesContent) {
+                        Spacer(Modifier.width(42.dp))
+                        PlayerControlButton(
+                            label = "Episode suivant",
+                            icon = Icons.Default.SkipNext,
+                            onClick = onPlayNext,
+                            width = 46.dp,
+                            height = 46.dp,
+                            iconSize = 25.dp,
+                        )
+                    }
+                }
+            }
+
+            if (brightnessMode) {
+                PlayerBrightnessSlider(
+                    value = brightnessValue,
+                    onChange = onChangeBrightness,
+                    onClose = onCloseBrightness,
+                    modifier = Modifier
+                        .width(520.dp)
+                        .padding(bottom = 186.dp),
+                )
+            } else {
+                Row(
+                    modifier = Modifier.padding(bottom = 198.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (isSeriesContent) {
+                        PlayerUtilityIconButton(
+                            icon = Icons.Default.List,
+                            contentDescription = "Autres episodes",
+                            focusRequester = episodesButtonFocusRequester,
+                            onClick = onOpenEpisodes,
+                        )
+                    }
+                    PlayerUtilityIconButton(
+                        icon = Icons.Default.FavoriteBorder,
+                        contentDescription = "Favori",
+                        onClick = onToggleFavorite,
+                    )
+                    PlayerUtilityIconButton(
+                        icon = Icons.Default.Brightness7,
+                        contentDescription = "Luminosite",
+                        onClick = onOpenBrightness,
+                    )
+                    PlayerUtilityIconButton(
+                        icon = Icons.Default.Settings,
+                        contentDescription = "Parametres",
+                        onClick = onOpenSettings,
+                    )
+                    PlayerUtilityIconButton(
+                        icon = Icons.Default.Fullscreen,
+                        contentDescription = "Plein ecran",
+                        onClick = { },
+                    )
+                }
+            }
+        }
 
         errorText?.let { message ->
             Text(
@@ -2521,54 +2828,425 @@ private fun FullPlayerOverlay(
                     .padding(horizontal = 18.dp, vertical = 10.dp),
             )
         }
+    }
+}
 
-        Column(
+@Composable
+private fun MovieSeriesProgressBar(
+    positionMs: Long,
+    durationMs: Long,
+    bufferedPositionMs: Long,
+    onSeekBy: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val safeDuration = durationMs.coerceAtLeast(1L)
+    val progress = (positionMs.toFloat() / safeDuration.toFloat()).coerceIn(0f, 1f)
+    val buffered = (bufferedPositionMs.toFloat() / safeDuration.toFloat()).coerceIn(progress, 1f)
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = positionMs.formatPlaybackTime(),
+            color = Color.White,
+            style = PlayerMetaStyle.copy(fontSize = 16.sp, lineHeight = 20.sp),
+            modifier = Modifier.width(78.dp),
+        )
+        Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(start = 58.dp, end = 58.dp, bottom = 24.dp)
-                .fillMaxWidth()
-                .height(if (showProgress) 134.dp else 96.dp)
-                .background(PlayerNeonBlue.copy(alpha = 0.08f), PlayerGlassShape)
-                .border(BorderStroke(1.dp, PlayerGlassGlowBorder), PlayerGlassShape)
-                .padding(1.dp)
-                .clip(PlayerGlassShape)
-                .background(PlayerGlassBackground)
-                .border(BorderStroke(1.dp, PlayerGlassBorder), PlayerGlassShape)
-                .padding(horizontal = 22.dp, vertical = if (showProgress) 7.dp else 6.dp),
+                .weight(1f)
+                .height(32.dp)
+                .focusable()
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when (event.key) {
+                        Key.DirectionLeft -> {
+                            onSeekBy(-15_000L)
+                            true
+                        }
+                        Key.DirectionRight -> {
+                            onSeekBy(15_000L)
+                            true
+                        }
+                        else -> false
+                    }
+                },
+            contentAlignment = Alignment.CenterStart,
         ) {
-            if (showProgress) {
-                PlayerProgressBar(
-                    playback = playback,
-                    positionMs = positionMs,
-                    durationMs = durationMs,
-                    bufferedPositionMs = bufferedPositionMs,
-                    modifier = Modifier.fillMaxWidth(),
-                    onSeekBy = onSeekBy,
-                )
-                Spacer(Modifier.height(7.dp))
-            }
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color.White.copy(alpha = 0.28f)),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(buffered)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color.White.copy(alpha = 0.34f)),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(PlayerNeonBlue),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress)
+                    .height(24.dp),
+                contentAlignment = Alignment.CenterEnd,
             ) {
-                PlayerControlButton("Sous-titres", Icons.Default.Subtitles, onOpenSubtitles)
-                PlayerControlButton("- 10 sec", Icons.Default.Replay10, onSeekBack)
-                PlayerControlButton(
-                    label = if (isPlaying) "Pause" else "Lecture",
-                    icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    onClick = onPlayPause,
-                    focusRequester = playFocusRequester,
-                    primary = true,
-                    width = 62.dp,
-                    height = 62.dp,
-                    iconSize = 28.dp,
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .border(BorderStroke(3.dp, PlayerNeonBlue), CircleShape),
                 )
-                PlayerControlButton("+ 10 sec", Icons.Default.Forward10, onSeekForward)
-                PlayerControlButton("Parametres", Icons.Default.Settings, onOpenSettings)
             }
+        }
+        Text(
+            text = durationMs.formatPlaybackTime(),
+            color = Color.White,
+            style = PlayerMetaStyle.copy(fontSize = 16.sp, lineHeight = 20.sp),
+            textAlign = TextAlign.End,
+            modifier = Modifier.width(88.dp),
+        )
+    }
+}
+
+@Composable
+private fun PlayerUtilityIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    Box(
+        modifier = modifier
+            .size(46.dp)
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                pressed = pressed,
+                focusedScale = 1.08f,
+                glowColor = PlayerNeonBlue,
+                cornerRadius = 50.dp,
+            )
+            .clip(CircleShape)
+            .background(if (focusState.isFocused) PlayerNeonBlue.copy(alpha = 0.24f) else Color.Transparent)
+            .border(
+                BorderStroke(if (focusState.isFocused) 1.5.dp else 0.dp, PlayerNeonBlue.copy(alpha = 0.86f)),
+                CircleShape,
+            )
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(interactionSource = interactionSource),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = Color.White,
+            modifier = Modifier.size(30.dp),
+        )
+    }
+}
+
+@Composable
+private fun PlayerBrightnessSlider(
+    value: Float,
+    onChange: (Float) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val sliderFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        delay(100)
+        runCatching { sliderFocusRequester.requestFocus() }
+    }
+    Row(
+        modifier = modifier
+            .height(68.dp)
+            .focusable()
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.DirectionLeft -> {
+                        onChange(-0.08f)
+                        true
+                    }
+                    Key.DirectionRight -> {
+                        onChange(0.08f)
+                        true
+                    }
+                    Key.Enter, Key.DirectionCenter -> {
+                        onClose()
+                        true
+                    }
+                    Key.Back -> {
+                        onClose()
+                        true
+                    }
+                    else -> false
+                }
+            },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Icon(Icons.Default.Brightness5, contentDescription = null, tint = Color.White, modifier = Modifier.size(34.dp))
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(34.dp)
+                .tvFocusTarget(
+                    state = rememberTvFocusState(),
+                    focusRequester = sliderFocusRequester,
+                    cornerRadius = 24.dp,
+                    glowColor = PlayerNeonBlue,
+                ),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color.White.copy(alpha = 0.36f)),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(value.coerceIn(0f, 1f))
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(PlayerNeonBlue),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(value.coerceIn(0f, 1f))
+                    .height(28.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .border(BorderStroke(3.dp, PlayerNeonBlue), CircleShape),
+                )
+            }
+        }
+        Icon(Icons.Default.Brightness7, contentDescription = null, tint = Color.White, modifier = Modifier.size(38.dp))
+    }
+}
+
+@Composable
+private fun EpisodesSidePanel(
+    playback: FullScreenPlayback,
+    onEpisode: (Int) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val seasons = remember(playback.seriesEpisodes) {
+        playback.seriesEpisodes.map { it.seasonNumber }.filter { it > 0 }.distinct().ifEmpty { listOf(1) }
+    }
+    var selectedSeason by remember(playback.streamId) {
+        mutableStateOf(playback.seriesEpisodes.firstOrNull { it.episodeId == playback.streamId }?.seasonNumber ?: seasons.first())
+    }
+    val episodes = playback.seriesEpisodes.filter { it.seasonNumber == selectedSeason }.ifEmpty { playback.seriesEpisodes }
+    val listState = rememberLazyListState()
+    val currentIndex = episodes.indexOfFirst { it.episodeId == playback.streamId }.coerceAtLeast(0)
+    val firstFocusRequester = remember { FocusRequester() }
+
+    BackHandler(onBack = onClose)
+    LaunchedEffect(selectedSeason, playback.streamId) {
+        if (episodes.isNotEmpty()) {
+            listState.scrollToItem(currentIndex.coerceAtMost(episodes.lastIndex))
+            delay(100)
+            runCatching { firstFocusRequester.requestFocus() }
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .fillMaxWidth(0.29f)
+            .background(Color.Black.copy(alpha = 0.88f))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)))
+            .padding(start = 26.dp, end = 14.dp, top = 54.dp, bottom = 28.dp)
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && (event.key == Key.DirectionLeft || event.key == Key.Back)) {
+                    onClose()
+                    true
+                } else {
+                    false
+                }
+            },
+    ) {
+        Text(
+            text = "Autres episodes",
+            color = Color.White,
+            style = PlayerTitleStyle.copy(fontSize = 28.sp, lineHeight = 34.sp),
+            fontWeight = FontWeight.ExtraBold,
+        )
+        Spacer(Modifier.height(24.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            items(seasons) { season ->
+                SeasonChip(
+                    text = "Saison $season",
+                    selected = season == selectedSeason,
+                    onClick = { selectedSeason = season },
+                )
+            }
+        }
+        Spacer(Modifier.height(28.dp))
+        LazyColumn(
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(episodes, key = { it.episodeId }) { episode ->
+                EpisodePanelRow(
+                    episode = episode,
+                    isCurrent = episode.episodeId == playback.streamId,
+                    focusRequester = if (episode.episodeId == episodes.getOrNull(currentIndex)?.episodeId) firstFocusRequester else null,
+                    onClick = { onEpisode(episode.episodeId) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SeasonChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    Box(
+        modifier = Modifier
+            .height(44.dp)
+            .width(132.dp)
+            .tvFocusTarget(state = focusState, pressed = pressed, cornerRadius = 7.dp, glowColor = PlayerNeonBlue)
+            .clip(RoundedCornerShape(7.dp))
+            .background(if (selected || focusState.isFocused) PlayerNeonBlue.copy(alpha = 0.78f) else Color.Transparent)
+            .border(BorderStroke(1.dp, if (selected || focusState.isFocused) PlayerNeonBlue else Color.White.copy(alpha = 0.18f)), RoundedCornerShape(7.dp))
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(interactionSource = interactionSource),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = text, color = Color.White, style = PlayerMetaStyle, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun EpisodePanelRow(
+    episode: PlayerEpisodeItem,
+    isCurrent: Boolean,
+    focusRequester: FocusRequester?,
+    onClick: () -> Unit,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(104.dp)
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                pressed = pressed,
+                focusedScale = 1.02f,
+                cornerRadius = 8.dp,
+                glowColor = PlayerNeonBlue,
+            )
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                when {
+                    focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.84f)
+                    isCurrent -> PlayerNeonBlue.copy(alpha = 0.28f)
+                    else -> Color.Transparent
+                },
+            )
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused || isCurrent) 2.dp else 1.dp,
+                    if (focusState.isFocused || isCurrent) PlayerNeonBlue else Color.Transparent,
+                ),
+                RoundedCornerShape(8.dp),
+            )
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(interactionSource = interactionSource)
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        EpisodeThumbnail(episode.thumbnailUrl)
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = episode.label,
+                color = Color.White,
+                style = PlayerMetaStyle.copy(fontSize = 13.sp, lineHeight = 16.sp),
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = episode.title,
+                color = Color.White,
+                style = PlayerMetaStyle.copy(fontSize = 18.sp, lineHeight = 21.sp),
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = episode.description.orEmpty(),
+                color = Color.White.copy(alpha = 0.72f),
+                style = PlayerTinyStyle.copy(fontSize = 12.sp, lineHeight = 15.sp),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = episode.duration.orEmpty(),
+            color = Color.White.copy(alpha = 0.86f),
+            style = PlayerMetaStyle.copy(fontSize = 13.sp, lineHeight = 16.sp),
+            textAlign = TextAlign.End,
+            modifier = Modifier.width(48.dp),
+        )
+    }
+}
+
+@Composable
+private fun EpisodeThumbnail(imageUrl: String?) {
+    Box(
+        modifier = Modifier
+            .width(96.dp)
+            .height(58.dp)
+            .clip(RoundedCornerShape(5.dp))
+            .background(Color(0xFF0B2139))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)), RoundedCornerShape(5.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (!imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White.copy(alpha = 0.76f), modifier = Modifier.size(24.dp))
         }
     }
 }
@@ -2920,32 +3598,50 @@ private fun NextEpisodeCard(
 
     Column(
         modifier = modifier
-            .width(340.dp)
+            .width(580.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(Color(0xF20A1425))
-            .border(BorderStroke(1.dp, SmartVisionColors.Primary), RoundedCornerShape(8.dp))
-            .padding(18.dp),
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.82f)), RoundedCornerShape(8.dp))
+            .padding(20.dp),
     ) {
         Text(
-            text = "Episode suivant dans ${countdown.coerceAtLeast(0)}",
-            color = SmartVisionColors.CyanAccent,
-            style = PlayerMetaStyle,
-            fontWeight = FontWeight.Bold,
-        )
-        Spacer(Modifier.height(7.dp))
-        Text(
-            text = "${nextEpisode.label}  ${nextEpisode.title}",
+            text = buildAnnotatedString {
+                append("Episode suivant dans ")
+                withStyle(SpanStyle(color = PlayerNeonBlue)) {
+                    append(countdown.coerceAtLeast(0).toString())
+                }
+                append(" secondes")
+            },
             color = Color.White,
-            style = PlayerTitleStyle,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+            style = PlayerTitleStyle.copy(fontSize = 20.sp, lineHeight = 25.sp),
+            fontWeight = FontWeight.ExtraBold,
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(18.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            EpisodeThumbnail(nextEpisode.thumbnailUrl)
+            Spacer(Modifier.width(18.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = nextEpisode.label,
+                    color = Color.White,
+                    style = PlayerTitleStyle.copy(fontSize = 18.sp, lineHeight = 22.sp),
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+                Text(
+                    text = nextEpisode.title,
+                    color = Color.White.copy(alpha = 0.78f),
+                    style = PlayerMetaStyle.copy(fontSize = 17.sp, lineHeight = 21.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             TvButton(
-                text = "Lire maintenant",
+                text = "Voir episode",
                 onClick = onPlayNow,
-                leadingIcon = Icons.Default.SkipNext,
                 focusRequester = playNowFocusRequester,
                 modifier = Modifier
                     .weight(1.3f)

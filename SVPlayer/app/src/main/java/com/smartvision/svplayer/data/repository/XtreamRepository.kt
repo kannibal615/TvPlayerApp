@@ -237,6 +237,9 @@ class XtreamRepository(
     fun getCachedEpisode(episodeId: Int): XtreamSeriesEpisode? =
         episodesById[episodeId]
 
+    fun getCachedSeriesEpisodes(seriesId: Int): List<XtreamSeriesEpisode> =
+        episodesBySeriesId[seriesId].orEmpty()
+
     fun getCachedNextEpisode(episodeId: Int): XtreamSeriesEpisode? {
         val current = episodesById[episodeId] ?: return null
         val ordered = episodesBySeriesId[current.seriesId].orEmpty()

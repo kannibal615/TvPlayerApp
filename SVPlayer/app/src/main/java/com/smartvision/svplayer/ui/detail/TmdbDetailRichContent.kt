@@ -322,6 +322,7 @@ private fun RatingStarButton(
     val color = if (selected) Color(0xFFFFC857) else SmartVisionColors.TextSecondary
     Box(
         modifier = Modifier
+            .detailBringIntoViewOnFocus()
             .size(38.dp)
             .tvFocusTarget(
                 state = focusState,

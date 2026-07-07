@@ -3,6 +3,7 @@ package com.smartvision.svplayer.ui.detail
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,6 +11,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -30,11 +33,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -58,6 +63,7 @@ import com.smartvision.svplayer.ui.home.HeaderTabButton
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
+import kotlinx.coroutines.launch
 
 val DetailHeroTitleStyle = TextStyle(
     fontSize = 42.sp,
@@ -93,6 +99,19 @@ object DetailDimens {
     val HeaderTop = 18.dp
     val ActionHeight = 42.dp
     val ItemRadius = 7.dp
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun Modifier.detailBringIntoViewOnFocus(): Modifier {
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+    return bringIntoViewRequester(bringIntoViewRequester)
+        .onFocusChanged { state ->
+            if (state.isFocused) {
+                scope.launch { bringIntoViewRequester.bringIntoView() }
+            }
+        }
 }
 
 @Composable
@@ -242,6 +261,7 @@ fun DetailActionButton(
 
     Row(
         modifier = modifier
+            .detailBringIntoViewOnFocus()
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,

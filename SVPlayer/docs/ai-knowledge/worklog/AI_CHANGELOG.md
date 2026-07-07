@@ -1,5 +1,26 @@
 # AI Changelog
 
+## 2026-07-07 - Overlays fullscreen Live/Films/Series et focus details
+
+Type:
+- android
+- ui-tv
+- player
+- focus
+- documentation
+
+Resume:
+- Les overlays fullscreen Live/Film/Serie sont harmonises sur le meme style visuel: fond sombre/gradient, icones outline sans labels, focus discret bleu/blanc et luminosite integree.
+- Le player plein ecran Films/Series remplace l'ancien bandeau VOD par un overlay fullscreen bas: titres a gauche, utilitaires icon-only a droite, progression lisible et controles centraux.
+- Les films masquent toutes les actions propres aux series; les episodes affichent `Autres episodes`, precedent/suivant episode, panneau lateral saisons/episodes et card auto `Episode suivant`.
+- Le player fullscreen Live remplace `EPG / Settings / Record / Back to List` par `Favori / Record / Luminosite / Settings / Exit fullscreen`, sans supprimer la logique EPG hors bouton overlay.
+- La card `Episode suivant` se declenche a 10 secondes ou moins de la fin, avec action `Voir episode` et annulation par lecture courante.
+- Le mode luminosite remplace temporairement les icones utilitaires et applique un voile noir sur la video uniquement.
+- Les fiches detail Films/Series ajoutent un bring-into-view sur les actions, saisons, episodes et etoiles de note pour garder le focus visible apres scroll.
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK.
+
 ## 2026-07-07 - Release TMDB 0.1.110 lots 7 et 8 details riches
 
 Type:
