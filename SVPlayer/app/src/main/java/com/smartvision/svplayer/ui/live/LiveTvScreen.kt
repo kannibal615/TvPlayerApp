@@ -77,13 +77,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -249,6 +248,7 @@ fun LiveTvScreen(
     var categoryFocusTargetId by remember { mutableStateOf<String?>(null) }
     var channelFocusTargetId by remember { mutableStateOf<Int?>(null) }
     var inputReady by remember { mutableStateOf(false) }
+    var initialCategoryFocusRestored by remember { mutableStateOf(false) }
     var minimumLoadingComplete by remember { mutableStateOf(false) }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
     var tvCode by remember { mutableStateOf("") }
@@ -361,10 +361,11 @@ fun LiveTvScreen(
     val selectedCategoryVisible = state.categories.any { category -> category.id == state.selectedCategoryId }
     val categoryFocusTargetAvailable = selectedCategoryVisible || state.categories.isNotEmpty()
 
-    LaunchedEffect(state.categoriesLoading, hasPlayableSource, categoryFocusTargetAvailable) {
-        if (hasPlayableSource && !state.categoriesLoading && categoryFocusTargetAvailable) {
-            delay(120)
+    LaunchedEffect(state.categoriesLoading, state.channelsLoading, hasPlayableSource, categoryFocusTargetAvailable) {
+        if (!initialCategoryFocusRestored && hasPlayableSource && !state.categoriesLoading && !state.channelsLoading && categoryFocusTargetAvailable) {
+            delay(160)
             restoreCategoryFocus()
+            initialCategoryFocusRestored = true
         }
     }
 
@@ -592,6 +593,10 @@ private fun CategoryList(
         val index = visibleCategories.indexOfFirst { it.id == focusCategoryId }
         if (index >= 0) {
             listState.scrollToItem(index)
+            if (listState.awaitVisibleItem(index)) {
+                withFrameNanos { }
+                runCatching { selectedCategoryFocusRequester.requestFocus() }
+            }
         }
     }
 
@@ -697,8 +702,7 @@ private fun ChannelList(
         },
     ) {
         when {
-            state.channelsLoading && visibleChannels.isEmpty() -> LoadingState(
-                title = strings.liveTvLoadingChannels,
+            state.channelsLoading && visibleChannels.isEmpty() -> ChannelListSkeleton(
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -786,9 +790,6 @@ private fun PreviewPanel(
         trailing = {
             if (channel != null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (channel.epgPrograms.isNotEmpty()) {
-                        EpgHeaderIndicator()
-                    }
                     PreviewIconButton(
                         contentDescription = strings.liveTvWatch,
                         onClick = onWatch,
@@ -839,6 +840,7 @@ private fun PreviewPanel(
                     )
                     Spacer(Modifier.height(10.dp))
                     PremiumPreviewQr(
+                        strings = strings,
                         purchaseUrl = premiumPurchaseUrl,
                         tvCode = tvCode,
                         modifier = Modifier.weight(1f),
@@ -868,7 +870,7 @@ private fun PreviewPanel(
                 categoryLabel = selectedCategoryLabel.orEmpty(),
                 focusRequester = epgDetailsFocusRequester,
                 onRestoreChannelFocus = onRestoreChannelFocus,
-                upFocusRequester = headerFocusRequester,
+                upFocusRequester = firstActionFocusRequester,
                 onFocused = onEpgFocused,
                 modifier = Modifier.weight(1f),
             )
@@ -910,25 +912,95 @@ private fun IdlePreviewSmartVisionPrompt(
 
 @Composable
 private fun PremiumPreviewQr(
+    strings: SmartVisionStrings,
     purchaseUrl: String,
     tvCode: String,
     modifier: Modifier = Modifier,
 ) {
     val bitmap = remember(purchaseUrl) { createLivePreviewQrBitmap(purchaseUrl, 384) }
+    val gold = Color(0xFFFFD47A)
+    val deepNavy = Color(0xFF020914)
+    val luxuryShape = RoundedCornerShape(5.dp)
     Column(
         modifier = modifier
             .fillMaxWidth()
             .focusProperties { canFocus = false }
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .clip(luxuryShape)
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF0A1828),
+                        deepNavy,
+                        Color.Black,
+                    ),
+                    center = Offset(220f, 0f),
+                    radius = 560f,
+                ),
+            )
+            .border(BorderStroke(0.5.dp, gold.copy(alpha = 0.58f)), luxuryShape)
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .padding(bottom = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Top,
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(Color.Transparent, gold.copy(alpha = 0.52f)),
+                        ),
+                    ),
+            )
+            LuxuryCrown(
+                color = gold,
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .size(width = 32.dp, height = 22.dp),
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(gold.copy(alpha = 0.52f), Color.Transparent),
+                        ),
+                    ),
+            )
+        }
+        Text(
+            text = strings.liveTvPremiumModeTitle,
+            color = gold,
+            style = LiveTvPanelTitleStyle.copy(fontSize = 19.sp, lineHeight = 23.sp),
+            fontWeight = FontWeight.Light,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = strings.liveTvPremiumModeSubtitle,
+            color = SmartVisionColors.TextPrimary,
+            style = LiveTvItemTitleStyle.copy(fontSize = 13.sp, lineHeight = 17.sp),
+            fontWeight = FontWeight.Normal,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         Box(
             modifier = Modifier
-                .size(138.dp)
-                .clip(RoundedCornerShape(7.dp))
+                .size(120.dp)
+                .clip(RoundedCornerShape(5.dp))
                 .background(Color.White)
-                .padding(8.dp),
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.82f)), RoundedCornerShape(10.dp))
+                .padding(5.dp),
             contentAlignment = Alignment.Center,
         ) {
             Image(
@@ -937,33 +1009,89 @@ private fun PremiumPreviewQr(
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "CODE TV : ${tvCode.ifBlank { "GENERATION" }}",
-            color = SmartVisionColors.CyanAccent,
-            style = LiveTvItemTitleStyle.copy(fontSize = 18.sp, lineHeight = 21.sp),
-            fontWeight = FontWeight.Black,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        Spacer(modifier = Modifier.height(7.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(0.7f)
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(Color.Transparent, gold.copy(alpha = 0.48f)),
+                        ),
+                    ),
+            )
+            Text(
+                text = strings.liveTvPremiumCodeLabel,
+                color = gold.copy(alpha = 0.94f),
+                style = LiveTvItemTitleStyle.copy(fontSize = 13.sp, lineHeight = 17.sp),
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = 10.dp),
+            )
+            Text(
+                text = tvCode.ifBlank { "------" },
+                color = gold,
+                style = LiveTvPanelTitleStyle.copy(fontSize = 20.sp, lineHeight = 23.sp),
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(end = 10.dp),
+            )
+            Box(
+                modifier = Modifier
+                    .weight(0.7f)
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(gold.copy(alpha = 0.48f), Color.Transparent),
+                        ),
+                    ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LuxuryCrown(
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier = modifier.focusProperties { canFocus = false }) {
+        val stroke = 1.7.dp.toPx()
+        val baseTop = size.height * 0.72f
+        val baseBottom = size.height * 0.88f
+        val crown = Path().apply {
+            moveTo(size.width * 0.12f, baseTop)
+            lineTo(size.width * 0.27f, size.height * 0.36f)
+            lineTo(size.width * 0.42f, baseTop)
+            lineTo(size.width * 0.50f, size.height * 0.18f)
+            lineTo(size.width * 0.58f, baseTop)
+            lineTo(size.width * 0.73f, size.height * 0.36f)
+            lineTo(size.width * 0.88f, baseTop)
+            lineTo(size.width * 0.80f, baseBottom)
+            lineTo(size.width * 0.20f, baseBottom)
+            close()
+        }
+        drawPath(crown, color.copy(alpha = 0.92f))
+        drawPath(
+            crown,
+            Color.White.copy(alpha = 0.36f),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(stroke),
         )
-        Spacer(Modifier.height(5.dp))
-        Text(
-            text = "Supprimez les pubs",
-            color = SmartVisionColors.TextPrimary,
-            style = LiveTvItemMetaStyle.copy(fontSize = 12.sp, lineHeight = 15.sp),
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-        )
-        Text(
-            text = "Passez a Premium",
-            color = SmartVisionColors.Primary,
-            style = LiveTvItemMetaStyle.copy(fontSize = 12.sp, lineHeight = 15.sp),
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-        )
+        listOf(0.27f, 0.50f, 0.73f).forEach { x ->
+            drawCircle(
+                color = color,
+                radius = size.minDimension * 0.07f,
+                center = Offset(size.width * x, size.height * if (x == 0.50f) 0.15f else 0.32f),
+            )
+        }
     }
 }
 
@@ -1614,7 +1742,7 @@ private fun ChannelRow(
             ChannelLogo(
                 channel = channel,
                 active = active,
-                modifier = Modifier.size(width = 68.dp, height = 40.dp),
+                modifier = Modifier.size(width = 72.dp, height = 30.dp),
             )
 
             Spacer(Modifier.width(10.dp))
@@ -1663,7 +1791,7 @@ private fun EpgHeaderIndicator() {
         contentDescription = null,
         contentScale = ContentScale.Fit,
         modifier = Modifier
-            .size(width = 52.dp, height = 34.dp)
+            .size(width = 42.dp, height = 28.dp)
             .focusProperties { canFocus = false },
     )
 }
@@ -1831,24 +1959,77 @@ private fun EpgProgramList(
         return
     }
 
-    LazyColumn(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(bottom = 6.dp),
-    ) {
-        itemsIndexed(programs, key = { index, program -> "${channel.streamId}-$index-${program.timeRange}" }) { index, program ->
-            EpgProgramRow(
-                program = program,
-                expanded = expandedIndex == index,
-                focusRequester = focusRequester.takeIf { index == 0 },
-                onLeft = onRestoreChannelFocus,
-                upFocusRequester = upFocusRequester.takeIf { index == 0 },
-                onFocused = onFocused,
-                onClick = {
-                    expandedIndex = if (expandedIndex == index) -1 else index
-                },
-            )
+    Column(modifier = modifier.fillMaxWidth()) {
+        LiveTvDetailSectionHeader(
+            title = strings.liveTvProgramSectionTitle,
+            trailing = { EpgHeaderIndicator() },
+        )
+        LiveTvSectionTitleDivider()
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentPadding = PaddingValues(bottom = 6.dp),
+        ) {
+            itemsIndexed(programs, key = { index, program -> "${channel.streamId}-$index-${program.timeRange}" }) { index, program ->
+                EpgProgramRow(
+                    program = program,
+                    expanded = expandedIndex == index,
+                    focusRequester = focusRequester.takeIf { index == 0 },
+                    onLeft = onRestoreChannelFocus,
+                    upFocusRequester = upFocusRequester.takeIf { index == 0 },
+                    onFocused = onFocused,
+                    onClick = {
+                        expandedIndex = if (expandedIndex == index) -1 else index
+                    },
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun LiveTvDetailSectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(34.dp)
+            .focusProperties { canFocus = false },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            color = SmartVisionColors.TextPrimary,
+            style = LiveTvPanelTitleStyle,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        trailing?.invoke()
+    }
+}
+
+@Composable
+private fun LiveTvSectionTitleDivider() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 4.dp)
+            .height(1.dp)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        SmartVisionColors.Primary.copy(alpha = 0.74f),
+                        SmartVisionColors.Border.copy(alpha = 0.34f),
+                        Color.Transparent,
+                    ),
+                ),
+            ),
+    )
 }
 
 @Composable
@@ -1866,58 +2047,36 @@ private fun ChannelAboutPanel(
             .fillMaxWidth()
             .focusProperties { canFocus = false }
             .padding(top = 2.dp),
-        verticalArrangement = Arrangement.spacedBy(LiveTvDimens.ListGap),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
-        AboutInfoRow(
-            icon = AboutInfoIconKind.Channel,
-            label = strings.liveTvAboutChannelName,
-            valueContent = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    ChannelLogo(
-                        channel = channel,
-                        active = true,
-                        modifier = Modifier.size(width = 40.dp, height = 23.dp),
-                    )
-                    Text(
-                        text = channel.name,
-                        color = SmartVisionColors.TextPrimary,
-                        style = LiveTvItemTitleStyle,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+        LiveTvDetailSectionHeader(
+            title = strings.liveTvInfoSectionTitle,
+            trailing = {
+                ChannelLogo(
+                    channel = channel,
+                    active = true,
+                    modifier = Modifier.size(width = 54.dp, height = 30.dp),
+                )
             },
         )
+        LiveTvSectionTitleDivider()
         AboutInfoRow(
-            icon = AboutInfoIconKind.Number,
+            label = strings.liveTvAboutChannelName,
+            value = channel.name,
+        )
+        AboutInfoRow(
             label = strings.liveTvAboutNumber,
             value = channel.number,
         )
         AboutInfoRow(
-            icon = AboutInfoIconKind.Category,
             label = strings.liveTvAboutCategory,
             value = categoryLabel.ifBlank { channel.genre },
         )
         AboutInfoRow(
-            icon = AboutInfoIconKind.Source,
             label = strings.liveTvAboutSource,
             value = strings.liveTv,
         )
         AboutInfoRow(
-            icon = AboutInfoIconKind.Epg,
-            label = strings.liveTvAboutEpg,
-            value = strings.liveTvAboutEpgUnavailable,
-            disabled = true,
-        )
-        AboutInfoRow(
-            icon = AboutInfoIconKind.Country,
             label = strings.liveTvAboutCountry,
             value = country ?: strings.liveTvAboutUnknownCountry,
             disabled = country == null,
@@ -1927,178 +2086,45 @@ private fun ChannelAboutPanel(
 
 @Composable
 private fun AboutInfoRow(
-    icon: AboutInfoIconKind,
     label: String,
     value: String? = null,
     disabled: Boolean = false,
-    valueContent: (@Composable () -> Unit)? = null,
 ) {
-    val shape = RoundedCornerShape(6.dp)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        SmartVisionColors.SurfaceElevated.copy(alpha = 0.70f),
-                        SmartVisionColors.Surface.copy(alpha = 0.52f),
-                    ),
-                ),
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(31.dp)
+                .padding(horizontal = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                color = SmartVisionColors.TextPrimary,
+                style = LiveTvItemTitleStyle,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(0.9f),
             )
-            .border(BorderStroke(1.dp, SmartVisionColors.Border), shape)
-            .height(34.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+            Text(
+                text = value.orEmpty(),
+                color = if (disabled) SmartVisionColors.TextSecondary.copy(alpha = 0.72f) else SmartVisionColors.TextPrimary,
+                style = LiveTvItemTitleStyle,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1.15f),
+            )
+        }
         Box(
             modifier = Modifier
-                .fillMaxHeight()
-                .width(38.dp)
-                .background(SmartVisionColors.PrimaryDark.copy(alpha = 0.42f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            AboutInfoIcon(icon)
-        }
-        Text(
-            text = label,
-            color = SmartVisionColors.TextPrimary,
-            style = LiveTvItemTitleStyle,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 10.dp),
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(SmartVisionColors.Border.copy(alpha = 0.46f)),
         )
-        Box(
-            modifier = Modifier
-                .weight(1.25f)
-                .padding(end = 10.dp),
-            contentAlignment = Alignment.CenterEnd,
-        ) {
-            if (valueContent != null) {
-                valueContent()
-            } else {
-                Text(
-                    text = value.orEmpty(),
-                    color = if (disabled) SmartVisionColors.TextSecondary.copy(alpha = 0.72f) else SmartVisionColors.TextPrimary,
-                    style = LiveTvItemTitleStyle,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.End,
-                )
-            }
-        }
     }
-}
-
-@Composable
-private fun AboutInfoIcon(kind: AboutInfoIconKind) {
-    Canvas(
-        modifier = Modifier
-            .size(20.dp)
-            .focusProperties { canFocus = false },
-    ) {
-        val stroke = 2.3.dp.toPx()
-        val white = Color.White
-        when (kind) {
-            AboutInfoIconKind.Channel -> {
-                drawRoundRect(
-                    color = white,
-                    topLeft = Offset(size.width * 0.08f, size.height * 0.26f),
-                    size = Size(size.width * 0.74f, size.height * 0.54f),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx(), 4.dp.toPx()),
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(stroke),
-                )
-                drawLine(white, Offset(size.width * 0.32f, size.height * 0.26f), Offset(size.width * 0.18f, size.height * 0.08f), stroke)
-                drawLine(white, Offset(size.width * 0.58f, size.height * 0.26f), Offset(size.width * 0.72f, size.height * 0.08f), stroke)
-                drawPath(
-                    Path().apply {
-                        moveTo(size.width * 0.42f, size.height * 0.42f)
-                        lineTo(size.width * 0.42f, size.height * 0.64f)
-                        lineTo(size.width * 0.61f, size.height * 0.53f)
-                        close()
-                    },
-                    white,
-                )
-            }
-            AboutInfoIconKind.Number -> {
-                listOf(0.22f to "1", 0.50f to "2", 0.78f to "3").forEach { (y, text) ->
-                    drawContext.canvas.nativeCanvas.drawText(
-                        text,
-                        size.width * 0.12f,
-                        size.height * y,
-                        android.graphics.Paint().apply {
-                            color = android.graphics.Color.WHITE
-                            textSize = 8.5.dp.toPx()
-                            isFakeBoldText = true
-                            isAntiAlias = true
-                        },
-                    )
-                }
-                repeat(3) { row ->
-                    val y = size.height * (0.18f + row * 0.28f)
-                    drawLine(white, Offset(size.width * 0.45f, y), Offset(size.width * 0.90f, y), stroke)
-                }
-            }
-            AboutInfoIconKind.Category -> {
-                drawRoundRect(
-                    color = white,
-                    topLeft = Offset(size.width * 0.10f, size.height * 0.30f),
-                    size = Size(size.width * 0.80f, size.height * 0.48f),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx(), 3.dp.toPx()),
-                )
-                drawRoundRect(
-                    color = white,
-                    topLeft = Offset(size.width * 0.12f, size.height * 0.20f),
-                    size = Size(size.width * 0.36f, size.height * 0.17f),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx(), 2.dp.toPx()),
-                )
-            }
-            AboutInfoIconKind.Source -> {
-                drawCircle(white, radius = size.minDimension * 0.09f, center = Offset(size.width * 0.50f, size.height * 0.50f))
-                drawArc(white, 130f, 100f, false, topLeft = Offset(size.width * 0.18f, size.height * 0.22f), size = Size(size.width * 0.64f, size.height * 0.56f), style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
-                drawArc(white, -50f, 100f, false, topLeft = Offset(size.width * 0.18f, size.height * 0.22f), size = Size(size.width * 0.64f, size.height * 0.56f), style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
-            }
-            AboutInfoIconKind.Epg -> {
-                drawRoundRect(
-                    color = white,
-                    topLeft = Offset(size.width * 0.16f, size.height * 0.20f),
-                    size = Size(size.width * 0.68f, size.height * 0.62f),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx(), 4.dp.toPx()),
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(stroke),
-                )
-                repeat(2) { row ->
-                    repeat(3) { col ->
-                        drawCircle(white, radius = 1.5.dp.toPx(), center = Offset(size.width * (0.34f + col * 0.16f), size.height * (0.48f + row * 0.17f)))
-                    }
-                }
-            }
-            AboutInfoIconKind.Country -> {
-                drawLine(white, Offset(size.width * 0.22f, size.height * 0.16f), Offset(size.width * 0.22f, size.height * 0.86f), stroke)
-                drawPath(
-                    Path().apply {
-                        moveTo(size.width * 0.25f, size.height * 0.20f)
-                        cubicTo(size.width * 0.45f, size.height * 0.10f, size.width * 0.58f, size.height * 0.32f, size.width * 0.78f, size.height * 0.22f)
-                        lineTo(size.width * 0.78f, size.height * 0.58f)
-                        cubicTo(size.width * 0.58f, size.height * 0.68f, size.width * 0.45f, size.height * 0.46f, size.width * 0.25f, size.height * 0.56f)
-                        close()
-                    },
-                    white,
-                )
-            }
-        }
-    }
-}
-
-private enum class AboutInfoIconKind {
-    Channel,
-    Number,
-    Category,
-    Source,
-    Epg,
-    Country,
 }
 
 private fun detectLiveChannelCountry(channelName: String, categoryLabel: String): String? {
@@ -2176,7 +2202,7 @@ private fun EpgProgramRow(
                 onClick = onClick,
             )
             .focusable(interactionSource = interactionSource)
-            .padding(horizontal = 7.dp, vertical = 6.dp),
+            .padding(horizontal = 7.dp, vertical = 4.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -2207,13 +2233,13 @@ private fun EpgProgramRow(
                 style = LiveTvItemMetaStyle,
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 5.dp),
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 6.dp)
+                .padding(top = 5.dp)
                 .height(1.dp)
                 .background(SmartVisionColors.Border.copy(alpha = 0.46f)),
         )
@@ -2370,12 +2396,24 @@ private fun ChannelLogo(
     modifier: Modifier = Modifier,
 ) {
     if (!channel.logoUrl.isNullOrBlank()) {
-        AsyncImage(
-            model = channel.logoUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = modifier,
-        )
+        Box(
+            modifier = modifier
+                .clip(RoundedCornerShape(4.dp))
+                .focusProperties { canFocus = false },
+            contentAlignment = Alignment.Center,
+        ) {
+            AsyncImage(
+                model = channel.logoUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = 1.13f
+                        scaleY = 1.13f
+                    },
+            )
+        }
         return
     }
 
@@ -2658,6 +2696,95 @@ private fun LiveTvSkeletonPreviewPanel(
                     .background(shimmerBrush),
             )
             Spacer(Modifier.height(5.dp))
+        }
+    }
+}
+
+@Composable
+private fun ChannelListSkeleton(
+    modifier: Modifier = Modifier,
+) {
+    val transition = rememberInfiniteTransition(label = "channelListSkeleton")
+    val shimmerOffset by transition.animateFloat(
+        initialValue = -220f,
+        targetValue = 760f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1180, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "channelListSkeletonOffset",
+    )
+    val shimmerBrush = Brush.linearGradient(
+        colors = listOf(
+            SmartVisionColors.Surface.copy(alpha = 0.38f),
+            SmartVisionColors.SurfaceElevated.copy(alpha = 0.82f),
+            SmartVisionColors.Surface.copy(alpha = 0.38f),
+        ),
+        start = Offset(shimmerOffset, 0f),
+        end = Offset(shimmerOffset + 260f, 0f),
+    )
+    Column(
+        modifier = modifier
+            .focusProperties { canFocus = false }
+            .padding(top = LiveTvDimens.ChannelListTopPadding),
+        verticalArrangement = Arrangement.spacedBy(LiveTvDimens.ListGap),
+    ) {
+        repeat(9) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(LiveTvDimens.ChannelRowHeight)
+                    .clip(RoundedCornerShape(LiveTvDimens.ItemRadius))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                SmartVisionColors.SurfaceElevated.copy(alpha = 0.58f),
+                                SmartVisionColors.Surface.copy(alpha = 0.44f),
+                            ),
+                        ),
+                    )
+                    .border(
+                        BorderStroke(SmartVisionDimensions.PanelBorder, SmartVisionColors.Border.copy(alpha = 0.48f)),
+                        RoundedCornerShape(LiveTvDimens.ItemRadius),
+                    )
+                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(30.dp)
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(shimmerBrush),
+                )
+                Spacer(Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier
+                        .size(width = 72.dp, height = 28.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(shimmerBrush),
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.82f)
+                            .height(11.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(shimmerBrush),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.48f)
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(shimmerBrush),
+                    )
+                }
+            }
         }
     }
 }

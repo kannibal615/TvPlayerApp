@@ -1,6 +1,6 @@
 # Catalogue, Playlist et Lecture
 
-Derniere mise a jour: 2026-07-06.
+Derniere mise a jour: 2026-07-07.
 
 ## 1. Objectif
 
@@ -54,6 +54,8 @@ Depuis le 2026-07-06, l'ouverture Live TV garde le layout reel en skeleton shimm
 Depuis le 2026-07-06, Live TV corrige la selection automatique initiale quand un snapshot partiel precede la liste complete: tant que l'utilisateur n'a pas choisi manuellement de dossier, le ViewModel recalcule le premier dossier reel apres `Historique` dans l'ordre visuel final incluant `sortedByHistorySignals(...)`, puis annule/recharge le job chaines si la cible change. Les annulations normales de `channelsJob` ne sont plus converties en erreur visible `standaloneCoroutine was cancelled`. L'icone EPG utilise maintenant l'image fournie `epg a mettre.png` copiee telle quelle dans `ic_epg_premium.png`; les lignes sans EPG sous le mini-player perdent le titre/cadre/fond externe et s'integrent au style des lignes chaines.
 
 Depuis le 2026-07-06, la recherche Live TV est pilotee par `LiveTvViewModel` et interroge Room par pages au lieu de filtrer uniquement les chaines deja chargees en memoire. `ALL` recherche dans tout `live_streams`, les categories normales recherchent dans leur `categoryId`, et `Favoris` / `Historique` gardent un filtre local sur leurs listes deja materialisees. La pagination reste a `96` elements et les annulations normales de recherche ne doivent pas devenir des erreurs visibles.
+
+Depuis le 2026-07-07, Live TV garde le layout 3 colonnes mais stabilise la restauration de la categorie initiale cote UI: l'item selectionne est scrolle jusqu'a etre visible avant `requestFocus()`, pour eviter un decalage entre dossier selectionne, dossier focusse et dossier visible. Le loading interne de la colonne Chaines utilise un skeleton de lignes numerotees/logo/texte, distinct du skeleton global. Les logos chaines reels restent dans un conteneur fixe avec clipping et leger zoom `Fit` pour mieux exploiter l'espace sans deformation ni changement de hauteur de ligne. Sous le mini-player, la section avec EPG affiche le titre `Programme de la chaine`, l'icone EPG non focusable a droite, un separateur dedie et des lignes EPG plus compactes; la section sans EPG affiche `Info chaine`, le logo a droite du titre, des lignes informatives sans icones et sans ligne `EPG indisponible`. Quand aucune chaine n'est selectionnee en mode free ads, le bloc Premium est uniquement cosmetique: style dark navy/or, couronne dessinee, QR et code TV dynamiques conserves, sans bouton, prix ni CTA.
 
 ## 3. Workflow utilisateur
 

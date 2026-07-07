@@ -1,5 +1,34 @@
 # AI Changelog
 
+## 2026-07-07 - Live TV focus, EPG/Info et Premium minimal luxury
+
+Type:
+- android
+- live-tv
+- ui-tv
+- focus
+- release
+- deploy
+- documentation
+
+Resume:
+- La restauration de focus Categories attend maintenant que la categorie selectionnee soit visible avant `requestFocus()`, afin de synchroniser selection, focus et scroll a l'ouverture Live TV.
+- Le loader interne de la colonne Chaines est remplace par un skeleton de lignes numerotees/logo/texte, sans changer le skeleton global Live TV.
+- Les logos chaines reels restent dans un conteneur fixe avec clipping et leger zoom `Fit`, sans deformation ni changement de hauteur de ligne.
+- L'icone EPG quitte le header Apercu et passe a droite du titre `Programme de la chaine`; D-pad haut depuis la premiere ligne EPG cible `Regarder` dans le header Apercu.
+- La section `Info chaine` reprend la structure titre/separateur/lignes de l'EPG, sans icones de lignes, sans logo dans la ligne Channel et sans ligne `EPG indisponible`.
+- Le bloc Premium sous mini-player adopte un style minimal luxury dark navy/or avec couronne dessinee, QR et code TV dynamiques conserves, sans bouton, prix ni CTA.
+- Version finale publiee en `0.1.105` / `versionCode 109`.
+
+Validation:
+- `.\gradlew.bat :app:assembleRelease --no-daemon --console=plain`: OK avant bump UI, OK en `0.1.104 (108)`, puis OK final en `0.1.105 (109)`.
+- `.\scripts\guard_release_version.ps1`: OK avant build final, local `0.1.105 (109)` > prod `0.1.104 (108)`, warning metadata ancien attendu.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK apres build final, metadata `0.1.105 (109)`.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall`: OK, tests publics/site/admin du script OK.
+- Production verifiee: `smartvision-tv.version.json` et `api/app_update.php` annoncent `0.1.105` / `109`; APK versionne `smartvision-tv-v109-d480fc66.apk` et APK stable repondent en `200`, taille `40756264`, SHA256 `d480fc66030d83a22236ef0b4dcb4c0a304ebbb861ba34e78808c0f492044d9a`.
+- `git diff --check`: OK, uniquement avertissements CRLF Windows.
+- `adb` absent du PATH pendant le guard: version installee TV non verifiee.
+
 ## 2026-07-06 - Raccourcis telecommande Settings/Menu globaux
 
 Type:

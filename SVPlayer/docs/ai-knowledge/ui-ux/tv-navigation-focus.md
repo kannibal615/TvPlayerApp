@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-07-06.
+Derniere mise a jour: 2026-07-07.
 
 ## 1. Objectif
 
@@ -58,6 +58,7 @@ Attention:
 - Depuis le 2026-07-05, le header Apercu Live TV porte les actions `Regarder`, `Favori` et `Supprimer` en boutons carres icon-only. D-pad droite depuis une chaine cible ces actions d'apercu; les lignes EPG sous le mini-player sont elles-memes focusables et OK ouvre/ferme le detail en rideau.
 - Depuis le 2026-07-06, `ui/home/TvHeader.kt` accepte un `FocusRequester` pour l'onglet courant et une cible D-pad bas vers le contenu. Live TV branche l'onglet `Live TV` et la categorie selectionnee: D-pad haut depuis la premiere ligne/action de contenu remonte vers l'onglet actif, et D-pad bas depuis le header revient uniquement aux categories. Les actions du header Apercu et les lignes EPG routent D-pad gauche vers la chaine selectionnee, avec fallback sur la premiere chaine composee.
 - Depuis le 2026-07-06, Live TV evite les restaurations de focus directes vers des items Lazy potentiellement hors composition. Les transitions critiques header -> categories, categories -> chaines, chaines -> categories, chaines -> recherche -> header et apercu/EPG -> chaines passent par un scroll `LazyListState.scrollToItem(...)`, une attente de presence dans `visibleItemsInfo`, puis seulement un `requestFocus()` protege. `TvHeader` expose aussi un callback optionnel `onContentDown` pour laisser l'ecran restaurer lui-meme la bonne cible composee.
+- Depuis le 2026-07-07, la liste Categories Live TV demande aussi le focus sur la categorie selectionnee uniquement apres avoir scrolle l'index cible et confirme sa presence visible, ce qui synchronise selection, focus et scroll lors de l'ouverture. Dans l'apercu Live TV, D-pad haut depuis la premiere ligne EPG cible maintenant le premier bouton du header Apercu (`Regarder`) au lieu de remonter directement au header principal; l'icone EPG a ete deplacee dans le titre de section et reste non focusable.
 - Depuis le 2026-07-06, quand la liste chaines Live TV est vide, D-pad droite depuis les categories cible le champ de recherche au lieu de tenter un focus sur une ligne chaine inexistante.
 - Depuis le 2026-07-05, Live TV > Historique ne possede plus de bouton supprimer inline dans les lignes. La suppression passe uniquement par le header Apercu, garde le dialog de confirmation focusable, puis restaure la selection sur la chaine suivante visible, sinon precedente.
 - Les mini-players Home Continue watching, Home Tendances et Live TV apercu ont un fade-in audio local: volume player `0f`, attente 1 seconde apres `play()`, puis montee a `1f` sur 1 seconde. Cette logique ne doit pas modifier le focus, le D-pad, le fallback video ni les routes plein ecran. Le job audio doit rester vivant jusqu'a disparition/changement du composable; ne pas remettre `volume = 0f` juste apres la premiere frame.
