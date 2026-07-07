@@ -402,43 +402,78 @@ private fun SeriesDetailScreen(
                 .padding(top = DetailDimens.HeaderTop),
         )
 
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = DetailDimens.ScreenPadding)
                 .padding(top = 82.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            SeriesHeroInfo(
-                state = state,
-                onWatchEpisode = { state.firstEpisode?.episodeId?.let(onWatchEpisode) },
-                onRetry = onRetry,
-                onFavorite = onFavorite,
-                modifier = Modifier.width(660.dp),
-            )
-
-            Spacer(Modifier.weight(1f))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(28.dp),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                SeriesSeasonPanel(
-                    state = state,
-                    onSeason = onSeason,
-                    modifier = Modifier.width(430.dp),
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(28.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    SeriesHeroInfo(
+                        state = state,
+                        onWatchEpisode = { state.firstEpisode?.episodeId?.let(onWatchEpisode) },
+                        onRetry = onRetry,
+                        onFavorite = onFavorite,
+                        modifier = Modifier.width(720.dp),
+                    )
+                    Spacer(Modifier.weight(1f))
+                    SeriesCoverFrame(
+                        imageUrl = state.displayCoverUrl,
+                        title = state.displayTitle,
+                        modifier = Modifier
+                            .width(330.dp)
+                            .aspectRatio(0.68f),
+                    )
+                }
+            }
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(28.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    SeriesSeasonPanel(
+                        state = state,
+                        onSeason = onSeason,
+                        modifier = Modifier.width(520.dp),
+                    )
+                    SeriesEpisodeList(
+                        episodes = state.visibleEpisodes,
+                        loading = state.loading,
+                        errorMessage = state.errorMessage,
+                        firstEpisodeFocusRequester = firstEpisodeFocusRequester,
+                        onRetry = onRetry,
+                        onEpisode = { episode -> onWatchEpisode(episode.episodeId) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(300.dp),
+                    )
+                }
+            }
+            item {
+                DetailVideoSection(videos = state.tmdbMetadata?.videos.orEmpty())
+            }
+            item {
+                DetailPeopleSection(title = "Cast", people = state.tmdbMetadata?.castMembers.orEmpty())
+            }
+            item {
+                DetailPeopleSection(title = "Creators", people = state.tmdbMetadata?.creators.orEmpty())
+            }
+            item {
+                DetailUserRatingSection(
+                    contentKey = "series:${state.seriesId}",
+                    tmdbRating = state.displayRating,
+                    voteCount = state.tmdbMetadata?.voteCount,
                 )
-                SeriesEpisodeList(
-                    episodes = state.visibleEpisodes,
-                    loading = state.loading,
-                    errorMessage = state.errorMessage,
-                    firstEpisodeFocusRequester = firstEpisodeFocusRequester,
-                    onRetry = onRetry,
-                    onEpisode = { episode -> onWatchEpisode(episode.episodeId) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(252.dp),
-                )
+            }
+            item {
+                DetailRecommendationsSection(recommendations = state.tmdbMetadata?.recommendations.orEmpty())
             }
         }
     }
@@ -473,22 +508,23 @@ private fun SeriesHeroInfo(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text("•", color = SmartVisionColors.TextSecondary, style = DetailBodyStyle)
+                Text("|", color = SmartVisionColors.TextSecondary, style = DetailBodyStyle)
             }
             state.displayRating?.let { DetailBadge(text = "$it/10") }
             DetailBadge(text = "${state.episodes.size} episodes")
             if (state.isTmdbEnriched) {
                 DetailBadge(text = "TMDB", color = Color(0xFF18253A))
             }
+            state.tmdbMetadata?.certification.nonBlank()?.let { DetailBadge(text = it, color = Color(0xFF18253A)) }
         }
         Spacer(Modifier.height(12.dp))
         Text(
             text = state.displayPlot ?: "Serie disponible depuis le catalogue Xtream.",
             color = SmartVisionColors.TextSecondary,
             style = DetailBodyStyle,
-            maxLines = 4,
+            maxLines = 6,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(560.dp),
+            modifier = Modifier.width(650.dp),
         )
         Spacer(Modifier.height(22.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -577,32 +613,12 @@ private fun SeriesSeasonPanel(
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     DetailBadge(text = state.categoryLabel)
                     state.displayCreator?.let { DetailBadge(text = it, color = Color(0xFF18253A)) }
-                    state.tmdbMetadata?.certification.nonBlank()?.let { DetailBadge(text = it, color = Color(0xFF18253A)) }
-                }
-                state.displayCast?.let { cast ->
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = cast,
-                        color = SmartVisionColors.TextSecondary,
-                        style = DetailMetaStyle,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                state.tmdbMetadata?.providersSummary.nonBlank()?.let { providers ->
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = "Providers: $providers",
-                        color = SmartVisionColors.TextSecondary,
-                        style = DetailMetaStyle,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
                 }
             }
         }
     }
 }
+
 
 @Composable
 private fun SeriesEpisodeList(

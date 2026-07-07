@@ -4,10 +4,11 @@ Derniere mise a jour: 2026-07-07.
 
 ## 1. Objectif produit
 
-Integrer TMDB comme source de metadonnees enrichies pour les films et series du catalogue Xtream SmartVision, sans fournir de contenu, sans remplacer la lecture Xtream et sans bloquer l'interface Android TV.
+Integrer TMDB comme source de metadonnees enrichies pour les films et series du catalogue Xtream SmartVision, sans fournir de contenu, sans remplacer la lecture Xtream principale et sans bloquer l'interface Android TV.
 
 Objectifs visibles:
 - enrichir les fiches films avec posters/backdrops TMDB, synopsis, genres, duree, casting, realisation, note, certification et providers JustWatch quand disponibles;
+- enrichir les fiches films/series avec trailers/teasers YouTube TMDB, casting/realisation/createurs avec photos, recommandations et note utilisateur locale;
 - associer automatiquement les films et series Xtream a un `tmdb_id`;
 - utiliser la langue reglee dans l'application pour les appels TMDB;
 - ajouter une attribution TMDB/JustWatch dans un nouveau menu Settings;
@@ -16,7 +17,7 @@ Objectifs visibles:
 - preparer l'extension future vers series, episodes, Home, recherche enrichie et backend.
 
 Non-objectifs du MVP:
-- ne pas remplacer ExoPlayer ni les URLs Xtream;
+- ne pas remplacer les URLs Xtream pour la lecture du film/episode principal;
 - ne pas stocker de flux video TMDB;
 - ne pas ajouter de validation admin obligatoire;
 - ne pas bloquer Home, Movies ou Series pendant l'enrichissement;
@@ -82,8 +83,8 @@ Recherche:
 - `GET /search/tv`
 
 Details:
-- `GET /movie/{movie_id}` avec `append_to_response=credits,videos,images,release_dates,watch/providers`
-- `GET /tv/{series_id}` avec `append_to_response=credits,videos,images,content_ratings,watch/providers`
+- `GET /movie/{movie_id}` avec `append_to_response=credits,videos,images,release_dates,watch/providers,recommendations`
+- `GET /tv/{series_id}` avec `append_to_response=credits,videos,images,content_ratings,watch/providers,recommendations`
 
 Parametres communs:
 - `language`: issu du reglage SmartVision;
@@ -205,7 +206,8 @@ Validation:
 
 Statut 2026-07-07:
 - implemente dans `SeriesDetailScreen.kt`;
-- la fiche serie priorise TMDB pour titre, poster, backdrop, synopsis, genre, date, note, duree episode, casting, createurs, certification et providers;
+- la fiche serie priorise TMDB pour titre, poster, backdrop, synopsis, genre, date, note, duree episode, casting, createurs, certification, providers, videos et recommandations;
+- la fiche serie est scrollable et ajoute trailers/teasers dans un mini-player YouTube, casting/createurs avec photos, note utilisateur locale et recommandations TMDB;
 - les saisons/episodes, ids et URLs de lecture restent Xtream;
 - fallback Xtream conserve si TMDB est absent ou non configure.
 
@@ -230,6 +232,8 @@ Statut 2026-07-07:
 - Movies et Series relisent seulement le cache TMDB Room local sur les premiers items charges, sans recherche reseau par item;
 - les grilles restent paginees Room et gardent les images/titres Xtream en fallback.
 - valide en release `0.1.109` / `versionCode 113`: prod publiee, APK installe sur Firestick, Home rendu, `TMDB token` actif dans Settings, et appel `TMDB: search tv` HTTP 200 visible dans Network Activity.
+- extension lots 7/8: les tendances utilisent maintenant les posters/backdrops TMDB et, si disponible, le trailer YouTube TMDB comme preview; elles ne lancent plus la video Xtream d'origine comme preview. Les anciens caches `movie`/`episode` sont neutralises en migration `11 -> 12` et ignores a la lecture.
+- Home affiche des skeleton cards non focusables pour `Continue watching`, `Trending movies` et `Trending series` tant que les donnees necessaires ne sont pas chargees.
 
 ### Lot 7 - Maintenance, refresh et observabilite
 
@@ -247,6 +251,13 @@ Validation:
 - pas de spam reseau;
 - erreurs visibles seulement en diagnostic.
 
+Statut 2026-07-07:
+- implemente cote Room/repository avec TTL metadonnees TMDB par langue: cache frais pendant 7 jours, fallback stale autorise si le reseau echoue, retention locale 90 jours;
+- nettoyage borne des metadonnees TMDB obsoletes via `deleteStaleTmdbMovieMetadata` et `deleteStaleTmdbSeriesMetadata`;
+- la preparation Home trends reste bornee par `HomeViewModel` et dedupliquee par item;
+- les appels TMDB restent dans Network Activity via OkHttp sans exposer token, query sensible ou secret;
+- la migration Room passe a `SVDatabase` version `12` pour stocker cast/director/createurs/videos/recommandations et neutraliser les anciens previews Xtream en cache.
+
 ### Lot 8 - Preparation commercialisation
 
 Objectif:
@@ -262,7 +273,23 @@ Taches:
 Validation:
 - revue juridique/licence effectuee avant publication commerciale.
 
-## 7. Regles a ne pas casser
+Statut 2026-07-07:
+- attribution TMDB/JustWatch deja visible dans Settings, avec statut configure/non configure sans exposer le token;
+- politique locale documentee: Room prioritaire, TTL 7 jours, retention 90 jours, fallback Xtream si TMDB absent/echec;
+- les providers JustWatch restent affiches uniquement comme metadonnees disponibles;
+- prerequis non code avant commercialisation: remplacer la licence personnelle par une licence/autorisation TMDB adaptee et revalider les conditions TMDB/JustWatch applicables a la distribution commerciale.
+
+## 7. Etat final MVP TMDB au 2026-07-07
+
+Lots 1 a 8 cote application Android:
+- Room: mapping Xtream -> TMDB, metadonnees films/series enrichies, cache Home trends, schema `12`;
+- API: recherche et details TMDB avec credits, videos, images, certifications, providers et recommandations;
+- Details films/series: ecrans scrollables, TMDB prioritaire champ par champ, posters/backdrops, synopsis, genres, durees, note TMDB, note utilisateur locale, casting/realisation/createurs avec photos, trailers/teasers YouTube en mini-player, recommandations;
+- Home: tendances avec images TMDB et trailer YouTube TMDB en preview; aucun lancement du flux Xtream d'origine pour les previews tendances;
+- Loading: skeleton cards visibles pour Continue watching et tendances pendant les chargements initiaux;
+- Compliance technique: token local uniquement, attribution Settings, cache local documente, fallback non bloquant.
+
+## 8. Regles a ne pas casser
 
 - Ne jamais bloquer la lecture ou l'ouverture detail si TMDB echoue.
 - Ne jamais ecrire les secrets dans Git, docs, logs ou Room.
@@ -273,7 +300,7 @@ Validation:
 - Garder le controle parental prioritaire sur les donnees adultes.
 - Garder JustWatch comme metadonnee d'information, pas comme source de lecture SmartVision.
 
-## 8. Fichiers principaux
+## 9. Fichiers principaux
 
 Documentation:
 - `docs/ai-knowledge/features/tmdb-integration-plan.md`
@@ -291,10 +318,15 @@ Android:
 - `app/src/main/java/com/smartvision/svplayer/data/local/SVDatabase.kt`
 - `app/src/main/java/com/smartvision/svplayer/ui/detail/MovieDetailScreen.kt`
 - `app/src/main/java/com/smartvision/svplayer/ui/detail/SeriesDetailScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/detail/TmdbDetailRichContent.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/TrendingContentRow.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/home/HomeSkeletonRow.kt`
 - `app/src/main/java/com/smartvision/svplayer/ui/settings/SettingsScreen.kt`
 - `app/src/main/java/com/smartvision/svplayer/ui/i18n/SmartVisionStrings.kt`
 
-## 9. Definition de termine MVP Lots 1-4
+## 10. Definition de termine MVP Lots 1-4
 
 Le MVP Lots 1-4 est termine quand:
 - la documentation A-Z existe et est routee depuis `ROOT.md`;
@@ -307,7 +339,7 @@ Le MVP Lots 1-4 est termine quand:
 - Settings contient une entree d'attribution TMDB/JustWatch;
 - les docs et le changelog IA refletent les changements.
 
-## 10. Definition de termine Lots 5-6
+## 11. Definition de termine Lots 5-6
 
 Les lots 5-6 sont termines quand:
 - la fiche serie affiche les donnees TMDB disponibles avec fallback Xtream;
@@ -316,3 +348,15 @@ Les lots 5-6 sont termines quand:
 - Movies/Series reutilisent le cache TMDB local sans recherche reseau massive;
 - `:app:compileReleaseKotlin` passe;
 - les docs et le changelog IA sont a jour.
+
+## 12. Definition de termine Lots 7-8
+
+Les lots 7-8 sont termines cote application quand:
+- le cache TMDB applique une politique de fraicheur et retention documentee;
+- les metadonnees stale restent utilisables si le reseau echoue;
+- les anciennes previews Home Xtream sont neutralisees et les nouvelles previews tendances utilisent seulement les trailers YouTube TMDB;
+- les ecrans detail films/series exposent les videos, personnes, note utilisateur et recommandations;
+- Settings affiche l'attribution TMDB/JustWatch sans secret;
+- `:app:compileReleaseKotlin` et `:app:assembleRelease` passent.
+
+Avant commercialisation, il reste obligatoire de remplacer la licence personnelle TMDB par une licence/autorisation adaptee et de revalider les conditions TMDB/JustWatch applicables.

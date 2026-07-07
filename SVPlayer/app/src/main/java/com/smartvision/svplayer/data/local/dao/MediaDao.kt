@@ -208,6 +208,9 @@ interface MediaDao {
     @Upsert
     suspend fun upsertTmdbMovieMetadata(metadata: TmdbMovieMetadataEntity)
 
+    @Query("DELETE FROM tmdb_movie_metadata WHERE updatedAt < :minUpdatedAt")
+    suspend fun deleteStaleTmdbMovieMetadata(minUpdatedAt: Long)
+
     @Query("SELECT * FROM tmdb_series_metadata WHERE tmdbId = :tmdbId AND language = :language LIMIT 1")
     suspend fun getTmdbSeriesMetadata(tmdbId: Int, language: String): TmdbSeriesMetadataEntity?
 
@@ -216,6 +219,9 @@ interface MediaDao {
 
     @Upsert
     suspend fun upsertTmdbSeriesMetadata(metadata: TmdbSeriesMetadataEntity)
+
+    @Query("DELETE FROM tmdb_series_metadata WHERE updatedAt < :minUpdatedAt")
+    suspend fun deleteStaleTmdbSeriesMetadata(minUpdatedAt: Long)
 
     @Query("DELETE FROM series")
     suspend fun clearSeries()

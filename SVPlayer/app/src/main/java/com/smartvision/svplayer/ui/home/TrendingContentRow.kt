@@ -82,6 +82,8 @@ import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import com.smartvision.svplayer.ui.youtube.YoutubePlaybackMode
+import com.smartvision.svplayer.ui.youtube.YoutubeWebPlayer
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Job
@@ -195,7 +197,7 @@ fun TrendingContentRow(
                     expanded = expanded,
                     enablePreview = activePreviewId == item.id &&
                         item.previewPrepared &&
-                        !item.previewUrl.isNullOrBlank(),
+                        (!item.previewUrl.isNullOrBlank() || !item.previewYoutubeKey.isNullOrBlank()),
                     onClick = { if (blocked) onBlockedClick() else onItemClick(item) },
                     focusRequester = if (index == 0) firstItemFocusRequester else null,
                     onFocused = {
@@ -278,6 +280,7 @@ private fun TrendingPreviewCard(
     )
     val previewDisabledForSession = UnsupportedTrendingPreviewCache.isUnsupported(item.previewUrl)
     val previewUrl = item.previewUrl.takeUnless { previewDisabledForSession }
+    val previewYoutubeKey = item.previewYoutubeKey?.takeIf { it.isNotBlank() }
     val posterUrl = item.imageUrl
     val landscapeUrl = item.previewImageUrl
     val hasBackdrop = item.previewBackdropAvailable && !landscapeUrl.isNullOrBlank()
@@ -377,7 +380,14 @@ private fun TrendingPreviewCard(
                 )
             }
         }
-        if (expanded && enablePreview && previewUrl != null) {
+        if (expanded && enablePreview && previewYoutubeKey != null) {
+            YoutubeWebPlayer(
+                videoId = previewYoutubeKey,
+                mode = YoutubePlaybackMode.Preview,
+                keyboardControlsEnabled = false,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else if (expanded && enablePreview && previewUrl != null) {
             TrendingMutedPreviewPlayer(
                 url = previewUrl,
                 startPositionMs = item.previewStartPositionMs,

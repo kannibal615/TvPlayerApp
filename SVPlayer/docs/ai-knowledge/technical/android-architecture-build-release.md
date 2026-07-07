@@ -18,8 +18,8 @@ Observabilite reseau:
 - Ne jamais exposer les query params, tokens, identifiants Xtream, mots de passe ou URLs de lecture dans ce tracker.
 
 Gradle local constate le 2026-07-07:
-- `versionCode = 113`
-- `versionName = "0.1.109"`
+- `versionCode = 114`
+- `versionName = "0.1.110"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
@@ -166,6 +166,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-07: release publiee `0.1.110` / `versionCode 114` pour TMDB lots 7 et 8: Room schema `12`, TTL/fallback/nettoyage TMDB, details films/series scrollables avec trailers/teasers YouTube, casting/realisateur/createurs avec photos, note utilisateur locale, recommandations, Home Tendances en trailers TMDB sans lecture du flux Xtream d'origine et skeleton cards Continue/Tendances. APK `smartvision-tv-v114-f84c329b.apk`, SHA256 `f84c329bf7fbb5c11215713261a562827b1560bb4b076eb85a6d65b36ef7fdee`, taille `40854578`. Manifeste public, `app_update.php`, APK stable/versionne et `app_config.php` verifies. APK installe/lance sur Firestick `192.168.1.33:5555`; Home rendu, `versionCode=114`, aucun crash/ANR/Room error dans les logs filtres. Navigation Movies capturee, ouverture fiche detail via ADB non confirmee pendant la verification manuelle.
 - 2026-07-07: release publiee `0.1.109` / `versionCode 113` pour integration TMDB lots 1 a 6: cache Room local, matching film/serie, details film/serie enrichis, Home tendances enrichies sans splash massif, catalogues cache-only et Settings `TMDB attribution`. APK `smartvision-tv-v113-6b467713.apk`, SHA256 `6b467713c176c876eee2517b36a9592238d54d3c72e19bb57cd9572e879cbab3`, taille `40821819`. Manifeste public, `app_update.php`, APK stable/versionne, `app_config.php`, `ads-config` et VAST verifies. APK installe/lance sur Firestick `192.168.1.33:5555`; Home rendu, `TMDB token` actif dans Settings, appel `TMDB: search tv` HTTP 200 observe dans Network Activity, aucun crash/ANR/Room error dans les logs filtres.
 - 2026-07-07: release finale publiee `0.1.107` / `versionCode 111` pour corrections Live TV focus categorie initiale, skeleton interne Chaines, logos chaines, section EPG/Info chaine et bloc Premium minimal luxury. APK final a verifier dans le manifeste public apres build/deploy.
 - 2026-07-07: ajout local de la couche TMDB optionnelle: `BuildConfig.TMDB_READ_ACCESS_TOKEN`, client Retrofit TMDB dans `AppContainer`, Network Activity type `Tmdb`, cache Room version 11 et attribution Settings. Validation effectuee par `:app:compileReleaseKotlin`.

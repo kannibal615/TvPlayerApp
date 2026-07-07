@@ -40,6 +40,7 @@ data class HomeTrendingPreparedPreview(
     val durationLabel: String?,
     val durationMs: Long?,
     val previewUrl: String?,
+    val trailerKey: String?,
     val previewStartPositionMs: Long,
     val previewFallbackStartPositionMs: Long,
     val sampleLabel: String?,
@@ -52,13 +53,18 @@ data class HomeTrendingPreparedPreview(
             previewImageUrl = backdropUrl ?: posterUrl ?: item.imageUrl,
             remaining = durationLabel ?: sampleLabel ?: item.remaining,
             previewUrl = previewUrl,
+            previewYoutubeKey = trailerKey,
             previewStartPositionMs = previewStartPositionMs,
             previewFallbackStartPositionMs = previewFallbackStartPositionMs,
             previewDurationLabel = durationLabel ?: sampleLabel,
             previewDurationMs = durationMs,
             previewPrepared = true,
             previewBackdropAvailable = backdropAvailable,
-            previewMode = if (previewAvailable) HomePreviewMode.TrendSegments else HomePreviewMode.None,
+            previewMode = when {
+                !trailerKey.isNullOrBlank() -> HomePreviewMode.YoutubeTrailer
+                previewAvailable -> HomePreviewMode.TrendSegments
+                else -> HomePreviewMode.None
+            },
         )
 }
 
@@ -288,6 +294,7 @@ class HomeContentRepository(
         }
         cleanPreviewCacheIfNeeded(key.lastSync)
         mediaDao.getHomeTrendingPreviewCache(contentType, contentId, key.lastSync)
+            ?.takeIf { it.isYoutubeTrailerPreviewCache() }
             ?.toPreparedPreview()
             ?.also { prepared ->
                 PerformanceDiagnosticRecorder.recordDuration(
@@ -395,6 +402,7 @@ class HomeContentRepository(
         val startPositionMs = durationMs.previewStartAt(PreviewStartRatio)
         val posterUrl = tmdb?.posterUrl ?: details.posterUrl ?: fallbackPosterUrl
         val backdropUrl = tmdb?.backdropUrl ?: details.backdropUrl?.takeIf { it.isNotBlank() }
+        val trailerKey = tmdb?.trailerKey
         return HomeTrendingPreviewCacheEntity(
             contentType = TrendingMovieType,
             contentId = contentId,
@@ -402,13 +410,14 @@ class HomeContentRepository(
             backdropUrl = backdropUrl,
             durationLabel = durationMs?.formatDurationLabel() ?: details.duration?.takeIf { it.isNotBlank() },
             durationMs = durationMs,
-            previewKind = PreviewKindMovie,
-            previewContentId = contentId,
-            previewExtension = details.containerExtension.ifBlank { "mp4" },
+            previewKind = if (!trailerKey.isNullOrBlank()) PreviewKindYoutube else PreviewKindNone,
+            previewContentId = null,
+            previewExtension = null,
+            trailerKey = trailerKey,
             previewStartPositionMs = startPositionMs,
             sampleLabel = null,
             backdropState = if (!backdropUrl.isNullOrBlank()) BackdropAvailable else BackdropMissing,
-            previewState = PreviewAvailable,
+            previewState = if (!trailerKey.isNullOrBlank()) PreviewAvailable else PreviewUnavailable,
             preparedAt = System.currentTimeMillis(),
             lastSync = lastSync,
         )
@@ -437,6 +446,7 @@ class HomeContentRepository(
         val sampleLabel = firstEpisode?.let { "S${it.seasonNumber} E${it.episodeNumber}" }
         val posterUrl = tmdb?.posterUrl ?: details.coverUrl ?: fallbackPosterUrl
         val backdropUrl = tmdb?.backdropUrl ?: details.backdropUrl?.takeIf { it.isNotBlank() }
+        val trailerKey = tmdb?.trailerKey
         return HomeTrendingPreviewCacheEntity(
             contentType = TrendingSeriesType,
             contentId = contentId,
@@ -444,13 +454,14 @@ class HomeContentRepository(
             backdropUrl = backdropUrl,
             durationLabel = durationMs?.formatDurationLabel(),
             durationMs = durationMs,
-            previewKind = if (firstEpisode != null) PreviewKindEpisode else PreviewKindNone,
-            previewContentId = firstEpisode?.episodeId,
-            previewExtension = firstEpisode?.containerExtension?.ifBlank { "mp4" },
+            previewKind = if (!trailerKey.isNullOrBlank()) PreviewKindYoutube else PreviewKindNone,
+            previewContentId = null,
+            previewExtension = null,
+            trailerKey = trailerKey,
             previewStartPositionMs = durationMs.previewStartAt(PreviewStartRatio),
             sampleLabel = durationMs?.formatDurationLabel() ?: sampleLabel,
             backdropState = if (!backdropUrl.isNullOrBlank()) BackdropAvailable else BackdropMissing,
-            previewState = if (firstEpisode != null) PreviewAvailable else PreviewUnavailable,
+            previewState = if (!trailerKey.isNullOrBlank()) PreviewAvailable else PreviewUnavailable,
             preparedAt = System.currentTimeMillis(),
             lastSync = lastSync,
         )
@@ -475,13 +486,18 @@ class HomeContentRepository(
             durationLabel = durationLabel,
             durationMs = durationMs,
             previewUrl = previewUrl,
+            trailerKey = trailerKey,
             previewStartPositionMs = previewStartPositionMs,
             previewFallbackStartPositionMs = fallbackStart,
             sampleLabel = sampleLabel,
             backdropAvailable = backdropState == BackdropAvailable && !backdropUrl.isNullOrBlank(),
-            previewAvailable = previewUrl != null,
+            previewAvailable = previewUrl != null || !trailerKey.isNullOrBlank(),
         )
     }
+
+    private fun HomeTrendingPreviewCacheEntity.isYoutubeTrailerPreviewCache(): Boolean =
+        previewKind == PreviewKindYoutube ||
+            (previewKind == PreviewKindNone && previewContentId == null && previewExtension == null)
 
     private fun TrendingCatalogItem.toMovieTrendItem(): ContinueItem? {
         // PERF_DIAG: per-candidate details are intentionally data-only; URLs/secrets are not written.
@@ -616,6 +632,7 @@ private const val TrendingMovieType = "movie"
 private const val TrendingSeriesType = "series"
 private const val PreviewKindMovie = "movie"
 private const val PreviewKindEpisode = "episode"
+private const val PreviewKindYoutube = "youtube"
 private const val PreviewKindNone = "none"
 private const val BackdropAvailable = "available"
 private const val BackdropMissing = "missing"

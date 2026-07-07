@@ -42,8 +42,8 @@ interface TmdbApiService {
     ): TmdbSeriesDetailsDto
 
     companion object {
-        const val MovieAppendToResponse = "credits,videos,images,release_dates,watch/providers"
-        const val SeriesAppendToResponse = "credits,videos,images,content_ratings,watch/providers"
+        const val MovieAppendToResponse = "credits,videos,images,release_dates,watch/providers,recommendations"
+        const val SeriesAppendToResponse = "credits,videos,images,content_ratings,watch/providers,recommendations"
     }
 }
 
@@ -113,6 +113,7 @@ data class TmdbMovieDetailsDto(
     @SerializedName("images") val images: TmdbImagesDto?,
     @SerializedName("release_dates") val releaseDates: TmdbReleaseDatesDto?,
     @SerializedName("watch/providers") val watchProviders: TmdbWatchProvidersDto?,
+    @SerializedName("recommendations") val recommendations: TmdbSearchResponse<TmdbMovieSearchResultDto>?,
 )
 
 data class TmdbSeriesDetailsDto(
@@ -139,6 +140,7 @@ data class TmdbSeriesDetailsDto(
     @SerializedName("images") val images: TmdbImagesDto?,
     @SerializedName("content_ratings") val contentRatings: TmdbContentRatingsDto?,
     @SerializedName("watch/providers") val watchProviders: TmdbWatchProvidersDto?,
+    @SerializedName("recommendations") val recommendations: TmdbSearchResponse<TmdbSeriesSearchResultDto>?,
 )
 
 data class TmdbGenreDto(
@@ -158,16 +160,20 @@ data class TmdbCreditsDto(
 
 data class TmdbCastDto(
     @SerializedName("name") val name: String?,
+    @SerializedName("character") val character: String?,
+    @SerializedName("profile_path") val profilePath: String?,
     @SerializedName("order") val order: Int?,
 )
 
 data class TmdbCrewDto(
     @SerializedName("name") val name: String?,
     @SerializedName("job") val job: String?,
+    @SerializedName("profile_path") val profilePath: String?,
 )
 
 data class TmdbPersonDto(
     @SerializedName("name") val name: String?,
+    @SerializedName("profile_path") val profilePath: String?,
 )
 
 data class TmdbVideosDto(
@@ -176,6 +182,7 @@ data class TmdbVideosDto(
 
 data class TmdbVideoDto(
     @SerializedName("key") val key: String?,
+    @SerializedName("name") val name: String?,
     @SerializedName("site") val site: String?,
     @SerializedName("type") val type: String?,
     @SerializedName("official") val official: Boolean?,

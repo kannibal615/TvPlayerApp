@@ -24,6 +24,7 @@ enum class HomePreviewMode {
     TrendSegments,
     LiveImmediate,
     ResumeLoop,
+    YoutubeTrailer,
 }
 
 data class HomeCategory(
@@ -54,6 +55,7 @@ data class ContinueItem(
     val previewDurationMs: Long? = null,
     val previewPrepared: Boolean = false,
     val previewBackdropAvailable: Boolean = false,
+    val previewYoutubeKey: String? = null,
 )
 
 object HomeNavigationData {

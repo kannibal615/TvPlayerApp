@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -354,30 +355,54 @@ private fun MovieDetailScreen(
                 .padding(top = DetailDimens.HeaderTop),
         )
 
-        Row(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = DetailDimens.ScreenPadding)
                 .padding(top = 86.dp, bottom = 30.dp),
-            horizontalArrangement = Arrangement.spacedBy(34.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            MovieDetailInfo(
-                state = state,
-                onWatchMovie = onWatchMovie,
-                onRetry = onRetry,
-                onFavorite = onFavorite,
-                playFocusRequester = playFocusRequester,
-                modifier = Modifier
-                    .width(650.dp)
-                    .fillMaxHeight(),
-            )
-            Spacer(Modifier.weight(1f))
-            MoviePosterPanel(
-                state = state,
-                modifier = Modifier
-                    .width(390.dp)
-                    .align(Alignment.CenterVertically),
-            )
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(34.dp),
+                ) {
+                    MovieDetailInfo(
+                        state = state,
+                        onWatchMovie = onWatchMovie,
+                        onRetry = onRetry,
+                        onFavorite = onFavorite,
+                        playFocusRequester = playFocusRequester,
+                        modifier = Modifier.width(720.dp),
+                    )
+                    Spacer(Modifier.weight(1f))
+                    MoviePosterPanel(
+                        state = state,
+                        modifier = Modifier
+                            .width(330.dp)
+                            .align(Alignment.Top),
+                    )
+                }
+            }
+            item {
+                DetailVideoSection(videos = state.tmdbMetadata?.videos.orEmpty())
+            }
+            item {
+                DetailPeopleSection(title = "Cast", people = state.tmdbMetadata?.castMembers.orEmpty())
+            }
+            item {
+                DetailPeopleSection(title = "Director", people = state.tmdbMetadata?.directors.orEmpty())
+            }
+            item {
+                DetailUserRatingSection(
+                    contentKey = "movie:${state.movieId}",
+                    tmdbRating = state.displayRating,
+                    voteCount = state.tmdbMetadata?.voteCount,
+                )
+            }
+            item {
+                DetailRecommendationsSection(recommendations = state.tmdbMetadata?.recommendations.orEmpty())
+            }
         }
     }
 }
@@ -448,7 +473,7 @@ private fun MovieDetailInfo(
             )
         }
 
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(18.dp))
 
         if (state.loading) {
             Row(verticalAlignment = Alignment.CenterVertically) {

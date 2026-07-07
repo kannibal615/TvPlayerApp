@@ -9,6 +9,8 @@ class TmdbImageResolver(
 
     fun logoUrl(path: String?): String? = imageUrl(path, "w500")
 
+    fun profileUrl(path: String?): String? = imageUrl(path, "w185")
+
     private fun imageUrl(path: String?, size: String): String? {
         val normalized = path?.trim()?.takeIf { it.isNotBlank() } ?: return null
         if (normalized.startsWith("http://") || normalized.startsWith("https://")) {

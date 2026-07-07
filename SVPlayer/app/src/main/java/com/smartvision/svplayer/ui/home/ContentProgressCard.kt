@@ -699,6 +699,7 @@ private fun HomeMutedPreviewPlayer(
                     }
                 }
 
+                HomePreviewMode.YoutubeTrailer,
                 HomePreviewMode.None -> Unit
             }
         } finally {

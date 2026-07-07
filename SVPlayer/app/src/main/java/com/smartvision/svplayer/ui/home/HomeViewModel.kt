@@ -34,6 +34,13 @@ data class HomeUiState(
     val trendingMovies: List<ContinueItem> = emptyList(),
     val trendingSeries: List<ContinueItem> = emptyList(),
     val slides: List<HomeSlide> = emptyList(),
+    val continueWatchingLoading: Boolean = false,
+    val trendingLoading: Boolean = false,
+)
+
+private data class HomeLoadingState(
+    val continueWatching: Boolean,
+    val trending: Boolean,
 )
 
 class HomeViewModel(
@@ -50,6 +57,17 @@ class HomeViewModel(
     private val trendingMovies = MutableStateFlow(cachedTrending?.movies.orEmpty())
     private val trendingSeries = MutableStateFlow(cachedTrending?.series.orEmpty())
     private val slides = MutableStateFlow(homeSlidesRepository.getCachedSlides().orEmpty())
+    private val continueWatchingLoading = MutableStateFlow(cachedContinueWatching.isEmpty())
+    private val trendingLoading = MutableStateFlow(cachedTrending == null)
+    private val loadingState = combine(
+        continueWatchingLoading,
+        trendingLoading,
+    ) { continueLoading, trendLoading ->
+        HomeLoadingState(
+            continueWatching = continueLoading,
+            trending = trendLoading,
+        )
+    }
     private var trendingRefreshJob: Job? = null
     private val trendingPreviewPrepareJobs = mutableMapOf<String, Job>()
     private val trendingPreviewPrepareSemaphore = Semaphore(TrendingPreviewPrepareConcurrency)
@@ -65,6 +83,7 @@ class HomeViewModel(
             val items = recent.mapNotNull { item ->
                 toContinueItemWithPreview(item, catalogRepository)
             }
+            continueWatchingLoading.value = false
             PerformanceDiagnosticRecorder.recordDuration(
                 sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
                 event = "continue_watching_flow_mapped",
@@ -73,13 +92,14 @@ class HomeViewModel(
                     "rawItems" to progress.size,
                     "recentItems" to recent.size,
                     "mappedItems" to items.size,
-                    "previewReadyItems" to items.count { !it.previewUrl.isNullOrBlank() },
+                    "previewReadyItems" to items.count { !it.previewUrl.isNullOrBlank() || !it.previewYoutubeKey.isNullOrBlank() },
                 ),
             )
             items
         }
         .onStart {
             if (cachedContinueWatching.isNotEmpty()) {
+                continueWatchingLoading.value = false
                 emit(cachedContinueWatching)
             }
         }
@@ -89,12 +109,15 @@ class HomeViewModel(
         trendingMovies,
         trendingSeries,
         slides,
-    ) { continueItems, trendMovieItems, trendSeriesItems, homeSlides ->
+        loadingState,
+    ) { continueItems, trendMovieItems, trendSeriesItems, homeSlides, loading ->
         HomeUiState(
             continueWatching = continueItems,
             trendingMovies = trendMovieItems,
             trendingSeries = trendSeriesItems,
             slides = homeSlides,
+            continueWatchingLoading = loading.continueWatching,
+            trendingLoading = loading.trending,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -105,6 +128,8 @@ class HomeViewModel(
             trendingMovies = cachedTrending?.movies.orEmpty(),
             trendingSeries = cachedTrending?.series.orEmpty(),
             slides = slides.value,
+            continueWatchingLoading = cachedContinueWatching.isEmpty(),
+            trendingLoading = cachedTrending == null,
         ),
     )
 
@@ -166,9 +191,11 @@ class HomeViewModel(
             // PERF_DIAG: tells whether trends are consumed from startup cache or recomputed on Home.
             val startedAt = SystemClock.elapsedRealtime()
             val cached = if (forceRefresh) null else homeContentRepository.getCachedTrending()
+            trendingLoading.value = cached == null
             if (cached != null) {
                 trendingMovies.value = cached.movies
                 trendingSeries.value = cached.series
+                trendingLoading.value = false
                 PerformanceDiagnosticRecorder.recordDuration(
                     sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
                     event = "home_trending_cache_hit",
@@ -191,9 +218,13 @@ class HomeViewModel(
                     )
                 }
                 .getOrNull()
-                ?: return@launch
+            if (snapshot == null) {
+                trendingLoading.value = false
+                return@launch
+            }
             trendingMovies.value = snapshot.movies
             trendingSeries.value = snapshot.series
+            trendingLoading.value = false
             PerformanceDiagnosticRecorder.recordDuration(
                 sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
                 event = "home_trending_refreshed",
@@ -208,11 +239,21 @@ class HomeViewModel(
     }
 
     suspend fun loadSavedTrendingMovies(forceRefresh: Boolean = false) {
-        trendingMovies.value = homeContentRepository.refreshTrendingMovies(forceRefresh)
+        trendingLoading.value = true
+        runCatching {
+            trendingMovies.value = homeContentRepository.refreshTrendingMovies(forceRefresh)
+        }.also {
+            trendingLoading.value = false
+        }.getOrThrow()
     }
 
     suspend fun loadSavedTrendingSeries(forceRefresh: Boolean = false) {
-        trendingSeries.value = homeContentRepository.refreshTrendingSeries(forceRefresh)
+        trendingLoading.value = true
+        runCatching {
+            trendingSeries.value = homeContentRepository.refreshTrendingSeries(forceRefresh)
+        }.also {
+            trendingLoading.value = false
+        }.getOrThrow()
     }
 
     fun prefetchTrendingPreviews(items: List<ContinueItem>) {

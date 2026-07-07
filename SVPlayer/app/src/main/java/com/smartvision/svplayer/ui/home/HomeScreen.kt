@@ -109,6 +109,9 @@ fun HomeScreen(
     val hasContinueWatching = state.continueWatching.isNotEmpty()
     val hasMovieTrends = state.trendingMovies.isNotEmpty()
     val hasSeriesTrends = state.trendingSeries.isNotEmpty()
+    val showContinueSkeleton = state.continueWatchingLoading && !hasContinueWatching
+    val showMovieTrendSkeleton = state.trendingLoading && !hasMovieTrends
+    val showSeriesTrendSkeleton = state.trendingLoading && !hasSeriesTrends
     val continueRowState = rememberHomeRowState(state.continueWatching)
     val movieTrendRowState = rememberHomeRowState(state.trendingMovies)
     val seriesTrendRowState = rememberHomeRowState(state.trendingSeries)
@@ -134,6 +137,8 @@ fun HomeScreen(
         state.trendingMovies.size,
         state.trendingSeries.size,
         state.slides.size,
+        state.continueWatchingLoading,
+        state.trendingLoading,
     ) {
         // PERF_DIAG: records when history/trends/slides actually become visible to Compose.
         PerformanceDiagnosticRecorder.recordMemory(
@@ -147,6 +152,8 @@ fun HomeScreen(
                 "hasContinueWatching" to hasContinueWatching,
                 "hasMovieTrends" to hasMovieTrends,
                 "hasSeriesTrends" to hasSeriesTrends,
+                "continueWatchingLoading" to state.continueWatchingLoading,
+                "trendingLoading" to state.trendingLoading,
             ),
         )
     }
@@ -590,6 +597,12 @@ fun HomeScreen(
                         .fillMaxWidth(),
                 )
                 Spacer(Modifier.height(SmartVisionDimensions.HomeTrendFoldOffset))
+            } else if (showContinueSkeleton) {
+                HomeSkeletonRow(
+                    title = strings.continueWatching,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(SmartVisionDimensions.HomeTrendFoldOffset))
             }
 
             if (hasMovieTrends) {
@@ -623,9 +636,14 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth(),
                 )
+            } else if (showMovieTrendSkeleton) {
+                HomeSkeletonRow(
+                    title = strings.trendingMovies,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
 
-            if (hasMovieTrends && hasSeriesTrends) {
+            if ((hasMovieTrends || showMovieTrendSkeleton) && (hasSeriesTrends || showSeriesTrendSkeleton)) {
                 Spacer(Modifier.height(16.dp))
             }
 
@@ -647,6 +665,11 @@ fun HomeScreen(
                     onBlockedClick = onXtreamBlocked,
                     modifier = Modifier
                         .fillMaxWidth(),
+                )
+            } else if (showSeriesTrendSkeleton) {
+                HomeSkeletonRow(
+                    title = strings.trendingSeries,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 

@@ -1,5 +1,38 @@
 # AI Changelog
 
+## 2026-07-07 - Release TMDB 0.1.110 lots 7 et 8 details riches
+
+Type:
+- android
+- tmdb
+- room
+- ui-tv
+- home
+- release
+- deploy
+- firestick
+- documentation
+
+Resume:
+- Version Gradle incrementee en `0.1.110` / `versionCode 114`.
+- Room passe au schema `12` pour stocker cast/realisateur/createurs, videos et recommandations TMDB, avec TTL cache 7 jours, fallback stale et nettoyage 90 jours.
+- Les ecrans details films et series deviennent scrollables et ajoutent les sections TMDB riches: trailers/teasers YouTube en mini-player, casting/realisateur/createurs avec photos, note TMDB + note utilisateur locale et recommandations.
+- Home Tendances utilise les posters/backdrops TMDB et le trailer YouTube TMDB comme preview quand disponible; les anciens caches preview Xtream `movie`/`episode` sont neutralises et ignores.
+- Home affiche des skeleton cards non focusables pour Continue watching et les tendances pendant les chargements initiaux.
+- Release publiee en production avec manifeste `smartvision-tv-v114-f84c329b.apk`.
+- Documentation TMDB, catalogue, Home/UI, release et roadmap tendances mise a jour.
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --console=plain`: OK en 6m40s, puis OK apres correction cache/migration en 2m13s.
+- `.\scripts\guard_release_version.ps1`: OK, local `0.1.110 (114)` > prod `0.1.109 (113)`.
+- `.\gradlew.bat :app:assembleRelease --no-daemon --console=plain`: OK en 17m01s.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK, metadata `0.1.110 (114)`.
+- `apksigner verify --verbose`: OK v1/v2, 1 signer.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall`: OK, tests publics/site/admin du script OK.
+- Production verifiee: manifeste, `api/app_update.php`, APK stable et APK versionne annoncent `0.1.110` / `114`, taille `40854578`, SHA256 `f84c329bf7fbb5c11215713261a562827b1560bb4b076eb85a6d65b36ef7fdee`.
+- Firestick `192.168.1.33:5555`: installation OK, `versionCode=114`, `versionName=0.1.110`, cold start OK, MainActivity/Home rendu, aucun crash/ANR/Room error dans les logs filtres.
+- Capture Home: `build/verification/svplayer-home-v114.png`. Navigation Movies capturee; ouverture fiche detail via ADB non confirmee pendant cette verification manuelle.
+
 ## 2026-07-07 - Release TMDB 0.1.109 en production
 
 Type:

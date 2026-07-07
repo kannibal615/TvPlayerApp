@@ -14,6 +14,7 @@ class TmdbRepository(
 ) {
     private val tokenConfigured = readAccessToken.isNotBlank()
     private val imageResolver = TmdbImageResolver()
+    private var lastCleanupAt: Long = 0L
 
     val isConfigured: Boolean
         get() = tokenConfigured
@@ -22,14 +23,14 @@ class TmdbRepository(
         contentId: Int,
         language: String,
     ): TmdbMovieMetadata? = withContext(Dispatchers.IO) {
-        cachedMovie(contentId, language.toTmdbLanguage())
+        cachedMovieEntity(contentId, language.toTmdbLanguage())?.toTmdbMovieMetadata()
     }
 
     suspend fun getCachedSeriesMetadata(
         contentId: Int,
         language: String,
     ): TmdbSeriesMetadata? = withContext(Dispatchers.IO) {
-        cachedSeries(contentId, language.toTmdbLanguage())
+        cachedSeriesEntity(contentId, language.toTmdbLanguage())?.toTmdbSeriesMetadata()
     }
 
     suspend fun enrichMovie(
@@ -40,8 +41,9 @@ class TmdbRepository(
         includeAdult: Boolean,
     ): TmdbMovieMetadata? = withContext(Dispatchers.IO) {
         val tmdbLanguage = language.toTmdbLanguage()
-        cachedMovie(contentId, tmdbLanguage)?.let { return@withContext it }
-        if (!isConfigured) return@withContext null
+        val cached = cachedMovieEntity(contentId, tmdbLanguage)
+        if (cached != null && cached.isFresh()) return@withContext cached.toTmdbMovieMetadata()
+        if (!isConfigured) return@withContext cached?.toTmdbMovieMetadata()
 
         val match = resolveMovieMatch(
             contentId = contentId,
@@ -49,7 +51,7 @@ class TmdbRepository(
             year = year,
             language = tmdbLanguage,
             includeAdult = includeAdult,
-        ) ?: return@withContext null
+        ) ?: return@withContext cached?.toTmdbMovieMetadata()
 
         val details = runCatching {
             api.getMovieDetails(
@@ -57,10 +59,11 @@ class TmdbRepository(
                 language = tmdbLanguage,
                 includeImageLanguage = tmdbLanguage.toImageLanguageQuery(),
             )
-        }.getOrNull() ?: return@withContext cachedMovie(contentId, tmdbLanguage)
+        }.getOrNull() ?: return@withContext cached?.toTmdbMovieMetadata()
 
-        val entity = details.toEntity(tmdbLanguage, imageResolver) ?: return@withContext null
+        val entity = details.toEntity(tmdbLanguage, imageResolver) ?: return@withContext cached?.toTmdbMovieMetadata()
         mediaDao.upsertTmdbMovieMetadata(entity)
+        cleanupStaleMetadataIfNeeded()
         entity.toTmdbMovieMetadata()
     }
 
@@ -72,8 +75,9 @@ class TmdbRepository(
         includeAdult: Boolean,
     ): TmdbSeriesMetadata? = withContext(Dispatchers.IO) {
         val tmdbLanguage = language.toTmdbLanguage()
-        cachedSeries(contentId, tmdbLanguage)?.let { return@withContext it }
-        if (!isConfigured) return@withContext null
+        val cached = cachedSeriesEntity(contentId, tmdbLanguage)
+        if (cached != null && cached.isFresh()) return@withContext cached.toTmdbSeriesMetadata()
+        if (!isConfigured) return@withContext cached?.toTmdbSeriesMetadata()
 
         val match = resolveSeriesMatch(
             contentId = contentId,
@@ -81,7 +85,7 @@ class TmdbRepository(
             year = year,
             language = tmdbLanguage,
             includeAdult = includeAdult,
-        ) ?: return@withContext null
+        ) ?: return@withContext cached?.toTmdbSeriesMetadata()
 
         val details = runCatching {
             api.getSeriesDetails(
@@ -89,25 +93,33 @@ class TmdbRepository(
                 language = tmdbLanguage,
                 includeImageLanguage = tmdbLanguage.toImageLanguageQuery(),
             )
-        }.getOrNull() ?: return@withContext cachedSeries(contentId, tmdbLanguage)
+        }.getOrNull() ?: return@withContext cached?.toTmdbSeriesMetadata()
 
-        val entity = details.toEntity(tmdbLanguage, imageResolver) ?: return@withContext null
+        val entity = details.toEntity(tmdbLanguage, imageResolver) ?: return@withContext cached?.toTmdbSeriesMetadata()
         mediaDao.upsertTmdbSeriesMetadata(entity)
+        cleanupStaleMetadataIfNeeded()
         entity.toTmdbSeriesMetadata()
     }
 
-    private suspend fun cachedMovie(contentId: Int, language: String): TmdbMovieMetadata? {
+    private suspend fun cachedMovieEntity(contentId: Int, language: String): TmdbMovieMetadataEntity? {
         val tmdbId = mediaDao.getTmdbContentMapping("movie", contentId)?.tmdbId ?: return null
-        val metadata = mediaDao.getTmdbMovieMetadata(tmdbId, language)
+        return mediaDao.getTmdbMovieMetadata(tmdbId, language)
             ?: mediaDao.getAnyTmdbMovieMetadata(tmdbId)
-        return metadata?.toTmdbMovieMetadata()
     }
 
-    private suspend fun cachedSeries(contentId: Int, language: String): TmdbSeriesMetadata? {
+    private suspend fun cachedSeriesEntity(contentId: Int, language: String): TmdbSeriesMetadataEntity? {
         val tmdbId = mediaDao.getTmdbContentMapping("series", contentId)?.tmdbId ?: return null
-        val metadata = mediaDao.getTmdbSeriesMetadata(tmdbId, language)
+        return mediaDao.getTmdbSeriesMetadata(tmdbId, language)
             ?: mediaDao.getAnyTmdbSeriesMetadata(tmdbId)
-        return metadata?.toTmdbSeriesMetadata()
+    }
+
+    private suspend fun cleanupStaleMetadataIfNeeded() {
+        val now = System.currentTimeMillis()
+        if (now - lastCleanupAt < CleanupIntervalMs) return
+        val minUpdatedAt = now - MetadataRetentionMs
+        mediaDao.deleteStaleTmdbMovieMetadata(minUpdatedAt)
+        mediaDao.deleteStaleTmdbSeriesMetadata(minUpdatedAt)
+        lastCleanupAt = now
     }
 
     private suspend fun resolveMovieMatch(
@@ -296,6 +308,10 @@ private fun TmdbMovieDetailsDto.toEntity(
 ): TmdbMovieMetadataEntity? {
     val tmdbId = id ?: return null
     val logoPath = images?.logos.bestLogoPath(language)
+    val castMembers = credits.castMembers(imageResolver)
+    val directors = credits.directors(imageResolver)
+    val videoItems = videos.videoItems(language)
+    val recommendations = recommendations?.results.toMovieRecommendations(imageResolver)
     return TmdbMovieMetadataEntity(
         tmdbId = tmdbId,
         language = language,
@@ -314,9 +330,14 @@ private fun TmdbMovieDetailsDto.toEntity(
         voteAverage = voteAverage?.takeIf { it > 0.0 },
         voteCount = voteCount?.takeIf { it > 0 },
         popularity = popularity,
-        cast = credits.castSummary(),
-        director = credits.director(),
-        trailerKey = videos.bestTrailerKey(language),
+        cast = castMembers.summaryNames(),
+        castJson = castMembers.toTmdbJson(),
+        director = directors.summaryNames(),
+        directorJson = directors.toTmdbJson(),
+        trailerKey = videoItems.firstOrNull { it.type.equals("Trailer", ignoreCase = true) }?.key
+            ?: videoItems.firstOrNull()?.key,
+        videosJson = videoItems.toTmdbJson(),
+        recommendationsJson = recommendations.toTmdbJson(),
         collectionName = collection?.name.blankToNull(),
         certification = releaseDates.certification(language),
         providersSummary = watchProviders.providerSummary(language),
@@ -335,6 +356,18 @@ private fun TmdbSeriesDetailsDto.toEntity(
 ): TmdbSeriesMetadataEntity? {
     val tmdbId = id ?: return null
     val logoPath = images?.logos.bestLogoPath(language)
+    val castMembers = credits.castMembers(imageResolver)
+    val creators = createdBy?.mapNotNull { person ->
+        person.name.blankToNull()?.let { name ->
+            TmdbPersonCredit(
+                name = name,
+                role = "Creator",
+                profileUrl = imageResolver.profileUrl(person.profilePath),
+            )
+        }
+    }.orEmpty().distinctBy { it.name }
+    val videoItems = videos.videoItems(language)
+    val recommendations = recommendations?.results.toSeriesRecommendations(imageResolver)
     return TmdbSeriesMetadataEntity(
         tmdbId = tmdbId,
         language = language,
@@ -353,9 +386,14 @@ private fun TmdbSeriesDetailsDto.toEntity(
         voteAverage = voteAverage?.takeIf { it > 0.0 },
         voteCount = voteCount?.takeIf { it > 0 },
         popularity = popularity,
-        cast = credits.castSummary(),
-        createdBy = createdBy?.mapNotNull { it.name.blankToNull() }?.distinct()?.take(3)?.joinToString(", "),
-        trailerKey = videos.bestTrailerKey(language),
+        cast = castMembers.summaryNames(),
+        castJson = castMembers.toTmdbJson(),
+        createdBy = creators.summaryNames(),
+        createdByJson = creators.toTmdbJson(),
+        trailerKey = videoItems.firstOrNull { it.type.equals("Trailer", ignoreCase = true) }?.key
+            ?: videoItems.firstOrNull()?.key,
+        videosJson = videoItems.toTmdbJson(),
+        recommendationsJson = recommendations.toTmdbJson(),
         certification = contentRatings.certification(language),
         providersSummary = watchProviders.providerSummary(language),
         homepage = homepage.blankToNull(),
@@ -375,34 +413,111 @@ private fun List<TmdbGenreDto>?.joinNames(): String? =
 private fun List<String>?.joinNonBlank(): String? =
     this?.mapNotNull { it.blankToNull() }?.distinct()?.takeIf { it.isNotEmpty() }?.joinToString(", ")
 
-private fun TmdbCreditsDto?.castSummary(): String? =
+private fun TmdbCreditsDto?.castMembers(imageResolver: TmdbImageResolver): List<TmdbPersonCredit> =
     this?.cast
         ?.sortedBy { it.order ?: Int.MAX_VALUE }
-        ?.mapNotNull { it.name.blankToNull() }
-        ?.distinct()
-        ?.take(6)
-        ?.takeIf { it.isNotEmpty() }
-        ?.joinToString(", ")
+        ?.mapNotNull { cast ->
+            cast.name.blankToNull()?.let { name ->
+                TmdbPersonCredit(
+                    name = name,
+                    role = cast.character.blankToNull(),
+                    profileUrl = imageResolver.profileUrl(cast.profilePath),
+                )
+            }
+        }
+        ?.distinctBy { it.name }
+        ?.take(12)
+        .orEmpty()
 
-private fun TmdbCreditsDto?.director(): String? =
+private fun TmdbCreditsDto?.directors(imageResolver: TmdbImageResolver): List<TmdbPersonCredit> =
     this?.crew
-        ?.firstOrNull { it.job.equals("Director", ignoreCase = true) }
-        ?.name
-        .blankToNull()
+        ?.filter { it.job.equals("Director", ignoreCase = true) || it.job.equals("Series Director", ignoreCase = true) }
+        ?.mapNotNull { crew ->
+            crew.name.blankToNull()?.let { name ->
+                TmdbPersonCredit(
+                    name = name,
+                    role = crew.job.blankToNull(),
+                    profileUrl = imageResolver.profileUrl(crew.profilePath),
+                )
+            }
+        }
+        ?.distinctBy { it.name }
+        ?.take(6)
+        .orEmpty()
 
-private fun TmdbVideosDto?.bestTrailerKey(language: String): String? {
+private fun TmdbVideosDto?.videoItems(language: String): List<TmdbVideoItem> {
     val short = language.substringBefore('-')
     return this?.results
         ?.filter { it.site.equals("YouTube", ignoreCase = true) && it.key.isNullOrBlank().not() }
         ?.sortedWith(
             compareByDescending<TmdbVideoDto> { it.type.equals("Trailer", ignoreCase = true) }
+                .thenByDescending { it.type.equals("Teaser", ignoreCase = true) }
                 .thenByDescending { it.official == true }
                 .thenByDescending { it.language.equals(short, ignoreCase = true) },
         )
-        ?.firstOrNull()
-        ?.key
-        .blankToNull()
+        ?.mapNotNull { video ->
+            val key = video.key.blankToNull() ?: return@mapNotNull null
+            TmdbVideoItem(
+                key = key,
+                name = video.name.blankToNull() ?: video.type.blankToNull() ?: "Trailer",
+                type = video.type.blankToNull() ?: "Video",
+                official = video.official == true,
+                language = video.language.blankToNull(),
+            )
+        }
+        ?.distinctBy { it.key }
+        ?.take(8)
+        .orEmpty()
 }
+
+private fun List<TmdbMovieSearchResultDto>?.toMovieRecommendations(
+    imageResolver: TmdbImageResolver,
+): List<TmdbRecommendation> =
+    this.orEmpty()
+        .mapNotNull { item ->
+            val tmdbId = item.id ?: return@mapNotNull null
+            val title = item.title.blankToNull() ?: item.originalTitle.blankToNull() ?: return@mapNotNull null
+            TmdbRecommendation(
+                tmdbId = tmdbId,
+                title = title,
+                posterUrl = imageResolver.posterUrl(item.posterPath),
+                backdropUrl = imageResolver.backdropUrl(item.backdropPath),
+                releaseDate = item.releaseDate.blankToNull(),
+                voteAverage = item.voteAverage?.takeIf { it > 0.0 },
+            )
+        }
+        .take(12)
+
+private fun List<TmdbSeriesSearchResultDto>?.toSeriesRecommendations(
+    imageResolver: TmdbImageResolver,
+): List<TmdbRecommendation> =
+    this.orEmpty()
+        .mapNotNull { item ->
+            val tmdbId = item.id ?: return@mapNotNull null
+            val title = item.name.blankToNull() ?: item.originalName.blankToNull() ?: return@mapNotNull null
+            TmdbRecommendation(
+                tmdbId = tmdbId,
+                title = title,
+                posterUrl = imageResolver.posterUrl(item.posterPath),
+                backdropUrl = imageResolver.backdropUrl(item.backdropPath),
+                releaseDate = item.firstAirDate.blankToNull(),
+                voteAverage = item.voteAverage?.takeIf { it > 0.0 },
+            )
+        }
+        .take(12)
+
+private fun List<TmdbPersonCredit>.summaryNames(): String? =
+    map { it.name }.distinct().take(6).takeIf { it.isNotEmpty() }?.joinToString(", ")
+
+private val tmdbRepositoryGson = com.google.gson.Gson()
+
+private fun Any.toTmdbJson(): String = tmdbRepositoryGson.toJson(this)
+
+private fun TmdbMovieMetadataEntity.isFresh(): Boolean =
+    System.currentTimeMillis() - updatedAt <= MetadataFreshMs
+
+private fun TmdbSeriesMetadataEntity.isFresh(): Boolean =
+    System.currentTimeMillis() - updatedAt <= MetadataFreshMs
 
 private fun List<TmdbImageDto>?.bestLogoPath(language: String): String? {
     val short = language.substringBefore('-')
@@ -450,3 +565,7 @@ private fun TmdbWatchProvidersDto?.providerSummary(language: String): String? {
 
 private fun String.regionCode(): String =
     substringAfter('-', "US").uppercase().ifBlank { "US" }
+
+private const val MetadataFreshMs = 7L * 24L * 60L * 60L * 1_000L
+private const val MetadataRetentionMs = 90L * 24L * 60L * 60L * 1_000L
+private const val CleanupIntervalMs = 24L * 60L * 60L * 1_000L

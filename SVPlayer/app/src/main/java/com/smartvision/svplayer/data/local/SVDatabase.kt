@@ -60,7 +60,7 @@ import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
         MediaFileEntity::class,
         RecordingJobEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 abstract class SVDatabase : RoomDatabase() {
@@ -87,6 +87,7 @@ abstract class SVDatabase : RoomDatabase() {
                     Migration8To9,
                     Migration9To10,
                     Migration10To11,
+                    Migration11To12,
                 )
                 .build()
 
@@ -377,6 +378,26 @@ abstract class SVDatabase : RoomDatabase() {
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_tmdb_series_metadata_updatedAt ON tmdb_series_metadata(updatedAt)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_tmdb_series_metadata_firstAirDate ON tmdb_series_metadata(firstAirDate)")
+            }
+        }
+
+        private val Migration11To12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE home_trending_preview_cache ADD COLUMN trailerKey TEXT")
+                db.execSQL("ALTER TABLE tmdb_movie_metadata ADD COLUMN castJson TEXT")
+                db.execSQL("ALTER TABLE tmdb_movie_metadata ADD COLUMN directorJson TEXT")
+                db.execSQL("ALTER TABLE tmdb_movie_metadata ADD COLUMN videosJson TEXT")
+                db.execSQL("ALTER TABLE tmdb_movie_metadata ADD COLUMN recommendationsJson TEXT")
+                db.execSQL("ALTER TABLE tmdb_series_metadata ADD COLUMN castJson TEXT")
+                db.execSQL("ALTER TABLE tmdb_series_metadata ADD COLUMN createdByJson TEXT")
+                db.execSQL("ALTER TABLE tmdb_series_metadata ADD COLUMN videosJson TEXT")
+                db.execSQL("ALTER TABLE tmdb_series_metadata ADD COLUMN recommendationsJson TEXT")
+                db.execSQL(
+                    "UPDATE home_trending_preview_cache " +
+                        "SET previewKind = 'none', previewContentId = NULL, previewExtension = NULL, " +
+                        "previewState = 'unavailable' " +
+                        "WHERE previewKind IN ('movie', 'episode')",
+                )
             }
         }
     }
