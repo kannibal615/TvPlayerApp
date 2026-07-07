@@ -1,8 +1,14 @@
 package com.smartvision.svplayer.ui.media
 
+import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Bitmap
+import android.os.Build
 import android.net.Uri
+import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
+import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -17,6 +23,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -82,6 +89,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -100,11 +109,13 @@ import com.smartvision.svplayer.media.MediaCenterFileType
 import com.smartvision.svplayer.media.MediaCenterSource
 import com.smartvision.svplayer.media.transfer.MediaTransferMode
 import com.smartvision.svplayer.media.transfer.MediaTransferSession
+import com.smartvision.svplayer.ui.catalog.CatalogPanelTitleStyle
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
@@ -654,6 +665,7 @@ private fun MediaAreaButton(
     locked: Boolean = false,
 ) {
     val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val active = selected || focusState.isFocused
@@ -692,7 +704,7 @@ private fun MediaAreaButton(
             .border(
                 BorderStroke(
                     if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
-                    if (active) SmartVisionColors.CyanAccent.copy(alpha = 0.88f) else SmartVisionColors.Border,
+                    if (active) focusStyle.accent.copy(alpha = 0.88f) else SmartVisionColors.Border,
                 ),
                 shape,
             )
@@ -814,6 +826,7 @@ private fun PhoneImportPanel(
     onImportPhone: () -> Unit,
 ) {
     val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val enabled = !state.transferInProgress
@@ -933,6 +946,7 @@ private fun PhoneExportPanel(
     onExportPhone: () -> Unit,
 ) {
     val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val selected = state.selectedFile
@@ -1100,8 +1114,7 @@ private fun MediaContentPanel(
                 Text(
                     text = if (state.selectedSource == MediaSource.Private) strings.mediaPrivate else strings.mediaList,
                     color = SmartVisionColors.TextPrimary,
-                    style = SmartVisionType.TitleS,
-                    fontWeight = FontWeight.Bold,
+                    style = CatalogPanelTitleStyle,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1206,44 +1219,61 @@ private fun MediaSearchField(
     modifier: Modifier = Modifier,
 ) {
     val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
     val focusRequester = remember { FocusRequester() }
     val interactionSource = remember { MutableInteractionSource() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val currentView = LocalView.current
     val active = focusState.isFocused || value.isNotBlank()
     val shape = RoundedCornerShape(10.dp)
+    fun focusAndShowKeyboard() {
+        runCatching { focusRequester.requestFocus() }
+        keyboardController?.show()
+        currentView.post {
+            val inputMethodManager = currentView.context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            inputMethodManager?.showSoftInput(currentView, InputMethodManager.SHOW_IMPLICIT)
+        }
+    }
 
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
         textStyle = SmartVisionType.Label.copy(color = SmartVisionColors.TextPrimary),
-        cursorBrush = SolidColor(SmartVisionColors.CyanAccent),
+        cursorBrush = SolidColor(focusStyle.accent),
         modifier = modifier
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
                 focusedScale = 1.01f,
-                glowColor = SmartVisionColors.CyanAccent,
                 cornerRadius = 10.dp,
             )
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && (event.key == Key.Enter || event.key == Key.DirectionCenter)) {
+                    focusAndShowKeyboard()
+                    true
+                } else {
+                    false
+                }
+            }
             .clip(shape)
-            .background(if (active) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.055f))
+            .background(if (active) focusStyle.background else Color.White.copy(alpha = 0.055f))
             .border(
-                BorderStroke(1.dp, if (focusState.isFocused) SmartVisionColors.CyanAccent else SmartVisionColors.Border),
+                BorderStroke(1.dp, if (focusState.isFocused) focusStyle.accent else SmartVisionColors.Border),
                 shape,
             )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = { runCatching { focusRequester.requestFocus() } },
+                onClick = { focusAndShowKeyboard() },
             )
-            .focusable(interactionSource = interactionSource)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         decorationBox = { innerTextField ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = null,
-                    tint = if (active) SmartVisionColors.CyanAccent else SmartVisionColors.TextSecondary,
+                    tint = if (active) focusStyle.accent else SmartVisionColors.TextSecondary,
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(7.dp))
@@ -1472,6 +1502,7 @@ private fun PrivateMediaRow(
     modifier: Modifier = Modifier,
 ) {
     val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val active = selected || focusState.isFocused
@@ -1500,7 +1531,7 @@ private fun PrivateMediaRow(
             .background(
                 Brush.horizontalGradient(
                     if (active) {
-                        listOf(SmartVisionColors.Primary.copy(alpha = 0.30f), Color(0xAA07101E))
+                        listOf(focusStyle.background, Color(0xAA07101E))
                     } else {
                         listOf(SmartVisionColors.SurfaceElevated.copy(alpha = 0.76f), Color(0x990A1323))
                     },
@@ -1509,7 +1540,7 @@ private fun PrivateMediaRow(
             .border(
                 BorderStroke(
                     if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
-                    if (active) SmartVisionColors.CyanAccent else SmartVisionColors.Border,
+                    if (active) focusStyle.accent else SmartVisionColors.Border,
                 ),
                 shape,
             )
@@ -1579,6 +1610,7 @@ private fun MediaFileRow(
     modifier: Modifier = Modifier,
 ) {
     val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val active = selected || focusState.isFocused
@@ -1608,7 +1640,7 @@ private fun MediaFileRow(
                 Brush.horizontalGradient(
                     if (active) {
                         listOf(
-                            mediaTypeColor(file.mediaType).copy(alpha = 0.24f),
+                            focusStyle.background,
                             SmartVisionColors.PrimaryDark.copy(alpha = 0.56f),
                             Color(0xAA07101E),
                         )
@@ -1623,7 +1655,7 @@ private fun MediaFileRow(
             .border(
                 BorderStroke(
                     if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
-                    if (active) SmartVisionColors.CyanAccent else SmartVisionColors.Border,
+                    if (active) focusStyle.accent else SmartVisionColors.Border,
                 ),
                 shape,
             )
@@ -1721,6 +1753,7 @@ private fun MediaFolderRow(
     modifier: Modifier = Modifier,
 ) {
     val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val shape = RoundedCornerShape(MediaCatalogDimens.ItemRadius)
@@ -1739,7 +1772,7 @@ private fun MediaFolderRow(
             .clip(shape)
             .background(
                 if (focusState.isFocused) {
-                    SmartVisionColors.PrimaryDark.copy(alpha = 0.48f)
+                    focusStyle.background
                 } else {
                     SmartVisionColors.SurfaceElevated.copy(alpha = 0.68f)
                 },
@@ -1747,7 +1780,7 @@ private fun MediaFolderRow(
             .border(
                 BorderStroke(
                     if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
-                    if (focusState.isFocused) SmartVisionColors.CyanAccent else SmartVisionColors.Border,
+                    if (focusState.isFocused) focusStyle.accent else SmartVisionColors.Border,
                 ),
                 shape,
             )
@@ -2216,8 +2249,9 @@ private fun PrivateMediaPreviewPanel(
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(190.dp)
+                    .align(Alignment.CenterHorizontally)
+                    .fillMaxWidth(0.82f)
+                    .aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color.Black.copy(alpha = 0.45f))
                     .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(12.dp)),
@@ -2261,8 +2295,8 @@ private fun PrivateMediaPreviewPanel(
             Text(
                 text = item.title,
                 color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.TitleS,
-                fontWeight = FontWeight.Bold,
+                style = SmartVisionType.Label,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -2416,13 +2450,7 @@ private fun PrivateMediaWebPreview(
         modifier = modifier.background(Color.Black),
         factory = { context ->
             WebView(context).apply {
-                setBackgroundColor(android.graphics.Color.BLACK)
-                webViewClient = WebViewClient()
-                webChromeClient = WebChromeClient()
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                settings.mediaPlaybackRequiresUserGesture = false
-                settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                configurePrivateMediaWebView(focusable = false)
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                 loadUrl(embedUrl)
             }
@@ -2433,6 +2461,37 @@ private fun PrivateMediaWebPreview(
             }
         },
     )
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+private fun WebView.configurePrivateMediaWebView(focusable: Boolean) {
+    setBackgroundColor(android.graphics.Color.BLACK)
+    isFocusable = focusable
+    isFocusableInTouchMode = focusable
+    descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+    isVerticalScrollBarEnabled = false
+    isHorizontalScrollBarEnabled = false
+    overScrollMode = View.OVER_SCROLL_NEVER
+    setLayerType(View.LAYER_TYPE_HARDWARE, null)
+    webViewClient = WebViewClient()
+    webChromeClient = WebChromeClient()
+    settings.javaScriptEnabled = true
+    settings.domStorageEnabled = true
+    settings.loadsImagesAutomatically = true
+    settings.mediaPlaybackRequiresUserGesture = false
+    settings.useWideViewPort = true
+    settings.loadWithOverviewMode = true
+    settings.cacheMode = WebSettings.LOAD_DEFAULT
+    settings.builtInZoomControls = false
+    settings.displayZoomControls = false
+    settings.userAgentString = settings.userAgentString
+        .replace("; wv", "")
+        .replace("Version/4.0 ", "")
+    CookieManager.getInstance().setAcceptCookie(true)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+        settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+    }
 }
 
 @Composable

@@ -1,7 +1,11 @@
 package com.smartvision.svplayer.ui.media
 
+import android.annotation.SuppressLint
 import android.net.Uri
+import android.os.Build
+import android.view.View
 import android.view.ViewGroup
+import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -292,19 +296,44 @@ private fun PrivateMediaFullscreenWeb(embedUrl: String) {
         modifier = Modifier.fillMaxSize().background(Color.Black),
         factory = { context ->
             WebView(context).apply {
-                setBackgroundColor(android.graphics.Color.BLACK)
-                webViewClient = WebViewClient()
-                webChromeClient = WebChromeClient()
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                settings.mediaPlaybackRequiresUserGesture = false
-                settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                configurePrivateMediaFullscreenWebView()
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                 loadUrl(embedUrl)
             }
         },
         update = { if (it.url != embedUrl) it.loadUrl(embedUrl) },
     )
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+private fun WebView.configurePrivateMediaFullscreenWebView() {
+    setBackgroundColor(android.graphics.Color.BLACK)
+    isFocusable = true
+    isFocusableInTouchMode = true
+    descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+    isVerticalScrollBarEnabled = false
+    isHorizontalScrollBarEnabled = false
+    overScrollMode = View.OVER_SCROLL_NEVER
+    setLayerType(View.LAYER_TYPE_HARDWARE, null)
+    webViewClient = WebViewClient()
+    webChromeClient = WebChromeClient()
+    settings.javaScriptEnabled = true
+    settings.domStorageEnabled = true
+    settings.loadsImagesAutomatically = true
+    settings.mediaPlaybackRequiresUserGesture = false
+    settings.useWideViewPort = true
+    settings.loadWithOverviewMode = true
+    settings.cacheMode = WebSettings.LOAD_DEFAULT
+    settings.builtInZoomControls = false
+    settings.displayZoomControls = false
+    settings.userAgentString = settings.userAgentString
+        .replace("; wv", "")
+        .replace("Version/4.0 ", "")
+    CookieManager.getInstance().setAcceptCookie(true)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+        settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+    }
 }
 
 @Composable

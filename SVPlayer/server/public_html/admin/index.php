@@ -2019,6 +2019,8 @@ function admin_save_private_media_config(PDO $pdo): void
         'provider_eporner_enabled' => isset($_POST['private_media']['provider_eporner_enabled']),
         'show_in_app' => isset($_POST['private_media']['show_in_app']),
         'native_playback_enabled' => isset($_POST['private_media']['native_playback_enabled']),
+        'force_native_playback_enabled' => isset($_POST['private_media']['force_native_playback_enabled']),
+        'native_test_stream_url' => $_POST['private_media']['native_test_stream_url'] ?? '',
         'per_page' => $_POST['private_media']['per_page'] ?? 24,
         'thumbsize' => (string) ($_POST['private_media']['thumbsize'] ?? 'big'),
         'order' => (string) ($_POST['private_media']['order'] ?? 'latest'),
@@ -3338,11 +3340,13 @@ function admin_render_private_media_page(array $privateMediaAdmin): void
                     <label><input type="checkbox" name="private_media[provider_eporner_enabled]" value="1"<?= !empty($config['provider_eporner_enabled']) ? ' checked' : '' ?>> Activer Eporner via proxy</label>
                     <label><input type="checkbox" name="private_media[show_in_app]" value="1"<?= !empty($config['show_in_app']) ? ' checked' : '' ?>> Afficher Media prives dans l'app</label>
                     <label><input type="checkbox" name="private_media[native_playback_enabled]" value="1"<?= !empty($config['native_playback_enabled']) ? ' checked' : '' ?>> Autoriser lecture native si flux compatible</label>
+                    <label><input type="checkbox" name="private_media[force_native_playback_enabled]" value="1"<?= !empty($config['force_native_playback_enabled']) ? ' checked' : '' ?>> Forcer lecture native HLS/MP4</label>
                 </div>
                 <div class="admin-form-grid">
                     <label><span>Elements par page</span><input name="private_media[per_page]" type="number" min="1" max="50" value="<?= (int) ($config['per_page'] ?? 24) ?>"></label>
                     <label><span>Taille thumbnails</span><select name="private_media[thumbsize]"><?php foreach (['small', 'medium', 'big'] as $size): ?><option value="<?= admin_escape($size) ?>"<?= ($config['thumbsize'] ?? 'big') === $size ? ' selected' : '' ?>><?= admin_escape($size) ?></option><?php endforeach; ?></select></label>
                     <label><span>Ordre par defaut</span><select name="private_media[order]"><?php foreach ($orders as $order): ?><option value="<?= admin_escape($order) ?>"<?= ($config['order'] ?? 'latest') === $order ? ' selected' : '' ?>><?= admin_escape($order) ?></option><?php endforeach; ?></select></label>
+                    <label><span>Flux HLS/MP4 de test</span><input name="private_media[native_test_stream_url]" maxlength="1000" placeholder="https://.../stream.m3u8 ou .mp4" value="<?= admin_escape((string) ($config['native_test_stream_url'] ?? '')) ?>"></label>
                 </div>
             </section>
 

@@ -1,5 +1,31 @@
 # AI Changelog
 
+## 2026-07-07 - Media prives WebView TV et mode natif force test
+
+Type:
+- Android TV
+- backend PHP
+- admin
+- documentation
+
+Resume:
+- Media prive durcit le fallback WebView mini/fullscreen pour Android TV: cookies tiers, DOM storage, user-agent navigateur, viewport, hardware layer et autoplay sans geste utilisateur.
+- Le mini-player prive est reduit en 16:9 compact; le titre video sous preview passe en police plus petite.
+- Le champ recherche Media demande explicitement le focus et le clavier logiciel sur OK/clic; les focus des lignes Media utilisent `LocalTvFocusStyle`.
+- Admin > Bibliotheque privee ajoute `Forcer lecture native HLS/MP4` et `Flux HLS/MP4 de test`; le backend priorise ce vrai flux direct en mode test, sinon renvoie `UNAVAILABLE` au lieu d'inventer une conversion d'embed.
+
+Validation:
+- `php -l server/public_html/api/media/private/private_media_service.php`: OK.
+- `php -l server/public_html/admin/index.php`: OK.
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK.
+- AVD `SmartVision_TV_720p_Light` demarre en `emulator-5554`; APK modifie non installe car `assembleRelease` a depasse 20 minutes et n'a pas regenere d'artefact.
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/ui/media/MediaScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/media/PrivateMediaDetailScreen.kt`
+- `server/public_html/api/media/private/private_media_service.php`
+- `server/public_html/admin/index.php`
+
 ## 2026-07-07 - Sous-dossiers prives admin et boutons QR Media local
 
 Type:

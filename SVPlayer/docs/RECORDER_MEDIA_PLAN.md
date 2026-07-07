@@ -624,6 +624,8 @@ Termine:
 - Le bouton refresh de la liste Media est remplace par un champ de recherche focusable TV; en prive, la recherche repart via `/api/media/private/items.php?query=...`.
 - Premier OK sur une video privee charge la preview et lance le mini-player; second OK sur le meme item ouvre `private_media_player/{id}`.
 - Lecture privee: ExoPlayer uniquement pour flux directs HLS/MP4 fournis par SmartVision/provider et valides par le backend; sinon WebView embed officiel. Aucun endpoint provider n'est construit dans l'APK et aucune extraction HTML n'est faite.
+- Admin > Bibliotheque privee ajoute un mode de test `Forcer lecture native HLS/MP4` avec champ `Flux HLS/MP4 de test`: si un vrai `.m3u8` ou `.mp4` est fourni, le backend le renvoie en premier et Android lance ExoPlayer. Si aucun flux direct n'existe, le backend renvoie `UNAVAILABLE` au lieu de convertir artificiellement un embed.
+- Le fallback WebView prive utilise cookies tiers, DOM storage, user-agent navigateur et autoplay sans geste utilisateur pour mieux fonctionner sur Android TV/emulateur.
 - `Synchroniser removed` cote admin est borne par lot et transactionnel pour eviter les HTTP 500.
 
 Validation:

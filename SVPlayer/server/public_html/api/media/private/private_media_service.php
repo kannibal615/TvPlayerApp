@@ -16,6 +16,8 @@ function private_media_default_config(): array
         'provider_eporner_enabled' => false,
         'show_in_app' => false,
         'native_playback_enabled' => false,
+        'force_native_playback_enabled' => false,
+        'native_test_stream_url' => '',
         'per_page' => 24,
         'thumbsize' => 'big',
         'order' => 'latest',
@@ -128,6 +130,8 @@ function private_media_normalize_config(array $config): array
         'provider_eporner_enabled' => (bool) ($config['provider_eporner_enabled'] ?? $defaults['provider_eporner_enabled']),
         'show_in_app' => (bool) ($config['show_in_app'] ?? $defaults['show_in_app']),
         'native_playback_enabled' => (bool) ($config['native_playback_enabled'] ?? $defaults['native_playback_enabled']),
+        'force_native_playback_enabled' => (bool) ($config['force_native_playback_enabled'] ?? $defaults['force_native_playback_enabled']),
+        'native_test_stream_url' => smartvision_text_substr(trim((string) ($config['native_test_stream_url'] ?? $defaults['native_test_stream_url'])), 0, 1000),
         'per_page' => max(1, min(50, $perPage)),
         'thumbsize' => in_array($thumbsize, ['small', 'medium', 'big'], true) ? $thumbsize : $defaults['thumbsize'],
         'order' => private_media_allowed_order($order),
@@ -324,14 +328,15 @@ function private_media_playback(PDO $pdo, string $id): array
     $pageUrl = (string) ($item['sourceUrl'] ?? '');
     $streams = is_array($item['streams'] ?? null) ? $item['streams'] : [];
     $hasNativeStream = $streams !== [] && in_array($playbackType, ['HLS', 'MP4'], true);
+    $hasEmbedFallback = $playbackType === 'EMBED' && $embedUrl !== '';
     return [
-        'success' => $hasNativeStream || $playbackType === 'EMBED' || $playbackType === 'PAGE_ONLY',
-        'error' => $hasNativeStream || $playbackType === 'EMBED' ? null : 'native_stream_unavailable',
+        'success' => $hasNativeStream || $hasEmbedFallback || $playbackType === 'PAGE_ONLY',
+        'error' => $hasNativeStream || $hasEmbedFallback ? null : 'native_stream_unavailable',
         'id' => (string) ($item['id'] ?? $id),
         'title' => (string) ($item['title'] ?? ''),
         'thumbnailUrl' => $item['thumbnailUrl'] ?? null,
         'playbackType' => $playbackType,
-        'embedUrl' => $embedUrl !== '' ? $embedUrl : null,
+        'embedUrl' => $hasEmbedFallback ? $embedUrl : null,
         'pageUrl' => $pageUrl !== '' ? $pageUrl : null,
         'streams' => $streams,
     ];
@@ -637,10 +642,19 @@ function eporner_normalize_details(array $video, array $config): array
 {
     $item = eporner_normalize_item($video, true);
     $streams = !empty($config['native_playback_enabled']) ? private_media_extract_native_streams($video) : [];
+    $testStream = !empty($config['native_playback_enabled']) && !empty($config['force_native_playback_enabled'])
+        ? private_media_native_stream_from_url((string) ($config['native_test_stream_url'] ?? ''), 'admin-test')
+        : null;
+    if ($testStream !== null) {
+        array_unshift($streams, $testStream);
+    }
     $item['streams'] = $streams;
     if ($streams !== []) {
         $item['isPlayable'] = true;
         $item['playbackType'] = $streams[0]['type'];
+    } elseif (!empty($config['force_native_playback_enabled'])) {
+        $item['isPlayable'] = false;
+        $item['playbackType'] = 'UNAVAILABLE';
     } else {
         $item['isPlayable'] = !empty($item['embedUrl']);
         $item['playbackType'] = !empty($item['embedUrl']) ? 'EMBED' : 'PAGE_ONLY';

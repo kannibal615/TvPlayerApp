@@ -136,7 +136,7 @@ Backend indirect:
 - Les transitions entre une liste de categories et une liste/grille de contenus ne doivent pas pointer directement vers le premier item lazy via `focusProperties`; si l'item sort de composition, DPAD droite/gauche peut crasher.
 - Le texte doit rester lisible a distance TV.
 - Les boutons icones d'Info compte et de l'overlay player doivent rester focusables et conserver une cible D-pad suffisante meme si le rendu visuel est compact.
-- Media prives: le dossier parent `Media prives` expand/collapse ses sous-categories administrables; DPAD droite depuis une categorie charge la liste, premier OK sur un item charge le mini-player, second OK ouvre le plein ecran. Le champ recherche remplace refresh et doit rester focusable/cliquable pour ouvrir le clavier TV. Les lignes enfants sous `Media local` et `Media prives` doivent rester plus basses que leurs parents pour eviter la confusion visuelle.
+- Media prives: le dossier parent `Media prives` expand/collapse ses sous-categories administrables; DPAD droite depuis une categorie charge la liste, premier OK sur un item charge le mini-player, second OK ouvre le plein ecran. Le champ recherche remplace refresh et doit rester focusable/cliquable pour ouvrir le clavier TV via OK/clic. Les lignes enfants sous `Media local` et `Media prives` doivent rester plus basses que leurs parents pour eviter la confusion visuelle. Le mini-player prive reste compact en 16:9 et les focus Media utilisent `LocalTvFocusStyle`.
 
 ## 10. Problemes connus
 
@@ -200,3 +200,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-05: Live TV compacte Categories/Chaines/Apercu, ancre le focus chaines autour de la 3e ligne, route D-pad gauche vers le dossier selectionne, deplace `Regarder`/`Favori`/`Supprimer` dans le header Apercu et remplace l'ancien bloc `En cours` par des lignes EPG focusables.
 - 2026-07-07: Media prives ajoute sous-dossiers expandable sous le parent, recherche focusable dans la colonne liste, mini-player prive au premier OK et route fullscreen au second OK.
 - 2026-07-07: Media deplace les actions QR `Importer tel.` / `Exporter tel.` sous `Media local` en lignes compactes; les sous-dossiers prives deviennent gerables depuis le backend et restent visuellement plus bas que leurs dossiers parents.
+- 2026-07-07: Media corrige le champ recherche TV pour ouvrir le clavier, applique le style de focus parametre aux lignes Media, compacte le mini-player prive 16:9 et durcit le WebView prive Android TV.
