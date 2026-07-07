@@ -74,6 +74,7 @@ import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.live.LiveTvScreen
 import com.smartvision.svplayer.ui.media.MediaScreen
 import com.smartvision.svplayer.ui.media.PrivateMediaDetailRoute
+import com.smartvision.svplayer.ui.media.PrivateMediaPlayerRoute
 import com.smartvision.svplayer.ui.movies.MoviesScreen
 import com.smartvision.svplayer.ui.notifications.NotificationBadgeViewModel
 import com.smartvision.svplayer.ui.notifications.NotificationsRoute
@@ -655,6 +656,7 @@ fun AppNavigation(
                     privateMediaAccess = privateMediaGate,
                     onPlayFile = { mediaFileId -> navController.navigate("media_player/$mediaFileId") },
                     onOpenPrivateMediaDetails = { itemId -> navController.navigate("private_media_detail/${android.net.Uri.encode(itemId)}") },
+                    onOpenPrivateMediaPlayer = { itemId -> navController.navigate("private_media_player/${android.net.Uri.encode(itemId)}") },
                     onLockedFeature = {
                         if (mediaCenterGate.shouldShowUpgradePrompt || mediaPhoneTransferGate.shouldShowUpgradePrompt || privateMediaGate.shouldShowUpgradePrompt) {
                             showLicensePurchaseQr = true
@@ -669,6 +671,19 @@ fun AppNavigation(
                 PlaceholderRouteScreen(strings.mediaPrivate, strings.mediaDisabledByAdmin)
             } else {
                 PrivateMediaDetailRoute(
+                    itemId = itemId,
+                    strings = strings,
+                    onBack = { navController.popBackStack() },
+                    onPlay = { id -> navController.navigate("private_media_player/${android.net.Uri.encode(id)}") },
+                )
+            }
+        }
+        composable("private_media_player/{itemId}") { entry ->
+            val itemId = entry.arguments?.getString("itemId").orEmpty()
+            if (!privateMediaGate.allowed || itemId.isBlank()) {
+                PlaceholderRouteScreen(strings.mediaPrivate, strings.mediaDisabledByAdmin)
+            } else {
+                PrivateMediaPlayerRoute(
                     itemId = itemId,
                     strings = strings,
                     onBack = { navController.popBackStack() },
@@ -853,7 +868,8 @@ fun AppNavigation(
     val playerRouteActive = currentRoute.startsWith("player/") ||
         currentRoute.startsWith("movie_player/") ||
         currentRoute.startsWith("episode_player/") ||
-        currentRoute.startsWith("media_player/")
+        currentRoute.startsWith("media_player/") ||
+        currentRoute.startsWith("private_media_player/")
     BackHandler(enabled = !playerRouteActive) {
         if (currentRoute != AppRoute.Home.route) {
             val popped = navController.popBackStack()

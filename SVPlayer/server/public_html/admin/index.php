@@ -2014,9 +2014,17 @@ function admin_private_media_sync_removed(PDO $pdo): void
     if (!function_exists('private_media_sync_removed')) {
         throw new RuntimeException('Service bibliotheque privee indisponible.');
     }
-    $count = private_media_sync_removed($pdo);
-    audit_admin_action($pdo, 'private_media_removed_synced', 'provider', 'eporner');
-    set_admin_flash('success', $count . ' identifiant(s) retires synchronises.');
+    try {
+        $count = private_media_sync_removed($pdo);
+        audit_admin_action($pdo, 'private_media_removed_synced', 'provider', 'eporner');
+        set_admin_flash('success', $count . ' identifiant(s) retires synchronises. Synchronisation limitee par lot pour eviter les timeouts admin.');
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('SmartVision private media removed sync failed: ' . $exception->getMessage());
+        set_admin_flash('error', 'Synchronisation removed indisponible pour le moment. Reessayez plus tard.');
+    }
 }
 
 function admin_private_media_clear_cache(PDO $pdo): void
@@ -3334,7 +3342,7 @@ function admin_render_private_media_page(array $privateMediaAdmin): void
                         <td><select name="private_media[section_order][<?= (int) $newIndex ?>]"><?php foreach ($orders as $order): ?><option value="<?= admin_escape($order) ?>"><?= admin_escape($order) ?></option><?php endforeach; ?></select></td>
                     </tr>
                 </tbody></table></div>
-                <p class="muted">Aucun scraping: search/id/removed officiels uniquement. La lecture native reste indisponible tant qu'un flux HLS/MP4 officiel n'est pas fourni par SmartVision.</p>
+                <p class="muted">Aucun scraping: search/id/removed officiels uniquement. Lecture native HLS/MP4 si SmartVision fournit un flux; sinon l'app TV utilise le player embed officiel.</p>
                 <button class="admin-button primary" type="submit">Enregistrer la bibliotheque privee</button>
             </section>
         </form>

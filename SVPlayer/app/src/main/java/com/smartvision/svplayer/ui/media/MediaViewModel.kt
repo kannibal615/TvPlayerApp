@@ -3,6 +3,7 @@ package com.smartvision.svplayer.ui.media
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smartvision.svplayer.data.private_media.PrivateMediaItemDto
+import com.smartvision.svplayer.data.private_media.PrivateMediaPlaybackResponse
 import com.smartvision.svplayer.data.private_media.PrivateMediaRepository
 import com.smartvision.svplayer.media.MediaCenterFile
 import com.smartvision.svplayer.media.MediaCenterFileType
@@ -90,14 +91,80 @@ class MediaViewModel(
             _uiState.update { it.copy(selectedSource = MediaSource.Private) }
             return
         }
-        _uiState.update { it.copy(selectedSource = MediaSource.Private) }
+        _uiState.update { it.copy(selectedSource = MediaSource.Private, privateExpanded = true) }
         if (state.privateItems.isEmpty() && !state.privateLoading) {
             loadPrivateMedia()
         }
     }
 
+    fun togglePrivateGroup() {
+        _uiState.update {
+            it.copy(
+                selectedSource = MediaSource.Private,
+                privateExpanded = !it.privateExpanded,
+            )
+        }
+        if (!_uiState.value.privateBootstrapLoaded) {
+            loadPrivateMedia()
+        }
+    }
+
+    fun selectPrivateCategory(categoryId: String) {
+        _uiState.update {
+            it.copy(
+                selectedSource = MediaSource.Private,
+                selectedPrivateCategoryId = categoryId,
+                selectedPrivateItemId = null,
+                privatePreviewPlayback = null,
+                privatePreviewError = null,
+            )
+        }
+        loadPrivateMedia(force = true)
+    }
+
+    fun updateSearchQuery(query: String) {
+        _uiState.update {
+            it.copy(
+                searchQuery = query,
+                selectedPrivateItemId = if (it.selectedSource == MediaSource.Private) null else it.selectedPrivateItemId,
+                privatePreviewPlayback = if (it.selectedSource == MediaSource.Private) null else it.privatePreviewPlayback,
+                privatePreviewError = if (it.selectedSource == MediaSource.Private) null else it.privatePreviewError,
+            )
+        }
+        if (_uiState.value.selectedSource == MediaSource.Private) {
+            loadPrivateMedia(force = true)
+        }
+    }
+
     fun selectPrivateItem(itemId: String) {
-        _uiState.update { it.copy(selectedPrivateItemId = itemId) }
+        _uiState.update {
+            it.copy(
+                selectedPrivateItemId = itemId,
+                privatePreviewLoading = true,
+                privatePreviewPlayback = null,
+                privatePreviewError = null,
+            )
+        }
+        viewModelScope.launch {
+            privateMediaRepository.loadPlayback(itemId)
+                .onSuccess { playback ->
+                    _uiState.update {
+                        it.copy(
+                            privatePreviewLoading = false,
+                            privatePreviewPlayback = playback.toPreviewUi(itemId),
+                            privatePreviewError = playback.error,
+                        )
+                    }
+                }
+                .onFailure { throwable ->
+                    _uiState.update {
+                        it.copy(
+                            privatePreviewLoading = false,
+                            privatePreviewError = throwable.message ?: "Private media playback unavailable.",
+                        )
+                    }
+                }
+        }
     }
 
     fun refreshPrivateMedia() {
@@ -199,7 +266,7 @@ class MediaViewModel(
                 return@launch
             }
 
-            val page = privateMediaRepository.loadItems(selectedCategoryId).getOrElse { throwable ->
+            val page = privateMediaRepository.loadItems(selectedCategoryId, query = current.searchQuery).getOrElse { throwable ->
                 _uiState.update {
                     it.copy(
                         privateLoading = false,
@@ -223,6 +290,7 @@ class MediaViewModel(
                     privateItems = items,
                     selectedPrivateItemId = it.selectedPrivateItemId?.takeIf { id -> items.any { item -> item.id == id } }
                         ?: items.firstOrNull()?.id,
+                    privatePreviewPlayback = it.privatePreviewPlayback?.takeIf { playback -> items.any { item -> item.id == playback.itemId } },
                     privateErrorMessage = page.error,
                 )
             }
@@ -441,6 +509,8 @@ data class MediaScreenState(
     val selectedArea: MediaArea = MediaArea.AllFiles,
     val selectedSource: MediaSource = MediaSource.Local,
     val localExpanded: Boolean = true,
+    val privateExpanded: Boolean = true,
+    val searchQuery: String = "",
     val selectedFileId: Long? = null,
     val files: List<MediaFileUi> = emptyList(),
     val folders: List<MediaFolderUi> = emptyList(),
@@ -454,6 +524,9 @@ data class MediaScreenState(
     val selectedPrivateCategoryId: String? = null,
     val privateItems: List<PrivateMediaItemUi> = emptyList(),
     val selectedPrivateItemId: String? = null,
+    val privatePreviewLoading: Boolean = false,
+    val privatePreviewPlayback: PrivateMediaPlaybackUi? = null,
+    val privatePreviewError: String? = null,
     val privateErrorMessage: String? = null,
     val message: MediaActionMessage? = null,
     val errorMessage: String? = null,
@@ -465,7 +538,13 @@ data class MediaScreenState(
         get() = privateItems.firstOrNull { it.id == selectedPrivateItemId }
 
     val visibleFiles: List<MediaFileUi>
-        get() = files.filter { it.matches(selectedArea) }
+        get() = files
+            .filter { it.matches(selectedArea) }
+            .filter { file ->
+                searchQuery.isBlank() ||
+                    file.displayName.contains(searchQuery, ignoreCase = true) ||
+                    file.relativePath.contains(searchQuery, ignoreCase = true)
+            }
 
     fun countFor(area: MediaArea): Int =
         when (area) {
@@ -490,6 +569,21 @@ data class PrivateMediaItemUi(
     val playbackType: String,
     val isPlayable: Boolean,
 )
+
+data class PrivateMediaPlaybackUi(
+    val itemId: String,
+    val title: String,
+    val thumbnailUrl: String?,
+    val playbackType: String,
+    val streamUrl: String?,
+    val streamType: String?,
+    val embedUrl: String?,
+    val pageUrl: String?,
+    val error: String?,
+) {
+    val canPlay: Boolean
+        get() = !streamUrl.isNullOrBlank() || !embedUrl.isNullOrBlank()
+}
 
 data class MediaFileUi(
     val id: Long,
@@ -555,6 +649,23 @@ private fun PrivateMediaItemDto.toPrivateUi(): PrivateMediaItemUi =
         playbackType = playbackType,
         isPlayable = isPlayable,
     )
+
+private fun PrivateMediaPlaybackResponse.toPreviewUi(fallbackItemId: String): PrivateMediaPlaybackUi {
+    val stream = streams.firstOrNull { stream ->
+        stream.url.isNotBlank() && (stream.type.equals("HLS", ignoreCase = true) || stream.type.equals("MP4", ignoreCase = true))
+    }
+    return PrivateMediaPlaybackUi(
+        itemId = id.ifBlank { fallbackItemId },
+        title = title,
+        thumbnailUrl = thumbnailUrl,
+        playbackType = playbackType,
+        streamUrl = stream?.url,
+        streamType = stream?.type,
+        embedUrl = embedUrl,
+        pageUrl = pageUrl,
+        error = error,
+    )
+}
 
 private fun Long?.formatDurationLabel(): String =
     this?.takeIf { it > 0 }?.let { seconds ->

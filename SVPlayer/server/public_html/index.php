@@ -49,6 +49,7 @@ sv_send_site_headers();
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="google-adsense-account" content="ca-pub-9499676739525429">
     <meta name="description" content="SmartVision IPTV Player est un lecteur Android TV légal, rapide et moderne. Téléchargement gratuit, licence premium optionnelle et aucun contenu inclus.">
     <title>SmartVision IPTV Player | Lecteur Android TV légal</title>
     <link rel="stylesheet" href="/assets/site.css?v=6">

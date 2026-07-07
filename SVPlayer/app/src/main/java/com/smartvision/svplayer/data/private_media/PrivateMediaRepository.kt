@@ -19,8 +19,9 @@ class PrivateMediaRepository(
         categoryId: String,
         page: Int = 1,
         perPage: Int = 24,
+        query: String = "",
     ): Result<PrivateMediaPageDto> = runCatching {
-        val response = api.items(categoryId, page, perPage)
+        val response = api.items(categoryId, page, perPage, query.takeIf { it.isNotBlank() })
         if (!response.success) error(response.error ?: "Private media unavailable.")
         response.page ?: PrivateMediaPageDto(error = response.error)
     }
@@ -32,6 +33,10 @@ class PrivateMediaRepository(
     }
 
     suspend fun loadPlayback(id: String): Result<PrivateMediaPlaybackResponse> = runCatching {
-        api.playback(id)
+        val response = api.playback(id)
+        if (!response.success && response.embedUrl.isNullOrBlank() && response.streams.isEmpty()) {
+            error(response.error ?: "Private media playback unavailable.")
+        }
+        response
     }
 }

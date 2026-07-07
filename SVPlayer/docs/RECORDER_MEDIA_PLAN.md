@@ -614,3 +614,16 @@ Non fait dans ce lot:
 
 Prochaine etape recommandee:
 - Lot 5 - Room Media + stockage local.
+
+### Extension Media prives 2026-07-07
+
+Termine:
+- `Media prives` devient un dossier expandable avec sous-dossiers/categories issus du backend SmartVision.
+- Le bouton refresh de la liste Media est remplace par un champ de recherche focusable TV; en prive, la recherche repart via `/api/media/private/items.php?query=...`.
+- Premier OK sur une video privee charge la preview et lance le mini-player; second OK sur le meme item ouvre `private_media_player/{id}`.
+- Lecture privee: ExoPlayer uniquement pour flux HLS/MP4 fournis par SmartVision; sinon WebView embed officiel. Aucun endpoint provider n'est construit dans l'APK.
+- `Synchroniser removed` cote admin est borne par lot et transactionnel pour eviter les HTTP 500.
+
+Validation:
+- `php -l` sur `private_media_service.php`, `items.php`, `admin/index.php`: OK.
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK.

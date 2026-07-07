@@ -16,6 +16,7 @@ interface PrivateMediaApiService {
         @Query("category_id") categoryId: String,
         @Query("page") page: Int,
         @Query("per_page") perPage: Int,
+        @Query("query") query: String? = null,
     ): PrivateMediaItemsResponse
 
     @GET("api/media/private/item.php")
@@ -51,7 +52,12 @@ data class PrivateMediaItemResponse(
 
 data class PrivateMediaPlaybackResponse(
     @SerializedName("success") val success: Boolean = false,
+    @SerializedName("id") val id: String = "",
+    @SerializedName("title") val title: String = "",
+    @SerializedName("thumbnailUrl") val thumbnailUrl: String? = null,
     @SerializedName("playbackType") val playbackType: String = "UNAVAILABLE",
+    @SerializedName("embedUrl") val embedUrl: String? = null,
+    @SerializedName("pageUrl") val pageUrl: String? = null,
     @SerializedName("streams") val streams: List<PrivateMediaStreamDto> = emptyList(),
     @SerializedName("error") val error: String? = null,
 )
@@ -79,6 +85,8 @@ data class PrivateMediaPageDto(
     @SerializedName("perPage") val perPage: Int = 24,
     @SerializedName("totalCount") val totalCount: Int = 0,
     @SerializedName("totalPages") val totalPages: Int = 0,
+    @SerializedName("categoryId") val categoryId: String = "",
+    @SerializedName("query") val query: String = "",
     @SerializedName("items") val items: List<PrivateMediaItemDto> = emptyList(),
     @SerializedName("error") val error: String? = null,
 )

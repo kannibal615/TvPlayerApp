@@ -146,6 +146,7 @@ Tables/settings a surveiller:
 ## 10. Problemes connus
 
 - Admin HTTP 500 possible si service PHP requis non uploade.
+- `Bibliotheque privee > Synchroniser removed` doit rester borne et transactionnel: le provider peut renvoyer un fichier volumineux, donc ne pas reinserer tous les ids en une seule requete admin non bornee.
 - Le test admin du deploy doit suivre la navigation courante: apres la centralisation de Journal dans Diagnostics, le marqueur attendu au login est `Diagnostics`, pas un menu `Journal` separe.
 - Feature flags stockes en prod peuvent rester anciens.
 - cPanel peut ne pas offrir `Fileman/delete_files`; preferer self-delete.
@@ -177,6 +178,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-07-07: ajout des endpoints `api/media/private/*`, du menu admin `Bibliotheque privee`, des flags `private_media*`, et correction du deploy pour creer explicitement `api/media/private/providers` avant upload.
+- 2026-07-07: `items.php` accepte `query` pour la recherche privee; `Synchroniser removed` est limite par lot et rollback en erreur pour eviter un HTTP 500 admin; playback prive renvoie aussi `embedUrl/pageUrl` pour le fallback TV.
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-07-02: `Admin > Fonctionnalites` ajoute le bloc Tendances Home et `api/app_config.php` renvoie le bloc `trending` consomme par Android.
 - 2026-06-29: ajout de la regle "nouveau PHP = ajout deploy script".

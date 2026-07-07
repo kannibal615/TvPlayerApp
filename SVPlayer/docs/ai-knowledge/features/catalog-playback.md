@@ -205,6 +205,7 @@ URL de lecture:
 - La verification de connexion Xtream est obligatoire au premier affichage actif, mais elle reste non bloquante pendant ses essais silencieux et ne doit pas forcer une resynchronisation globale si la politique de frequence ne la demande pas.
 - Les routes player/detail doivent aussi respecter le blocage Xtream; ne pas compter uniquement sur Home/Header pour bloquer l'acces.
 - Les diagnostics de synchro doivent rester non intrusifs: pas de credentials dans `logcat`, seulement les compteurs catalogue et les valeurs memoire Runtime.
+- Media prives: la lecture native n'est autorisee que si le backend SmartVision renvoie explicitement un flux HLS/MP4. Si le provider officiel expose seulement un embed/page, Android utilise `private_media_player/{id}` avec WebView embed; aucun scraping/extraction HTML ni URL provider construite dans l'APK.
 
 ## 10. Problemes connus
 
@@ -266,3 +267,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-04: verification Xtream durcie contre les faux positifs: 3 essais silencieux, test principal sur `user_info`, pas de blocage/popup avant echec confirme, et buffering lecteur separe d'une panne globale.
 - 2026-07-05: overlay plein ecran Live TV remplace puis affine en modele dedie direct: bandeau bas rectangulaire compact, logo chaine sans cadre, numero reel, EPG local courant, panneau Settings aspect ratio enrichi, Record placeholder et suppression des controles VOD.
 - 2026-07-07: ajout lots TMDB 1 a 6: plan A-Z, tables Room `tmdb_*`, API Retrofit TMDB optionnelle, matching automatique films/series, cache local, enrichissement visuel fiches film/serie, Home preview enrichie et grilles catalogue cache-only.
+- 2026-07-07: Media prives ajoute preview video et fullscreen: ExoPlayer pour HLS/MP4 SmartVision, WebView embed officiel sinon, avec premier OK mini-player et second OK fullscreen.

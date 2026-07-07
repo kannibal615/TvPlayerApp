@@ -10,9 +10,10 @@ apply_api_headers();
 try {
     $pdo = db();
     $categoryId = smartvision_text_substr(trim((string) ($_GET['category_id'] ?? 'all')), 0, 80);
+    $query = smartvision_text_substr(trim((string) ($_GET['query'] ?? '')), 0, 120);
     $page = filter_var($_GET['page'] ?? 1, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 1000000]]) ?: 1;
     $perPage = filter_var($_GET['per_page'] ?? 24, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 50]]) ?: 24;
-    json_response(['success' => true, 'page' => private_media_items($pdo, $categoryId, (int) $page, (int) $perPage)]);
+    json_response(['success' => true, 'page' => private_media_items($pdo, $categoryId, (int) $page, (int) $perPage, $query)]);
 } catch (Throwable $exception) {
     json_response(['success' => false, 'error' => 'private_media_items_failed'], 502);
 }

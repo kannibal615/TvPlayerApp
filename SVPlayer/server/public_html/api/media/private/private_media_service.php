@@ -6,6 +6,7 @@ const PRIVATE_MEDIA_CONFIG_KEY = 'private_media_config';
 const PRIVATE_MEDIA_CACHE_TTL_SECONDS = 1800;
 const PRIVATE_MEDIA_DETAILS_TTL_SECONDS = 21600;
 const PRIVATE_MEDIA_RATE_LIMIT_SECONDS = 2;
+const PRIVATE_MEDIA_REMOVED_SYNC_LIMIT = 5000;
 const EPORNER_API_BASE = 'https://www.eporner.com/api/v2/video/';
 
 function private_media_default_config(): array
@@ -21,9 +22,58 @@ function private_media_default_config(): array
         'sections' => [
             [
                 'id' => 'all',
-                'title' => 'Tous les medias prives',
+                'title' => 'Nouveautes',
                 'query' => 'all',
                 'order' => 'latest',
+                'enabled' => true,
+            ],
+            [
+                'id' => 'popular',
+                'title' => 'Populaires',
+                'query' => 'all',
+                'order' => 'most-popular',
+                'enabled' => true,
+            ],
+            [
+                'id' => 'top-weekly',
+                'title' => 'Top semaine',
+                'query' => 'all',
+                'order' => 'top-weekly',
+                'enabled' => true,
+            ],
+            [
+                'id' => 'top-rated',
+                'title' => 'Mieux notees',
+                'query' => 'all',
+                'order' => 'top-rated',
+                'enabled' => true,
+            ],
+            [
+                'id' => 'long-format',
+                'title' => 'Long format',
+                'query' => 'all',
+                'order' => 'longest',
+                'enabled' => true,
+            ],
+            [
+                'id' => 'amateur',
+                'title' => 'Amateur',
+                'query' => 'amateur',
+                'order' => 'top-monthly',
+                'enabled' => true,
+            ],
+            [
+                'id' => 'couples',
+                'title' => 'Couples',
+                'query' => 'couple',
+                'order' => 'top-monthly',
+                'enabled' => true,
+            ],
+            [
+                'id' => 'pov',
+                'title' => 'POV',
+                'query' => 'pov',
+                'order' => 'top-monthly',
                 'enabled' => true,
             ],
         ],
@@ -152,7 +202,7 @@ function private_media_categories(PDO $pdo): array
     ], array_filter($config['sections'], static fn(array $section): bool => !empty($section['enabled']))));
 }
 
-function private_media_items(PDO $pdo, string $categoryId, int $page, int $perPage): array
+function private_media_items(PDO $pdo, string $categoryId, int $page, int $perPage, string $searchQuery = ''): array
 {
     private_media_ensure_schema($pdo);
     $config = private_media_config($pdo);
@@ -167,10 +217,13 @@ function private_media_items(PDO $pdo, string $categoryId, int $page, int $perPa
 
     $safePage = max(1, min(1000000, $page));
     $safePerPage = max(1, min(50, $perPage));
-    $cacheKey = 'search:' . sha1(json_encode([$section, $safePage, $safePerPage, $config['thumbsize']], JSON_UNESCAPED_SLASHES));
+    $query = trim($searchQuery) !== ''
+        ? smartvision_text_substr(trim($searchQuery), 0, 120)
+        : (string) $section['query'];
+    $cacheKey = 'search:' . sha1(json_encode([$section['id'], $query, $section['order'], $safePage, $safePerPage, $config['thumbsize']], JSON_UNESCAPED_SLASHES));
     $payload = private_media_cache_get($pdo, $cacheKey);
     if ($payload === null) {
-        $payload = eporner_search($section['query'], $safePage, $safePerPage, $config['thumbsize'], $section['order']);
+        $payload = eporner_search($query, $safePage, $safePerPage, $config['thumbsize'], $section['order']);
         private_media_cache_set($pdo, $cacheKey, $payload, PRIVATE_MEDIA_CACHE_TTL_SECONDS);
     }
 
@@ -191,6 +244,8 @@ function private_media_items(PDO $pdo, string $categoryId, int $page, int $perPa
         'perPage' => (int) ($payload['per_page'] ?? $safePerPage),
         'totalCount' => (int) ($payload['total_count'] ?? count($items)),
         'totalPages' => (int) ($payload['total_pages'] ?? 1),
+        'categoryId' => $section['id'],
+        'query' => $query,
         'items' => $items,
         'error' => null,
     ];
@@ -238,10 +293,18 @@ function private_media_playback(PDO $pdo, string $id): array
     }
 
     $item = $details['item'];
+    $playbackType = (string) ($item['playbackType'] ?? 'UNAVAILABLE');
+    $embedUrl = (string) ($item['embedUrl'] ?? '');
+    $pageUrl = (string) ($item['sourceUrl'] ?? '');
     return [
-        'success' => false,
-        'error' => 'native_playback_unavailable',
-        'playbackType' => (string) ($item['playbackType'] ?? 'EMBED'),
+        'success' => $playbackType === 'EMBED' || $playbackType === 'PAGE_ONLY',
+        'error' => $playbackType === 'EMBED' ? null : 'native_stream_unavailable',
+        'id' => (string) ($item['id'] ?? $id),
+        'title' => (string) ($item['title'] ?? ''),
+        'thumbnailUrl' => $item['thumbnailUrl'] ?? null,
+        'playbackType' => $playbackType,
+        'embedUrl' => $embedUrl !== '' ? $embedUrl : null,
+        'pageUrl' => $pageUrl !== '' ? $pageUrl : null,
         'streams' => [],
     ];
 }
@@ -287,21 +350,33 @@ function private_media_health(PDO $pdo): array
 
 function private_media_sync_removed(PDO $pdo): int
 {
+    @set_time_limit(45);
     private_media_ensure_schema($pdo);
-    $text = eporner_removed_txt();
-    $ids = array_filter(array_map('trim', preg_split('/\R+/', $text) ?: []));
+    $ids = eporner_removed_ids(PRIVATE_MEDIA_REMOVED_SYNC_LIMIT);
     $statement = $pdo->prepare(
         "INSERT INTO private_media_removed_ids (provider, provider_video_id, removed_at)
          VALUES (:provider, :provider_video_id, UTC_TIMESTAMP())
          ON DUPLICATE KEY UPDATE removed_at = VALUES(removed_at)"
     );
     $count = 0;
-    foreach ($ids as $id) {
-        if ($id === '') {
-            continue;
+    $pdo->beginTransaction();
+    try {
+        foreach ($ids as $id) {
+            if ($id === '') {
+                continue;
+            }
+            if ($count >= PRIVATE_MEDIA_REMOVED_SYNC_LIMIT) {
+                break;
+            }
+            $statement->execute(['provider' => PRIVATE_MEDIA_PROVIDER, 'provider_video_id' => $id]);
+            $count++;
         }
-        $statement->execute(['provider' => PRIVATE_MEDIA_PROVIDER, 'provider_video_id' => $id]);
-        $count++;
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $exception;
     }
     return $count;
 }
@@ -363,7 +438,42 @@ function eporner_video_id(string $providerVideoId, string $thumbsize): array
 
 function eporner_removed_txt(): string
 {
-    return eporner_request_raw('removed/', ['format' => 'txt']);
+    return eporner_request_raw('removed/', ['format' => 'txt'], 25);
+}
+
+function eporner_removed_ids(int $limit): array
+{
+    private_media_rate_limit(PRIVATE_MEDIA_PROVIDER);
+    $url = EPORNER_API_BASE . 'removed/?' . http_build_query(['format' => 'txt']);
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'timeout' => 25,
+            'ignore_errors' => true,
+            'header' => "User-Agent: SmartVisionPrivateMedia/1.0\r\nAccept: text/plain,*/*;q=0.8\r\n",
+        ],
+    ]);
+    $handle = @fopen($url, 'rb', false, $context);
+    if ($handle === false) {
+        throw new RuntimeException('Provider removed indisponible.');
+    }
+
+    $ids = [];
+    try {
+        while (!feof($handle) && count($ids) < $limit) {
+            $line = fgets($handle, 256);
+            if ($line === false) {
+                break;
+            }
+            $id = smartvision_text_substr(trim($line), 0, 80);
+            if ($id !== '') {
+                $ids[$id] = $id;
+            }
+        }
+    } finally {
+        fclose($handle);
+    }
+    return array_values($ids);
 }
 
 function eporner_request_json(string $method, array $query): array
@@ -376,14 +486,14 @@ function eporner_request_json(string $method, array $query): array
     return $decoded;
 }
 
-function eporner_request_raw(string $method, array $query): string
+function eporner_request_raw(string $method, array $query, int $timeoutSeconds = 8): string
 {
     private_media_rate_limit(PRIVATE_MEDIA_PROVIDER);
     $url = EPORNER_API_BASE . ltrim($method, '/') . '?' . http_build_query($query);
     $context = stream_context_create([
         'http' => [
             'method' => 'GET',
-            'timeout' => 8,
+            'timeout' => max(3, min(30, $timeoutSeconds)),
             'ignore_errors' => true,
             'header' => "User-Agent: SmartVisionPrivateMedia/1.0\r\nAccept: application/json,text/plain;q=0.9,*/*;q=0.8\r\n",
         ],

@@ -1,5 +1,36 @@
 # AI Changelog
 
+## 2026-07-07 - Media prives recherche, playback TV et sync removed
+
+Type:
+- android
+- ui-tv
+- player
+- backend
+- admin
+- documentation
+
+Resume:
+- `Media prives` devient expandable avec sous-categories backend visibles sous le parent.
+- La colonne liste remplace refresh par un champ de recherche focusable TV; la recherche locale filtre les fichiers et la recherche privee interroge SmartVision avec `query`.
+- Premier OK sur une video privee charge le mini-player; second OK ouvre `private_media_player/{id}`.
+- Playback prive: ExoPlayer pour HLS/MP4 fournis par SmartVision, WebView embed officiel sinon; pas de scraping ni d'URL provider dans l'APK.
+- `Synchroniser removed` admin est borne par lot, transactionnel et fail-safe pour eviter les HTTP 500.
+- Version release publiee en production: `0.1.113` / `versionCode 117`.
+
+Validation:
+- `php -l server/public_html/api/media/private/private_media_service.php`: OK.
+- `php -l server/public_html/api/media/private/items.php`: OK.
+- `php -l server/public_html/admin/index.php`: OK.
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK.
+- `.\scripts\guard_release_version.ps1`: OK.
+- `.\gradlew.bat :app:assembleRelease --no-daemon --max-workers=1 --console=plain`: OK en 18m35s.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK, metadata `0.1.113 (117)`.
+- `apksigner verify --verbose`: OK v1/v2, 1 signer.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall`: OK.
+- Production verifiee: manifeste et `api/app_update.php` annoncent `0.1.113` / `117`, APK `smartvision-tv-v117-0ebeb50b.apk`, SHA256 `0ebeb50b812c7ca5298cfa2268302f35ad032dc1d0fed73d967407d51b0f8538`, taille `40952871`.
+- Production verifiee: `private_media_sync_removed` admin retourne HTTP 200; `items.php?query=test` retourne des items avec categorie admin reelle; `playback.php` retourne `EMBED` + `embedUrl` pour l'item teste.
+
 ## 2026-07-07 - Media local expandable et bibliotheque privee proxy
 
 Type:
