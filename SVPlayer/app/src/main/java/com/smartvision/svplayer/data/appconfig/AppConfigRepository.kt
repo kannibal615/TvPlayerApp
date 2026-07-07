@@ -202,4 +202,7 @@ private fun defaultFeatureAccess(): List<FeatureAccess> =
         FeatureAccess("media_center", "Media Center menu", premium = true, trial = true, freeAds = false),
         FeatureAccess("media_file_management", "Media file management", premium = true, trial = true, freeAds = false),
         FeatureAccess("media_phone_transfer", "Phone transfer", premium = true, trial = true, freeAds = false),
+        FeatureAccess("private_media", "Private media", premium = true, trial = false, freeAds = false),
+        FeatureAccess("private_media_eporner", "Eporner provider", premium = true, trial = false, freeAds = false),
+        FeatureAccess("private_media_native_playback", "Private media native playback", premium = true, trial = false, freeAds = false),
     )

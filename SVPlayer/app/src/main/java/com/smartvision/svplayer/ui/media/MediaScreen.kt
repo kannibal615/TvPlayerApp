@@ -2,6 +2,7 @@ package com.smartvision.svplayer.ui.media
 
 import android.graphics.Bitmap
 import android.net.Uri
+import coil.compose.AsyncImage
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -34,6 +35,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QrCode2
@@ -63,6 +66,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -128,14 +132,16 @@ fun MediaScreen(
     strings: SmartVisionStrings,
     access: PremiumFeatureGateResult,
     transferAccess: PremiumFeatureGateResult,
+    privateMediaAccess: PremiumFeatureGateResult,
     onPlayFile: (Long) -> Unit,
+    onOpenPrivateMediaDetails: (String) -> Unit,
     onLockedFeature: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
     val viewModel: MediaViewModel = viewModel(
         factory = viewModelFactory {
-            MediaViewModel(container.mediaRepository, container.mediaTransferServer)
+            MediaViewModel(container.mediaRepository, container.privateMediaRepository, container.mediaTransferServer)
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -207,13 +213,21 @@ fun MediaScreen(
             strings = strings,
             state = state,
             onAreaSelected = viewModel::selectArea,
+            onToggleLocalGroup = viewModel::toggleLocalGroup,
+            onPrivateMediaSelected = {
+                if (privateMediaAccess.allowed) viewModel.selectPrivateMedia() else onLockedFeature()
+            },
             onFileSelected = viewModel::selectFile,
+            onPrivateItemSelected = viewModel::selectPrivateItem,
             onRefresh = viewModel::refreshStorage,
+            onRefreshPrivate = viewModel::refreshPrivateMedia,
             onPlayFile = onPlayFile,
+            onOpenPrivateMediaDetails = onOpenPrivateMediaDetails,
             onRename = { renameTarget = state.selectedFile },
             onMove = { moveTarget = state.selectedFile },
             onDelete = { deleteTarget = state.selectedFile },
             transferAccess = transferAccess,
+            privateMediaAccess = privateMediaAccess,
             onImportPhone = {
                 if (transferAccess.allowed) viewModel.startPhoneImport() else onLockedFeature()
             },
@@ -330,13 +344,19 @@ private fun MediaWorkspace(
     strings: SmartVisionStrings,
     state: MediaScreenState,
     onAreaSelected: (MediaArea) -> Unit,
+    onToggleLocalGroup: () -> Unit,
+    onPrivateMediaSelected: () -> Unit,
     onFileSelected: (Long) -> Unit,
+    onPrivateItemSelected: (String) -> Unit,
     onRefresh: () -> Unit,
+    onRefreshPrivate: () -> Unit,
     onPlayFile: (Long) -> Unit,
+    onOpenPrivateMediaDetails: (String) -> Unit,
     onRename: () -> Unit,
     onMove: () -> Unit,
     onDelete: () -> Unit,
     transferAccess: PremiumFeatureGateResult,
+    privateMediaAccess: PremiumFeatureGateResult,
     onImportPhone: () -> Unit,
     onExportPhone: () -> Unit,
     firstFocusRequester: FocusRequester,
@@ -346,7 +366,7 @@ private fun MediaWorkspace(
     val previewActionFocusRequester = remember { FocusRequester() }
     var contentFocusSignal by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(contentFocusSignal, state.selectedArea, state.visibleFiles.size, state.folders.size) {
+    LaunchedEffect(contentFocusSignal, state.selectedSource, state.selectedArea, state.visibleFiles.size, state.folders.size, state.privateItems.size) {
         if (contentFocusSignal > 0) {
             delay(120)
             runCatching { firstContentFocusRequester.requestFocus() }
@@ -354,7 +374,8 @@ private fun MediaWorkspace(
     }
 
     fun focusPreviewAction(): Boolean {
-        if (state.selectedFile == null) return false
+        if (state.selectedSource == MediaSource.Local && state.selectedFile == null) return false
+        if (state.selectedSource == MediaSource.Private && state.selectedPrivateItem == null) return false
         runCatching { previewActionFocusRequester.requestFocus() }
         return true
     }
@@ -370,7 +391,13 @@ private fun MediaWorkspace(
                 onAreaSelected(area)
                 contentFocusSignal += 1
             },
+            onToggleLocalGroup = onToggleLocalGroup,
+            onPrivateMediaSelected = {
+                onPrivateMediaSelected()
+                contentFocusSignal += 1
+            },
             transferAccess = transferAccess,
+            privateMediaAccess = privateMediaAccess,
             onImportPhone = onImportPhone,
             onExportPhone = onExportPhone,
             firstFocusRequester = firstFocusRequester,
@@ -383,7 +410,9 @@ private fun MediaWorkspace(
             strings = strings,
             state = state,
             onFileSelected = onFileSelected,
+            onPrivateItemSelected = onPrivateItemSelected,
             onRefresh = onRefresh,
+            onRefreshPrivate = onRefreshPrivate,
             firstContentFocusRequester = firstContentFocusRequester,
             onMoveRightToPreview = { focusPreviewAction() },
             modifier = Modifier
@@ -395,6 +424,7 @@ private fun MediaWorkspace(
             strings = strings,
             state = state,
             onPlay = { state.selectedFile?.takeIf { it.isPlayable }?.id?.let(onPlayFile) },
+            onOpenPrivateMediaDetails = { state.selectedPrivateItem?.id?.let(onOpenPrivateMediaDetails) },
             onRename = onRename,
             onMove = onMove,
             onDelete = onDelete,
@@ -413,7 +443,10 @@ private fun MediaLibraryPanel(
     strings: SmartVisionStrings,
     state: MediaScreenState,
     onAreaSelected: (MediaArea) -> Unit,
+    onToggleLocalGroup: () -> Unit,
+    onPrivateMediaSelected: () -> Unit,
     transferAccess: PremiumFeatureGateResult,
+    privateMediaAccess: PremiumFeatureGateResult,
     onImportPhone: () -> Unit,
     onExportPhone: () -> Unit,
     firstFocusRequester: FocusRequester,
@@ -424,16 +457,37 @@ private fun MediaLibraryPanel(
         modifier = modifier,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            MediaArea.values().filterNot { it == MediaArea.Folders }.forEachIndexed { index, area ->
-                MediaAreaButton(
-                    label = area.label(strings),
-                    count = state.countFor(area),
-                    icon = area.icon(),
-                    onClick = { onAreaSelected(area) },
-                    selected = state.selectedArea == area,
-                    focusRequester = if (index == 0) firstFocusRequester else null,
-                )
+            MediaAreaButton(
+                label = strings.mediaLocal,
+                count = state.files.size,
+                icon = if (state.localExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                onClick = onToggleLocalGroup,
+                selected = state.selectedSource == MediaSource.Local,
+                focusRequester = firstFocusRequester,
+            )
+            if (state.localExpanded) {
+                listOf(MediaArea.AllFiles, MediaArea.Recordings, MediaArea.Imports, MediaArea.Transfers).forEach { area ->
+                    MediaAreaButton(
+                        label = area.label(strings),
+                        count = state.countFor(area),
+                        icon = area.icon(),
+                        onClick = { onAreaSelected(area) },
+                        selected = state.selectedSource == MediaSource.Local && state.selectedArea == area,
+                        focusRequester = null,
+                        indent = 16.dp,
+                    )
+                }
             }
+            MediaAreaButton(
+                label = strings.mediaPrivate,
+                count = state.privateItems.size,
+                icon = Icons.Default.Theaters,
+                onClick = onPrivateMediaSelected,
+                selected = state.selectedSource == MediaSource.Private,
+                focusRequester = null,
+                enabled = privateMediaAccess.showDisabledControl,
+                locked = privateMediaAccess.locked,
+            )
         }
 
         if (transferAccess.showDisabledControl) {
@@ -535,6 +589,9 @@ private fun MediaAreaButton(
     selected: Boolean,
     onClick: () -> Unit,
     focusRequester: FocusRequester?,
+    indent: androidx.compose.ui.unit.Dp = 0.dp,
+    enabled: Boolean = true,
+    locked: Boolean = false,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -580,8 +637,8 @@ private fun MediaAreaButton(
                 shape,
             )
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .focusable(interactionSource = interactionSource)
-            .padding(horizontal = 9.dp),
+            .focusable(enabled = enabled, interactionSource = interactionSource)
+            .padding(start = 9.dp + indent, end = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -601,7 +658,7 @@ private fun MediaAreaButton(
             modifier = Modifier.weight(1f),
         )
         MediaCountPill(
-            text = count.toString(),
+            text = if (locked) "LOCK" else count.toString(),
             active = active,
         )
     }
@@ -962,18 +1019,20 @@ private fun MediaContentPanel(
     strings: SmartVisionStrings,
     state: MediaScreenState,
     onFileSelected: (Long) -> Unit,
+    onPrivateItemSelected: (String) -> Unit,
     onRefresh: () -> Unit,
+    onRefreshPrivate: () -> Unit,
     firstContentFocusRequester: FocusRequester,
     onMoveRightToPreview: () -> Boolean,
     modifier: Modifier = Modifier,
 ) {
     MediaCatalogPanel(
-        title = if (state.selectedArea == MediaArea.Folders) strings.mediaFolders else strings.mediaRecentFiles,
+        title = if (state.selectedSource == MediaSource.Private) strings.mediaPrivate else strings.mediaList,
         modifier = modifier,
         titleContent = {
             Column {
                 Text(
-                    text = if (state.selectedArea == MediaArea.Folders) strings.mediaFolders else strings.mediaRecentFiles,
+                    text = if (state.selectedSource == MediaSource.Private) strings.mediaPrivate else strings.mediaList,
                     color = SmartVisionColors.TextPrimary,
                     style = SmartVisionType.TitleS,
                     fontWeight = FontWeight.Bold,
@@ -981,7 +1040,11 @@ private fun MediaContentPanel(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = state.selectedArea.label(strings),
+                    text = if (state.selectedSource == MediaSource.Private) {
+                        state.privateCategories.firstOrNull { it.id == state.selectedPrivateCategoryId }?.title ?: strings.mediaPrivate
+                    } else {
+                        state.selectedArea.label(strings)
+                    },
                     color = SmartVisionColors.CyanAccent,
                     style = SmartVisionType.Caption,
                     maxLines = 1,
@@ -991,9 +1054,9 @@ private fun MediaContentPanel(
         },
         trailing = {
             TvButton(
-                text = if (state.refreshing) strings.refreshing else strings.refresh,
-                onClick = onRefresh,
-                enabled = !state.refreshing && !state.operationInProgress,
+                text = if (state.refreshing || state.privateLoading) strings.refreshing else strings.refresh,
+                onClick = if (state.selectedSource == MediaSource.Private) onRefreshPrivate else onRefresh,
+                enabled = if (state.selectedSource == MediaSource.Private) !state.privateLoading else !state.refreshing && !state.operationInProgress,
                 variant = TvButtonVariant.Secondary,
                 leadingIcon = Icons.Default.CloudSync,
                 modifier = Modifier
@@ -1019,8 +1082,34 @@ private fun MediaContentPanel(
             if (state.transferInProgress) {
                 MediaStatusMessage(message = strings.mediaTransferInProgress, error = false)
             }
+            state.privateErrorMessage?.takeIf { state.selectedSource == MediaSource.Private }?.let { message ->
+                MediaStatusMessage(message = message, error = true)
+            }
 
-            if (state.selectedArea == MediaArea.Folders) {
+            if (state.selectedSource == MediaSource.Private) {
+                when {
+                    state.privateLoading -> MediaPrivateLoading(strings = strings)
+                    !state.privateProviderEnabled -> MediaEmptyState(
+                        title = strings.mediaPrivateDisabled,
+                        subtitle = strings.mediaPrivateDisabledSubtitle,
+                    )
+                    state.privateItems.isEmpty() -> MediaEmptyState(
+                        title = strings.mediaPrivateEmpty,
+                        subtitle = strings.mediaPrivateEmptySubtitle,
+                    )
+                    else -> PrivateMediaList(
+                        strings = strings,
+                        items = state.privateItems,
+                        selectedItemId = state.selectedPrivateItemId,
+                        onItemSelected = onPrivateItemSelected,
+                        firstFocusRequester = firstContentFocusRequester,
+                        onMoveRightToPreview = onMoveRightToPreview,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                    )
+                }
+            } else if (state.selectedArea == MediaArea.Folders) {
                 MediaFolderList(
                     strings = strings,
                     folders = state.folders,
@@ -1192,6 +1281,159 @@ private fun MediaFolderList(
                 strings = strings,
                 folder = folder,
                 focusRequester = if (index == 0) firstFocusRequester else null,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PrivateMediaList(
+    strings: SmartVisionStrings,
+    items: List<PrivateMediaItemUi>,
+    selectedItemId: String?,
+    onItemSelected: (String) -> Unit,
+    firstFocusRequester: FocusRequester,
+    onMoveRightToPreview: () -> Boolean,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(items, key = { it.id }) { item ->
+            val index = items.indexOf(item)
+            PrivateMediaRow(
+                strings = strings,
+                item = item,
+                selected = item.id == selectedItemId,
+                onClick = { onItemSelected(item.id) },
+                focusRequester = if (index == 0) firstFocusRequester else null,
+                onMoveRightToPreview = onMoveRightToPreview,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MediaPrivateLoading(strings: SmartVisionStrings) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        CircularProgressIndicator(color = SmartVisionColors.CyanAccent, modifier = Modifier.size(34.dp))
+        Text(
+            text = strings.mediaPrivateLoading,
+            color = SmartVisionColors.TextSecondary,
+            style = SmartVisionType.Label,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun PrivateMediaRow(
+    strings: SmartVisionStrings,
+    item: PrivateMediaItemUi,
+    selected: Boolean,
+    onClick: () -> Unit,
+    focusRequester: FocusRequester?,
+    onMoveRightToPreview: () -> Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val active = selected || focusState.isFocused
+    val shape = RoundedCornerShape(MediaCatalogDimens.ItemRadius)
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(82.dp)
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                pressed = pressed,
+                focusedScale = 1.018f,
+                glowColor = SmartVisionColors.Primary,
+                cornerRadius = MediaCatalogDimens.ItemRadius,
+            )
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight) {
+                    onMoveRightToPreview()
+                } else {
+                    false
+                }
+            }
+            .clip(shape)
+            .background(
+                Brush.horizontalGradient(
+                    if (active) {
+                        listOf(SmartVisionColors.Primary.copy(alpha = 0.30f), Color(0xAA07101E))
+                    } else {
+                        listOf(SmartVisionColors.SurfaceElevated.copy(alpha = 0.76f), Color(0x990A1323))
+                    },
+                ),
+            )
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) SmartVisionDimensions.FocusBorder else SmartVisionDimensions.PanelBorder,
+                    if (active) SmartVisionColors.CyanAccent else SmartVisionColors.Border,
+                ),
+                shape,
+            )
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(interactionSource = interactionSource)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(88.dp)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color.Black.copy(alpha = 0.38f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (!item.thumbnailUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = item.thumbnailUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Icon(Icons.Default.Theaters, contentDescription = null, tint = SmartVisionColors.TextSecondary)
+            }
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = item.title,
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.Label,
+                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = listOf(item.durationLabel, item.viewsLabel, item.ratingLabel.takeIf { it.isNotBlank() }?.let { "${strings.mediaPrivateRating} $it" })
+                    .filterNotNull()
+                    .filter { it.isNotBlank() }
+                    .joinToString("  |  "),
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Caption,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = item.tags.joinToString("  "),
+                color = SmartVisionColors.CyanAccent,
+                style = SmartVisionType.Caption,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -1665,6 +1907,7 @@ private fun MediaPreviewPanel(
     strings: SmartVisionStrings,
     state: MediaScreenState,
     onPlay: () -> Unit,
+    onOpenPrivateMediaDetails: () -> Unit,
     onRename: () -> Unit,
     onMove: () -> Unit,
     onDelete: () -> Unit,
@@ -1673,6 +1916,17 @@ private fun MediaPreviewPanel(
     previewActionFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
+    if (state.selectedSource == MediaSource.Private) {
+        PrivateMediaPreviewPanel(
+            strings = strings,
+            item = state.selectedPrivateItem,
+            onOpenDetails = onOpenPrivateMediaDetails,
+            previewActionFocusRequester = previewActionFocusRequester,
+            modifier = modifier,
+        )
+        return
+    }
+
     val selected = state.selectedFile
     val playEnabled = selected?.isPlayable == true && !state.operationInProgress
     val editEnabled = selected != null && !state.operationInProgress
@@ -1802,6 +2056,98 @@ private fun MediaPreviewPanel(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PrivateMediaPreviewPanel(
+    strings: SmartVisionStrings,
+    item: PrivateMediaItemUi?,
+    onOpenDetails: () -> Unit,
+    previewActionFocusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
+) {
+    MediaCatalogPanel(
+        title = strings.mediaPreview,
+        modifier = modifier,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = 0.45f))
+                    .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (!item?.thumbnailUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = item?.thumbnailUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Theaters,
+                        contentDescription = null,
+                        tint = SmartVisionColors.TextSecondary,
+                        modifier = Modifier.size(54.dp),
+                    )
+                }
+            }
+            if (item == null) {
+                Text(
+                    text = strings.mediaPrivateNoSelection,
+                    color = SmartVisionColors.TextSecondary,
+                    style = SmartVisionType.Label,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                return@Column
+            }
+            Text(
+                text = item.title,
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.TitleS,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            MediaInfoRow(strings.mediaDuration, item.durationLabel.ifBlank { "-" })
+            MediaInfoRow(strings.mediaPrivateViews, item.viewsLabel.ifBlank { "-" })
+            MediaInfoRow(strings.mediaPrivateRating, item.ratingLabel.ifBlank { "-" })
+            MediaInfoRow(strings.mediaPlaybackType, item.playbackType)
+            if (item.tags.isNotEmpty()) {
+                Text(
+                    text = item.tags.joinToString("  "),
+                    color = SmartVisionColors.CyanAccent,
+                    style = SmartVisionType.Caption,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            TvButton(
+                text = strings.mediaOpenDetails,
+                onClick = onOpenDetails,
+                leadingIcon = Icons.Default.Search,
+                focusRequester = previewActionFocusRequester,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(38.dp),
+            )
+            Text(
+                text = if (item.isPlayable) strings.mediaPrivatePlayable else strings.mediaPlaybackUnavailable,
+                color = if (item.isPlayable) SmartVisionColors.Success else SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Caption,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

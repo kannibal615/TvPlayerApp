@@ -33,6 +33,8 @@ import com.smartvision.svplayer.data.notifications.NotificationsApiService
 import com.smartvision.svplayer.data.notifications.NotificationsRepository
 import com.smartvision.svplayer.data.playlist.EpgRepository
 import com.smartvision.svplayer.data.playlist.M3uPlaylistClient
+import com.smartvision.svplayer.data.private_media.PrivateMediaApiService
+import com.smartvision.svplayer.data.private_media.PrivateMediaRepository
 import com.smartvision.svplayer.data.remote.XtreamApiClient
 import com.smartvision.svplayer.data.remote.XtreamApiService
 import com.smartvision.svplayer.data.remote.XtreamUrlFactory
@@ -140,6 +142,7 @@ class AppContainer(context: Context) {
     private val homeSlidesApi = activationRetrofit.create(HomeSlidesApiService::class.java)
     private val notificationsApi = activationRetrofit.create(NotificationsApiService::class.java)
     private val appConfigApi = activationRetrofit.create(AppConfigApiService::class.java)
+    private val privateMediaApi = activationRetrofit.create(PrivateMediaApiService::class.java)
     private val adConfigApi = activationRetrofit.create(AdConfigApiService::class.java)
     private val adsEventsApi = activationRetrofit.create(AdsEventsApiService::class.java)
     private val anomalyApi = activationRetrofit.create(AnomalyApiService::class.java)
@@ -248,6 +251,7 @@ class AppContainer(context: Context) {
         dao = database.mediaCenterDao(),
         storageManager = mediaStorageManager,
     )
+    val privateMediaRepository = PrivateMediaRepository(privateMediaApi)
     val mediaTransferServer = MediaTransferServer(mediaRepository)
     val recordingRepository = RecordingRepository(database.mediaCenterDao())
     private val recorderOkHttpClient = OkHttpClient.Builder()

@@ -73,6 +73,7 @@ import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.live.LiveTvScreen
 import com.smartvision.svplayer.ui.media.MediaScreen
+import com.smartvision.svplayer.ui.media.PrivateMediaDetailRoute
 import com.smartvision.svplayer.ui.movies.MoviesScreen
 import com.smartvision.svplayer.ui.notifications.NotificationBadgeViewModel
 import com.smartvision.svplayer.ui.notifications.NotificationsRoute
@@ -191,6 +192,23 @@ fun AppNavigation(
         PremiumFeatureGateResult(PremiumFeature.MEDIA_PHONE_TRANSFER, PremiumFeatureGateState.Allowed)
     } else {
         loadedMediaPhoneTransferGate
+    }
+    val loadedPrivateMediaGate = PremiumFeatureGate.evaluate(
+        config = appConfigState.config,
+        feature = PremiumFeature.PRIVATE_MEDIA,
+        status = monetizationStatus,
+    )
+    val loadedPrivateMediaProviderGate = PremiumFeatureGate.evaluate(
+        config = appConfigState.config,
+        feature = PremiumFeature.PRIVATE_MEDIA_EPORNER,
+        status = monetizationStatus,
+    )
+    val privateMediaGate = if (appConfigState.loading) {
+        PremiumFeatureGateResult(PremiumFeature.PRIVATE_MEDIA, PremiumFeatureGateState.Allowed)
+    } else if (!loadedPrivateMediaGate.allowed) {
+        loadedPrivateMediaGate
+    } else {
+        loadedPrivateMediaProviderGate
     }
     val parentalControlAllowed = container.appConfigRepository.isFeatureAllowed(
         config = appConfigState.config,
@@ -634,12 +652,26 @@ fun AppNavigation(
                     strings = strings,
                     access = mediaCenterGate,
                     transferAccess = mediaPhoneTransferGate,
+                    privateMediaAccess = privateMediaGate,
                     onPlayFile = { mediaFileId -> navController.navigate("media_player/$mediaFileId") },
+                    onOpenPrivateMediaDetails = { itemId -> navController.navigate("private_media_detail/${android.net.Uri.encode(itemId)}") },
                     onLockedFeature = {
-                        if (mediaCenterGate.shouldShowUpgradePrompt || mediaPhoneTransferGate.shouldShowUpgradePrompt) {
+                        if (mediaCenterGate.shouldShowUpgradePrompt || mediaPhoneTransferGate.shouldShowUpgradePrompt || privateMediaGate.shouldShowUpgradePrompt) {
                             showLicensePurchaseQr = true
                         }
                     },
+                )
+            }
+        }
+        composable("private_media_detail/{itemId}") { entry ->
+            val itemId = entry.arguments?.getString("itemId").orEmpty()
+            if (!privateMediaGate.allowed || itemId.isBlank()) {
+                PlaceholderRouteScreen(strings.mediaPrivate, strings.mediaDisabledByAdmin)
+            } else {
+                PrivateMediaDetailRoute(
+                    itemId = itemId,
+                    strings = strings,
+                    onBack = { navController.popBackStack() },
                 )
             }
         }

@@ -1,5 +1,34 @@
 # AI Changelog
 
+## 2026-07-07 - Media local expandable et bibliotheque privee proxy
+
+Type:
+- android
+- ui-tv
+- backend
+- admin
+- provider-proxy
+- documentation
+
+Resume:
+- `Media` garde le layout Live TV 3 colonnes, mais la colonne gauche devient hierarchique: `Media local` expandable avec `All files`, `Recordings`, `Imports`, `Transfers`, plus `Media prives`.
+- Ajout d'une couche Android `PrivateMediaRepository` qui appelle uniquement les endpoints SmartVision `api/media/private/*`.
+- Ajout d'une fiche `private_media_detail/{id}` avec metadonnees provider normalisees et etat `Lecture indisponible` si aucun flux natif HLS/MP4 n'est fourni.
+- Ajout du proxy PHP `api/media/private/*` avec search/id/removed officiels Eporner, cache provider, removed ids, health, rate limit simple et DTO internes.
+- Ajout du menu admin `Bibliotheque privee`, des flags `private_media`, `private_media_eporner`, `private_media_native_playback`, et des uploads deploy associes.
+- Android ne connait aucun endpoint Eporner et ne fait ni scraping ni extraction HTML.
+
+Validation:
+- `php -l` sur les nouveaux endpoints private media, `admin/index.php` et `api/app_config.php`: OK.
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK.
+- `.\scripts\guard_release_version.ps1`: OK apres increment `0.1.112` / `versionCode 116`.
+- `.\gradlew.bat :app:assembleRelease --no-daemon --max-workers=1 --console=plain`: OK en 14m10s.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK, metadata `0.1.112 (116)`.
+- `apksigner verify --verbose`: OK v1/v2, 1 signer.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall`: OK apres correction de creation des dossiers `api/media/private/*`.
+- Production verifiee: manifeste et `api/app_update.php` annoncent `0.1.112` / `116`, APK `smartvision-tv-v116-23bd43e4.apk`, SHA256 `23bd43e4d227c029be794a5d128fa88ed3d443aa5b769f937cd9ae22c75f3cdb`, taille `40936499`.
+- Production verifiee: `api/app_config.php` expose `private_media`, `private_media_eporner`, `private_media_native_playback`; `api/media/private/libraries`, `categories`, `items`, `providers/health` retournent 200 avec provider desactive par defaut.
+
 ## 2026-07-07 - Overlays fullscreen Live/Films/Series et focus details
 
 Type:

@@ -1,8 +1,8 @@
 # Recorder + Media Center - Plan technique
 
-Derniere mise a jour: 2026-07-05.
+Derniere mise a jour: 2026-07-07.
 
-Statut: Lot 16 - Media Center lit les fichiers locaux video/audio/photo, le bouton Recorder Live lance un enregistrement reel MVP, le transfert telephone/TV existe en MVP via serveur HTTP local temporaire + QR upload/download, les actions fichier du panneau apercu sont reorganisees pour rendre `Supprimer` directement accessible avec `Lire` et `Renommer`, et l'ecran Media a maintenant un agencement compact aligne sur Live TV: panneau gauche/liste/apercu en ratios `0.24 / 0.42 / 0.34`, hubs `Telephone -> TV` et `TV -> Phone` visibles sans bouton cache, liste centrale sans cards stats colorees ni ligne `Folders`, details fichier simplifies et mini-player local video remplissant son cadre comme Live TV.
+Statut: Lot 17 - Media Center garde l'agencement Live TV en 3 colonnes `0.24 / 0.42 / 0.34`, mais la colonne gauche devient hierarchique: parent expandable `Media local` avec `All files`, `Recordings`, `Imports`, `Transfers`, puis categorie principale `Media prives`. Les contenus prives passent uniquement par le backend/proxy SmartVision `api/media/private/*`; Android ne connait pas les endpoints Eporner, ne scrape rien et n'essaie pas de lecture native sans flux HLS/MP4 fourni par SmartVision.
 
 ## 1. Objectif
 

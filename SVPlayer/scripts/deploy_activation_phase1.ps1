@@ -1056,6 +1056,9 @@ try {
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "$remoteRoot/api" -Name "app"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "$remoteRoot/api" -Name "devices"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "$remoteRoot/api" -Name "licenses"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "$remoteRoot/api" -Name "media"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "$remoteRoot/api/media" -Name "private"
+    Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent "$remoteRoot/api/media/private" -Name "providers"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "activate"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "activation"
     Ensure-RemoteDirectory -BaseUrl $cpanelBaseUrl -Headers $headers -Username $cpanelUsername -Parent $remoteRoot -Name "xtream"
@@ -1112,6 +1115,13 @@ try {
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/home_slides.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/app_update.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api" -FilePath (Join-Path $publicHtmlPath "api/app_config.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/media/private" -FilePath (Join-Path $publicHtmlPath "api/media/private/private_media_service.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/media/private" -FilePath (Join-Path $publicHtmlPath "api/media/private/libraries.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/media/private" -FilePath (Join-Path $publicHtmlPath "api/media/private/categories.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/media/private" -FilePath (Join-Path $publicHtmlPath "api/media/private/items.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/media/private" -FilePath (Join-Path $publicHtmlPath "api/media/private/item.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/media/private" -FilePath (Join-Path $publicHtmlPath "api/media/private/playback.php")
+    Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/media/private/providers" -FilePath (Join-Path $publicHtmlPath "api/media/private/providers/health.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/app" -FilePath (Join-Path $publicHtmlPath "api/app/ads-config.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/app" -FilePath (Join-Path $publicHtmlPath "api/app/ads-events.php")
     Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory "$remoteRoot/api/app" -FilePath (Join-Path $publicHtmlPath "api/app/ads-vast.php")

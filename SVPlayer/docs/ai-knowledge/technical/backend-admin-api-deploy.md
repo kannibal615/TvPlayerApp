@@ -1,6 +1,6 @@
 # Backend, Admin, API et Deploiement
 
-Derniere mise a jour: 2026-07-05.
+Derniere mise a jour: 2026-07-07.
 
 ## 1. Objectif
 
@@ -20,6 +20,7 @@ Le script de deploiement upload les fichiers explicitement. Tout nouveau fichier
 - Playlist: page publique `/playlist/` pour envoyer par code TV des identifiants Xtream, un lien M3U ou une URL EPG vers la TV, sans passage obligatoire par le panel admin. Chaque envoi cree une notification d'information ciblee sur l'appareil, sans contenu sensible.
 - Admin: gestion fonctionnalites, consentement, pubs, codes, notifications, diagnostics.
 - Admin Diagnostics centralise maintenant Synthese, AutoSync, Anomalies App, Info Serveur et Journal dans `server/public_html/admin/index.php`.
+- Admin ajoute `Bibliotheque privee` pour activer/desactiver le proxy provider, gerer les sections, vider le cache, lancer la sync `removed` et consulter le monitoring provider.
 - App: consomme les endpoints activation, config, update, ads, tracking.
 
 ## 4. Workflow technique
@@ -42,6 +43,7 @@ Deploy:
 Regle release:
 - apres chaque nouveau build Android release destine a etre livre, executer le deploy backend avec `scripts/deploy_activation_phase1.ps1` pour synchroniser le manifeste update, l'APK versionne, l'APK stable, la notification release et les fichiers serveur;
 - ne pas publier un APK seul si des changements PHP/admin/API accompagnent la release.
+- pour les nouveaux endpoints imbriques, creer explicitement chaque dossier distant dans le script avant `Upload-File` (`api/media`, `api/media/private`, `api/media/private/providers`), sinon Fileman peut ne pas exposer les nouveaux PHP via HTTP malgre un deploy global OK.
 
 ## 5. Ecrans concernes
 
@@ -84,6 +86,13 @@ Endpoints importants:
 - `api/save_playlist_config.php`
 - `api/app_update.php`
 - `api/app_config.php`
+- `api/media/private/libraries.php`
+- `api/media/private/categories.php`
+- `api/media/private/items.php`
+- `api/media/private/item.php`
+- `api/media/private/playback.php`
+- `api/media/private/providers/health.php`
+  - Verifie en prod le 2026-07-07 via routes extensionless avec User-Agent Android-like: `libraries`, `categories`, `items` et `providers/health` retournent 200; si la bibliotheque est desactivee, `items` retourne `error=provider_disabled`.
 - `api/notifications.php`
   - Optimisation 2026-07-05: la jointure appareil -> commande -> utilisateur n'est executee que si des notifications ciblees `users` existent dans les candidates actives. Les notifications `all` / `devices` evitent cette jointure pour reduire les risques de timeout socket sur l'app.
 - `api/home_slides.php`
@@ -107,6 +116,7 @@ Tables/settings a surveiller:
 - `app_settings`;
 - `app_feature_access`;
 - defaults `app_feature_access` Recorder/Media ajoutes le 2026-07-05: `recorder`, `media_center` (`Menu Media Center`), `media_file_management`, `media_phone_transfer` avec Premium oui, Trial oui, Free Ads non;
+- defaults `app_feature_access` ajoutes le 2026-07-07 pour `private_media`, `private_media_eporner`, `private_media_native_playback`; la configuration detaillee est stockee en JSON dans `app_settings.private_media_config`.
 - `app_consent_receipts`;
 - `app_notifications`;
 - `ads_settings`;
@@ -140,6 +150,7 @@ Tables/settings a surveiller:
 - Feature flags stockes en prod peuvent rester anciens.
 - cPanel peut ne pas offrir `Fileman/delete_files`; preferer self-delete.
 - Encodage UTF-8 avec BOM peut casser `declare(strict_types=1);`.
+- Sans User-Agent explicite, certains appels manuels PowerShell vers les nouveaux endpoints private media peuvent recevoir une 404 LiteSpeed alors que les appels Android/QA avec User-Agent retournent bien le JSON; verifier avec un User-Agent avant de conclure a un fichier manquant.
 
 ## 11. Quand lire ce fichier ?
 
@@ -165,6 +176,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-07: ajout des endpoints `api/media/private/*`, du menu admin `Bibliotheque privee`, des flags `private_media*`, et correction du deploy pour creer explicitement `api/media/private/providers` avant upload.
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-07-02: `Admin > Fonctionnalites` ajoute le bloc Tendances Home et `api/app_config.php` renvoie le bloc `trending` consomme par Android.
 - 2026-06-29: ajout de la regle "nouveau PHP = ajout deploy script".
