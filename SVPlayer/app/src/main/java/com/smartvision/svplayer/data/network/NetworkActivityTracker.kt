@@ -22,6 +22,7 @@ enum class NetworkActivityType {
     Config,
     Updates,
     Xtream,
+    Tmdb,
     License,
     Diagnostics,
     Recorder,
@@ -332,6 +333,7 @@ private fun okhttp3.Request.toSafeActivityTitle(source: String): String {
 private fun okhttp3.Request.toActivityType(source: String): NetworkActivityType =
     when {
         source.contains("Xtream", ignoreCase = true) -> NetworkActivityType.Xtream
+        source.contains("TMDB", ignoreCase = true) -> NetworkActivityType.Tmdb
         url.encodedPath.contains("notifications", ignoreCase = true) -> NetworkActivityType.Notifications
         url.encodedPath.contains("app_update", ignoreCase = true) -> NetworkActivityType.Updates
         url.encodedPath.contains("app_config", ignoreCase = true) -> NetworkActivityType.Config

@@ -8,9 +8,9 @@ Ce fichier est le point d'entree court pour les agents IA. Lire ce fichier avant
 
 SmartVision / SVPlayer est une application Android TV native Kotlin/Compose pour lire les contenus Xtream configures par l'utilisateur. Le projet contient aussi un backend PHP/MySQL sur `smartvisions.net`, un site public, un espace compte, un panel admin, des API d'activation, des API de configuration, de tracking et de mise a jour APK.
 
-Etat technique constate le 2026-07-06:
+Etat technique constate le 2026-07-07:
 - applicationId: `com.smartvision.svplayer`
-- version locale Gradle: `0.1.107` / `versionCode 111`
+- version locale Gradle: `0.1.109` / `versionCode 113`
 - langue officielle UI: anglais par defaut; deuxieme langue disponible: francais; futures langues a ajouter via le systeme i18n.
 - entree TV: `MainActivity -> ui/navigation/AppNavigation.kt`
 - lecture video: AndroidX Media3 ExoPlayer natif
@@ -99,6 +99,9 @@ Lire les fichiers suivants si la demande concerne:
 - Live TV
 - films
 - series
+- TMDB
+- metadonnees enrichies
+- JustWatch
 - playlist
 - ExoPlayer
 - plein ecran
@@ -112,6 +115,7 @@ Lire les fichiers suivants si la demande concerne:
 
 Fichiers detailles:
 - `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/features/tmdb-integration-plan.md` si la demande touche TMDB, les metadonnees enrichies, le matching film/serie ou les providers JustWatch.
 - `docs/ai-knowledge/technical/android-architecture-build-release.md`
 
 Dependances:

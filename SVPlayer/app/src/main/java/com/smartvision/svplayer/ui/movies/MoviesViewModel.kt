@@ -8,6 +8,7 @@ import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.data.tmdb.TmdbRepository
 import com.smartvision.svplayer.domain.model.Category
 import com.smartvision.svplayer.domain.model.CategoryHistorySignal
 import com.smartvision.svplayer.domain.model.Movie
@@ -16,6 +17,7 @@ import com.smartvision.svplayer.domain.model.sortedByHistorySignals
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
+import java.util.Locale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -72,11 +74,13 @@ class MoviesViewModel(
     private val catalogRepository: CatalogRepository,
     private val userContentRepository: UserContentRepository,
     private val settingsRepository: SettingsRepository,
+    private val tmdbRepository: TmdbRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MoviesScreenState())
     val uiState: StateFlow<MoviesScreenState> = _uiState.asStateFlow()
 
     private var moviesJob: Job? = null
+    private var tmdbMetadataJob: Job? = null
     private var favoriteIds: Set<Int> = emptySet()
     private var historyProgress: List<PlaybackProgressEntity> = emptyList()
     private var historyCategorySignals: List<CategoryHistorySignal> = emptyList()
@@ -274,6 +278,7 @@ class MoviesViewModel(
 
     private fun loadFavoriteMovies() {
         moviesJob?.cancel()
+        tmdbMetadataJob?.cancel()
         moviesJob = viewModelScope.launch {
             val movies = favoriteMovies()
             _uiState.update { state ->
@@ -296,11 +301,13 @@ class MoviesViewModel(
                     selectedMovieId = null,
                 )
             }
+            loadCachedTmdbMetadataForMovies(movies)
         }
     }
 
     private fun loadHistoryMovies() {
         moviesJob?.cancel()
+        tmdbMetadataJob?.cancel()
         val movies = historyMovies()
         _uiState.update { state ->
             state.copy(
@@ -322,6 +329,7 @@ class MoviesViewModel(
                 selectedMovieId = null,
             )
         }
+        loadCachedTmdbMetadataForMovies(movies)
     }
 
     private fun loadAllMovies() {
@@ -434,6 +442,7 @@ class MoviesViewModel(
                         errorMessage = null,
                     )
                 }
+                loadCachedTmdbMetadataForMovies(result.items)
             }.onFailure { error ->
                 _uiState.update {
                     it.copy(
@@ -446,6 +455,29 @@ class MoviesViewModel(
                         errorMessage = error.userMessage("Impossible de charger les films Xtream."),
                     )
                 }
+            }
+        }
+    }
+
+    private fun loadCachedTmdbMetadataForMovies(movies: List<MovieItemUi>) {
+        tmdbMetadataJob?.cancel()
+        if (movies.isEmpty()) return
+        tmdbMetadataJob = viewModelScope.launch {
+            val enrichedById = movies.take(CachedTmdbMovieEnhanceLimit).mapNotNull { movie ->
+                val metadata = tmdbRepository.getCachedMovieMetadata(movie.streamId, playerSettings.language)
+                    ?: return@mapNotNull null
+                movie.streamId to movie.copy(
+                    title = metadata.title.nonBlank() ?: movie.title,
+                    posterUrl = metadata.posterUrl.nonBlank() ?: movie.posterUrl,
+                    rating = metadata.voteAverage?.takeIf { it > 0.0 }?.formatRating() ?: movie.rating,
+                    year = metadata.releaseDate?.take(4)?.takeIf { it.all(Char::isDigit) } ?: movie.year,
+                )
+            }.toMap()
+            if (enrichedById.isEmpty()) return@launch
+            _uiState.update { state ->
+                state.copy(
+                    movies = state.movies.map { movie -> enrichedById[movie.streamId] ?: movie },
+                )
             }
         }
     }
@@ -466,6 +498,7 @@ private data class PageLoadResult<T>(
 )
 
 private const val MovieItemsPageSize = 72
+private const val CachedTmdbMovieEnhanceLimit = 24
 private const val InitialCategoryLimit = 20
 private const val FavoriteMovieCategoryId = "__favorites_movies__"
 private const val HistoryMovieCategoryId = "__history_movies__"
@@ -556,6 +589,10 @@ private fun String.cleanTitle(): String =
         .replace(" 4K", "", ignoreCase = true)
         .trim()
         .ifBlank { "Film" }
+
+private fun String?.nonBlank(): String? = this?.trim()?.takeIf { it.isNotBlank() }
+
+private fun Double.formatRating(): String = String.format(Locale.US, "%.1f", this)
 
 private fun Throwable.userMessage(fallback: String): String =
     when (this) {

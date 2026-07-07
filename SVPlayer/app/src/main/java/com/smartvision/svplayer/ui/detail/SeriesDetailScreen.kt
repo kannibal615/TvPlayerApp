@@ -62,11 +62,15 @@ import com.smartvision.svplayer.data.models.XtreamSeriesEpisode
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.data.tmdb.TmdbSeriesMetadata
+import com.smartvision.svplayer.data.tmdb.TmdbRepository
+import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
+import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -102,9 +106,44 @@ data class SeriesDetailUiState(
     val isFavorite: Boolean = false,
     val loading: Boolean = true,
     val errorMessage: String? = null,
+    val tmdbMetadata: TmdbSeriesMetadata? = null,
+    val tmdbLoading: Boolean = false,
 ) {
+    val displayTitle: String
+        get() = tmdbMetadata?.name.nonBlank() ?: title
+
+    val displayCoverUrl: String?
+        get() = tmdbMetadata?.posterUrl.nonBlank() ?: coverUrl
+
+    val displayBackdropUrl: String?
+        get() = tmdbMetadata?.backdropUrl.nonBlank() ?: backdropUrl
+
+    val displayPlot: String?
+        get() = tmdbMetadata?.overview.nonBlank() ?: plot
+
+    val displayGenre: String?
+        get() = tmdbMetadata?.genres.nonBlank() ?: genre
+
+    val displayReleaseDate: String?
+        get() = tmdbMetadata?.firstAirDate.nonBlank() ?: releaseDate
+
+    val displayRating: String?
+        get() = tmdbMetadata?.voteAverage?.takeIf { it > 0.0 }?.formatRating() ?: rating
+
+    val displayEpisodeRunTime: String?
+        get() = tmdbMetadata?.episodeRunTimeMinutes?.takeIf { it > 0 }?.toString() ?: episodeRunTime
+
+    val displayCast: String?
+        get() = tmdbMetadata?.cast.nonBlank() ?: cast
+
+    val displayCreator: String?
+        get() = tmdbMetadata?.createdBy.nonBlank()
+
+    val isTmdbEnriched: Boolean
+        get() = tmdbMetadata != null
+
     val backgroundUrl: String?
-        get() = backdropUrl ?: coverUrl
+        get() = displayBackdropUrl ?: displayCoverUrl
 
     val seasons: List<Int>
         get() = episodes.map { it.seasonNumber }.filter { it > 0 }.distinct().ifEmpty { listOf(1) }
@@ -116,13 +155,14 @@ data class SeriesDetailUiState(
         get() = visibleEpisodes.firstOrNull() ?: episodes.firstOrNull()
 
     val year: String?
-        get() = releaseDate?.take(4)?.takeIf { it.all(Char::isDigit) }
+        get() = displayReleaseDate?.take(4)?.takeIf { it.all(Char::isDigit) }
 }
 
 class SeriesDetailViewModel(
     private val seriesId: Int,
     private val xtreamRepository: XtreamRepository,
     private val userContentRepository: UserContentRepository,
+    private val tmdbRepository: TmdbRepository,
 ) : ViewModel() {
     private val initialSeries = xtreamRepository.getCachedSeries(seriesId)
     private val initialCategory = initialSeries?.categoryId?.let { categoryId ->
@@ -143,6 +183,7 @@ class SeriesDetailViewModel(
         ),
     )
     val uiState: StateFlow<SeriesDetailUiState> = _uiState.asStateFlow()
+    private var lastTmdbRequestKey: String? = null
 
     init {
         observeFavorite()
@@ -163,6 +204,7 @@ class SeriesDetailViewModel(
                 val episodes = xtreamRepository.getSeriesEpisodes(seriesId)
                 details to episodes
             }.onSuccess { (details, episodes) ->
+                val current = _uiState.value
                 val categoryLabel = details.categoryId?.let { categoryId ->
                     xtreamRepository.getCachedSeriesCategories().firstOrNull { it.id == categoryId }?.name
                 } ?: initialCategory
@@ -171,7 +213,10 @@ class SeriesDetailViewModel(
                     categoryLabel = categoryLabel,
                     episodes = episodeItems,
                     selectedSeason = episodeItems.firstOrNull()?.seasonNumber ?: 1,
-                    isFavorite = _uiState.value.isFavorite,
+                    isFavorite = current.isFavorite,
+                ).copy(
+                    tmdbMetadata = current.tmdbMetadata,
+                    tmdbLoading = current.tmdbLoading,
                 )
             }.onFailure { error ->
                 _uiState.update {
@@ -186,6 +231,35 @@ class SeriesDetailViewModel(
 
     fun selectSeason(season: Int) {
         _uiState.update { it.copy(selectedSeason = season) }
+    }
+
+    fun loadTmdbMetadata(language: String, includeAdult: Boolean) {
+        val current = _uiState.value
+        if (current.loading || current.title.isBlank()) return
+        val requestKey = listOf(seriesId, current.title, current.releaseDate.orEmpty(), language, includeAdult).joinToString("|")
+        if (requestKey == lastTmdbRequestKey) return
+        lastTmdbRequestKey = requestKey
+        viewModelScope.launch {
+            _uiState.update { it.copy(tmdbLoading = true) }
+            runCatching {
+                tmdbRepository.enrichSeries(
+                    contentId = seriesId,
+                    title = current.title,
+                    year = current.releaseDate,
+                    language = language,
+                    includeAdult = includeAdult,
+                )
+            }.onSuccess { metadata ->
+                _uiState.update {
+                    it.copy(
+                        tmdbMetadata = metadata ?: it.tmdbMetadata,
+                        tmdbLoading = false,
+                    )
+                }
+            }.onFailure {
+                _uiState.update { it.copy(tmdbLoading = false) }
+            }
+        }
     }
 
     private fun observeFavorite() {
@@ -215,6 +289,9 @@ fun SeriesDetailRoute(
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
+    val settings by container.settingsRepository.settings.collectAsStateWithLifecycle(
+        initialValue = PlayerSettings(),
+    )
     val viewModel: SeriesDetailViewModel = viewModel(
         key = "series-detail-$seriesId",
         factory = viewModelFactory {
@@ -222,6 +299,7 @@ fun SeriesDetailRoute(
                 seriesId = seriesId,
                 xtreamRepository = container.xtreamRepository,
                 userContentRepository = container.userContentRepository,
+                tmdbRepository = container.tmdbRepository,
             )
         },
     )
@@ -232,6 +310,21 @@ fun SeriesDetailRoute(
             "CONTENT_OPENED",
             state.toBehaviorContent("DETAIL"),
         )
+    }
+    LaunchedEffect(
+        state.loading,
+        state.seriesId,
+        state.title,
+        state.releaseDate,
+        settings.language,
+        settings.parentalControlEnabled,
+    ) {
+        if (!state.loading) {
+            viewModel.loadTmdbMetadata(
+                language = settings.language,
+                includeAdult = !settings.parentalControlEnabled,
+            )
+        }
     }
     SeriesDetailScreen(
         state = state,
@@ -361,7 +454,7 @@ private fun SeriesHeroInfo(
 ) {
     Column(modifier = modifier) {
         Text(
-            text = state.title,
+            text = state.displayTitle,
             color = SmartVisionColors.TextPrimary,
             style = DetailHeroTitleStyle,
             maxLines = 2,
@@ -372,7 +465,7 @@ private fun SeriesHeroInfo(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            listOfNotNull(state.year, state.genre, state.episodeRunTime?.let { "$it min" }).take(3).forEach { meta ->
+            listOfNotNull(state.year, state.displayGenre, state.displayEpisodeRunTime?.let { "$it min" }).take(3).forEach { meta ->
                 Text(
                     text = meta,
                     color = SmartVisionColors.TextSecondary,
@@ -382,12 +475,15 @@ private fun SeriesHeroInfo(
                 )
                 Text("•", color = SmartVisionColors.TextSecondary, style = DetailBodyStyle)
             }
-            state.rating?.let { DetailBadge(text = "$it/10") }
+            state.displayRating?.let { DetailBadge(text = "$it/10") }
             DetailBadge(text = "${state.episodes.size} episodes")
+            if (state.isTmdbEnriched) {
+                DetailBadge(text = "TMDB", color = Color(0xFF18253A))
+            }
         }
         Spacer(Modifier.height(12.dp))
         Text(
-            text = state.plot ?: "Serie disponible depuis le catalogue Xtream.",
+            text = state.displayPlot ?: "Serie disponible depuis le catalogue Xtream.",
             color = SmartVisionColors.TextSecondary,
             style = DetailBodyStyle,
             maxLines = 4,
@@ -449,8 +545,8 @@ private fun SeriesSeasonPanel(
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             SeriesCoverFrame(
-                imageUrl = state.coverUrl,
-                title = state.title,
+                imageUrl = state.displayCoverUrl,
+                title = state.displayTitle,
                 modifier = Modifier
                     .width(238.dp)
                     .aspectRatio(1.75f),
@@ -471,7 +567,7 @@ private fun SeriesSeasonPanel(
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = state.plot ?: state.categoryLabel,
+                    text = state.displayPlot ?: state.categoryLabel,
                     color = SmartVisionColors.TextSecondary,
                     style = DetailMetaStyle,
                     maxLines = 5,
@@ -479,9 +575,29 @@ private fun SeriesSeasonPanel(
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    DetailBadge(text = "HD")
-                    DetailBadge(text = "4K", color = Color(0xFF18253A))
-                    DetailBadge(text = "Audio", color = Color(0xFF18253A))
+                    DetailBadge(text = state.categoryLabel)
+                    state.displayCreator?.let { DetailBadge(text = it, color = Color(0xFF18253A)) }
+                    state.tmdbMetadata?.certification.nonBlank()?.let { DetailBadge(text = it, color = Color(0xFF18253A)) }
+                }
+                state.displayCast?.let { cast ->
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = cast,
+                        color = SmartVisionColors.TextSecondary,
+                        style = DetailMetaStyle,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                state.tmdbMetadata?.providersSummary.nonBlank()?.let { providers ->
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Providers: $providers",
+                        color = SmartVisionColors.TextSecondary,
+                        style = DetailMetaStyle,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
         }
@@ -753,18 +869,22 @@ private fun SeriesDetailUiState.toBehaviorContent(sourceScreen: String, episodeI
     BehaviorContent(
         contentType = if (episodeId == null) "SERIES" else "EPISODE",
         contentId = (episodeId ?: seriesId).toString(),
-        title = title,
+        title = displayTitle,
         categoryLabel = categoryLabel,
-        durationSeconds = episodeRunTime?.toLongOrNull()?.times(60),
+        durationSeconds = displayEpisodeRunTime?.toLongOrNull()?.times(60),
         engagementScore = if (loading) 25 else 45,
         sourceScreen = sourceScreen,
-        tags = listOfNotNull(genre, year, "episodes_${episodes.size}"),
+        tags = listOfNotNull(displayGenre, year, "episodes_${episodes.size}"),
         context = mapOf(
             "series_id" to seriesId.toString(),
             "season" to selectedSeason.toString(),
-            "rating" to (rating ?: "-"),
+            "rating" to (displayRating ?: "-"),
         ),
     )
+
+private fun String?.nonBlank(): String? = this?.trim()?.takeIf { it.isNotBlank() }
+
+private fun Double.formatRating(): String = String.format(Locale.US, "%.1f", this)
 
 private fun String.cleanSeriesTitle(): String =
     replace(Regex("\\s+"), " ")

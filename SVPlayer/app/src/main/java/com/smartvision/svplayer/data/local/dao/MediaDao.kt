@@ -8,6 +8,9 @@ import com.smartvision.svplayer.data.local.entity.HomeTrendingPreviewCacheEntity
 import com.smartvision.svplayer.data.local.entity.LiveStreamEntity
 import com.smartvision.svplayer.data.local.entity.MovieEntity
 import com.smartvision.svplayer.data.local.entity.SeriesEntity
+import com.smartvision.svplayer.data.local.entity.TmdbContentMappingEntity
+import com.smartvision.svplayer.data.local.entity.TmdbMovieMetadataEntity
+import com.smartvision.svplayer.data.local.entity.TmdbSeriesMetadataEntity
 import com.smartvision.svplayer.data.local.entity.TrendingMediaEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -186,6 +189,33 @@ interface MediaDao {
 
     @Query("DELETE FROM home_trending_preview_cache WHERE lastSync != :lastSync")
     suspend fun deleteStaleHomeTrendingPreviewCache(lastSync: Long)
+
+    @Query(
+        "SELECT * FROM tmdb_content_mapping " +
+            "WHERE contentType = :contentType AND contentId = :contentId LIMIT 1",
+    )
+    suspend fun getTmdbContentMapping(contentType: String, contentId: Int): TmdbContentMappingEntity?
+
+    @Upsert
+    suspend fun upsertTmdbContentMapping(mapping: TmdbContentMappingEntity)
+
+    @Query("SELECT * FROM tmdb_movie_metadata WHERE tmdbId = :tmdbId AND language = :language LIMIT 1")
+    suspend fun getTmdbMovieMetadata(tmdbId: Int, language: String): TmdbMovieMetadataEntity?
+
+    @Query("SELECT * FROM tmdb_movie_metadata WHERE tmdbId = :tmdbId ORDER BY updatedAt DESC LIMIT 1")
+    suspend fun getAnyTmdbMovieMetadata(tmdbId: Int): TmdbMovieMetadataEntity?
+
+    @Upsert
+    suspend fun upsertTmdbMovieMetadata(metadata: TmdbMovieMetadataEntity)
+
+    @Query("SELECT * FROM tmdb_series_metadata WHERE tmdbId = :tmdbId AND language = :language LIMIT 1")
+    suspend fun getTmdbSeriesMetadata(tmdbId: Int, language: String): TmdbSeriesMetadataEntity?
+
+    @Query("SELECT * FROM tmdb_series_metadata WHERE tmdbId = :tmdbId ORDER BY updatedAt DESC LIMIT 1")
+    suspend fun getAnyTmdbSeriesMetadata(tmdbId: Int): TmdbSeriesMetadataEntity?
+
+    @Upsert
+    suspend fun upsertTmdbSeriesMetadata(metadata: TmdbSeriesMetadataEntity)
 
     @Query("DELETE FROM series")
     suspend fun clearSeries()

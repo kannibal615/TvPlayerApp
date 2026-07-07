@@ -9,6 +9,7 @@ import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.data.tmdb.TmdbRepository
 import com.smartvision.svplayer.domain.model.Category
 import com.smartvision.svplayer.domain.model.CategoryHistorySignal
 import com.smartvision.svplayer.domain.model.Episode
@@ -18,6 +19,7 @@ import com.smartvision.svplayer.domain.model.sortedByHistorySignals
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
+import java.util.Locale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -97,6 +99,7 @@ class SeriesViewModel(
     private val catalogRepository: CatalogRepository,
     private val userContentRepository: UserContentRepository,
     private val settingsRepository: SettingsRepository,
+    private val tmdbRepository: TmdbRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SeriesScreenState())
     val uiState: StateFlow<SeriesScreenState> = _uiState.asStateFlow()
@@ -522,22 +525,37 @@ class SeriesViewModel(
             series.take(20).chunked(4).forEach { batch ->
                 val metadata = batch.map { item ->
                     async {
+                        val tmdb = tmdbRepository.getCachedSeriesMetadata(item.seriesId, playerSettings.language)
                         val episodes = runCatching {
                             catalogRepository.getSeriesEpisodes(item.seriesId)
                         }.getOrDefault(emptyList())
-                        item.seriesId to Pair(
-                            episodes.map { it.seasonNumber }.filter { it > 0 }.distinct().size,
-                            episodes.size,
+                        item.seriesId to CachedSeriesMetadata(
+                            seasons = episodes.map { it.seasonNumber }.filter { it > 0 }.distinct().size,
+                            episodes = episodes.size,
+                            title = tmdb?.name.nonBlank(),
+                            coverUrl = tmdb?.posterUrl.nonBlank(),
+                            plot = tmdb?.overview.nonBlank(),
+                            genre = tmdb?.genres.nonBlank(),
+                            releaseDate = tmdb?.firstAirDate?.take(4)?.takeIf { it.all(Char::isDigit) },
+                            rating = tmdb?.voteAverage?.takeIf { it > 0.0 }?.formatRating(),
+                            episodeRunTime = tmdb?.episodeRunTimeMinutes?.takeIf { it > 0 }?.toString(),
                         )
                     }
                 }.awaitAll().toMap()
                 _uiState.update { state ->
                     state.copy(
                         series = state.series.map { item ->
-                            metadata[item.seriesId]?.let { (seasons, episodes) ->
+                            metadata[item.seriesId]?.let { meta ->
                                 item.copy(
-                                    seasonsCount = seasons.takeIf { it > 0 },
-                                    episodesCount = episodes.takeIf { it > 0 },
+                                    title = meta.title ?: item.title,
+                                    coverUrl = meta.coverUrl ?: item.coverUrl,
+                                    plot = meta.plot ?: item.plot,
+                                    genre = meta.genre ?: item.genre,
+                                    releaseDate = meta.releaseDate ?: item.releaseDate,
+                                    rating = meta.rating ?: item.rating,
+                                    episodeRunTime = meta.episodeRunTime ?: item.episodeRunTime,
+                                    seasonsCount = meta.seasons.takeIf { it > 0 },
+                                    episodesCount = meta.episodes.takeIf { it > 0 },
                                 )
                             } ?: item
                         },
@@ -593,6 +611,18 @@ class SeriesViewModel(
 private data class PageLoadResult<T>(
     val items: List<T>,
     val rawPageSize: Int,
+)
+
+private data class CachedSeriesMetadata(
+    val seasons: Int,
+    val episodes: Int,
+    val title: String?,
+    val coverUrl: String?,
+    val plot: String?,
+    val genre: String?,
+    val releaseDate: String?,
+    val rating: String?,
+    val episodeRunTime: String?,
 )
 
 private const val SeriesItemsPageSize = 72
@@ -711,6 +741,10 @@ private fun String.cleanTitle(): String =
         .replace(" 4K", "", ignoreCase = true)
         .trim()
         .ifBlank { "Series" }
+
+private fun String?.nonBlank(): String? = this?.trim()?.takeIf { it.isNotBlank() }
+
+private fun Double.formatRating(): String = String.format(Locale.US, "%.1f", this)
 
 private fun Throwable.userMessage(fallback: String): String =
     when (this) {

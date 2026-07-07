@@ -108,6 +108,7 @@ fun SeriesScreen(
                 catalogRepository = container.catalogRepository,
                 userContentRepository = container.userContentRepository,
                 settingsRepository = container.settingsRepository,
+                tmdbRepository = container.tmdbRepository,
             )
         },
     )

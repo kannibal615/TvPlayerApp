@@ -108,6 +108,111 @@ data class HomeTrendingPreviewCacheEntity(
 )
 
 @Entity(
+    tableName = "tmdb_content_mapping",
+    primaryKeys = ["contentType", "contentId"],
+    indices = [
+        Index(value = ["tmdbId"]),
+        Index(value = ["contentType", "confidence"]),
+        Index(value = ["updatedAt"]),
+    ],
+)
+data class TmdbContentMappingEntity(
+    val contentType: String,
+    val contentId: Int,
+    val tmdbId: Int?,
+    val mediaType: String,
+    val matchedTitle: String?,
+    val originalTitle: String?,
+    val matchedYear: String?,
+    val confidence: Int,
+    val matchSource: String,
+    val language: String,
+    val adult: Boolean,
+    val lastError: String?,
+    val createdAt: Long,
+    val updatedAt: Long,
+)
+
+@Entity(
+    tableName = "tmdb_movie_metadata",
+    primaryKeys = ["tmdbId", "language"],
+    indices = [
+        Index(value = ["updatedAt"]),
+        Index(value = ["releaseDate"]),
+    ],
+)
+data class TmdbMovieMetadataEntity(
+    val tmdbId: Int,
+    val language: String,
+    val title: String,
+    val originalTitle: String?,
+    val overview: String?,
+    val posterPath: String?,
+    val posterUrl: String?,
+    val backdropPath: String?,
+    val backdropUrl: String?,
+    val logoPath: String?,
+    val logoUrl: String?,
+    val releaseDate: String?,
+    val runtimeMinutes: Int?,
+    val genres: String?,
+    val voteAverage: Double?,
+    val voteCount: Int?,
+    val popularity: Double?,
+    val cast: String?,
+    val director: String?,
+    val trailerKey: String?,
+    val collectionName: String?,
+    val certification: String?,
+    val providersSummary: String?,
+    val homepage: String?,
+    val status: String?,
+    val adult: Boolean,
+    val originCountry: String?,
+    val originalLanguage: String?,
+    val updatedAt: Long,
+)
+
+@Entity(
+    tableName = "tmdb_series_metadata",
+    primaryKeys = ["tmdbId", "language"],
+    indices = [
+        Index(value = ["updatedAt"]),
+        Index(value = ["firstAirDate"]),
+    ],
+)
+data class TmdbSeriesMetadataEntity(
+    val tmdbId: Int,
+    val language: String,
+    val name: String,
+    val originalName: String?,
+    val overview: String?,
+    val posterPath: String?,
+    val posterUrl: String?,
+    val backdropPath: String?,
+    val backdropUrl: String?,
+    val logoPath: String?,
+    val logoUrl: String?,
+    val firstAirDate: String?,
+    val episodeRunTimeMinutes: Int?,
+    val genres: String?,
+    val voteAverage: Double?,
+    val voteCount: Int?,
+    val popularity: Double?,
+    val cast: String?,
+    val createdBy: String?,
+    val trailerKey: String?,
+    val certification: String?,
+    val providersSummary: String?,
+    val homepage: String?,
+    val status: String?,
+    val adult: Boolean,
+    val originCountry: String?,
+    val originalLanguage: String?,
+    val updatedAt: Long,
+)
+
+@Entity(
     tableName = "episodes",
     indices = [
         Index(value = ["seriesId"]),

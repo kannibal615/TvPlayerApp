@@ -12,19 +12,20 @@ L'application Android est dans `app/`. La navigation active est Compose dans `ui
 
 Observabilite reseau:
 - `AppContainer` cree un singleton `NetworkActivityTracker`.
-- `NetworkActivityInterceptor` instrumente les clients OkHttp Xtream et SmartVision avec des titres sanitises host/chemin uniquement.
+- `NetworkActivityInterceptor` instrumente les clients OkHttp Xtream, SmartVision et TMDB avec des titres sanitises host/chemin uniquement.
 - Les travaux metier catalogue, M3U, EPG, Home slides/tendances, update APK et verification Xtream publient aussi des etats applicatifs dans le tracker.
 - `SettingsScreen` affiche ces etats dans `Network Activity` / `Activite reseau`: actifs, recents, progression, taille, debit, duree, source/section et erreurs.
 - Ne jamais exposer les query params, tokens, identifiants Xtream, mots de passe ou URLs de lecture dans ce tracker.
 
 Gradle local constate le 2026-07-07:
-- `versionCode = 111`
-- `versionName = "0.1.107"`
+- `versionCode = 113`
+- `versionName = "0.1.109"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
 - release standard sans minify/shrink
 - `releaseOptimized` avec minify/shrink
+- `TMDB_READ_ACCESS_TOKEN` est lu depuis `local.properties` vers `BuildConfig`; garder le vrai token hors Git. `TMDB_API_READ_ACCESS_TOKEN` reste accepte comme alias local.
 
 Demarrage:
 - `MainActivity` est l'activite launcher TV/Android et utilise `Theme.SVPlayer.Splash` pour la preview systeme immediate.
@@ -91,6 +92,7 @@ Deploy:
 - `app/src/main/java/com/smartvision/svplayer/core/data/AppContainer.kt`
 - `app/src/main/java/com/smartvision/svplayer/data/home/HomeContentRepository.kt`
 - `app/src/main/java/com/smartvision/svplayer/data/network/NetworkActivityTracker.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/tmdb/*`
 - `app/src/main/java/com/smartvision/svplayer/data/playlist/EpgRepository.kt`
 - `app/src/main/java/com/smartvision/svplayer/data/playlist/EpgSyncWorker.kt`
 - `app/src/main/java/com/smartvision/svplayer/ui/update/*`
@@ -130,6 +132,7 @@ Diagnostic Firestick / ADB:
 - Ne pas separer un build APK livrable du deploy backend: le backend doit etre redeploye apres chaque nouveau build release sauf demande explicite de build local uniquement.
 - Ne pas relancer un build apres timeout sans verifier Java/Gradle et artefacts.
 - Ne pas exposer les secrets de signature.
+- Ne pas exposer les secrets TMDB; `local.properties.example` ne doit contenir qu'un placeholder vide.
 - Ne pas activer minify/shrink sur le release urgent sans investigation separee.
 - Garder `releaseOptimized` comme chemin distinct si optimisation lourde.
 - Le variant `releaseDiagnostic` et les appels `PERF_DIAG` doivent rester faciles a supprimer apres analyse; ils ne doivent pas changer la logique utilisateur et ne doivent pas etre publies via `deploy_activation_phase1.ps1`.
@@ -163,7 +166,9 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-07: release publiee `0.1.109` / `versionCode 113` pour integration TMDB lots 1 a 6: cache Room local, matching film/serie, details film/serie enrichis, Home tendances enrichies sans splash massif, catalogues cache-only et Settings `TMDB attribution`. APK `smartvision-tv-v113-6b467713.apk`, SHA256 `6b467713c176c876eee2517b36a9592238d54d3c72e19bb57cd9572e879cbab3`, taille `40821819`. Manifeste public, `app_update.php`, APK stable/versionne, `app_config.php`, `ads-config` et VAST verifies. APK installe/lance sur Firestick `192.168.1.33:5555`; Home rendu, `TMDB token` actif dans Settings, appel `TMDB: search tv` HTTP 200 observe dans Network Activity, aucun crash/ANR/Room error dans les logs filtres.
 - 2026-07-07: release finale publiee `0.1.107` / `versionCode 111` pour corrections Live TV focus categorie initiale, skeleton interne Chaines, logos chaines, section EPG/Info chaine et bloc Premium minimal luxury. APK final a verifier dans le manifeste public apres build/deploy.
+- 2026-07-07: ajout local de la couche TMDB optionnelle: `BuildConfig.TMDB_READ_ACCESS_TOKEN`, client Retrofit TMDB dans `AppContainer`, Network Activity type `Tmdb`, cache Room version 11 et attribution Settings. Validation effectuee par `:app:compileReleaseKotlin`.
 - 2026-07-07: releases intermediaires `0.1.104` / `versionCode 108`, `0.1.105` / `versionCode 109` et `0.1.106` / `versionCode 110` publiees puis remplacees par `0.1.107 (111)` afin que le depot local final corresponde a l'APK publie, au correctif focus categorie observe sur Firestick et au bloc Premium non clippe.
 - 2026-07-06: release locale `0.1.103` / `versionCode 107` construite avec `:app:assembleRelease` pour raccourcis telecommande Settings/Menu globaux. `MainActivity.dispatchKeyEvent()` intercepte uniquement `KEYCODE_SETTINGS`, `KEYCODE_MENU` et `KEYCODE_MEDIA_TOP_MENU`, consomme `ACTION_DOWN`, ouvre Settings sur `ACTION_UP` via `RemoteSettingsNavigation` et `navigateSingleTop()`, puis laisse toutes les autres touches a `super.dispatchKeyEvent(event)`. APK local `app-release.apk`, SHA256 `B05B9994123874475B9EA0F25D52878425907FE388664E9E5C754567983F20E8`, taille `40759014`. Aucun deploiement prod effectue.
 - 2026-07-06: release publiee `0.1.102` / `versionCode 106` pour correction Live TV focus/categorie initiale/EPG: selection auto recalculee apres snapshot partiel et tri `sortedByHistorySignals(...)`, annulations `channelsJob` normales non affichees comme `standaloneCoroutine was cancelled`, restauration focus Lazy via `scrollToItem` + `visibleItemsInfo`, recherche entre chaines et header, icone EPG fournie copiee telle quelle, typographies reduites et panneau sans EPG integre aux lignes. APK `smartvision-tv-v106-73da2e18.apk`, SHA256 `73da2e187ea9d5043599608c8268a17d3c0b1af711bfb79cb43474d3bb1edd12`, taille `40759019`, manifeste public, `app_update.php`, APK stable et APK versionne verifies.

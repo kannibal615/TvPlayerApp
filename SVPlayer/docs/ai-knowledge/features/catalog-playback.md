@@ -57,6 +57,8 @@ Depuis le 2026-07-06, la recherche Live TV est pilotee par `LiveTvViewModel` et 
 
 Depuis le 2026-07-07, Live TV garde le layout 3 colonnes mais stabilise la restauration de la categorie initiale cote UI: l'item selectionne est scrolle jusqu'a etre visible avant `requestFocus()`, pour eviter un decalage entre dossier selectionne, dossier focusse et dossier visible. Le loading interne de la colonne Chaines utilise un skeleton de lignes numerotees/logo/texte, distinct du skeleton global. Les logos chaines reels restent dans un conteneur fixe avec clipping et leger zoom `Fit` pour mieux exploiter l'espace sans deformation ni changement de hauteur de ligne. Sous le mini-player, la section avec EPG affiche le titre `Programme de la chaine`, l'icone EPG non focusable a droite, un separateur dedie et des lignes EPG plus compactes; la section sans EPG affiche `Info chaine`, le logo a droite du titre, des lignes informatives sans icones et sans ligne `EPG indisponible`. Quand aucune chaine n'est selectionnee en mode free ads, le bloc Premium est uniquement cosmetique: style dark navy/or, couronne dessinee, QR et code TV dynamiques conserves, sans bouton, prix ni CTA.
 
+Depuis le 2026-07-07, les lots TMDB 1 a 6 ajoutent une couche de metadonnees enrichies non bloquante pour Films et Series. Les associations Xtream -> TMDB sont stockees en Room dans `tmdb_content_mapping`, les details film dans `tmdb_movie_metadata` et les details serie dans `tmdb_series_metadata`. Les fiches films et series affichent les champs TMDB disponibles en priorite (poster, backdrop, synopsis, genres, duree, note, casting, createurs/realisateur, certification, providers JustWatch), tout en gardant Xtream comme fallback et source de lecture. Home enrichit les cards Tendances seulement pendant la preparation preview bornee aux items visibles/proches. Les grilles Movies/Series reutilisent uniquement le cache TMDB Room local sur les premiers items charges; elles ne lancent pas de recherche TMDB massive. TMDB est optionnel: sans token local, l'application garde le comportement Xtream.
+
 ## 3. Workflow utilisateur
 
 - Live TV: categories a gauche, chaines, apercu/mini player; OK lance l'apercu, OK sur la meme chaine ouvre le plein ecran.
@@ -87,9 +89,10 @@ M3U / EPG:
 - `DefaultCatalogRepository.kt` choisit la branche de synchronisation selon `PlaylistSource`.
 
 Room:
-- `SVDatabase.kt` version 10.
+- `SVDatabase.kt` version 11.
 - Entites catalogue: profiles, categories, live streams, movies, series, episodes, favorites, playback progress, sync state, historique YouTube.
 - `home_trending_preview_cache` stocke les metadonnees premium des cards Tendances HOME: poster, backdrop, duree, sample preview, extension, position 15%/fallback, etats backdrop/preview, `lastSync`.
+- Tables TMDB separees du catalogue Xtream: `tmdb_content_mapping`, `tmdb_movie_metadata`, `tmdb_series_metadata`. Ne pas y stocker d'URL de lecture ni de secrets.
 - Tables Media Center separees du catalogue: `media_folders`, `media_files`, `recording_jobs` via `MediaCenterDao.kt` et `MediaCenterEntities.kt`. Ne pas les melanger avec `MediaDao.kt`.
 
 Playback:
@@ -125,6 +128,10 @@ Playback:
 - `data/playlist/M3uPlaylistClient.kt`
 - `data/playlist/EpgRepository.kt`
 - `data/playlist/EpgSyncWorker.kt`
+- `data/tmdb/TmdbApiService.kt`
+- `data/tmdb/TmdbRepository.kt`
+- `data/tmdb/TmdbMatcher.kt`
+- `data/tmdb/TmdbImageResolver.kt`
 - `data/repository/UserContentRepository.kt`
 - `data/local/SVDatabase.kt`
 - `data/local/dao/*`
@@ -171,6 +178,9 @@ URL de lecture:
 
 - L'application ne doit pas fournir de contenus par defaut comme service final.
 - Ne pas afficher ou logguer les identifiants Xtream.
+- Ne pas afficher, logguer ou versionner les secrets TMDB; le token reste dans `local.properties`.
+- Ne pas bloquer la lecture, Home, Movies, Series ou les fiches detail si TMDB echoue ou n'est pas configure.
+- Ne pas remplacer les ids/URLs Xtream par TMDB pour la lecture; TMDB enrichit seulement les metadonnees.
 - La lecture doit rester native Media3 ExoPlayer.
 - Pour Live TV, ne pas sauvegarder la progression comme VOD.
 - Garder les categories speciales Favoris/Historiques coherentes.
@@ -252,3 +262,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-03: normalisation des URL d'images catalogue Xtream/M3U pour restaurer logos chaines, posters Films/Series et backdrops details/Home quand les providers renvoient des chemins relatifs ou echappes.
 - 2026-07-04: verification Xtream durcie contre les faux positifs: 3 essais silencieux, test principal sur `user_info`, pas de blocage/popup avant echec confirme, et buffering lecteur separe d'une panne globale.
 - 2026-07-05: overlay plein ecran Live TV remplace puis affine en modele dedie direct: bandeau bas rectangulaire compact, logo chaine sans cadre, numero reel, EPG local courant, panneau Settings aspect ratio enrichi, Record placeholder et suppression des controles VOD.
+- 2026-07-07: ajout lots TMDB 1 a 6: plan A-Z, tables Room `tmdb_*`, API Retrofit TMDB optionnelle, matching automatique films/series, cache local, enrichissement visuel fiches film/serie, Home preview enrichie et grilles catalogue cache-only.

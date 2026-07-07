@@ -51,8 +51,12 @@ import com.smartvision.svplayer.data.models.XtreamMovieDetails
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.data.tmdb.TmdbMovieMetadata
+import com.smartvision.svplayer.data.tmdb.TmdbRepository
+import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -77,18 +81,54 @@ data class MovieDetailUiState(
     val isFavorite: Boolean = false,
     val loading: Boolean = true,
     val errorMessage: String? = null,
+    val tmdbMetadata: TmdbMovieMetadata? = null,
+    val tmdbLoading: Boolean = false,
 ) {
+    val displayTitle: String
+        get() = tmdbMetadata?.title.nonBlank() ?: title
+
+    val displayPosterUrl: String?
+        get() = tmdbMetadata?.posterUrl.nonBlank() ?: posterUrl
+
+    val displayBackdropUrl: String?
+        get() = tmdbMetadata?.backdropUrl.nonBlank() ?: backdropUrl
+
+    val displayPlot: String?
+        get() = tmdbMetadata?.overview.nonBlank() ?: plot
+
+    val displayGenre: String?
+        get() = tmdbMetadata?.genres.nonBlank() ?: genre
+
+    val displayReleaseDate: String?
+        get() = tmdbMetadata?.releaseDate.nonBlank() ?: releaseDate
+
+    val displayRating: String?
+        get() = tmdbMetadata?.voteAverage?.takeIf { it > 0.0 }?.formatRating() ?: rating
+
+    val displayDurationLabel: String?
+        get() = tmdbMetadata?.runtimeMinutes?.takeIf { it > 0 }?.let { "$it min" } ?: duration?.durationLabel()
+
+    val displayDirector: String?
+        get() = tmdbMetadata?.director.nonBlank() ?: director
+
+    val displayCast: String?
+        get() = tmdbMetadata?.cast.nonBlank() ?: cast
+
+    val isTmdbEnriched: Boolean
+        get() = tmdbMetadata != null
+
     val backgroundUrl: String?
-        get() = backdropUrl ?: posterUrl
+        get() = displayBackdropUrl ?: displayPosterUrl
 
     val year: String?
-        get() = releaseDate?.take(4)?.takeIf { it.all(Char::isDigit) }
+        get() = displayReleaseDate?.take(4)?.takeIf { it.all(Char::isDigit) }
 }
 
 class MovieDetailViewModel(
     private val movieId: Int,
     private val xtreamRepository: XtreamRepository,
     private val userContentRepository: UserContentRepository,
+    private val tmdbRepository: TmdbRepository,
 ) : ViewModel() {
     private val initialMovie = xtreamRepository.getCachedMovie(movieId)
     private val initialCategory = initialMovie?.categoryId?.let { categoryId ->
@@ -106,6 +146,7 @@ class MovieDetailViewModel(
         ),
     )
     val uiState: StateFlow<MovieDetailUiState> = _uiState.asStateFlow()
+    private var lastTmdbRequestKey: String? = null
 
     init {
         observeFavorite()
@@ -123,11 +164,15 @@ class MovieDetailViewModel(
             _uiState.update { it.copy(loading = true, errorMessage = null) }
             runCatching { xtreamRepository.getMovieDetails(movieId) }
                 .onSuccess { details ->
+                    val current = _uiState.value
                     _uiState.value = details.toUiState(
                         categoryLabel = details.categoryId?.let { categoryId ->
                             xtreamRepository.getCachedMovieCategories().firstOrNull { it.id == categoryId }?.name
                         } ?: initialCategory,
-                        isFavorite = _uiState.value.isFavorite,
+                        isFavorite = current.isFavorite,
+                    ).copy(
+                        tmdbMetadata = current.tmdbMetadata,
+                        tmdbLoading = current.tmdbLoading,
                     )
                 }
                 .onFailure { error ->
@@ -138,6 +183,35 @@ class MovieDetailViewModel(
                         )
                     }
                 }
+        }
+    }
+
+    fun loadTmdbMetadata(language: String, includeAdult: Boolean) {
+        val current = _uiState.value
+        if (current.loading || current.title.isBlank()) return
+        val requestKey = listOf(movieId, current.title, current.releaseDate.orEmpty(), language, includeAdult).joinToString("|")
+        if (requestKey == lastTmdbRequestKey) return
+        lastTmdbRequestKey = requestKey
+        viewModelScope.launch {
+            _uiState.update { it.copy(tmdbLoading = true) }
+            runCatching {
+                tmdbRepository.enrichMovie(
+                    contentId = movieId,
+                    title = current.title,
+                    year = current.releaseDate,
+                    language = language,
+                    includeAdult = includeAdult,
+                )
+            }.onSuccess { metadata ->
+                _uiState.update {
+                    it.copy(
+                        tmdbMetadata = metadata ?: it.tmdbMetadata,
+                        tmdbLoading = false,
+                    )
+                }
+            }.onFailure {
+                _uiState.update { it.copy(tmdbLoading = false) }
+            }
         }
     }
 
@@ -168,6 +242,9 @@ fun MovieDetailRoute(
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
+    val settings by container.settingsRepository.settings.collectAsStateWithLifecycle(
+        initialValue = PlayerSettings(),
+    )
     val viewModel: MovieDetailViewModel = viewModel(
         key = "movie-detail-$movieId",
         factory = viewModelFactory {
@@ -175,6 +252,7 @@ fun MovieDetailRoute(
                 movieId = movieId,
                 xtreamRepository = container.xtreamRepository,
                 userContentRepository = container.userContentRepository,
+                tmdbRepository = container.tmdbRepository,
             )
         },
     )
@@ -185,6 +263,21 @@ fun MovieDetailRoute(
             "CONTENT_OPENED",
             state.toBehaviorContent("DETAIL"),
         )
+    }
+    LaunchedEffect(
+        state.loading,
+        state.movieId,
+        state.title,
+        state.releaseDate,
+        settings.language,
+        settings.parentalControlEnabled,
+    ) {
+        if (!state.loading) {
+            viewModel.loadTmdbMetadata(
+                language = settings.language,
+                includeAdult = !settings.parentalControlEnabled,
+            )
+        }
     }
     MovieDetailScreen(
         state = state,
@@ -300,7 +393,7 @@ private fun MovieDetailInfo(
 ) {
     Column(modifier = modifier) {
         Text(
-            text = state.title,
+            text = state.displayTitle,
             color = SmartVisionColors.TextPrimary,
             style = DetailHeroTitleStyle,
             maxLines = 3,
@@ -311,7 +404,7 @@ private fun MovieDetailInfo(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            listOfNotNull(state.year, state.genre, state.duration?.durationLabel()).take(3).forEach { meta ->
+            listOfNotNull(state.year, state.displayGenre, state.displayDurationLabel).take(3).forEach { meta ->
                 Text(
                     text = meta,
                     color = SmartVisionColors.TextSecondary,
@@ -321,12 +414,12 @@ private fun MovieDetailInfo(
                 )
                 Text("•", color = SmartVisionColors.TextSecondary, style = DetailBodyStyle)
             }
-            state.rating?.let { DetailBadge(text = "$it/10") }
+            state.displayRating?.let { DetailBadge(text = "$it/10") }
             DetailBadge(text = state.extension.uppercase())
         }
         Spacer(Modifier.height(14.dp))
         Text(
-            text = state.plot ?: "Film VOD disponible dans ${state.categoryLabel}.",
+            text = state.displayPlot ?: "Film VOD disponible dans ${state.categoryLabel}.",
             color = SmartVisionColors.TextSecondary,
             style = DetailBodyStyle,
             maxLines = 5,
@@ -396,9 +489,9 @@ private fun MoviePosterPanel(
             .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), shape),
         contentAlignment = Alignment.Center,
     ) {
-        if (!state.posterUrl.isNullOrBlank()) {
+        if (!state.displayPosterUrl.isNullOrBlank()) {
             AsyncImage(
-                model = state.posterUrl,
+                model = state.displayPosterUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
@@ -421,7 +514,7 @@ private fun MoviePosterPanel(
                 ),
         )
         Text(
-            text = state.title,
+            text = state.displayTitle,
             color = Color.White,
             style = DetailTitleStyle,
             fontWeight = FontWeight.Black,
@@ -451,16 +544,30 @@ private fun MovieMetaPanel(
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             DetailBadge(text = state.categoryLabel)
-            state.director?.let { DetailBadge(text = it, color = Color(0xFF18253A)) }
+            if (state.isTmdbEnriched) {
+                DetailBadge(text = "TMDB", color = Color(0xFF18253A))
+            }
+            state.displayDirector?.let { DetailBadge(text = it, color = Color(0xFF18253A)) }
+            state.tmdbMetadata?.certification.nonBlank()?.let { DetailBadge(text = it, color = Color(0xFF18253A)) }
         }
         Spacer(Modifier.height(10.dp))
         Text(
-            text = state.cast ?: "Catalogue Xtream VOD",
+            text = state.displayCast ?: "Catalogue Xtream VOD",
             color = SmartVisionColors.TextSecondary,
             style = DetailBodyStyle,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
+        state.tmdbMetadata?.providersSummary.nonBlank()?.let { providers ->
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Providers: $providers",
+                color = SmartVisionColors.TextSecondary,
+                style = DetailMetaStyle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -490,14 +597,18 @@ private fun MovieDetailUiState.toBehaviorContent(sourceScreen: String): Behavior
     BehaviorContent(
         contentType = "MOVIE",
         contentId = movieId.toString(),
-        title = title,
+        title = displayTitle,
         categoryLabel = categoryLabel,
         durationSeconds = duration?.toLongOrNull(),
         engagementScore = if (loading) 25 else 45,
         sourceScreen = sourceScreen,
-        tags = listOfNotNull(genre, extension, year),
-        context = mapOf("rating" to (rating ?: "-")),
+        tags = listOfNotNull(displayGenre, extension, year),
+        context = mapOf("rating" to (displayRating ?: "-")),
     )
+
+private fun String?.nonBlank(): String? = this?.trim()?.takeIf { it.isNotBlank() }
+
+private fun Double.formatRating(): String = String.format(Locale.US, "%.1f", this)
 
 private fun String.cleanDetailTitle(): String =
     replace(Regex("\\s+"), " ")

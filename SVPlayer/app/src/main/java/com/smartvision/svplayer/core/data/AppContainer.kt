@@ -40,6 +40,8 @@ import com.smartvision.svplayer.data.repository.DefaultCatalogRepository
 import com.smartvision.svplayer.data.repository.DefaultSettingsRepository
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.data.tmdb.TmdbApiService
+import com.smartvision.svplayer.data.tmdb.TmdbRepository
 import com.smartvision.svplayer.data.update.AppUpdateApiService
 import com.smartvision.svplayer.data.update.AppUpdateRepository
 import com.smartvision.svplayer.data.xtream.XtreamConnectionManager
@@ -150,6 +152,27 @@ class AppContainer(context: Context) {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
     private val youtubeApi = youtubeRetrofit.create(YoutubeApiService::class.java)
+    private val tmdbReadAccessToken = BuildConfig.TMDB_READ_ACCESS_TOKEN.trim()
+    private val tmdbOkHttpClient = OkHttpClient.Builder()
+        .addInterceptor { chain ->
+            val builder = chain.request().newBuilder()
+                .header("Accept", "application/json")
+            if (tmdbReadAccessToken.isNotBlank()) {
+                builder.header("Authorization", "Bearer $tmdbReadAccessToken")
+            }
+            chain.proceed(builder.build())
+        }
+        .addInterceptor(NetworkActivityInterceptor(networkActivityTracker, "TMDB"))
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(15, TimeUnit.SECONDS)
+        .build()
+    private val tmdbRetrofit = Retrofit.Builder()
+        .baseUrl("https://api.themoviedb.org/3/")
+        .client(tmdbOkHttpClient)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+    private val tmdbApi = tmdbRetrofit.create(TmdbApiService::class.java)
 
     val activationRepository: ActivationRepository = ActivationRepository(
         appContext = appContext,
@@ -251,6 +274,11 @@ class AppContainer(context: Context) {
         apiKey = BuildConfig.YOUTUBE_API_KEY,
         behaviorReporter = youtubeBehaviorReporter,
     )
+    val tmdbRepository = TmdbRepository(
+        api = tmdbApi,
+        mediaDao = database.mediaDao(),
+        readAccessToken = tmdbReadAccessToken,
+    )
 
     val catalogRepository: CatalogRepository = DefaultCatalogRepository(
         database = database,
@@ -267,19 +295,21 @@ class AppContainer(context: Context) {
         syncStateDao = database.syncStateDao(),
         networkActivityTracker = networkActivityTracker,
     )
+    val settingsRepository: SettingsRepository =
+        DefaultSettingsRepository(appContext, appContext.settingsDataStore, database)
+
     val homeContentRepository = HomeContentRepository(
         catalogRepository = catalogRepository,
         accountManager = accountManager,
         syncStateDao = database.syncStateDao(),
         mediaDao = database.mediaDao(),
         xtreamRepository = xtreamRepository,
+        tmdbRepository = tmdbRepository,
+        settingsRepository = settingsRepository,
         urlFactory = urlFactory,
         networkActivityTracker = networkActivityTracker,
     )
     val syncStateDao = database.syncStateDao()
-
-    val settingsRepository: SettingsRepository =
-        DefaultSettingsRepository(appContext, appContext.settingsDataStore, database)
 
     val synchronizeCatalog = SynchronizeCatalogUseCase(catalogRepository)
     val toggleFavorite = ToggleFavoriteUseCase(catalogRepository)

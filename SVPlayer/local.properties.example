@@ -41,6 +41,9 @@ HILLTOPADS_PUBLISHER_ID=
 # YouTube Data API. Keep the real key only in local.properties.
 YOUTUBE_API_KEY=
 
+# TMDB API. Keep the real read access token only in local.properties.
+TMDB_READ_ACCESS_TOKEN=
+
 # Optional debug overrides:
 # PREMIUM_ACTIVE, TRIAL_ACTIVE, TRIAL_EXPIRED, LICENSE_EXPIRED, FREE_WITH_ADS
 SMARTVISION_DEBUG_MONETIZATION_STATUS=

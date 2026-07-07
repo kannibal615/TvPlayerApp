@@ -32,6 +32,9 @@ fun localAdString(name: String): String =
 fun productionVideoAdTagUrl(): String =
     localAdString("VIDEO_AD_TAG_URL").ifBlank { localAdString("HILLTOPADS_VAST_TAG_URL") }
 
+fun tmdbReadAccessToken(): String =
+    localAdString("TMDB_READ_ACCESS_TOKEN").ifBlank { localAdString("TMDB_API_READ_ACCESS_TOKEN") }
+
 fun activationBaseUrl(): String {
     val configured = localString("DOMAINE_SERVER").ifBlank { "smartvisions.net" }
     val normalized = configured.trim().trimEnd('/')
@@ -51,12 +54,13 @@ android {
         applicationId = "com.smartvision.svplayer"
         minSdk = 23
         targetSdk = 36
-        versionCode = 111
-        versionName = "0.1.107"
+        versionCode = 113
+        versionName = "0.1.109"
         manifestPlaceholders["profileableByShell"] = "false"
 
         buildConfigField("String", "ACTIVATION_BASE_URL", buildConfigString(activationBaseUrl()))
         buildConfigField("String", "YOUTUBE_API_KEY", buildConfigString(localAdString("YOUTUBE_API_KEY")))
+        buildConfigField("String", "TMDB_READ_ACCESS_TOKEN", buildConfigString(tmdbReadAccessToken()))
         // PERF_DIAG: disabled by default; only releaseDiagnostic writes local performance artifacts.
         buildConfigField("boolean", "PERF_DIAGNOSTICS_ENABLED", "false")
         buildConfigField("String", "PERF_DIAGNOSTICS_LABEL", buildConfigString(""))

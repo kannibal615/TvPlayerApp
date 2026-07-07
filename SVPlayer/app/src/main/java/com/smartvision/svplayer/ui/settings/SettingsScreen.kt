@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -531,6 +532,37 @@ private fun SettingsMenuLayout(
                         strings = strings,
                     )
                 }
+                SettingsSection.Tmdb -> {
+                    Text(
+                        text = strings.tmdbAttributionSubtitle,
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Body,
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    SettingsInfoRow(
+                        label = strings.tmdbTokenStatus,
+                        value = if (BuildConfig.TMDB_READ_ACCESS_TOKEN.isNotBlank()) strings.active else strings.notConfigured,
+                    )
+                    SettingsInfoRow(strings.language, settings.language)
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = strings.tmdbAttributionBody,
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Body,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = strings.tmdbProvidersBody,
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Body,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = strings.tmdbLicenseNote,
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Caption,
+                    )
+                }
                 SettingsSection.Personalization -> {
                     SettingsChoice(
                         label = strings.focusStyle,
@@ -805,6 +837,7 @@ private enum class SettingsSection(
     Preferences(Icons.Default.Settings),
     Sync(Icons.Default.CloudSync),
     Network(Icons.Default.CloudSync),
+    Tmdb(Icons.Default.Info),
     Personalization(Icons.Default.Settings),
     Updates(Icons.Default.Refresh),
     Parental(Icons.Default.Person),
@@ -815,6 +848,7 @@ private fun SettingsSection.label(strings: SmartVisionStrings): String = when (t
     SettingsSection.Preferences -> strings.generalPreferences
     SettingsSection.Sync -> strings.sync
     SettingsSection.Network -> strings.networkActivity
+    SettingsSection.Tmdb -> strings.tmdbAttribution
     SettingsSection.Personalization -> strings.personalization
     SettingsSection.Updates -> strings.updates
     SettingsSection.Parental -> strings.parentalControl

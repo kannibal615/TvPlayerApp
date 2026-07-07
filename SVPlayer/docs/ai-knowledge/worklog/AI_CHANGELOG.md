@@ -1,5 +1,69 @@
 # AI Changelog
 
+## 2026-07-07 - Release TMDB 0.1.109 en production
+
+Type:
+- android
+- tmdb
+- release
+- deploy
+- firestick
+- documentation
+
+Resume:
+- Version Gradle incrementee en `0.1.109` / `versionCode 113` apres publication intermediaire `0.1.108` sans jeton TMDB configure.
+- Le jeton TMDB est maintenant lu depuis `local.properties` local non versionne; `local.properties.example` reste un placeholder vide.
+- Release TMDB lots 1 a 6 publiee en production avec manifeste `smartvision-tv-v113-6b467713.apk`.
+- Firestick `192.168.1.33:5555` installee/lancee en `0.1.109`; Home rendu, Settings TMDB affiche `Active`, et Network Activity montre un appel TMDB HTTP 200.
+
+Validation:
+- `.\scripts\guard_release_version.ps1`: OK, local `0.1.109 (113)` > prod `0.1.108 (112)`.
+- `.\gradlew.bat :app:assembleRelease --no-daemon --console=plain`: OK en 13m32s.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK, metadata `0.1.109 (113)`.
+- `apksigner verify --verbose`: OK v1/v2, 1 signer.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall`: OK, tests publics/site/admin du script OK.
+- Production verifiee: manifeste, `api/app_update.php`, APK versionne et APK stable hashent `6b467713c176c876eee2517b36a9592238d54d3c72e19bb57cd9572e879cbab3`, taille `40821819`, `app_config.php`, `ads-config` et VAST en 200.
+- Firestick: installation OK, `versionCode=113`, cold start OK, MainActivity focus, aucun crash/ANR/Room error dans les logs filtres.
+
+## 2026-07-07 - TMDB lots 5 et 6 series, Home et catalogues cache-only
+
+Type:
+- android
+- tmdb
+- ui-tv
+- home
+- documentation
+
+Resume:
+- `SeriesDetailScreen` affiche maintenant les metadonnees TMDB disponibles en priorite: titre, poster, backdrop, synopsis, genres, date, note, duree episode, casting, createurs, certification et providers.
+- Les saisons, episodes, ids et URLs de lecture Series restent Xtream.
+- `HomeContentRepository.prepareTrendingPreview()` enrichit les cards Tendances avec TMDB pendant la preparation preview deja bornee aux items visibles/proches, sans appel TMDB au splash.
+- `MoviesViewModel` et `SeriesViewModel` reutilisent uniquement le cache TMDB Room local sur les premiers items charges; aucun matching/reseau massif n'est lance depuis les grilles.
+- Documentation TMDB, catalogue, UI et changelog mis a jour.
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --console=plain`: OK.
+
+## 2026-07-07 - TMDB lots 1 a 4 cache Room, matching et fiche film
+
+Type:
+- android
+- tmdb
+- room
+- ui-tv
+- documentation
+
+Resume:
+- Ajout du plan A-Z `docs/ai-knowledge/features/tmdb-integration-plan.md` et d'une decision TMDB local Room/non bloquant.
+- Passage Room en version 11 avec tables `tmdb_content_mapping`, `tmdb_movie_metadata`, `tmdb_series_metadata` et schema exporte `11.json`.
+- Ajout du client Retrofit TMDB optionnel, du matching automatique films/series, du cache local et du type Network Activity `Tmdb`.
+- `MovieDetailScreen` enrichit les champs visuels film depuis TMDB quand disponibles, avec fallback Xtream et boutons lecture/favori inchanges.
+- `SeriesDetailScreen` lance l'association/cache TMDB sans refonte visuelle serie.
+- Settings ajoute le menu `Attribution TMDB` avec statut token non sensible, attribution TMDB, providers JustWatch et note licence.
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --console=plain`: OK. Avertissements existants sur icones Compose depreciees et `Notification.Builder`, non lies a TMDB.
+
 ## 2026-07-07 - Live TV focus, EPG/Info et Premium minimal luxury
 
 Type:

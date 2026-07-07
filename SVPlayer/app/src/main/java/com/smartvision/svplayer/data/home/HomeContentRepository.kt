@@ -15,11 +15,15 @@ import com.smartvision.svplayer.data.network.NetworkActivityTracker
 import com.smartvision.svplayer.data.network.NetworkActivityType
 import com.smartvision.svplayer.data.remote.XtreamUrlFactory
 import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.data.tmdb.TmdbRepository
+import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.model.TrendingCatalogItem
 import com.smartvision.svplayer.domain.repository.CatalogRepository
+import com.smartvision.svplayer.domain.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToLong
 
@@ -64,6 +68,8 @@ class HomeContentRepository(
     private val syncStateDao: SyncStateDao,
     private val mediaDao: MediaDao,
     private val xtreamRepository: XtreamRepository,
+    private val tmdbRepository: TmdbRepository,
+    private val settingsRepository: SettingsRepository,
     private val urlFactory: XtreamUrlFactory,
     private val networkActivityTracker: NetworkActivityTracker,
 ) {
@@ -300,9 +306,10 @@ class HomeContentRepository(
 
         val previewWork = beginTrendingPreviewWork(contentType, contentId)
         val entity = runCatching {
+            val settings = settingsRepository.settings.first()
             when (contentType) {
-                TrendingMovieType -> buildMoviePreviewCache(contentId, fallbackPosterUrl, key.lastSync)
-                TrendingSeriesType -> buildSeriesPreviewCache(contentId, fallbackPosterUrl, key.lastSync)
+                TrendingMovieType -> buildMoviePreviewCache(contentId, fallbackPosterUrl, key.lastSync, settings)
+                TrendingSeriesType -> buildSeriesPreviewCache(contentId, fallbackPosterUrl, key.lastSync, settings)
                 else -> null
             }
         }.onFailure { error ->
@@ -373,15 +380,26 @@ class HomeContentRepository(
         contentId: Int,
         fallbackPosterUrl: String?,
         lastSync: Long,
+        settings: PlayerSettings,
     ): HomeTrendingPreviewCacheEntity {
         val details = xtreamRepository.getMovieDetails(contentId)
-        val durationMs = details.duration.parseDurationMs()
+        val tmdb = tmdbRepository.enrichMovie(
+            contentId = contentId,
+            title = details.title,
+            year = details.releaseDate,
+            language = settings.language,
+            includeAdult = !settings.parentalControlEnabled,
+        )
+        val durationMs = tmdb?.runtimeMinutes?.takeIf { it > 0 }?.times(60_000L)
+            ?: details.duration.parseDurationMs()
         val startPositionMs = durationMs.previewStartAt(PreviewStartRatio)
+        val posterUrl = tmdb?.posterUrl ?: details.posterUrl ?: fallbackPosterUrl
+        val backdropUrl = tmdb?.backdropUrl ?: details.backdropUrl?.takeIf { it.isNotBlank() }
         return HomeTrendingPreviewCacheEntity(
             contentType = TrendingMovieType,
             contentId = contentId,
-            posterUrl = details.posterUrl ?: fallbackPosterUrl,
-            backdropUrl = details.backdropUrl?.takeIf { it.isNotBlank() },
+            posterUrl = posterUrl,
+            backdropUrl = backdropUrl,
             durationLabel = durationMs?.formatDurationLabel() ?: details.duration?.takeIf { it.isNotBlank() },
             durationMs = durationMs,
             previewKind = PreviewKindMovie,
@@ -389,7 +407,7 @@ class HomeContentRepository(
             previewExtension = details.containerExtension.ifBlank { "mp4" },
             previewStartPositionMs = startPositionMs,
             sampleLabel = null,
-            backdropState = if (!details.backdropUrl.isNullOrBlank()) BackdropAvailable else BackdropMissing,
+            backdropState = if (!backdropUrl.isNullOrBlank()) BackdropAvailable else BackdropMissing,
             previewState = PreviewAvailable,
             preparedAt = System.currentTimeMillis(),
             lastSync = lastSync,
@@ -400,19 +418,30 @@ class HomeContentRepository(
         contentId: Int,
         fallbackPosterUrl: String?,
         lastSync: Long,
+        settings: PlayerSettings,
     ): HomeTrendingPreviewCacheEntity {
         val details = xtreamRepository.getSeriesDetails(contentId)
+        val tmdb = tmdbRepository.enrichSeries(
+            contentId = contentId,
+            title = details.title,
+            year = details.releaseDate,
+            language = settings.language,
+            includeAdult = !settings.parentalControlEnabled,
+        )
         val firstEpisode = xtreamRepository.getSeriesEpisodes(contentId)
             .sortedWith(compareBy<XtreamSeriesEpisode> { it.seasonNumber }.thenBy { it.episodeNumber })
             .firstOrNull()
-        val durationMs = details.episodeRunTime.parseDurationMs()
+        val durationMs = tmdb?.episodeRunTimeMinutes?.takeIf { it > 0 }?.times(60_000L)
+            ?: details.episodeRunTime.parseDurationMs()
             ?: firstEpisode?.duration.parseDurationMs()
         val sampleLabel = firstEpisode?.let { "S${it.seasonNumber} E${it.episodeNumber}" }
+        val posterUrl = tmdb?.posterUrl ?: details.coverUrl ?: fallbackPosterUrl
+        val backdropUrl = tmdb?.backdropUrl ?: details.backdropUrl?.takeIf { it.isNotBlank() }
         return HomeTrendingPreviewCacheEntity(
             contentType = TrendingSeriesType,
             contentId = contentId,
-            posterUrl = details.coverUrl ?: fallbackPosterUrl,
-            backdropUrl = details.backdropUrl?.takeIf { it.isNotBlank() },
+            posterUrl = posterUrl,
+            backdropUrl = backdropUrl,
             durationLabel = durationMs?.formatDurationLabel(),
             durationMs = durationMs,
             previewKind = if (firstEpisode != null) PreviewKindEpisode else PreviewKindNone,
@@ -420,7 +449,7 @@ class HomeContentRepository(
             previewExtension = firstEpisode?.containerExtension?.ifBlank { "mp4" },
             previewStartPositionMs = durationMs.previewStartAt(PreviewStartRatio),
             sampleLabel = durationMs?.formatDurationLabel() ?: sampleLabel,
-            backdropState = if (!details.backdropUrl.isNullOrBlank()) BackdropAvailable else BackdropMissing,
+            backdropState = if (!backdropUrl.isNullOrBlank()) BackdropAvailable else BackdropMissing,
             previewState = if (firstEpisode != null) PreviewAvailable else PreviewUnavailable,
             preparedAt = System.currentTimeMillis(),
             lastSync = lastSync,

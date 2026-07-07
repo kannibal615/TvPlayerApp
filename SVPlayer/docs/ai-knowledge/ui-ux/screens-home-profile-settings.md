@@ -1,6 +1,6 @@
 # Ecrans Home, Catalogues, Profile, Settings et YouTube
 
-Derniere mise a jour: 2026-07-05.
+Derniere mise a jour: 2026-07-07.
 
 ## 1. Objectif
 
@@ -29,8 +29,8 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 - Les sections Continue watching / Trending movies / Trending series ne sont rendues que si elles contiennent des items; les cibles D-pad haut/bas tiennent compte de ces lignes absentes pour eviter un focus mort.
 - Home routes secondaires: `continue_watching` et `trending` via `HomeCollectionsScreen`; la route `trending` lance aussi un refresh tendances cache-first si elle est ouverte directement.
 - Live TV: categories, chaines, apercu puis plein ecran. Le mini-player d'apercu Live TV demarre muet, attend 1 seconde apres lancement, puis augmente progressivement le volume player a `1f` sur 1 seconde; le fallback `.m3u8`, le buffering et les erreurs restent inchanges.
-- Movies: grille de films, detail, lecture.
-- Series: grille, detail, saisons/episodes, lecture episode.
+- Movies: grille de films, detail, lecture. Depuis le 2026-07-07, la fiche film peut enrichir poster/backdrop/synopsis/genres/duree/casting/realisateur/note/certification/providers depuis TMDB, avec fallback Xtream et boutons lecture/favori inchanges. La grille Movies reutilise seulement le cache TMDB local pour les premiers items charges.
+- Series: grille, detail, saisons/episodes, lecture episode. Depuis le 2026-07-07, la fiche serie peut enrichir titre/poster/backdrop/synopsis/genres/duree/casting/createurs/note/certification/providers depuis TMDB, tout en gardant saisons/episodes/lecture sur Xtream. La grille Series reutilise seulement le cache TMDB local pendant son job de metadonnees visible.
 - Live TV / Movies / Series affichent les categories puis chargent les contenus par pages Room locales pendant le scroll, sans reconstruire toute la playlist en RAM.
 - Live TV / Movies / Series chargent d'abord `20` categories Room maximum, puis completent discretement la liste complete dans leur ViewModel. Aucune categorie ni premiere page catalogue n'est prechauffee dans le splash.
 - Les logos Live TV et images Films/Series affiches dans les listes, details, Home et historiques viennent des champs normalises en repository. Ne pas corriger les images directement dans chaque composable sauf besoin UI specifique; les ecrans doivent consommer les URL catalogue deja nettoyees.
@@ -38,8 +38,9 @@ Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header
 - Info compte compacte la section source: icone utilisateur bleue pour le panneau, badge d'usage dans l'en-tete Licence SmartVision, expiration Xtream dans l'en-tete Info compte, identifiants Xtream sur une ligne, boutons Xtream en icones et bascules source plus petites.
 - Quand M3U est actif, Movies et Series affichent un etat vide source-aware au lieu d'une erreur Xtream.
 - Live TV affiche un badge bleu `E` a droite des lignes de chaines qui ont des programmes EPG locaux, y compris dans le dossier Historique quand la chaine existe encore en Room. Les dossiers Live TV avec EPG affichent leur compteur dans un cadre bleu au lieu d'ajouter un badge EPG separe. Le panneau details EPG sous le mini-player est focusable et scrollable au D-pad.
-- Settings: experience video, personnalisation focus, langue, synchro, activite reseau, comptes Xtream, parental.
+- Settings: experience video, personnalisation focus, langue, synchro, activite reseau, attribution TMDB, comptes Xtream, parental.
 - Settings > Activite reseau affiche un panneau compact alimente par `NetworkActivityTracker`: travaux actifs, historique recent, progression, debit, taille de donnees, duree, source/section et erreurs. Le panneau droit est focusable et scrollable au D-pad pour voir toutes les activites. Les activites instrumentees incluent synchro catalogue Live/Films/Series, M3U, EPG, Home slides/tendances, verification Xtream, update APK et requetes HTTP SmartVision/Xtream sans exposer les query params ni secrets.
+- Settings > Attribution TMDB affiche le statut configure/non configure du token TMDB sans exposer sa valeur, l'attribution TMDB, la mention JustWatch providers et la note licence developpement personnel.
 - YouTube: recherche/suggestions/player, favoris, parametres YouTube et queue autoplay, soumis a feature lock.
 - Notifications: liste et ouverture du popup update si notification release.
 
@@ -92,6 +93,7 @@ Etat:
 - `ui/profile/ProfileScreen.kt`
 - `ui/settings/SettingsScreen.kt`
 - `ui/settings/ParentalContentFilter.kt`
+- `data/tmdb/*`
 - `data/network/NetworkActivityTracker.kt`
 - `ui/youtube/*`
 - `ui/notifications/*`
@@ -128,6 +130,7 @@ Sources:
 - Toute nouvelle ligne ou libelle visible dans l'app TV doit passer par `SmartVisionStrings.kt` avec valeur anglaise par defaut et traduction francaise.
 - Les demandes sont souvent formulees en francais, mais la copie officielle de l'application reste l'anglais.
 - Ne pas reintroduire des langues non demandees sans consigne.
+- Toute attribution TMDB/JustWatch visible doit rester dans Settings et ne doit pas exposer le token.
 - Garder les actions TV focusables.
 - YouTube: ne pas recharger toute la liste de suggestions a chaque video; consommer la queue courante, enlever la video lancee et recharger en arriere-plan seulement les elements manquants.
 
@@ -194,3 +197,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-05: Settings ajoute le menu `Network Activity` / `Activite reseau`, base sur `NetworkActivityTracker`, et Home corrige la duree de vie du fade-in audio des mini-players Continue watching LiveImmediate et Tendances.
 - 2026-07-05: Settings > Activite reseau rend le panneau droit focusable et scrollable au D-pad pour parcourir toute la liste active/recente.
 - 2026-07-05: le header principal affiche date/heure sur deux lignes a droite, avec logo/onglets/boutons legerement compactes pour conserver l'espace sans changer les actions.
+- 2026-07-07: Settings ajoute `Attribution TMDB`; Movie detail et Series detail affichent les metadonnees TMDB en priorite quand elles sont cachees/disponibles. Home Tendances enrichit les previews via TMDB pendant la preparation visible/proche, et les grilles Movies/Series reutilisent le cache TMDB local sans recherche massive.

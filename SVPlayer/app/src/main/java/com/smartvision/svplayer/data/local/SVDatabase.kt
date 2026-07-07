@@ -27,6 +27,9 @@ import com.smartvision.svplayer.data.local.entity.ProfileEntity
 import com.smartvision.svplayer.data.local.entity.RecordingJobEntity
 import com.smartvision.svplayer.data.local.entity.SeriesEntity
 import com.smartvision.svplayer.data.local.entity.SyncStateEntity
+import com.smartvision.svplayer.data.local.entity.TmdbContentMappingEntity
+import com.smartvision.svplayer.data.local.entity.TmdbMovieMetadataEntity
+import com.smartvision.svplayer.data.local.entity.TmdbSeriesMetadataEntity
 import com.smartvision.svplayer.data.local.entity.TrendingMediaEntity
 import com.smartvision.svplayer.data.local.entity.YoutubeBehaviorEventEntity
 import com.smartvision.svplayer.data.local.entity.YoutubeSearchEntity
@@ -46,6 +49,9 @@ import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
         SyncStateEntity::class,
         TrendingMediaEntity::class,
         HomeTrendingPreviewCacheEntity::class,
+        TmdbContentMappingEntity::class,
+        TmdbMovieMetadataEntity::class,
+        TmdbSeriesMetadataEntity::class,
         YoutubeSearchEntity::class,
         YoutubeVideoHistoryEntity::class,
         YoutubeSelectionEntity::class,
@@ -54,7 +60,7 @@ import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
         MediaFileEntity::class,
         RecordingJobEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 abstract class SVDatabase : RoomDatabase() {
@@ -80,6 +86,7 @@ abstract class SVDatabase : RoomDatabase() {
                     Migration7To8,
                     Migration8To9,
                     Migration9To10,
+                    Migration10To11,
                 )
                 .build()
 
@@ -272,6 +279,104 @@ abstract class SVDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_recording_jobs_status ON recording_jobs(status)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_recording_jobs_mediaFileId ON recording_jobs(mediaFileId)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_recording_jobs_updatedAt ON recording_jobs(updatedAt)")
+            }
+        }
+
+        private val Migration10To11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS tmdb_content_mapping (" +
+                        "contentType TEXT NOT NULL, " +
+                        "contentId INTEGER NOT NULL, " +
+                        "tmdbId INTEGER, " +
+                        "mediaType TEXT NOT NULL, " +
+                        "matchedTitle TEXT, " +
+                        "originalTitle TEXT, " +
+                        "matchedYear TEXT, " +
+                        "confidence INTEGER NOT NULL, " +
+                        "matchSource TEXT NOT NULL, " +
+                        "language TEXT NOT NULL, " +
+                        "adult INTEGER NOT NULL, " +
+                        "lastError TEXT, " +
+                        "createdAt INTEGER NOT NULL, " +
+                        "updatedAt INTEGER NOT NULL, " +
+                        "PRIMARY KEY(contentType, contentId)" +
+                        ")",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_tmdb_content_mapping_tmdbId ON tmdb_content_mapping(tmdbId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_tmdb_content_mapping_contentType_confidence ON tmdb_content_mapping(contentType, confidence)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_tmdb_content_mapping_updatedAt ON tmdb_content_mapping(updatedAt)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS tmdb_movie_metadata (" +
+                        "tmdbId INTEGER NOT NULL, " +
+                        "language TEXT NOT NULL, " +
+                        "title TEXT NOT NULL, " +
+                        "originalTitle TEXT, " +
+                        "overview TEXT, " +
+                        "posterPath TEXT, " +
+                        "posterUrl TEXT, " +
+                        "backdropPath TEXT, " +
+                        "backdropUrl TEXT, " +
+                        "logoPath TEXT, " +
+                        "logoUrl TEXT, " +
+                        "releaseDate TEXT, " +
+                        "runtimeMinutes INTEGER, " +
+                        "genres TEXT, " +
+                        "voteAverage REAL, " +
+                        "voteCount INTEGER, " +
+                        "popularity REAL, " +
+                        "cast TEXT, " +
+                        "director TEXT, " +
+                        "trailerKey TEXT, " +
+                        "collectionName TEXT, " +
+                        "certification TEXT, " +
+                        "providersSummary TEXT, " +
+                        "homepage TEXT, " +
+                        "status TEXT, " +
+                        "adult INTEGER NOT NULL, " +
+                        "originCountry TEXT, " +
+                        "originalLanguage TEXT, " +
+                        "updatedAt INTEGER NOT NULL, " +
+                        "PRIMARY KEY(tmdbId, language)" +
+                        ")",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_tmdb_movie_metadata_updatedAt ON tmdb_movie_metadata(updatedAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_tmdb_movie_metadata_releaseDate ON tmdb_movie_metadata(releaseDate)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS tmdb_series_metadata (" +
+                        "tmdbId INTEGER NOT NULL, " +
+                        "language TEXT NOT NULL, " +
+                        "name TEXT NOT NULL, " +
+                        "originalName TEXT, " +
+                        "overview TEXT, " +
+                        "posterPath TEXT, " +
+                        "posterUrl TEXT, " +
+                        "backdropPath TEXT, " +
+                        "backdropUrl TEXT, " +
+                        "logoPath TEXT, " +
+                        "logoUrl TEXT, " +
+                        "firstAirDate TEXT, " +
+                        "episodeRunTimeMinutes INTEGER, " +
+                        "genres TEXT, " +
+                        "voteAverage REAL, " +
+                        "voteCount INTEGER, " +
+                        "popularity REAL, " +
+                        "cast TEXT, " +
+                        "createdBy TEXT, " +
+                        "trailerKey TEXT, " +
+                        "certification TEXT, " +
+                        "providersSummary TEXT, " +
+                        "homepage TEXT, " +
+                        "status TEXT, " +
+                        "adult INTEGER NOT NULL, " +
+                        "originCountry TEXT, " +
+                        "originalLanguage TEXT, " +
+                        "updatedAt INTEGER NOT NULL, " +
+                        "PRIMARY KEY(tmdbId, language)" +
+                        ")",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_tmdb_series_metadata_updatedAt ON tmdb_series_metadata(updatedAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_tmdb_series_metadata_firstAirDate ON tmdb_series_metadata(firstAirDate)")
             }
         }
     }
