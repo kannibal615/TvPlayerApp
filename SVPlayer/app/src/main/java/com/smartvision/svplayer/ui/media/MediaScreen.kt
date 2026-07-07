@@ -509,6 +509,35 @@ private fun MediaLibraryPanel(
                         selected = state.selectedSource == MediaSource.Local && state.selectedArea == area,
                         focusRequester = null,
                         indent = 16.dp,
+                        height = 34.dp,
+                    )
+                }
+                if (transferAccess.showDisabledControl) {
+                    MediaAreaButton(
+                        label = strings.mediaImportPhone,
+                        count = 0,
+                        countText = "QR",
+                        icon = Icons.Default.QrCode2,
+                        onClick = onImportPhone,
+                        selected = false,
+                        focusRequester = null,
+                        indent = 16.dp,
+                        height = 34.dp,
+                        enabled = !state.transferInProgress,
+                        locked = transferAccess.locked,
+                    )
+                    MediaAreaButton(
+                        label = strings.mediaExportPhone,
+                        count = 0,
+                        countText = "QR",
+                        icon = Icons.Default.QrCode2,
+                        onClick = onExportPhone,
+                        selected = false,
+                        focusRequester = null,
+                        indent = 16.dp,
+                        height = 34.dp,
+                        enabled = !state.transferInProgress,
+                        locked = transferAccess.locked,
                     )
                 }
             }
@@ -532,29 +561,11 @@ private fun MediaLibraryPanel(
                         selected = state.selectedSource == MediaSource.Private && state.selectedPrivateCategoryId == category.id,
                         focusRequester = null,
                         indent = 16.dp,
+                        height = 34.dp,
                     )
                 }
             }
         }
-
-        if (transferAccess.showDisabledControl) {
-            Spacer(Modifier.height(8.dp))
-            PhoneImportPanel(
-                strings = strings,
-                state = state,
-                transferAccess = transferAccess,
-                onImportPhone = onImportPhone,
-            )
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        PhoneExportPanel(
-            strings = strings,
-            state = state,
-            transferAccess = transferAccess,
-            onExportPhone = onExportPhone,
-        )
     }
 }
 
@@ -632,11 +643,13 @@ private fun MediaLibraryHero(
 private fun MediaAreaButton(
     label: String,
     count: Int,
+    countText: String? = null,
     icon: ImageVector,
     selected: Boolean,
     onClick: () -> Unit,
     focusRequester: FocusRequester?,
     indent: androidx.compose.ui.unit.Dp = 0.dp,
+    height: androidx.compose.ui.unit.Dp = 40.dp,
     enabled: Boolean = true,
     locked: Boolean = false,
 ) {
@@ -649,7 +662,7 @@ private fun MediaAreaButton(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(40.dp)
+            .height(height)
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -683,7 +696,12 @@ private fun MediaAreaButton(
                 ),
                 shape,
             )
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick,
+            )
             .focusable(enabled = enabled, interactionSource = interactionSource)
             .padding(start = 9.dp + indent, end = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -705,7 +723,7 @@ private fun MediaAreaButton(
             modifier = Modifier.weight(1f),
         )
         MediaCountPill(
-            text = if (locked) "LOCK" else count.toString(),
+            text = if (locked) "LOCK" else countText ?: count.toString(),
             active = active,
         )
     }

@@ -619,9 +619,11 @@ Prochaine etape recommandee:
 
 Termine:
 - `Media prives` devient un dossier expandable avec sous-dossiers/categories issus du backend SmartVision.
+- Les premiers sous-dossiers prives par defaut sont `Nouveautes`, `Populaires`, `Top semaine`, `Mieux notees`, `Long format`, `Amateur`, `Couples`, `POV`; ils sont gerables dans Admin > Bibliotheque privee et leur nom/query servent aux recherches backend.
+- `Importer tel.` et `Exporter tel.` sont deplaces sous le dossier expandable `Media local`, sous forme de lignes compactes avec icone QR, pour ne plus polluer les categories principales.
 - Le bouton refresh de la liste Media est remplace par un champ de recherche focusable TV; en prive, la recherche repart via `/api/media/private/items.php?query=...`.
 - Premier OK sur une video privee charge la preview et lance le mini-player; second OK sur le meme item ouvre `private_media_player/{id}`.
-- Lecture privee: ExoPlayer uniquement pour flux HLS/MP4 fournis par SmartVision; sinon WebView embed officiel. Aucun endpoint provider n'est construit dans l'APK.
+- Lecture privee: ExoPlayer uniquement pour flux directs HLS/MP4 fournis par SmartVision/provider et valides par le backend; sinon WebView embed officiel. Aucun endpoint provider n'est construit dans l'APK et aucune extraction HTML n'est faite.
 - `Synchroniser removed` cote admin est borne par lot et transactionnel pour eviter les HTTP 500.
 
 Validation:

@@ -1975,17 +1975,37 @@ function admin_save_private_media_config(PDO $pdo): void
     $sectionTitles = $_POST['private_media']['section_title'] ?? [];
     $sectionQueries = $_POST['private_media']['section_query'] ?? [];
     $sectionOrders = $_POST['private_media']['section_order'] ?? [];
+    $sectionIds = $_POST['private_media']['section_id'] ?? [];
     $sectionEnabled = $_POST['private_media']['section_enabled'] ?? [];
+    $sectionDelete = $_POST['private_media']['section_delete'] ?? [];
     $sections = [];
+    $usedIds = [];
     if (is_array($sectionTitles) && is_array($sectionQueries) && is_array($sectionOrders)) {
         foreach ($sectionTitles as $index => $title) {
+            if (isset($sectionDelete[$index])) {
+                continue;
+            }
             $title = smartvision_text_substr(trim((string) $title), 0, 80);
             $query = smartvision_text_substr(trim((string) ($sectionQueries[$index] ?? '')), 0, 120);
             if ($title === '' || $query === '') {
                 continue;
             }
+            $id = is_array($sectionIds) ? private_media_slug((string) ($sectionIds[$index] ?? '')) : '';
+            if ($id === '') {
+                $id = private_media_slug($title);
+            }
+            if ($id === '') {
+                $id = 'section';
+            }
+            $baseId = $id;
+            $suffix = 2;
+            while (isset($usedIds[$id])) {
+                $id = $baseId . '-' . $suffix;
+                $suffix++;
+            }
+            $usedIds[$id] = true;
             $sections[] = [
-                'id' => private_media_slug($title . '-' . $index),
+                'id' => $id,
                 'title' => $title,
                 'query' => $query,
                 'order' => (string) ($sectionOrders[$index] ?? 'latest'),
@@ -3327,22 +3347,24 @@ function admin_render_private_media_page(array $privateMediaAdmin): void
             </section>
 
             <section class="admin-panel">
-                <div class="admin-panel-heading"><div><h2>Sections</h2><p>Requetes officielles envoyees au provider par le backend uniquement.</p></div></div>
-                <div class="admin-table-wrap"><table><thead><tr><th>Active</th><th>Titre</th><th>Query</th><th>Ordre</th></tr></thead><tbody>
+                <div class="admin-panel-heading"><div><h2>Sous-dossiers TV</h2><p>Chaque ligne cree un sous-dossier expandable sous Media prives. Le nom est affiche sur TV; la query/theme alimente la recherche backend.</p></div></div>
+                <div class="admin-table-wrap"><table><thead><tr><th>Active</th><th>Nom sous-dossier</th><th>Recherche / theme</th><th>Ordre</th><th>Supprimer</th></tr></thead><tbody>
                     <?php foreach ($sections as $index => $section): ?><tr>
-                        <td><input type="checkbox" name="private_media[section_enabled][<?= (int) $index ?>]" value="1"<?= !empty($section['enabled']) ? ' checked' : '' ?>></td>
+                        <td><input type="hidden" name="private_media[section_id][<?= (int) $index ?>]" value="<?= admin_escape((string) ($section['id'] ?? '')) ?>"><input type="checkbox" name="private_media[section_enabled][<?= (int) $index ?>]" value="1"<?= !empty($section['enabled']) ? ' checked' : '' ?>></td>
                         <td><input name="private_media[section_title][<?= (int) $index ?>]" maxlength="80" value="<?= admin_escape((string) ($section['title'] ?? '')) ?>"></td>
                         <td><input name="private_media[section_query][<?= (int) $index ?>]" maxlength="120" value="<?= admin_escape((string) ($section['query'] ?? '')) ?>"></td>
                         <td><select name="private_media[section_order][<?= (int) $index ?>]"><?php foreach ($orders as $order): ?><option value="<?= admin_escape($order) ?>"<?= ($section['order'] ?? 'latest') === $order ? ' selected' : '' ?>><?= admin_escape($order) ?></option><?php endforeach; ?></select></td>
+                        <td><label class="inline-check"><input type="checkbox" name="private_media[section_delete][<?= (int) $index ?>]" value="1"> Supprimer</label></td>
                     </tr><?php endforeach; ?>
                     <?php $newIndex = count($sections); ?><tr>
-                        <td><input type="checkbox" name="private_media[section_enabled][<?= (int) $newIndex ?>]" value="1"></td>
-                        <td><input name="private_media[section_title][<?= (int) $newIndex ?>]" maxlength="80" placeholder="Nouvelle section"></td>
-                        <td><input name="private_media[section_query][<?= (int) $newIndex ?>]" maxlength="120" placeholder="query"></td>
+                        <td><input type="hidden" name="private_media[section_id][<?= (int) $newIndex ?>]" value=""><input type="checkbox" name="private_media[section_enabled][<?= (int) $newIndex ?>]" value="1"></td>
+                        <td><input name="private_media[section_title][<?= (int) $newIndex ?>]" maxlength="80" placeholder="Nouveau sous-dossier"></td>
+                        <td><input name="private_media[section_query][<?= (int) $newIndex ?>]" maxlength="120" placeholder="theme ou recherche"></td>
                         <td><select name="private_media[section_order][<?= (int) $newIndex ?>]"><?php foreach ($orders as $order): ?><option value="<?= admin_escape($order) ?>"><?= admin_escape($order) ?></option><?php endforeach; ?></select></td>
+                        <td><span class="muted">Nouvelle ligne</span></td>
                     </tr>
                 </tbody></table></div>
-                <p class="muted">Aucun scraping: search/id/removed officiels uniquement. Lecture native HLS/MP4 si SmartVision fournit un flux; sinon l'app TV utilise le player embed officiel.</p>
+                <p class="muted">Premiers sous-dossiers fournis par defaut: Nouveautes, Populaires, Top semaine, Mieux notees, Long format, Amateur, Couples, POV. Aucun scraping: search/id/removed officiels uniquement. Lecture native HLS/MP4 seulement si SmartVision recoit un flux direct compatible; sinon l'app TV utilise le player embed officiel.</p>
                 <button class="admin-button primary" type="submit">Enregistrer la bibliotheque privee</button>
             </section>
         </form>

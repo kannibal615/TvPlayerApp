@@ -1,5 +1,31 @@
 # AI Changelog
 
+## 2026-07-07 - Sous-dossiers prives admin et boutons QR Media local
+
+Type:
+- Android TV
+- backend PHP
+- admin
+- documentation
+
+Resume:
+- `Media local` contient maintenant les actions `Importer tel.` et `Exporter tel.` sous forme de lignes compactes avec icone QR, au meme niveau visuel que les autres sous-elements.
+- `Media prives` conserve ses sous-dossiers compactes; les premiers themes par defaut sont crees cote backend et l'ancien dossier unique est migre automatiquement.
+- Admin > `Bibliotheque privee` gere les sous-dossiers TV avec nom, recherche/theme, ordre, activation et suppression explicite, tout en conservant les IDs existants.
+- Playback prive detecte et renvoie des streams directs HLS/MP4 quand ils existent dans la reponse backend/provider; sinon l'app reste sur embed/page sans scraping HTML.
+
+Validation:
+- `php -l server/public_html/api/media/private/private_media_service.php`: OK.
+- `php -l server/public_html/admin/index.php`: OK.
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK.
+- Release `0.1.114` / `118`: `.\scripts\guard_release_version.ps1`, `.\gradlew.bat :app:assembleRelease --no-daemon --max-workers=1 --console=plain`, puis `.\scripts\deploy_activation_phase1.ps1 -SkipInstall`: OK.
+- Production verifiee: manifeste `smartvision-tv-v118-34935253.apk`, `api/app_update.php` en `0.1.114` / `118`, categories privees HTTP 200, `items.php` HTTP 200 avec items, `playback.php` HTTP 200 en fallback `EMBED`, POST admin `private_media_sync_removed` HTTP 200 sans HTTP 500.
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/ui/media/MediaScreen.kt`
+- `server/public_html/api/media/private/private_media_service.php`
+- `server/public_html/admin/index.php`
+
 ## 2026-07-07 - Media prives recherche, playback TV et sync removed
 
 Type:

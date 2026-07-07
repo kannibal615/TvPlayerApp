@@ -20,7 +20,7 @@ Le script de deploiement upload les fichiers explicitement. Tout nouveau fichier
 - Playlist: page publique `/playlist/` pour envoyer par code TV des identifiants Xtream, un lien M3U ou une URL EPG vers la TV, sans passage obligatoire par le panel admin. Chaque envoi cree une notification d'information ciblee sur l'appareil, sans contenu sensible.
 - Admin: gestion fonctionnalites, consentement, pubs, codes, notifications, diagnostics.
 - Admin Diagnostics centralise maintenant Synthese, AutoSync, Anomalies App, Info Serveur et Journal dans `server/public_html/admin/index.php`.
-- Admin ajoute `Bibliotheque privee` pour activer/desactiver le proxy provider, gerer les sections, vider le cache, lancer la sync `removed` et consulter le monitoring provider.
+- Admin ajoute `Bibliotheque privee` pour activer/desactiver le proxy provider, gerer les sous-dossiers TV prives (nom, recherche/theme, ordre, actif, suppression), vider le cache, lancer la sync `removed` et consulter le monitoring provider.
 - App: consomme les endpoints activation, config, update, ads, tracking.
 
 ## 4. Workflow technique
@@ -147,6 +147,7 @@ Tables/settings a surveiller:
 
 - Admin HTTP 500 possible si service PHP requis non uploade.
 - `Bibliotheque privee > Synchroniser removed` doit rester borne et transactionnel: le provider peut renvoyer un fichier volumineux, donc ne pas reinserer tous les ids en une seule requete admin non bornee.
+- `Bibliotheque privee > Sous-dossiers TV` conserve les IDs des sections existantes; ne pas regenerer les IDs a chaque renommage, sinon Android perd la selection/categorie.
 - Le test admin du deploy doit suivre la navigation courante: apres la centralisation de Journal dans Diagnostics, le marqueur attendu au login est `Diagnostics`, pas un menu `Journal` separe.
 - Feature flags stockes en prod peuvent rester anciens.
 - cPanel peut ne pas offrir `Fileman/delete_files`; preferer self-delete.
@@ -179,6 +180,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 - 2026-07-07: ajout des endpoints `api/media/private/*`, du menu admin `Bibliotheque privee`, des flags `private_media*`, et correction du deploy pour creer explicitement `api/media/private/providers` avant upload.
 - 2026-07-07: `items.php` accepte `query` pour la recherche privee; `Synchroniser removed` est limite par lot et rollback en erreur pour eviter un HTTP 500 admin; playback prive renvoie aussi `embedUrl/pageUrl` pour le fallback TV.
+- 2026-07-07: `Bibliotheque privee` gere les sous-dossiers TV prives avec suppression explicite et migration de l'ancien dossier unique vers les premiers themes par defaut; le backend ne renvoie des streams natifs que pour URLs directes HLS/MP4.
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-07-02: `Admin > Fonctionnalites` ajoute le bloc Tendances Home et `api/app_config.php` renvoie le bloc `trending` consomme par Android.
 - 2026-06-29: ajout de la regle "nouveau PHP = ajout deploy script".

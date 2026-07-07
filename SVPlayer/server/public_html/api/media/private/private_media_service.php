@@ -87,8 +87,13 @@ function private_media_normalize_config(array $config): array
     $thumbsize = (string) ($config['thumbsize'] ?? $defaults['thumbsize']);
     $order = (string) ($config['order'] ?? $defaults['order']);
     $sections = [];
+    $rawSections = $config['sections'] ?? $defaults['sections'];
+    if (private_media_is_legacy_single_section($rawSections)) {
+        $rawSections = $defaults['sections'];
+    }
+    $usedIds = [];
 
-    foreach (($config['sections'] ?? $defaults['sections']) as $section) {
+    foreach ($rawSections as $section) {
         if (!is_array($section)) {
             continue;
         }
@@ -98,6 +103,13 @@ function private_media_normalize_config(array $config): array
         if ($id === '' || $title === '' || $query === '') {
             continue;
         }
+        $baseId = $id;
+        $suffix = 2;
+        while (isset($usedIds[$id])) {
+            $id = $baseId . '-' . $suffix;
+            $suffix++;
+        }
+        $usedIds[$id] = true;
         $sections[] = [
             'id' => $id,
             'title' => $title,
@@ -121,6 +133,20 @@ function private_media_normalize_config(array $config): array
         'order' => private_media_allowed_order($order),
         'sections' => $sections,
     ];
+}
+
+function private_media_is_legacy_single_section(mixed $sections): bool
+{
+    if (!is_array($sections) || count($sections) !== 1) {
+        return false;
+    }
+    $section = reset($sections);
+    if (!is_array($section)) {
+        return false;
+    }
+    $title = strtolower(trim((string) ($section['title'] ?? '')));
+    $query = strtolower(trim((string) ($section['query'] ?? '')));
+    return $query === 'all' && str_contains($title, 'tous les medias');
 }
 
 function private_media_config(PDO $pdo): array
@@ -296,16 +322,18 @@ function private_media_playback(PDO $pdo, string $id): array
     $playbackType = (string) ($item['playbackType'] ?? 'UNAVAILABLE');
     $embedUrl = (string) ($item['embedUrl'] ?? '');
     $pageUrl = (string) ($item['sourceUrl'] ?? '');
+    $streams = is_array($item['streams'] ?? null) ? $item['streams'] : [];
+    $hasNativeStream = $streams !== [] && in_array($playbackType, ['HLS', 'MP4'], true);
     return [
-        'success' => $playbackType === 'EMBED' || $playbackType === 'PAGE_ONLY',
-        'error' => $playbackType === 'EMBED' ? null : 'native_stream_unavailable',
+        'success' => $hasNativeStream || $playbackType === 'EMBED' || $playbackType === 'PAGE_ONLY',
+        'error' => $hasNativeStream || $playbackType === 'EMBED' ? null : 'native_stream_unavailable',
         'id' => (string) ($item['id'] ?? $id),
         'title' => (string) ($item['title'] ?? ''),
         'thumbnailUrl' => $item['thumbnailUrl'] ?? null,
         'playbackType' => $playbackType,
         'embedUrl' => $embedUrl !== '' ? $embedUrl : null,
         'pageUrl' => $pageUrl !== '' ? $pageUrl : null,
-        'streams' => [],
+        'streams' => $streams,
     ];
 }
 
@@ -532,14 +560,90 @@ function eporner_normalize_item(array $video, bool $details): array
     ];
 }
 
+function private_media_extract_native_streams(array $video): array
+{
+    $streams = [];
+    $candidateKeys = ['hls', 'hls_url', 'mp4', 'mp4_url', 'stream', 'stream_url', 'video_url', 'download_url'];
+    foreach ($candidateKeys as $key) {
+        if (isset($video[$key])) {
+            private_media_collect_native_stream($streams, $video[$key], $key);
+        }
+    }
+    foreach (['streams', 'sources', 'videos', 'files'] as $key) {
+        if (isset($video[$key]) && is_array($video[$key])) {
+            private_media_collect_native_stream($streams, $video[$key], $key);
+        }
+    }
+    return array_values($streams);
+}
+
+function private_media_collect_native_stream(array &$streams, mixed $candidate, string $label = 'auto'): void
+{
+    if (is_string($candidate)) {
+        $stream = private_media_native_stream_from_url($candidate, $label);
+        if ($stream !== null) {
+            $streams[$stream['url']] = $stream;
+        }
+        return;
+    }
+    if (!is_array($candidate)) {
+        return;
+    }
+    $url = null;
+    foreach (['url', 'src', 'file', 'link'] as $urlKey) {
+        if (isset($candidate[$urlKey]) && is_string($candidate[$urlKey])) {
+            $url = $candidate[$urlKey];
+            break;
+        }
+    }
+    if ($url !== null) {
+        $quality = (string) ($candidate['quality'] ?? $candidate['label'] ?? $candidate['name'] ?? $label);
+        $stream = private_media_native_stream_from_url($url, $quality);
+        if ($stream !== null) {
+            $streams[$stream['url']] = $stream;
+        }
+    }
+    foreach ($candidate as $key => $value) {
+        if (is_array($value)) {
+            private_media_collect_native_stream($streams, $value, is_string($key) ? $key : $label);
+        }
+    }
+}
+
+function private_media_native_stream_from_url(string $url, string $quality): ?array
+{
+    $url = trim($url);
+    if (!preg_match('#^https?://#i', $url)) {
+        return null;
+    }
+    $path = strtolower((string) (parse_url($url, PHP_URL_PATH) ?? ''));
+    $type = '';
+    if (str_ends_with($path, '.m3u8')) {
+        $type = 'HLS';
+    } elseif (str_ends_with($path, '.mp4')) {
+        $type = 'MP4';
+    }
+    if ($type === '') {
+        return null;
+    }
+    return [
+        'type' => $type,
+        'url' => $url,
+        'quality' => smartvision_text_substr(trim($quality) !== '' ? trim($quality) : 'auto', 0, 40),
+    ];
+}
+
 function eporner_normalize_details(array $video, array $config): array
 {
     $item = eporner_normalize_item($video, true);
-    $item['streams'] = [];
-    $item['isPlayable'] = false;
-    $item['playbackType'] = !empty($item['embedUrl']) ? 'EMBED' : 'PAGE_ONLY';
-    if (empty($config['native_playback_enabled'])) {
-        $item['isPlayable'] = false;
+    $streams = !empty($config['native_playback_enabled']) ? private_media_extract_native_streams($video) : [];
+    $item['streams'] = $streams;
+    if ($streams !== []) {
+        $item['isPlayable'] = true;
+        $item['playbackType'] = $streams[0]['type'];
+    } else {
+        $item['isPlayable'] = !empty($item['embedUrl']);
+        $item['playbackType'] = !empty($item['embedUrl']) ? 'EMBED' : 'PAGE_ONLY';
     }
     return $item;
 }
