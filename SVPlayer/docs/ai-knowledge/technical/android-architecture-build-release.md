@@ -18,8 +18,8 @@ Observabilite reseau:
 - Ne jamais exposer les query params, tokens, identifiants Xtream, mots de passe ou URLs de lecture dans ce tracker.
 
 Gradle local constate le 2026-07-07:
-- `versionCode = 116`
-- `versionName = "0.1.112"`
+- `versionCode = 119`
+- `versionName = "0.1.115"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
