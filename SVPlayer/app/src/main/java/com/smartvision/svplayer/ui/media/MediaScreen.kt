@@ -72,6 +72,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -397,6 +398,7 @@ private fun MediaWorkspace(
 ) {
     val firstContentFocusRequester = remember { FocusRequester() }
     val previewActionFocusRequester = remember { FocusRequester() }
+    val previewPlayerFocusRequester = remember { FocusRequester() }
     var contentFocusSignal by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(contentFocusSignal, state.selectedSource, state.selectedArea, state.visibleFiles.size, state.folders.size, state.privateItems.size) {
@@ -409,7 +411,11 @@ private fun MediaWorkspace(
     fun focusPreviewAction(): Boolean {
         if (state.selectedSource == MediaSource.Local && state.selectedFile == null) return false
         if (state.selectedSource == MediaSource.Private && state.selectedPrivateItem == null) return false
-        runCatching { previewActionFocusRequester.requestFocus() }
+        if (state.selectedSource == MediaSource.Private && !state.privatePreviewPlayback?.embedUrl.isNullOrBlank()) {
+            runCatching { previewPlayerFocusRequester.requestFocus() }
+        } else {
+            runCatching { previewActionFocusRequester.requestFocus() }
+        }
         return true
     }
 
@@ -417,6 +423,7 @@ private fun MediaWorkspace(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(MediaCatalogDimens.PanelGap),
     ) {
+        val privateMode = state.selectedSource == MediaSource.Private
         MediaLibraryPanel(
             strings = strings,
             state = state,
@@ -443,7 +450,7 @@ private fun MediaWorkspace(
             onExportPhone = onExportPhone,
             firstFocusRequester = firstFocusRequester,
             modifier = Modifier
-                .weight(0.24f)
+                .weight(if (privateMode) 0.20f else 0.24f)
                 .fillMaxHeight(),
         )
 
@@ -458,7 +465,7 @@ private fun MediaWorkspace(
             firstContentFocusRequester = firstContentFocusRequester,
             onMoveRightToPreview = { focusPreviewAction() },
             modifier = Modifier
-                .weight(0.42f)
+                .weight(if (privateMode) 0.30f else 0.42f)
                 .fillMaxHeight(),
         )
 
@@ -474,8 +481,9 @@ private fun MediaWorkspace(
             transferAccess = transferAccess,
             onExportPhone = onExportPhone,
             previewActionFocusRequester = previewActionFocusRequester,
+            previewPlayerFocusRequester = previewPlayerFocusRequester,
             modifier = Modifier
-                .weight(0.34f)
+                .weight(if (privateMode) 0.50f else 0.34f)
                 .fillMaxHeight(),
         )
     }
@@ -1224,21 +1232,29 @@ private fun MediaSearchField(
     val interactionSource = remember { MutableInteractionSource() }
     val keyboardController = LocalSoftwareKeyboardController.current
     val currentView = LocalView.current
+    var editing by remember { mutableStateOf(false) }
     val active = focusState.isFocused || value.isNotBlank()
     val shape = RoundedCornerShape(10.dp)
     fun focusAndShowKeyboard() {
+        editing = true
         runCatching { focusRequester.requestFocus() }
         keyboardController?.show()
         currentView.post {
             val inputMethodManager = currentView.context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-            inputMethodManager?.showSoftInput(currentView, InputMethodManager.SHOW_IMPLICIT)
+            inputMethodManager?.showSoftInput(currentView.findFocus() ?: currentView, InputMethodManager.SHOW_IMPLICIT)
         }
+        currentView.postDelayed({
+            keyboardController?.show()
+            val inputMethodManager = currentView.context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            inputMethodManager?.showSoftInput(currentView.findFocus() ?: currentView, InputMethodManager.SHOW_IMPLICIT)
+        }, 120L)
     }
 
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
+        readOnly = !editing,
         textStyle = SmartVisionType.Label.copy(color = SmartVisionColors.TextPrimary),
         cursorBrush = SolidColor(focusStyle.accent),
         modifier = modifier
@@ -1248,12 +1264,30 @@ private fun MediaSearchField(
                 focusedScale = 1.01f,
                 cornerRadius = 10.dp,
             )
+            .onFocusChanged {
+                focusState.isFocused = it.isFocused || it.hasFocus
+                if (!it.isFocused && !it.hasFocus) {
+                    editing = false
+                    keyboardController?.hide()
+                }
+            }
             .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown && (event.key == Key.Enter || event.key == Key.DirectionCenter)) {
-                    focusAndShowKeyboard()
-                    true
-                } else {
-                    false
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.Enter, Key.NumPadEnter, Key.DirectionCenter -> {
+                        focusAndShowKeyboard()
+                        true
+                    }
+                    Key.Back -> {
+                        if (editing) {
+                            editing = false
+                            keyboardController?.hide()
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    else -> false
                 }
             }
             .clip(shape)
@@ -2077,6 +2111,7 @@ private fun MediaPreviewPanel(
     transferAccess: PremiumFeatureGateResult,
     onExportPhone: () -> Unit,
     previewActionFocusRequester: FocusRequester,
+    previewPlayerFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     if (state.selectedSource == MediaSource.Private) {
@@ -2089,6 +2124,7 @@ private fun MediaPreviewPanel(
             onOpenDetails = onOpenPrivateMediaDetails,
             onOpenPlayer = onOpenPrivateMediaPlayer,
             previewActionFocusRequester = previewActionFocusRequester,
+            previewPlayerFocusRequester = previewPlayerFocusRequester,
             modifier = modifier,
         )
         return
@@ -2237,20 +2273,31 @@ private fun PrivateMediaPreviewPanel(
     onOpenDetails: () -> Unit,
     onOpenPlayer: () -> Unit,
     previewActionFocusRequester: FocusRequester,
+    previewPlayerFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     MediaCatalogPanel(
-        title = strings.mediaPreview,
+        title = "",
         modifier = modifier,
+        titleContent = {
+            Text(
+                text = item?.title ?: strings.mediaPrivate,
+                color = SmartVisionColors.TextPrimary,
+                style = CatalogPanelTitleStyle,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
         ) {
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .fillMaxWidth(0.82f)
+                    .fillMaxWidth(0.95f)
                     .aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color.Black.copy(alpha = 0.45f))
@@ -2258,7 +2305,11 @@ private fun PrivateMediaPreviewPanel(
                 contentAlignment = Alignment.Center,
             ) {
                 if (playback?.canPlay == true) {
-                    PrivateMediaMiniPlayer(playback = playback, modifier = Modifier.fillMaxSize())
+                    PrivateMediaMiniPlayer(
+                        playback = playback,
+                        embedFocusRequester = previewPlayerFocusRequester,
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 } else if (!item?.thumbnailUrl.isNullOrBlank()) {
                     AsyncImage(
                         model = item?.thumbnailUrl,
@@ -2297,13 +2348,12 @@ private fun PrivateMediaPreviewPanel(
                 color = SmartVisionColors.TextPrimary,
                 style = SmartVisionType.Label,
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             MediaInfoRow(strings.mediaDuration, item.durationLabel.ifBlank { "-" })
             MediaInfoRow(strings.mediaPrivateViews, item.viewsLabel.ifBlank { "-" })
             MediaInfoRow(strings.mediaPrivateRating, item.ratingLabel.ifBlank { "-" })
-            MediaInfoRow(strings.mediaPlaybackType, playback?.playbackType ?: item.playbackType)
             if (item.tags.isNotEmpty()) {
                 Text(
                     text = item.tags.joinToString("  "),
@@ -2337,20 +2387,21 @@ private fun PrivateMediaPreviewPanel(
                     contentPadding = PaddingValues(horizontal = 6.dp),
                 )
             }
-            Text(
-                text = when {
-                    loadingPlayback -> strings.mediaPrivatePreviewStarting
-                    playback?.streamUrl != null -> strings.mediaPrivateNativePlayback
-                    playback?.embedUrl != null -> strings.mediaPrivateEmbedPlayback
-                    playbackError != null -> playbackError
-                    item.isPlayable -> strings.mediaPrivatePlayable
-                    else -> strings.mediaPlaybackUnavailable
-                },
-                color = if (playback?.canPlay == true || item.isPlayable) SmartVisionColors.Success else SmartVisionColors.TextSecondary,
-                style = SmartVisionType.Caption,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            val playbackStatus = when {
+                loadingPlayback -> strings.mediaPrivatePreviewStarting
+                playbackError != null -> playbackError
+                playback?.canPlay != true && !item.isPlayable -> strings.mediaPlaybackUnavailable
+                else -> null
+            }
+            playbackStatus?.let { status ->
+                Text(
+                    text = status,
+                    color = if (playback?.canPlay == true || item.isPlayable) SmartVisionColors.Success else SmartVisionColors.TextSecondary,
+                    style = SmartVisionType.Caption,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -2358,11 +2409,16 @@ private fun PrivateMediaPreviewPanel(
 @Composable
 private fun PrivateMediaMiniPlayer(
     playback: PrivateMediaPlaybackUi,
+    embedFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     when {
         !playback.streamUrl.isNullOrBlank() -> PrivateMediaExoPreview(playback.streamUrl, modifier)
-        !playback.embedUrl.isNullOrBlank() -> PrivateMediaWebPreview(playback.embedUrl, modifier)
+        !playback.embedUrl.isNullOrBlank() -> PrivateMediaWebPreview(
+            embedUrl = playback.embedUrl,
+            focusRequester = embedFocusRequester,
+            modifier = modifier,
+        )
         else -> Box(modifier = modifier, contentAlignment = Alignment.Center) {
             Text(
                 text = playback.error ?: "",
@@ -2422,14 +2478,22 @@ private fun PrivateMediaExoPreview(
         AndroidView(
             factory = {
                 PlayerView(it).apply {
-                    useController = false
+                    isFocusable = true
+                    isFocusableInTouchMode = true
+                    useController = true
+                    setControllerShowTimeoutMs(0)
+                    setControllerHideOnTouch(false)
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                     setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
                     layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                     this.player = player
+                    showController()
                 }
             },
-            update = { it.player = player },
+            update = {
+                it.player = player
+                it.showController()
+            },
             modifier = Modifier.matchParentSize(),
         )
         if (buffering) {
@@ -2444,23 +2508,65 @@ private fun PrivateMediaExoPreview(
 @Composable
 private fun PrivateMediaWebPreview(
     embedUrl: String,
+    focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
-    AndroidView(
-        modifier = modifier.background(Color.Black),
-        factory = { context ->
-            WebView(context).apply {
-                configurePrivateMediaWebView(focusable = false)
-                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                loadUrl(embedUrl)
+    val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
+    var webViewRef by remember(embedUrl) { mutableStateOf<WebView?>(null) }
+
+    fun activateEmbed() {
+        webViewRef?.let { webView ->
+            webView.requestFocus()
+            webView.requestFocusFromTouch()
+            webView.performClick()
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                focusedScale = 1.01f,
+                cornerRadius = 12.dp,
+            )
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && (event.key == Key.Enter || event.key == Key.NumPadEnter || event.key == Key.DirectionCenter)) {
+                    activateEmbed()
+                    true
+                } else {
+                    false
+                }
             }
-        },
-        update = { webView ->
-            if (webView.url != embedUrl) {
-                webView.loadUrl(embedUrl)
-            }
-        },
-    )
+            .focusable()
+            .background(Color.Black)
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) focusStyle.borderWidth else 1.dp,
+                    if (focusState.isFocused) focusStyle.accent else Color.Transparent,
+                ),
+                RoundedCornerShape(12.dp),
+            ),
+    ) {
+        AndroidView(
+            modifier = Modifier.matchParentSize(),
+            factory = { context ->
+                WebView(context).apply {
+                    webViewRef = this
+                    configurePrivateMediaWebView(focusable = true)
+                    layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                    loadUrl(embedUrl)
+                }
+            },
+            update = { webView ->
+                webViewRef = webView
+                if (webView.url != embedUrl) {
+                    webView.loadUrl(embedUrl)
+                }
+            },
+        )
+    }
 }
 
 @SuppressLint("SetJavaScriptEnabled")

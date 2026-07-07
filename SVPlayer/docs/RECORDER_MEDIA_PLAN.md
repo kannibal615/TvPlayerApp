@@ -2,7 +2,7 @@
 
 Derniere mise a jour: 2026-07-07.
 
-Statut: Lot 17 - Media Center garde l'agencement Live TV en 3 colonnes `0.24 / 0.42 / 0.34`, mais la colonne gauche devient hierarchique: parent expandable `Media local` avec `All files`, `Recordings`, `Imports`, `Transfers`, puis categorie principale `Media prives`. Les contenus prives passent uniquement par le backend/proxy SmartVision `api/media/private/*`; Android ne connait pas les endpoints Eporner, ne scrape rien et n'essaie pas de lecture native sans flux HLS/MP4 fourni par SmartVision.
+Statut: Lot 17 - Media Center garde l'agencement Live TV en 3 colonnes pour le local, mais la colonne gauche devient hierarchique: parent expandable `Media local` avec `All files`, `Recordings`, `Imports`, `Transfers`, puis categorie principale `Media prives`. En mode prive, l'ecran se rapproche de YouTube: categories a gauche, liste compacte au centre, player/miniature dans une section principale plus large a droite. Les contenus prives passent uniquement par le backend/proxy SmartVision `api/media/private/*`; Android ne connait pas les endpoints Eporner, ne scrape rien et n'essaie pas de lecture native sans flux HLS/MP4 fourni par SmartVision.
 
 ## 1. Objectif
 
@@ -622,10 +622,11 @@ Termine:
 - Les premiers sous-dossiers prives par defaut sont `Nouveautes`, `Populaires`, `Top semaine`, `Mieux notees`, `Long format`, `Amateur`, `Couples`, `POV`; ils sont gerables dans Admin > Bibliotheque privee et leur nom/query servent aux recherches backend.
 - `Importer tel.` et `Exporter tel.` sont deplaces sous le dossier expandable `Media local`, sous forme de lignes compactes avec icone QR, pour ne plus polluer les categories principales.
 - Le bouton refresh de la liste Media est remplace par un champ de recherche focusable TV; en prive, la recherche repart via `/api/media/private/items.php?query=...`.
-- Premier OK sur une video privee charge la preview et lance le mini-player; second OK sur le meme item ouvre `private_media_player/{id}`.
+- Premier OK sur une video privee charge la section principale et lance le player inline; second OK sur le meme item ouvre `private_media_player/{id}`.
 - Lecture privee: ExoPlayer uniquement pour flux directs HLS/MP4 fournis par SmartVision/provider et valides par le backend; sinon WebView embed officiel. Aucun endpoint provider n'est construit dans l'APK et aucune extraction HTML n'est faite.
 - Admin > Bibliotheque privee ajoute un mode de test `Forcer lecture native HLS/MP4` avec champ `Flux HLS/MP4 de test`: si un vrai `.m3u8` ou `.mp4` est fourni, le backend le renvoie en premier et Android lance ExoPlayer. Si aucun flux direct n'existe, le backend renvoie `UNAVAILABLE` au lieu de convertir artificiellement un embed.
 - Le fallback WebView prive utilise cookies tiers, DOM storage, user-agent navigateur et autoplay sans geste utilisateur pour mieux fonctionner sur Android TV/emulateur.
+- Le mode prive aligne son comportement sur YouTube: liste a gauche/centre, grande miniature/player a droite, player embed focusable au D-pad, controls Media3 visibles pour HLS/MP4 et overlay plein ecran bas pour retour/play/pause/-15s/+15s.
 - `Synchroniser removed` cote admin est borne par lot et transactionnel pour eviter les HTTP 500.
 
 Validation:

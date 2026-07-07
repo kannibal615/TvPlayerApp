@@ -16,6 +16,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,7 +26,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -40,8 +45,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,6 +71,8 @@ import com.smartvision.svplayer.data.private_media.PrivateMediaDetailsDto
 import com.smartvision.svplayer.data.private_media.PrivateMediaPlaybackResponse
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.focus.rememberTvFocusState
+import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -212,7 +226,7 @@ fun PrivateMediaPlayerRoute(
                 modifier = Modifier.align(Alignment.Center),
             )
             playback == null -> PrivateMediaPlayerMessage(error ?: strings.mediaPlaybackUnavailable)
-            else -> PrivateMediaPlayerSurface(playback = playback!!, strings = strings)
+            else -> PrivateMediaPlayerSurface(playback = playback!!, strings = strings, onBack = onBack)
         }
         TvButton(
             text = strings.back,
@@ -230,21 +244,29 @@ fun PrivateMediaPlayerRoute(
 private fun PrivateMediaPlayerSurface(
     playback: PrivateMediaPlaybackResponse,
     strings: SmartVisionStrings,
+    onBack: () -> Unit,
 ) {
     val stream = playback.streams.firstOrNull { stream ->
         stream.url.isNotBlank() && (stream.type.equals("HLS", ignoreCase = true) || stream.type.equals("MP4", ignoreCase = true))
     }
     when {
-        stream != null -> PrivateMediaFullscreenExo(stream.url)
-        !playback.embedUrl.isNullOrBlank() -> PrivateMediaFullscreenWeb(playback.embedUrl)
+        stream != null -> PrivateMediaFullscreenExo(stream.url, strings, onBack)
+        !playback.embedUrl.isNullOrBlank() -> PrivateMediaFullscreenWeb(playback.embedUrl, strings, onBack)
         else -> PrivateMediaPlayerMessage(playback.error ?: strings.mediaPlaybackUnavailable)
     }
 }
 
 @Composable
-private fun PrivateMediaFullscreenExo(streamUrl: String) {
+private fun PrivateMediaFullscreenExo(
+    streamUrl: String,
+    strings: SmartVisionStrings,
+    onBack: () -> Unit,
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var errorText by remember(streamUrl) { mutableStateOf<String?>(null) }
+    var isPlaying by remember(streamUrl) { mutableStateOf(false) }
+    val playerViewFocusRequester = remember { FocusRequester() }
+    var playerViewRef by remember(streamUrl) { mutableStateOf<PlayerView?>(null) }
     val player = remember(streamUrl) {
         ExoPlayer.Builder(context).build().apply {
             playWhenReady = true
@@ -257,10 +279,22 @@ private fun PrivateMediaFullscreenExo(streamUrl: String) {
         player.setMediaItem(MediaItem.fromUri(Uri.parse(streamUrl)))
         player.prepare()
         player.playWhenReady = true
+        playerViewRef?.showController()
+    }
+
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(220)
+        runCatching { playerViewFocusRequester.requestFocus() }
+        playerViewRef?.requestFocus()
+        playerViewRef?.showController()
     }
 
     DisposableEffect(player) {
         val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(isPlayingNow: Boolean) {
+                isPlaying = isPlayingNow
+            }
+
             override fun onPlayerError(error: PlaybackException) {
                 errorText = error.message ?: "Playback unavailable"
             }
@@ -276,33 +310,171 @@ private fun PrivateMediaFullscreenExo(streamUrl: String) {
         AndroidView(
             factory = {
                 PlayerView(it).apply {
+                    isFocusable = true
+                    isFocusableInTouchMode = true
                     useController = true
+                    setControllerShowTimeoutMs(0)
+                    setControllerHideOnTouch(false)
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                     setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
                     layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                     this.player = player
+                    playerViewRef = this
+                    showController()
                 }
             },
-            update = { it.player = player },
-            modifier = Modifier.fillMaxSize(),
+            update = {
+                it.player = player
+                playerViewRef = it
+                it.showController()
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(playerViewFocusRequester),
         )
         errorText?.let { PrivateMediaPlayerMessage(it) }
+        PrivateMediaFullscreenOverlay(
+            strings = strings,
+            isPlaying = isPlaying,
+            onBack = onBack,
+            onPlayPause = {
+                if (player.isPlaying) player.pause() else player.play()
+                playerViewRef?.showController()
+            },
+            onSeekBack = {
+                player.seekTo((player.currentPosition - 15_000L).coerceAtLeast(0L))
+                playerViewRef?.showController()
+            },
+            onSeekForward = {
+                player.seekTo((player.currentPosition + 15_000L).coerceAtMost(player.duration.takeIf { it > 0L } ?: Long.MAX_VALUE))
+                playerViewRef?.showController()
+            },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
 }
 
 @Composable
-private fun PrivateMediaFullscreenWeb(embedUrl: String) {
-    AndroidView(
-        modifier = Modifier.fillMaxSize().background(Color.Black),
-        factory = { context ->
-            WebView(context).apply {
-                configurePrivateMediaFullscreenWebView()
-                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                loadUrl(embedUrl)
-            }
-        },
-        update = { if (it.url != embedUrl) it.loadUrl(embedUrl) },
-    )
+private fun PrivateMediaFullscreenWeb(
+    embedUrl: String,
+    strings: SmartVisionStrings,
+    onBack: () -> Unit,
+) {
+    val webFocusRequester = remember { FocusRequester() }
+    var webViewRef by remember(embedUrl) { mutableStateOf<WebView?>(null) }
+
+    fun activateEmbed() {
+        webViewRef?.let { webView ->
+            webView.requestFocus()
+            webView.requestFocusFromTouch()
+            webView.performClick()
+        }
+    }
+
+    LaunchedEffect(embedUrl) {
+        kotlinx.coroutines.delay(260)
+        runCatching { webFocusRequester.requestFocus() }
+        activateEmbed()
+    }
+
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        AndroidView(
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(webFocusRequester)
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && (event.key == Key.Enter || event.key == Key.NumPadEnter || event.key == Key.DirectionCenter)) {
+                        activateEmbed()
+                        true
+                    } else {
+                        false
+                    }
+                },
+            factory = { context ->
+                WebView(context).apply {
+                    webViewRef = this
+                    configurePrivateMediaFullscreenWebView()
+                    layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                    loadUrl(embedUrl)
+                }
+            },
+            update = {
+                webViewRef = it
+                if (it.url != embedUrl) it.loadUrl(embedUrl)
+            },
+        )
+        PrivateMediaFullscreenOverlay(
+            strings = strings,
+            isPlaying = false,
+            onBack = onBack,
+            onPlayPause = { activateEmbed() },
+            onSeekBack = { activateEmbed() },
+            onSeekForward = { activateEmbed() },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+}
+
+@Composable
+private fun PrivateMediaFullscreenOverlay(
+    strings: SmartVisionStrings,
+    isPlaying: Boolean,
+    onBack: () -> Unit,
+    onPlayPause: () -> Unit,
+    onSeekBack: () -> Unit,
+    onSeekForward: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val playFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(260)
+        runCatching { playFocusRequester.requestFocus() }
+    }
+
+    Row(
+        modifier = modifier
+            .padding(bottom = 24.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xB30A1B38))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TvButton(
+            text = strings.back,
+            onClick = onBack,
+            leadingIcon = Icons.Default.ArrowBack,
+            variant = TvButtonVariant.Secondary,
+            modifier = Modifier.height(38.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp),
+        )
+        TvButton(
+            text = "-15s",
+            onClick = onSeekBack,
+            leadingIcon = Icons.Default.Replay10,
+            variant = TvButtonVariant.Secondary,
+            modifier = Modifier.height(38.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp),
+        )
+        TvButton(
+            text = if (isPlaying) strings.mediaPlayerPause else strings.mediaPlayerPlay,
+            onClick = onPlayPause,
+            leadingIcon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+            focusRequester = playFocusRequester,
+            modifier = Modifier.height(38.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp),
+        )
+        TvButton(
+            text = "+15s",
+            onClick = onSeekForward,
+            leadingIcon = Icons.Default.Forward10,
+            variant = TvButtonVariant.Secondary,
+            modifier = Modifier.height(38.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp),
+        )
+    }
 }
 
 @SuppressLint("SetJavaScriptEnabled")

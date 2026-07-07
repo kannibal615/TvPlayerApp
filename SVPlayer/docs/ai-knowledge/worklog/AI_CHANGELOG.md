@@ -1,5 +1,25 @@
 # AI Changelog
 
+## 2026-07-07 - Media prives player style YouTube
+
+Type:
+- Android TV
+- documentation
+
+Resume:
+- Media prives passe en layout proche YouTube: categories a gauche, liste compacte au centre, grande section principale a droite pour miniature/player.
+- Le premier OK sur une video privee lance le player inline; le second OK ouvre le fullscreen existant.
+- Le mini-player embed devient focusable/clicable au D-pad pour atteindre Play dans le provider; le fullscreen prive ajoute controls Media3 natifs visibles et overlay bas retour/play/pause/-15s/+15s.
+- Le champ recherche Media garde un mode edition explicite pour ouvrir le clavier TV via OK/clic.
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK.
+- `.\scripts\guard_release_version.ps1`: OK apres bump `0.1.116` / `120`.
+- `.\gradlew.bat :app:assembleRelease --no-daemon --max-workers=1 --console=plain`: OK.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata`: OK.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall`: OK.
+- Production verifiee: manifeste `smartvision-tv-v120-e13560d3.apk`, `api/app_update.php` en `0.1.116` / `120`, APK stable/versionne HTTP 200 taille `40969256`.
+
 ## 2026-07-07 - Media prives WebView TV et mode natif force test
 
 Type:
