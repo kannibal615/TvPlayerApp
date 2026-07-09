@@ -2459,19 +2459,20 @@ internal fun PlayerBrightnessSlider(
     modifier: Modifier = Modifier,
 ) {
     val sliderFocusRequester = remember { FocusRequester() }
-    val sliderFocusState = rememberTvFocusState()
+    var focused by remember { mutableStateOf(false) }
     val normalizedValue = (value / 100f).coerceIn(0f, 1f)
+
     LaunchedEffect(Unit) {
         delay(100)
         runCatching { sliderFocusRequester.requestFocus() }
     }
+
     Row(
         modifier = modifier
-            .height(32.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(Color.Black.copy(alpha = 0.56f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(6.dp))
-            .padding(horizontal = 10.dp, vertical = 3.dp)
+            .height(36.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .focusRequester(sliderFocusRequester)
+            .onFocusChanged { focused = it.isFocused || it.hasFocus }
             .focusable()
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -2484,11 +2485,7 @@ internal fun PlayerBrightnessSlider(
                         onChange(5f)
                         true
                     }
-                    Key.Enter, Key.DirectionCenter -> {
-                        onClose()
-                        true
-                    }
-                    Key.Back -> {
+                    Key.Enter, Key.DirectionCenter, Key.Back -> {
                         onClose()
                         true
                     }
@@ -2498,71 +2495,75 @@ internal fun PlayerBrightnessSlider(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(Icons.Default.Brightness5, contentDescription = null, tint = Color.White, modifier = Modifier.size(10.dp))
-        Column(
+        Icon(
+            imageVector = Icons.Outlined.WbSunny,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.92f),
+            modifier = Modifier.size(18.dp),
+        )
+
+        Box(
             modifier = Modifier
                 .weight(1f)
-                .height(22.dp)
-                .tvFocusTarget(
-                    state = sliderFocusState,
-                    focusRequester = sliderFocusRequester,
-                    focusedScale = 1.01f,
-                    cornerRadius = 6.dp,
-                    glowColor = PlayerNeonBlue,
-                )
-                .focusable(),
+                .height(24.dp),
+            contentAlignment = Alignment.CenterStart,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                listOf("0", "50", "100").forEach { label ->
-                    Text(
-                        text = label,
-                        color = Color.White.copy(alpha = 0.86f),
-                        style = PlayerTinyStyle.copy(fontSize = 7.sp, lineHeight = 8.sp),
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-            Spacer(Modifier.height(3.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(10.dp),
-                contentAlignment = Alignment.CenterStart,
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color.White.copy(alpha = 0.10f)),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(normalizedValue)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(PlayerNeonBlue.copy(alpha = 0.95f)),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(normalizedValue.coerceAtLeast(0.01f))
+                    .height(24.dp),
+                contentAlignment = Alignment.CenterEnd,
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(2.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color.White.copy(alpha = 0.30f)),
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(normalizedValue)
-                        .height(2.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(PlayerNeonBlue),
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(normalizedValue)
-                        .height(10.dp),
-                    contentAlignment = Alignment.CenterEnd,
-                ) {
+                if (focused) {
                     Box(
                         modifier = Modifier
-                            .size(10.dp)
+                            .size(26.dp)
                             .clip(CircleShape)
-                            .background(Color.White)
-                            .border(BorderStroke(1.5.dp, PlayerNeonBlue), CircleShape),
+                            .background(PlayerNeonBlue.copy(alpha = 0.10f)),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(PlayerNeonBlue.copy(alpha = 0.18f)),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(15.dp)
+                            .clip(CircleShape)
+                            .background(PlayerNeonBlue.copy(alpha = 0.28f)),
                     )
                 }
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .border(BorderStroke(2.dp, PlayerNeonBlue), CircleShape),
+                )
             }
         }
-        Icon(Icons.Default.Brightness7, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
+
+        Icon(
+            imageVector = Icons.Outlined.WbSunny,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(22.dp),
+        )
     }
 }
 

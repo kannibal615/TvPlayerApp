@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -152,15 +153,15 @@ private fun LiveTvBottomGlassBanner(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(85.dp)
+            .height(95.dp)
             .background(PlayerOverlaySurface.copy(alpha = 0.65f))
-            .padding(start = 12.dp, end = 18.dp, top = 10.dp, bottom = 8.dp),
+            .padding(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         LiveTvChannelLogo(
             title = playback.title,
             imageUrl = playback.imageUrl,
-            modifier = Modifier.size(width = 76.dp, height = 42.dp),
+            modifier = Modifier.size(width = 112.dp, height = 62.dp),
         )
         Box(
             modifier = Modifier
@@ -205,6 +206,7 @@ private fun LiveTvBottomGlassBanner(
                     icon = Icons.Outlined.Settings,
                     focusRequester = settingsFocusRequester,
                     active = settingsActive,
+                    iconSize = 34.dp,
                     onClick = onOpenSettings,
                 )
                 LiveTvActionButton(
@@ -261,7 +263,7 @@ private fun LiveTvChannelInfo(
         Text(
             text = playback.title,
             color = Color.White,
-            style = PlayerTitleStyle.copy(fontSize = 28.sp, lineHeight = 34.sp),
+            style = PlayerTitleStyle.copy(fontSize = 30.sp, lineHeight = 36.sp),
             fontWeight = FontWeight.Black,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -270,7 +272,7 @@ private fun LiveTvChannelInfo(
         Text(
             text = secondary,
             color = Color.White.copy(alpha = 0.76f),
-            style = PlayerMetaStyle.copy(fontSize = 12.sp, lineHeight = 15.sp),
+            style = PlayerMetaStyle.copy(fontSize = 14.sp, lineHeight = 16.sp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -287,26 +289,43 @@ private fun LiveTvActionButton(
     focusRequester: FocusRequester? = null,
     selected: Boolean = false,
     active: Boolean = false,
+    iconSize: Dp = 38.dp,
 ) {
     var focused by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
+    // Le favori sélectionné reste uniquement une icône rouge : pas de cercle/halo permanent.
+    val showNeonHalo = enabled && (focused || active) && !selected
+
     val iconColor by animateColorAsState(
         targetValue = when {
             !enabled -> Color.White.copy(alpha = 0.28f)
             selected -> PlayerFavoriteRed
-            focused || active -> PlayerNeonBlue
-            else -> Color.White
+            focused || active -> Color.White
+            else -> Color.White.copy(alpha = 0.92f)
         },
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "liveTvActionIcon",
     )
-    val glowColor = if (selected) PlayerFavoriteRed else PlayerNeonBlue
+    val outerHalo by animateColorAsState(
+        targetValue = if (showNeonHalo) PlayerNeonBlue.copy(alpha = 0.10f) else Color.Transparent,
+        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        label = "liveTvActionOuterHalo",
+    )
+    val middleHalo by animateColorAsState(
+        targetValue = if (showNeonHalo) PlayerNeonBlue.copy(alpha = 0.16f) else Color.Transparent,
+        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        label = "liveTvActionMiddleHalo",
+    )
+    val innerHalo by animateColorAsState(
+        targetValue = if (showNeonHalo) PlayerNeonBlue.copy(alpha = 0.24f) else Color.Transparent,
+        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        label = "liveTvActionInnerHalo",
+    )
     val requesterModifier = focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier
 
     Box(
         modifier = modifier
-            .size(48.dp)
+            .size(60.dp)
             .then(requesterModifier)
             .onFocusChanged { focused = it.isFocused || it.hasFocus }
             .focusProperties { canFocus = enabled }
@@ -319,19 +338,31 @@ private fun LiveTvActionButton(
             .focusable(enabled = enabled, interactionSource = interactionSource),
         contentAlignment = Alignment.Center,
     ) {
-        if (enabled && (focused || active || selected)) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = glowColor.copy(alpha = if (selected) 0.34f else 0.42f),
-                modifier = Modifier.size(42.dp),
+        if (showNeonHalo) {
+            Box(
+                modifier = Modifier
+                    .size(66.dp)
+                    .clip(CircleShape)
+                    .background(outerHalo),
+            )
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(CircleShape)
+                    .background(middleHalo),
+            )
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(innerHalo),
             )
         }
         Icon(
             imageVector = icon,
             contentDescription = label,
             tint = iconColor,
-            modifier = Modifier.size(28.dp),
+            modifier = Modifier.size(iconSize),
         )
     }
 }
@@ -448,10 +479,10 @@ internal fun LiveTvSettingsPanel(
     Box(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
+                .align(Alignment.BottomEnd)
+                .padding(end = 18.dp, bottom = 100.dp)
                 .width(500.dp)
                 .height(150.dp)
-                .padding(end = 35.dp, bottom = 36.dp)
                 .clip(RoundedCornerShape(9.dp))
                 .background(Color.Black.copy(alpha = 0.62f))
                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(9.dp))
@@ -502,7 +533,7 @@ internal fun LiveTvSettingsPanel(
                 SettingsValueRow(
                     label = "Subtitle track",
                     value = subtitleSummary,
-                    onClick = onOpenSubtitles,
+                    onClick = { },
                 )
             }
         }
