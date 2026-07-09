@@ -41,6 +41,7 @@ data class SeriesItemUi(
     val number: String,
     val title: String,
     val coverUrl: String?,
+    val backdropUrl: String? = null,
     val categoryLabel: String,
     val plot: String?,
     val genre: String?,
@@ -49,6 +50,9 @@ data class SeriesItemUi(
     val episodeRunTime: String?,
     val seasonsCount: Int? = null,
     val episodesCount: Int? = null,
+    val preferredEpisodeId: Int? = null,
+    val createdBy: String? = null,
+    val cast: String? = null,
     val isFavorite: Boolean = false,
 ) {
     val subtitle: String =
@@ -79,6 +83,7 @@ data class SeriesScreenState(
     val errorMessage: String? = null,
     val categories: List<SeriesCategoryUi> = emptyList(),
     val selectedCategoryId: String? = null,
+    val contentSearchQuery: String = "",
     val series: List<SeriesItemUi> = emptyList(),
     val focusedSeriesId: Int? = null,
     val selectedSeriesId: Int? = null,
@@ -92,6 +97,12 @@ data class SeriesScreenState(
 
     val firstEpisode: SeriesEpisodeUi?
         get() = episodes.firstOrNull()
+
+    val selectedPreviewEpisode: SeriesEpisodeUi?
+        get() {
+            val preferredEpisodeId = selectedSeries?.preferredEpisodeId
+            return episodes.firstOrNull { it.episodeId == preferredEpisodeId } ?: firstEpisode
+        }
 }
 
 class SeriesViewModel(
@@ -229,6 +240,19 @@ class SeriesViewModel(
         loadSeries(category.id)
     }
 
+    fun updateContentSearchQuery(query: String) {
+        val cleanQuery = query.trim()
+        val current = _uiState.value
+        if (current.contentSearchQuery == cleanQuery) return
+        _uiState.update { it.copy(contentSearchQuery = cleanQuery) }
+        when (current.selectedCategoryId) {
+            FavoriteSeriesCategoryId -> loadFavoriteSeries()
+            HistorySeriesCategoryId -> loadHistorySeries()
+            AllSeriesCategoryId, null -> loadAllSeries()
+            else -> current.selectedCategoryId?.let(::loadSeries)
+        }
+    }
+
     fun focusSeries(series: SeriesItemUi) {
         _uiState.update { it.copy(focusedSeriesId = series.seriesId) }
     }
@@ -237,7 +261,7 @@ class SeriesViewModel(
         val state = _uiState.value
         if (state.selectedSeriesId == series.seriesId) {
             _uiState.update { it.copy(focusedSeriesId = series.seriesId, errorMessage = null) }
-            return state.firstEpisode?.episodeId
+            return state.selectedPreviewEpisode?.episodeId
         }
         selectSeries(series)
         return null
@@ -298,7 +322,7 @@ class SeriesViewModel(
             userContentRepository.observeFavoriteIds(UserContentType.Series).collect { ids ->
                 favoriteIds = ids
                 val favoriteSelection = if (_uiState.value.selectedCategoryId == FavoriteSeriesCategoryId) {
-                    favoriteSeries()
+                    favoriteSeries(_uiState.value.contentSearchQuery)
                 } else {
                     null
                 }
@@ -333,7 +357,7 @@ class SeriesViewModel(
                     .distinctBy { it.parentContentId ?: it.contentId }
                 historyCategorySignals = userContentRepository.resolveCategorySignals(historyProgress)
                 _uiState.update { state ->
-                    val history = historySeries()
+                    val history = historySeries(state.contentSearchQuery)
                     state.copy(
                         categories = state.categories.withSpecialCategories(
                             allCount = catalogTotalCount(),
@@ -354,7 +378,7 @@ class SeriesViewModel(
         episodesJob?.cancel()
         metadataJob?.cancel()
         seriesJob = viewModelScope.launch {
-            val series = favoriteSeries()
+            val series = favoriteSeries(_uiState.value.contentSearchQuery)
             _uiState.update { state ->
                 state.copy(
                     itemsLoading = false,
@@ -384,7 +408,7 @@ class SeriesViewModel(
         seriesJob?.cancel()
         episodesJob?.cancel()
         metadataJob?.cancel()
-        val series = historySeries()
+        val series = historySeries(_uiState.value.contentSearchQuery)
         _uiState.update { state ->
             state.copy(
                 seriesLoading = false,
@@ -424,11 +448,12 @@ class SeriesViewModel(
             categoryId = categoryId,
             selectedCategoryId = selectedCategoryId,
             categoryLabel = categoryLabel,
+            query = state.contentSearchQuery,
             replace = false,
         )
     }
 
-    private fun historySeries(): List<SeriesItemUi> =
+    private fun historySeries(query: String = ""): List<SeriesItemUi> =
         historyProgress.asSequence()
             .mapNotNull { progress ->
                 val episodeId = progress.contentId.toIntOrNull() ?: return@mapNotNull null
@@ -437,7 +462,7 @@ class SeriesViewModel(
                 Triple(seriesId, progress, episodeId)
             }
             .distinctBy { it.first }
-            .mapIndexed { index, (seriesId, progress, _) ->
+            .mapIndexed { index, (seriesId, progress, episodeId) ->
                 val title = progress.title ?: "Serie $seriesId"
                 if (!playerSettings.allowsContent(title, progress.subtitle)) {
                     return@mapIndexed null
@@ -453,13 +478,15 @@ class SeriesViewModel(
                     releaseDate = null,
                     rating = null,
                     episodeRunTime = null,
+                    preferredEpisodeId = episodeId,
                     isFavorite = seriesId in favoriteIds,
                 )
             }
             .toList()
             .filterNotNull()
+            .filter { it.matchesSearch(query) }
 
-    private suspend fun favoriteSeries(): List<SeriesItemUi> =
+    private suspend fun favoriteSeries(query: String = ""): List<SeriesItemUi> =
         catalogRepository.getSeriesByIds(favoriteIds.toList())
             .filter { series ->
                 playerSettings.allowsContent(series.title, series.plot, series.genre, series.categoryName)
@@ -468,6 +495,7 @@ class SeriesViewModel(
             .mapIndexed { index, series ->
                 series.toUiSeries(index, series.categoryName.ifBlank { "Favoris" }, favoriteIds)
             }
+            .filter { it.matchesSearch(query) }
 
     private fun loadSeries(categoryId: String) {
         val categoryLabel = _uiState.value.categories.firstOrNull { it.id == categoryId }?.label ?: "Series"
@@ -478,6 +506,7 @@ class SeriesViewModel(
         categoryId: String?,
         selectedCategoryId: String,
         categoryLabel: String,
+        query: String = _uiState.value.contentSearchQuery,
         replace: Boolean,
     ) {
         if (replace) seriesJob?.cancel()
@@ -500,7 +529,9 @@ class SeriesViewModel(
                 )
             }
             runCatching {
-                val page = if (categoryId == null) {
+                val page = if (query.isNotBlank()) {
+                    catalogRepository.searchSeriesPage(categoryId, query, startOffset, SeriesItemsPageSize)
+                } else if (categoryId == null) {
                     catalogRepository.getAllSeriesPage(startOffset, SeriesItemsPageSize)
                 } else {
                     catalogRepository.getSeriesPage(categoryId, startOffset, SeriesItemsPageSize)
@@ -563,11 +594,14 @@ class SeriesViewModel(
                             episodes = episodes.size,
                             title = tmdb?.name.nonBlank(),
                             coverUrl = tmdb?.posterUrl.nonBlank(),
+                            backdropUrl = tmdb?.backdropUrl.nonBlank(),
                             plot = tmdb?.overview.nonBlank(),
                             genre = tmdb?.genres.nonBlank(),
                             releaseDate = tmdb?.firstAirDate?.take(4)?.takeIf { it.all(Char::isDigit) },
                             rating = tmdb?.voteAverage?.takeIf { it > 0.0 }?.formatRating(),
                             episodeRunTime = tmdb?.episodeRunTimeMinutes?.takeIf { it > 0 }?.toString(),
+                            createdBy = tmdb?.createdBy.nonBlank(),
+                            cast = tmdb?.cast.nonBlank(),
                         )
                     }
                 }.awaitAll().toMap()
@@ -578,6 +612,7 @@ class SeriesViewModel(
                                 item.copy(
                                     title = meta.title ?: item.title,
                                     coverUrl = meta.coverUrl ?: item.coverUrl,
+                                    backdropUrl = meta.backdropUrl ?: item.backdropUrl,
                                     plot = meta.plot ?: item.plot,
                                     genre = meta.genre ?: item.genre,
                                     releaseDate = meta.releaseDate ?: item.releaseDate,
@@ -585,6 +620,8 @@ class SeriesViewModel(
                                     episodeRunTime = meta.episodeRunTime ?: item.episodeRunTime,
                                     seasonsCount = meta.seasons.takeIf { it > 0 },
                                     episodesCount = meta.episodes.takeIf { it > 0 },
+                                    createdBy = meta.createdBy ?: item.createdBy,
+                                    cast = meta.cast ?: item.cast,
                                 )
                             } ?: item
                         },
@@ -647,11 +684,14 @@ private data class CachedSeriesMetadata(
     val episodes: Int,
     val title: String?,
     val coverUrl: String?,
+    val backdropUrl: String?,
     val plot: String?,
     val genre: String?,
     val releaseDate: String?,
     val rating: String?,
     val episodeRunTime: String?,
+    val createdBy: String?,
+    val cast: String?,
 )
 
 private const val SeriesItemsPageSize = 72
@@ -743,6 +783,13 @@ private fun XtreamSeriesStream.toUiSeries(
         episodeRunTime = episodeRunTime,
         isFavorite = seriesId in favoriteIds,
     )
+
+private fun SeriesItemUi.matchesSearch(query: String): Boolean {
+    if (query.isBlank()) return true
+    return title.contains(query, ignoreCase = true) ||
+        genre?.contains(query, ignoreCase = true) == true ||
+        releaseDate?.contains(query, ignoreCase = true) == true
+}
 
 private fun Episode.toUiEpisode(xtreamRepository: XtreamRepository): SeriesEpisodeUi =
     SeriesEpisodeUi(

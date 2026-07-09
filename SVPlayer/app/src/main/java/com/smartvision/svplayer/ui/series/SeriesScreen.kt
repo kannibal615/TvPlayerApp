@@ -3,12 +3,7 @@ package com.smartvision.svplayer.ui.series
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,21 +13,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,11 +33,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -66,23 +54,23 @@ import com.smartvision.svplayer.ui.catalog.CatalogCategoryRow
 import com.smartvision.svplayer.ui.catalog.CatalogEmpty
 import com.smartvision.svplayer.ui.catalog.CatalogError
 import com.smartvision.svplayer.ui.catalog.CatalogLoading
-import com.smartvision.svplayer.ui.catalog.CatalogMediaCard
 import com.smartvision.svplayer.ui.catalog.CatalogMetaStyle
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
+import com.smartvision.svplayer.ui.catalog.VodContentRow
+import com.smartvision.svplayer.ui.catalog.VodPreviewContent
+import com.smartvision.svplayer.ui.catalog.VodPreviewPanel
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
-import com.smartvision.svplayer.ui.focus.rememberTvFocusState
-import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
-@Suppress("UNUSED_PARAMETER")
 @Composable
 fun SeriesScreen(
     currentRoute: String,
@@ -119,10 +107,10 @@ fun SeriesScreen(
     val m3uActive = activePlaylistSource == PlaylistSource.M3u && m3uUrl.isNotBlank()
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstSeriesFocusRequester = remember { FocusRequester() }
+    val previewPlayFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
+    val focusScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
-    var categorySearchQuery by remember { mutableStateOf("") }
-    var contentSearchQuery by remember { mutableStateOf("") }
     var seriesToDelete by remember { mutableStateOf<SeriesItemUi?>(null) }
 
     LaunchedEffect(Unit) {
@@ -130,19 +118,19 @@ fun SeriesScreen(
         inputReady = true
     }
 
-    val selectedCategoryVisible = state.categories.any { category ->
-        category.id == state.selectedCategoryId &&
-            (categorySearchQuery.isBlank() || category.label.contains(categorySearchQuery, ignoreCase = true))
-    }
-    val categoryFocusTargetAvailable = selectedCategoryVisible || state.categories.any { category ->
-        categorySearchQuery.isBlank() || category.label.contains(categorySearchQuery, ignoreCase = true)
-    }
-
-    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), m3uActive, categoryFocusTargetAvailable) {
-        if (!m3uActive && accounts.isNotEmpty() && !state.categoriesLoading && categoryFocusTargetAvailable) {
+    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), m3uActive, state.categories.isNotEmpty()) {
+        if (!m3uActive && accounts.isNotEmpty() && !state.categoriesLoading && state.categories.isNotEmpty()) {
             withFrameNanos { }
             delay(120)
             runCatching { selectedCategoryFocusRequester.requestFocus() }
+        }
+    }
+
+    LaunchedEffect(state.selectedSeriesId) {
+        if (state.selectedSeriesId != null) {
+            withFrameNanos { }
+            delay(80)
+            runCatching { previewPlayFocusRequester.requestFocus() }
         }
     }
 
@@ -192,7 +180,7 @@ fun SeriesScreen(
         if (accounts.isEmpty()) {
             XtreamQrSetupPanel(
                 activationRepository = container.activationRepository,
-                title = "Configurer votre catalogue de séries",
+                title = "Configurer votre catalogue de series",
                 onManualAccount = { account ->
                     val accountId = container.accountManager.upsert(account)
                     container.accountManager.select(accountId)
@@ -218,24 +206,18 @@ fun SeriesScreen(
                 SeriesCategoryList(
                     state = state,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
-                    firstSeriesFocusRequester = firstSeriesFocusRequester,
-                    searchQuery = categorySearchQuery,
-                    onSearchQueryChange = { categorySearchQuery = it },
-                    contentSearchQuery = contentSearchQuery,
                     onCategory = { category ->
-                        if (inputReady) {
-                            viewModel.selectCategory(category)
-                        }
+                        if (inputReady) viewModel.selectCategory(category)
                     },
                     modifier = Modifier
                         .weight(0.22f)
                         .fillMaxHeight(),
                 )
-                SeriesGrid(
+                SeriesList(
                     state = state,
                     firstSeriesFocusRequester = firstSeriesFocusRequester,
-                    searchQuery = contentSearchQuery,
-                    onSearchQueryChange = { contentSearchQuery = it },
+                    rightFocusRequester = previewPlayFocusRequester,
+                    onSearchQueryChange = viewModel::updateContentSearchQuery,
                     onSeriesFocused = viewModel::focusSeries,
                     onSeriesClick = { series ->
                         if (inputReady) {
@@ -244,16 +226,38 @@ fun SeriesScreen(
                                 "CONTENT_OPENED",
                                 series.toBehaviorContent(),
                             )
-                            viewModel.focusSeries(series)
-                            onOpenSeriesDetails(series.seriesId)
+                            val episodeId = viewModel.activateSeries(series)
+                            if (episodeId != null) {
+                                onWatchEpisode(episodeId)
+                            } else {
+                                focusScope.launch {
+                                    withFrameNanos { }
+                                    delay(80)
+                                    runCatching { previewPlayFocusRequester.requestFocus() }
+                                }
+                            }
                         }
                     },
-                    showHistoryDelete = state.selectedCategory?.label == "Historique",
-                    onDeleteHistorySeries = { series -> seriesToDelete = series },
                     onLoadNextPage = viewModel::loadNextPage,
                     onRetry = viewModel::retryCurrentCategory,
                     modifier = Modifier
-                        .weight(0.78f)
+                        .weight(0.44f)
+                        .fillMaxHeight(),
+                )
+                VodPreviewPanel(
+                    title = "Preview",
+                    content = state.selectedSeries?.toPreviewContent(
+                        episode = state.selectedPreviewEpisode,
+                        loading = state.episodesLoading,
+                    ),
+                    playFocusRequester = previewPlayFocusRequester,
+                    onPlay = { state.selectedPreviewEpisode?.let { onWatchEpisode(it.episodeId) } },
+                    onDetails = { state.selectedSeries?.let { onOpenSeriesDetails(it.seriesId) } },
+                    onFavorite = { state.selectedSeries?.let(viewModel::toggleFavorite) },
+                    onDeleteHistory = { state.selectedSeries?.let { seriesToDelete = it } },
+                    showDeleteHistory = state.selectedCategory?.label == "Historique",
+                    modifier = Modifier
+                        .weight(0.34f)
                         .fillMaxHeight(),
                 )
             }
@@ -293,50 +297,31 @@ private fun SeriesItemUi.toBehaviorContent(): BehaviorContent =
 private fun SeriesCategoryList(
     state: SeriesScreenState,
     selectedCategoryFocusRequester: FocusRequester,
-    firstSeriesFocusRequester: FocusRequester,
-    searchQuery: String,
-    onSearchQueryChange: (String) -> Unit,
-    contentSearchQuery: String,
     onCategory: (SeriesCategoryUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val visibleCategories = state.categories.filter {
-        searchQuery.isBlank() || it.label.contains(searchQuery, ignoreCase = true)
-    }
-    val focusCategoryId = visibleCategories.firstOrNull { it.id == state.selectedCategoryId }?.id
-        ?: visibleCategories.firstOrNull()?.id
+    val focusCategoryId = state.categories.firstOrNull { it.id == state.selectedCategoryId }?.id
+        ?: state.categories.firstOrNull()?.id
 
     MediaCatalogPanel(
         title = "Categories",
         modifier = modifier,
-        trailing = {
-            CatalogSearchField(
-                query = searchQuery,
-                onQueryChange = onSearchQueryChange,
-                placeholder = "Dossier",
-                modifier = Modifier.width(118.dp),
-            )
-        },
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
             contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
         ) {
-            items(
-                visibleCategories,
-                key = { it.id },
-            ) { category ->
+            itemsIndexed(
+                state.categories,
+                key = { _, category -> category.id },
+            ) { _, category ->
                 CatalogCategoryRow(
                     label = category.label,
                     count = category.count,
                     icon = seriesCategoryIcon(category.label),
                     selected = category.id == state.selectedCategoryId,
-                    focusRequester = if (category.id == focusCategoryId) {
-                        selectedCategoryFocusRequester
-                    } else {
-                        null
-                    },
+                    focusRequester = if (category.id == focusCategoryId) selectedCategoryFocusRequester else null,
                     onClick = { onCategory(category) },
                 )
             }
@@ -345,32 +330,26 @@ private fun SeriesCategoryList(
 }
 
 @Composable
-private fun SeriesGrid(
+private fun SeriesList(
     state: SeriesScreenState,
     firstSeriesFocusRequester: FocusRequester,
-    searchQuery: String,
+    rightFocusRequester: FocusRequester,
     onSearchQueryChange: (String) -> Unit,
     onSeriesFocused: (SeriesItemUi) -> Unit,
     onSeriesClick: (SeriesItemUi) -> Unit,
-    showHistoryDelete: Boolean,
-    onDeleteHistorySeries: (SeriesItemUi) -> Unit,
     onLoadNextPage: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val gridState = rememberLazyGridState()
-    val visibleSeries = state.series.filter { series ->
-        searchQuery.isBlank() || series.title.contains(searchQuery, ignoreCase = true)
-    }
+    val listState = rememberLazyListState()
 
-    LaunchedEffect(state.selectedCategoryId) {
-        if (gridState.layoutInfo.totalItemsCount > 0) gridState.scrollToItem(0)
+    LaunchedEffect(state.selectedCategoryId, state.contentSearchQuery) {
+        if (listState.layoutInfo.totalItemsCount > 0) listState.scrollToItem(0)
     }
-    LaunchedEffect(gridState, visibleSeries.size, state.hasMoreItems, state.nextPageLoading, searchQuery) {
-        if (searchQuery.isNotBlank()) return@LaunchedEffect
-        snapshotFlow { gridState.layoutInfo.visibleItemsInfo.maxOfOrNull { it.index } ?: 0 }
+    LaunchedEffect(listState, state.series.size, state.hasMoreItems, state.nextPageLoading, state.contentSearchQuery) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.maxOfOrNull { it.index } ?: 0 }
             .collect { lastVisibleIndex ->
-                val remaining = visibleSeries.lastIndex - lastVisibleIndex
+                val remaining = state.series.lastIndex - lastVisibleIndex
                 if (state.hasMoreItems && !state.nextPageLoading && remaining <= SeriesNextPageThreshold) {
                     onLoadNextPage()
                 }
@@ -381,14 +360,13 @@ private fun SeriesGrid(
         title = state.selectedCategory?.label ?: "Series",
         modifier = modifier,
         trailing = {
-            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                val seriesCount = if (searchQuery.isBlank()) {
-                    state.selectedCategory?.count ?: state.series.size
-                } else {
-                    visibleSeries.size
-                }
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = if (seriesCount > 0) "$seriesCount series" else "Series",
+                    text = if (state.contentSearchQuery.isBlank()) {
+                        state.selectedCategory?.count?.let { "$it series" } ?: "${state.series.size} series"
+                    } else {
+                        "${state.series.size} resultats"
+                    },
                     color = SmartVisionColors.TextSecondary,
                     style = CatalogMetaStyle,
                     maxLines = 1,
@@ -396,7 +374,7 @@ private fun SeriesGrid(
                 )
                 Spacer(Modifier.width(10.dp))
                 CatalogSearchField(
-                    query = searchQuery,
+                    query = state.contentSearchQuery,
                     onQueryChange = onSearchQueryChange,
                     placeholder = "Serie",
                     modifier = Modifier.width(190.dp),
@@ -405,7 +383,7 @@ private fun SeriesGrid(
         },
     ) {
         when {
-            state.seriesLoading && visibleSeries.isEmpty() -> CatalogLoading(
+            state.seriesLoading && state.series.isEmpty() -> CatalogLoading(
                 title = "Chargement des series",
                 modifier = Modifier.fillMaxSize(),
             )
@@ -416,99 +394,38 @@ private fun SeriesGrid(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            visibleSeries.isEmpty() -> CatalogEmpty(
-                title = if (searchQuery.isBlank()) "Aucune serie" else "Aucun resultat",
-                subtitle = if (searchQuery.isBlank()) "Selectionnez une autre categorie." else "Modifiez votre recherche.",
+            state.series.isEmpty() -> CatalogEmpty(
+                title = if (state.contentSearchQuery.isBlank()) "Aucune serie" else "Aucun resultat",
+                subtitle = if (state.contentSearchQuery.isBlank()) "Selectionnez une autre categorie." else "Modifiez votre recherche.",
                 modifier = Modifier.fillMaxSize(),
             )
 
-            else -> LazyVerticalGrid(
-                columns = GridCells.Fixed(MediaCatalogDimens.MediaGridColumns),
-                state = gridState,
+            else -> LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.spacedBy(MediaCatalogDimens.MediaGridGap),
-                verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.MediaGridGap),
-                contentPadding = PaddingValues(bottom = MediaCatalogDimens.MediaGridGap),
+                verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
+                contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
             ) {
                 itemsIndexed(
-                    items = visibleSeries,
+                    items = state.series,
                     key = { _, series -> series.seriesId },
                 ) { index, series ->
                     val itemFocusRequester = remember(series.seriesId) { FocusRequester() }
-                    val cardFocusRequester = if (index == 0) firstSeriesFocusRequester else itemFocusRequester
-                    val deleteFocusRequester = remember(series.seriesId) { FocusRequester() }
-                    Box {
-                        CatalogMediaCard(
-                            title = series.title,
-                            meta = seriesCardMeta(series),
-                            imageUrl = series.coverUrl,
-                            fallbackText = series.title.take(2).uppercase(),
-                            selected = series.seriesId == state.selectedSeriesId,
-                            favorite = series.isFavorite,
-                            focusRequester = cardFocusRequester,
-                            rightFocusRequester = deleteFocusRequester.takeIf { showHistoryDelete },
-                            onFocused = { onSeriesFocused(series) },
-                            onClick = { onSeriesClick(series) },
-                        )
-                        if (showHistoryDelete) {
-                            HistoryDeleteButton(
-                                focusRequester = deleteFocusRequester,
-                                leftFocusRequester = cardFocusRequester,
-                                onClick = { onDeleteHistorySeries(series) },
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(7.dp),
-                            )
-                        }
-                    }
+                    VodContentRow(
+                        title = series.title,
+                        subtitle = series.subtitle,
+                        sideLabel = series.sideLabel(),
+                        imageUrl = series.coverUrl,
+                        fallbackText = series.title.take(2).uppercase(),
+                        selected = series.seriesId == state.selectedSeriesId,
+                        focusRequester = if (index == 0) firstSeriesFocusRequester else itemFocusRequester,
+                        rightFocusRequester = rightFocusRequester,
+                        onFocused = { onSeriesFocused(series) },
+                        onClick = { onSeriesClick(series) },
+                    )
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun HistoryDeleteButton(
-    focusRequester: FocusRequester,
-    leftFocusRequester: FocusRequester,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val focusState = rememberTvFocusState()
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val shape = RoundedCornerShape(7.dp)
-    Box(
-        modifier = modifier
-            .size(36.dp)
-            .focusProperties { left = leftFocusRequester }
-            .tvFocusTarget(
-                state = focusState,
-                focusRequester = focusRequester,
-                pressed = pressed,
-                focusedScale = 1.08f,
-                glowColor = SmartVisionColors.Error,
-                cornerRadius = 7.dp,
-            )
-            .clip(shape)
-            .background(if (focusState.isFocused) SmartVisionColors.Error.copy(alpha = 0.30f) else Color.Black.copy(alpha = 0.56f))
-            .border(
-                BorderStroke(
-                    if (focusState.isFocused) 2.dp else 1.dp,
-                    if (focusState.isFocused) SmartVisionColors.Error else Color.White.copy(alpha = 0.30f),
-                ),
-                shape,
-            )
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .focusable(interactionSource = interactionSource),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Default.Delete,
-            contentDescription = "Supprimer",
-            tint = Color.White,
-            modifier = Modifier.size(22.dp),
-        )
     }
 }
 
@@ -551,15 +468,38 @@ private fun ConfirmHistoryDeleteDialog(
     }
 }
 
-private const val SeriesNextPageThreshold = 15
+private fun SeriesItemUi.toPreviewContent(
+    episode: SeriesEpisodeUi?,
+    loading: Boolean,
+): VodPreviewContent =
+    VodPreviewContent(
+        id = "series-$seriesId-${episode?.episodeId ?: "loading"}",
+        title = title,
+        subtitle = subtitle,
+        imageUrl = coverUrl,
+        backdropUrl = backdropUrl,
+        streamUrl = episode?.streamUrl,
+        durationLabel = episode?.duration ?: episodeRunTime?.let { "${it}m/ep" },
+        sideLabel = sideLabel(),
+        year = releaseDate?.take(4),
+        rating = rating,
+        genre = genre,
+        plot = plot ?: episode?.plot,
+        creditLabel = createdBy?.let { "Creator: $it" },
+        cast = cast,
+        isFavorite = isFavorite,
+        loading = loading,
+    )
 
-private fun seriesCardMeta(series: SeriesItemUi): String =
-    listOfNotNull(
-        series.releaseDate?.take(4),
-        series.rating?.let { "$it/10" },
-        series.seasonsCount?.let { "$it S" },
-        series.episodesCount?.let { "$it ep" },
-    ).joinToString("  |  ").ifBlank { series.categoryLabel }
+private fun SeriesItemUi.sideLabel(): String =
+    when {
+        seasonsCount != null && episodesCount != null -> "${seasonsCount}S / ${episodesCount}E"
+        seasonsCount != null -> "${seasonsCount} saisons"
+        episodesCount != null -> "${episodesCount} episodes"
+        else -> episodeRunTime?.let { "${it}m/ep" }.orEmpty()
+    }
+
+private const val SeriesNextPageThreshold = 15
 
 private fun seriesCategoryIcon(label: String): ImageVector? {
     val normalized = label.lowercase()

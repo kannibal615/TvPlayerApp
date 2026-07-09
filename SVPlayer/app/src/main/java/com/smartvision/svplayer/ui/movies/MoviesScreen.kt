@@ -3,12 +3,7 @@ package com.smartvision.svplayer.ui.movies
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,23 +13,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Theaters
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,9 +35,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -68,21 +54,22 @@ import com.smartvision.svplayer.ui.catalog.CatalogCategoryRow
 import com.smartvision.svplayer.ui.catalog.CatalogEmpty
 import com.smartvision.svplayer.ui.catalog.CatalogError
 import com.smartvision.svplayer.ui.catalog.CatalogLoading
-import com.smartvision.svplayer.ui.catalog.CatalogMediaCard
 import com.smartvision.svplayer.ui.catalog.CatalogMetaStyle
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
+import com.smartvision.svplayer.ui.catalog.VodContentRow
+import com.smartvision.svplayer.ui.catalog.VodPreviewContent
+import com.smartvision.svplayer.ui.catalog.VodPreviewPanel
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
-import com.smartvision.svplayer.ui.focus.rememberTvFocusState
-import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
-import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 @Composable
 fun MoviesScreen(
@@ -120,10 +107,10 @@ fun MoviesScreen(
     val m3uActive = activePlaylistSource == PlaylistSource.M3u && m3uUrl.isNotBlank()
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val firstMovieFocusRequester = remember { FocusRequester() }
+    val previewPlayFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
+    val focusScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
-    var categorySearchQuery by remember { mutableStateOf("") }
-    var contentSearchQuery by remember { mutableStateOf("") }
     var movieToDelete by remember { mutableStateOf<MovieItemUi?>(null) }
 
     LaunchedEffect(Unit) {
@@ -131,19 +118,19 @@ fun MoviesScreen(
         inputReady = true
     }
 
-    val selectedCategoryVisible = state.categories.any { category ->
-        category.id == state.selectedCategoryId &&
-            (categorySearchQuery.isBlank() || category.label.contains(categorySearchQuery, ignoreCase = true))
-    }
-    val categoryFocusTargetAvailable = selectedCategoryVisible || state.categories.any { category ->
-        categorySearchQuery.isBlank() || category.label.contains(categorySearchQuery, ignoreCase = true)
-    }
-
-    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), m3uActive, categoryFocusTargetAvailable) {
-        if (!m3uActive && accounts.isNotEmpty() && !state.categoriesLoading && categoryFocusTargetAvailable) {
+    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), m3uActive, state.categories.isNotEmpty()) {
+        if (!m3uActive && accounts.isNotEmpty() && !state.categoriesLoading && state.categories.isNotEmpty()) {
             withFrameNanos { }
             delay(120)
             runCatching { selectedCategoryFocusRequester.requestFocus() }
+        }
+    }
+
+    LaunchedEffect(state.selectedMovieId) {
+        if (state.selectedMovieId != null) {
+            withFrameNanos { }
+            delay(80)
+            runCatching { previewPlayFocusRequester.requestFocus() }
         }
     }
 
@@ -219,24 +206,18 @@ fun MoviesScreen(
                 MovieCategoryList(
                     state = state,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
-                    firstMovieFocusRequester = firstMovieFocusRequester,
-                    searchQuery = categorySearchQuery,
-                    onSearchQueryChange = { categorySearchQuery = it },
-                    contentSearchQuery = contentSearchQuery,
                     onCategory = { category ->
-                        if (inputReady) {
-                            viewModel.selectCategory(category)
-                        }
+                        if (inputReady) viewModel.selectCategory(category)
                     },
                     modifier = Modifier
                         .weight(0.22f)
                         .fillMaxHeight(),
                 )
-                MovieGrid(
+                MovieList(
                     state = state,
                     firstMovieFocusRequester = firstMovieFocusRequester,
-                    searchQuery = contentSearchQuery,
-                    onSearchQueryChange = { contentSearchQuery = it },
+                    rightFocusRequester = previewPlayFocusRequester,
+                    onSearchQueryChange = viewModel::updateContentSearchQuery,
                     onMovieFocused = viewModel::focusMovie,
                     onMovieClick = { movie ->
                         if (inputReady) {
@@ -245,16 +226,35 @@ fun MoviesScreen(
                                 "CONTENT_OPENED",
                                 movie.toBehaviorContent(),
                             )
-                            viewModel.activateMovie(movie)
-                            onOpenMovieDetails(movie.streamId)
+                            val openFullPlayer = viewModel.activateMovie(movie)
+                            if (openFullPlayer) {
+                                onWatchMovie(movie.streamId)
+                            } else {
+                                focusScope.launch {
+                                    withFrameNanos { }
+                                    delay(80)
+                                    runCatching { previewPlayFocusRequester.requestFocus() }
+                                }
+                            }
                         }
                     },
-                    showHistoryDelete = state.selectedCategory?.label == "Historique",
-                    onDeleteHistoryMovie = { movie -> movieToDelete = movie },
                     onLoadNextPage = viewModel::loadNextPage,
                     onRetry = viewModel::retryCurrentCategory,
                     modifier = Modifier
-                        .weight(0.78f)
+                        .weight(0.44f)
+                        .fillMaxHeight(),
+                )
+                VodPreviewPanel(
+                    title = "Preview",
+                    content = state.selectedMovie?.toPreviewContent(),
+                    playFocusRequester = previewPlayFocusRequester,
+                    onPlay = { state.selectedMovie?.let { onWatchMovie(it.streamId) } },
+                    onDetails = { state.selectedMovie?.let { onOpenMovieDetails(it.streamId) } },
+                    onFavorite = { state.selectedMovie?.let(viewModel::toggleFavorite) },
+                    onDeleteHistory = { state.selectedMovie?.let { movieToDelete = it } },
+                    showDeleteHistory = state.selectedCategory?.label == "Historique",
+                    modifier = Modifier
+                        .weight(0.34f)
                         .fillMaxHeight(),
                 )
             }
@@ -290,50 +290,31 @@ private fun MovieItemUi.toBehaviorContent(): BehaviorContent =
 private fun MovieCategoryList(
     state: MoviesScreenState,
     selectedCategoryFocusRequester: FocusRequester,
-    firstMovieFocusRequester: FocusRequester,
-    searchQuery: String,
-    onSearchQueryChange: (String) -> Unit,
-    contentSearchQuery: String,
     onCategory: (MovieCategoryUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val visibleCategories = state.categories.filter {
-        searchQuery.isBlank() || it.label.contains(searchQuery, ignoreCase = true)
-    }
-    val focusCategoryId = visibleCategories.firstOrNull { it.id == state.selectedCategoryId }?.id
-        ?: visibleCategories.firstOrNull()?.id
+    val focusCategoryId = state.categories.firstOrNull { it.id == state.selectedCategoryId }?.id
+        ?: state.categories.firstOrNull()?.id
 
     MediaCatalogPanel(
         title = "Categories",
         modifier = modifier,
-        trailing = {
-            CatalogSearchField(
-                query = searchQuery,
-                onQueryChange = onSearchQueryChange,
-                placeholder = "Dossier",
-                modifier = Modifier.width(118.dp),
-            )
-        },
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
             contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
         ) {
-            items(
-                visibleCategories,
-                key = { it.id },
-            ) { category ->
+            itemsIndexed(
+                state.categories,
+                key = { _, category -> category.id },
+            ) { _, category ->
                 CatalogCategoryRow(
                     label = category.label,
                     count = category.count,
                     icon = movieCategoryIcon(category.label),
                     selected = category.id == state.selectedCategoryId,
-                    focusRequester = if (category.id == focusCategoryId) {
-                        selectedCategoryFocusRequester
-                    } else {
-                        null
-                    },
+                    focusRequester = if (category.id == focusCategoryId) selectedCategoryFocusRequester else null,
                     onClick = { onCategory(category) },
                 )
             }
@@ -342,32 +323,26 @@ private fun MovieCategoryList(
 }
 
 @Composable
-private fun MovieGrid(
+private fun MovieList(
     state: MoviesScreenState,
     firstMovieFocusRequester: FocusRequester,
-    searchQuery: String,
+    rightFocusRequester: FocusRequester,
     onSearchQueryChange: (String) -> Unit,
     onMovieFocused: (MovieItemUi) -> Unit,
     onMovieClick: (MovieItemUi) -> Unit,
-    showHistoryDelete: Boolean,
-    onDeleteHistoryMovie: (MovieItemUi) -> Unit,
     onLoadNextPage: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val gridState = rememberLazyGridState()
-    val visibleMovies = state.movies.filter { movie ->
-        searchQuery.isBlank() || movie.title.contains(searchQuery, ignoreCase = true)
-    }
+    val listState = rememberLazyListState()
 
-    LaunchedEffect(state.selectedCategoryId) {
-        if (gridState.layoutInfo.totalItemsCount > 0) gridState.scrollToItem(0)
+    LaunchedEffect(state.selectedCategoryId, state.contentSearchQuery) {
+        if (listState.layoutInfo.totalItemsCount > 0) listState.scrollToItem(0)
     }
-    LaunchedEffect(gridState, visibleMovies.size, state.hasMoreItems, state.nextPageLoading, searchQuery) {
-        if (searchQuery.isNotBlank()) return@LaunchedEffect
-        snapshotFlow { gridState.layoutInfo.visibleItemsInfo.maxOfOrNull { it.index } ?: 0 }
+    LaunchedEffect(listState, state.movies.size, state.hasMoreItems, state.nextPageLoading, state.contentSearchQuery) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.maxOfOrNull { it.index } ?: 0 }
             .collect { lastVisibleIndex ->
-                val remaining = visibleMovies.lastIndex - lastVisibleIndex
+                val remaining = state.movies.lastIndex - lastVisibleIndex
                 if (state.hasMoreItems && !state.nextPageLoading && remaining <= MovieNextPageThreshold) {
                     onLoadNextPage()
                 }
@@ -379,13 +354,12 @@ private fun MovieGrid(
         modifier = modifier,
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val movieCount = if (searchQuery.isBlank()) {
-                    state.selectedCategory?.count ?: state.movies.size
-                } else {
-                    visibleMovies.size
-                }
                 Text(
-                    text = if (movieCount > 0) "$movieCount films" else "Films",
+                    text = if (state.contentSearchQuery.isBlank()) {
+                        state.selectedCategory?.count?.let { "$it films" } ?: "${state.movies.size} films"
+                    } else {
+                        "${state.movies.size} resultats"
+                    },
                     color = SmartVisionColors.TextSecondary,
                     style = CatalogMetaStyle,
                     maxLines = 1,
@@ -393,7 +367,7 @@ private fun MovieGrid(
                 )
                 Spacer(Modifier.width(10.dp))
                 CatalogSearchField(
-                    query = searchQuery,
+                    query = state.contentSearchQuery,
                     onQueryChange = onSearchQueryChange,
                     placeholder = "Film",
                     modifier = Modifier.width(190.dp),
@@ -402,110 +376,49 @@ private fun MovieGrid(
         },
     ) {
         when {
-            state.moviesLoading && visibleMovies.isEmpty() -> CatalogLoading(
+            state.moviesLoading && state.movies.isEmpty() -> CatalogLoading(
                 title = "Chargement des films",
                 modifier = Modifier.fillMaxSize(),
             )
 
-            state.errorMessage != null && visibleMovies.isEmpty() -> CatalogError(
+            state.errorMessage != null && state.movies.isEmpty() -> CatalogError(
                 message = state.errorMessage,
                 onRetry = onRetry,
                 modifier = Modifier.fillMaxSize(),
             )
 
-            visibleMovies.isEmpty() -> CatalogEmpty(
-                title = if (searchQuery.isBlank()) "Aucun film" else "Aucun resultat",
-                subtitle = if (searchQuery.isBlank()) "Selectionnez une autre categorie." else "Modifiez votre recherche.",
+            state.movies.isEmpty() -> CatalogEmpty(
+                title = if (state.contentSearchQuery.isBlank()) "Aucun film" else "Aucun resultat",
+                subtitle = if (state.contentSearchQuery.isBlank()) "Selectionnez une autre categorie." else "Modifiez votre recherche.",
                 modifier = Modifier.fillMaxSize(),
             )
 
-            else -> LazyVerticalGrid(
-                columns = GridCells.Fixed(MediaCatalogDimens.MediaGridColumns),
-                state = gridState,
+            else -> LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.spacedBy(MediaCatalogDimens.MediaGridGap),
-                verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.MediaGridGap),
-                contentPadding = PaddingValues(bottom = MediaCatalogDimens.MediaGridGap),
+                verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
+                contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
             ) {
                 itemsIndexed(
-                    items = visibleMovies,
+                    items = state.movies,
                     key = { _, movie -> movie.streamId },
                 ) { index, movie ->
                     val itemFocusRequester = remember(movie.streamId) { FocusRequester() }
-                    val cardFocusRequester = if (index == 0) firstMovieFocusRequester else itemFocusRequester
-                    val deleteFocusRequester = remember(movie.streamId) { FocusRequester() }
-                    Box {
-                        CatalogMediaCard(
-                            title = movie.title,
-                            meta = movieCardMeta(movie),
-                            imageUrl = movie.posterUrl,
-                            fallbackText = movie.title.take(2).uppercase(),
-                            selected = movie.streamId == state.selectedMovieId,
-                            favorite = movie.isFavorite,
-                            focusRequester = cardFocusRequester,
-                            rightFocusRequester = deleteFocusRequester.takeIf { showHistoryDelete },
-                            onFocused = { onMovieFocused(movie) },
-                            onClick = { onMovieClick(movie) },
-                        )
-                        if (showHistoryDelete) {
-                            HistoryDeleteButton(
-                                focusRequester = deleteFocusRequester,
-                                leftFocusRequester = cardFocusRequester,
-                                onClick = { onDeleteHistoryMovie(movie) },
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(7.dp),
-                            )
-                        }
-                    }
+                    VodContentRow(
+                        title = movie.title,
+                        subtitle = movie.subtitle,
+                        sideLabel = movie.duration ?: "",
+                        imageUrl = movie.posterUrl,
+                        fallbackText = movie.title.take(2).uppercase(),
+                        selected = movie.streamId == state.selectedMovieId,
+                        focusRequester = if (index == 0) firstMovieFocusRequester else itemFocusRequester,
+                        rightFocusRequester = rightFocusRequester,
+                        onFocused = { onMovieFocused(movie) },
+                        onClick = { onMovieClick(movie) },
+                    )
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun HistoryDeleteButton(
-    focusRequester: FocusRequester,
-    leftFocusRequester: FocusRequester,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val focusState = rememberTvFocusState()
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val shape = RoundedCornerShape(7.dp)
-    Box(
-        modifier = modifier
-            .size(36.dp)
-            .focusProperties { left = leftFocusRequester }
-            .tvFocusTarget(
-                state = focusState,
-                focusRequester = focusRequester,
-                pressed = pressed,
-                focusedScale = 1.08f,
-                glowColor = SmartVisionColors.Error,
-                cornerRadius = 7.dp,
-            )
-            .clip(shape)
-            .background(if (focusState.isFocused) SmartVisionColors.Error.copy(alpha = 0.30f) else Color.Black.copy(alpha = 0.56f))
-            .border(
-                BorderStroke(
-                    if (focusState.isFocused) 2.dp else 1.dp,
-                    if (focusState.isFocused) SmartVisionColors.Error else Color.White.copy(alpha = 0.30f),
-                ),
-                shape,
-            )
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .focusable(interactionSource = interactionSource),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Default.Delete,
-            contentDescription = "Supprimer",
-            tint = Color.White,
-            modifier = Modifier.size(22.dp),
-        )
     }
 }
 
@@ -548,14 +461,26 @@ private fun ConfirmHistoryDeleteDialog(
     }
 }
 
-private const val MovieNextPageThreshold = 15
+private fun MovieItemUi.toPreviewContent(): VodPreviewContent =
+    VodPreviewContent(
+        id = "movie-$streamId",
+        title = title,
+        subtitle = subtitle,
+        imageUrl = posterUrl,
+        backdropUrl = backdropUrl,
+        streamUrl = streamUrl,
+        durationLabel = duration,
+        sideLabel = duration,
+        year = year,
+        rating = rating,
+        genre = genre,
+        plot = plot,
+        creditLabel = director?.let { "Director: $it" },
+        cast = cast,
+        isFavorite = isFavorite,
+    )
 
-private fun movieCardMeta(movie: MovieItemUi): String =
-    listOfNotNull(
-        movie.year,
-        movie.rating?.let { "$it/10" },
-        movie.containerExtension.uppercase().takeIf { it.isNotBlank() },
-    ).joinToString("  |  ").ifBlank { movie.categoryLabel }
+private const val MovieNextPageThreshold = 15
 
 private fun movieCategoryIcon(label: String): ImageVector? {
     val normalized = label.lowercase()

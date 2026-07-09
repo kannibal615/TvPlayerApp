@@ -1,5 +1,37 @@
 # AI Changelog
 
+## 2026-07-09 - Refonte Movies/Series en layout 3 colonnes
+
+Type:
+- fonctionnalite
+- UI TV
+- documentation
+
+Resume:
+- Movies et Series adoptent un layout 3 colonnes aligne sur Live TV: categories sans recherche a gauche, liste centrale paginee, panneau Preview a droite.
+- La recherche centrale Films/Series interroge Room par pages pour `ALL` et categories normales; Favoris/Historique restent filtres sur leurs listes utilisateur bornees.
+- Premier OK sur une ligne lance le mini-preview VOD et donne le focus au bouton `Play`; deuxieme OK sur la meme ligne ouvre le fullscreen.
+- Le mini-preview joue les segments 10% / 30% / 50% / 80% avec fade-in audio, puis affiche backdrop TMDB ou poster 16:9.
+- Les fiches detail existantes restent accessibles uniquement via `Details`; la suppression Historique passe par le header Preview.
+
+Verification:
+- `.\gradlew.bat :app:compileReleaseKotlin` : succes.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/ui/movies/MoviesScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/series/SeriesScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/catalog/VodThreePaneComponents.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/movies/MoviesViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/series/SeriesViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/dao/MediaDao.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/domain/repository/CatalogRepository.kt`
+
 ## 2026-07-09 - Details profil sur cartes source existantes
 
 Type:

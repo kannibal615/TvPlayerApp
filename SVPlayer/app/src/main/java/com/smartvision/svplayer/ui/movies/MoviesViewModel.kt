@@ -37,15 +37,21 @@ data class MovieItemUi(
     val number: String,
     val title: String,
     val posterUrl: String?,
+    val backdropUrl: String? = null,
     val categoryLabel: String,
     val containerExtension: String,
+    val genre: String?,
     val rating: String?,
     val year: String?,
+    val duration: String?,
+    val plot: String?,
+    val director: String? = null,
+    val cast: String? = null,
     val streamUrl: String,
     val isFavorite: Boolean = false,
 ) {
     val subtitle: String =
-        listOfNotNull(year, rating, containerExtension.uppercase()).joinToString(" | ").ifBlank { categoryLabel }
+        listOfNotNull(genre, rating?.let { "$it/10" }, year).joinToString(" | ").ifBlank { categoryLabel }
 }
 
 data class MoviesScreenState(
@@ -58,6 +64,7 @@ data class MoviesScreenState(
     val errorMessage: String? = null,
     val categories: List<MovieCategoryUi> = emptyList(),
     val selectedCategoryId: String? = null,
+    val contentSearchQuery: String = "",
     val movies: List<MovieItemUi> = emptyList(),
     val focusedMovieId: Int? = null,
     val selectedMovieId: Int? = null,
@@ -200,6 +207,19 @@ class MoviesViewModel(
         loadMovies(category.id)
     }
 
+    fun updateContentSearchQuery(query: String) {
+        val cleanQuery = query.trim()
+        val current = _uiState.value
+        if (current.contentSearchQuery == cleanQuery) return
+        _uiState.update { it.copy(contentSearchQuery = cleanQuery) }
+        when (current.selectedCategoryId) {
+            FavoriteMovieCategoryId -> loadFavoriteMovies()
+            HistoryMovieCategoryId -> loadHistoryMovies()
+            AllMovieCategoryId, null -> loadAllMovies()
+            else -> current.selectedCategoryId?.let(::loadMovies)
+        }
+    }
+
     fun focusMovie(movie: MovieItemUi) {
         _uiState.update { it.copy(focusedMovieId = movie.streamId) }
     }
@@ -255,7 +275,7 @@ class MoviesViewModel(
             userContentRepository.observeFavoriteIds(UserContentType.Movie).collect { ids ->
                 favoriteIds = ids
                 val favoriteSelection = if (_uiState.value.selectedCategoryId == FavoriteMovieCategoryId) {
-                    favoriteMovies()
+                    favoriteMovies(_uiState.value.contentSearchQuery)
                 } else {
                     null
                 }
@@ -288,7 +308,7 @@ class MoviesViewModel(
                     .distinctBy { it.contentId }
                 historyCategorySignals = userContentRepository.resolveCategorySignals(historyProgress)
                 _uiState.update { state ->
-                    val historyMovies = historyMovies()
+                    val historyMovies = historyMovies(state.contentSearchQuery)
                     state.copy(
                         categories = state.categories.withSpecialCategories(
                             allCount = catalogTotalCount(),
@@ -308,7 +328,7 @@ class MoviesViewModel(
         moviesJob?.cancel()
         tmdbMetadataJob?.cancel()
         moviesJob = viewModelScope.launch {
-            val movies = favoriteMovies()
+            val movies = favoriteMovies(_uiState.value.contentSearchQuery)
             _uiState.update { state ->
                 state.copy(
                     itemsLoading = false,
@@ -336,7 +356,7 @@ class MoviesViewModel(
     private fun loadHistoryMovies() {
         moviesJob?.cancel()
         tmdbMetadataJob?.cancel()
-        val movies = historyMovies()
+        val movies = historyMovies(_uiState.value.contentSearchQuery)
         _uiState.update { state ->
             state.copy(
                 moviesLoading = false,
@@ -375,11 +395,12 @@ class MoviesViewModel(
             categoryId = categoryId,
             selectedCategoryId = selectedCategoryId,
             categoryLabel = categoryLabel,
+            query = state.contentSearchQuery,
             replace = false,
         )
     }
 
-    private fun historyMovies(): List<MovieItemUi> =
+    private fun historyMovies(query: String = ""): List<MovieItemUi> =
         historyProgress.mapIndexedNotNull { index, progress ->
             val id = progress.contentId.toIntOrNull() ?: return@mapIndexedNotNull null
             if (!playerSettings.allowsContent(progress.title, progress.subtitle)) return@mapIndexedNotNull null
@@ -390,14 +411,17 @@ class MoviesViewModel(
                 posterUrl = progress.imageUrl,
                 categoryLabel = "Historique",
                 containerExtension = "mp4",
+                genre = null,
                 rating = null,
                 year = null,
+                duration = progress.durationMs.takeIf { it > 0L }?.let(::formatDurationMs),
+                plot = progress.subtitle,
                 streamUrl = xtreamRepository.buildMovieStreamUrl(id),
                 isFavorite = id in favoriteIds,
             )
-        }
+        }.filter { it.matchesSearch(query) }
 
-    private suspend fun favoriteMovies(): List<MovieItemUi> =
+    private suspend fun favoriteMovies(query: String = ""): List<MovieItemUi> =
         catalogRepository.getMoviesByIds(favoriteIds.toList())
             .filter { movie ->
                 playerSettings.allowsContent(movie.title, movie.rating, movie.categoryName)
@@ -406,6 +430,7 @@ class MoviesViewModel(
             .mapIndexed { index, movie ->
                 movie.toUiMovie(index, movie.categoryName.ifBlank { "Favoris" }, xtreamRepository, favoriteIds)
             }
+            .filter { it.matchesSearch(query) }
 
     private fun loadMovies(categoryId: String) {
         val categoryLabel = _uiState.value.categories.firstOrNull { it.id == categoryId }?.label ?: "Films"
@@ -416,6 +441,7 @@ class MoviesViewModel(
         categoryId: String?,
         selectedCategoryId: String,
         categoryLabel: String,
+        query: String = _uiState.value.contentSearchQuery,
         replace: Boolean,
     ) {
         if (replace) moviesJob?.cancel()
@@ -435,7 +461,9 @@ class MoviesViewModel(
                 )
             }
             runCatching {
-                val page = if (categoryId == null) {
+                val page = if (query.isNotBlank()) {
+                    catalogRepository.searchMoviesPage(categoryId, query, startOffset, MovieItemsPageSize)
+                } else if (categoryId == null) {
                     catalogRepository.getAllMoviesPage(startOffset, MovieItemsPageSize)
                 } else {
                     catalogRepository.getMoviesPage(categoryId, startOffset, MovieItemsPageSize)
@@ -497,8 +525,14 @@ class MoviesViewModel(
                 movie.streamId to movie.copy(
                     title = metadata.title.nonBlank() ?: movie.title,
                     posterUrl = metadata.posterUrl.nonBlank() ?: movie.posterUrl,
+                    backdropUrl = metadata.backdropUrl.nonBlank() ?: movie.backdropUrl,
+                    genre = metadata.genres.nonBlank() ?: movie.genre,
                     rating = metadata.voteAverage?.takeIf { it > 0.0 }?.formatRating() ?: movie.rating,
                     year = metadata.releaseDate?.take(4)?.takeIf { it.all(Char::isDigit) } ?: movie.year,
+                    duration = metadata.runtimeMinutes?.takeIf { it > 0 }?.let(::formatMinutes) ?: movie.duration,
+                    plot = metadata.overview.nonBlank() ?: movie.plot,
+                    director = metadata.director.nonBlank() ?: movie.director,
+                    cast = metadata.cast.nonBlank() ?: movie.cast,
                 )
             }.toMap()
             if (enrichedById.isEmpty()) return@launch
@@ -590,8 +624,11 @@ private fun Movie.toUiMovie(
         posterUrl = posterUrl,
         categoryLabel = categoryLabel,
         containerExtension = containerExtension,
+        genre = genre?.takeIf { it.isNotBlank() },
         rating = rating?.takeIf { it.isNotBlank() },
         year = year?.take(4)?.takeIf { it.all(Char::isDigit) },
+        duration = duration?.takeIf { it.isNotBlank() },
+        plot = plot?.takeIf { it.isNotBlank() },
         streamUrl = xtreamRepository.buildMovieStreamUrl(streamId),
         isFavorite = streamId in favoriteIds,
     )
@@ -609,11 +646,34 @@ private fun XtreamMovieStream.toUiMovie(
         posterUrl = posterUrl,
         categoryLabel = categoryLabel,
         containerExtension = containerExtension,
+        genre = null,
         rating = rating?.takeIf { it.isNotBlank() },
         year = added?.take(4)?.takeIf { it.all(Char::isDigit) },
+        duration = null,
+        plot = null,
         streamUrl = xtreamRepository.buildMovieStreamUrl(this),
         isFavorite = streamId in favoriteIds,
     )
+
+private fun MovieItemUi.matchesSearch(query: String): Boolean {
+    if (query.isBlank()) return true
+    return title.contains(query, ignoreCase = true) ||
+        genre?.contains(query, ignoreCase = true) == true ||
+        year?.contains(query, ignoreCase = true) == true
+}
+
+private fun formatMinutes(minutes: Int): String {
+    val hours = minutes / 60
+    val remaining = minutes % 60
+    return when {
+        hours > 0 && remaining > 0 -> "${hours}h ${remaining}m"
+        hours > 0 -> "${hours}h"
+        else -> "${remaining}m"
+    }
+}
+
+private fun formatDurationMs(durationMs: Long): String =
+    formatMinutes((durationMs / 60_000L).toInt().coerceAtLeast(1))
 
 private fun String.cleanTitle(): String =
     replace(Regex("\\s+"), " ")
