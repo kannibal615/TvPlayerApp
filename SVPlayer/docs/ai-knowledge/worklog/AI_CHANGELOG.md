@@ -2519,3 +2519,29 @@ Fichiers MD mis a jour:
 Fichiers code concernes:
 - `app/build.gradle.kts`
 - `scripts/deploy_activation_phase1.ps1`
+# 2026-07-09 - Multi-profils playlist locaux et correction compilation player
+
+Type:
+- bugfix
+- fonctionnalite
+- documentation
+
+Resume:
+- Correction compilation `FullScreenPlayerScreen.kt` apres extraction de l'overlay Live: imports `focusRequester`, `onFocusChanged` et `WbSunny`.
+- Ajout de profils playlist locaux dans `XtreamAccountManager`, migration douce des anciennes sources vers `Profil principal`, selection active et projection vers les anciens flows Xtream/M3U/EPG.
+- Ajout de la section `Profils` dans Info compte avec ajout, detail, activation, modification, synchronisation et suppression confirmee.
+- Nettoyage du catalogue Room local avant resynchronisation lors d'un changement de profil pour eviter d'afficher l'ancien catalogue sous une nouvelle source.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/core/config/XtreamAccountManager.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/domain/repository/CatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/profile/ProfileScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/player/FullScreenPlayerScreen.kt`

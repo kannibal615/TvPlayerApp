@@ -1,6 +1,6 @@
 # SmartVision AI Knowledge Root
 
-Derniere mise a jour: 2026-07-07.
+Derniere mise a jour: 2026-07-09.
 
 Ce fichier est le point d'entree court pour les agents IA. Lire ce fichier avant `AGENTS.md`, `PROJECT_NOTES.md` ou tout gros fichier legacy. Les anciens MD restent des sources historiques et ne doivent plus etre lus par defaut.
 
@@ -14,6 +14,7 @@ Etat technique constate le 2026-07-07:
 - langue officielle UI: anglais par defaut; deuxieme langue disponible: francais; futures langues a ajouter via le systeme i18n.
 - entree TV: `MainActivity -> ui/navigation/AppNavigation.kt`
 - lecture video: AndroidX Media3 ExoPlayer natif
+- sources utilisateur: multi-profils locaux dans `XtreamAccountManager`, avec migration du compte/lien existant vers `Profil principal` et selection active projetee vers les anciens flows `current()`, `m3uUrl`, `epgUrl`, `activePlaylistSource`.
 - backend local: `server/public_html/`
 - deploiement: `scripts/deploy_activation_phase1.ps1`
 - ADB Windows de reference pour tests Firestick: `C:\Users\ONEDEV\AppData\Local\Android\Sdk\platform-tools\adb.exe`; Firestick Wi-Fi connue: `192.168.1.33:5555`.

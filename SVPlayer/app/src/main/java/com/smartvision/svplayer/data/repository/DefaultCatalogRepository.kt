@@ -482,6 +482,26 @@ class DefaultCatalogRepository(
         localCatalogSnapshotCache.invalidate()
     }
 
+    override suspend fun clearCatalogForProfileSwitch() = withContext(Dispatchers.IO) {
+        database.withTransaction {
+            categoryDao.deleteByType(MediaSection.Live.storageName)
+            categoryDao.deleteByType(MediaSection.Movies.storageName)
+            categoryDao.deleteByType(MediaSection.Series.storageName)
+            mediaDao.clearLiveStreams()
+            mediaDao.clearMovies()
+            mediaDao.clearSeries()
+            syncStateDao.upsert(
+                SyncStateEntity(
+                    id = "catalog",
+                    lastSync = null,
+                    status = "profile_switch",
+                    message = "Catalogue vide apres changement de profil",
+                ),
+            )
+        }
+        invalidateLocalCatalogCache()
+    }
+
     private fun isLiveCatalogConfigured(): Boolean =
         accountManager.activePlaylistSource.value.hasConfiguredCatalog(
             m3uUrl = accountManager.m3uUrl.value,
@@ -683,6 +703,7 @@ class DefaultCatalogRepository(
             }
             logSyncMemory(stage = "after_room_write", live = liveItems, movies = movieItems, series = seriesItems)
             invalidateLocalCatalogCache()
+            accountManager.markActiveProfileSynced(now)
             logSyncMemory(stage = "after_cache_invalidation", live = liveItems, movies = movieItems, series = seriesItems)
             _syncStatus.value = SyncStatus.Success(
                 message = "Synchronisation terminee",
@@ -1099,6 +1120,7 @@ class DefaultCatalogRepository(
                 ),
             )
             invalidateLocalCatalogCache()
+            accountManager.markActiveProfileSynced(now)
             _syncStatus.value = SyncStatus.Success(
                 message = "Synchronisation M3U terminee",
                 catalogProgress = SyncStatus.CatalogProgress(

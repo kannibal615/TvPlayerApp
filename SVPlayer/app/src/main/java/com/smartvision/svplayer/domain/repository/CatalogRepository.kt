@@ -73,6 +73,7 @@ interface CatalogRepository {
     suspend fun getTrendingSeriesItems(limit: Int): List<TrendingCatalogItem>
     suspend fun getCatalogContentCounts(): CatalogContentCounts
     fun invalidateLocalCatalogCache()
+    suspend fun clearCatalogForProfileSwitch()
     suspend fun synchronize(): Result<Unit>
     suspend fun toggleFavorite(contentType: String, contentId: String)
     suspend fun getSeriesEpisodes(seriesId: Int): List<Episode>

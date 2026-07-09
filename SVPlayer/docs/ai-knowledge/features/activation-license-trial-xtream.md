@@ -1,6 +1,6 @@
 # Activation, Licence, Essai et Xtream
 
-Derniere mise a jour: 2026-07-02.
+Derniere mise a jour: 2026-07-09.
 
 ## 1. Objectif
 
@@ -119,6 +119,7 @@ Champs importants:
 - `epg_url`
 - `m3u_url`
 - `activePlaylistSource` local Android: `xtream` ou `m3u`, exclusif.
+- `playlist_profiles_json` et `active_playlist_profile_id` locaux Android: profils utilisateur multiples geres par `XtreamAccountManager`. Au premier demarrage apres mise a jour, les anciens `accounts_json`, `m3u_url`, `epg_url` et `active_playlist_source` sont copies dans `Profil principal` si une source existe.
 
 Admin:
 - generation et gestion des codes/licences dans `server/public_html/admin/index.php`;
@@ -142,6 +143,7 @@ Admin:
 - Ne pas tester seulement l'ancien compte local au demarrage: rafraichir le statut backend avant le controle Xtream pour detecter une playlist remplacee depuis le portail web.
 - Si Xtream et M3U sont tous les deux renseignes, ne pas choisir automatiquement une source distante a chaque refresh: conserver la source active locale choisie par l'utilisateur.
 - Les popups et messages de synchronisation doivent afficher les donnees de la source active: identifiants Xtream si Xtream est actif, lien M3U si M3U est actif.
+- L'activation/licence reste globale appareil; les profils ne changent que la source playlist active. La selection d'un profil reprojette ses champs vers les anciens flows pour preserver les repositories existants.
 
 ## 10. Problemes connus
 

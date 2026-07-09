@@ -1,6 +1,6 @@
 # Catalogue, Playlist et Lecture
 
-Derniere mise a jour: 2026-07-08.
+Derniere mise a jour: 2026-07-09.
 
 ## 1. Objectif
 
@@ -42,6 +42,8 @@ Depuis le 2026-07-01, un lien M3U peut devenir la source active du catalogue Liv
 Depuis le 2026-07-01, l'URL EPG XMLTV est telechargee dans un cache local borne lors d'une synchronisation manuelle ou catalogue, mais pas pendant le splash. Depuis le 2026-07-05, `EpgRepository.synchronizeIfStale(url, minAgeMs)` conserve `lastSuccessAt` et `urlHash`, un `EpgSyncWorker` horaire rafraichit l'EPG avec contrainte reseau sans synchronisation catalogue complete, et le clic chaine tente un refresh stale-aware avant de rafraichir uniquement la chaine selectionnee dans l'UI.
 
 Depuis le 2026-07-03, le splash ne verifie plus le lien M3U, ne synchronise plus et ne precharge plus Home/Live TV. Les ecrans Movies et Series affichent toujours un etat vide explicite quand M3U est actif, au lieu d'une erreur Xtream. Live TV reconnait un lien M3U comme source jouable meme sans compte Xtream local.
+
+Depuis le 2026-07-09, `XtreamAccountManager` porte des profils playlist locaux. Le profil actif reste expose aux repositories via les flows historiques `current()`, `m3uUrl`, `epgUrl` et `activePlaylistSource`. La selection/creation/suppression d'un profil depuis Info compte vide le catalogue Room local (`categories`, Live, Films, Series, sync_state) puis relance la synchronisation de la source active pour eviter d'afficher un ancien catalogue sous un nouveau profil. Les tables catalogue ne portent pas encore un `profileId`; une isolation persistante multi-catalogue complete demande une migration Room dediee.
 
 Depuis le 2026-07-05, Live TV conserve le layout 3 zones `Categories / Chaines / Apercu`, mais les panneaux sont plus compacts, le header categories n'a plus de bouton `EPG`, le header chaines garde seulement le titre et la recherche, et les lignes affichent une numerotation relative au dossier visible (`Tous`, `Favoris`, `Historique` ont chacune leur numerotation). Le badge EPG texte est remplace par l'image `res/drawable-nodpi/ic_epg_badge.png`, sans deformation. Les logos chaines reels n'ont plus de fond/cadre; seul le fallback texte garde un fond discret.
 
@@ -190,6 +192,7 @@ URL de lecture:
 - Ne pas bloquer l'affichage si du contenu partiel est deja disponible.
 - Ne pas publier un catalogue partiel apres echec de synchronisation. La synchro Xtream actuelle ecrit Live, Movies, Series et `SyncState` dans une transaction Room unique; les sections sont traitees en serie et en batchs pour reduire les listes simultanees en RAM.
 - Une seule source catalogue peut etre active: Xtream ou M3U. Activer une source desactive l'autre cote preference locale.
+- En multi-profils local, une seule source/profil est active a la fois. Tant que les tables catalogue n'ont pas de `profileId`, ne pas conserver plusieurs catalogues Room simultanes; vider puis resynchroniser au changement de profil.
 - M3U alimente Live TV uniquement; ne pas fabriquer des films/series sans structure fiable.
 - Quand M3U est actif, ne pas afficher de messages d'erreur Xtream sur Movies/Series; afficher un etat vide source-aware.
 - Le badge EPG des lignes Live TV doit se baser sur les programmes locaux disponibles, pas seulement sur la presence d'une URL EPG.

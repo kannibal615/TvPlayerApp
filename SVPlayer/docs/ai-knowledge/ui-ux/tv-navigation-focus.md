@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-07-08.
+Derniere mise a jour: 2026-07-09.
 
 ## 1. Objectif
 
@@ -202,3 +202,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-07: Media deplace les actions QR `Importer tel.` / `Exporter tel.` sous `Media local` en lignes compactes; les sous-dossiers prives deviennent gerables depuis le backend et restent visuellement plus bas que leurs dossiers parents.
 - 2026-07-07: Media corrige le champ recherche TV pour ouvrir le clavier, applique le style de focus parametre aux lignes Media, compacte le mini-player prive 16:9 et durcit le WebView prive Android TV.
 - 2026-07-07: Media prives adopte un fonctionnement proche de YouTube: lancement video dans la section principale, player embed focusable, controls natifs Media3 visibles et overlay fullscreen bas.
+- 2026-07-09: Info compte ajoute une section `Profils` dans le panneau `Info compte`: profil actif, liste focusable, ajout, detail, activation, modification, synchronisation et suppression avec confirmation. Les formulaires reutilisent les champs TV existants et le password est masque dans la fiche detail.
