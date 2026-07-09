@@ -1,8 +1,18 @@
 package com.smartvision.svplayer.ui.catalog
 
+import android.graphics.Bitmap
+import android.view.View
+import android.view.ViewGroup
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,6 +41,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Theaters
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -38,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +63,8 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -59,8 +73,11 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.media3.common.C
@@ -71,6 +88,14 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import com.smartvision.svplayer.data.monetization.IdleVastAdLoader
+import com.smartvision.svplayer.data.monetization.IdleVastCreative
+import com.smartvision.svplayer.data.monetization.MonetizationManager
+import com.smartvision.svplayer.data.monetization.smartVisionMediaSourceFactory
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
@@ -104,6 +129,8 @@ data class VodPreviewContent(
 fun VodContentRow(
     title: String,
     subtitle: String,
+    genre: String?,
+    rating: String?,
     sideLabel: String,
     imageUrl: String?,
     fallbackText: String,
@@ -189,18 +216,24 @@ fun VodContentRow(
                 ),
                 shape,
             )
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(end = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CatalogThumb(
             imageUrl = imageUrl,
             fallbackText = fallbackText,
             modifier = Modifier
-                .width(82.dp)
-                .aspectRatio(16f / 9f),
+                .width(118.dp)
+                .height(76.dp),
+            crop = true,
+            framed = false,
         )
         Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(vertical = 6.dp),
+        ) {
             Text(
                 text = title,
                 color = SmartVisionColors.TextPrimary,
@@ -209,14 +242,34 @@ fun VodContentRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = subtitle,
-                color = SmartVisionColors.TextSecondary,
-                style = CatalogMetaStyle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Spacer(Modifier.height(5.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                genre?.takeIf { it.isNotBlank() }?.let {
+                    VodLineBadge(text = it.substringBefore(",").trim().ifBlank { it })
+                }
+                rating?.takeIf { it.isNotBlank() }?.let {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("\u2605", color = Color(0xFFFFD54F), style = CatalogMetaStyle, maxLines = 1)
+                        Spacer(Modifier.width(3.dp))
+                        Text(
+                            text = it,
+                            color = SmartVisionColors.TextPrimary,
+                            style = CatalogMetaStyle,
+                            maxLines = 1,
+                        )
+                    }
+                }
+                Text(
+                    text = subtitle,
+                    color = SmartVisionColors.TextSecondary,
+                    style = CatalogMetaStyle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         Spacer(Modifier.width(10.dp))
         Text(
@@ -231,6 +284,266 @@ fun VodContentRow(
 }
 
 @Composable
+private fun VodLineBadge(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(SmartVisionColors.Primary.copy(alpha = 0.22f))
+            .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.42f)), RoundedCornerShape(4.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = SmartVisionColors.TextPrimary,
+            style = CatalogMetaStyle,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+fun VodCatalogLoadingSkeleton(
+    modifier: Modifier = Modifier,
+) {
+    val transition = rememberInfiniteTransition(label = "vodCatalogSkeleton")
+    val shimmerOffset by transition.animateFloat(
+        initialValue = -360f,
+        targetValue = 920f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1350, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "vodCatalogSkeletonOffset",
+    )
+    val shimmerBrush = Brush.linearGradient(
+        colors = listOf(
+            SmartVisionColors.Surface.copy(alpha = 0.34f),
+            SmartVisionColors.SurfaceElevated.copy(alpha = 0.74f),
+            SmartVisionColors.Surface.copy(alpha = 0.34f),
+        ),
+        start = androidx.compose.ui.geometry.Offset(shimmerOffset, 0f),
+        end = androidx.compose.ui.geometry.Offset(shimmerOffset + 280f, 0f),
+    )
+
+    Row(
+        modifier = modifier.focusProperties { canFocus = false },
+        horizontalArrangement = Arrangement.spacedBy(MediaCatalogDimens.PanelGap),
+    ) {
+        VodSkeletonPanel(
+            titleWidth = 104.dp,
+            rows = 10,
+            rowHeight = 58.dp,
+            shimmerBrush = shimmerBrush,
+            modifier = Modifier.weight(0.22f),
+        )
+        VodSkeletonPanel(
+            titleWidth = 160.dp,
+            rows = 8,
+            rowHeight = 76.dp,
+            shimmerBrush = shimmerBrush,
+            headerTrailing = true,
+            modifier = Modifier.weight(0.44f),
+        )
+        VodSkeletonPreviewPanel(
+            shimmerBrush = shimmerBrush,
+            modifier = Modifier.weight(0.34f),
+        )
+    }
+}
+
+@Composable
+fun VodContentListLoadingSkeleton(
+    rows: Int = 8,
+    modifier: Modifier = Modifier,
+) {
+    val transition = rememberInfiniteTransition(label = "vodContentListSkeleton")
+    val shimmerOffset by transition.animateFloat(
+        initialValue = -220f,
+        targetValue = 760f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1180, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "vodContentListSkeletonOffset",
+    )
+    val shimmerBrush = Brush.linearGradient(
+        colors = listOf(
+            SmartVisionColors.Surface.copy(alpha = 0.38f),
+            SmartVisionColors.SurfaceElevated.copy(alpha = 0.82f),
+            SmartVisionColors.Surface.copy(alpha = 0.38f),
+        ),
+        start = androidx.compose.ui.geometry.Offset(shimmerOffset, 0f),
+        end = androidx.compose.ui.geometry.Offset(shimmerOffset + 260f, 0f),
+    )
+    Column(
+        modifier = modifier
+            .focusProperties { canFocus = false }
+            .padding(top = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
+    ) {
+        repeat(rows) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(76.dp)
+                    .clip(RoundedCornerShape(MediaCatalogDimens.ItemRadius))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                SmartVisionColors.SurfaceElevated.copy(alpha = 0.58f),
+                                SmartVisionColors.Surface.copy(alpha = 0.44f),
+                            ),
+                        ),
+                    )
+                    .border(
+                        BorderStroke(SmartVisionDimensions.PanelBorder, SmartVisionColors.Border.copy(alpha = 0.48f)),
+                        RoundedCornerShape(MediaCatalogDimens.ItemRadius),
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(118.dp)
+                        .height(76.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(shimmerBrush),
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(7.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.72f)
+                            .height(15.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(shimmerBrush),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.48f)
+                            .height(11.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(shimmerBrush),
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Box(
+                    modifier = Modifier
+                        .width(64.dp)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(shimmerBrush),
+                )
+                Spacer(Modifier.width(10.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun VodSkeletonPanel(
+    titleWidth: Dp,
+    rows: Int,
+    rowHeight: Dp,
+    shimmerBrush: Brush,
+    modifier: Modifier = Modifier,
+    headerTrailing: Boolean = false,
+) {
+    MediaCatalogPanel(
+        title = "",
+        modifier = modifier,
+        trailing = if (headerTrailing) {
+            {
+                Box(
+                    modifier = Modifier
+                        .width(190.dp)
+                        .height(24.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(shimmerBrush),
+                )
+            }
+        } else {
+            null
+        },
+    ) {
+        Box(
+            modifier = Modifier
+                .width(titleWidth)
+                .height(18.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(shimmerBrush),
+        )
+        Spacer(Modifier.height(10.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap)) {
+            repeat(rows) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(rowHeight)
+                        .clip(RoundedCornerShape(MediaCatalogDimens.ItemRadius))
+                        .background(shimmerBrush),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun VodSkeletonPreviewPanel(
+    shimmerBrush: Brush,
+    modifier: Modifier = Modifier,
+) {
+    MediaCatalogPanel(
+        title = "",
+        modifier = modifier,
+        trailing = {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                repeat(3) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(shimmerBrush),
+                    )
+                }
+            }
+        },
+    ) {
+        Box(
+            modifier = Modifier
+                .width(82.dp)
+                .height(18.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(shimmerBrush),
+        )
+        Spacer(Modifier.height(10.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(5.dp))
+                .background(shimmerBrush),
+        )
+        Spacer(Modifier.height(10.dp))
+        repeat(5) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(26.dp)
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(shimmerBrush),
+            )
+            Spacer(Modifier.height(6.dp))
+        }
+    }
+}
+
+@Composable
 fun VodPreviewPanel(
     title: String,
     content: VodPreviewContent?,
@@ -241,6 +554,12 @@ fun VodPreviewPanel(
     onDeleteHistory: () -> Unit,
     modifier: Modifier = Modifier,
     showDeleteHistory: Boolean = false,
+    showFreeAdsPreview: Boolean = false,
+    idleAdEnabled: Boolean = false,
+    idleVastAdLoader: IdleVastAdLoader? = null,
+    monetizationManager: MonetizationManager? = null,
+    premiumPurchaseUrl: String = "",
+    tvCode: String = "",
 ) {
     MediaCatalogPanel(
         title = title,
@@ -280,11 +599,26 @@ fun VodPreviewPanel(
         },
     ) {
         if (content == null) {
-            CatalogEmpty(
-                title = "Aucun contenu selectionne",
-                subtitle = "Selectionnez une ligne pour afficher l'apercu.",
-                modifier = Modifier.fillMaxSize(),
-            )
+            if (showFreeAdsPreview) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    VodIdlePreviewAdFrame(
+                        enabled = idleAdEnabled,
+                        idleVastAdLoader = idleVastAdLoader,
+                        monetizationManager = monetizationManager,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f),
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    VodPremiumPreviewCard(
+                        purchaseUrl = premiumPurchaseUrl,
+                        tvCode = tvCode,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            } else {
+                VodIdlePreviewPrompt(modifier = Modifier.fillMaxSize())
+            }
             return@MediaCatalogPanel
         }
 
@@ -384,6 +718,467 @@ fun VodPreviewPanel(
             }
         }
     }
+}
+
+@Composable
+private fun VodIdlePreviewPrompt(
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .focusProperties { canFocus = false }
+            .padding(horizontal = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Theaters,
+            contentDescription = null,
+            tint = SmartVisionColors.Primary,
+            modifier = Modifier.size(54.dp),
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = "Selectionnez un contenu pour lancer l'apercu.",
+            color = SmartVisionColors.TextSecondary,
+            style = CatalogMetaStyle,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun VodPremiumPreviewCard(
+    purchaseUrl: String,
+    tvCode: String,
+    modifier: Modifier = Modifier,
+) {
+    val bitmap = remember(purchaseUrl) { createVodPreviewQrBitmap(purchaseUrl.ifBlank { "https://smartvisions.net" }, 384) }
+    val gold = Color(0xFFFFD47A)
+    val shape = RoundedCornerShape(5.dp)
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .focusProperties { canFocus = false }
+            .clip(shape)
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF0A1828),
+                        Color(0xFF020914),
+                        Color.Black,
+                    ),
+                    center = androidx.compose.ui.geometry.Offset(220f, 0f),
+                    radius = 560f,
+                ),
+            )
+            .border(BorderStroke(0.5.dp, gold.copy(alpha = 0.58f)), shape)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp)
+                    .background(Brush.horizontalGradient(listOf(Color.Transparent, gold.copy(alpha = 0.52f)))),
+            )
+            VodCrown(
+                color = gold,
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .size(width = 32.dp, height = 22.dp),
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp)
+                    .background(Brush.horizontalGradient(listOf(gold.copy(alpha = 0.52f), Color.Transparent))),
+            )
+        }
+        Text(
+            text = "Passer Premium",
+            color = gold,
+            style = CatalogPreviewTitleStyle.copy(fontSize = 19.sp, lineHeight = 23.sp),
+            fontWeight = FontWeight.Light,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = "Scannez le QR code depuis votre telephone",
+            color = SmartVisionColors.TextPrimary,
+            style = CatalogMetaStyle.copy(fontSize = 13.sp, lineHeight = 17.sp),
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .clip(RoundedCornerShape(5.dp))
+                .background(Color.White)
+                .padding(5.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "QR code SmartVision Premium",
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Spacer(Modifier.height(7.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = "Code TV",
+                color = gold.copy(alpha = 0.94f),
+                style = CatalogMetaStyle.copy(fontSize = 13.sp, lineHeight = 17.sp),
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = tvCode.ifBlank { "------" },
+                color = gold,
+                style = CatalogPreviewTitleStyle.copy(fontSize = 20.sp, lineHeight = 23.sp),
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun VodCrown(
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier = modifier.focusProperties { canFocus = false }) {
+        val stroke = 1.7.dp.toPx()
+        val baseTop = size.height * 0.72f
+        val baseBottom = size.height * 0.88f
+        val crown = Path().apply {
+            moveTo(size.width * 0.12f, baseTop)
+            lineTo(size.width * 0.27f, size.height * 0.36f)
+            lineTo(size.width * 0.42f, baseTop)
+            lineTo(size.width * 0.50f, size.height * 0.18f)
+            lineTo(size.width * 0.58f, baseTop)
+            lineTo(size.width * 0.73f, size.height * 0.36f)
+            lineTo(size.width * 0.88f, baseTop)
+            lineTo(size.width * 0.80f, baseBottom)
+            lineTo(size.width * 0.20f, baseBottom)
+            close()
+        }
+        drawPath(crown, color.copy(alpha = 0.92f))
+        drawPath(
+            crown,
+            Color.White.copy(alpha = 0.36f),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(stroke),
+        )
+        listOf(0.27f, 0.50f, 0.73f).forEach { x ->
+            drawCircle(
+                color = color,
+                radius = size.minDimension * 0.07f,
+                center = androidx.compose.ui.geometry.Offset(size.width * x, size.height * if (x == 0.50f) 0.15f else 0.32f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun VodIdlePreviewAdFrame(
+    enabled: Boolean,
+    idleVastAdLoader: IdleVastAdLoader?,
+    monetizationManager: MonetizationManager?,
+    modifier: Modifier = Modifier,
+) {
+    var adTagUrl by remember { mutableStateOf<String?>(null) }
+    var configLoaded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(monetizationManager) {
+        adTagUrl = monetizationManager?.idleLivePreviewAdTagUrl()
+        configLoaded = true
+    }
+
+    val shape = RoundedCornerShape(MediaCatalogDimens.ItemRadius)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(Color.Black)
+            .border(BorderStroke(1.dp, SmartVisionColors.Border), shape)
+            .focusProperties { canFocus = false },
+        contentAlignment = Alignment.Center,
+    ) {
+        val loader = idleVastAdLoader
+        val manager = monetizationManager
+        val tagUrl = adTagUrl
+        if (tagUrl != null && enabled && loader != null && manager != null) {
+            var adCycle by remember(tagUrl) { mutableIntStateOf(0) }
+            key(adCycle) {
+                VodIdlePreviewVastPlayer(
+                    adTagUrl = tagUrl,
+                    idleVastAdLoader = loader,
+                    monetizationManager = manager,
+                    onCycleFinished = { retryDelayMillis ->
+                        delay(retryDelayMillis)
+                        adCycle += 1
+                    },
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
+        } else {
+            if (!configLoaded) {
+                CircularProgressIndicator(
+                    color = SmartVisionColors.Primary,
+                    strokeWidth = 3.dp,
+                    modifier = Modifier.size(30.dp),
+                )
+            } else {
+                VodIdlePreviewPlaceholder()
+            }
+        }
+    }
+}
+
+@Composable
+private fun VodIdlePreviewVastPlayer(
+    adTagUrl: String,
+    idleVastAdLoader: IdleVastAdLoader,
+    monetizationManager: MonetizationManager,
+    onCycleFinished: suspend (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var loading by remember(adTagUrl) { mutableStateOf(true) }
+    var adStarted by remember(adTagUrl) { mutableStateOf(false) }
+    var adFinished by remember(adTagUrl) { mutableStateOf(false) }
+    var adFailed by remember(adTagUrl) { mutableStateOf(false) }
+    var cycleRestarted by remember(adTagUrl) { mutableStateOf(false) }
+    var creative by remember(adTagUrl) { mutableStateOf<IdleVastCreative?>(null) }
+    var firedEvents by remember(adTagUrl) { mutableStateOf(emptySet<String>()) }
+    val playerView = remember {
+        PlayerView(context).apply {
+            useController = false
+            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            isFocusable = false
+            isFocusableInTouchMode = false
+            isClickable = false
+            isLongClickable = false
+            descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+        }
+    }
+    val adMediaSourceFactory = remember(context) { smartVisionMediaSourceFactory(context) }
+    val player = remember(adMediaSourceFactory) {
+        ExoPlayer.Builder(context)
+            .setMediaSourceFactory(adMediaSourceFactory)
+            .build()
+            .apply {
+                volume = 0f
+                playWhenReady = true
+            }
+    }
+
+    LaunchedEffect(adTagUrl) {
+        loading = true
+        adStarted = false
+        adFinished = false
+        adFailed = false
+        firedEvents = emptySet()
+        player.stop()
+        player.clearMediaItems()
+        creative = idleVastAdLoader.load(adTagUrl)
+        val mediaUrl = creative?.mediaUrl
+        if (mediaUrl.isNullOrBlank()) {
+            loading = false
+            adFailed = true
+            monetizationManager.onIdleLivePreviewAdFailed("creative VAST indisponible")
+        } else {
+            monetizationManager.onIdleLivePreviewAdLoaded()
+            player.setMediaItem(MediaItem.fromUri(mediaUrl))
+            player.prepare()
+            player.playWhenReady = true
+        }
+    }
+
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying && !adStarted) {
+                    loading = false
+                    adStarted = true
+                }
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) {
+                    adFinished = true
+                }
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                loading = false
+                adFailed = true
+                coroutineScope.launch {
+                    monetizationManager.onIdleLivePreviewAdFailed(error.message.orEmpty())
+                }
+            }
+        }
+        player.addListener(listener)
+        onDispose {
+            player.removeListener(listener)
+            playerView.player = null
+            player.clearMediaItems()
+            player.release()
+        }
+    }
+
+    LaunchedEffect(adStarted) {
+        if (adStarted) {
+            idleVastAdLoader.ping(creative?.impressionUrls.orEmpty())
+            idleVastAdLoader.ping(creative?.trackingUrls?.get("start").orEmpty())
+            monetizationManager.onIdleLivePreviewAdStarted()
+        }
+    }
+
+    LaunchedEffect(adStarted, adFinished, adFailed, creative) {
+        while (adStarted && !adFinished && !adFailed) {
+            val duration = player.duration.takeIf { it > 0L } ?: 0L
+            if (duration > 0L) {
+                val progress = player.currentPosition.toDouble() / duration.toDouble()
+                val event = when {
+                    progress >= 0.75 && "thirdQuartile" !in firedEvents -> "thirdQuartile"
+                    progress >= 0.50 && "midpoint" !in firedEvents -> "midpoint"
+                    progress >= 0.25 && "firstQuartile" !in firedEvents -> "firstQuartile"
+                    else -> null
+                }
+                if (event != null) {
+                    firedEvents = firedEvents + event
+                    idleVastAdLoader.ping(creative?.trackingUrls?.get(event).orEmpty())
+                }
+            }
+            delay(500)
+        }
+    }
+
+    LaunchedEffect(adFinished, adFailed) {
+        if ((adFinished || adFailed) && !cycleRestarted) {
+            cycleRestarted = true
+            if (adFinished) {
+                idleVastAdLoader.ping(creative?.trackingUrls?.get("complete").orEmpty())
+            }
+            player.pause()
+            player.stop()
+            player.clearMediaItems()
+            onCycleFinished(if (adFailed) 5_000L else 1_000L)
+        }
+    }
+
+    Box(modifier = modifier.background(Color.Black), contentAlignment = Alignment.Center) {
+        AndroidView(
+            factory = {
+                playerView.apply {
+                    this.player = player
+                    clearFocus()
+                }
+            },
+            update = {
+                it.player = player
+                it.clearFocus()
+                it.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+            },
+            modifier = Modifier
+                .matchParentSize()
+                .focusProperties { canFocus = false },
+        )
+
+        if (loading && !adFailed) {
+            CircularProgressIndicator(
+                color = SmartVisionColors.Primary,
+                strokeWidth = 3.dp,
+                modifier = Modifier.size(30.dp),
+            )
+        }
+
+        if (adStarted && !adFinished && !adFailed) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(SmartVisionColors.PrimaryDark.copy(alpha = 0.82f))
+                    .border(BorderStroke(1.dp, SmartVisionColors.Primary.copy(alpha = 0.65f)), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 7.dp, vertical = 3.dp),
+            ) {
+                Text(
+                    text = "PUBLICITE",
+                    color = Color.White,
+                    style = CatalogMetaStyle,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
+        }
+
+        if (adFailed) {
+            VodIdlePreviewPlaceholder()
+        }
+    }
+}
+
+@Composable
+private fun VodIdlePreviewPlaceholder() {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(
+            imageVector = Icons.Default.Tv,
+            contentDescription = null,
+            tint = SmartVisionColors.Primary,
+            modifier = Modifier.size(34.dp),
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "Apercu SmartVision",
+            color = SmartVisionColors.TextPrimary,
+            style = CatalogMetaStyle,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
+    }
+}
+
+private fun createVodPreviewQrBitmap(content: String, size: Int): Bitmap {
+    val hints = mapOf(
+        EncodeHintType.CHARACTER_SET to "UTF-8",
+        EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,
+        EncodeHintType.MARGIN to 1,
+    )
+    val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size, hints)
+    val pixels = IntArray(size * size)
+    for (y in 0 until size) {
+        val offset = y * size
+        for (x in 0 until size) {
+            pixels[offset + x] = if (matrix[x, y]) {
+                android.graphics.Color.BLACK
+            } else {
+                android.graphics.Color.WHITE
+            }
+        }
+    }
+    return Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888)
 }
 
 @Composable

@@ -713,23 +713,31 @@ fun CatalogThumb(
     imageUrl: String?,
     fallbackText: String,
     modifier: Modifier = Modifier,
+    crop: Boolean = false,
+    framed: Boolean = true,
 ) {
     val shape = RoundedCornerShape(4.dp)
     Box(
         modifier = modifier
             .clip(shape)
-            .background(Color.White.copy(alpha = 0.12f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), shape),
+            .background(Color.White.copy(alpha = if (framed) 0.12f else 0.04f))
+            .then(
+                if (framed) {
+                    Modifier.border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), shape)
+                } else {
+                    Modifier
+                },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         if (!imageUrl.isNullOrBlank()) {
             AsyncImage(
                 model = imageUrl,
                 contentDescription = null,
-                contentScale = ContentScale.Fit,
+                contentScale = if (crop) ContentScale.Crop else ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(3.dp),
+                    .then(if (framed) Modifier.padding(3.dp) else Modifier),
             )
         } else {
             Text(

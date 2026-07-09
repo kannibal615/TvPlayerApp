@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -378,11 +379,12 @@ private fun SeriesDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     val firstEpisodeFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(state.visibleEpisodes.firstOrNull()?.episodeId, state.loading) {
-        if (!state.loading && state.visibleEpisodes.isNotEmpty()) {
-            delay(120)
-            runCatching { firstEpisodeFocusRequester.requestFocus() }
-        }
+    val playFocusRequester = remember { FocusRequester() }
+    val listState = rememberLazyListState()
+    LaunchedEffect(state.seriesId, state.loading) {
+        listState.scrollToItem(0)
+        delay(120)
+        runCatching { playFocusRequester.requestFocus() }
     }
 
     DetailBackground(imageUrl = state.backgroundUrl, modifier = modifier) {
@@ -405,6 +407,7 @@ private fun SeriesDetailScreen(
         )
 
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = DetailDimens.ScreenPadding)
@@ -422,6 +425,7 @@ private fun SeriesDetailScreen(
                         onWatchEpisode = { state.firstEpisode?.episodeId?.let(onWatchEpisode) },
                         onRetry = onRetry,
                         onFavorite = onFavorite,
+                        playFocusRequester = playFocusRequester,
                         modifier = Modifier.width(720.dp),
                     )
                     Spacer(Modifier.weight(1f))
@@ -487,6 +491,7 @@ private fun SeriesHeroInfo(
     onWatchEpisode: () -> Unit,
     onRetry: () -> Unit,
     onFavorite: () -> Unit,
+    playFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -535,6 +540,7 @@ private fun SeriesHeroInfo(
                 icon = Icons.Default.PlayArrow,
                 onClick = onWatchEpisode,
                 primary = true,
+                focusRequester = playFocusRequester,
                 modifier = Modifier
                     .width(162.dp)
                     .height(DetailDimens.ActionHeight),

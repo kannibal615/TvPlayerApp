@@ -1,5 +1,28 @@
 # AI Changelog
 
+## 2026-07-09 - Movies/Series skeleton, free ads preview et focus detail
+
+Type:
+- Android TV
+- UI catalogue
+- monetisation
+- focus
+
+Resume:
+- Movies et Series affichent maintenant un skeleton 3 colonnes au chargement global et un skeleton de lignes pendant les rechargements de liste.
+- Quand aucun contenu n'est selectionne en mode `FREE_WITH_ADS`, le panneau Preview affiche le mini-player pub idle VAST puis une carte Premium avec QR/code TV, comme Live TV.
+- Les lignes Films/Series utilisent le backdrop paysage en priorite, suppriment le padding/cadre interne de miniature, et ajoutent genre/note etoilee/duree.
+- Les fiches detail Films/Series scrollent en haut puis focalisent `Regarder`/`Reprendre`, ce qui evite l'ouverture decalee sur les episodes.
+- L'overlay fullscreen Films/Series garde progressbar et controles, active le toggle Favori reel et affiche precedent/suivant quand un item adjacent existe.
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin` : succes.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
 ## 2026-07-09 - Correctifs focus picker et profils non destructifs
 
 Type:

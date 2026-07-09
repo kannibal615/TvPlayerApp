@@ -45,20 +45,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.behavior.BehaviorContent
+import com.smartvision.svplayer.data.monetization.MonetizationStatus
+import com.smartvision.svplayer.data.monetization.monetizationStatus
 import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
 import com.smartvision.svplayer.ui.catalog.CatalogCategoryRow
 import com.smartvision.svplayer.ui.catalog.CatalogEmpty
 import com.smartvision.svplayer.ui.catalog.CatalogError
-import com.smartvision.svplayer.ui.catalog.CatalogLoading
 import com.smartvision.svplayer.ui.catalog.CatalogMetaStyle
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
+import com.smartvision.svplayer.ui.catalog.VodCatalogLoadingSkeleton
+import com.smartvision.svplayer.ui.catalog.VodContentListLoadingSkeleton
 import com.smartvision.svplayer.ui.catalog.VodContentRow
 import com.smartvision.svplayer.ui.catalog.VodPreviewContent
 import com.smartvision.svplayer.ui.catalog.VodPreviewPanel
@@ -112,10 +116,33 @@ fun MoviesScreen(
     val focusScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
     var movieToDelete by remember { mutableStateOf<MovieItemUi?>(null) }
+    var showFreeAdsPreview by remember { mutableStateOf(false) }
+    var tvCode by remember { mutableStateOf("") }
+    var premiumPurchaseUrl by remember {
+        mutableStateOf(
+            BuildConfig.ACTIVATION_BASE_URL.trimEnd('/') +
+                "/account/?source=tv&intent=license&plan=year_1",
+        )
+    }
 
     LaunchedEffect(Unit) {
         delay(260)
         inputReady = true
+    }
+
+    LaunchedEffect(container.activationRepository) {
+        container.activationRepository.localState.collect { activation ->
+            showFreeAdsPreview = activation.monetizationStatus() == MonetizationStatus.FREE_WITH_ADS
+            tvCode = activation.publicDeviceCode.ifBlank { activation.deviceId.take(8).uppercase() }
+            val deviceQuery = when {
+                activation.publicDeviceCode.isNotBlank() -> "device=${activation.publicDeviceCode}"
+                activation.deviceId.isNotBlank() -> "device_id=${activation.deviceId}"
+                else -> ""
+            }
+            premiumPurchaseUrl = BuildConfig.ACTIVATION_BASE_URL.trimEnd('/') +
+                "/account/?source=tv&intent=license" +
+                if (deviceQuery.isBlank()) "&plan=year_1" else "&$deviceQuery&plan=year_1"
+        }
     }
 
     LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), m3uActive, state.categories.isNotEmpty()) {
@@ -194,8 +221,7 @@ fun MoviesScreen(
         }
 
         if (state.categoriesLoading) {
-            CatalogLoading(
-                title = "Chargement des categories",
+            VodCatalogLoadingSkeleton(
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
@@ -253,6 +279,12 @@ fun MoviesScreen(
                     onFavorite = { state.selectedMovie?.let(viewModel::toggleFavorite) },
                     onDeleteHistory = { state.selectedMovie?.let { movieToDelete = it } },
                     showDeleteHistory = state.selectedCategory?.label == "Historique",
+                    showFreeAdsPreview = showFreeAdsPreview,
+                    idleAdEnabled = state.movies.isNotEmpty(),
+                    idleVastAdLoader = container.idleVastAdLoader,
+                    monetizationManager = container.monetizationManager,
+                    premiumPurchaseUrl = premiumPurchaseUrl,
+                    tvCode = tvCode,
                     modifier = Modifier
                         .weight(0.34f)
                         .fillMaxHeight(),
@@ -376,8 +408,7 @@ private fun MovieList(
         },
     ) {
         when {
-            state.moviesLoading && state.movies.isEmpty() -> CatalogLoading(
-                title = "Chargement des films",
+            state.moviesLoading && state.movies.isEmpty() -> VodContentListLoadingSkeleton(
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -407,8 +438,10 @@ private fun MovieList(
                     VodContentRow(
                         title = movie.title,
                         subtitle = movie.subtitle,
+                        genre = movie.genre,
+                        rating = movie.rating,
                         sideLabel = movie.duration ?: "",
-                        imageUrl = movie.posterUrl,
+                        imageUrl = movie.backdropUrl ?: movie.posterUrl,
                         fallbackText = movie.title.take(2).uppercase(),
                         selected = movie.streamId == state.selectedMovieId,
                         focusRequester = if (index == 0) firstMovieFocusRequester else itemFocusRequester,

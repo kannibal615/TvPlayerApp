@@ -1515,6 +1515,7 @@ private fun FullScreenPlayerScreen(
                     positionMs = positionMs,
                     durationMs = durationMs,
                     bufferedPositionMs = bufferedPositionMs,
+                    isFavorite = isFavorite,
                     playFocusRequester = playFocusRequester,
                     episodesButtonFocusRequester = episodesButtonFocusRequester,
                     brightnessMode = brightnessMode,
@@ -1559,7 +1560,10 @@ private fun FullScreenPlayerScreen(
                         }
                     },
                     onToggleFavorite = {
-                        showOverlay()
+                        coroutineScope.launch {
+                            container.userContentRepository.toggleFavorite(playback.contentType, playback.streamId)
+                        }
+                        showOverlay(requestPlayFocus = false)
                     },
                     onOpenBrightness = {
                         brightnessMode = true
@@ -2138,6 +2142,7 @@ private fun FullPlayerOverlay(
     positionMs: Long,
     durationMs: Long,
     bufferedPositionMs: Long,
+    isFavorite: Boolean,
     playFocusRequester: FocusRequester,
     episodesButtonFocusRequester: FocusRequester,
     brightnessMode: Boolean,
@@ -2156,6 +2161,8 @@ private fun FullPlayerOverlay(
     onCloseBrightness: () -> Unit,
 ) {
     val isSeriesContent = playback.contentType == UserContentType.Episode
+    val hasPrevious = playback.previousItem != null
+    val hasNext = playback.nextItem != null
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -2208,9 +2215,9 @@ private fun FullPlayerOverlay(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (isSeriesContent) {
+                    if (hasPrevious) {
                         PlayerControlButton(
-                            label = "Episode precedent",
+                            label = if (isSeriesContent) "Episode precedent" else "Titre precedent",
                             icon = Icons.Default.SkipPrevious,
                             onClick = onPlayPrevious,
                             width = 46.dp,
@@ -2247,10 +2254,10 @@ private fun FullPlayerOverlay(
                         height = 48.dp,
                         iconSize = 24.dp,
                     )
-                    if (isSeriesContent) {
+                    if (hasNext) {
                         Spacer(Modifier.width(42.dp))
                         PlayerControlButton(
-                            label = "Episode suivant",
+                            label = if (isSeriesContent) "Episode suivant" else "Titre suivant",
                             icon = Icons.Default.SkipNext,
                             onClick = onPlayNext,
                             width = 46.dp,
@@ -2285,8 +2292,9 @@ private fun FullPlayerOverlay(
                         )
                     }
                     PlayerUtilityIconButton(
-                        icon = Icons.Default.FavoriteBorder,
+                        icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = "Favori",
+                        selected = isFavorite,
                         onClick = onToggleFavorite,
                     )
                     PlayerUtilityIconButton(
@@ -2420,6 +2428,7 @@ private fun PlayerUtilityIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
+    selected: Boolean = false,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -2436,9 +2445,18 @@ private fun PlayerUtilityIconButton(
                 cornerRadius = 50.dp,
             )
             .clip(CircleShape)
-            .background(if (focusState.isFocused) PlayerNeonBlue.copy(alpha = 0.24f) else Color.Transparent)
+            .background(
+                when {
+                    focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.24f)
+                    selected -> Color(0xFFFF2E3A).copy(alpha = 0.16f)
+                    else -> Color.Transparent
+                },
+            )
             .border(
-                BorderStroke(if (focusState.isFocused) 1.5.dp else 0.dp, PlayerNeonBlue.copy(alpha = 0.86f)),
+                BorderStroke(
+                    if (focusState.isFocused || selected) 1.5.dp else 0.dp,
+                    if (selected) Color(0xFFFF2E3A).copy(alpha = 0.86f) else PlayerNeonBlue.copy(alpha = 0.86f),
+                ),
                 CircleShape,
             )
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
@@ -2448,7 +2466,7 @@ private fun PlayerUtilityIconButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = Color.White,
+            tint = if (selected) Color(0xFFFF3B45) else Color.White,
             modifier = Modifier.size(30.dp),
         )
     }

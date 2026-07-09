@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -330,7 +331,9 @@ private fun MovieDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     val playFocusRequester = androidx.compose.runtime.remember { FocusRequester() }
+    val listState = rememberLazyListState()
     LaunchedEffect(state.movieId) {
+        listState.scrollToItem(0)
         delay(120)
         runCatching { playFocusRequester.requestFocus() }
     }
@@ -358,6 +361,7 @@ private fun MovieDetailScreen(
         )
 
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = DetailDimens.ScreenPadding)
