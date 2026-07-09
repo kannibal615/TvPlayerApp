@@ -86,11 +86,33 @@ class MoviesViewModel(
     private var historyCategorySignals: List<CategoryHistorySignal> = emptyList()
     private var playerSettings = PlayerSettings()
     private var localCategories: List<Category> = emptyList()
+    private var observedCatalogRevision: Long? = null
 
     init {
+        observeCatalogRevision()
         observeSettings()
         observeFavorites()
         observeHistory()
+        loadCategories()
+    }
+
+    private fun observeCatalogRevision() {
+        viewModelScope.launch {
+            catalogRepository.catalogRevision.collect { revision ->
+                val previous = observedCatalogRevision
+                observedCatalogRevision = revision
+                if (previous != null && previous != revision) {
+                    reloadCatalogAfterRevision()
+                }
+            }
+        }
+    }
+
+    private fun reloadCatalogAfterRevision() {
+        moviesJob?.cancel()
+        tmdbMetadataJob?.cancel()
+        localCategories = emptyList()
+        _uiState.value = MoviesScreenState(categoriesLoading = true)
         loadCategories()
     }
 
@@ -142,14 +164,20 @@ class MoviesViewModel(
                 historyCount = historyProgress.size,
                 historySignals = historyCategorySignals,
             )
+            val initialCategory = visibleCategories.initialCategoryForPlaylist()
             it.copy(
                 categoriesLoading = false,
                 categories = visibleCategories,
-                selectedCategoryId = HistoryMovieCategoryId,
+                selectedCategoryId = initialCategory?.id,
                 errorMessage = null,
             )
         }
-        loadHistoryMovies()
+        when (_uiState.value.selectedCategoryId) {
+            HistoryMovieCategoryId -> loadHistoryMovies()
+            FavoriteMovieCategoryId -> loadFavoriteMovies()
+            AllMovieCategoryId, null -> loadAllMovies()
+            else -> _uiState.value.selectedCategoryId?.let(::loadMovies)
+        }
     }
 
     fun selectCategory(category: MovieCategoryUi) {
@@ -529,6 +557,11 @@ private fun List<MovieCategoryUi>.withSpecialCategories(
         ),
     ) + filterNot { it.id in SpecialMovieCategoryIds }
         .sortedByHistorySignals(historySignals) { it.id }
+
+private fun List<MovieCategoryUi>.initialCategoryForPlaylist(): MovieCategoryUi? =
+    firstOrNull { it.id == AllMovieCategoryId && (it.count ?: 0) > 0 }
+        ?: firstOrNull { it.id !in setOf(FavoriteMovieCategoryId, HistoryMovieCategoryId) && (it.count ?: 0) > 0 }
+        ?: firstOrNull()
 
 private fun Category.toUiCategory(): MovieCategoryUi =
     MovieCategoryUi(

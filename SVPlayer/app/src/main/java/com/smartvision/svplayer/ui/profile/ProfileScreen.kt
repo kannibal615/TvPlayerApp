@@ -205,34 +205,44 @@ fun ProfileRoute(
         onSaveM3uUrl = viewModel::saveM3uUrl,
         onSelectPlaylistSource = viewModel::selectPlaylistSource,
         onSavePlaylistProfile = { profile ->
+            val wasFirstProfile = container.accountManager.profiles.value.isEmpty()
+            val wasActiveProfile = profile.id.isNotBlank() && profile.id == container.accountManager.activeProfileId.value
             val profileId = container.accountManager.upsertProfile(profile)
-            container.accountManager.selectProfile(profileId)
-            container.xtreamRepository.clearCaches()
-            scope.launch {
-                container.catalogRepository.clearCatalogForProfileSwitch()
-                onSyncCatalog()
+            if (wasFirstProfile || wasActiveProfile) {
+                container.xtreamRepository.clearCaches()
+                scope.launch {
+                    container.catalogRepository.clearCatalogForProfileSwitch()
+                    if (!container.catalogRepository.hasLocalCatalogForActiveProfile()) {
+                        onSyncCatalog()
+                    }
+                }
             }
         },
         onSelectPlaylistProfile = { profileId ->
-            container.accountManager.selectProfile(profileId)
+            container.accountManager.activateProfile(profileId)
             container.xtreamRepository.clearCaches()
             scope.launch {
                 container.catalogRepository.clearCatalogForProfileSwitch()
-                onSyncCatalog()
+                if (!container.catalogRepository.hasLocalCatalogForActiveProfile()) {
+                    onSyncCatalog()
+                }
             }
         },
         onDeletePlaylistProfile = { profileId ->
+            val wasActiveProfile = profileId == container.accountManager.activeProfileId.value
             container.accountManager.deleteProfile(profileId)
             container.xtreamRepository.clearCaches()
             scope.launch {
                 container.catalogRepository.clearCatalogForProfileSwitch()
-                if (container.accountManager.activeProfileId.value != null) {
+                if (wasActiveProfile && container.accountManager.activeProfileId.value != null &&
+                    !container.catalogRepository.hasLocalCatalogForActiveProfile()
+                ) {
                     onSyncCatalog()
                 }
             }
         },
         onSynchronizePlaylistProfile = { profileId ->
-            container.accountManager.selectProfile(profileId)
+            container.accountManager.activateProfile(profileId)
             container.xtreamRepository.clearCaches()
             scope.launch {
                 container.catalogRepository.clearCatalogForProfileSwitch()
@@ -612,12 +622,15 @@ private fun XtreamPanel(
     var accountToEdit by remember { mutableStateOf<XtreamAccount?>(null) }
     var accountToDelete by remember { mutableStateOf<XtreamAccount?>(null) }
     var profileToEdit by remember { mutableStateOf<PlaylistProfile?>(null) }
-    var profileToView by remember { mutableStateOf<PlaylistProfile?>(null) }
+    var selectedProfileId by remember { mutableStateOf<String?>(null) }
     var profileToDelete by remember { mutableStateOf<PlaylistProfile?>(null) }
     var showProfileEditor by remember { mutableStateOf(false) }
     var showEpgEditor by remember { mutableStateOf(false) }
     var showM3uEditor by remember { mutableStateOf(false) }
     val activeAccount = state.activeXtreamAccount
+    val selectedProfile = state.playlistProfiles.firstOrNull { it.id == selectedProfileId }
+        ?: state.playlistProfiles.firstOrNull { it.id == state.activePlaylistProfileId }
+        ?: state.playlistProfiles.firstOrNull()
 
     ProfilePanel(
         title = "Info compte",
@@ -634,9 +647,24 @@ private fun XtreamPanel(
                 profileToEdit = null
                 showProfileEditor = true
             },
-            onOpen = { profile -> profileToView = profile },
+            selectedProfileId = selectedProfile?.id,
+            onOpen = { profile -> selectedProfileId = profile.id },
             onSelect = onSelectPlaylistProfile,
         )
+        selectedProfile?.let { profile ->
+            Spacer(Modifier.height(8.dp))
+            PlaylistProfileInlineDetails(
+                profile = profile,
+                active = profile.id == state.activePlaylistProfileId,
+                counts = state.account,
+                onEdit = {
+                    profileToEdit = profile
+                    showProfileEditor = true
+                },
+                onSynchronize = { onSynchronizePlaylistProfile(profile.id) },
+                onDelete = { profileToDelete = profile },
+            )
+        }
         Spacer(Modifier.height(8.dp))
         XtreamAccountCard(
             account = activeAccount,
@@ -723,32 +751,6 @@ private fun XtreamPanel(
         )
     }
 
-    profileToView?.let { profile ->
-        PlaylistProfileDetailDialog(
-            profile = profile,
-            active = profile.id == state.activePlaylistProfileId,
-            counts = state.account,
-            onDismiss = { profileToView = null },
-            onActivate = {
-                profileToView = null
-                onSelectPlaylistProfile(profile.id)
-            },
-            onEdit = {
-                profileToView = null
-                profileToEdit = profile
-                showProfileEditor = true
-            },
-            onSynchronize = {
-                profileToView = null
-                onSynchronizePlaylistProfile(profile.id)
-            },
-            onDelete = {
-                profileToView = null
-                profileToDelete = profile
-            },
-        )
-    }
-
     profileToDelete?.let { profile ->
         ConfirmPlaylistProfileDeleteDialog(
             profile = profile,
@@ -813,6 +815,7 @@ private fun XtreamPanel(
 private fun PlaylistProfilesSection(
     profiles: List<PlaylistProfile>,
     activeProfileId: String,
+    selectedProfileId: String?,
     onAdd: () -> Unit,
     onOpen: (PlaylistProfile) -> Unit,
     onSelect: (String) -> Unit,
@@ -854,6 +857,7 @@ private fun PlaylistProfilesSection(
                 PlaylistProfileRow(
                     profile = profile,
                     active = profile.id == activeProfileId,
+                    selected = profile.id == selectedProfileId,
                     onOpen = { onOpen(profile) },
                     onSelect = { onSelect(profile.id) },
                 )
@@ -867,23 +871,43 @@ private fun PlaylistProfilesSection(
 private fun PlaylistProfileRow(
     profile: PlaylistProfile,
     active: Boolean,
+    selected: Boolean,
     onOpen: () -> Unit,
     onSelect: () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    var focused by remember { mutableStateOf(false) }
+    val focusStyle = LocalTvFocusStyle.current
+    val borderColor = when {
+        focused -> focusStyle.accent
+        selected -> SmartVisionColors.CyanAccent.copy(alpha = 0.72f)
+        active -> Color(0xFF20D46B).copy(alpha = 0.68f)
+        else -> SmartVisionColors.Border.copy(alpha = 0.55f)
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
-            .background(if (active) SmartVisionColors.Primary.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.035f))
+            .background(
+                when {
+                    focused -> focusStyle.background
+                    selected -> SmartVisionColors.Primary.copy(alpha = 0.20f)
+                    active -> Color(0xFF0F3728).copy(alpha = 0.66f)
+                    else -> Color.White.copy(alpha = 0.035f)
+                },
+            )
             .border(
-                BorderStroke(1.dp, if (active) SmartVisionColors.CyanAccent.copy(alpha = 0.72f) else SmartVisionColors.Border.copy(alpha = 0.55f)),
+                BorderStroke(if (focused) focusStyle.borderWidth else 1.dp, borderColor),
                 RoundedCornerShape(6.dp),
             )
-            .clickable(onClick = onOpen)
-            .focusable()
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onOpen)
+            .focusable(interactionSource = interactionSource)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        PlaylistProfileAvatar(profile = profile, modifier = Modifier.size(42.dp))
+        Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = profile.name,
@@ -903,21 +927,113 @@ private fun PlaylistProfileRow(
             )
         }
         Spacer(Modifier.width(10.dp))
-        if (active) {
-            Text(
-                text = "Actif",
-                color = SmartVisionColors.CyanAccent,
-                style = SmartVisionType.Caption,
-                fontWeight = FontWeight.Bold,
-            )
+        SourceToggleButton(active = active, enabled = profile.isConfigured, onClick = onSelect)
+    }
+}
+
+@Composable
+private fun PlaylistProfileAvatar(
+    profile: PlaylistProfile,
+    modifier: Modifier = Modifier,
+) {
+    val color = remember(profile.avatarColorHex) {
+        runCatching { Color(android.graphics.Color.parseColor(profile.avatarColorHex)) }
+            .getOrDefault(SmartVisionColors.Primary)
+    }
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(color)
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)), RoundedCornerShape(6.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = profile.name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+            color = Color.White,
+            style = SmartVisionType.TitleS,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
+private fun PlaylistProfileInlineDetails(
+    profile: PlaylistProfile,
+    active: Boolean,
+    counts: AccountProfile,
+    onEdit: () -> Unit,
+    onSynchronize: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(7.dp))
+            .background(Color.White.copy(alpha = 0.045f))
+            .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.72f)), RoundedCornerShape(7.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            PlaylistProfileAvatar(profile = profile, modifier = Modifier.size(46.dp))
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = profile.name,
+                    color = SmartVisionColors.TextPrimary,
+                    style = SmartVisionType.Label,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = if (active) "Profil actif" else "Profil selectionne",
+                    color = if (active) Color(0xFF20D46B) else SmartVisionColors.TextSecondary,
+                    style = SmartVisionType.Caption,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+        ProfileInfoRow("Type de source", profile.source.displayLabel())
+        if (profile.source == PlaylistSource.Xtream) {
+            ProfileInfoRow("URL serveur", profile.xtreamHost.ifBlank { "Non configure" })
+            ProfileInfoRow("Username", profile.xtreamUsername.ifBlank { "Non configure" })
+            ProfileInfoRow("Password", if (profile.xtreamPassword.isBlank()) "Non configure" else "********")
         } else {
+            ProfileInfoRow("Lien M3U", profile.m3uUrl.ifBlank { "Non configure" })
+        }
+        ProfileInfoRow("URL EPG", profile.epgUrl.ifBlank { "Non configure" })
+        ProfileInfoRow("Derniere synchronisation", profile.lastSyncAt.asProfileDate())
+        if (active) {
+            ProfileInfoRow("Chaines / Films / Series", "${counts.liveCount} / ${counts.movieCount} / ${counts.seriesCount}")
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             TvButton(
-                text = "Activer",
-                onClick = onSelect,
+                text = "Modifier",
+                onClick = onEdit,
+                leadingIcon = Icons.Default.Edit,
                 variant = TvButtonVariant.Secondary,
                 modifier = Modifier
-                    .width(115.dp)
-                    .height(36.dp),
+                    .weight(1f)
+                    .height(40.dp),
+            )
+            TvButton(
+                text = "Synchroniser",
+                onClick = onSynchronize,
+                leadingIcon = Icons.Default.CloudSync,
+                variant = TvButtonVariant.Secondary,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(40.dp),
+            )
+            TvButton(
+                text = "Supprimer",
+                onClick = onDelete,
+                leadingIcon = Icons.Default.Delete,
+                variant = TvButtonVariant.Secondary,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(40.dp),
             )
         }
     }
@@ -1830,6 +1946,7 @@ private fun PlaylistProfileEditorDialog(
                                     id = initial?.id.orEmpty(),
                                     name = normalizedName,
                                     source = source,
+                                    avatarColorHex = initial?.avatarColorHex.orEmpty(),
                                     xtreamHost = host,
                                     xtreamUsername = username,
                                     xtreamPassword = password,

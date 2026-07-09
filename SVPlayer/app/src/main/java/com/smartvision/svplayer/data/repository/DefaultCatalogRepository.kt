@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -62,103 +63,126 @@ class DefaultCatalogRepository(
 ) : CatalogRepository {
     private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     override val syncStatus: StateFlow<SyncStatus> = _syncStatus
+    private val _catalogRevision = MutableStateFlow(0L)
+    override val catalogRevision: StateFlow<Long> = _catalogRevision
     private val localCatalogSnapshotCache = LocalCatalogSnapshotCache()
 
     override fun observeLiveCategories(): Flow<List<Category>> =
-        combine(
-            categoryDao.observeByType(MediaSection.Live.storageName),
-            mediaDao.observeLiveStreamCountsByCategory(),
-            accountManager.activePlaylistSource,
-            accountManager.m3uUrl,
-            accountManager.accounts,
-        ) { categories, countsByCategory, source, m3uUrl, accounts ->
-            if (!source.hasConfiguredCatalog(m3uUrl, accounts.isNotEmpty())) return@combine emptyList()
-            val counts = countsByCategory.associate { it.categoryId to it.count }
-            localCatalogSnapshotCache.putLiveCategories(
-                categories.map { it.toDomain(MediaSection.Live, counts[it.id] ?: 0) },
-            )
+        accountManager.activeProfileId.flatMapLatest {
+            val profileId = activeProfileId()
+            combine(
+                categoryDao.observeByType(profileId, MediaSection.Live.storageName),
+                mediaDao.observeLiveStreamCountsByCategory(profileId),
+                accountManager.activePlaylistSource,
+                accountManager.m3uUrl,
+                accountManager.accounts,
+            ) { categories, countsByCategory, source, m3uUrl, accounts ->
+                if (!source.hasConfiguredCatalog(m3uUrl, accounts.isNotEmpty())) return@combine emptyList()
+                val counts = countsByCategory.associate { it.categoryId to it.count }
+                localCatalogSnapshotCache.putLiveCategories(
+                    categories.map { it.toDomain(MediaSection.Live, counts[it.id] ?: 0) },
+                )
+            }
         }
 
     override fun observeLiveChannels(categoryId: String?): Flow<List<LiveChannel>> =
-        combine(
-            categoryDao.observeByType(MediaSection.Live.storageName),
-            mediaDao.observeLiveStreamsByCategory(categoryId),
-            accountManager.activePlaylistSource,
-            accountManager.m3uUrl,
-            accountManager.accounts,
-        ) { categories, streams, source, m3uUrl, accounts ->
-            if (!source.hasConfiguredCatalog(m3uUrl, accounts.isNotEmpty())) return@combine emptyList()
-            val names = categories.associate { it.id to it.name }
-            val imageBaseHost = imageBaseHost()
-            streams.map { it.toDomain(names[it.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository) }
+        accountManager.activeProfileId.flatMapLatest {
+            val profileId = activeProfileId()
+            combine(
+                categoryDao.observeByType(profileId, MediaSection.Live.storageName),
+                mediaDao.observeLiveStreamsByCategory(profileId, categoryId),
+                accountManager.activePlaylistSource,
+                accountManager.m3uUrl,
+                accountManager.accounts,
+            ) { categories, streams, source, m3uUrl, accounts ->
+                if (!source.hasConfiguredCatalog(m3uUrl, accounts.isNotEmpty())) return@combine emptyList()
+                val names = categories.associate { it.id to it.name }
+                val imageBaseHost = imageBaseHost()
+                streams.map { it.toDomain(names[it.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository) }
+            }
         }
 
     override fun observeMovieCategories(): Flow<List<Category>> =
-        combine(
-            categoryDao.observeByType(MediaSection.Movies.storageName),
-            mediaDao.observeMovieCountsByCategory(),
-            accountManager.activePlaylistSource,
-            accountManager.accounts,
-        ) { categories, countsByCategory, source, accounts ->
-            if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
-            val counts = countsByCategory.associate { it.categoryId to it.count }
-            localCatalogSnapshotCache.putMovieCategories(
-                categories.map { it.toDomain(MediaSection.Movies, counts[it.id] ?: 0) },
-            )
+        accountManager.activeProfileId.flatMapLatest {
+            val profileId = activeProfileId()
+            combine(
+                categoryDao.observeByType(profileId, MediaSection.Movies.storageName),
+                mediaDao.observeMovieCountsByCategory(profileId),
+                accountManager.activePlaylistSource,
+                accountManager.accounts,
+            ) { categories, countsByCategory, source, accounts ->
+                if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
+                val counts = countsByCategory.associate { it.categoryId to it.count }
+                localCatalogSnapshotCache.putMovieCategories(
+                    categories.map { it.toDomain(MediaSection.Movies, counts[it.id] ?: 0) },
+                )
+            }
         }
 
     override fun observeMovies(categoryId: String?): Flow<List<Movie>> =
-        combine(
-            categoryDao.observeByType(MediaSection.Movies.storageName),
-            mediaDao.observeMoviesByCategory(categoryId?.takeUnless { it == "all" || it == "new" || it == "favorites" }),
-            accountManager.activePlaylistSource,
-            accountManager.accounts,
-        ) { categories, movies, source, accounts ->
-            if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
-            val names = categories.associate { it.id to it.name }
-            val imageBaseHost = imageBaseHost()
-            movies.map { it.toDomain(names[it.categoryId] ?: "Films", imageBaseHost) }
+        accountManager.activeProfileId.flatMapLatest {
+            val profileId = activeProfileId()
+            combine(
+                categoryDao.observeByType(profileId, MediaSection.Movies.storageName),
+                mediaDao.observeMoviesByCategory(profileId, categoryId?.takeUnless { it == "all" || it == "new" || it == "favorites" }),
+                accountManager.activePlaylistSource,
+                accountManager.accounts,
+            ) { categories, movies, source, accounts ->
+                if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
+                val names = categories.associate { it.id to it.name }
+                val imageBaseHost = imageBaseHost()
+                movies.map { it.toDomain(names[it.categoryId] ?: "Films", imageBaseHost) }
+            }
         }
 
     override fun observeSeriesCategories(): Flow<List<Category>> =
-        combine(
-            categoryDao.observeByType(MediaSection.Series.storageName),
-            mediaDao.observeSeriesCountsByCategory(),
-            accountManager.activePlaylistSource,
-            accountManager.accounts,
-        ) { categories, countsByCategory, source, accounts ->
-            if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
-            val counts = countsByCategory.associate { it.categoryId to it.count }
-            localCatalogSnapshotCache.putSeriesCategories(
-                categories.map { it.toDomain(MediaSection.Series, counts[it.id] ?: 0) },
-            )
+        accountManager.activeProfileId.flatMapLatest {
+            val profileId = activeProfileId()
+            combine(
+                categoryDao.observeByType(profileId, MediaSection.Series.storageName),
+                mediaDao.observeSeriesCountsByCategory(profileId),
+                accountManager.activePlaylistSource,
+                accountManager.accounts,
+            ) { categories, countsByCategory, source, accounts ->
+                if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
+                val counts = countsByCategory.associate { it.categoryId to it.count }
+                localCatalogSnapshotCache.putSeriesCategories(
+                    categories.map { it.toDomain(MediaSection.Series, counts[it.id] ?: 0) },
+                )
+            }
         }
 
     override fun observeSeries(categoryId: String?): Flow<List<TvSeries>> =
-        combine(
-            categoryDao.observeByType(MediaSection.Series.storageName),
-            mediaDao.observeSeriesByCategory(categoryId?.takeUnless { it == "all" || it == "new" || it == "favorites" }),
-            accountManager.activePlaylistSource,
-            accountManager.accounts,
-        ) { categories, series, source, accounts ->
-            if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
-            val names = categories.associate { it.id to it.name }
-            val imageBaseHost = imageBaseHost()
-            series.map { it.toDomain(names[it.categoryId] ?: "Series", imageBaseHost) }
+        accountManager.activeProfileId.flatMapLatest {
+            val profileId = activeProfileId()
+            combine(
+                categoryDao.observeByType(profileId, MediaSection.Series.storageName),
+                mediaDao.observeSeriesByCategory(profileId, categoryId?.takeUnless { it == "all" || it == "new" || it == "favorites" }),
+                accountManager.activePlaylistSource,
+                accountManager.accounts,
+            ) { categories, series, source, accounts ->
+                if (source != PlaylistSource.Xtream || accounts.isEmpty()) return@combine emptyList()
+                val names = categories.associate { it.id to it.name }
+                val imageBaseHost = imageBaseHost()
+                series.map { it.toDomain(names[it.categoryId] ?: "Series", imageBaseHost) }
+            }
         }
 
     override fun observeAccount(): Flow<AccountProfile> =
-        combine(
-            profileDao.observe(),
-            mediaDao.observeLiveStreamCount(),
-            mediaDao.observeMovieCount(),
-            mediaDao.observeSeriesCount(),
-        ) { profile, liveCount, movieCount, seriesCount ->
-            profile?.toDomain(
-                liveCount = liveCount,
-                movieCount = movieCount,
-                seriesCount = seriesCount,
-            ) ?: emptyAccountProfile()
+        accountManager.activeProfileId.flatMapLatest {
+            val profileId = activeProfileId()
+            combine(
+                profileDao.observe(),
+                mediaDao.observeLiveStreamCount(profileId),
+                mediaDao.observeMovieCount(profileId),
+                mediaDao.observeSeriesCount(profileId),
+            ) { profile, liveCount, movieCount, seriesCount ->
+                profile?.toDomain(
+                    liveCount = liveCount,
+                    movieCount = movieCount,
+                    seriesCount = seriesCount,
+                ) ?: emptyAccountProfile()
+            }
         }
 
     override fun getCachedLiveCatalogSnapshot(): LocalCatalogSnapshot<LiveChannel>? =
@@ -196,22 +220,25 @@ class DefaultCatalogRepository(
 
     override suspend fun getInitialLiveCategoriesSnapshot(limit: Int): List<Category> = withContext(Dispatchers.IO) {
         if (!isLiveCatalogConfigured()) return@withContext emptyList()
-        val counts = mediaDao.observeLiveStreamCountsByCategory().first().associate { it.categoryId to it.count }
-        categoryDao.getByTypeLimit(MediaSection.Live.storageName, limit)
+        val profileId = activeProfileId()
+        val counts = mediaDao.observeLiveStreamCountsByCategory(profileId).first().associate { it.categoryId to it.count }
+        categoryDao.getByTypeLimit(profileId, MediaSection.Live.storageName, limit)
             .map { it.toDomain(MediaSection.Live, counts[it.id] ?: 0) }
     }
 
     override suspend fun getInitialMovieCategoriesSnapshot(limit: Int): List<Category> = withContext(Dispatchers.IO) {
         if (!isXtreamCatalogConfigured()) return@withContext emptyList()
-        val counts = mediaDao.observeMovieCountsByCategory().first().associate { it.categoryId to it.count }
-        categoryDao.getByTypeLimit(MediaSection.Movies.storageName, limit)
+        val profileId = activeProfileId()
+        val counts = mediaDao.observeMovieCountsByCategory(profileId).first().associate { it.categoryId to it.count }
+        categoryDao.getByTypeLimit(profileId, MediaSection.Movies.storageName, limit)
             .map { it.toDomain(MediaSection.Movies, counts[it.id] ?: 0) }
     }
 
     override suspend fun getInitialSeriesCategoriesSnapshot(limit: Int): List<Category> = withContext(Dispatchers.IO) {
         if (!isXtreamCatalogConfigured()) return@withContext emptyList()
-        val counts = mediaDao.observeSeriesCountsByCategory().first().associate { it.categoryId to it.count }
-        categoryDao.getByTypeLimit(MediaSection.Series.storageName, limit)
+        val profileId = activeProfileId()
+        val counts = mediaDao.observeSeriesCountsByCategory(profileId).first().associate { it.categoryId to it.count }
+        categoryDao.getByTypeLimit(profileId, MediaSection.Series.storageName, limit)
             .map { it.toDomain(MediaSection.Series, counts[it.id] ?: 0) }
     }
 
@@ -248,12 +275,13 @@ class DefaultCatalogRepository(
             val safeLimit = limit.coerceIn(1, CatalogPageMaxLimit)
             val safeOffset = offset.coerceAtLeast(0)
             localCatalogSnapshotCache.getLivePage(categoryId, safeOffset, safeLimit)?.let { return@withContext it }
-            val categoryNames = categoryDao.getByType(MediaSection.Live.storageName).associate { it.id to it.name }
+            val profileId = activeProfileId()
+            val categoryNames = categoryDao.getByType(profileId, MediaSection.Live.storageName).associate { it.id to it.name }
             val imageBaseHost = imageBaseHost()
             val streams = categoryId
                 ?.takeIf { it.isNotBlank() }
-                ?.let { mediaDao.getLiveStreamsByCategoryPage(it, safeLimit, safeOffset) }
-                ?: mediaDao.getLiveStreamsPage(safeLimit, safeOffset)
+                ?.let { mediaDao.getLiveStreamsByCategoryPage(profileId, it, safeLimit, safeOffset) }
+                ?: mediaDao.getLiveStreamsPage(profileId, safeLimit, safeOffset)
             localCatalogSnapshotCache.putLivePage(
                 categoryId = categoryId,
                 offset = safeOffset,
@@ -272,12 +300,13 @@ class DefaultCatalogRepository(
             val safeLimit = limit.coerceIn(1, CatalogPageMaxLimit)
             val safeOffset = offset.coerceAtLeast(0)
             val pattern = cleanQuery.toSqlLikeContainsPattern()
-            val categoryNames = categoryDao.getByType(MediaSection.Live.storageName).associate { it.id to it.name }
+            val profileId = activeProfileId()
+            val categoryNames = categoryDao.getByType(profileId, MediaSection.Live.storageName).associate { it.id to it.name }
             val imageBaseHost = imageBaseHost()
             val streams = categoryId
                 ?.takeIf { it.isNotBlank() }
-                ?.let { mediaDao.searchLiveStreamsByCategoryPage(it, pattern, safeLimit, safeOffset) }
-                ?: mediaDao.searchLiveStreamsPage(pattern, safeLimit, safeOffset)
+                ?.let { mediaDao.searchLiveStreamsByCategoryPage(profileId, it, pattern, safeLimit, safeOffset) }
+                ?: mediaDao.searchLiveStreamsPage(profileId, pattern, safeLimit, safeOffset)
             streams.map { stream ->
                 stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository)
             }
@@ -286,9 +315,10 @@ class DefaultCatalogRepository(
     override suspend fun getLiveChannelById(streamId: Int): LiveChannel? =
         withContext(Dispatchers.IO) {
             if (!isLiveCatalogConfigured()) return@withContext null
-            val categoryNames = categoryDao.getByType(MediaSection.Live.storageName).associate { it.id to it.name }
+            val profileId = activeProfileId()
+            val categoryNames = categoryDao.getByType(profileId, MediaSection.Live.storageName).associate { it.id to it.name }
             val imageBaseHost = imageBaseHost()
-            mediaDao.getLiveStream(streamId)
+            mediaDao.getLiveStream(profileId, streamId)
                 ?.let { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost) }
                 ?.withEpg(epgRepository)
         }
@@ -296,10 +326,11 @@ class DefaultCatalogRepository(
     override suspend fun getPreviousLiveChannel(streamId: Int): LiveChannel? =
         withContext(Dispatchers.IO) {
             if (!isLiveCatalogConfigured()) return@withContext null
-            val current = mediaDao.getLiveStream(streamId) ?: return@withContext null
-            val categoryNames = categoryDao.getByType(MediaSection.Live.storageName).associate { it.id to it.name }
+            val profileId = activeProfileId()
+            val current = mediaDao.getLiveStream(profileId, streamId) ?: return@withContext null
+            val categoryNames = categoryDao.getByType(profileId, MediaSection.Live.storageName).associate { it.id to it.name }
             val imageBaseHost = imageBaseHost()
-            mediaDao.getPreviousLiveStream(current.categoryId, current.number, current.name, current.streamId)
+            mediaDao.getPreviousLiveStream(profileId, current.categoryId, current.number, current.name, current.streamId)
                 ?.let { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost) }
                 ?.withEpg(epgRepository)
         }
@@ -307,10 +338,11 @@ class DefaultCatalogRepository(
     override suspend fun getNextLiveChannel(streamId: Int): LiveChannel? =
         withContext(Dispatchers.IO) {
             if (!isLiveCatalogConfigured()) return@withContext null
-            val current = mediaDao.getLiveStream(streamId) ?: return@withContext null
-            val categoryNames = categoryDao.getByType(MediaSection.Live.storageName).associate { it.id to it.name }
+            val profileId = activeProfileId()
+            val current = mediaDao.getLiveStream(profileId, streamId) ?: return@withContext null
+            val categoryNames = categoryDao.getByType(profileId, MediaSection.Live.storageName).associate { it.id to it.name }
             val imageBaseHost = imageBaseHost()
-            mediaDao.getNextLiveStream(current.categoryId, current.number, current.name, current.streamId)
+            mediaDao.getNextLiveStream(profileId, current.categoryId, current.number, current.name, current.streamId)
                 ?.let { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost) }
                 ?.withEpg(epgRepository)
         }
@@ -321,12 +353,13 @@ class DefaultCatalogRepository(
             val safeLimit = limit.coerceIn(1, CatalogPageMaxLimit)
             val safeOffset = offset.coerceAtLeast(0)
             localCatalogSnapshotCache.getMoviePage(categoryId, safeOffset, safeLimit)?.let { return@withContext it }
-            val categoryNames = categoryDao.getByType(MediaSection.Movies.storageName).associate { it.id to it.name }
+            val profileId = activeProfileId()
+            val categoryNames = categoryDao.getByType(profileId, MediaSection.Movies.storageName).associate { it.id to it.name }
             val imageBaseHost = imageBaseHost()
             val movies = categoryId
                 ?.takeIf { it.isNotBlank() }
-                ?.let { mediaDao.getMoviesByCategoryPage(it, safeLimit, safeOffset) }
-                ?: mediaDao.getMoviesPage(safeLimit, safeOffset)
+                ?.let { mediaDao.getMoviesByCategoryPage(profileId, it, safeLimit, safeOffset) }
+                ?: mediaDao.getMoviesPage(profileId, safeLimit, safeOffset)
             localCatalogSnapshotCache.putMoviePage(
                 categoryId = categoryId,
                 offset = safeOffset,
@@ -341,12 +374,13 @@ class DefaultCatalogRepository(
             val safeLimit = limit.coerceIn(1, CatalogPageMaxLimit)
             val safeOffset = offset.coerceAtLeast(0)
             localCatalogSnapshotCache.getSeriesPage(categoryId, safeOffset, safeLimit)?.let { return@withContext it }
-            val categoryNames = categoryDao.getByType(MediaSection.Series.storageName).associate { it.id to it.name }
+            val profileId = activeProfileId()
+            val categoryNames = categoryDao.getByType(profileId, MediaSection.Series.storageName).associate { it.id to it.name }
             val imageBaseHost = imageBaseHost()
             val series = categoryId
                 ?.takeIf { it.isNotBlank() }
-                ?.let { mediaDao.getSeriesByCategoryPage(it, safeLimit, safeOffset) }
-                ?: mediaDao.getSeriesPage(safeLimit, safeOffset)
+                ?.let { mediaDao.getSeriesByCategoryPage(profileId, it, safeLimit, safeOffset) }
+                ?: mediaDao.getSeriesPage(profileId, safeLimit, safeOffset)
             localCatalogSnapshotCache.putSeriesPage(
                 categoryId = categoryId,
                 offset = safeOffset,
@@ -367,11 +401,12 @@ class DefaultCatalogRepository(
     override suspend fun getLiveChannelsByIds(streamIds: List<Int>): List<LiveChannel> =
         withContext(Dispatchers.IO) {
             if (streamIds.isEmpty() || !isLiveCatalogConfigured()) return@withContext emptyList()
+            val profileId = activeProfileId()
             val distinctIds = streamIds.distinct()
             val order = distinctIds.withIndex().associate { it.value to it.index }
-            val categoryNames = categoryDao.getByType(MediaSection.Live.storageName).associate { it.id to it.name }
+            val categoryNames = categoryDao.getByType(profileId, MediaSection.Live.storageName).associate { it.id to it.name }
             val imageBaseHost = imageBaseHost()
-            mediaDao.getLiveStreamsByIds(distinctIds)
+            mediaDao.getLiveStreamsByIds(profileId, distinctIds)
                 .sortedBy { order[it.streamId] ?: Int.MAX_VALUE }
                 .map { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository) }
         }
@@ -379,11 +414,12 @@ class DefaultCatalogRepository(
     override suspend fun getMoviesByIds(streamIds: List<Int>): List<Movie> =
         withContext(Dispatchers.IO) {
             if (streamIds.isEmpty() || !isXtreamCatalogConfigured()) return@withContext emptyList()
+            val profileId = activeProfileId()
             val distinctIds = streamIds.distinct()
             val order = distinctIds.withIndex().associate { it.value to it.index }
-            val categoryNames = categoryDao.getByType(MediaSection.Movies.storageName).associate { it.id to it.name }
+            val categoryNames = categoryDao.getByType(profileId, MediaSection.Movies.storageName).associate { it.id to it.name }
             val imageBaseHost = imageBaseHost()
-            mediaDao.getMoviesByIds(distinctIds)
+            mediaDao.getMoviesByIds(profileId, distinctIds)
                 .sortedBy { order[it.streamId] ?: Int.MAX_VALUE }
                 .map { movie -> movie.toDomain(categoryNames[movie.categoryId] ?: "Films", imageBaseHost) }
         }
@@ -391,11 +427,12 @@ class DefaultCatalogRepository(
     override suspend fun getSeriesByIds(seriesIds: List<Int>): List<TvSeries> =
         withContext(Dispatchers.IO) {
             if (seriesIds.isEmpty() || !isXtreamCatalogConfigured()) return@withContext emptyList()
+            val profileId = activeProfileId()
             val distinctIds = seriesIds.distinct()
             val order = distinctIds.withIndex().associate { it.value to it.index }
-            val categoryNames = categoryDao.getByType(MediaSection.Series.storageName).associate { it.id to it.name }
+            val categoryNames = categoryDao.getByType(profileId, MediaSection.Series.storageName).associate { it.id to it.name }
             val imageBaseHost = imageBaseHost()
-            mediaDao.getSeriesByIds(distinctIds)
+            mediaDao.getSeriesByIds(profileId, distinctIds)
                 .sortedBy { order[it.seriesId] ?: Int.MAX_VALUE }
                 .map { series -> series.toDomain(categoryNames[series.categoryId] ?: "Series", imageBaseHost) }
         }
@@ -404,9 +441,10 @@ class DefaultCatalogRepository(
         if (accountManager.activePlaylistSource.value != PlaylistSource.Xtream || accountManager.accounts.value.isEmpty()) {
             return@withContext emptyList()
         }
-        val categoryNames = categoryDao.getByType(MediaSection.Movies.storageName).associate { it.id to it.name }
+        val profileId = activeProfileId()
+        val categoryNames = categoryDao.getByType(profileId, MediaSection.Movies.storageName).associate { it.id to it.name }
         val imageBaseHost = imageBaseHost()
-        mediaDao.getTrendingMovies(limit)
+        mediaDao.getTrendingMovies(profileId, limit)
             .map { movie -> movie.toDomain(categoryNames[movie.categoryId] ?: "Films", imageBaseHost) }
     }
 
@@ -414,9 +452,10 @@ class DefaultCatalogRepository(
         if (accountManager.activePlaylistSource.value != PlaylistSource.Xtream || accountManager.accounts.value.isEmpty()) {
             return@withContext emptyList()
         }
-        val categoryNames = categoryDao.getByType(MediaSection.Series.storageName).associate { it.id to it.name }
+        val profileId = activeProfileId()
+        val categoryNames = categoryDao.getByType(profileId, MediaSection.Series.storageName).associate { it.id to it.name }
         val imageBaseHost = imageBaseHost()
-        mediaDao.getTrendingSeries(limit)
+        mediaDao.getTrendingSeries(profileId, limit)
             .map { series -> series.toDomain(categoryNames[series.categoryId] ?: "Series", imageBaseHost) }
     }
 
@@ -424,9 +463,10 @@ class DefaultCatalogRepository(
         if (accountManager.activePlaylistSource.value != PlaylistSource.Xtream || accountManager.accounts.value.isEmpty()) {
             return@withContext emptyList()
         }
-        val categoryNames = categoryDao.getByType(MediaSection.Movies.storageName).associate { it.id to it.name }
+        val profileId = activeProfileId()
+        val categoryNames = categoryDao.getByType(profileId, MediaSection.Movies.storageName).associate { it.id to it.name }
         val imageBaseHost = imageBaseHost()
-        mediaDao.getTrendingMovies(randomTrendCandidateLimit(limit))
+        mediaDao.getTrendingMovies(profileId, randomTrendCandidateLimit(limit))
             .asSequence()
             .map { movie ->
                 TrendingCatalogItem(
@@ -449,9 +489,10 @@ class DefaultCatalogRepository(
         if (accountManager.activePlaylistSource.value != PlaylistSource.Xtream || accountManager.accounts.value.isEmpty()) {
             return@withContext emptyList()
         }
-        val categoryNames = categoryDao.getByType(MediaSection.Series.storageName).associate { it.id to it.name }
+        val profileId = activeProfileId()
+        val categoryNames = categoryDao.getByType(profileId, MediaSection.Series.storageName).associate { it.id to it.name }
         val imageBaseHost = imageBaseHost()
-        mediaDao.getTrendingSeries(randomTrendCandidateLimit(limit))
+        mediaDao.getTrendingSeries(profileId, randomTrendCandidateLimit(limit))
             .asSequence()
             .map { series ->
                 TrendingCatalogItem(
@@ -471,11 +512,24 @@ class DefaultCatalogRepository(
     }
 
     override suspend fun getCatalogContentCounts(): CatalogContentCounts = withContext(Dispatchers.IO) {
+        val profileId = activeProfileId()
         CatalogContentCounts(
-            live = mediaDao.countLiveStreams(),
-            movies = mediaDao.countMovies(),
-            series = mediaDao.countSeries(),
+            live = mediaDao.countLiveStreams(profileId),
+            movies = mediaDao.countMovies(profileId),
+            series = mediaDao.countSeries(profileId),
         )
+    }
+
+    override suspend fun hasLocalCatalogForActiveProfile(): Boolean = withContext(Dispatchers.IO) {
+        val profileId = activeProfileId()
+        val syncState = syncStateDao.get(profileId)
+        syncState?.status == "success" &&
+            when (accountManager.activePlaylistSource.value) {
+                PlaylistSource.Xtream -> mediaDao.countLiveStreams(profileId) > 0 ||
+                    mediaDao.countMovies(profileId) > 0 ||
+                    mediaDao.countSeries(profileId) > 0
+                PlaylistSource.M3u -> mediaDao.countLiveStreams(profileId) > 0
+            }
     }
 
     override fun invalidateLocalCatalogCache() {
@@ -483,23 +537,8 @@ class DefaultCatalogRepository(
     }
 
     override suspend fun clearCatalogForProfileSwitch() = withContext(Dispatchers.IO) {
-        database.withTransaction {
-            categoryDao.deleteByType(MediaSection.Live.storageName)
-            categoryDao.deleteByType(MediaSection.Movies.storageName)
-            categoryDao.deleteByType(MediaSection.Series.storageName)
-            mediaDao.clearLiveStreams()
-            mediaDao.clearMovies()
-            mediaDao.clearSeries()
-            syncStateDao.upsert(
-                SyncStateEntity(
-                    id = "catalog",
-                    lastSync = null,
-                    status = "profile_switch",
-                    message = "Catalogue vide apres changement de profil",
-                ),
-            )
-        }
         invalidateLocalCatalogCache()
+        bumpCatalogRevision()
     }
 
     private fun isLiveCatalogConfigured(): Boolean =
@@ -512,8 +551,15 @@ class DefaultCatalogRepository(
         accountManager.activePlaylistSource.value == PlaylistSource.Xtream &&
             accountManager.accounts.value.isNotEmpty()
 
+    private fun activeProfileId(): String =
+        accountManager.activeProfileIdOrDefault()
+
     private fun imageBaseHost(): String =
         accountManager.current().normalizedHost
+
+    private fun bumpCatalogRevision() {
+        _catalogRevision.value += 1L
+    }
 
     override suspend fun synchronize(): Result<Unit> = withContext(Dispatchers.IO) {
         if (accountManager.activePlaylistSource.value == PlaylistSource.M3u) {
@@ -527,10 +573,11 @@ class DefaultCatalogRepository(
             return@withContext Result.failure(IllegalStateException(message))
         }
 
+        val profileId = activeProfileId()
         val previousCatalogProgress = SyncStatus.CatalogProgress(
-            live = SyncStatus.SyncSectionProgress(previousItems = mediaDao.countLiveStreams()),
-            movies = SyncStatus.SyncSectionProgress(previousItems = mediaDao.countMovies()),
-            series = SyncStatus.SyncSectionProgress(previousItems = mediaDao.countSeries()),
+            live = SyncStatus.SyncSectionProgress(previousItems = mediaDao.countLiveStreams(profileId)),
+            movies = SyncStatus.SyncSectionProgress(previousItems = mediaDao.countMovies(profileId)),
+            series = SyncStatus.SyncSectionProgress(previousItems = mediaDao.countSeries(profileId)),
         )
         val syncWorkId = "catalog-sync-${System.currentTimeMillis()}"
         val syncWork = networkActivityTracker.begin(
@@ -671,12 +718,14 @@ class DefaultCatalogRepository(
                 profileDao.upsert(account.toProfileEntity(credentials, now))
 
                 liveItems = synchronizeLiveSection(
+                    profileId = profileId,
                     username = credentials.username,
                     password = credentials.password,
                     updateSectionProgress = ::updateSectionProgress,
                 )
 
                 movieItems = synchronizeMovieSection(
+                    profileId = profileId,
                     username = credentials.username,
                     password = credentials.password,
                     liveItems = liveItems,
@@ -684,6 +733,7 @@ class DefaultCatalogRepository(
                 )
 
                 seriesItems = synchronizeSeriesSection(
+                    profileId = profileId,
                     username = credentials.username,
                     password = credentials.password,
                     liveItems = liveItems,
@@ -694,6 +744,7 @@ class DefaultCatalogRepository(
                 logSyncMemory(stage = "before_sync_state_write", live = liveItems, movies = movieItems, series = seriesItems)
                 syncStateDao.upsert(
                     SyncStateEntity(
+                        profileId = profileId,
                         id = "catalog",
                         lastSync = now,
                         status = "success",
@@ -704,6 +755,7 @@ class DefaultCatalogRepository(
             logSyncMemory(stage = "after_room_write", live = liveItems, movies = movieItems, series = seriesItems)
             invalidateLocalCatalogCache()
             accountManager.markActiveProfileSynced(now)
+            bumpCatalogRevision()
             logSyncMemory(stage = "after_cache_invalidation", live = liveItems, movies = movieItems, series = seriesItems)
             _syncStatus.value = SyncStatus.Success(
                 message = "Synchronisation terminee",
@@ -724,8 +776,9 @@ class DefaultCatalogRepository(
             }
             syncStateDao.upsert(
                 SyncStateEntity(
+                    profileId = profileId,
                     id = "catalog",
-                    lastSync = syncStateDao.get()?.lastSync,
+                    lastSync = syncStateDao.get(profileId)?.lastSync,
                     status = "error",
                     message = "Erreur reseau",
                 ),
@@ -744,6 +797,7 @@ class DefaultCatalogRepository(
     }
 
     private suspend fun synchronizeLiveSection(
+        profileId: String,
         username: String,
         password: String,
         updateSectionProgress: suspend (String, MediaSection, SyncStatus.SyncSectionPhase, Int, Int?, Int, Int) -> Unit,
@@ -769,8 +823,8 @@ class DefaultCatalogRepository(
             liveCategories.size,
             4,
         )
-        categoryDao.deleteByType(MediaSection.Live.storageName)
-        upsertMappedInBatches(liveCategories, { it.toEntity(MediaSection.Live) }) { entities ->
+        categoryDao.deleteByType(profileId, MediaSection.Live.storageName)
+        upsertMappedInBatches(liveCategories, { it.toEntity(profileId, MediaSection.Live) }) { entities ->
             categoryDao.upsertAll(entities)
         }
 
@@ -796,9 +850,9 @@ class DefaultCatalogRepository(
             liveItems,
             3,
         )
-        mediaDao.clearLiveStreams()
+        mediaDao.clearLiveStreams(profileId)
         val imageBaseHost = imageBaseHost()
-        upsertMappedInBatches(liveStreams, { it.toEntity(imageBaseHost) }) { entities ->
+        upsertMappedInBatches(liveStreams, { it.toEntity(profileId, imageBaseHost) }) { entities ->
             mediaDao.upsertLiveStreams(entities)
         }
         logSyncMemory(stage = "after_live_room_write", live = liveItems)
@@ -815,6 +869,7 @@ class DefaultCatalogRepository(
     }
 
     private suspend fun synchronizeMovieSection(
+        profileId: String,
         username: String,
         password: String,
         liveItems: Int,
@@ -841,8 +896,8 @@ class DefaultCatalogRepository(
             movieCategories.size,
             2,
         )
-        categoryDao.deleteByType(MediaSection.Movies.storageName)
-        upsertMappedInBatches(movieCategories, { it.toEntity(MediaSection.Movies) }) { entities ->
+        categoryDao.deleteByType(profileId, MediaSection.Movies.storageName)
+        upsertMappedInBatches(movieCategories, { it.toEntity(profileId, MediaSection.Movies) }) { entities ->
             categoryDao.upsertAll(entities)
         }
 
@@ -890,9 +945,9 @@ class DefaultCatalogRepository(
             movieItems,
             1,
         )
-        mediaDao.clearMovies()
+        mediaDao.clearMovies(profileId)
         val imageBaseHost = imageBaseHost()
-        upsertMappedInBatches(movies, { it.toEntity(imageBaseHost) }) { entities ->
+        upsertMappedInBatches(movies, { it.toEntity(profileId, imageBaseHost) }) { entities ->
             mediaDao.upsertMovies(entities)
         }
         updateSectionProgress(
@@ -909,6 +964,7 @@ class DefaultCatalogRepository(
     }
 
     private suspend fun synchronizeSeriesSection(
+        profileId: String,
         username: String,
         password: String,
         liveItems: Int,
@@ -941,8 +997,8 @@ class DefaultCatalogRepository(
             seriesCategories.size,
             1,
         )
-        categoryDao.deleteByType(MediaSection.Series.storageName)
-        upsertMappedInBatches(seriesCategories, { it.toEntity(MediaSection.Series) }) { entities ->
+        categoryDao.deleteByType(profileId, MediaSection.Series.storageName)
+        upsertMappedInBatches(seriesCategories, { it.toEntity(profileId, MediaSection.Series) }) { entities ->
             categoryDao.upsertAll(entities)
         }
 
@@ -968,9 +1024,9 @@ class DefaultCatalogRepository(
             seriesItems,
             0,
         )
-        mediaDao.clearSeries()
+        mediaDao.clearSeries(profileId)
         val imageBaseHost = imageBaseHost()
-        upsertMappedInBatches(series, { it.toEntity(imageBaseHost) }) { entities ->
+        upsertMappedInBatches(series, { it.toEntity(profileId, imageBaseHost) }) { entities ->
             mediaDao.upsertSeries(entities)
         }
         updateSectionProgress(
@@ -987,44 +1043,48 @@ class DefaultCatalogRepository(
     }
 
     override suspend fun toggleFavorite(contentType: String, contentId: String) = withContext(Dispatchers.IO) {
-        val existing = favoriteDao.get(contentType, contentId)
+        val profileId = activeProfileId()
+        val existing = favoriteDao.get(profileId, contentType, contentId)
         if (existing == null) {
-            favoriteDao.upsert(FavoriteEntity(contentType, contentId, System.currentTimeMillis()))
+            favoriteDao.upsert(FavoriteEntity(profileId, contentType, contentId, System.currentTimeMillis()))
         } else {
-            favoriteDao.delete(contentType, contentId)
+            favoriteDao.delete(profileId, contentType, contentId)
         }
     }
 
     override suspend fun getSeriesEpisodes(seriesId: Int): List<Episode> = withContext(Dispatchers.IO) {
-        mediaDao.getEpisodes(seriesId).map { it.toDomain() }
+        mediaDao.getEpisodes(activeProfileId(), seriesId).map { it.toDomain() }
     }
 
     override suspend fun buildPlaybackRequest(kind: PlaybackKind, id: String): PlaybackRequest? =
         withContext(Dispatchers.IO) {
             when (kind) {
                 PlaybackKind.Live -> {
+                    val profileId = activeProfileId()
                     val streamId = id.toIntOrNull() ?: return@withContext null
-                    val local = mediaDao.getLiveStream(streamId)
+                    val local = mediaDao.getLiveStream(profileId, streamId)
                     val title = local?.name ?: return@withContext null
                     val subtitle = local.categoryId ?: "Live TV"
                     PlaybackRequest(kind, id, title, subtitle, local.directStreamUrl?.takeIf { it.isNotBlank() } ?: urlFactory.live(streamId))
                 }
 
                 PlaybackKind.Movie -> {
+                    val profileId = activeProfileId()
                     val streamId = id.toIntOrNull() ?: return@withContext null
-                    val local = mediaDao.getMovie(streamId)
+                    val local = mediaDao.getMovie(profileId, streamId)
                     val title = local?.title ?: return@withContext null
                     val extension = local.containerExtension ?: "mp4"
-                    val progress = progressDao.get(kind.routeName, id)
+                    val progress = progressDao.get(profileId, kind.routeName, id)
                     PlaybackRequest(kind, id, title, local.categoryId ?: "Film", urlFactory.movie(streamId, extension), progress?.positionMs ?: 0L)
                 }
 
                 PlaybackKind.Episode -> {
+                    val profileId = activeProfileId()
                     val episodeId = id.toIntOrNull() ?: return@withContext null
-                    val local = mediaDao.getEpisode(episodeId)
+                    val local = mediaDao.getEpisode(profileId, episodeId)
                     val title = local?.title ?: return@withContext null
                     val extension = local.containerExtension ?: "mp4"
-                    val progress = progressDao.get(kind.routeName, id)
+                    val progress = progressDao.get(profileId, kind.routeName, id)
                     PlaybackRequest(kind, id, title, "Episode", urlFactory.episode(episodeId, extension), progress?.positionMs ?: 0L)
                 }
             }
@@ -1039,6 +1099,7 @@ class DefaultCatalogRepository(
         if (kind == PlaybackKind.Live) return@withContext
         progressDao.upsert(
             PlaybackProgressEntity(
+                profileId = activeProfileId(),
                 contentType = kind.routeName,
                 contentId = id,
                 positionMs = positionMs,
@@ -1082,6 +1143,7 @@ class DefaultCatalogRepository(
         )
         return try {
             val now = System.currentTimeMillis()
+            val profileId = activeProfileId()
             val playlist = m3uPlaylistClient.fetch(m3uUrl)
             syncWork.update(message = "Chargement catalogue M3U...", progressPercent = 50, currentItems = 1, totalItems = 2)
             liveWork.update(
@@ -1102,17 +1164,18 @@ class DefaultCatalogRepository(
                     ),
                 ),
             )
-            categoryDao.deleteByType(MediaSection.Live.storageName)
-            categoryDao.upsertAll(playlist.categories)
-            mediaDao.clearLiveStreams()
-            mediaDao.upsertLiveStreams(playlist.channels.map { it.toEntity() })
-            categoryDao.deleteByType(MediaSection.Movies.storageName)
-            categoryDao.deleteByType(MediaSection.Series.storageName)
-            mediaDao.clearMovies()
-            mediaDao.clearSeries()
+            categoryDao.deleteByType(profileId, MediaSection.Live.storageName)
+            categoryDao.upsertAll(playlist.categories(profileId))
+            mediaDao.clearLiveStreams(profileId)
+            mediaDao.upsertLiveStreams(playlist.channels.map { it.toEntity(profileId) })
+            categoryDao.deleteByType(profileId, MediaSection.Movies.storageName)
+            categoryDao.deleteByType(profileId, MediaSection.Series.storageName)
+            mediaDao.clearMovies(profileId)
+            mediaDao.clearSeries(profileId)
             accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let { epgRepository.synchronize(it) }
             syncStateDao.upsert(
                 SyncStateEntity(
+                    profileId = profileId,
                     id = "catalog",
                     lastSync = now,
                     status = "success",
@@ -1121,6 +1184,7 @@ class DefaultCatalogRepository(
             )
             invalidateLocalCatalogCache()
             accountManager.markActiveProfileSynced(now)
+            bumpCatalogRevision()
             _syncStatus.value = SyncStatus.Success(
                 message = "Synchronisation M3U terminee",
                 catalogProgress = SyncStatus.CatalogProgress(

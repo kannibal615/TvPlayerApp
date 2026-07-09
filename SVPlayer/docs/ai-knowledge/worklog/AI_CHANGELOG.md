@@ -2519,6 +2519,63 @@ Fichiers MD mis a jour:
 Fichiers code concernes:
 - `app/build.gradle.kts`
 - `scripts/deploy_activation_phase1.ps1`
+# 2026-07-09 - Isolation Room multi-profils et ecran choix profil
+
+Type:
+- bugfix
+- fonctionnalite
+- documentation
+
+Resume:
+- Correction de l'ecrasement des nouveaux profils: `PlaylistProfile` porte maintenant un avatar couleur et la sauvegarde n'active plus automatiquement un profil existant.
+- Ajout de l'isolation Room par `profileId` pour catalogue IPTV, sync_state, favoris, historiques/reprises, tendances Home, cache preview Home et mapping Xtream -> TMDB.
+- Le changement de profil invalide les caches memoire et recharge les ecrans via `catalogRevision`, sans vider Room ni resynchroniser si le catalogue du profil est deja local.
+- Info compte remplace le popup detail profil par une fiche inline; OK sur la ligne selectionne, le toggle ON/OFF focusable active le profil.
+- Ajout de `ProfilePickerScreen` apres splash et avant Home pour choisir le profil a regarder.
+
+Verification:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain` : succes.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ROOT.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/decisions/2026-07-09-multi-profile-room-isolation.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/core/config/XtreamAccountManager.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/SVDatabase.kt`
+- `app/src/main/java/com/smartvision/svplayer/data/local/dao/*`
+- `app/src/main/java/com/smartvision/svplayer/data/repository/*`
+- `app/src/main/java/com/smartvision/svplayer/ui/navigation/AppNavigation.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/profile/ProfileScreen.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/profile/ProfilePickerScreen.kt`
+
+# 2026-07-09 - Correction affichage catalogue apres activation d'un profil
+
+Type:
+- bugfix
+- documentation
+
+Resume:
+- Ajout de `CatalogRepository.catalogRevision` pour notifier Live TV / Films / Series apres nettoyage catalogue ou synchronisation reussie.
+- Les ViewModels Live TV, Films et Series rechargent leurs categories/items quand la revision catalogue change, afin de ne plus garder une ancienne playlist en memoire apres changement de profil.
+- Films et Series ouvrent maintenant `ALL` ou une categorie avec contenu quand l'historique est vide, cas frequent apres activation d'un nouveau profil.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/domain/repository/CatalogRepository.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/live/LiveTvViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/movies/MoviesViewModel.kt`
+- `app/src/main/java/com/smartvision/svplayer/ui/series/SeriesViewModel.kt`
+
 # 2026-07-09 - Multi-profils playlist locaux et correction compilation player
 
 Type:

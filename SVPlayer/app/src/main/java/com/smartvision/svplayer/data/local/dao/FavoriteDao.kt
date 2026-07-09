@@ -8,21 +8,21 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface FavoriteDao {
-    @Query("SELECT * FROM favorites WHERE contentType = :contentType AND contentId = :contentId")
-    suspend fun get(contentType: String, contentId: String): FavoriteEntity?
+    @Query("SELECT * FROM favorites WHERE profileId = :profileId AND contentType = :contentType AND contentId = :contentId")
+    suspend fun get(profileId: String, contentType: String, contentId: String): FavoriteEntity?
 
-    @Query("SELECT * FROM favorites WHERE contentType = :contentType ORDER BY createdAt DESC")
-    fun observeByType(contentType: String): Flow<List<FavoriteEntity>>
+    @Query("SELECT * FROM favorites WHERE profileId = :profileId AND contentType = :contentType ORDER BY createdAt DESC")
+    fun observeByType(profileId: String, contentType: String): Flow<List<FavoriteEntity>>
 
-    @Query("SELECT * FROM favorites WHERE contentType = :contentType ORDER BY createdAt DESC")
-    suspend fun getByType(contentType: String): List<FavoriteEntity>
+    @Query("SELECT * FROM favorites WHERE profileId = :profileId AND contentType = :contentType ORDER BY createdAt DESC")
+    suspend fun getByType(profileId: String, contentType: String): List<FavoriteEntity>
 
     @Upsert
     suspend fun upsert(favorite: FavoriteEntity)
 
-    @Query("DELETE FROM favorites WHERE contentType = :contentType AND contentId = :contentId")
-    suspend fun delete(contentType: String, contentId: String)
+    @Query("DELETE FROM favorites WHERE profileId = :profileId AND contentType = :contentType AND contentId = :contentId")
+    suspend fun delete(profileId: String, contentType: String, contentId: String)
 
-    @Query("DELETE FROM favorites WHERE contentType = :contentType")
-    suspend fun deleteByType(contentType: String)
+    @Query("DELETE FROM favorites WHERE profileId = :profileId AND contentType = :contentType")
+    suspend fun deleteByType(profileId: String, contentType: String)
 }

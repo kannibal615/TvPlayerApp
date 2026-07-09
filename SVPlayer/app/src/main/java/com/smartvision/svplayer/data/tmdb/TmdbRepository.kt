@@ -1,5 +1,6 @@
 package com.smartvision.svplayer.data.tmdb
 
+import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.data.local.dao.MediaDao
 import com.smartvision.svplayer.data.local.entity.TmdbContentMappingEntity
 import com.smartvision.svplayer.data.local.entity.TmdbMovieMetadataEntity
@@ -10,6 +11,7 @@ import kotlinx.coroutines.withContext
 class TmdbRepository(
     private val api: TmdbApiService,
     private val mediaDao: MediaDao,
+    private val accountManager: XtreamAccountManager,
     readAccessToken: String,
 ) {
     private val tokenConfigured = readAccessToken.isNotBlank()
@@ -102,13 +104,13 @@ class TmdbRepository(
     }
 
     private suspend fun cachedMovieEntity(contentId: Int, language: String): TmdbMovieMetadataEntity? {
-        val tmdbId = mediaDao.getTmdbContentMapping("movie", contentId)?.tmdbId ?: return null
+        val tmdbId = mediaDao.getTmdbContentMapping(activeProfileId(), "movie", contentId)?.tmdbId ?: return null
         return mediaDao.getTmdbMovieMetadata(tmdbId, language)
             ?: mediaDao.getAnyTmdbMovieMetadata(tmdbId)
     }
 
     private suspend fun cachedSeriesEntity(contentId: Int, language: String): TmdbSeriesMetadataEntity? {
-        val tmdbId = mediaDao.getTmdbContentMapping("series", contentId)?.tmdbId ?: return null
+        val tmdbId = mediaDao.getTmdbContentMapping(activeProfileId(), "series", contentId)?.tmdbId ?: return null
         return mediaDao.getTmdbSeriesMetadata(tmdbId, language)
             ?: mediaDao.getAnyTmdbSeriesMetadata(tmdbId)
     }
@@ -129,7 +131,7 @@ class TmdbRepository(
         language: String,
         includeAdult: Boolean,
     ): TmdbResolvedMatch? {
-        mediaDao.getTmdbContentMapping("movie", contentId)?.tmdbId?.let { tmdbId ->
+        mediaDao.getTmdbContentMapping(activeProfileId(), "movie", contentId)?.tmdbId?.let { tmdbId ->
             return TmdbResolvedMatch(tmdbId = tmdbId, confidence = 100)
         }
         val queryYear = TmdbMatcher.extractYear(year, title)
@@ -156,7 +158,7 @@ class TmdbRepository(
         language: String,
         includeAdult: Boolean,
     ): TmdbResolvedMatch? {
-        mediaDao.getTmdbContentMapping("series", contentId)?.tmdbId?.let { tmdbId ->
+        mediaDao.getTmdbContentMapping(activeProfileId(), "series", contentId)?.tmdbId?.let { tmdbId ->
             return TmdbResolvedMatch(tmdbId = tmdbId, confidence = 100)
         }
         val queryYear = TmdbMatcher.extractYear(year, title)
@@ -259,9 +261,11 @@ class TmdbRepository(
         adult: Boolean,
     ) {
         val now = System.currentTimeMillis()
-        val existing = mediaDao.getTmdbContentMapping(contentType, contentId)
+        val profileId = activeProfileId()
+        val existing = mediaDao.getTmdbContentMapping(profileId, contentType, contentId)
         mediaDao.upsertTmdbContentMapping(
             TmdbContentMappingEntity(
+                profileId = profileId,
                 contentType = contentType,
                 contentId = contentId,
                 tmdbId = tmdbId,
@@ -279,6 +283,9 @@ class TmdbRepository(
             ),
         )
     }
+
+    private fun activeProfileId(): String =
+        accountManager.activeProfileIdOrDefault()
 
     private data class TmdbResolvedMatch(
         val tmdbId: Int,

@@ -82,6 +82,7 @@ import com.smartvision.svplayer.ui.player.FullScreenContentKind
 import com.smartvision.svplayer.ui.player.FullScreenPlayerRoute
 import com.smartvision.svplayer.ui.player.LocalMediaPlayerRoute
 import com.smartvision.svplayer.ui.profile.ProfileRoute
+import com.smartvision.svplayer.ui.profile.ProfilePickerScreen
 import com.smartvision.svplayer.ui.profile.SmartVisionQrDialog
 import com.smartvision.svplayer.ui.series.SeriesScreen
 import com.smartvision.svplayer.ui.settings.SettingsScreen
@@ -151,6 +152,7 @@ fun AppNavigation(
     var showXtreamSetupDialog by remember { mutableStateOf(false) }
     var premiumLicenseCode by remember { mutableStateOf("") }
     var liveReturnFocusChannelId by remember { mutableStateOf<Int?>(null) }
+    var profilePickerCompleted by remember { mutableStateOf(false) }
     val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
     val xtreamConnectionState by container.xtreamConnectionManager.state.collectAsStateWithLifecycle()
     val xtreamCatalogBlocked = activePlaylistSource == PlaylistSource.Xtream && xtreamConnectionState.blocksCatalogForNavigation
@@ -334,6 +336,8 @@ fun AppNavigation(
 
     val xtreamAccounts by container.accountManager.accounts.collectAsStateWithLifecycle()
     val m3uUrl by container.accountManager.m3uUrl.collectAsStateWithLifecycle()
+    val playlistProfiles by container.accountManager.profiles.collectAsStateWithLifecycle()
+    val activeProfileId by container.accountManager.activeProfileId.collectAsStateWithLifecycle()
     val hasPlayableSource = xtreamAccounts.isNotEmpty() || m3uUrl.isNotBlank()
     LaunchedEffect(
         activationState.localStateReady,
@@ -432,6 +436,38 @@ fun AppNavigation(
         return
     }
 
+    if (!profilePickerCompleted && playlistProfiles.any { it.isConfigured }) {
+        BackHandler {
+            showExitConfirmation = true
+        }
+        ProfilePickerScreen(
+            profiles = playlistProfiles.filter { it.isConfigured },
+            activeProfileId = activeProfileId,
+            onSelectProfile = { profileId ->
+                scope.launch {
+                    container.accountManager.activateProfile(profileId)
+                    container.xtreamRepository.clearCaches()
+                    container.catalogRepository.clearCatalogForProfileSwitch()
+                    if (!container.catalogRepository.hasLocalCatalogForActiveProfile()) {
+                        syncCatalog()
+                    }
+                    profilePickerCompleted = true
+                }
+            },
+            onManageProfiles = {
+                profilePickerCompleted = true
+                navController.navigateSingleTop(AppRoute.Profile.route)
+            },
+        )
+        if (showExitConfirmation) {
+            ExitConfirmationDialog(
+                onDismiss = { showExitConfirmation = false },
+                onExit = { activity?.finishAffinity() },
+            )
+        }
+        return
+    }
+
     LaunchedEffect(playerSettings.syncFrequency) {
         CatalogSyncScheduler.apply(context, playerSettings.syncFrequency)
     }
@@ -445,7 +481,7 @@ fun AppNavigation(
             val accountChanged = previousSignature != null && previousSignature != xtreamAccountSignature
             val firstAccountCheck = previousSignature == null
             val shouldVerifyXtream = accountChanged || firstAccountCheck
-            val shouldSyncCatalog = accountChanged
+            val shouldSyncCatalog = accountChanged && !container.catalogRepository.hasLocalCatalogForActiveProfile()
             val startupAlreadyHandled = firstAccountCheck && container.xtreamConnectionManager.hasFreshConnectedState()
             if (shouldVerifyXtream && !startupAlreadyHandled) {
                 val connection = container.xtreamConnectionManager.verifyQuick("startup")

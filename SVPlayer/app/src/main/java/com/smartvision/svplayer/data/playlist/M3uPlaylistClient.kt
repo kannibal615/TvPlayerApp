@@ -109,9 +109,9 @@ class M3uPlaylistClient(
 data class M3uPlaylist(
     val channels: List<M3uChannel>,
 ) {
-    val categories: List<CategoryEntity> =
+    fun categories(profileId: String): List<CategoryEntity> =
         channels.groupBy { it.categoryId }
-            .map { (id, items) -> CategoryEntity(id = id, type = MediaSection.Live.storageName, name = items.first().group) }
+            .map { (id, items) -> CategoryEntity(profileId = profileId, id = id, type = MediaSection.Live.storageName, name = items.first().group) }
 }
 
 data class M3uChannel(
@@ -126,8 +126,9 @@ data class M3uChannel(
     val categoryId: String = "m3u_" + group.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]+"), "_").trim('_')
         .ifBlank { "general" }
 
-    fun toEntity(): LiveStreamEntity =
+    fun toEntity(profileId: String): LiveStreamEntity =
         LiveStreamEntity(
+            profileId = profileId,
             streamId = id,
             number = number,
             name = name,

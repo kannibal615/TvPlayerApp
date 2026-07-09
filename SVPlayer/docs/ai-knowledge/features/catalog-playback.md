@@ -43,7 +43,7 @@ Depuis le 2026-07-01, l'URL EPG XMLTV est telechargee dans un cache local borne 
 
 Depuis le 2026-07-03, le splash ne verifie plus le lien M3U, ne synchronise plus et ne precharge plus Home/Live TV. Les ecrans Movies et Series affichent toujours un etat vide explicite quand M3U est actif, au lieu d'une erreur Xtream. Live TV reconnait un lien M3U comme source jouable meme sans compte Xtream local.
 
-Depuis le 2026-07-09, `XtreamAccountManager` porte des profils playlist locaux. Le profil actif reste expose aux repositories via les flows historiques `current()`, `m3uUrl`, `epgUrl` et `activePlaylistSource`. La selection/creation/suppression d'un profil depuis Info compte vide le catalogue Room local (`categories`, Live, Films, Series, sync_state) puis relance la synchronisation de la source active pour eviter d'afficher un ancien catalogue sous un nouveau profil. Les tables catalogue ne portent pas encore un `profileId`; une isolation persistante multi-catalogue complete demande une migration Room dediee.
+Depuis le 2026-07-09, `XtreamAccountManager` porte des profils playlist locaux. Le profil actif reste expose aux repositories via les flows historiques `current()`, `m3uUrl`, `epgUrl` et `activePlaylistSource`. Depuis la migration Room `12 -> 13`, les tables IPTV locales portent `profileId`: categories, Live, Films, Series, episodes, sync_state, favoris, progression/historique, tendances Home, cache preview Home et mapping Xtream -> TMDB. Le changement de profil ne vide plus le catalogue Room; il invalide les caches memoire et publie `CatalogRepository.catalogRevision`. Si le profil actif possede deja un `sync_state` reussi et du contenu local, aucune resynchronisation reseau n'est lancee; sinon la synchro catalogue existante est utilisee.
 
 Depuis le 2026-07-05, Live TV conserve le layout 3 zones `Categories / Chaines / Apercu`, mais les panneaux sont plus compacts, le header categories n'a plus de bouton `EPG`, le header chaines garde seulement le titre et la recherche, et les lignes affichent une numerotation relative au dossier visible (`Tous`, `Favoris`, `Historique` ont chacune leur numerotation). Le badge EPG texte est remplace par l'image `res/drawable-nodpi/ic_epg_badge.png`, sans deformation. Les logos chaines reels n'ont plus de fond/cadre; seul le fallback texte garde un fond discret.
 
@@ -66,8 +66,8 @@ Depuis le 2026-07-07, `Media` ajoute une categorie `Media prives` separee des fi
 ## 3. Workflow utilisateur
 
 - Live TV: categories a gauche, chaines, apercu/mini player; OK lance l'apercu, OK sur la meme chaine ouvre le plein ecran.
-- Films: categories conservees, grille de cards, detail film, puis lecteur.
-- Series: categories conservees, detail serie avec saisons/episodes, puis lecteur episode.
+- Films: categories conservees, grille de cards, detail film, puis lecteur. Apres changement de profil ou premier chargement sans historique, l'ecran ouvre `ALL` ou une categorie avec contenu plutot que `Historique` vide.
+- Series: categories conservees, detail serie avec saisons/episodes, puis lecteur episode. Apres changement de profil ou premier chargement sans historique, l'ecran ouvre `ALL` ou une categorie avec contenu plutot que `Historique` vide.
 - Favoris et Historiques sont des categories speciales.
 - Si aucun compte Xtream n'est configure, l'utilisateur voit un QR de configuration.
 - Si la verification Xtream de demarrage echoue apres 3 essais confirmes, Home reste accessible mais Live TV / Movies / Series et les reprises de lecture sont bloques avec popup et overlay.
@@ -93,10 +93,11 @@ M3U / EPG:
 - `DefaultCatalogRepository.kt` choisit la branche de synchronisation selon `PlaylistSource`.
 
 Room:
-- `SVDatabase.kt` version 12.
+- `SVDatabase.kt` version 13.
 - Entites catalogue: profiles, categories, live streams, movies, series, episodes, favorites, playback progress, sync state, historique YouTube.
-- `home_trending_preview_cache` stocke les metadonnees premium des cards Tendances HOME: poster, backdrop, duree, cle trailer YouTube TMDB, position 15%/fallback, etats backdrop/preview, `lastSync`. Depuis la migration `11 -> 12`, les anciens samples preview Xtream `movie`/`episode` sont neutralises pour eviter de jouer le flux d'origine dans les tendances.
-- Tables TMDB separees du catalogue Xtream: `tmdb_content_mapping`, `tmdb_movie_metadata`, `tmdb_series_metadata`. Ne pas y stocker d'URL de lecture ni de secrets.
+- Les tables IPTV multi-profils utilisent `profileId` dans leurs cles primaires pour permettre deux profils avec les memes ids Xtream/M3U sans collision. Les historiques/reprises/favoris IPTV suivent donc le profil actif. YouTube et Media local restent globaux.
+- `home_trending_preview_cache` stocke les metadonnees premium des cards Tendances HOME: poster, backdrop, duree, cle trailer YouTube TMDB, position 15%/fallback, etats backdrop/preview, `lastSync`. Depuis la migration `11 -> 12`, les anciens samples preview Xtream `movie`/`episode` sont neutralises pour eviter de jouer le flux d'origine dans les tendances; depuis `12 -> 13`, ce cache est aussi separe par profil.
+- Tables TMDB separees du catalogue Xtream: `tmdb_movie_metadata` et `tmdb_series_metadata` restent globales par `tmdbId/language`; `tmdb_content_mapping` est profile par `profileId`. Ne pas y stocker d'URL de lecture ni de secrets.
 - Tables Media Center separees du catalogue: `media_folders`, `media_files`, `recording_jobs` via `MediaCenterDao.kt` et `MediaCenterEntities.kt`. Ne pas les melanger avec `MediaDao.kt`.
 
 Playback:
@@ -192,7 +193,7 @@ URL de lecture:
 - Ne pas bloquer l'affichage si du contenu partiel est deja disponible.
 - Ne pas publier un catalogue partiel apres echec de synchronisation. La synchro Xtream actuelle ecrit Live, Movies, Series et `SyncState` dans une transaction Room unique; les sections sont traitees en serie et en batchs pour reduire les listes simultanees en RAM.
 - Une seule source catalogue peut etre active: Xtream ou M3U. Activer une source desactive l'autre cote preference locale.
-- En multi-profils local, une seule source/profil est active a la fois. Tant que les tables catalogue n'ont pas de `profileId`, ne pas conserver plusieurs catalogues Room simultanes; vider puis resynchroniser au changement de profil.
+- En multi-profils local, une seule source/profil est active a la fois. Les catalogues Room sont conserves par `profileId`; ne pas revenir a un nettoyage global au changement de profil.
 - M3U alimente Live TV uniquement; ne pas fabriquer des films/series sans structure fiable.
 - Quand M3U est actif, ne pas afficher de messages d'erreur Xtream sur Movies/Series; afficher un etat vide source-aware.
 - Le badge EPG des lignes Live TV doit se baser sur les programmes locaux disponibles, pas seulement sur la presence d'une URL EPG.

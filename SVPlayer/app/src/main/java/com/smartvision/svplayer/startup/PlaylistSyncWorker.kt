@@ -65,7 +65,9 @@ class PlaylistSyncWorker(
             }
         }
 
-        val lastSyncAt = runCatching { container.syncStateDao.get()?.lastSync }.getOrNull()
+        val lastSyncAt = runCatching {
+            container.syncStateDao.get(container.accountManager.activeProfileIdOrDefault())?.lastSync
+        }.getOrNull()
         if (lastSyncAt != null && System.currentTimeMillis() - lastSyncAt < RECENT_SYNC_WINDOW_MS) {
             log(source, "recent", startedAt, null, null)
             return Result.success()

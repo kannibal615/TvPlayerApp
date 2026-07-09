@@ -60,7 +60,7 @@ import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
         MediaFileEntity::class,
         RecordingJobEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = true,
 )
 abstract class SVDatabase : RoomDatabase() {
@@ -88,6 +88,7 @@ abstract class SVDatabase : RoomDatabase() {
                     Migration9To10,
                     Migration10To11,
                     Migration11To12,
+                    Migration12To13(context),
                 )
                 .build()
 
@@ -398,6 +399,192 @@ abstract class SVDatabase : RoomDatabase() {
                         "previewState = 'unavailable' " +
                         "WHERE previewKind IN ('movie', 'episode')",
                 )
+            }
+        }
+
+        private fun Migration12To13(context: Context) = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val profileId = context
+                    .getSharedPreferences("xtream_accounts", Context.MODE_PRIVATE)
+                    .getString("active_playlist_profile_id", null)
+                    ?.takeIf { it.isNotBlank() }
+                    ?: "default"
+                val sqlProfileId = profileId.replace("'", "''")
+
+                recreateCategories(db, sqlProfileId)
+                recreateLiveStreams(db, sqlProfileId)
+                recreateMovies(db, sqlProfileId)
+                recreateSeries(db, sqlProfileId)
+                recreateEpisodes(db, sqlProfileId)
+                recreateFavorites(db, sqlProfileId)
+                recreatePlaybackProgress(db, sqlProfileId)
+                recreateSyncState(db, sqlProfileId)
+                recreateTrendingMedia(db, sqlProfileId)
+                recreateHomeTrendingPreviewCache(db, sqlProfileId)
+                recreateTmdbContentMapping(db, sqlProfileId)
+            }
+
+            private fun recreateCategories(db: SupportSQLiteDatabase, profileId: String) {
+                db.execSQL(
+                    "CREATE TABLE categories_new (" +
+                        "profileId TEXT NOT NULL, id TEXT NOT NULL, type TEXT NOT NULL, name TEXT NOT NULL, " +
+                        "PRIMARY KEY(profileId, id, type))",
+                )
+                db.execSQL("INSERT INTO categories_new SELECT '$profileId', id, type, name FROM categories")
+                db.execSQL("DROP TABLE categories")
+                db.execSQL("ALTER TABLE categories_new RENAME TO categories")
+            }
+
+            private fun recreateLiveStreams(db: SupportSQLiteDatabase, profileId: String) {
+                db.execSQL(
+                    "CREATE TABLE live_streams_new (" +
+                        "profileId TEXT NOT NULL, streamId INTEGER NOT NULL, number INTEGER NOT NULL, name TEXT NOT NULL, " +
+                        "categoryId TEXT, logoUrl TEXT, epgChannelId TEXT, directStreamUrl TEXT, source TEXT NOT NULL, " +
+                        "PRIMARY KEY(profileId, streamId))",
+                )
+                db.execSQL(
+                    "INSERT INTO live_streams_new SELECT '$profileId', streamId, number, name, categoryId, logoUrl, epgChannelId, directStreamUrl, source FROM live_streams",
+                )
+                db.execSQL("DROP TABLE live_streams")
+                db.execSQL("ALTER TABLE live_streams_new RENAME TO live_streams")
+                db.execSQL("CREATE INDEX index_live_streams_profileId_categoryId ON live_streams(profileId, categoryId)")
+                db.execSQL("CREATE INDEX index_live_streams_profileId_categoryId_number_name ON live_streams(profileId, categoryId, number, name)")
+                db.execSQL("CREATE INDEX index_live_streams_profileId_source ON live_streams(profileId, source)")
+            }
+
+            private fun recreateMovies(db: SupportSQLiteDatabase, profileId: String) {
+                db.execSQL(
+                    "CREATE TABLE movies_new (" +
+                        "profileId TEXT NOT NULL, streamId INTEGER NOT NULL, number INTEGER NOT NULL, title TEXT NOT NULL, " +
+                        "categoryId TEXT, posterUrl TEXT, year TEXT, genre TEXT, rating TEXT, duration TEXT, plot TEXT, containerExtension TEXT NOT NULL, " +
+                        "PRIMARY KEY(profileId, streamId))",
+                )
+                db.execSQL(
+                    "INSERT INTO movies_new SELECT '$profileId', streamId, number, title, categoryId, posterUrl, year, genre, rating, duration, plot, containerExtension FROM movies",
+                )
+                db.execSQL("DROP TABLE movies")
+                db.execSQL("ALTER TABLE movies_new RENAME TO movies")
+                db.execSQL("CREATE INDEX index_movies_profileId_categoryId ON movies(profileId, categoryId)")
+                db.execSQL("CREATE INDEX index_movies_profileId_categoryId_number_title ON movies(profileId, categoryId, number, title)")
+            }
+
+            private fun recreateSeries(db: SupportSQLiteDatabase, profileId: String) {
+                db.execSQL(
+                    "CREATE TABLE series_new (" +
+                        "profileId TEXT NOT NULL, seriesId INTEGER NOT NULL, number INTEGER NOT NULL, title TEXT NOT NULL, " +
+                        "categoryId TEXT, posterUrl TEXT, year TEXT, genre TEXT, rating TEXT, seasonsCount INTEGER, plot TEXT, " +
+                        "PRIMARY KEY(profileId, seriesId))",
+                )
+                db.execSQL(
+                    "INSERT INTO series_new SELECT '$profileId', seriesId, number, title, categoryId, posterUrl, year, genre, rating, seasonsCount, plot FROM series",
+                )
+                db.execSQL("DROP TABLE series")
+                db.execSQL("ALTER TABLE series_new RENAME TO series")
+                db.execSQL("CREATE INDEX index_series_profileId_categoryId ON series(profileId, categoryId)")
+                db.execSQL("CREATE INDEX index_series_profileId_categoryId_number_title ON series(profileId, categoryId, number, title)")
+            }
+
+            private fun recreateEpisodes(db: SupportSQLiteDatabase, profileId: String) {
+                db.execSQL(
+                    "CREATE TABLE episodes_new (" +
+                        "profileId TEXT NOT NULL, episodeId INTEGER NOT NULL, seriesId INTEGER NOT NULL, seasonNumber INTEGER NOT NULL, " +
+                        "episodeNumber INTEGER NOT NULL, title TEXT NOT NULL, containerExtension TEXT NOT NULL, duration TEXT, plot TEXT, " +
+                        "PRIMARY KEY(profileId, episodeId))",
+                )
+                db.execSQL(
+                    "INSERT INTO episodes_new SELECT '$profileId', episodeId, seriesId, seasonNumber, episodeNumber, title, containerExtension, duration, plot FROM episodes",
+                )
+                db.execSQL("DROP TABLE episodes")
+                db.execSQL("ALTER TABLE episodes_new RENAME TO episodes")
+                db.execSQL("CREATE INDEX index_episodes_profileId_seriesId ON episodes(profileId, seriesId)")
+            }
+
+            private fun recreateFavorites(db: SupportSQLiteDatabase, profileId: String) {
+                db.execSQL(
+                    "CREATE TABLE favorites_new (" +
+                        "profileId TEXT NOT NULL, contentType TEXT NOT NULL, contentId TEXT NOT NULL, createdAt INTEGER NOT NULL, " +
+                        "PRIMARY KEY(profileId, contentType, contentId))",
+                )
+                db.execSQL("INSERT INTO favorites_new SELECT '$profileId', contentType, contentId, createdAt FROM favorites")
+                db.execSQL("DROP TABLE favorites")
+                db.execSQL("ALTER TABLE favorites_new RENAME TO favorites")
+            }
+
+            private fun recreatePlaybackProgress(db: SupportSQLiteDatabase, profileId: String) {
+                db.execSQL(
+                    "CREATE TABLE playback_progress_new (" +
+                        "profileId TEXT NOT NULL, contentType TEXT NOT NULL, contentId TEXT NOT NULL, positionMs INTEGER NOT NULL, " +
+                        "durationMs INTEGER NOT NULL, updatedAt INTEGER NOT NULL, title TEXT, subtitle TEXT, imageUrl TEXT, parentContentId TEXT, " +
+                        "PRIMARY KEY(profileId, contentType, contentId))",
+                )
+                db.execSQL(
+                    "INSERT INTO playback_progress_new SELECT '$profileId', contentType, contentId, positionMs, durationMs, updatedAt, title, subtitle, imageUrl, parentContentId FROM playback_progress",
+                )
+                db.execSQL("DROP TABLE playback_progress")
+                db.execSQL("ALTER TABLE playback_progress_new RENAME TO playback_progress")
+            }
+
+            private fun recreateSyncState(db: SupportSQLiteDatabase, profileId: String) {
+                db.execSQL(
+                    "CREATE TABLE sync_state_new (" +
+                        "profileId TEXT NOT NULL, id TEXT NOT NULL, lastSync INTEGER, status TEXT NOT NULL, message TEXT, " +
+                        "PRIMARY KEY(profileId, id))",
+                )
+                db.execSQL("INSERT INTO sync_state_new SELECT '$profileId', id, lastSync, status, message FROM sync_state")
+                db.execSQL("DROP TABLE sync_state")
+                db.execSQL("ALTER TABLE sync_state_new RENAME TO sync_state")
+            }
+
+            private fun recreateTrendingMedia(db: SupportSQLiteDatabase, profileId: String) {
+                db.execSQL(
+                    "CREATE TABLE trending_media_new (" +
+                        "profileId TEXT NOT NULL, contentType TEXT NOT NULL, contentId INTEGER NOT NULL, sampleContentId INTEGER, " +
+                        "sampleExtension TEXT, rating REAL NOT NULL, updatedAt INTEGER NOT NULL, " +
+                        "PRIMARY KEY(profileId, contentType, contentId))",
+                )
+                db.execSQL(
+                    "INSERT INTO trending_media_new SELECT '$profileId', contentType, contentId, sampleContentId, sampleExtension, rating, updatedAt FROM trending_media",
+                )
+                db.execSQL("DROP TABLE trending_media")
+                db.execSQL("ALTER TABLE trending_media_new RENAME TO trending_media")
+                db.execSQL("CREATE INDEX index_trending_media_profileId_contentType_rating ON trending_media(profileId, contentType, rating)")
+                db.execSQL("CREATE INDEX index_trending_media_profileId_contentType_updatedAt ON trending_media(profileId, contentType, updatedAt)")
+            }
+
+            private fun recreateHomeTrendingPreviewCache(db: SupportSQLiteDatabase, profileId: String) {
+                db.execSQL(
+                    "CREATE TABLE home_trending_preview_cache_new (" +
+                        "profileId TEXT NOT NULL, contentType TEXT NOT NULL, contentId INTEGER NOT NULL, posterUrl TEXT, backdropUrl TEXT, " +
+                        "durationLabel TEXT, durationMs INTEGER, previewKind TEXT NOT NULL, previewContentId INTEGER, previewExtension TEXT, " +
+                        "trailerKey TEXT, previewStartPositionMs INTEGER NOT NULL, sampleLabel TEXT, backdropState TEXT NOT NULL, " +
+                        "previewState TEXT NOT NULL, preparedAt INTEGER NOT NULL, lastSync INTEGER NOT NULL, " +
+                        "PRIMARY KEY(profileId, contentType, contentId))",
+                )
+                db.execSQL(
+                    "INSERT INTO home_trending_preview_cache_new SELECT '$profileId', contentType, contentId, posterUrl, backdropUrl, durationLabel, durationMs, previewKind, previewContentId, previewExtension, trailerKey, previewStartPositionMs, sampleLabel, backdropState, previewState, preparedAt, lastSync FROM home_trending_preview_cache",
+                )
+                db.execSQL("DROP TABLE home_trending_preview_cache")
+                db.execSQL("ALTER TABLE home_trending_preview_cache_new RENAME TO home_trending_preview_cache")
+                db.execSQL("CREATE INDEX index_home_trending_preview_cache_profileId_contentType_preparedAt ON home_trending_preview_cache(profileId, contentType, preparedAt)")
+                db.execSQL("CREATE INDEX index_home_trending_preview_cache_profileId_lastSync ON home_trending_preview_cache(profileId, lastSync)")
+            }
+
+            private fun recreateTmdbContentMapping(db: SupportSQLiteDatabase, profileId: String) {
+                db.execSQL(
+                    "CREATE TABLE tmdb_content_mapping_new (" +
+                        "profileId TEXT NOT NULL, contentType TEXT NOT NULL, contentId INTEGER NOT NULL, tmdbId INTEGER, mediaType TEXT NOT NULL, " +
+                        "matchedTitle TEXT, originalTitle TEXT, matchedYear TEXT, confidence INTEGER NOT NULL, matchSource TEXT NOT NULL, " +
+                        "language TEXT NOT NULL, adult INTEGER NOT NULL, lastError TEXT, createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL, " +
+                        "PRIMARY KEY(profileId, contentType, contentId))",
+                )
+                db.execSQL(
+                    "INSERT INTO tmdb_content_mapping_new SELECT '$profileId', contentType, contentId, tmdbId, mediaType, matchedTitle, originalTitle, matchedYear, confidence, matchSource, language, adult, lastError, createdAt, updatedAt FROM tmdb_content_mapping",
+                )
+                db.execSQL("DROP TABLE tmdb_content_mapping")
+                db.execSQL("ALTER TABLE tmdb_content_mapping_new RENAME TO tmdb_content_mapping")
+                db.execSQL("CREATE INDEX index_tmdb_content_mapping_tmdbId ON tmdb_content_mapping(tmdbId)")
+                db.execSQL("CREATE INDEX index_tmdb_content_mapping_profileId_contentType_confidence ON tmdb_content_mapping(profileId, contentType, confidence)")
+                db.execSQL("CREATE INDEX index_tmdb_content_mapping_profileId_updatedAt ON tmdb_content_mapping(profileId, updatedAt)")
             }
         }
     }

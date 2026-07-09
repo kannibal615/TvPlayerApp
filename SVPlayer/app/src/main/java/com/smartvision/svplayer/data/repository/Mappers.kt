@@ -27,14 +27,15 @@ import java.util.Locale
 fun CategoryEntity.toDomain(type: MediaSection, count: Int): Category =
     Category(id = id, name = name, type = type, count = count)
 
-fun XtreamCategoryDto.toEntity(type: MediaSection): CategoryEntity? {
+fun XtreamCategoryDto.toEntity(profileId: String, type: MediaSection): CategoryEntity? {
     val safeId = id?.takeIf { it.isNotBlank() } ?: return null
-    return CategoryEntity(id = safeId, type = type.storageName, name = name.orEmpty().ifBlank { "Sans categorie" })
+    return CategoryEntity(profileId = profileId, id = safeId, type = type.storageName, name = name.orEmpty().ifBlank { "Sans categorie" })
 }
 
-fun XtreamLiveStreamDto.toEntity(imageBaseHost: String? = null): LiveStreamEntity? {
+fun XtreamLiveStreamDto.toEntity(profileId: String, imageBaseHost: String? = null): LiveStreamEntity? {
     val safeId = streamId ?: return null
     return LiveStreamEntity(
+        profileId = profileId,
         streamId = safeId,
         number = number ?: safeId,
         name = name.orEmpty().ifBlank { "Chaine $safeId" },
@@ -44,9 +45,10 @@ fun XtreamLiveStreamDto.toEntity(imageBaseHost: String? = null): LiveStreamEntit
     )
 }
 
-fun XtreamMovieDto.toEntity(imageBaseHost: String? = null): MovieEntity? {
+fun XtreamMovieDto.toEntity(profileId: String, imageBaseHost: String? = null): MovieEntity? {
     val safeId = streamId ?: return null
     return MovieEntity(
+        profileId = profileId,
         streamId = safeId,
         number = number ?: safeId,
         title = name.orEmpty().ifBlank { "Film $safeId" },
@@ -61,9 +63,10 @@ fun XtreamMovieDto.toEntity(imageBaseHost: String? = null): MovieEntity? {
     )
 }
 
-fun XtreamSeriesDto.toEntity(imageBaseHost: String? = null): SeriesEntity? {
+fun XtreamSeriesDto.toEntity(profileId: String, imageBaseHost: String? = null): SeriesEntity? {
     val safeId = seriesId ?: return null
     return SeriesEntity(
+        profileId = profileId,
         seriesId = safeId,
         number = number ?: safeId,
         title = name.orEmpty().ifBlank { "Serie $safeId" },
@@ -77,9 +80,10 @@ fun XtreamSeriesDto.toEntity(imageBaseHost: String? = null): SeriesEntity? {
     )
 }
 
-fun XtreamEpisodeDto.toEntity(seriesId: Int, seasonNumber: Int): EpisodeEntity? {
+fun XtreamEpisodeDto.toEntity(profileId: String, seriesId: Int, seasonNumber: Int): EpisodeEntity? {
     val safeId = id?.toIntOrNull() ?: return null
     return EpisodeEntity(
+        profileId = profileId,
         episodeId = safeId,
         seriesId = seriesId,
         seasonNumber = seasonNumber,

@@ -67,7 +67,7 @@ class YoutubeRepository(
 
     fun observeRecentVideoCount(): Flow<Int> = dao.observeRecentVideoCount()
 
-    fun observeFavoriteIds(): Flow<List<FavoriteEntity>> = favoriteDao.observeByType(YoutubeFavoriteContentType)
+    fun observeFavoriteIds(): Flow<List<FavoriteEntity>> = favoriteDao.observeByType(YoutubeProfileId, YoutubeFavoriteContentType)
 
     suspend fun loadCategory(categoryId: String, pageToken: String? = null): YoutubePage = withContext(Dispatchers.IO) {
         val category = categories.firstOrNull { it.id == categoryId }
@@ -151,11 +151,11 @@ class YoutubeRepository(
     }
 
     suspend fun toggleFavorite(video: YoutubeVideo) = withContext(Dispatchers.IO) {
-        val existing = favoriteDao.get(YoutubeFavoriteContentType, video.videoId)
+        val existing = favoriteDao.get(YoutubeProfileId, YoutubeFavoriteContentType, video.videoId)
         if (existing == null) {
-            favoriteDao.upsert(FavoriteEntity(YoutubeFavoriteContentType, video.videoId, System.currentTimeMillis()))
+            favoriteDao.upsert(FavoriteEntity(YoutubeProfileId, YoutubeFavoriteContentType, video.videoId, System.currentTimeMillis()))
         } else {
-            favoriteDao.delete(YoutubeFavoriteContentType, video.videoId)
+            favoriteDao.delete(YoutubeProfileId, YoutubeFavoriteContentType, video.videoId)
         }
     }
 
@@ -175,7 +175,7 @@ class YoutubeRepository(
     }
 
     suspend fun clearYoutubeFavorites() = withContext(Dispatchers.IO) {
-        favoriteDao.deleteByType(YoutubeFavoriteContentType)
+        favoriteDao.deleteByType(YoutubeProfileId, YoutubeFavoriteContentType)
     }
 
     suspend fun suggestVideos(video: YoutubeVideo): List<YoutubeVideo> = withContext(Dispatchers.IO) {
@@ -290,7 +290,7 @@ class YoutubeRepository(
     }
 
     private suspend fun favoriteVideos(): List<YoutubeVideo> {
-        val favoriteIds = favoriteDao.getByType(YoutubeFavoriteContentType)
+        val favoriteIds = favoriteDao.getByType(YoutubeProfileId, YoutubeFavoriteContentType)
             .sortedByDescending { it.createdAt }
             .map { it.contentId }
         if (favoriteIds.isEmpty()) return emptyList()
@@ -323,6 +323,8 @@ class YoutubeRepository(
         return ids.mapNotNull { byId[it] }
     }
 }
+
+private const val YoutubeProfileId = "youtube"
 
 private fun YoutubeVideoHistoryEntity.toVideo(): YoutubeVideo =
     YoutubeVideo(

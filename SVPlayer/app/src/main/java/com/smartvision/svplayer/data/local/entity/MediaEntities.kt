@@ -2,18 +2,19 @@ package com.smartvision.svplayer.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.Index
-import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "live_streams",
+    primaryKeys = ["profileId", "streamId"],
     indices = [
-        Index(value = ["categoryId"]),
-        Index(value = ["categoryId", "number", "name"]),
-        Index(value = ["source"]),
+        Index(value = ["profileId", "categoryId"]),
+        Index(value = ["profileId", "categoryId", "number", "name"]),
+        Index(value = ["profileId", "source"]),
     ],
 )
 data class LiveStreamEntity(
-    @PrimaryKey val streamId: Int,
+    val profileId: String,
+    val streamId: Int,
     val number: Int,
     val name: String,
     val categoryId: String?,
@@ -25,13 +26,15 @@ data class LiveStreamEntity(
 
 @Entity(
     tableName = "movies",
+    primaryKeys = ["profileId", "streamId"],
     indices = [
-        Index(value = ["categoryId"]),
-        Index(value = ["categoryId", "number", "title"]),
+        Index(value = ["profileId", "categoryId"]),
+        Index(value = ["profileId", "categoryId", "number", "title"]),
     ],
 )
 data class MovieEntity(
-    @PrimaryKey val streamId: Int,
+    val profileId: String,
+    val streamId: Int,
     val number: Int,
     val title: String,
     val categoryId: String?,
@@ -46,13 +49,15 @@ data class MovieEntity(
 
 @Entity(
     tableName = "series",
+    primaryKeys = ["profileId", "seriesId"],
     indices = [
-        Index(value = ["categoryId"]),
-        Index(value = ["categoryId", "number", "title"]),
+        Index(value = ["profileId", "categoryId"]),
+        Index(value = ["profileId", "categoryId", "number", "title"]),
     ],
 )
 data class SeriesEntity(
-    @PrimaryKey val seriesId: Int,
+    val profileId: String,
+    val seriesId: Int,
     val number: Int,
     val title: String,
     val categoryId: String?,
@@ -66,13 +71,14 @@ data class SeriesEntity(
 
 @Entity(
     tableName = "trending_media",
-    primaryKeys = ["contentType", "contentId"],
+    primaryKeys = ["profileId", "contentType", "contentId"],
     indices = [
-        Index(value = ["contentType", "rating"]),
-        Index(value = ["contentType", "updatedAt"]),
+        Index(value = ["profileId", "contentType", "rating"]),
+        Index(value = ["profileId", "contentType", "updatedAt"]),
     ],
 )
 data class TrendingMediaEntity(
+    val profileId: String,
     val contentType: String,
     val contentId: Int,
     val sampleContentId: Int?,
@@ -83,13 +89,14 @@ data class TrendingMediaEntity(
 
 @Entity(
     tableName = "home_trending_preview_cache",
-    primaryKeys = ["contentType", "contentId"],
+    primaryKeys = ["profileId", "contentType", "contentId"],
     indices = [
-        Index(value = ["contentType", "preparedAt"]),
-        Index(value = ["lastSync"]),
+        Index(value = ["profileId", "contentType", "preparedAt"]),
+        Index(value = ["profileId", "lastSync"]),
     ],
 )
 data class HomeTrendingPreviewCacheEntity(
+    val profileId: String,
     val contentType: String,
     val contentId: Int,
     val posterUrl: String?,
@@ -110,14 +117,15 @@ data class HomeTrendingPreviewCacheEntity(
 
 @Entity(
     tableName = "tmdb_content_mapping",
-    primaryKeys = ["contentType", "contentId"],
+    primaryKeys = ["profileId", "contentType", "contentId"],
     indices = [
         Index(value = ["tmdbId"]),
-        Index(value = ["contentType", "confidence"]),
-        Index(value = ["updatedAt"]),
+        Index(value = ["profileId", "contentType", "confidence"]),
+        Index(value = ["profileId", "updatedAt"]),
     ],
 )
 data class TmdbContentMappingEntity(
+    val profileId: String,
     val contentType: String,
     val contentId: Int,
     val tmdbId: Int?,
@@ -223,12 +231,14 @@ data class TmdbSeriesMetadataEntity(
 
 @Entity(
     tableName = "episodes",
+    primaryKeys = ["profileId", "episodeId"],
     indices = [
-        Index(value = ["seriesId"]),
+        Index(value = ["profileId", "seriesId"]),
     ],
 )
 data class EpisodeEntity(
-    @PrimaryKey val episodeId: Int,
+    val profileId: String,
+    val episodeId: Int,
     val seriesId: Int,
     val seasonNumber: Int,
     val episodeNumber: Int,
@@ -238,15 +248,17 @@ data class EpisodeEntity(
     val plot: String?,
 )
 
-@Entity(tableName = "favorites", primaryKeys = ["contentType", "contentId"])
+@Entity(tableName = "favorites", primaryKeys = ["profileId", "contentType", "contentId"])
 data class FavoriteEntity(
+    val profileId: String,
     val contentType: String,
     val contentId: String,
     val createdAt: Long,
 )
 
-@Entity(tableName = "playback_progress", primaryKeys = ["contentType", "contentId"])
+@Entity(tableName = "playback_progress", primaryKeys = ["profileId", "contentType", "contentId"])
 data class PlaybackProgressEntity(
+    val profileId: String,
     val contentType: String,
     val contentId: String,
     val positionMs: Long,
@@ -258,9 +270,10 @@ data class PlaybackProgressEntity(
     val parentContentId: String? = null,
 )
 
-@Entity(tableName = "sync_state")
+@Entity(tableName = "sync_state", primaryKeys = ["profileId", "id"])
 data class SyncStateEntity(
-    @PrimaryKey val id: String,
+    val profileId: String,
+    val id: String,
     val lastSync: Long?,
     val status: String,
     val message: String?,

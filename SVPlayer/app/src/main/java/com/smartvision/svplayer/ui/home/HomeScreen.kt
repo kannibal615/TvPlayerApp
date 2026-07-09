@@ -894,6 +894,6 @@ private suspend fun shouldRequestPostHomeCatalogSync(
     val policy = SyncFrequencyPolicy.from(settings.syncFrequency)
     if (policy.runOnStartup) return true
     val repeatHours = policy.repeatHours ?: return false
-    val lastSync = container.syncStateDao.get()?.lastSync ?: return true
+    val lastSync = container.syncStateDao.get(container.accountManager.activeProfileIdOrDefault())?.lastSync ?: return true
     return System.currentTimeMillis() - lastSync >= TimeUnit.HOURS.toMillis(repeatHours)
 }

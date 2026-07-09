@@ -30,6 +30,7 @@ data class CatalogContentCounts(
 
 interface CatalogRepository {
     val syncStatus: StateFlow<SyncStatus>
+    val catalogRevision: StateFlow<Long>
 
     fun observeLiveCategories(): Flow<List<Category>>
     fun observeLiveChannels(categoryId: String?): Flow<List<LiveChannel>>
@@ -72,6 +73,7 @@ interface CatalogRepository {
     suspend fun getTrendingMovieItems(limit: Int): List<TrendingCatalogItem>
     suspend fun getTrendingSeriesItems(limit: Int): List<TrendingCatalogItem>
     suspend fun getCatalogContentCounts(): CatalogContentCounts
+    suspend fun hasLocalCatalogForActiveProfile(): Boolean
     fun invalidateLocalCatalogCache()
     suspend fun clearCatalogForProfileSwitch()
     suspend fun synchronize(): Result<Unit>

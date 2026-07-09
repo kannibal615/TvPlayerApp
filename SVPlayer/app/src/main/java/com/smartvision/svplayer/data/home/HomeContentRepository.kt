@@ -293,7 +293,7 @@ class HomeContentRepository(
             return@withContext null
         }
         cleanPreviewCacheIfNeeded(key.lastSync)
-        mediaDao.getHomeTrendingPreviewCache(contentType, contentId, key.lastSync)
+        mediaDao.getHomeTrendingPreviewCache(key.profileId, contentType, contentId, key.lastSync)
             ?.takeIf { it.isYoutubeTrailerPreviewCache() }
             ?.toPreparedPreview()
             ?.also { prepared ->
@@ -358,7 +358,8 @@ class HomeContentRepository(
             accountSignature = accountManager.accounts.value.joinToString("|") { account ->
                 "${account.id}:${account.host}:${account.username}:${account.password.hashCode()}"
             },
-            lastSync = syncStateDao.get()?.lastSync ?: 0L,
+            profileId = accountManager.activeProfileIdOrDefault(),
+            lastSync = syncStateDao.get(accountManager.activeProfileIdOrDefault())?.lastSync ?: 0L,
         )
 
     private fun updateCachedTrending(
@@ -379,7 +380,7 @@ class HomeContentRepository(
 
     private suspend fun cleanPreviewCacheIfNeeded(lastSync: Long) {
         if (previewCacheCleanedForLastSync == lastSync) return
-        mediaDao.deleteStaleHomeTrendingPreviewCache(lastSync)
+        mediaDao.deleteStaleHomeTrendingPreviewCache(accountManager.activeProfileIdOrDefault(), lastSync)
         previewCacheCleanedForLastSync = lastSync
     }
 
@@ -404,6 +405,7 @@ class HomeContentRepository(
         val backdropUrl = tmdb?.backdropUrl ?: details.backdropUrl?.takeIf { it.isNotBlank() }
         val trailerKey = tmdb?.trailerKey
         return HomeTrendingPreviewCacheEntity(
+            profileId = accountManager.activeProfileIdOrDefault(),
             contentType = TrendingMovieType,
             contentId = contentId,
             posterUrl = posterUrl,
@@ -448,6 +450,7 @@ class HomeContentRepository(
         val backdropUrl = tmdb?.backdropUrl ?: details.backdropUrl?.takeIf { it.isNotBlank() }
         val trailerKey = tmdb?.trailerKey
         return HomeTrendingPreviewCacheEntity(
+            profileId = accountManager.activeProfileIdOrDefault(),
             contentType = TrendingSeriesType,
             contentId = contentId,
             posterUrl = posterUrl,
@@ -577,6 +580,7 @@ private data class CachedHomeTrending(
 )
 
 private data class HomeTrendingCacheKey(
+    val profileId: String,
     val source: String,
     val accountSignature: String,
     val lastSync: Long,

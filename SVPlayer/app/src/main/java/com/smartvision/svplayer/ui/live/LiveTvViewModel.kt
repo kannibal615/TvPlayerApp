@@ -120,11 +120,35 @@ class LiveTvViewModel(
     private var pendingHistoryFocusAfterDelete: Int? = null
     private var userSelectedCategory = false
     private var autoSelectedCategoryId: String? = null
+    private var observedCatalogRevision: Long? = null
 
     init {
+        observeCatalogRevision()
         observeSettings()
         observeFavorites()
         observeHistory()
+        loadCategories()
+    }
+
+    private fun observeCatalogRevision() {
+        viewModelScope.launch {
+            catalogRepository.catalogRevision.collect { revision ->
+                val previous = observedCatalogRevision
+                observedCatalogRevision = revision
+                if (previous != null && previous != revision) {
+                    reloadCatalogAfterRevision()
+                }
+            }
+        }
+    }
+
+    private fun reloadCatalogAfterRevision() {
+        channelsJob?.cancel()
+        localCategories = emptyList()
+        pendingHistoryFocusAfterDelete = null
+        userSelectedCategory = false
+        autoSelectedCategoryId = null
+        _uiState.value = LiveTvUiState(categoriesLoading = true)
         loadCategories()
     }
 

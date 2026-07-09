@@ -43,6 +43,7 @@ data class PlaylistProfile(
     val id: String,
     val name: String,
     val source: PlaylistSource,
+    val avatarColorHex: String = "",
     val xtreamHost: String = "",
     val xtreamUsername: String = "",
     val xtreamPassword: String = "",
@@ -191,6 +192,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
         val normalized = profile.copy(
             id = id,
             name = profile.name.trim(),
+            avatarColorHex = profile.avatarColorHex.ifBlank { avatarColorForName(profile.name.ifBlank { id }) },
             xtreamHost = profile.xtreamHost.trim().trimEnd('/'),
             xtreamUsername = profile.xtreamUsername.trim(),
             xtreamPassword = profile.xtreamPassword.trim(),
@@ -204,13 +206,15 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
         require(_profiles.value.none { it.id != id && it.name.equals(normalized.name, ignoreCase = true) }) {
             "Un profil porte deja ce nom."
         }
+        val wasEmpty = _profiles.value.isEmpty()
+        val existingWasActive = _activeProfileId.value == id
         _profiles.value = (_profiles.value.filterNot { it.id == id } + normalized)
             .sortedBy { it.createdAt }
-        if (_activeProfileId.value == null) {
+        if (_activeProfileId.value == null || wasEmpty) {
             _activeProfileId.value = id
         }
         refreshProfileStatuses()
-        if (_activeProfileId.value == id) {
+        if (existingWasActive || _activeProfileId.value == id) {
             activeProfile()?.let(::applyProfileToLegacyState)
         }
         persist()
@@ -218,12 +222,24 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
     }
 
     @Synchronized
-    fun selectProfile(profileId: String) {
+    fun activateProfile(profileId: String) {
         val profile = _profiles.value.firstOrNull { it.id == profileId }
             ?: throw IllegalArgumentException("Profil introuvable.")
+        if (_activeProfileId.value == profile.id) return
         _activeProfileId.value = profile.id
         applyProfileToLegacyState(profile)
         refreshProfileStatuses()
+        persist()
+    }
+
+    @Synchronized
+    fun selectProfile(profileId: String) = activateProfile(profileId)
+
+    @Synchronized
+    fun updateActiveProfileSource(source: PlaylistSource) {
+        _activePlaylistSource.value = source
+        syncActiveProfileFromLegacy()
+        activeProfile()?.let(::applyProfileToLegacyState)
         persist()
     }
 
@@ -255,6 +271,9 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
     fun activeProfile(): PlaylistProfile? =
         _profiles.value.firstOrNull { it.id == _activeProfileId.value }
 
+    fun activeProfileIdOrDefault(): String =
+        _activeProfileId.value ?: DefaultProfileId
+
     private fun migrateLegacyProfileIfNeeded() {
         if (_profiles.value.isNotEmpty()) return
         val activeAccount = _accounts.value.firstOrNull { it.id == _activeAccountId.value }
@@ -271,6 +290,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             id = UUID.randomUUID().toString(),
             name = "Profil principal",
             source = source,
+            avatarColorHex = avatarColorForName("Profil principal"),
             xtreamHost = activeAccount?.host.orEmpty(),
             xtreamUsername = activeAccount?.username.orEmpty(),
             xtreamPassword = activeAccount?.password.orEmpty(),
@@ -398,6 +418,9 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
                 id = item.getString("id"),
                 name = item.optString("name"),
                 source = PlaylistSource.fromStorage(item.optString("source")),
+                avatarColorHex = item.optString("avatar_color_hex").ifBlank {
+                    avatarColorForName(item.optString("name").ifBlank { item.getString("id") })
+                },
                 xtreamHost = item.optString("xtream_host"),
                 xtreamUsername = item.optString("xtream_username"),
                 xtreamPassword = item.optString("xtream_password"),
@@ -419,6 +442,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
                         .put("id", profile.id)
                         .put("name", profile.name)
                         .put("source", profile.source.storageValue)
+                        .put("avatar_color_hex", profile.avatarColorHex.ifBlank { avatarColorForName(profile.name) })
                         .put("xtream_host", profile.xtreamHost)
                         .put("xtream_username", profile.xtreamUsername)
                         .put("xtream_password", profile.xtreamPassword)
@@ -441,6 +465,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
         const val KEY_PROFILES = "playlist_profiles_json"
         const val KEY_ACTIVE_PROFILE = "active_playlist_profile_id"
         const val LEGACY_BUILD_CONFIG_ACCOUNT = "build_config"
+        const val DefaultProfileId = "default"
     }
 
     private fun PlaylistSource.isAvailable(): Boolean =
@@ -448,4 +473,21 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             PlaylistSource.Xtream -> current().isConfigured
             PlaylistSource.M3u -> _m3uUrl.value.isNotBlank()
         }
+}
+
+private val ProfileAvatarPalette = listOf(
+    "#1D7AF3",
+    "#D9352A",
+    "#7B3FF2",
+    "#009B72",
+    "#E08A00",
+    "#C2255C",
+    "#2F80ED",
+    "#6C8E00",
+)
+
+private fun avatarColorForName(value: String): String {
+    val key = value.trim().ifBlank { "profile" }
+    val index = kotlin.math.abs(key.lowercase().hashCode()).mod(ProfileAvatarPalette.size)
+    return ProfileAvatarPalette[index]
 }

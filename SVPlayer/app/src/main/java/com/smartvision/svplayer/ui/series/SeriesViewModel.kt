@@ -112,11 +112,34 @@ class SeriesViewModel(
     private var historyCategorySignals: List<CategoryHistorySignal> = emptyList()
     private var playerSettings = PlayerSettings()
     private var localCategories: List<Category> = emptyList()
+    private var observedCatalogRevision: Long? = null
 
     init {
+        observeCatalogRevision()
         observeSettings()
         observeFavorites()
         observeHistory()
+        loadCategories()
+    }
+
+    private fun observeCatalogRevision() {
+        viewModelScope.launch {
+            catalogRepository.catalogRevision.collect { revision ->
+                val previous = observedCatalogRevision
+                observedCatalogRevision = revision
+                if (previous != null && previous != revision) {
+                    reloadCatalogAfterRevision()
+                }
+            }
+        }
+    }
+
+    private fun reloadCatalogAfterRevision() {
+        seriesJob?.cancel()
+        episodesJob?.cancel()
+        metadataJob?.cancel()
+        localCategories = emptyList()
+        _uiState.value = SeriesScreenState(categoriesLoading = true)
         loadCategories()
     }
 
@@ -170,14 +193,20 @@ class SeriesViewModel(
                 historyCount = historySeries().size,
                 historySignals = historyCategorySignals,
             )
+            val initialCategory = visibleCategories.initialCategoryForPlaylist()
             it.copy(
                 categoriesLoading = false,
                 categories = visibleCategories,
-                selectedCategoryId = HistorySeriesCategoryId,
+                selectedCategoryId = initialCategory?.id,
                 errorMessage = null,
             )
         }
-        loadHistorySeries()
+        when (_uiState.value.selectedCategoryId) {
+            HistorySeriesCategoryId -> loadHistorySeries()
+            FavoriteSeriesCategoryId -> loadFavoriteSeries()
+            AllSeriesCategoryId, null -> loadAllSeries()
+            else -> _uiState.value.selectedCategoryId?.let(::loadSeries)
+        }
     }
 
     fun selectCategory(category: SeriesCategoryUi) {
@@ -656,6 +685,11 @@ private fun List<SeriesCategoryUi>.withSpecialCategories(
         ),
     ) + filterNot { it.id in SpecialSeriesCategoryIds }
         .sortedByHistorySignals(historySignals) { it.id }
+
+private fun List<SeriesCategoryUi>.initialCategoryForPlaylist(): SeriesCategoryUi? =
+    firstOrNull { it.id == AllSeriesCategoryId && (it.count ?: 0) > 0 }
+        ?: firstOrNull { it.id !in setOf(FavoriteSeriesCategoryId, HistorySeriesCategoryId) && (it.count ?: 0) > 0 }
+        ?: firstOrNull()
 
 private fun Category.toUiCategory(): SeriesCategoryUi =
     SeriesCategoryUi(

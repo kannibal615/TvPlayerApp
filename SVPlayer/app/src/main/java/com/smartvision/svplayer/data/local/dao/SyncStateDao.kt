@@ -7,8 +7,8 @@ import com.smartvision.svplayer.data.local.entity.SyncStateEntity
 
 @Dao
 interface SyncStateDao {
-    @Query("SELECT * FROM sync_state WHERE id = :id")
-    suspend fun get(id: String = "catalog"): SyncStateEntity?
+    @Query("SELECT * FROM sync_state WHERE profileId = :profileId AND id = :id")
+    suspend fun get(profileId: String, id: String = "catalog"): SyncStateEntity?
 
     @Upsert
     suspend fun upsert(state: SyncStateEntity)

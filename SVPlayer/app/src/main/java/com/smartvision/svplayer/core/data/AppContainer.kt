@@ -242,6 +242,7 @@ class AppContainer(context: Context) {
     )
 
     val userContentRepository: UserContentRepository = UserContentRepository(
+        accountManager = accountManager,
         favoriteDao = database.favoriteDao(),
         progressDao = database.progressDao(),
         mediaDao = database.mediaDao(),
@@ -281,6 +282,7 @@ class AppContainer(context: Context) {
     val tmdbRepository = TmdbRepository(
         api = tmdbApi,
         mediaDao = database.mediaDao(),
+        accountManager = accountManager,
         readAccessToken = tmdbReadAccessToken,
     )
 

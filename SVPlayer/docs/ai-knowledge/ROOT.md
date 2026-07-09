@@ -14,7 +14,7 @@ Etat technique constate le 2026-07-07:
 - langue officielle UI: anglais par defaut; deuxieme langue disponible: francais; futures langues a ajouter via le systeme i18n.
 - entree TV: `MainActivity -> ui/navigation/AppNavigation.kt`
 - lecture video: AndroidX Media3 ExoPlayer natif
-- sources utilisateur: multi-profils locaux dans `XtreamAccountManager`, avec migration du compte/lien existant vers `Profil principal` et selection active projetee vers les anciens flows `current()`, `m3uUrl`, `epgUrl`, `activePlaylistSource`.
+- sources utilisateur: multi-profils locaux dans `XtreamAccountManager`, avec migration du compte/lien existant vers `Profil principal`, selection active projetee vers les anciens flows `current()`, `m3uUrl`, `epgUrl`, `activePlaylistSource`, et catalogues/historiques IPTV isoles par `profileId` en Room depuis la version 13.
 - backend local: `server/public_html/`
 - deploiement: `scripts/deploy_activation_phase1.ps1`
 - ADB Windows de reference pour tests Firestick: `C:\Users\ONEDEV\AppData\Local\Android\Sdk\platform-tools\adb.exe`; Firestick Wi-Fi connue: `192.168.1.33:5555`.
