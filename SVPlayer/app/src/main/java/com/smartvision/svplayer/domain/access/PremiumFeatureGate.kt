@@ -15,6 +15,7 @@ enum class PremiumFeature(
     MEDIA_CENTER("media_center", "Media Center"),
     MEDIA_FILE_MANAGEMENT("media_file_management", "Media file management"),
     MEDIA_PHONE_TRANSFER("media_phone_transfer", "Phone transfer"),
+    MULTI_PROFILE("multi_profile", "Multi-profile"),
     PRIVATE_MEDIA("private_media", "Private media", defaultTrial = false),
     PRIVATE_MEDIA_EPORNER("private_media_eporner", "Eporner provider", defaultTrial = false),
     PRIVATE_MEDIA_NATIVE_PLAYBACK("private_media_native_playback", "Private media native playback", defaultTrial = false),

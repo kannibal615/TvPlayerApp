@@ -43,6 +43,7 @@ data class PlaylistProfile(
     val id: String,
     val name: String,
     val source: PlaylistSource,
+    val avatarId: String = "",
     val avatarColorHex: String = "",
     val xtreamHost: String = "",
     val xtreamUsername: String = "",
@@ -196,6 +197,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
         val normalized = profile.copy(
             id = id,
             name = profile.name.trim(),
+            avatarId = profile.avatarId.ifBlank { profileAvatarIdForName(profile.name.ifBlank { id }) },
             avatarColorHex = profile.avatarColorHex.ifBlank { avatarColorForName(profile.name.ifBlank { id }) },
             xtreamHost = profile.xtreamHost.trim().trimEnd('/'),
             xtreamUsername = profile.xtreamUsername.trim(),
@@ -303,6 +305,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             id = UUID.randomUUID().toString(),
             name = "Profil principal",
             source = source,
+            avatarId = profileAvatarIdForName("Profil principal"),
             avatarColorHex = avatarColorForName("Profil principal"),
             xtreamHost = activeAccount?.host.orEmpty(),
             xtreamUsername = activeAccount?.username.orEmpty(),
@@ -416,6 +419,9 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
                 id = item.getString("id"),
                 name = item.optString("name"),
                 source = PlaylistSource.fromStorage(item.optString("source")),
+                avatarId = item.optString("avatar_id").ifBlank {
+                    profileAvatarIdForName(item.optString("name").ifBlank { item.getString("id") })
+                },
                 avatarColorHex = item.optString("avatar_color_hex").ifBlank {
                     avatarColorForName(item.optString("name").ifBlank { item.getString("id") })
                 },
@@ -440,6 +446,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
                         .put("id", profile.id)
                         .put("name", profile.name)
                         .put("source", profile.source.storageValue)
+                        .put("avatar_id", profile.avatarId.ifBlank { profileAvatarIdForName(profile.name) })
                         .put("avatar_color_hex", profile.avatarColorHex.ifBlank { avatarColorForName(profile.name) })
                         .put("xtream_host", profile.xtreamHost)
                         .put("xtream_username", profile.xtreamUsername)

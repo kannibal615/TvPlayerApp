@@ -404,7 +404,7 @@ private fun SeriesList(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            state.errorMessage != null && state.series.isEmpty() -> CatalogError(
+            state.errorMessage != null && state.series.isEmpty() && !state.categoriesLoading && !state.seriesLoading && !state.itemsLoading && !state.episodesLoading -> CatalogError(
                 message = state.errorMessage,
                 onRetry = onRetry,
                 modifier = Modifier.fillMaxSize(),
@@ -433,6 +433,7 @@ private fun SeriesList(
                             series.releaseDate?.take(4),
                             series.sideLabel().takeIf { it.isNotBlank() },
                             series.categoryLabel,
+                            series.createdBy?.takeIf { it.isNotBlank() },
                         ).joinToString(" | ").ifBlank { series.subtitle },
                         genre = series.genre,
                         rating = series.rating,

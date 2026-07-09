@@ -1,6 +1,6 @@
 # Backend, Admin, API et Deploiement
 
-Derniere mise a jour: 2026-07-07.
+Derniere mise a jour: 2026-07-10.
 
 ## 1. Objectif
 
@@ -117,6 +117,7 @@ Tables/settings a surveiller:
 - `app_settings`;
 - `app_feature_access`;
 - defaults `app_feature_access` Recorder/Media ajoutes le 2026-07-05: `recorder`, `media_center` (`Menu Media Center`), `media_file_management`, `media_phone_transfer` avec Premium oui, Trial oui, Free Ads non;
+- default `app_feature_access` ajoute le 2026-07-10: `multi_profile` (`Multi-profils`) avec Premium oui, Trial oui, Free Ads non; Android l'utilise pour griser/verrouiller l'ajout et la modification de profils.
 - defaults `app_feature_access` ajoutes le 2026-07-07 pour `private_media`, `private_media_eporner`, `private_media_native_playback`; la configuration detaillee est stockee en JSON dans `app_settings.private_media_config`.
 - `app_consent_receipts`;
 - `app_notifications`;
@@ -180,6 +181,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-10: release prod Android `0.1.116` / `132` deployee via `scripts/deploy_activation_phase1.ps1 -SkipInstall`; manifeste `smartvision-tv-v132-04eaf015.apk`, SHA256 `04eaf0154a106c91f1d403325480217cdb95eece95bfe94d3accc2f71d3ebe5c`, taille `41116724`. Verification publique OK: manifeste et `api/app_update.php` en `132`, APK versionne et stable HTTP 200, hash/taille telecharges identiques, `app_config.php` expose `multi_profile` Premium=true Trial=true FreeAds=false.
 - 2026-07-07: ajout des endpoints `api/media/private/*`, du menu admin `Bibliotheque privee`, des flags `private_media*`, et correction du deploy pour creer explicitement `api/media/private/providers` avant upload.
 - 2026-07-07: `items.php` accepte `query` pour la recherche privee; `Synchroniser removed` est limite par lot et rollback en erreur pour eviter un HTTP 500 admin; playback prive renvoie aussi `embedUrl/pageUrl` pour le fallback TV.
 - 2026-07-07: `Bibliotheque privee` gere les sous-dossiers TV prives avec suppression explicite et migration de l'ancien dossier unique vers les premiers themes par defaut; le backend ne renvoie des streams natifs que pour URLs directes HLS/MP4.

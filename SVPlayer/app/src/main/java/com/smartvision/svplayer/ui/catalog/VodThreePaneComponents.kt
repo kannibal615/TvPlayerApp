@@ -223,16 +223,16 @@ fun VodContentRow(
             imageUrl = imageUrl,
             fallbackText = fallbackText,
             modifier = Modifier
-                .width(122.dp)
+                .width(114.dp)
                 .height(VodContentRowHeight),
             crop = true,
             framed = false,
         )
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(9.dp))
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(vertical = 4.dp),
+                .padding(vertical = 3.dp),
         ) {
             Text(
                 text = title,
@@ -271,7 +271,7 @@ fun VodContentRow(
                 )
             }
         }
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(6.dp))
         Text(
             text = sideLabel,
             color = SmartVisionColors.TextSecondary,
@@ -279,7 +279,7 @@ fun VodContentRow(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.End,
-            modifier = Modifier.width(72.dp),
+            modifier = Modifier.width(58.dp),
         )
     }
 }
@@ -706,6 +706,11 @@ fun VodPreviewPanel(
             content.durationLabel?.takeIf { it.isNotBlank() }?.let { duration ->
                 item(key = "${content.id}-duration") {
                     PreviewInfoLine(label = "Duree", value = duration)
+                }
+            }
+            content.sideLabel?.takeIf { it.isNotBlank() && it != content.durationLabel }?.let { sideLabel ->
+                item(key = "${content.id}-side") {
+                    PreviewInfoLine(label = if (content.id.startsWith("series-")) "Saisons / episodes" else "Info", value = sideLabel)
                 }
             }
             content.year?.takeIf { it.isNotBlank() }?.let { year ->
@@ -1531,7 +1536,7 @@ private suspend fun ExoPlayer.fadeInVodMiniPlayerVolume() {
 }
 
 private val VodPreviewPercents = listOf(10, 30, 50, 80)
-private val VodContentRowHeight = 68.dp
+private val VodContentRowHeight = 64.dp
 private const val VodPreviewWarmupMillis = 3_000L
 private const val VodPreviewSegmentMillis = 15_000L
 private const val VodMiniPlayerAudioStartDelayMillis = 1_000L

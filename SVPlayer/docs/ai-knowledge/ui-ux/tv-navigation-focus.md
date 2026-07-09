@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-07-09.
+Derniere mise a jour: 2026-07-10.
 
 ## 1. Objectif
 
@@ -211,3 +211,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-09: apres splash et avant Home, `ProfilePickerScreen` demande quel profil regarder quand des profils configures existent. OK sur un avatar active ce profil, reutilise son catalogue local s'il existe deja et lance la synchro seulement si le profil n'a pas encore de catalogue local.
 - 2026-07-09: les lignes profil routent explicitement D-pad droite vers le toggle ON/OFF et D-pad gauche du toggle vers la ligne. Dans `ProfilePickerScreen`, le focus initial vise le profil actif et Add/Manage naviguent vers Info compte seulement apres sortie du picker pour eviter un crash de navigation avant `NavHost`.
 - 2026-07-09: Movies/Series adoptent le layout 3 colonnes Live TV avec liste centrale, preview a droite, premier OK preview en gardant le focus ligne, deuxieme OK fullscreen, et suppression Historique dans le header Preview.
+- 2026-07-10: `ProfilePickerScreen` supprime `Manage profiles`; `Add Profile` ouvre le formulaire profil directement, le stylo du nom ouvre le meme formulaire pre-rempli, et OK sur un profil affiche une progress bar jusqu'a Home. Le multi-profil est gatee par `multi_profile`: Premium et essai actif autorises, Free Ads verrouille avec couronne sur l'ajout.
+- 2026-07-10: Info compte > Profils affiche/masque le detail par OK sur la ligne. L'avatar du header detail est focusable et ouvre un popup de 10 avatars standards; apres selection, le focus passe sur `Enregistrer`, puis le retour se fait vers la photo apres fermeture. Le nom se modifie via le stylo du header.

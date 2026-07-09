@@ -272,6 +272,13 @@ function app_config_default_features(): array
             'free_ads' => false,
         ],
         [
+            'key' => 'multi_profile',
+            'label' => 'Multi-profils',
+            'premium' => true,
+            'trial' => true,
+            'free_ads' => false,
+        ],
+        [
             'key' => 'private_media',
             'label' => 'Bibliotheque privee',
             'premium' => true,

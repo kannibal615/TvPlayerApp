@@ -2123,6 +2123,7 @@ function admin_default_feature_access(): array
         ['key' => 'media_center', 'label' => 'Menu Media Center', 'premium' => true, 'trial' => true, 'free_ads' => false],
         ['key' => 'media_file_management', 'label' => 'Gestion fichiers Media', 'premium' => true, 'trial' => true, 'free_ads' => false],
         ['key' => 'media_phone_transfer', 'label' => 'Transfert telephone TV', 'premium' => true, 'trial' => true, 'free_ads' => false],
+        ['key' => 'multi_profile', 'label' => 'Multi-profils', 'premium' => true, 'trial' => true, 'free_ads' => false],
         ['key' => 'private_media', 'label' => 'Bibliotheque privee', 'premium' => true, 'trial' => false, 'free_ads' => false],
         ['key' => 'private_media_eporner', 'label' => 'Provider Eporner', 'premium' => true, 'trial' => false, 'free_ads' => false],
         ['key' => 'private_media_native_playback', 'label' => 'Lecture native media prives', 'premium' => true, 'trial' => false, 'free_ads' => false],

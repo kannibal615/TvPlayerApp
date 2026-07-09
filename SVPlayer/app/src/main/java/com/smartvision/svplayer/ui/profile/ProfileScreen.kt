@@ -7,6 +7,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -64,6 +65,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -101,8 +103,10 @@ import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.config.PlaylistProfile
 import com.smartvision.svplayer.core.config.PlaylistProfileStatus
 import com.smartvision.svplayer.core.config.PlaylistSource
+import com.smartvision.svplayer.core.config.ProfileAvatarPresetIds
 import com.smartvision.svplayer.core.config.XtreamAccount
 import com.smartvision.svplayer.core.config.XtreamAccountManager
+import com.smartvision.svplayer.core.config.profileAvatarIdForName
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.activation.ActivationException
@@ -114,6 +118,7 @@ import com.smartvision.svplayer.data.repository.emptyAccountProfile
 import com.smartvision.svplayer.domain.model.AccountProfile
 import com.smartvision.svplayer.domain.model.SyncStatus
 import com.smartvision.svplayer.domain.repository.CatalogRepository
+import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
@@ -148,6 +153,8 @@ fun ProfileRoute(
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
     notificationBadgeCount: Int,
+    multiProfileAccess: PremiumFeatureGateResult,
+    onLockedFeature: () -> Unit,
     onSyncCatalog: suspend () -> Result<Unit>,
     onActivationChanged: () -> Unit,
 ) {
@@ -189,6 +196,8 @@ fun ProfileRoute(
         showLicenseKey = showLicenseKey,
         hasNewNotifications = hasNewNotifications,
         notificationBadgeCount = notificationBadgeCount,
+        multiProfileAccess = multiProfileAccess,
+        onLockedFeature = onLockedFeature,
         onRefresh = viewModel::refresh,
         onSyncCatalog = onSyncCatalog,
         onShowLicenseQr = viewModel::showLicenseQr,
@@ -282,6 +291,8 @@ private fun ProfileScreen(
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
     notificationBadgeCount: Int,
+    multiProfileAccess: PremiumFeatureGateResult,
+    onLockedFeature: () -> Unit,
     onRefresh: () -> Unit,
     onSyncCatalog: suspend () -> Result<Unit>,
     onShowLicenseQr: () -> Unit,
@@ -418,6 +429,8 @@ private fun ProfileScreen(
                     ProfileSection.Xtream -> XtreamPanel(
                         state = state,
                         syncStatus = syncStatus,
+                        multiProfileAccess = multiProfileAccess,
+                        onLockedFeature = onLockedFeature,
                         onShowXtreamSetupQr = onShowXtreamSetupQr,
                         onOpenSyncDialog = { showXtreamSyncDialog = true },
                         onSaveXtreamAccount = onSaveXtreamAccount,
@@ -432,7 +445,6 @@ private fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     ProfileSection.Device -> DevicePanel(state = state, modifier = Modifier.fillMaxWidth())
-                    ProfileSection.Usage -> ConversionPanel(usageMode = state.usageMode, modifier = Modifier.fillMaxWidth())
                     ProfileSection.History -> ProfileHistoryPanel(state = state, modifier = Modifier.fillMaxWidth())
                     ProfileSection.Help -> ProfileHelpPanel(modifier = Modifier.fillMaxWidth())
                     ProfileSection.SettingsShortcut -> Unit
@@ -596,7 +608,6 @@ private enum class ProfileSection(
     License("Licence SmartVision", Icons.Default.Verified),
     Xtream("Info compte", Icons.Default.Person),
     Device("Appareil et catalogue", Icons.Default.Devices),
-    Usage("Mode d'utilisation", Icons.Default.CreditCard),
     History("Historique", Icons.Default.History),
     Help("Aide", Icons.Default.HelpOutline),
     SettingsShortcut("Parametres", Icons.Default.Settings),
@@ -606,6 +617,8 @@ private enum class ProfileSection(
 private fun XtreamPanel(
     state: ProfileUiState,
     syncStatus: SyncStatus,
+    multiProfileAccess: PremiumFeatureGateResult,
+    onLockedFeature: () -> Unit,
     onShowXtreamSetupQr: () -> Unit,
     onOpenSyncDialog: () -> Unit,
     onSaveXtreamAccount: (XtreamAccount) -> Unit,
@@ -621,8 +634,10 @@ private fun XtreamPanel(
 ) {
     var profileToEdit by remember { mutableStateOf<PlaylistProfile?>(null) }
     var selectedProfileId by remember { mutableStateOf<String?>(null) }
+    var profileDetailVisible by remember { mutableStateOf(false) }
     var profileToDelete by remember { mutableStateOf<PlaylistProfile?>(null) }
     var showProfileEditor by remember { mutableStateOf(false) }
+    var profileAvatarToEdit by remember { mutableStateOf<PlaylistProfile?>(null) }
     var showEpgEditor by remember { mutableStateOf(false) }
     var showM3uEditor by remember { mutableStateOf(false) }
     val selectedProfile = state.playlistProfiles.firstOrNull { it.id == selectedProfileId }
@@ -641,22 +656,50 @@ private fun XtreamPanel(
             profiles = state.playlistProfiles,
             activeProfileId = state.activePlaylistProfileId,
             onAdd = {
-                profileToEdit = null
-                showProfileEditor = true
+                if (multiProfileAccess.allowed) {
+                    profileToEdit = null
+                    showProfileEditor = true
+                } else {
+                    onLockedFeature()
+                }
             },
+            multiProfileLocked = !multiProfileAccess.allowed,
             selectedProfileId = selectedProfile?.id,
-            onOpen = { profile -> selectedProfileId = profile.id },
+            onOpen = { profile ->
+                val sameProfile = selectedProfileId == profile.id
+                selectedProfileId = profile.id
+                profileDetailVisible = !(sameProfile && profileDetailVisible)
+            },
             onSelect = onSelectPlaylistProfile,
+            onEdit = { profile ->
+                if (multiProfileAccess.allowed) {
+                    profileToEdit = profile
+                    showProfileEditor = true
+                } else {
+                    onLockedFeature()
+                }
+            },
         )
-        selectedProfile?.let { profile ->
+        if (profileDetailVisible) selectedProfile?.let { profile ->
             Spacer(Modifier.height(8.dp))
             PlaylistProfileDetailsPanel(
                 profile = profile,
                 active = profile.id == state.activePlaylistProfileId,
                 syncStatus = syncStatus,
                 onEditProfile = {
-                    profileToEdit = profile
-                    showProfileEditor = true
+                    if (multiProfileAccess.allowed) {
+                        profileToEdit = profile
+                        showProfileEditor = true
+                    } else {
+                        onLockedFeature()
+                    }
+                },
+                onEditAvatar = {
+                    if (multiProfileAccess.allowed) {
+                        profileAvatarToEdit = profile
+                    } else {
+                        onLockedFeature()
+                    }
                 },
                 onShowXtreamSetupQr = onShowXtreamSetupQr,
                 onSelectSource = { source ->
@@ -675,6 +718,8 @@ private fun XtreamPanel(
                 },
             )
         }
+        Spacer(Modifier.height(8.dp))
+        DeviceCatalogInlineSection(state = state)
         when (syncStatus) {
             is SyncStatus.Running -> {
                 Spacer(Modifier.height(10.dp))
@@ -713,6 +758,19 @@ private fun XtreamPanel(
             )
             else -> Unit
         }
+    }
+
+    profileAvatarToEdit?.let { profile ->
+        ProfileAvatarPickerDialog(
+            initialAvatarId = profile.avatarId,
+            onDismiss = { profileAvatarToEdit = null },
+            onSave = { avatarId ->
+                profileAvatarToEdit = null
+                onSavePlaylistProfile(profile.copy(avatarId = avatarId))
+                selectedProfileId = profile.id
+                profileDetailVisible = true
+            },
+        )
     }
 
     if (showProfileEditor) {
@@ -789,8 +847,10 @@ private fun PlaylistProfilesSection(
     activeProfileId: String,
     selectedProfileId: String?,
     onAdd: () -> Unit,
+    multiProfileLocked: Boolean,
     onOpen: (PlaylistProfile) -> Unit,
     onSelect: (String) -> Unit,
+    onEdit: (PlaylistProfile) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -812,10 +872,19 @@ private fun PlaylistProfilesSection(
                 text = "Ajouter",
                 onClick = onAdd,
                 leadingIcon = Icons.Default.Add,
+                enabled = !multiProfileLocked,
                 modifier = Modifier
                     .width(150.dp)
                     .height(40.dp),
             )
+            if (multiProfileLocked) {
+                Spacer(Modifier.width(8.dp))
+                Image(
+                    painter = painterResource(R.drawable.premium_crown),
+                    contentDescription = "Premium",
+                    modifier = Modifier.size(26.dp),
+                )
+            }
         }
         Spacer(Modifier.height(10.dp))
         if (profiles.isEmpty()) {
@@ -832,6 +901,7 @@ private fun PlaylistProfilesSection(
                     selected = profile.id == selectedProfileId,
                     onOpen = { onOpen(profile) },
                     onSelect = { onSelect(profile.id) },
+                    onEdit = { onEdit(profile) },
                 )
                 Spacer(Modifier.height(7.dp))
             }
@@ -846,6 +916,7 @@ private fun PlaylistProfileRow(
     selected: Boolean,
     onOpen: () -> Unit,
     onSelect: () -> Unit,
+    onEdit: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val rowFocusRequester = remember { FocusRequester() }
@@ -892,14 +963,19 @@ private fun PlaylistProfileRow(
         PlaylistProfileAvatar(profile = profile, modifier = Modifier.size(42.dp))
         Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = profile.name,
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.Label,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ProfileInlineEditIcon(onClick = onEdit)
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = profile.name,
+                    color = SmartVisionColors.TextPrimary,
+                    style = SmartVisionType.Label,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            }
             Spacer(Modifier.height(3.dp))
             Text(
                 text = "${profile.source.displayLabel()}  |  ${profile.status.displayLabel()}",
@@ -929,21 +1005,59 @@ private fun PlaylistProfileRow(
 }
 
 @Composable
-private fun PlaylistProfileAvatar(
+private fun ProfileInlineEditIcon(
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    var focused by remember { mutableStateOf(false) }
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(RoundedCornerShape(5.dp))
+            .background(if (focused) SmartVisionColors.Primary.copy(alpha = 0.32f) else Color.Transparent)
+            .border(
+                BorderStroke(if (focused) 1.dp else 0.dp, if (focused) SmartVisionColors.CyanAccent else Color.Transparent),
+                RoundedCornerShape(5.dp),
+            )
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(interactionSource = interactionSource),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Edit,
+            contentDescription = "Modifier le profil",
+            tint = if (focused) Color.White else SmartVisionColors.TextSecondary,
+            modifier = Modifier.size(17.dp),
+        )
+    }
+}
+
+@Composable
+fun PlaylistProfileAvatar(
     profile: PlaylistProfile,
     modifier: Modifier = Modifier,
 ) {
-    val color = remember(profile.avatarColorHex) {
-        runCatching { Color(android.graphics.Color.parseColor(profile.avatarColorHex)) }
-            .getOrDefault(SmartVisionColors.Primary)
-    }
+    val spec = remember(profile.avatarId, profile.avatarColorHex) { avatarSpec(profile.avatarId, profile.avatarColorHex) }
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(color)
+            .background(Brush.linearGradient(listOf(spec.primary, spec.secondary)))
             .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)), RoundedCornerShape(6.dp)),
         contentAlignment = Alignment.Center,
     ) {
+        Canvas(modifier = Modifier.matchParentSize()) {
+            drawCircle(
+                color = Color.White.copy(alpha = 0.18f),
+                radius = size.minDimension * 0.32f,
+                center = Offset(size.width * 0.78f, size.height * 0.20f),
+            )
+            drawCircle(
+                color = Color.Black.copy(alpha = 0.16f),
+                radius = size.minDimension * 0.40f,
+                center = Offset(size.width * 0.10f, size.height * 0.92f),
+            )
+        }
         Text(
             text = profile.name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?",
             color = Color.White,
@@ -954,11 +1068,46 @@ private fun PlaylistProfileAvatar(
 }
 
 @Composable
+private fun ProfileAvatarEditButton(
+    profile: PlaylistProfile,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    var focused by remember { mutableStateOf(false) }
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(7.dp))
+            .border(
+                BorderStroke(if (focused) 2.dp else 1.dp, if (focused) SmartVisionColors.CyanAccent else Color.White.copy(alpha = 0.22f)),
+                RoundedCornerShape(7.dp),
+            )
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(interactionSource = interactionSource),
+        contentAlignment = Alignment.Center,
+    ) {
+        PlaylistProfileAvatar(profile = profile, modifier = Modifier.matchParentSize())
+        Icon(
+            imageVector = Icons.Default.Edit,
+            contentDescription = "Modifier la photo",
+            tint = Color.White,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .size(18.dp)
+                .background(Color.Black.copy(alpha = 0.52f), RoundedCornerShape(50))
+                .padding(2.dp),
+        )
+    }
+}
+
+@Composable
 private fun PlaylistProfileDetailsPanel(
     profile: PlaylistProfile,
     active: Boolean,
     syncStatus: SyncStatus,
     onEditProfile: () -> Unit,
+    onEditAvatar: () -> Unit,
     onShowXtreamSetupQr: () -> Unit,
     onSelectSource: (PlaylistSource) -> Unit,
     onEditM3u: () -> Unit,
@@ -975,17 +1124,26 @@ private fun PlaylistProfileDetailsPanel(
             .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            PlaylistProfileAvatar(profile = profile, modifier = Modifier.size(46.dp))
+            ProfileAvatarEditButton(
+                profile = profile,
+                onClick = onEditAvatar,
+                modifier = Modifier.size(50.dp),
+            )
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = profile.name,
-                    color = SmartVisionColors.TextPrimary,
-                    style = SmartVisionType.Label,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = profile.name,
+                        color = SmartVisionColors.TextPrimary,
+                        style = SmartVisionType.Label,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    ProfileInlineEditIcon(onClick = onEditProfile)
+                }
                 Text(
                     text = if (active) "Profil actif" else "Profil selectionne",
                     color = if (active) Color(0xFF20D46B) else SmartVisionColors.TextSecondary,
@@ -1838,13 +1996,16 @@ private fun XtreamConnectedAccountSection(
 }
 
 @Composable
-private fun PlaylistProfileEditorDialog(
+fun PlaylistProfileEditorDialog(
     initial: PlaylistProfile?,
     existingNames: List<String>,
     onDismiss: () -> Unit,
     onSave: (PlaylistProfile) -> Unit,
 ) {
     var name by remember(initial?.id) { mutableStateOf(initial?.name ?: "") }
+    var avatarId by remember(initial?.id) {
+        mutableStateOf(initial?.avatarId?.ifBlank { null } ?: profileAvatarIdForName(initial?.name ?: "profile"))
+    }
     var source by remember(initial?.id) { mutableStateOf(initial?.source ?: PlaylistSource.Xtream) }
     var host by remember(initial?.id) { mutableStateOf(initial?.xtreamHost ?: "") }
     var username by remember(initial?.id) { mutableStateOf(initial?.xtreamUsername ?: "") }
@@ -1889,6 +2050,18 @@ private fun PlaylistProfileEditorDialog(
                 focusRequester = nameFocusRequester,
                 nextFocusRequester = firstSourceFocusRequester,
             )
+            Text("Photo de profil", color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                ProfileAvatarPresetIds.forEach { presetId ->
+                    ProfileAvatarPresetButton(
+                        avatarId = presetId,
+                        selected = avatarId == presetId,
+                        label = name.ifBlank { "?" },
+                        onClick = { avatarId = presetId },
+                    )
+                }
+            }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 TvButton(
@@ -1952,6 +2125,7 @@ private fun PlaylistProfileEditorDialog(
                                     id = initial?.id.orEmpty(),
                                     name = normalizedName,
                                     source = source,
+                                    avatarId = avatarId,
                                     avatarColorHex = initial?.avatarColorHex.orEmpty(),
                                     xtreamHost = host,
                                     xtreamUsername = username,
@@ -1969,6 +2143,115 @@ private fun PlaylistProfileEditorDialog(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ProfileAvatarPickerDialog(
+    initialAvatarId: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    var selectedAvatarId by remember(initialAvatarId) {
+        mutableStateOf(initialAvatarId.ifBlank { ProfileAvatarPresetIds.first() })
+    }
+    val saveFocusRequester = remember { FocusRequester() }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .width(560.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF0A1425))
+                .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent), RoundedCornerShape(8.dp))
+                .padding(22.dp),
+        ) {
+            Text(
+                text = "Modifier la photo de profil",
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.TitleS,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(16.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                ProfileAvatarPresetIds.chunked(5).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        row.forEach { presetId ->
+                            ProfileAvatarPresetButton(
+                                avatarId = presetId,
+                                selected = selectedAvatarId == presetId,
+                                label = "",
+                                onClick = {
+                                    selectedAvatarId = presetId
+                                    runCatching { saveFocusRequester.requestFocus() }
+                                },
+                                modifier = Modifier.size(70.dp),
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TvButton(
+                    text = "Annuler",
+                    onClick = onDismiss,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier.height(42.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                TvButton(
+                    text = "Enregistrer",
+                    onClick = { onSave(selectedAvatarId) },
+                    focusRequester = saveFocusRequester,
+                    modifier = Modifier.height(42.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileAvatarPresetButton(
+    avatarId: String,
+    selected: Boolean,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier.size(48.dp),
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    var focused by remember { mutableStateOf(false) }
+    val spec = remember(avatarId) { avatarSpec(avatarId, "") }
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(7.dp))
+            .background(Brush.linearGradient(listOf(spec.primary, spec.secondary)))
+            .border(
+                BorderStroke(
+                    if (focused || selected) 2.dp else 1.dp,
+                    when {
+                        focused -> SmartVisionColors.CyanAccent
+                        selected -> Color.White
+                        else -> Color.White.copy(alpha = 0.20f)
+                    },
+                ),
+                RoundedCornerShape(7.dp),
+            )
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusable(interactionSource = interactionSource),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(modifier = Modifier.matchParentSize()) {
+            drawCircle(Color.White.copy(alpha = 0.18f), radius = size.minDimension * 0.32f, center = Offset(size.width * 0.78f, size.height * 0.20f))
+            drawCircle(Color.Black.copy(alpha = 0.16f), radius = size.minDimension * 0.40f, center = Offset(size.width * 0.10f, size.height * 0.92f))
+        }
+        Text(
+            text = label.trim().firstOrNull()?.uppercaseChar()?.toString().orEmpty(),
+            color = Color.White,
+            style = SmartVisionType.Label,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 
@@ -2414,6 +2697,36 @@ private fun DevicePanel(
         icon = Icons.Default.Devices,
         modifier = modifier,
     ) {
+        DeviceCatalogContent(state)
+    }
+}
+
+@Composable
+private fun DeviceCatalogInlineSection(
+    state: ProfileUiState,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(7.dp))
+            .background(SmartVisionColors.Surface.copy(alpha = 0.58f))
+            .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.78f)), RoundedCornerShape(7.dp))
+            .padding(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Devices, contentDescription = null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Appareil et catalogue", color = SmartVisionColors.TextPrimary, style = SmartVisionType.Label, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.height(12.dp))
+        DeviceCatalogContent(state)
+    }
+}
+
+@Composable
+private fun DeviceCatalogContent(
+    state: ProfileUiState,
+) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             ProfileMetric("Live TV", state.account.liveCount.toString(), Modifier.weight(1f))
             ProfileMetric("Films", state.account.movieCount.toString(), Modifier.weight(1f))
@@ -2436,7 +2749,6 @@ private fun DevicePanel(
             )
         }
     }
-}
 
 @Composable
 private fun XtreamSummaryPanel(
@@ -3769,6 +4081,29 @@ private fun PlaylistProfileStatus.displayLabel(): String =
         PlaylistProfileStatus.Error -> "Erreur"
         PlaylistProfileStatus.NotConfigured -> "Non configure"
     }
+
+private data class ProfileAvatarSpec(
+    val primary: Color,
+    val secondary: Color,
+)
+
+private fun avatarSpec(avatarId: String, fallbackColorHex: String): ProfileAvatarSpec {
+    val fallback = runCatching { Color(android.graphics.Color.parseColor(fallbackColorHex)) }
+        .getOrDefault(SmartVisionColors.Primary)
+    return when (avatarId) {
+        "aurora" -> ProfileAvatarSpec(Color(0xFF00D4FF), Color(0xFF1439D6))
+        "ocean" -> ProfileAvatarSpec(Color(0xFF0077B6), Color(0xFF00B4D8))
+        "sunset" -> ProfileAvatarSpec(Color(0xFFFF7A1A), Color(0xFFD7263D))
+        "emerald" -> ProfileAvatarSpec(Color(0xFF00A86B), Color(0xFF073B3A))
+        "violet" -> ProfileAvatarSpec(Color(0xFF7B3FF2), Color(0xFF2B0A5B))
+        "coral" -> ProfileAvatarSpec(Color(0xFFFF5E5B), Color(0xFF7A1E3A))
+        "steel" -> ProfileAvatarSpec(Color(0xFF64748B), Color(0xFF0F172A))
+        "gold" -> ProfileAvatarSpec(Color(0xFFFFB703), Color(0xFF8A5A00))
+        "rose" -> ProfileAvatarSpec(Color(0xFFFF4D8D), Color(0xFF7F1D5A))
+        "midnight" -> ProfileAvatarSpec(Color(0xFF1D4ED8), Color(0xFF020617))
+        else -> ProfileAvatarSpec(fallback, fallback.copy(alpha = 0.72f))
+    }
+}
 
 private fun String.looksLikeHttpUrl(): Boolean {
     val value = trim()

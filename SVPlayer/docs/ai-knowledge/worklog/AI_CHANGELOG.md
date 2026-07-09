@@ -1,5 +1,37 @@
 # AI Changelog
 
+## 2026-07-10 - Who's watching, multi-profils premium et correctifs catalogues
+
+Type:
+- Android TV
+- profils playlist
+- admin/backend
+- UI catalogue
+
+Resume:
+- `ProfilePickerScreen` supprime `Manage profiles`; `Add Profile` ouvre le popup profil existant, le stylo du nom ouvre le meme formulaire pre-rempli, et OK sur un profil affiche une progress bar jusqu'a l'ouverture Home.
+- Les profils stockent maintenant un `avatar_id` avec 10 avatars standards; le popup creation/modification permet de choisir la photo de profil.
+- Info compte > Profils masque le detail par defaut et l'affiche/masque au clic sur une ligne; l'avatar du header ouvre un popup de selection puis focus `Enregistrer`, et le nom se modifie via le stylo.
+- Le contenu `Appareil et catalogue` est affiche en bas de `Info compte`; le menu gauche `Appareil et catalogue` reste conserve en attente de validation avant suppression. Le menu `Mode d'utilisation` est supprime.
+- Ajout du feature flag admin/API/Android `multi_profile`, Premium + essai 7 jours autorises, Free Ads verrouille avec couronne sur l'ajout.
+- Movies/Series evitent le flash d'erreur transitoire pendant les chargements locaux, compactent les lignes VOD a `64dp`, augmentent l'espace texte, et Series affiche `Saisons / episodes` sous le mini-player.
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin` : succes.
+- `.\scripts\guard_release_version.ps1` : succes apres bump `versionCode 132`.
+- `.\gradlew.bat :app:assembleRelease --no-daemon --max-workers=1 --console=plain` : succes.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata` : succes.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall` : succes.
+- Production verifiee: manifeste `smartvision-tv-v132-04eaf015.apk`, `api/app_update.php` en `0.1.116` / `132`, APK stable/versionne HTTP 200, SHA256 `04eaf0154a106c91f1d403325480217cdb95eece95bfe94d3accc2f71d3ebe5c`, taille `41116724`, `multi_profile` Premium=true Trial=true FreeAds=false.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/technical/backend-admin-api-deploy.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
 ## 2026-07-09 - Movies/Series skeleton, free ads preview et focus detail
 
 Type:

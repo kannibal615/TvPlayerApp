@@ -1,6 +1,6 @@
 # Activation, Licence, Essai et Xtream
 
-Derniere mise a jour: 2026-07-09.
+Derniere mise a jour: 2026-07-10.
 
 ## 1. Objectif
 
@@ -120,6 +120,7 @@ Champs importants:
 - `m3u_url`
 - `activePlaylistSource` local Android: `xtream` ou `m3u`, exclusif.
 - `playlist_profiles_json` et `active_playlist_profile_id` locaux Android: profils utilisateur multiples geres par `XtreamAccountManager`. Au premier demarrage apres mise a jour, les anciens `accounts_json`, `m3u_url`, `epg_url` et `active_playlist_source` sont copies dans `Profil principal` si une source existe.
+- `multi_profile` dans `app_feature_access`: controle la creation/modification multi-profils. Les defaults autorisent Premium et essai 7 jours, et verrouillent Free Ads avec couronne cote TV.
 
 Admin:
 - generation et gestion des codes/licences dans `server/public_html/admin/index.php`;
@@ -144,6 +145,7 @@ Admin:
 - Si Xtream et M3U sont tous les deux renseignes, ne pas choisir automatiquement une source distante a chaque refresh: conserver la source active locale choisie par l'utilisateur.
 - Les popups et messages de synchronisation doivent afficher les donnees de la source active: identifiants Xtream si Xtream est actif, lien M3U si M3U est actif.
 - L'activation/licence reste globale appareil; les profils ne changent que la source playlist active. La selection d'un profil reprojette ses champs vers les anciens flows pour preserver les repositories existants.
+- Le multi-profil doit rester derriere `PremiumFeature.MULTI_PROFILE` et `app_feature_access.multi_profile`; ne pas autoriser l'ajout/modification de profils en Free Ads sans changement admin explicite.
 
 ## 10. Problemes connus
 

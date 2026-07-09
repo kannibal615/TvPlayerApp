@@ -397,7 +397,7 @@ private fun MovieList(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            state.errorMessage != null && state.movies.isEmpty() -> CatalogError(
+            state.errorMessage != null && state.movies.isEmpty() && !state.categoriesLoading && !state.moviesLoading && !state.itemsLoading -> CatalogError(
                 message = state.errorMessage,
                 onRetry = onRetry,
                 modifier = Modifier.fillMaxSize(),
@@ -426,6 +426,7 @@ private fun MovieList(
                             movie.year,
                             movie.containerExtension.takeIf { it.isNotBlank() }?.uppercase(),
                             movie.categoryLabel,
+                            movie.director?.takeIf { it.isNotBlank() },
                         ).joinToString(" | ").ifBlank { movie.subtitle },
                         genre = movie.genre,
                         rating = movie.rating,
