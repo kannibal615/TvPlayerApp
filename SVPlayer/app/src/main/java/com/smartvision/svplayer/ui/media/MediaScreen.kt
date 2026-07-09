@@ -252,7 +252,7 @@ fun MediaScreen(
             onSearchQueryChanged = viewModel::updateSearchQuery,
             onPlayFile = onPlayFile,
             onOpenPrivateMediaDetails = onOpenPrivateMediaDetails,
-            onOpenPrivateMediaPlayer = { state.selectedPrivateItem?.id?.let(onOpenPrivateMediaPlayer) },
+            onOpenPrivateMediaPlayer = onOpenPrivateMediaPlayer,
             onRename = { renameTarget = state.selectedFile },
             onMove = { moveTarget = state.selectedFile },
             onDelete = { deleteTarget = state.selectedFile },
@@ -385,7 +385,7 @@ private fun MediaWorkspace(
     onSearchQueryChanged: (String) -> Unit,
     onPlayFile: (Long) -> Unit,
     onOpenPrivateMediaDetails: (String) -> Unit,
-    onOpenPrivateMediaPlayer: () -> Unit,
+    onOpenPrivateMediaPlayer: (String) -> Unit,
     onRename: () -> Unit,
     onMove: () -> Unit,
     onDelete: () -> Unit,
@@ -1254,7 +1254,7 @@ private fun MediaSearchField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
-        readOnly = !editing,
+        readOnly = false,
         textStyle = SmartVisionType.Label.copy(color = SmartVisionColors.TextPrimary),
         cursorBrush = SolidColor(focusStyle.accent),
         modifier = modifier
@@ -1286,6 +1286,13 @@ private fun MediaSearchField(
                         } else {
                             false
                         }
+                    }
+                    Key.DirectionLeft, Key.DirectionRight, Key.DirectionUp, Key.DirectionDown -> {
+                        if (editing) {
+                            editing = false
+                            keyboardController?.hide()
+                        }
+                        false
                     }
                     else -> false
                 }
@@ -2104,7 +2111,7 @@ private fun MediaPreviewPanel(
     state: MediaScreenState,
     onPlay: () -> Unit,
     onOpenPrivateMediaDetails: () -> Unit,
-    onOpenPrivateMediaPlayer: () -> Unit,
+    onOpenPrivateMediaPlayer: (String) -> Unit,
     onRename: () -> Unit,
     onMove: () -> Unit,
     onDelete: () -> Unit,
@@ -2271,11 +2278,13 @@ private fun PrivateMediaPreviewPanel(
     loadingPlayback: Boolean,
     playbackError: String?,
     onOpenDetails: () -> Unit,
-    onOpenPlayer: () -> Unit,
+    onOpenPlayer: (String) -> Unit,
     previewActionFocusRequester: FocusRequester,
     previewPlayerFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
+    val canOpenPlayer = item != null
+
     MediaCatalogPanel(
         title = "",
         modifier = modifier,
@@ -2301,7 +2310,11 @@ private fun PrivateMediaPreviewPanel(
                     .aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color.Black.copy(alpha = 0.45f))
-                    .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(12.dp)),
+                    .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(12.dp))
+                    .clickable(
+                        enabled = item != null && canOpenPlayer,
+                        onClick = { item?.id?.let(onOpenPlayer) },
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 if (playback?.canPlay == true) {
@@ -2366,10 +2379,10 @@ private fun PrivateMediaPreviewPanel(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 TvButton(
                     text = strings.mediaPrivateFullscreen,
-                    onClick = onOpenPlayer,
-                    enabled = playback?.canPlay == true,
+                    onClick = { onOpenPlayer(item.id) },
+                    enabled = canOpenPlayer,
                     leadingIcon = Icons.Default.PlayArrow,
-                    focusRequester = if (playback?.canPlay == true) previewActionFocusRequester else null,
+                    focusRequester = if (canOpenPlayer) previewActionFocusRequester else null,
                     modifier = Modifier
                         .weight(1f)
                         .height(38.dp),
@@ -2379,7 +2392,7 @@ private fun PrivateMediaPreviewPanel(
                     text = strings.mediaOpenDetails,
                     onClick = onOpenDetails,
                     leadingIcon = Icons.Default.Search,
-                    focusRequester = if (playback?.canPlay != true) previewActionFocusRequester else null,
+                    focusRequester = if (!canOpenPlayer) previewActionFocusRequester else null,
                     variant = TvButtonVariant.Secondary,
                     modifier = Modifier
                         .weight(1f)
@@ -2515,14 +2528,6 @@ private fun PrivateMediaWebPreview(
     val focusStyle = LocalTvFocusStyle.current
     var webViewRef by remember(embedUrl) { mutableStateOf<WebView?>(null) }
 
-    fun activateEmbed() {
-        webViewRef?.let { webView ->
-            webView.requestFocus()
-            webView.requestFocusFromTouch()
-            webView.performClick()
-        }
-    }
-
     Box(
         modifier = modifier
             .tvFocusTarget(
@@ -2533,8 +2538,8 @@ private fun PrivateMediaWebPreview(
             )
             .onPreviewKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown && (event.key == Key.Enter || event.key == Key.NumPadEnter || event.key == Key.DirectionCenter)) {
-                    activateEmbed()
-                    true
+                    webViewRef?.requestFocus()
+                    false
                 } else {
                     false
                 }
@@ -2552,7 +2557,7 @@ private fun PrivateMediaWebPreview(
         AndroidView(
             modifier = Modifier.matchParentSize(),
             factory = { context ->
-                WebView(context).apply {
+                PrivateMediaTvWebView(context).apply {
                     webViewRef = this
                     configurePrivateMediaWebView(focusable = true)
                     layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -2574,7 +2579,7 @@ private fun WebView.configurePrivateMediaWebView(focusable: Boolean) {
     setBackgroundColor(android.graphics.Color.BLACK)
     isFocusable = focusable
     isFocusableInTouchMode = focusable
-    descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+    descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
     isVerticalScrollBarEnabled = false
     isHorizontalScrollBarEnabled = false
     overScrollMode = View.OVER_SCROLL_NEVER

@@ -364,11 +364,7 @@ private fun PrivateMediaFullscreenWeb(
     var webViewRef by remember(embedUrl) { mutableStateOf<WebView?>(null) }
 
     fun activateEmbed() {
-        webViewRef?.let { webView ->
-            webView.requestFocus()
-            webView.requestFocusFromTouch()
-            webView.performClick()
-        }
+        webViewRef?.activatePrivateMediaEmbed()
     }
 
     LaunchedEffect(embedUrl) {
@@ -384,14 +380,14 @@ private fun PrivateMediaFullscreenWeb(
                 .focusRequester(webFocusRequester)
                 .onPreviewKeyEvent { event ->
                     if (event.type == KeyEventType.KeyDown && (event.key == Key.Enter || event.key == Key.NumPadEnter || event.key == Key.DirectionCenter)) {
-                        activateEmbed()
-                        true
+                        webViewRef?.requestFocus()
+                        false
                     } else {
                         false
                     }
                 },
             factory = { context ->
-                WebView(context).apply {
+                PrivateMediaTvWebView(context).apply {
                     webViewRef = this
                     configurePrivateMediaFullscreenWebView()
                     layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -410,6 +406,7 @@ private fun PrivateMediaFullscreenWeb(
             onPlayPause = { activateEmbed() },
             onSeekBack = { activateEmbed() },
             onSeekForward = { activateEmbed() },
+            requestInitialFocus = false,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
     }
@@ -424,12 +421,15 @@ private fun PrivateMediaFullscreenOverlay(
     onSeekBack: () -> Unit,
     onSeekForward: () -> Unit,
     modifier: Modifier = Modifier,
+    requestInitialFocus: Boolean = true,
 ) {
     val playFocusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(260)
-        runCatching { playFocusRequester.requestFocus() }
+    LaunchedEffect(requestInitialFocus) {
+        if (requestInitialFocus) {
+            kotlinx.coroutines.delay(260)
+            runCatching { playFocusRequester.requestFocus() }
+        }
     }
 
     Row(
@@ -482,7 +482,7 @@ private fun WebView.configurePrivateMediaFullscreenWebView() {
     setBackgroundColor(android.graphics.Color.BLACK)
     isFocusable = true
     isFocusableInTouchMode = true
-    descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+    descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
     isVerticalScrollBarEnabled = false
     isHorizontalScrollBarEnabled = false
     overScrollMode = View.OVER_SCROLL_NEVER

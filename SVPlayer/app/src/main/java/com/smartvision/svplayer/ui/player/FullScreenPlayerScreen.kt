@@ -4,7 +4,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.KeyEvent as AndroidKeyEvent
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -40,6 +39,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Brightness5
 import androidx.compose.material.icons.filled.Brightness7
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -54,7 +54,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -168,14 +167,12 @@ enum class FullScreenContentKind {
 private const val MinimumLiveHistoryMs = 5_000L
 private const val PlayerReleaseDelayMs = 80L
 
-private val LiveAspectModes = listOf(
+internal val LiveAspectModes = listOf(
     LiveAspectMode("Auto", AspectRatioFrameLayout.RESIZE_MODE_FIT),
     LiveAspectMode("Fit", AspectRatioFrameLayout.RESIZE_MODE_FIT),
     LiveAspectMode("16:9", AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH),
     LiveAspectMode("Fill", AspectRatioFrameLayout.RESIZE_MODE_FILL),
     LiveAspectMode("Zoom", AspectRatioFrameLayout.RESIZE_MODE_ZOOM),
-    LiveAspectMode("Center crop", AspectRatioFrameLayout.RESIZE_MODE_ZOOM),
-    LiveAspectMode("Stretch", AspectRatioFrameLayout.RESIZE_MODE_FILL),
 )
 
 data class FullScreenPlayback(
@@ -240,7 +237,7 @@ private enum class PlayerOverlayMenu {
     Settings,
 }
 
-private data class LiveAspectMode(
+internal data class LiveAspectMode(
     val label: String,
     val resizeMode: Int,
 )
@@ -680,6 +677,7 @@ private fun FullScreenPlayerScreen(
     val playFocusRequester = remember { FocusRequester() }
     val episodesButtonFocusRequester = remember { FocusRequester() }
     val brightnessButtonFocusRequester = remember { FocusRequester() }
+    val settingsButtonFocusRequester = remember { FocusRequester() }
     var overlayVisible by remember { mutableStateOf(true) }
     var overlayTick by remember { mutableIntStateOf(0) }
     var focusPlayWhenOverlayShows by remember { mutableStateOf(true) }
@@ -692,14 +690,13 @@ private fun FullScreenPlayerScreen(
     var durationMs by remember { mutableLongStateOf(0L) }
     var bufferedPositionMs by remember { mutableLongStateOf(0L) }
     var activeMenu by remember { mutableStateOf(PlayerOverlayMenu.None) }
-    var showRecordDialog by remember { mutableStateOf(false) }
     var playbackSpeed by remember { mutableStateOf(1f) }
     var liveAspectMode by remember { mutableStateOf(LiveAspectModes.first()) }
     var subtitleTracks by remember { mutableStateOf<List<SubtitleTrackOption>>(emptyList()) }
     var selectedSubtitleId by remember { mutableStateOf<String?>(null) }
     var episodesPanelVisible by remember(playback.streamId) { mutableStateOf(false) }
     var brightnessMode by remember(playback.streamId) { mutableStateOf(false) }
-    var brightnessValue by remember(playback.streamId) { mutableStateOf(1f) }
+    var brightnessValue by remember(playback.streamId) { mutableStateOf(50f) }
     var nextEpisodeCountdown by remember { mutableStateOf<Int?>(null) }
     var nextEpisodeDismissed by remember(playback.streamId) { mutableStateOf(false) }
     var adGateActive by remember(playback.streamId) { mutableStateOf(false) }
@@ -715,6 +712,10 @@ private fun FullScreenPlayerScreen(
     val exitStopDone = remember(playback.streamId) { AtomicBoolean(false) }
     val releaseScheduled = remember(playback.streamId) { AtomicBoolean(false) }
     val adSkipDelayMs = 20_000L
+    val favoriteIds by remember(playback.contentType, container.userContentRepository) {
+        container.userContentRepository.observeFavoriteIds(playback.contentType)
+    }.collectAsStateWithLifecycle(emptySet())
+    val isFavorite = playback.streamId in favoriteIds
 
     val playerView = remember {
         PlayerView(context).apply {
@@ -819,6 +820,7 @@ private fun FullScreenPlayerScreen(
         if (keyCode != AndroidKeyEvent.KEYCODE_DPAD_UP && keyCode != AndroidKeyEvent.KEYCODE_DPAD_DOWN) return false
         if (adGateActive) return true
         if (activeMenu != PlayerOverlayMenu.None) return false
+        if (overlayVisible || brightnessMode) return true
         val target = if (keyCode == AndroidKeyEvent.KEYCODE_DPAD_UP) {
             playback.previousItem
         } else {
@@ -1007,7 +1009,11 @@ private fun FullScreenPlayerScreen(
             }
             activeMenu == PlayerOverlayMenu.Epg || activeMenu == PlayerOverlayMenu.Settings -> {
                 activeMenu = PlayerOverlayMenu.None
-                showOverlay(requestPlayFocus = true)
+                showOverlay(requestPlayFocus = false)
+                coroutineScope.launch {
+                    delay(120)
+                    runCatching { settingsButtonFocusRequester.requestFocus() }
+                }
             }
             else -> exitPlayer(source)
         }
@@ -1129,7 +1135,7 @@ private fun FullScreenPlayerScreen(
     }
 
     LaunchedEffect(overlayVisible, overlayTick) {
-        if (overlayVisible && activeMenu == PlayerOverlayMenu.None && nextEpisodeCountdown == null) {
+        if (overlayVisible && activeMenu == PlayerOverlayMenu.None && !brightnessMode && nextEpisodeCountdown == null) {
             if (focusPlayWhenOverlayShows) {
                 delay(120)
                 if (playback.contentType == UserContentType.Live) {
@@ -1429,11 +1435,12 @@ private fun FullScreenPlayerScreen(
             modifier = Modifier.matchParentSize(),
         )
 
-        if (brightnessValue < 1f) {
+        if (brightnessValue < 50f) {
+            val dimAlpha = ((50f - brightnessValue) / 50f * 0.72f).coerceIn(0f, 0.72f)
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .background(Color.Black.copy(alpha = (1f - brightnessValue).coerceIn(0f, 0.72f))),
+                    .background(Color.Black.copy(alpha = dimAlpha)),
             )
         }
 
@@ -1463,11 +1470,15 @@ private fun FullScreenPlayerScreen(
                     errorText = errorText,
                     firstActionFocusRequester = playFocusRequester,
                     brightnessFocusRequester = brightnessButtonFocusRequester,
+                    settingsFocusRequester = settingsButtonFocusRequester,
                     brightnessMode = brightnessMode,
                     brightnessValue = brightnessValue,
-                    recorderLocked = recorderAccess?.locked == true,
-                    recorderCrown = recorderAccess?.showPremiumCrown == true,
+                    settingsActive = activeMenu == PlayerOverlayMenu.Settings,
+                    isFavorite = isFavorite,
                     onFavorite = {
+                        coroutineScope.launch {
+                            container.userContentRepository.toggleFavorite(playback.contentType, playback.streamId)
+                        }
                         showOverlay(requestPlayFocus = false)
                     },
                     onOpenSettings = {
@@ -1480,7 +1491,7 @@ private fun FullScreenPlayerScreen(
                         showOverlay(requestPlayFocus = false)
                     },
                     onChangeBrightness = { delta ->
-                        brightnessValue = (brightnessValue + delta).coerceIn(0.25f, 1f)
+                        brightnessValue = (brightnessValue + delta).coerceIn(0f, 100f)
                         showOverlay(requestPlayFocus = false)
                     },
                     onCloseBrightness = {
@@ -1489,27 +1500,6 @@ private fun FullScreenPlayerScreen(
                         coroutineScope.launch {
                             delay(120)
                             runCatching { brightnessButtonFocusRequester.requestFocus() }
-                        }
-                    },
-                    onRecord = {
-                        val access = recorderAccess
-                        when {
-                            access == null || access.allowed -> {
-                                showRecordDialog = true
-                                showOverlay(requestPlayFocus = false)
-                            }
-                            access.shouldShowUpgradePrompt -> {
-                                onRecorderLocked()
-                                showOverlay(requestPlayFocus = true)
-                            }
-                            else -> {
-                                Toast.makeText(
-                                    context,
-                                    strings?.recorderUnavailableForSource ?: "Recorder indisponible",
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                                showOverlay(requestPlayFocus = true)
-                            }
                         }
                     },
                     onBackToList = { exitPlayer("live_back_to_list_button") },
@@ -1573,7 +1563,7 @@ private fun FullScreenPlayerScreen(
                         showOverlay(requestPlayFocus = false)
                     },
                     onChangeBrightness = { delta ->
-                        brightnessValue = (brightnessValue + delta).coerceIn(0.25f, 1f)
+                        brightnessValue = (brightnessValue + delta).coerceIn(0f, 100f)
                         showOverlay(requestPlayFocus = false)
                     },
                     onOpenSettings = {
@@ -1603,42 +1593,6 @@ private fun FullScreenPlayerScreen(
                     }
                 },
                 modifier = Modifier.align(Alignment.CenterEnd),
-            )
-        }
-
-        if (showRecordDialog && strings != null) {
-            LiveRecordDialog(
-                playback = playback,
-                strings = strings,
-                onDismiss = {
-                    showRecordDialog = false
-                    showOverlay(requestPlayFocus = true)
-                },
-                onStart = { selection ->
-                    coroutineScope.launch {
-                        val result = container.recorderController.startLiveRecording(
-                            title = playback.title,
-                            streamUrl = playback.url,
-                            durationMs = selection.durationMs,
-                            programTitle = selection.programTitle,
-                            programStartMs = selection.programStartMs,
-                            programStopMs = selection.programStopMs,
-                        )
-                        val message = result.fold(
-                            onSuccess = { strings.recorderStarted },
-                            onFailure = { throwable ->
-                                if (throwable.message?.contains("already running", ignoreCase = true) == true) {
-                                    strings.recorderAlreadyRunning
-                                } else {
-                                    throwable.message ?: strings.recorderStartFailed
-                                }
-                            },
-                        )
-                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                        showRecordDialog = false
-                        showOverlay(requestPlayFocus = true)
-                    }
-                },
             )
         }
 
@@ -1675,7 +1629,11 @@ private fun FullScreenPlayerScreen(
                 programs = playback.epgPrograms,
                 onClose = {
                     activeMenu = PlayerOverlayMenu.None
-                    showOverlay(requestPlayFocus = true)
+                    showOverlay(requestPlayFocus = false)
+                    coroutineScope.launch {
+                        delay(120)
+                        runCatching { settingsButtonFocusRequester.requestFocus() }
+                    }
                 },
             )
         }
@@ -1683,14 +1641,25 @@ private fun FullScreenPlayerScreen(
         if (activeMenu == PlayerOverlayMenu.Settings && playback.contentType == UserContentType.Live) {
             LiveTvSettingsPanel(
                 selectedAspectMode = liveAspectMode,
+                audioSummary = "Default",
+                subtitleSummary = selectedSubtitleId
+                    ?.let { id -> subtitleTracks.firstOrNull { it.id == id }?.label }
+                    ?: "Off",
                 onSelectAspectMode = { mode ->
                     liveAspectMode = mode
                     playerView.resizeMode = mode.resizeMode
                     showOverlay(requestPlayFocus = true)
                 },
+                onOpenSubtitles = {
+                    activeMenu = PlayerOverlayMenu.Subtitles
+                },
                 onClose = {
                     activeMenu = PlayerOverlayMenu.None
-                    showOverlay(requestPlayFocus = true)
+                    showOverlay(requestPlayFocus = false)
+                    coroutineScope.launch {
+                        delay(120)
+                        runCatching { settingsButtonFocusRequester.requestFocus() }
+                    }
                 },
             )
         } else if (activeMenu == PlayerOverlayMenu.Settings) {
@@ -2159,484 +2128,6 @@ private fun RecorderChoiceButton(
 }
 
 @Composable
-private fun LiveTvFullscreenOverlay(
-    playback: FullScreenPlayback,
-    errorText: String?,
-    firstActionFocusRequester: FocusRequester,
-    brightnessFocusRequester: FocusRequester,
-    brightnessMode: Boolean,
-    brightnessValue: Float,
-    recorderLocked: Boolean,
-    recorderCrown: Boolean,
-    onFavorite: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenBrightness: () -> Unit,
-    onChangeBrightness: (Float) -> Unit,
-    onCloseBrightness: () -> Unit,
-    onRecord: () -> Unit,
-    onBackToList: () -> Unit,
-) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (playback.overlayRightText.isNotBlank()) {
-            Text(
-                text = playback.overlayRightText,
-                color = Color.White,
-                style = PlayerTitleStyle.copy(fontSize = 48.sp, lineHeight = 54.sp),
-                fontWeight = FontWeight.Black,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(end = 36.dp, top = 20.dp),
-            )
-        }
-
-        errorText?.let { message ->
-            Text(
-                text = message,
-                color = Color.White,
-                style = PlayerMetaStyle.copy(fontSize = 15.sp, lineHeight = 19.sp),
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.Black.copy(alpha = 0.64f))
-                    .border(BorderStroke(1.dp, SmartVisionColors.Error.copy(alpha = 0.82f)), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-            )
-        }
-
-        LiveTvBottomGlassBanner(
-            playback = playback,
-            firstActionFocusRequester = firstActionFocusRequester,
-            brightnessFocusRequester = brightnessFocusRequester,
-            brightnessMode = brightnessMode,
-            brightnessValue = brightnessValue,
-            recorderLocked = recorderLocked,
-            recorderCrown = recorderCrown,
-            onFavorite = onFavorite,
-            onOpenSettings = onOpenSettings,
-            onOpenBrightness = onOpenBrightness,
-            onChangeBrightness = onChangeBrightness,
-            onCloseBrightness = onCloseBrightness,
-            onRecord = onRecord,
-            onBackToList = onBackToList,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
-    }
-}
-
-@Composable
-private fun LiveTvBottomGlassBanner(
-    playback: FullScreenPlayback,
-    firstActionFocusRequester: FocusRequester,
-    brightnessFocusRequester: FocusRequester,
-    brightnessMode: Boolean,
-    brightnessValue: Float,
-    recorderLocked: Boolean,
-    recorderCrown: Boolean,
-    onFavorite: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenBrightness: () -> Unit,
-    onChangeBrightness: (Float) -> Unit,
-    onCloseBrightness: () -> Unit,
-    onRecord: () -> Unit,
-    onBackToList: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(118.dp)
-            .background(
-                Brush.horizontalGradient(
-                    listOf(
-                        Color.Black.copy(alpha = 0.66f),
-                        Color(0xFF081324).copy(alpha = 0.58f),
-                        Color.Black.copy(alpha = 0.54f),
-                    ),
-                ),
-            )
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)))
-            .padding(start = 22.dp, end = 34.dp, top = 14.dp, bottom = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        LiveTvChannelLogo(
-            title = playback.title,
-            imageUrl = playback.imageUrl,
-            modifier = Modifier.size(width = 88.dp, height = 62.dp),
-        )
-        Box(
-            modifier = Modifier
-                .padding(start = 18.dp, end = 22.dp)
-                .width(1.dp)
-                .height(62.dp)
-                .background(Color.White.copy(alpha = 0.13f)),
-        )
-        LiveTvChannelInfo(
-            playback = playback,
-            modifier = Modifier.weight(1f),
-        )
-        Spacer(Modifier.width(10.dp))
-        if (brightnessMode) {
-            PlayerBrightnessSlider(
-                value = brightnessValue,
-                onChange = onChangeBrightness,
-                onClose = onCloseBrightness,
-                modifier = Modifier.width(440.dp),
-            )
-        } else {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                LiveTvActionButton(
-                    label = "Favori",
-                    icon = Icons.Default.FavoriteBorder,
-                    focusRequester = firstActionFocusRequester,
-                    onClick = onFavorite,
-                )
-                LiveTvActionButton(
-                    label = "Record",
-                    icon = Icons.Default.Videocam,
-                    onClick = onRecord,
-                    locked = recorderLocked,
-                    showCrown = recorderCrown,
-                    showRecBadge = true,
-                )
-                LiveTvActionButton(
-                    label = "Luminosite",
-                    icon = Icons.Default.Brightness7,
-                    focusRequester = brightnessFocusRequester,
-                    onClick = onOpenBrightness,
-                )
-                LiveTvActionButton(
-                    label = "Settings",
-                    icon = Icons.Default.Settings,
-                    onClick = onOpenSettings,
-                )
-                LiveTvActionButton(
-                    label = "Exit fullscreen",
-                    icon = Icons.Default.FullscreenExit,
-                    onClick = onBackToList,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun LiveTvChannelLogo(
-    title: String,
-    imageUrl: String?,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .padding(end = 2.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (!imageUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = title,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize(),
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Default.Tv,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.72f),
-                modifier = Modifier.size(36.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun LiveTvChannelInfo(
-    playback: FullScreenPlayback,
-    modifier: Modifier = Modifier,
-) {
-    val currentProgram = playback.epgPrograms.firstOrNull { it.isCurrent }
-    val secondary = currentProgram
-        ?.let { listOf(it.timeRange, it.title).filter { value -> value.isNotBlank() }.joinToString("  |  ") }
-        ?: playback.status.takeUnless { it.equals("Direct", ignoreCase = true) }
-        ?: playback.subtitle
-
-    Column(modifier = modifier) {
-        Text(
-            text = playback.title,
-            color = Color.White,
-            style = PlayerTitleStyle.copy(fontSize = 34.sp, lineHeight = 40.sp),
-            fontWeight = FontWeight.Black,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = secondary,
-            color = Color.White.copy(alpha = 0.76f),
-            style = PlayerMetaStyle.copy(fontSize = 16.sp, lineHeight = 21.sp),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun LiveTvActionButton(
-    label: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    focusRequester: FocusRequester? = null,
-    iconTint: Color = Color.White,
-    locked: Boolean = false,
-    showCrown: Boolean = false,
-    showRecBadge: Boolean = false,
-) {
-    val focusState = rememberTvFocusState()
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val outlineColor by animateColorAsState(
-        targetValue = when {
-            !enabled -> Color.White.copy(alpha = 0.18f)
-            locked && focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.52f)
-            locked -> Color.White.copy(alpha = 0.38f)
-            focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.78f)
-            else -> Color.Transparent
-        },
-        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
-        label = "liveTvActionOutline",
-    )
-
-    Box(
-        modifier = modifier
-            .size(54.dp)
-            .tvFocusTarget(
-                state = focusState,
-                focusRequester = focusRequester,
-                enabled = enabled,
-                pressed = pressed,
-                focusedScale = 1.08f,
-                glowColor = PlayerNeonBlue,
-                cornerRadius = 50.dp,
-            )
-            .focusProperties { canFocus = enabled }
-            .clip(CircleShape)
-            .background(if (focusState.isFocused) PlayerNeonBlue.copy(alpha = 0.18f) else Color.Transparent)
-            .border(BorderStroke(if (focusState.isFocused) 1.5.dp else 0.dp, outlineColor), CircleShape)
-            .clickable(
-                enabled = enabled,
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-            )
-            .focusable(enabled = enabled, interactionSource = interactionSource),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = when {
-                !enabled -> Color.White.copy(alpha = 0.28f)
-                locked -> Color.White.copy(alpha = 0.48f)
-                else -> iconTint
-            },
-            modifier = Modifier.size(if (showRecBadge) 31.dp else 34.dp),
-        )
-        if (showRecBadge) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset(x = 2.dp, y = 0.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(Color.Black.copy(alpha = 0.78f))
-                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.76f)), RoundedCornerShape(3.dp))
-                    .padding(horizontal = 3.dp, vertical = 1.dp),
-            ) {
-                Text(
-                    text = "REC",
-                    color = Color.White,
-                    style = PlayerTinyStyle.copy(fontSize = 7.sp, lineHeight = 8.sp),
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-        if (showCrown) {
-            Image(
-                painter = painterResource(R.drawable.premium_crown),
-                contentDescription = null,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 4.dp, y = (-7).dp)
-                    .size(18.dp)
-                    .zIndex(2f),
-            )
-        }
-    }
-}
-
-@Composable
-private fun LiveTvEpgSidePanel(
-    programs: List<FullScreenEpgProgram>,
-    onClose: () -> Unit,
-) {
-    val closeFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        delay(100)
-        closeFocusRequester.requestFocus()
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .width(430.dp)
-                .padding(top = 96.dp, end = 30.dp, bottom = 174.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(Color.Black.copy(alpha = 0.42f))
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(18.dp))
-                .padding(20.dp),
-        ) {
-            Text(
-                text = "EPG",
-                color = Color.White,
-                style = PlayerTitleStyle.copy(fontSize = 22.sp, lineHeight = 27.sp),
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(14.dp))
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                programs.forEach { program ->
-                    LiveTvEpgProgramRow(program)
-                }
-            }
-            Spacer(Modifier.height(14.dp))
-            TvButton(
-                text = "Close",
-                onClick = onClose,
-                focusRequester = closeFocusRequester,
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(42.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun LiveTvEpgProgramRow(program: FullScreenEpgProgram) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (program.isCurrent) PlayerNeonBlue.copy(alpha = 0.20f) else Color.White.copy(alpha = 0.06f))
-            .border(
-                BorderStroke(1.dp, if (program.isCurrent) PlayerNeonBlue.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.08f)),
-                RoundedCornerShape(10.dp),
-            )
-            .padding(12.dp),
-    ) {
-        Text(
-            text = program.timeRange,
-            color = if (program.isCurrent) PlayerNeonBlue else Color.White.copy(alpha = 0.62f),
-            style = PlayerMetaStyle.copy(fontSize = 12.sp, lineHeight = 15.sp),
-            fontWeight = FontWeight.Bold,
-        )
-        Spacer(Modifier.height(5.dp))
-        Text(
-            text = program.title,
-            color = Color.White,
-            style = PlayerTitleStyle.copy(fontSize = 15.sp, lineHeight = 19.sp),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (program.description.isNotBlank()) {
-            Spacer(Modifier.height(5.dp))
-            Text(
-                text = program.description,
-                color = Color.White.copy(alpha = 0.68f),
-                style = PlayerMetaStyle.copy(fontSize = 12.sp, lineHeight = 15.sp),
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@Composable
-private fun LiveTvSettingsPanel(
-    selectedAspectMode: LiveAspectMode,
-    onSelectAspectMode: (LiveAspectMode) -> Unit,
-    onClose: () -> Unit,
-) {
-    val selectedFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(selectedAspectMode.label) {
-        delay(100)
-        selectedFocusRequester.requestFocus()
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .width(360.dp)
-                .padding(top = 96.dp, end = 30.dp, bottom = 134.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(Color.Black.copy(alpha = 0.42f))
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(18.dp))
-                .padding(20.dp),
-        ) {
-            Text(
-                text = "Settings",
-                color = Color.White,
-                style = PlayerTitleStyle.copy(fontSize = 22.sp, lineHeight = 27.sp),
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = "Aspect ratio",
-                color = Color.White.copy(alpha = 0.64f),
-                style = PlayerMetaStyle.copy(fontSize = 13.sp, lineHeight = 16.sp),
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(8.dp))
-            LiveAspectModes.forEach { mode ->
-                TvButton(
-                    text = mode.label,
-                    onClick = { onSelectAspectMode(mode) },
-                    selected = mode.label == selectedAspectMode.label,
-                    focusRequester = selectedFocusRequester.takeIf { mode.label == selectedAspectMode.label },
-                    variant = if (mode.label == selectedAspectMode.label) TvButtonVariant.Primary else TvButtonVariant.Secondary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(38.dp),
-                )
-                Spacer(Modifier.height(7.dp))
-            }
-            Spacer(Modifier.weight(1f))
-            TvButton(
-                text = "Close",
-                onClick = onClose,
-                variant = TvButtonVariant.Text,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(38.dp),
-            )
-        }
-    }
-}
-
-@Composable
 private fun FullPlayerOverlay(
     playback: FullScreenPlayback,
     isPlaying: Boolean,
@@ -2961,30 +2452,36 @@ private fun PlayerUtilityIconButton(
 }
 
 @Composable
-private fun PlayerBrightnessSlider(
+internal fun PlayerBrightnessSlider(
     value: Float,
     onChange: (Float) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val sliderFocusRequester = remember { FocusRequester() }
+    val sliderFocusState = rememberTvFocusState()
+    val normalizedValue = (value / 100f).coerceIn(0f, 1f)
     LaunchedEffect(Unit) {
         delay(100)
         runCatching { sliderFocusRequester.requestFocus() }
     }
     Row(
         modifier = modifier
-            .height(68.dp)
+            .height(32.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color.Black.copy(alpha = 0.56f))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(6.dp))
+            .padding(horizontal = 10.dp, vertical = 3.dp)
             .focusable()
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (event.key) {
                     Key.DirectionLeft -> {
-                        onChange(-0.08f)
+                        onChange(-5f)
                         true
                     }
                     Key.DirectionRight -> {
-                        onChange(0.08f)
+                        onChange(5f)
                         true
                     }
                     Key.Enter, Key.DirectionCenter -> {
@@ -2999,51 +2496,73 @@ private fun PlayerBrightnessSlider(
                 }
             },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(Icons.Default.Brightness5, contentDescription = null, tint = Color.White, modifier = Modifier.size(34.dp))
-        Box(
+        Icon(Icons.Default.Brightness5, contentDescription = null, tint = Color.White, modifier = Modifier.size(10.dp))
+        Column(
             modifier = Modifier
                 .weight(1f)
-                .height(34.dp)
+                .height(22.dp)
                 .tvFocusTarget(
-                    state = rememberTvFocusState(),
+                    state = sliderFocusState,
                     focusRequester = sliderFocusRequester,
-                    cornerRadius = 24.dp,
+                    focusedScale = 1.01f,
+                    cornerRadius = 6.dp,
                     glowColor = PlayerNeonBlue,
-                ),
-            contentAlignment = Alignment.CenterStart,
+                )
+                .focusable(),
         ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                listOf("0", "50", "100").forEach { label ->
+                    Text(
+                        text = label,
+                        color = Color.White.copy(alpha = 0.86f),
+                        style = PlayerTinyStyle.copy(fontSize = 7.sp, lineHeight = 8.sp),
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+            Spacer(Modifier.height(3.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color.White.copy(alpha = 0.36f)),
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(value.coerceIn(0f, 1f))
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(PlayerNeonBlue),
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(value.coerceIn(0f, 1f))
-                    .height(28.dp),
-                contentAlignment = Alignment.CenterEnd,
+                    .height(10.dp),
+                contentAlignment = Alignment.CenterStart,
             ) {
                 Box(
                     modifier = Modifier
-                        .size(18.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                        .border(BorderStroke(3.dp, PlayerNeonBlue), CircleShape),
+                        .fillMaxWidth()
+                        .height(2.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color.White.copy(alpha = 0.30f)),
                 )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(normalizedValue)
+                        .height(2.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(PlayerNeonBlue),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(normalizedValue)
+                        .height(10.dp),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .border(BorderStroke(1.5.dp, PlayerNeonBlue), CircleShape),
+                    )
+                }
             }
         }
-        Icon(Icons.Default.Brightness7, contentDescription = null, tint = Color.White, modifier = Modifier.size(38.dp))
+        Icon(Icons.Default.Brightness7, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
     }
 }
 
@@ -3778,21 +3297,21 @@ private val SuppressedPlayerAnomalyTypes = setOf(
     "PLAYER_PROGRESS_SAVE_DONE",
 )
 
-private val PlayerTitleStyle = TextStyle(
+internal val PlayerTitleStyle = TextStyle(
     fontSize = 16.sp,
     lineHeight = 20.sp,
     fontWeight = FontWeight.Bold,
     letterSpacing = 0.sp,
 )
 
-private val PlayerMetaStyle = TextStyle(
+internal val PlayerMetaStyle = TextStyle(
     fontSize = 10.sp,
     lineHeight = 13.sp,
     fontWeight = FontWeight.Normal,
     letterSpacing = 0.sp,
 )
 
-private val PlayerTinyStyle = TextStyle(
+internal val PlayerTinyStyle = TextStyle(
     fontSize = 8.sp,
     lineHeight = 10.sp,
     fontWeight = FontWeight.Normal,
@@ -3802,7 +3321,9 @@ private val PlayerTinyStyle = TextStyle(
 private val PlayerGlassShape = RoundedCornerShape(14.dp)
 private val PlayerGlassBackground = Color(0x26071222)
 private val PlayerGlassBorder = Color.White.copy(alpha = 0.22f)
-private val PlayerNeonBlue = Color(0xFF0A84FF)
+internal val PlayerOverlaySurface = Color(0xFF0D0D0D)
+internal val PlayerNeonBlue = Color(0xFF1A6AFF)
+internal val PlayerFavoriteRed = Color(0xFFFF3B30)
 private val PlayerGlassGlowBorder = PlayerNeonBlue.copy(alpha = 0.18f)
 private val PlayerButtonBackground = Color(0x990A1B38)
 

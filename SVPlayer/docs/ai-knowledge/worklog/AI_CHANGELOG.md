@@ -1,5 +1,22 @@
 # AI Changelog
 
+## 2026-07-08 - Overlay Live compact et OK Media prives
+
+Type:
+- Android TV
+- UI player
+- documentation
+
+Resume:
+- Overlay Live plein ecran aligne sur la specification cible: actions `Favori`, `Luminosite`, `Parametres`, `Exit fullscreen`, sans `Record` ni `Info` dans ce lot.
+- Les composants visuels Live sont sortis dans `LivePlayerOverlay.kt`; `FullScreenPlayerScreen.kt` conserve le cycle de vie Media3, les etats et la navigation player.
+- Les icones du bandeau Live utilisent les variantes outline spec, avec hit area compacte et espacement reduit.
+- Media prives laisse OK/Enter au WebView/provider avant fallback JS, afin que les controles natifs du fournisseur puissent reagir a la telecommande.
+- Les embeds prives utilisent `FOCUS_AFTER_DESCENDANTS` et l'overlay fullscreen Compose ne vole plus le focus initial du WebView.
+
+Validation:
+- En cours: build release puis installation/test Firestick.
+
 ## 2026-07-07 - Media prives player style YouTube
 
 Type:
