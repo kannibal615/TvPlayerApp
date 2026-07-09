@@ -55,8 +55,11 @@ fun ProfilePickerScreen(
     onManageProfiles: () -> Unit,
 ) {
     val firstProfileFocus = remember { FocusRequester() }
+    val initialFocusProfileId = activeProfileId
+        ?.takeIf { id -> profiles.any { it.id == id } }
+        ?: profiles.firstOrNull()?.id
 
-    LaunchedEffect(profiles) {
+    LaunchedEffect(profiles, initialFocusProfileId) {
         if (profiles.isNotEmpty()) {
             delay(180)
             runCatching { firstProfileFocus.requestFocus() }
@@ -88,11 +91,11 @@ fun ProfilePickerScreen(
             )
             Spacer(Modifier.height(34.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(26.dp), verticalAlignment = Alignment.Top) {
-                profiles.forEachIndexed { index, profile ->
+                profiles.forEach { profile ->
                     ProfilePickerCard(
                         profile = profile,
                         active = profile.id == activeProfileId,
-                        focusRequester = if (index == 0) firstProfileFocus else null,
+                        focusRequester = if (profile.id == initialFocusProfileId) firstProfileFocus else null,
                         onClick = { onSelectProfile(profile.id) },
                     )
                 }

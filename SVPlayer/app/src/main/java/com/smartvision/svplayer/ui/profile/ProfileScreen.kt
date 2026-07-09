@@ -848,6 +848,8 @@ private fun PlaylistProfileRow(
     onSelect: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val rowFocusRequester = remember { FocusRequester() }
+    val toggleFocusRequester = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
     val focusStyle = LocalTvFocusStyle.current
     val borderColor = when {
@@ -872,6 +874,15 @@ private fun PlaylistProfileRow(
                 BorderStroke(if (focused) focusStyle.borderWidth else 1.dp, borderColor),
                 RoundedCornerShape(6.dp),
             )
+            .focusRequester(rowFocusRequester)
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight && profile.isConfigured) {
+                    runCatching { toggleFocusRequester.requestFocus() }
+                    true
+                } else {
+                    false
+                }
+            }
             .onFocusChanged { focused = it.isFocused }
             .clickable(interactionSource = interactionSource, indication = null, onClick = onOpen)
             .focusable(interactionSource = interactionSource)
@@ -899,7 +910,21 @@ private fun PlaylistProfileRow(
             )
         }
         Spacer(Modifier.width(10.dp))
-        SourceToggleButton(active = active, enabled = profile.isConfigured, onClick = onSelect)
+        SourceToggleButton(
+            active = active,
+            enabled = profile.isConfigured,
+            onClick = onSelect,
+            modifier = Modifier
+                .focusRequester(toggleFocusRequester)
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft) {
+                        runCatching { rowFocusRequester.requestFocus() }
+                        true
+                    } else {
+                        false
+                    }
+                },
+        )
     }
 }
 
@@ -1203,12 +1228,13 @@ private fun SourceToggleButton(
     active: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     var focused by remember { mutableStateOf(false) }
     val color = if (active) Color(0xFF20D46B) else Color(0xFFE33A3A)
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(width = 54.dp, height = 26.dp)
             .clip(RoundedCornerShape(50))
             .background(color.copy(alpha = if (enabled) 0.88f else 0.32f))

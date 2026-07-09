@@ -1,5 +1,22 @@
 # AI Changelog
 
+## 2026-07-09 - Correctifs focus picker et profils non destructifs
+
+Type:
+- Android TV
+- profils playlist
+- navigation
+- documentation
+
+Resume:
+- Les toggles ON/OFF des lignes profils sont joignables au D-pad: droite depuis la ligne vers le toggle, gauche depuis le toggle vers la ligne.
+- Les anciens flows Xtream/M3U ne recopient plus `_accounts` dans les profils existants; ils servent uniquement a creer le premier profil si aucun profil n'existe.
+- `ProfilePickerScreen` active le profil localement et quitte l'ecran sans attendre la synchro reseau; `Add Profile` et `Manage profiles` ouvrent Info compte apres montage du `NavHost`, ce qui evite le crash.
+- Le focus initial du picker cible le profil actif.
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK.
+
 ## 2026-07-09 - Refonte Movies/Series en layout 3 colonnes
 
 Type:

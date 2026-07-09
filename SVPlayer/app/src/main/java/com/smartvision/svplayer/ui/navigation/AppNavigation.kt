@@ -153,6 +153,7 @@ fun AppNavigation(
     var premiumLicenseCode by remember { mutableStateOf("") }
     var liveReturnFocusChannelId by remember { mutableStateOf<Int?>(null) }
     var profilePickerCompleted by remember { mutableStateOf(false) }
+    var openProfilesAfterPicker by remember { mutableStateOf(false) }
     val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
     val xtreamConnectionState by container.xtreamConnectionManager.state.collectAsStateWithLifecycle()
     val xtreamCatalogBlocked = activePlaylistSource == PlaylistSource.Xtream && xtreamConnectionState.blocksCatalogForNavigation
@@ -444,19 +445,19 @@ fun AppNavigation(
             profiles = playlistProfiles.filter { it.isConfigured },
             activeProfileId = activeProfileId,
             onSelectProfile = { profileId ->
+                container.accountManager.activateProfile(profileId)
+                container.xtreamRepository.clearCaches()
+                profilePickerCompleted = true
                 scope.launch {
-                    container.accountManager.activateProfile(profileId)
-                    container.xtreamRepository.clearCaches()
                     container.catalogRepository.clearCatalogForProfileSwitch()
                     if (!container.catalogRepository.hasLocalCatalogForActiveProfile()) {
                         syncCatalog()
                     }
-                    profilePickerCompleted = true
                 }
             },
             onManageProfiles = {
+                openProfilesAfterPicker = true
                 profilePickerCompleted = true
-                navController.navigateSingleTop(AppRoute.Profile.route)
             },
         )
         if (showExitConfirmation) {
@@ -536,6 +537,12 @@ fun AppNavigation(
     val notificationBadgeCount = notificationBadgeState.unreadCount + updateNotificationCount
 
     CompositionLocalProvider(LocalTvFocusStyle provides focusStyle) {
+    LaunchedEffect(openProfilesAfterPicker) {
+        if (openProfilesAfterPicker) {
+            navController.navigateSingleTop(AppRoute.Profile.route)
+            openProfilesAfterPicker = false
+        }
+    }
     NavHost(
         navController = navController,
         startDestination = AppRoute.Home.route,

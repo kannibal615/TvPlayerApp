@@ -131,7 +131,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             .sortedBy { it.name.lowercase() }
         if (_activeAccountId.value == null) _activeAccountId.value = id
         if (normalized.epgUrl.isNotBlank()) _epgUrl.value = normalized.epgUrl
-        syncActiveProfileFromLegacy()
+        ensureLegacyProfileExists()
         persist()
         return id
     }
@@ -146,7 +146,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
                 if (account.id == activeId) account.copy(epgUrl = normalizedUrl) else account
             }
         }
-        syncActiveProfileFromLegacy()
+        ensureLegacyProfileExists()
         persist()
     }
 
@@ -156,14 +156,14 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
         if (_m3uUrl.value.isNotBlank() && !_activePlaylistSource.value.isAvailable()) {
             _activePlaylistSource.value = PlaylistSource.M3u
         }
-        syncActiveProfileFromLegacy()
+        ensureLegacyProfileExists()
         persist()
     }
 
     @Synchronized
     fun selectPlaylistSource(source: PlaylistSource) {
         _activePlaylistSource.value = source
-        syncActiveProfileFromLegacy()
+        ensureLegacyProfileExists()
         persist()
     }
 
@@ -173,7 +173,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
         if (_activeAccountId.value == accountId) {
             _activeAccountId.value = _accounts.value.firstOrNull()?.id
         }
-        syncActiveProfileFromLegacy()
+        ensureLegacyProfileExists()
         persist()
     }
 
@@ -181,7 +181,11 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
     fun select(accountId: String) {
         require(_accounts.value.any { it.id == accountId }) { "Compte Xtream introuvable." }
         _activeAccountId.value = accountId
-        syncActiveProfileFromLegacy()
+        if (_profiles.value.any { it.id == accountId }) {
+            activateProfile(accountId)
+            return
+        }
+        ensureLegacyProfileExists()
         persist()
     }
 
@@ -237,8 +241,17 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
 
     @Synchronized
     fun updateActiveProfileSource(source: PlaylistSource) {
+        val activeId = _activeProfileId.value
+        val now = System.currentTimeMillis()
         _activePlaylistSource.value = source
-        syncActiveProfileFromLegacy()
+        if (activeId != null) {
+            _profiles.value = _profiles.value.map { profile ->
+                if (profile.id == activeId) profile.copy(source = source, updatedAt = now) else profile
+            }
+            refreshProfileStatuses()
+        } else {
+            ensureLegacyProfileExists()
+        }
         activeProfile()?.let(::applyProfileToLegacyState)
         persist()
     }
@@ -304,25 +317,10 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
         refreshProfileStatuses()
     }
 
-    private fun syncActiveProfileFromLegacy() {
+    private fun ensureLegacyProfileExists() {
         if (_profiles.value.isEmpty()) {
             migrateLegacyProfileIfNeeded()
         }
-        val activeId = _activeProfileId.value ?: return
-        val existing = _profiles.value.firstOrNull { it.id == activeId } ?: return
-        val activeAccount = _accounts.value.firstOrNull { it.id == _activeAccountId.value }
-            ?: _accounts.value.firstOrNull()
-        val now = System.currentTimeMillis()
-        val updated = existing.copy(
-            source = _activePlaylistSource.value,
-            xtreamHost = activeAccount?.host.orEmpty(),
-            xtreamUsername = activeAccount?.username.orEmpty(),
-            xtreamPassword = activeAccount?.password.orEmpty(),
-            m3uUrl = _m3uUrl.value,
-            epgUrl = _epgUrl.value.ifBlank { activeAccount?.epgUrl.orEmpty() },
-            updatedAt = now,
-        )
-        _profiles.value = _profiles.value.map { if (it.id == activeId) updated else it }
         refreshProfileStatuses()
     }
 
