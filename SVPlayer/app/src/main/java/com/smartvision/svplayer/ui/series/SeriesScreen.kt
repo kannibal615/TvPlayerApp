@@ -113,7 +113,6 @@ fun SeriesScreen(
     val firstSeriesFocusRequester = remember { FocusRequester() }
     val previewPlayFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
-    val focusScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
     var seriesToDelete by remember { mutableStateOf<SeriesItemUi?>(null) }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
@@ -150,14 +149,6 @@ fun SeriesScreen(
             withFrameNanos { }
             delay(120)
             runCatching { selectedCategoryFocusRequester.requestFocus() }
-        }
-    }
-
-    LaunchedEffect(state.selectedSeriesId) {
-        if (state.selectedSeriesId != null) {
-            withFrameNanos { }
-            delay(80)
-            runCatching { previewPlayFocusRequester.requestFocus() }
         }
     }
 
@@ -255,12 +246,6 @@ fun SeriesScreen(
                             val episodeId = viewModel.activateSeries(series)
                             if (episodeId != null) {
                                 onWatchEpisode(episodeId)
-                            } else {
-                                focusScope.launch {
-                                    withFrameNanos { }
-                                    delay(80)
-                                    runCatching { previewPlayFocusRequester.requestFocus() }
-                                }
                             }
                         }
                     },
@@ -444,7 +429,11 @@ private fun SeriesList(
                     val itemFocusRequester = remember(series.seriesId) { FocusRequester() }
                     VodContentRow(
                         title = series.title,
-                        subtitle = series.subtitle,
+                        subtitle = listOfNotNull(
+                            series.releaseDate?.take(4),
+                            series.sideLabel().takeIf { it.isNotBlank() },
+                            series.categoryLabel,
+                        ).joinToString(" | ").ifBlank { series.subtitle },
                         genre = series.genre,
                         rating = series.rating,
                         sideLabel = series.sideLabel(),

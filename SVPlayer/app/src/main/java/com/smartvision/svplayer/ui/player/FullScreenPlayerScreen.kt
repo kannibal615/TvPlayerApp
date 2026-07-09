@@ -2174,44 +2174,48 @@ private fun FullPlayerOverlay(
                 ),
             ),
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(start = 50.dp, end = 50.dp, bottom = 26.dp),
-            verticalAlignment = Alignment.Bottom,
+                .padding(start = 54.dp, end = 54.dp, bottom = 28.dp),
         ) {
-            Column(
+            Text(
+                text = playback.title.uppercase(Locale.getDefault()),
+                color = Color.White,
+                style = PlayerTitleStyle.copy(fontSize = 30.sp, lineHeight = 34.sp),
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth(0.64f),
+            )
+            Spacer(Modifier.height(7.dp))
+            Text(
+                text = if (isSeriesContent) playback.subtitle.replace(" - ", " - ") else playback.subtitle,
+                color = Color.White.copy(alpha = 0.82f),
+                style = PlayerMetaStyle.copy(fontSize = 17.sp, lineHeight = 22.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth(0.64f),
+            )
+            Spacer(Modifier.height(22.dp))
+            MovieSeriesProgressBar(
+                positionMs = positionMs,
+                durationMs = durationMs,
+                bufferedPositionMs = bufferedPositionMs,
+                onSeekBy = onSeekBy,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(22.dp))
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 34.dp),
+                    .fillMaxWidth()
+                    .height(96.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = playback.title.uppercase(Locale.getDefault()),
-                    color = Color.White,
-                    style = PlayerTitleStyle.copy(fontSize = 30.sp, lineHeight = 34.sp),
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(7.dp))
-                Text(
-                    text = if (isSeriesContent) playback.subtitle.replace(" - ", " - ") else playback.subtitle,
-                    color = Color.White.copy(alpha = 0.82f),
-                    style = PlayerMetaStyle.copy(fontSize = 17.sp, lineHeight = 22.sp),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(24.dp))
-                MovieSeriesProgressBar(
-                    positionMs = positionMs,
-                    durationMs = durationMs,
-                    bufferedPositionMs = bufferedPositionMs,
-                    onSeekBy = onSeekBy,
-                )
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.weight(1f))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.weight(2.2f),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -2266,52 +2270,53 @@ private fun FullPlayerOverlay(
                         )
                     }
                 }
-            }
-
-            if (brightnessMode) {
-                PlayerBrightnessSlider(
-                    value = brightnessValue,
-                    onChange = onChangeBrightness,
-                    onClose = onCloseBrightness,
-                    modifier = Modifier
-                        .width(520.dp)
-                        .padding(bottom = 186.dp),
-                )
-            } else {
-                Row(
-                    modifier = Modifier.padding(bottom = 198.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterEnd,
                 ) {
-                    if (isSeriesContent) {
-                        PlayerUtilityIconButton(
-                            icon = Icons.Default.List,
-                            contentDescription = "Autres episodes",
-                            focusRequester = episodesButtonFocusRequester,
-                            onClick = onOpenEpisodes,
+                    if (brightnessMode) {
+                        PlayerBrightnessSlider(
+                            value = brightnessValue,
+                            onChange = onChangeBrightness,
+                            onClose = onCloseBrightness,
+                            modifier = Modifier.width(420.dp),
                         )
+                    } else {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (isSeriesContent) {
+                                PlayerUtilityIconButton(
+                                    icon = Icons.Default.List,
+                                    contentDescription = "Autres episodes",
+                                    focusRequester = episodesButtonFocusRequester,
+                                    onClick = onOpenEpisodes,
+                                )
+                            }
+                            PlayerUtilityIconButton(
+                                icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = "Favori",
+                                selected = isFavorite,
+                                onClick = onToggleFavorite,
+                            )
+                            PlayerUtilityIconButton(
+                                icon = Icons.Default.Brightness7,
+                                contentDescription = "Luminosite",
+                                onClick = onOpenBrightness,
+                            )
+                            PlayerUtilityIconButton(
+                                icon = Icons.Default.Settings,
+                                contentDescription = "Parametres",
+                                onClick = onOpenSettings,
+                            )
+                            PlayerUtilityIconButton(
+                                icon = Icons.Default.Fullscreen,
+                                contentDescription = "Plein ecran",
+                                onClick = { },
+                            )
+                        }
                     }
-                    PlayerUtilityIconButton(
-                        icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = "Favori",
-                        selected = isFavorite,
-                        onClick = onToggleFavorite,
-                    )
-                    PlayerUtilityIconButton(
-                        icon = Icons.Default.Brightness7,
-                        contentDescription = "Luminosite",
-                        onClick = onOpenBrightness,
-                    )
-                    PlayerUtilityIconButton(
-                        icon = Icons.Default.Settings,
-                        contentDescription = "Parametres",
-                        onClick = onOpenSettings,
-                    )
-                    PlayerUtilityIconButton(
-                        icon = Icons.Default.Fullscreen,
-                        contentDescription = "Plein ecran",
-                        onClick = { },
-                    )
                 }
             }
         }
@@ -2341,6 +2346,9 @@ private fun MovieSeriesProgressBar(
     onSeekBy: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
     val safeDuration = durationMs.coerceAtLeast(1L)
     val progress = (positionMs.toFloat() / safeDuration.toFloat()).coerceIn(0f, 1f)
     val buffered = (bufferedPositionMs.toFloat() / safeDuration.toFloat()).coerceIn(progress, 1f)
@@ -2357,8 +2365,21 @@ private fun MovieSeriesProgressBar(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .height(32.dp)
-                .focusable()
+                .height(38.dp)
+                .tvFocusTarget(
+                    state = focusState,
+                    pressed = pressed,
+                    focusedScale = 1.005f,
+                    glowColor = PlayerNeonBlue,
+                    cornerRadius = 20.dp,
+                )
+                .clip(RoundedCornerShape(20.dp))
+                .background(if (focusState.isFocused) PlayerNeonBlue.copy(alpha = 0.10f) else Color.Transparent)
+                .border(
+                    BorderStroke(if (focusState.isFocused) 1.5.dp else 0.dp, PlayerNeonBlue.copy(alpha = 0.72f)),
+                    RoundedCornerShape(20.dp),
+                )
+                .focusable(interactionSource = interactionSource)
                 .onPreviewKeyEvent { event ->
                     if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                     when (event.key) {

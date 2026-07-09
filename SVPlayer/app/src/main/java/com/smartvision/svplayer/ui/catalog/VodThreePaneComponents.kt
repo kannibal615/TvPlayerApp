@@ -160,7 +160,7 @@ fun VodContentRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(76.dp)
+            .height(VodContentRowHeight)
             .then(
                 if (rightFocusRequester != null) {
                     Modifier.focusProperties { right = rightFocusRequester }
@@ -223,8 +223,8 @@ fun VodContentRow(
             imageUrl = imageUrl,
             fallbackText = fallbackText,
             modifier = Modifier
-                .width(118.dp)
-                .height(76.dp),
+                .width(122.dp)
+                .height(VodContentRowHeight),
             crop = true,
             framed = false,
         )
@@ -232,7 +232,7 @@ fun VodContentRow(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(vertical = 6.dp),
+                .padding(vertical = 4.dp),
         ) {
             Text(
                 text = title,
@@ -242,7 +242,7 @@ fun VodContentRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(5.dp))
+            Spacer(Modifier.height(4.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -278,7 +278,8 @@ fun VodContentRow(
             style = CatalogMetaStyle,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(76.dp),
+            textAlign = TextAlign.End,
+            modifier = Modifier.width(72.dp),
         )
     }
 }
@@ -341,8 +342,8 @@ fun VodCatalogLoadingSkeleton(
         )
         VodSkeletonPanel(
             titleWidth = 160.dp,
-            rows = 8,
-            rowHeight = 76.dp,
+            rows = 9,
+            rowHeight = VodContentRowHeight,
             shimmerBrush = shimmerBrush,
             headerTrailing = true,
             modifier = Modifier.weight(0.44f),
@@ -388,7 +389,7 @@ fun VodContentListLoadingSkeleton(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(76.dp)
+                    .height(VodContentRowHeight)
                     .clip(RoundedCornerShape(MediaCatalogDimens.ItemRadius))
                     .background(
                         Brush.verticalGradient(
@@ -406,8 +407,8 @@ fun VodContentListLoadingSkeleton(
             ) {
                 Box(
                     modifier = Modifier
-                        .width(118.dp)
-                        .height(76.dp)
+                        .width(122.dp)
+                        .height(VodContentRowHeight)
                         .clip(RoundedCornerShape(4.dp))
                         .background(shimmerBrush),
                 )
@@ -644,66 +645,83 @@ fun VodPreviewPanel(
             }
 
             item(key = "${content.id}-details") {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    CatalogPosterFrame(
-                        imageUrl = content.imageUrl,
-                        title = content.title,
-                        badge = content.durationLabel ?: content.sideLabel ?: "VOD",
-                        modifier = Modifier
-                            .width(118.dp)
-                            .aspectRatio(2f / 3f),
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = content.title,
-                            color = SmartVisionColors.TextPrimary,
-                            style = CatalogPreviewTitleStyle,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
+                PreviewDetailItem {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        CatalogPosterFrame(
+                            imageUrl = content.imageUrl,
+                            title = content.title,
+                            badge = content.durationLabel ?: content.sideLabel ?: "VOD",
+                            modifier = Modifier
+                                .width(104.dp)
+                                .aspectRatio(2f / 3f),
                         )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = listOfNotNull(content.year, content.durationLabel, content.rating?.let { "$it/10" })
-                                .joinToString("  |  ")
-                                .ifBlank { content.subtitle },
-                            color = SmartVisionColors.TextSecondary,
-                            style = CatalogMetaStyle,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (!content.genre.isNullOrBlank()) {
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = content.title,
+                                color = SmartVisionColors.TextPrimary,
+                                style = CatalogPreviewTitleStyle,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                             Spacer(Modifier.height(6.dp))
                             Text(
-                                text = content.genre,
-                                color = SmartVisionColors.Primary,
+                                text = listOfNotNull(content.year, content.durationLabel, content.rating?.let { "\u2605 $it" })
+                                    .joinToString("  |  ")
+                                    .ifBlank { content.subtitle },
+                                color = SmartVisionColors.TextSecondary,
                                 style = CatalogMetaStyle,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                        }
-                        if (content.loading) {
-                            Spacer(Modifier.height(10.dp))
-                            Text(
-                                text = "Chargement de l'episode...",
-                                color = SmartVisionColors.TextSecondary,
-                                style = CatalogMetaStyle,
-                                maxLines = 1,
-                            )
+                            if (!content.genre.isNullOrBlank()) {
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = content.genre,
+                                    color = SmartVisionColors.Primary,
+                                    style = CatalogMetaStyle,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            if (content.loading) {
+                                Spacer(Modifier.height(10.dp))
+                                Text(
+                                    text = "Chargement de l'episode...",
+                                    color = SmartVisionColors.TextSecondary,
+                                    style = CatalogMetaStyle,
+                                    maxLines = 1,
+                                )
+                            }
                         }
                     }
                 }
             }
 
             item(key = "${content.id}-plot") {
-                Text(
-                    text = content.plot?.takeIf { it.isNotBlank() } ?: "Aucun resume disponible.",
-                    color = SmartVisionColors.TextSecondary,
-                    style = SmartVisionType.Body,
-                    maxLines = 6,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                PreviewInfoLine(label = "Resume", value = content.plot?.takeIf { it.isNotBlank() } ?: "Aucun resume disponible.")
+            }
+
+            content.durationLabel?.takeIf { it.isNotBlank() }?.let { duration ->
+                item(key = "${content.id}-duration") {
+                    PreviewInfoLine(label = "Duree", value = duration)
+                }
+            }
+            content.year?.takeIf { it.isNotBlank() }?.let { year ->
+                item(key = "${content.id}-year") {
+                    PreviewInfoLine(label = "Annee", value = year)
+                }
+            }
+            content.rating?.takeIf { it.isNotBlank() }?.let { rating ->
+                item(key = "${content.id}-rating") {
+                    PreviewInfoLine(label = "Note", value = "\u2605 $rating/10")
+                }
+            }
+            content.genre?.takeIf { it.isNotBlank() }?.let { genre ->
+                item(key = "${content.id}-genre") {
+                    PreviewInfoLine(label = "Genre", value = genre)
+                }
             }
 
             content.creditLabel?.takeIf { it.isNotBlank() }?.let { creditLabel ->
@@ -1292,6 +1310,11 @@ private fun SegmentedVodMiniPlayer(
 
     LaunchedEffect(content.id, readyNonce) {
         if (readyNonce == 0 || errorText != null) return@LaunchedEffect
+        buffering = false
+        player.play()
+        restartPreviewAudioFade()
+        delay(VodPreviewWarmupMillis)
+
         var durationMs = player.duration
         var attempts = 0
         while ((durationMs <= 0 || durationMs == C.TIME_UNSET) && attempts < 20) {
@@ -1302,9 +1325,6 @@ private fun SegmentedVodMiniPlayer(
 
         val validDuration = durationMs.takeIf { it > 0 && it != C.TIME_UNSET }
         if (validDuration == null) {
-            buffering = false
-            player.play()
-            restartPreviewAudioFade()
             delay(VodPreviewSegmentMillis)
             player.pause()
             player.volume = 0f
@@ -1313,7 +1333,9 @@ private fun SegmentedVodMiniPlayer(
         }
 
         VodPreviewPercents.forEach { percent ->
-            player.seekTo((validDuration * percent / 100f).toLong().coerceIn(0L, validDuration))
+            runCatching {
+                player.seekTo((validDuration * percent / 100f).toLong().coerceIn(0L, validDuration))
+            }
             player.play()
             restartPreviewAudioFade()
             buffering = false
@@ -1345,7 +1367,7 @@ private fun SegmentedVodMiniPlayer(
                 volumeFadeJob[0]?.cancel()
                 buffering = false
                 showPoster = true
-                errorText = "Preview indisponible"
+                errorText = if (posterUrl.isNullOrBlank()) "Preview indisponible" else null
             }
         }
         player.addListener(listener)
@@ -1437,23 +1459,65 @@ private fun LandscapePosterFallback(
 
 @Composable
 private fun PreviewInfoLine(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = "$label:",
-            color = SmartVisionColors.Primary,
-            style = CatalogMetaStyle,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            modifier = Modifier.width(70.dp),
-        )
-        Text(
-            text = value,
-            color = SmartVisionColors.TextSecondary,
-            style = CatalogMetaStyle,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
+    PreviewDetailItem {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "$label:",
+                color = SmartVisionColors.Primary,
+                style = CatalogMetaStyle,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                modifier = Modifier.width(70.dp),
+            )
+            Text(
+                text = value,
+                color = SmartVisionColors.TextSecondary,
+                style = CatalogMetaStyle,
+                maxLines = if (label == "Resume") 7 else 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PreviewDetailItem(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val focusState = rememberTvFocusState()
+    val shape = RoundedCornerShape(5.dp)
+    val focusStyle = LocalTvFocusStyle.current
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .tvFocusTarget(
+                state = focusState,
+                pressed = false,
+                focusedScale = 1.01f,
+                glowColor = SmartVisionColors.Primary,
+                cornerRadius = 5.dp,
+            )
+            .clip(shape)
+            .background(
+                if (focusState.isFocused) {
+                    SmartVisionColors.PrimaryDark.copy(alpha = 0.34f)
+                } else {
+                    SmartVisionColors.Surface.copy(alpha = 0.22f)
+                },
+            )
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) focusStyle.borderWidth else 1.dp,
+                    if (focusState.isFocused) focusStyle.accent else SmartVisionColors.Border.copy(alpha = 0.42f),
+                ),
+                shape,
+            )
+            .focusable()
+            .padding(horizontal = 8.dp, vertical = 7.dp),
+    ) {
+        content()
     }
 }
 
@@ -1467,6 +1531,8 @@ private suspend fun ExoPlayer.fadeInVodMiniPlayerVolume() {
 }
 
 private val VodPreviewPercents = listOf(10, 30, 50, 80)
+private val VodContentRowHeight = 68.dp
+private const val VodPreviewWarmupMillis = 3_000L
 private const val VodPreviewSegmentMillis = 15_000L
 private const val VodMiniPlayerAudioStartDelayMillis = 1_000L
 private const val VodMiniPlayerAudioFadeMillis = 1_000L

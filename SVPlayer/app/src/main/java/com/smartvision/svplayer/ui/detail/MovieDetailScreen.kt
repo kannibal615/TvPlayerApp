@@ -465,6 +465,7 @@ private fun MovieDetailInfo(
                 onClick = onWatchMovie,
                 primary = true,
                 focusRequester = playFocusRequester,
+                bringIntoViewOnFocus = false,
                 modifier = Modifier
                     .width(168.dp)
                     .height(DetailDimens.ActionHeight),

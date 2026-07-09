@@ -381,7 +381,7 @@ private fun SeriesDetailScreen(
     val firstEpisodeFocusRequester = remember { FocusRequester() }
     val playFocusRequester = remember { FocusRequester() }
     val listState = rememberLazyListState()
-    LaunchedEffect(state.seriesId, state.loading) {
+    LaunchedEffect(state.seriesId) {
         listState.scrollToItem(0)
         delay(120)
         runCatching { playFocusRequester.requestFocus() }
@@ -541,6 +541,7 @@ private fun SeriesHeroInfo(
                 onClick = onWatchEpisode,
                 primary = true,
                 focusRequester = playFocusRequester,
+                bringIntoViewOnFocus = false,
                 modifier = Modifier
                     .width(162.dp)
                     .height(DetailDimens.ActionHeight),

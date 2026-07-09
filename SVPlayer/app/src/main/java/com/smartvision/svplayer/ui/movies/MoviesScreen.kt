@@ -113,7 +113,6 @@ fun MoviesScreen(
     val firstMovieFocusRequester = remember { FocusRequester() }
     val previewPlayFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
-    val focusScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
     var movieToDelete by remember { mutableStateOf<MovieItemUi?>(null) }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
@@ -150,14 +149,6 @@ fun MoviesScreen(
             withFrameNanos { }
             delay(120)
             runCatching { selectedCategoryFocusRequester.requestFocus() }
-        }
-    }
-
-    LaunchedEffect(state.selectedMovieId) {
-        if (state.selectedMovieId != null) {
-            withFrameNanos { }
-            delay(80)
-            runCatching { previewPlayFocusRequester.requestFocus() }
         }
     }
 
@@ -255,12 +246,6 @@ fun MoviesScreen(
                             val openFullPlayer = viewModel.activateMovie(movie)
                             if (openFullPlayer) {
                                 onWatchMovie(movie.streamId)
-                            } else {
-                                focusScope.launch {
-                                    withFrameNanos { }
-                                    delay(80)
-                                    runCatching { previewPlayFocusRequester.requestFocus() }
-                                }
                             }
                         }
                     },
@@ -437,10 +422,14 @@ private fun MovieList(
                     val itemFocusRequester = remember(movie.streamId) { FocusRequester() }
                     VodContentRow(
                         title = movie.title,
-                        subtitle = movie.subtitle,
+                        subtitle = listOfNotNull(
+                            movie.year,
+                            movie.containerExtension.takeIf { it.isNotBlank() }?.uppercase(),
+                            movie.categoryLabel,
+                        ).joinToString(" | ").ifBlank { movie.subtitle },
                         genre = movie.genre,
                         rating = movie.rating,
-                        sideLabel = movie.duration ?: "",
+                        sideLabel = movie.duration ?: movie.containerExtension.uppercase(),
                         imageUrl = movie.backdropUrl ?: movie.posterUrl,
                         fallbackText = movie.title.take(2).uppercase(),
                         selected = movie.streamId == state.selectedMovieId,

@@ -233,6 +233,7 @@ fun DetailActionButton(
     primary: Boolean = false,
     selected: Boolean = false,
     focusRequester: FocusRequester? = null,
+    bringIntoViewOnFocus: Boolean = true,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -261,7 +262,7 @@ fun DetailActionButton(
 
     Row(
         modifier = modifier
-            .detailBringIntoViewOnFocus()
+            .then(if (bringIntoViewOnFocus) Modifier.detailBringIntoViewOnFocus() else Modifier)
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,

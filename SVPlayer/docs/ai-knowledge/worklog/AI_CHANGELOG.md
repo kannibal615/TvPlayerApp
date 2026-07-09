@@ -11,12 +11,20 @@ Type:
 Resume:
 - Movies et Series affichent maintenant un skeleton 3 colonnes au chargement global et un skeleton de lignes pendant les rechargements de liste.
 - Quand aucun contenu n'est selectionne en mode `FREE_WITH_ADS`, le panneau Preview affiche le mini-player pub idle VAST puis une carte Premium avec QR/code TV, comme Live TV.
-- Les lignes Films/Series utilisent le backdrop paysage en priorite, suppriment le padding/cadre interne de miniature, et ajoutent genre/note etoilee/duree.
-- Les fiches detail Films/Series scrollent en haut puis focalisent `Regarder`/`Reprendre`, ce qui evite l'ouverture decalee sur les episodes.
-- L'overlay fullscreen Films/Series garde progressbar et controles, active le toggle Favori reel et affiche precedent/suivant quand un item adjacent existe.
+- Les lignes Films/Series utilisent le backdrop paysage en priorite, suppriment le padding/cadre interne de miniature, reduisent la hauteur a `68dp`, et ajoutent genre/note etoilee/metadonnees/duree.
+- Le premier OK sur une ligne lance le preview en gardant le focus sur la ligne; le deuxieme OK sur la meme ligne ouvre le fullscreen.
+- Le mini-preview VOD demarre par un warmup avant les segments et retombe sur le backdrop/poster sans afficher `Preview indisponible` quand le fournisseur refuse le seek.
+- La section detail sous le mini-player est focusable et scrollable au D-pad avec resume, duree, annee, note, genre, credits et cast quand disponibles.
+- Les fiches detail Films/Series scrollent en haut puis focalisent `Regarder`/`Reprendre` sans `bringIntoView` initial, ce qui evite l'ouverture decalee sur les episodes.
+- L'overlay fullscreen Films/Series reorganise titre/progressbar/controles/actions, rend la progressbar focusable visuellement, active le toggle Favori reel et affiche precedent/suivant quand un item adjacent existe.
 
 Validation:
 - `.\gradlew.bat :app:compileReleaseKotlin` : succes.
+- `.\scripts\guard_release_version.ps1` : succes apres bump `versionCode 131`.
+- `.\gradlew.bat :app:assembleRelease --no-daemon --max-workers=1 --console=plain` : succes.
+- `.\scripts\guard_release_version.ps1 -RequireBuildMetadata` : succes.
+- `.\scripts\deploy_activation_phase1.ps1 -SkipInstall` : succes.
+- Production verifiee: manifeste `smartvision-tv-v131-b854eab7.apk`, `api/app_update.php` en `0.1.116` / `131`, APK stable/versionne HTTP 200, SHA256 `b854eab7100b4179f4f08ddb9b1511c99e65d9a065cf27e85d53c439fc299103`, taille `41083958`.
 
 Fichiers MD mis a jour:
 - `docs/ai-knowledge/features/catalog-playback.md`
