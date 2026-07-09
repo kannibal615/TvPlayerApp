@@ -39,6 +39,7 @@ Deploy:
 - genere le manifeste de version;
 - cree une notification de release;
 - execute les tests publics sauf `-SkipTests`.
+- le wrapper `scripts/release_prod.ps1` incremente automatiquement `versionCode`, lance le build release Android puis appelle ce script avec `-SkipInstall -SkipTests` par defaut, avant de verifier publiquement le manifeste, `api/app_update.php`, l'APK versionne et l'APK stable.
 
 Regle release:
 - apres chaque nouveau build Android release destine a etre livre, executer le deploy backend avec `scripts/deploy_activation_phase1.ps1` pour synchroniser le manifeste update, l'APK versionne, l'APK stable, la notification release et les fichiers serveur;

@@ -1,5 +1,21 @@
 # AI Changelog
 
+## 2026-07-09 - Script release prod complet
+
+Type:
+- tooling
+- release
+- documentation
+
+Resume:
+- Ajout de `scripts/release_prod.ps1` pour lancer en une commande le process prod: garde-fou version, build `:app:assembleRelease`, garde-fou metadata, deploy production et verification publique.
+- Le wrapper incremente automatiquement `versionCode` avant le build et conserve `deploy_activation_phase1.ps1 -SkipInstall -SkipTests` par defaut, avec options `-RunSqlInstall`, `-RunDeployTests`, `-SkipAdb` et `-SkipPublicVerification`.
+- Le suivi visuel PowerShell affiche les etapes, pourcentages, duree ecoulee, headers et resultats OK/echec.
+- La verification publique controle `downloads/smartvision-tv.version.json`, `api/app_update.php`, l'APK versionne telecharge/hash SHA256 et l'acces a l'APK stable.
+
+Validation:
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\release_prod.ps1 -SkipPublicVerification`: non lance pour eviter un build/deploiement prod non demande.
+
 ## 2026-07-08 - Overlay Live compact et OK Media prives
 
 Type:

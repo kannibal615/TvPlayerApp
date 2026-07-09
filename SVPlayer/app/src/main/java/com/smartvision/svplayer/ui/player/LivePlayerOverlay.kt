@@ -49,7 +49,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -153,20 +152,9 @@ private fun LiveTvBottomGlassBanner(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 32.dp, end = 18.dp, bottom = 28.dp)
-            .height(70.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                Brush.horizontalGradient(
-                    listOf(
-                        PlayerOverlaySurface.copy(alpha = 0.72f),
-                        Color(0xFF10210F).copy(alpha = 0.62f),
-                        PlayerOverlaySurface.copy(alpha = 0.72f),
-                    ),
-                ),
-            )
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(8.dp))
-            .padding(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 10.dp),
+            .height(85.dp)
+            .background(PlayerOverlaySurface.copy(alpha = 0.65f))
+            .padding(start = 12.dp, end = 18.dp, top = 10.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         LiveTvChannelLogo(
@@ -273,7 +261,7 @@ private fun LiveTvChannelInfo(
         Text(
             text = playback.title,
             color = Color.White,
-            style = PlayerTitleStyle.copy(fontSize = 23.sp, lineHeight = 28.sp),
+            style = PlayerTitleStyle.copy(fontSize = 28.sp, lineHeight = 34.sp),
             fontWeight = FontWeight.Black,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

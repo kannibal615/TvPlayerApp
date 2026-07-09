@@ -61,7 +61,8 @@ Points d'entree:
 - `data/network/NetworkActivityTracker.kt`
 
 Build:
-- `.\gradlew.bat assembleRelease`
+- script complet prod: `.\scripts\release_prod.ps1`
+- build manuel: `.\gradlew.bat assembleRelease`
 - timeout 20 minutes minimum pour release;
 - pas de `compileDebugKotlin` ni `testDebugUnitTest` avant release sauf demande explicite.
 - avant le build, verifier que `versionCode` est strictement superieur a la prod et aux appareils ADB connectes avec `.\scripts\guard_release_version.ps1`;
@@ -72,6 +73,8 @@ Deploy:
 - le script `scripts/deploy_activation_phase1.ps1` n'assemble pas l'APK;
 - il upload l'APK deja genere si `app/build/outputs/apk/release/app-release.apk` existe.
 - apres chaque nouveau build APK release destine a etre livre, deployer aussi le backend avec `scripts/deploy_activation_phase1.ps1` afin de publier APK, manifeste, notification et fichiers PHP/CSS/JS associes.
+- `scripts/release_prod.ps1` orchestre le chemin complet avec suivi visuel PowerShell: lecture version locale/prod, increment automatique de `versionCode`, garde-fou version, `:app:assembleRelease`, garde-fou metadata, `deploy_activation_phase1.ps1 -SkipInstall -SkipTests`, puis verification publique du manifeste, de `app_update.php`, de l'APK versionne et de l'APK stable.
+- Par defaut, `release_prod.ps1` ne lance pas l'installation SQL temporaire et ne lance pas les tests publics du deploy; utiliser `-RunSqlInstall` ou `-RunDeployTests` seulement si ces controles sont explicitement souhaites.
 
 ## 5. Ecrans concernes
 
@@ -97,6 +100,7 @@ Deploy:
 - `app/src/main/java/com/smartvision/svplayer/data/playlist/EpgSyncWorker.kt`
 - `app/src/main/java/com/smartvision/svplayer/ui/update/*`
 - `scripts/deploy_activation_phase1.ps1`
+- `scripts/release_prod.ps1`
 
 ## 7. Donnees / API / Backend / Admin
 
