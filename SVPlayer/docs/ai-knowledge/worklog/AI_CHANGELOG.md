@@ -1,5 +1,20 @@
 # AI Changelog
 
+## 2026-07-09 - Details profil sur cartes source existantes
+
+Type:
+- Android TV
+- UI profil
+- documentation
+
+Resume:
+- Info compte > Profils n'affiche plus la fiche texte ajoutee pour le detail profil.
+- OK sur une ligne profil remplit le panneau de details deja existant avec les cartes `Compte SmartVision`, `Lien M3U`, `URL EPG` et `Synchroniser/Supprimer`.
+- Les editions M3U/EPG et la selection de source dans ce panneau modifient le profil selectionne; le toggle ON/OFF de la ligne reste l'action d'activation du profil.
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain`: OK.
+
 ## 2026-07-09 - Script release prod complet
 
 Type:
@@ -2530,7 +2545,7 @@ Resume:
 - Correction de l'ecrasement des nouveaux profils: `PlaylistProfile` porte maintenant un avatar couleur et la sauvegarde n'active plus automatiquement un profil existant.
 - Ajout de l'isolation Room par `profileId` pour catalogue IPTV, sync_state, favoris, historiques/reprises, tendances Home, cache preview Home et mapping Xtream -> TMDB.
 - Le changement de profil invalide les caches memoire et recharge les ecrans via `catalogRevision`, sans vider Room ni resynchroniser si le catalogue du profil est deja local.
-- Info compte remplace le popup detail profil par une fiche inline; OK sur la ligne selectionne, le toggle ON/OFF focusable active le profil.
+- Info compte remplace le popup detail profil par un panneau de cartes source; OK sur la ligne selectionne, le toggle ON/OFF focusable active le profil.
 - Ajout de `ProfilePickerScreen` apres splash et avant Home pour choisir le profil a regarder.
 
 Verification:

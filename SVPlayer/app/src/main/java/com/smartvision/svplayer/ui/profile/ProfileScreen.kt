@@ -619,15 +619,12 @@ private fun XtreamPanel(
     onDeleteXtreamAccount: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var accountToEdit by remember { mutableStateOf<XtreamAccount?>(null) }
-    var accountToDelete by remember { mutableStateOf<XtreamAccount?>(null) }
     var profileToEdit by remember { mutableStateOf<PlaylistProfile?>(null) }
     var selectedProfileId by remember { mutableStateOf<String?>(null) }
     var profileToDelete by remember { mutableStateOf<PlaylistProfile?>(null) }
     var showProfileEditor by remember { mutableStateOf(false) }
     var showEpgEditor by remember { mutableStateOf(false) }
     var showM3uEditor by remember { mutableStateOf(false) }
-    val activeAccount = state.activeXtreamAccount
     val selectedProfile = state.playlistProfiles.firstOrNull { it.id == selectedProfileId }
         ?: state.playlistProfiles.firstOrNull { it.id == state.activePlaylistProfileId }
         ?: state.playlistProfiles.firstOrNull()
@@ -653,46 +650,31 @@ private fun XtreamPanel(
         )
         selectedProfile?.let { profile ->
             Spacer(Modifier.height(8.dp))
-            PlaylistProfileInlineDetails(
+            PlaylistProfileDetailsPanel(
                 profile = profile,
                 active = profile.id == state.activePlaylistProfileId,
-                counts = state.account,
-                onEdit = {
+                syncStatus = syncStatus,
+                onEditProfile = {
                     profileToEdit = profile
                     showProfileEditor = true
                 },
-                onSynchronize = { onSynchronizePlaylistProfile(profile.id) },
-                onDelete = { profileToDelete = profile },
+                onShowXtreamSetupQr = onShowXtreamSetupQr,
+                onSelectSource = { source ->
+                    onSavePlaylistProfile(profile.copy(source = source))
+                    selectedProfileId = profile.id
+                },
+                onEditM3u = { showM3uEditor = true },
+                onEditEpg = { showEpgEditor = true },
+                onSynchronize = {
+                    selectedProfileId = profile.id
+                    onSynchronizePlaylistProfile(profile.id)
+                },
+                onDelete = {
+                    selectedProfileId = profile.id
+                    profileToDelete = profile
+                },
             )
         }
-        Spacer(Modifier.height(8.dp))
-        XtreamAccountCard(
-            account = activeAccount,
-            active = state.activePlaylistSource == PlaylistSource.Xtream,
-            onToggleSource = { onSelectPlaylistSource(PlaylistSource.Xtream) },
-            onEdit = { account -> accountToEdit = account },
-            onEditQr = onShowXtreamSetupQr,
-            onDelete = { account -> accountToDelete = account },
-        )
-        Spacer(Modifier.height(8.dp))
-        M3uUrlCard(
-            m3uUrl = state.m3uUrl,
-            active = state.activePlaylistSource == PlaylistSource.M3u,
-            onToggleSource = { onSelectPlaylistSource(PlaylistSource.M3u) },
-            onEdit = { showM3uEditor = true },
-        )
-        Spacer(Modifier.height(8.dp))
-        EpgUrlCard(
-            epgUrl = state.epgUrl,
-            onEdit = { showEpgEditor = true },
-            onEditQr = onShowXtreamSetupQr,
-        )
-        Spacer(Modifier.height(8.dp))
-        SynchronizationCard(
-            state = state,
-            syncStatus = syncStatus,
-            onOpenSyncDialog = onOpenSyncDialog,
-        )
         when (syncStatus) {
             is SyncStatus.Running -> {
                 Spacer(Modifier.height(10.dp))
@@ -762,50 +744,40 @@ private fun XtreamPanel(
         )
     }
 
-    accountToEdit?.let { account ->
-        XtreamAccountEditorDialog(
-            initial = account,
-            onDismiss = { accountToEdit = null },
-            onSave = { updated ->
-                accountToEdit = null
-                onSaveXtreamAccount(updated)
-            },
-        )
-    }
-
-    accountToDelete?.let { account ->
-        ConfirmXtreamDeleteDialog(
-            account = account,
-            onDismiss = { accountToDelete = null },
-            onConfirm = {
-                accountToDelete = null
-                onDeleteXtreamAccount(account.id)
-            },
-        )
-    }
-
     if (showEpgEditor) {
+        val profile = selectedProfile
         UrlEditorDialog(
             title = "Modifier URL EPG",
             invalidMessage = "URL EPG invalide.",
-            initialUrl = state.epgUrl,
+            initialUrl = profile?.epgUrl ?: state.epgUrl,
             onDismiss = { showEpgEditor = false },
             onSave = { url ->
                 showEpgEditor = false
-                onSaveEpgUrl(url)
+                if (profile != null) {
+                    onSavePlaylistProfile(profile.copy(epgUrl = url))
+                    selectedProfileId = profile.id
+                } else {
+                    onSaveEpgUrl(url)
+                }
             },
         )
     }
 
     if (showM3uEditor) {
+        val profile = selectedProfile
         UrlEditorDialog(
             title = "Modifier lien M3U",
             invalidMessage = "Lien M3U invalide.",
-            initialUrl = state.m3uUrl,
+            initialUrl = profile?.m3uUrl ?: state.m3uUrl,
             onDismiss = { showM3uEditor = false },
             onSave = { url ->
                 showM3uEditor = false
-                onSaveM3uUrl(url)
+                if (profile != null) {
+                    onSavePlaylistProfile(profile.copy(m3uUrl = url))
+                    selectedProfileId = profile.id
+                } else {
+                    onSaveM3uUrl(url)
+                }
             },
         )
     }
@@ -957,11 +929,15 @@ private fun PlaylistProfileAvatar(
 }
 
 @Composable
-private fun PlaylistProfileInlineDetails(
+private fun PlaylistProfileDetailsPanel(
     profile: PlaylistProfile,
     active: Boolean,
-    counts: AccountProfile,
-    onEdit: () -> Unit,
+    syncStatus: SyncStatus,
+    onEditProfile: () -> Unit,
+    onShowXtreamSetupQr: () -> Unit,
+    onSelectSource: (PlaylistSource) -> Unit,
+    onEditM3u: () -> Unit,
+    onEditEpg: () -> Unit,
     onSynchronize: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -972,7 +948,6 @@ private fun PlaylistProfileInlineDetails(
             .background(Color.White.copy(alpha = 0.045f))
             .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.72f)), RoundedCornerShape(7.dp))
             .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             PlaylistProfileAvatar(profile = profile, modifier = Modifier.size(46.dp))
@@ -994,48 +969,37 @@ private fun PlaylistProfileInlineDetails(
                 )
             }
         }
-        ProfileInfoRow("Type de source", profile.source.displayLabel())
-        if (profile.source == PlaylistSource.Xtream) {
-            ProfileInfoRow("URL serveur", profile.xtreamHost.ifBlank { "Non configure" })
-            ProfileInfoRow("Username", profile.xtreamUsername.ifBlank { "Non configure" })
-            ProfileInfoRow("Password", if (profile.xtreamPassword.isBlank()) "Non configure" else "********")
-        } else {
-            ProfileInfoRow("Lien M3U", profile.m3uUrl.ifBlank { "Non configure" })
-        }
-        ProfileInfoRow("URL EPG", profile.epgUrl.ifBlank { "Non configure" })
-        ProfileInfoRow("Derniere synchronisation", profile.lastSyncAt.asProfileDate())
-        if (active) {
-            ProfileInfoRow("Chaines / Films / Series", "${counts.liveCount} / ${counts.movieCount} / ${counts.seriesCount}")
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            TvButton(
-                text = "Modifier",
-                onClick = onEdit,
-                leadingIcon = Icons.Default.Edit,
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(40.dp),
-            )
-            TvButton(
-                text = "Synchroniser",
-                onClick = onSynchronize,
-                leadingIcon = Icons.Default.CloudSync,
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(40.dp),
-            )
-            TvButton(
-                text = "Supprimer",
-                onClick = onDelete,
-                leadingIcon = Icons.Default.Delete,
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(40.dp),
-            )
-        }
+        Spacer(Modifier.height(10.dp))
+        XtreamAccountCard(
+            account = profile.toXtreamAccountOrNull(),
+            active = profile.source == PlaylistSource.Xtream,
+            editEnabled = true,
+            deleteEnabled = true,
+            onToggleSource = { onSelectSource(PlaylistSource.Xtream) },
+            onEdit = onEditProfile,
+            onEditQr = onShowXtreamSetupQr,
+            onDelete = onDelete,
+        )
+        Spacer(Modifier.height(8.dp))
+        M3uUrlCard(
+            m3uUrl = profile.m3uUrl,
+            active = profile.source == PlaylistSource.M3u,
+            onToggleSource = { onSelectSource(PlaylistSource.M3u) },
+            onEdit = onEditM3u,
+        )
+        Spacer(Modifier.height(8.dp))
+        EpgUrlCard(
+            epgUrl = profile.epgUrl,
+            onEdit = onEditEpg,
+            onEditQr = onShowXtreamSetupQr,
+        )
+        Spacer(Modifier.height(8.dp))
+        SynchronizationCard(
+            lastSync = profile.lastSyncAt.asProfileDate(),
+            syncStatus = syncStatus,
+            onOpenSyncDialog = onSynchronize,
+            onDelete = onDelete,
+        )
     }
 }
 
@@ -1043,10 +1007,12 @@ private fun PlaylistProfileInlineDetails(
 private fun XtreamAccountCard(
     account: XtreamAccount?,
     active: Boolean,
+    editEnabled: Boolean = account != null,
+    deleteEnabled: Boolean = account != null,
     onToggleSource: () -> Unit,
-    onEdit: (XtreamAccount) -> Unit,
+    onEdit: () -> Unit,
     onEditQr: () -> Unit,
-    onDelete: (XtreamAccount) -> Unit,
+    onDelete: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -1083,14 +1049,14 @@ private fun XtreamAccountCard(
             ProfileIconTileButton(
                 icon = Icons.Default.Edit,
                 contentDescription = "Modifier",
-                onClick = { account?.let(onEdit) },
-                enabled = account != null,
+                onClick = onEdit,
+                enabled = editEnabled,
             )
             ProfileIconTileButton(
                 icon = Icons.Default.Delete,
                 contentDescription = "Supprimer",
-                onClick = { account?.let(onDelete) },
-                enabled = account != null,
+                onClick = onDelete,
+                enabled = deleteEnabled,
             )
         }
     }
@@ -1182,9 +1148,10 @@ private fun EpgUrlCard(
 
 @Composable
 private fun SynchronizationCard(
-    state: ProfileUiState,
+    lastSync: String,
     syncStatus: SyncStatus,
     onOpenSyncDialog: () -> Unit,
+    onDelete: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
@@ -1201,9 +1168,22 @@ private fun SynchronizationCard(
             enabled = syncStatus !is SyncStatus.Running,
             leadingIcon = Icons.Default.CloudSync,
             modifier = Modifier
-                .width(270.dp)
+                .width(if (onDelete == null) 270.dp else 138.dp)
                 .height(42.dp),
         )
+        if (onDelete != null) {
+            Spacer(Modifier.width(8.dp))
+            TvButton(
+                text = "Supprimer",
+                onClick = onDelete,
+                enabled = syncStatus !is SyncStatus.Running,
+                leadingIcon = Icons.Default.Delete,
+                variant = TvButtonVariant.Secondary,
+                modifier = Modifier
+                    .width(132.dp)
+                    .height(42.dp),
+            )
+        }
         Spacer(Modifier.width(20.dp))
         Box(
             modifier = Modifier
@@ -1213,7 +1193,7 @@ private fun SynchronizationCard(
         )
         Spacer(Modifier.width(20.dp))
         Column(modifier = Modifier.weight(1f)) {
-            AccountInfoLine(Icons.Default.CheckCircle, "Date de synchronisation", state.account.lastSync ?: "Jamais")
+            AccountInfoLine(Icons.Default.CheckCircle, "Date de synchronisation", lastSync)
         }
     }
 }
@@ -3737,6 +3717,18 @@ private fun String.masked(): String =
         length <= 5 -> take(1) + "***"
         else -> take(2) + "****" + takeLast(2)
     }
+
+private fun PlaylistProfile.toXtreamAccountOrNull(): XtreamAccount? {
+    if (xtreamHost.isBlank() && xtreamUsername.isBlank() && xtreamPassword.isBlank()) return null
+    return XtreamAccount(
+        id = id,
+        name = "Compte SmartVision",
+        host = xtreamHost,
+        username = xtreamUsername,
+        password = xtreamPassword,
+        epgUrl = epgUrl,
+    )
+}
 
 private fun PlaylistSource.displayLabel(): String =
     when (this) {
