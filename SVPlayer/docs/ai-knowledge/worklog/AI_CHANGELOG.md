@@ -1,5 +1,65 @@
 # AI Changelog
 
+## 2026-07-10 - Profil PlaylistWeb pour envois depuis le site
+
+Type:
+- Android TV
+- profils playlist
+- backend/API
+- catalogue
+
+Resume:
+- Les `playlist_config` recus depuis `device_status.php` ne creent plus un compte legacy `activation_portal`; ils alimentent un profil dedie `PlaylistWeb`.
+- `PlaylistWeb` est mis a jour par nom si l'utilisateur ne l'a pas renomme; s'il a ete renomme, le prochain push web cree un nouveau profil `PlaylistWeb`.
+- Le payload playlist chiffre stocke la derniere source envoyee (`xtream` ou `m3u`) pour choisir la source active du profil web.
+- Les notifications `Configuration playlist recue` declenchent un `checkStatus()` cote TV, ce qui importe la playlist quand l'app est deja ouverte.
+- Apres un envoi playlist valide, `/playlist/` et `save_playlist_config.php` valident la derniere session pending de l'appareil pour permettre au token de polling courant de recevoir la nouvelle playlist sans revenir a la restauration libre des anciennes configs.
+- Si les credentials du meme profil changent, AppNavigation force une nouvelle synchro catalogue; les changements de profil vers un catalogue deja local restent cache-first.
+
+Validation:
+- `php -l server/public_html/api/helpers.php` : succes.
+- `php -l server/public_html/playlist/index.php` : succes.
+- `php -l server/public_html/api/save_playlist_config.php` : succes.
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --console=plain` : succes.
+- `.\gradlew.bat :app:assembleRelease --no-daemon --console=plain` : succes.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+## 2026-07-10 - Sync profils, URLs lecture et restauration playlist
+
+Type:
+- Android TV
+- profils playlist
+- catalogue
+- backend/API
+- securite
+
+Resume:
+- La synchronisation catalogue capture le profil actif, ses credentials et son host Xtream au lancement, puis ecrit Room/cache uniquement pour ce profil.
+- Les caches catalogue et Xtream repository sont profiles par `profileId`; un changement de profil invalide les caches sans reutiliser l'ancien catalogue.
+- Les URLs preview/player Movies/Series sont reconstruites depuis le catalogue Room du profil actif, avec extension locale, pour eviter de lire avec l'ancien profil.
+- `device_status.php` ne renvoie plus `playlist_config` avec un `device_token` de session `pending`; il faut un appareil actif et une session `validated`.
+- La suppression d'un profil playlist appelle `api/clear_playlist_config.php`, qui efface la config serveur seulement si elle correspond au profil supprime, afin d'eviter la recreation du profil par defaut au redemarrage.
+- `ActivationRepository.registerDevice()` conserve un token local deja present au lieu de l'ecraser par le nouveau token pending du register.
+
+Validation:
+- `php -l server/public_html/api/helpers.php` : succes.
+- `php -l server/public_html/api/device_status.php` : succes.
+- `php -l server/public_html/api/clear_playlist_config.php` : succes.
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --console=plain` : succes.
+- `.\gradlew.bat :app:assembleRelease --no-daemon --console=plain` : succes.
+- Parse PowerShell `scripts/deploy_activation_phase1.ps1` : succes.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
 ## 2026-07-10 - Settings header, focus profil et preview VOD ALL
 
 Type:

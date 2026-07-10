@@ -20,7 +20,8 @@ Flux observe:
 - configuration Xtream via `api/create_playlist_setup_session.php` puis portail `/xtream/`;
 - envoi web direct via `/playlist/` avec code TV pour pousser des identifiants Xtream et/ou une URL EPG;
 - recuperation de `playlist_config` dans `device_status.php`, incluant `epg_url` si fourni;
-- creation locale du compte Xtream et synchro catalogue.
+- suppression distante de la config playlist via `api/clear_playlist_config.php` quand un profil local correspondant est supprime;
+- import Android dans un profil dedie `PlaylistWeb`, mis a jour par nom si l'utilisateur ne l'a pas renomme, puis synchro catalogue.
 - verification rapide Xtream au demarrage via `XtreamConnectionManager` avant synchro globale; elle teste principalement `player_api.php` sans `action` (`user_info.status == active`) et confirme une panne sur 3 essais discrets avant popup, notification ou blocage catalogue.
 - au splash, `device_status.php` doit etre relu avant `XtreamConnectionManager.verifyQuick()` afin d'importer la derniere playlist configuree cote serveur avant le test, meme si un ancien compte local et un ancien catalogue Room existent deja.
 - `MainActivity` porte tout le statut de demarrage avec un seul visuel et une seule progress bar; `SplashActivity`, `StartupVerificationPanel` et `StartupHandoffScreen` ne sont plus utilises au demarrage.
@@ -66,6 +67,7 @@ Backend:
 - `server/public_html/api/devices/enable_free_with_ads.php`
 - `server/public_html/api/create_playlist_setup_session.php`
 - `server/public_html/api/save_playlist_config.php`
+- `server/public_html/api/clear_playlist_config.php`
 - `server/public_html/activate/index.php`
 - `server/public_html/xtream/index.php`
 - `server/public_html/playlist/index.php`
@@ -102,6 +104,7 @@ API Android connues:
 - `POST api/create_activation_session.php`
 - `GET api/device_status.php`
 - `POST api/create_playlist_setup_session.php`
+- `POST api/clear_playlist_config.php`
 - `POST api/licenses/activate.php`
 - `POST api/devices/start_trial.php`
 - `POST api/devices/enable_free_with_ads.php`
@@ -120,6 +123,10 @@ Champs importants:
 - `m3u_url`
 - `activePlaylistSource` local Android: `xtream` ou `m3u`, exclusif.
 - `playlist_profiles_json` et `active_playlist_profile_id` locaux Android: profils utilisateur multiples geres par `XtreamAccountManager`. Au premier demarrage apres mise a jour, les anciens `accounts_json`, `m3u_url`, `epg_url` et `active_playlist_source` sont copies dans `Profil principal` si une source existe.
+- `PlaylistWeb`: profil Android reserve aux playlists envoyees depuis `/playlist/` ou le QR web. `XtreamAccountManager` met a jour ce profil si son nom est toujours `PlaylistWeb`; si l'utilisateur le renomme, le prochain push web cree un nouveau profil `PlaylistWeb`.
+- `device_status.php` ne doit renvoyer `playlist_config` que pour un appareil actif avec `device_token` rattache a une session d'activation `validated`; un jeton `pending` cree par `register.php` ne doit jamais suffire a renvoyer les identifiants playlist.
+- Apres un enregistrement playlist web valide, `save_playlist_config.php` et `/playlist/` marquent la derniere session pending de l'appareil comme `validated` afin que le token de polling courant puisse recevoir cette playlist.
+- `ActivationRepository.registerDevice()` ne doit pas remplacer un `device_token` local deja present par le nouveau jeton `pending` du register, afin de conserver la session validee et d'eviter une restauration non maitrisee apres redemarrage.
 - `multi_profile` dans `app_feature_access`: controle la creation/modification multi-profils. Les defaults autorisent Premium et essai 7 jours, et verrouillent Free Ads avec couronne cote TV.
 
 Admin:
@@ -136,6 +143,7 @@ Admin:
 ## 9. Regles a ne pas casser
 
 - Ne jamais stocker de secrets Xtream en clair dans les docs ou logs.
+- Ne jamais livrer `playlist_config` avec un token de session `pending`; il peut servir au polling/setup, pas a retourner des secrets playlist.
 - Ne pas demarrer l'essai trop tot si le flux exige validation Xtream.
 - Preserver l'ecran essai expire, achat licence et gratuit avec pubs.
 - Ne pas changer le sens de `activation_type` sans mettre a jour Android et backend.

@@ -48,6 +48,10 @@ class NotificationsRepository(
         return response.unreadCount.coerceAtLeast(0)
     }
 
+    suspend fun refreshDeviceStatus() {
+        activationRepository.checkStatus()
+    }
+
     private suspend fun currentAccess(): NotificationDeviceAccess {
         val createdDeviceId = activationRepository.getOrCreateDeviceId()
         val state = activationRepository.localState.first()

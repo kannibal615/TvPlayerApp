@@ -152,10 +152,15 @@ fun EpisodeEntity.toDomain(): Episode =
         plot = plot,
     )
 
-fun XtreamAccountDto.toProfileEntity(credentials: XtreamCredentials, now: Long): ProfileEntity =
+fun XtreamAccountDto.toProfileEntity(
+    profileId: String,
+    profileName: String,
+    credentials: XtreamCredentials,
+    now: Long,
+): ProfileEntity =
     ProfileEntity(
-        id = "debug",
-        name = "Profil SmartVision",
+        id = profileId,
+        name = profileName.ifBlank { "Profil SmartVision" },
         host = credentials.normalizedHost,
         usernameMasked = credentials.maskedUsername,
         status = userInfo?.status.orEmpty().ifBlank { "Inconnu" },

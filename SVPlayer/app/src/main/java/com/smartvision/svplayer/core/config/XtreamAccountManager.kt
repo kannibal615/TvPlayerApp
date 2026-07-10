@@ -228,6 +228,64 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
     }
 
     @Synchronized
+    fun upsertWebPlaylistProfile(
+        sourceHint: PlaylistSource?,
+        xtreamHost: String,
+        xtreamUsername: String,
+        xtreamPassword: String,
+        m3uUrl: String,
+        epgUrl: String,
+    ): String? {
+        val existing = _profiles.value.firstOrNull {
+            it.name.equals(WebPlaylistProfileName, ignoreCase = true)
+        }
+        val normalizedHost = xtreamHost.trim().trimEnd('/').ifBlank { existing?.xtreamHost.orEmpty() }
+        val normalizedUsername = xtreamUsername.trim().ifBlank { existing?.xtreamUsername.orEmpty() }
+        val normalizedPassword = xtreamPassword.trim().ifBlank { existing?.xtreamPassword.orEmpty() }
+        val normalizedM3u = m3uUrl.trim().ifBlank { existing?.m3uUrl.orEmpty() }
+        val normalizedEpg = epgUrl.trim().ifBlank { existing?.epgUrl.orEmpty() }
+        val hasXtream = normalizedHost.isNotBlank() &&
+            normalizedUsername.isNotBlank() &&
+            normalizedPassword.isNotBlank()
+        val hasM3u = normalizedM3u.isNotBlank()
+        if (!hasXtream && !hasM3u) return null
+
+        val source = when {
+            sourceHint == PlaylistSource.M3u && hasM3u -> PlaylistSource.M3u
+            sourceHint == PlaylistSource.Xtream && hasXtream -> PlaylistSource.Xtream
+            existing?.source == PlaylistSource.M3u && hasM3u -> PlaylistSource.M3u
+            hasXtream -> PlaylistSource.Xtream
+            else -> PlaylistSource.M3u
+        }
+        val sourceChanged = existing == null ||
+            existing.source != source ||
+            existing.xtreamHost.trim().trimEnd('/') != normalizedHost ||
+            existing.xtreamUsername.trim() != normalizedUsername ||
+            existing.xtreamPassword.trim() != normalizedPassword ||
+            existing.m3uUrl.trim() != normalizedM3u
+        val now = System.currentTimeMillis()
+        val profileId = upsertProfile(
+            PlaylistProfile(
+                id = existing?.id.orEmpty(),
+                name = WebPlaylistProfileName,
+                source = source,
+                avatarId = existing?.avatarId ?: profileAvatarIdForName(WebPlaylistProfileName),
+                avatarColorHex = existing?.avatarColorHex ?: avatarColorForName(WebPlaylistProfileName),
+                xtreamHost = normalizedHost,
+                xtreamUsername = normalizedUsername,
+                xtreamPassword = normalizedPassword,
+                m3uUrl = normalizedM3u,
+                epgUrl = normalizedEpg,
+                createdAt = existing?.createdAt ?: now,
+                updatedAt = now,
+                lastSyncAt = if (sourceChanged) null else existing?.lastSyncAt,
+            ),
+        )
+        activateProfile(profileId)
+        return profileId
+    }
+
+    @Synchronized
     fun activateProfile(profileId: String) {
         val profile = _profiles.value.firstOrNull { it.id == profileId }
             ?: throw IllegalArgumentException("Profil introuvable.")
@@ -271,9 +329,13 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
 
     @Synchronized
     fun markActiveProfileSynced(syncAt: Long = System.currentTimeMillis()) {
-        val activeId = _activeProfileId.value ?: return
+        markProfileSynced(_activeProfileId.value ?: return, syncAt)
+    }
+
+    @Synchronized
+    fun markProfileSynced(profileId: String, syncAt: Long = System.currentTimeMillis()) {
         _profiles.value = _profiles.value.map { profile ->
-            if (profile.id == activeId) {
+            if (profile.id == profileId) {
                 profile.copy(lastSyncAt = syncAt, updatedAt = syncAt)
             } else {
                 profile
@@ -471,6 +533,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
         const val KEY_ACTIVE_PROFILE = "active_playlist_profile_id"
         const val LEGACY_BUILD_CONFIG_ACCOUNT = "build_config"
         const val DefaultProfileId = "default"
+        const val WebPlaylistProfileName = "PlaylistWeb"
     }
 
     private fun PlaylistSource.isAvailable(): Boolean =

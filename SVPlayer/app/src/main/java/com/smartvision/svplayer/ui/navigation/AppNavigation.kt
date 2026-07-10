@@ -410,7 +410,13 @@ fun AppNavigation(
             "${account.id}:${account.host}:${account.username}:${account.password.hashCode()}"
         }
     }
+    val m3uProfileSignature = remember(activeProfileId, m3uUrl) {
+        "${activeProfileId.orEmpty()}:$m3uUrl"
+    }
     var lastXtreamAccountSignature by remember { mutableStateOf<String?>(null) }
+    var lastXtreamProfileId by remember { mutableStateOf<String?>(null) }
+    var lastM3uProfileSignature by remember { mutableStateOf<String?>(null) }
+    var lastM3uProfileId by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(activationState.activationType, xtreamAccountSignature) {
         if (activationState.activationType == "trial_pending_xtream" && xtreamAccounts.isNotEmpty()) {
             runCatching { container.activationRepository.finalizeTrialAfterPlaylistConfigured() }
@@ -550,11 +556,15 @@ fun AppNavigation(
     LaunchedEffect(activationState.activated, xtreamAccountSignature, playerSettings.syncFrequency) {
         if (activationState.activated && activePlaylistSource == PlaylistSource.Xtream && xtreamAccounts.isNotEmpty()) {
             val previousSignature = lastXtreamAccountSignature
+            val previousProfileId = lastXtreamProfileId
             lastXtreamAccountSignature = xtreamAccountSignature
+            lastXtreamProfileId = activeProfileId
             val accountChanged = previousSignature != null && previousSignature != xtreamAccountSignature
             val firstAccountCheck = previousSignature == null
+            val sameProfileSourceChanged = accountChanged && previousProfileId == activeProfileId
             val shouldVerifyXtream = accountChanged || firstAccountCheck
-            val shouldSyncCatalog = accountChanged && !container.catalogRepository.hasLocalCatalogForActiveProfile()
+            val shouldSyncCatalog = accountChanged &&
+                (sameProfileSourceChanged || !container.catalogRepository.hasLocalCatalogForActiveProfile())
             val startupAlreadyHandled = firstAccountCheck && container.xtreamConnectionManager.hasFreshConnectedState()
             if (shouldVerifyXtream && !startupAlreadyHandled) {
                 val connection = container.xtreamConnectionManager.verifyQuick("startup")
@@ -567,6 +577,28 @@ fun AppNavigation(
                         container.xtreamRepository.clearCaches()
                         container.catalogRepository.invalidateLocalCatalogCache()
                         container.synchronizeCatalog().getOrThrow()
+                    }
+                }
+            }
+        }
+    }
+    LaunchedEffect(activationState.activated, activePlaylistSource, m3uProfileSignature, playerSettings.syncFrequency) {
+        if (activationState.activated && activePlaylistSource == PlaylistSource.M3u && m3uUrl.isNotBlank()) {
+            val previousSignature = lastM3uProfileSignature
+            val previousProfileId = lastM3uProfileId
+            lastM3uProfileSignature = m3uProfileSignature
+            lastM3uProfileId = activeProfileId
+            val sourceChanged = previousSignature != null && previousSignature != m3uProfileSignature
+            val sameProfileSourceChanged = sourceChanged && previousProfileId == activeProfileId
+            val shouldSyncCatalog = sourceChanged &&
+                (sameProfileSourceChanged || !container.catalogRepository.hasLocalCatalogForActiveProfile())
+            if (shouldSyncCatalog) {
+                runCatching {
+                    container.xtreamRepository.clearCaches()
+                    container.catalogRepository.invalidateLocalCatalogCache()
+                    container.synchronizeCatalog().getOrThrow()
+                    container.accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let { epgUrl ->
+                        container.epgRepository.synchronize(epgUrl)
                     }
                 }
             }

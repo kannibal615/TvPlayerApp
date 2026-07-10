@@ -17,6 +17,7 @@ class NotificationBadgeViewModel(
 ) : ViewModel() {
     private val state = MutableStateFlow(NotificationBadgeUiState())
     val uiState: StateFlow<NotificationBadgeUiState> = state
+    private val handledPlaylistNotificationIds = mutableSetOf<Long>()
 
     init {
         viewModelScope.launch {
@@ -48,6 +49,14 @@ class NotificationBadgeViewModel(
                     runCatching { repository.markSeen(installedUpdateNotifications.map { it.id }) }
                 }
                 val visibleNotifications = snapshot.notifications - installedUpdateNotifications.toSet()
+                val playlistNotifications = visibleNotifications.filter { notification ->
+                    !notification.seen &&
+                        notification.isPlaylistConfigurationNotification() &&
+                        handledPlaylistNotificationIds.add(notification.id)
+                }
+                if (playlistNotifications.isNotEmpty()) {
+                    runCatching { repository.refreshDeviceStatus() }
+                }
                 val visibleUnread = visibleNotifications.count { !it.seen }
                 state.update {
                     it.copy(
@@ -73,3 +82,7 @@ private fun AppNotification.isInstalledUpdateNotification(): Boolean {
     val versionCode = Regex("\\((\\d+)\\)").find(message)?.groupValues?.getOrNull(1)?.toIntOrNull()
     return versionCode != null && versionCode <= BuildConfig.VERSION_CODE
 }
+
+private fun AppNotification.isPlaylistConfigurationNotification(): Boolean =
+    title.contains("Configuration playlist", ignoreCase = true) ||
+        message.contains("Configuration recue depuis SmartVision Playlist", ignoreCase = true)

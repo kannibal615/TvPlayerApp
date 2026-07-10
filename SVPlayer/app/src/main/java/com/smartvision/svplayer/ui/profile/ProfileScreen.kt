@@ -247,10 +247,14 @@ fun ProfileRoute(
             }
         },
         onDeletePlaylistProfile = { profileId ->
+            val profileToDelete = container.accountManager.profiles.value.firstOrNull { it.id == profileId }
             val wasActiveProfile = profileId == container.accountManager.activeProfileId.value
             container.accountManager.deleteProfile(profileId)
             container.xtreamRepository.clearCaches()
             scope.launch {
+                profileToDelete?.let { deletedProfile ->
+                    runCatching { container.activationRepository.clearPlaylistConfig(deletedProfile) }
+                }
                 container.catalogRepository.clearCatalogForProfileSwitch()
                 if (wasActiveProfile && container.accountManager.activeProfileId.value != null &&
                     !container.catalogRepository.hasLocalCatalogForActiveProfile()

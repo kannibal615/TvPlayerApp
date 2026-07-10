@@ -95,12 +95,16 @@ try {
         $config['host'] = $host;
         $config['username'] = $username;
         $config['password'] = $password;
+        $config['source'] = 'xtream';
     }
     if ($epgUrl !== null) {
         $config['epg_url'] = $epgUrl;
     }
     if ($m3uUrl !== null) {
         $config['m3u_url'] = $m3uUrl;
+        if (!$hasXtreamInput) {
+            $config['source'] = 'm3u';
+        }
     }
     $hasXtreamConfig = trim((string) ($config['host'] ?? '')) !== ''
         && trim((string) ($config['username'] ?? '')) !== ''
@@ -123,6 +127,7 @@ try {
             clean_public_device_code($access['public_device_code'] ?? null),
         );
     }
+    mark_latest_pending_device_session_validated($pdo, $deviceId);
 
     $pdo->prepare("UPDATE devices SET xtream_status = :xtream_status, updated_at = NOW() WHERE device_id = :device_id")
         ->execute([

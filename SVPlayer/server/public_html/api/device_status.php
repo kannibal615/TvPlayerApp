@@ -60,7 +60,11 @@ try {
         $state['playlist_configured'] = $playlistConfigured;
         $state['xtreamStatus'] = $xtreamConfigured ? 'configured' : 'missing';
 
-        if (is_array($playlist) && has_valid_device_token($pdo, $deviceId, $deviceToken)) {
+        if (
+            ($state['status'] ?? '') === 'active'
+            && is_array($playlist)
+            && has_validated_device_token($pdo, $deviceId, $deviceToken)
+        ) {
             $state['playlist_config'] = $playlist;
             $delivered = $pdo->prepare(
                 'UPDATE device_playlist_configs SET delivered_at = NOW() WHERE device_id = :device_id'

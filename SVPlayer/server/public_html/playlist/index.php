@@ -95,12 +95,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     $config['host'] = $host;
                     $config['username'] = $username;
                     $config['password'] = $password;
+                    $config['source'] = 'xtream';
                 }
                 if ($epgUrl !== null) {
                     $config['epg_url'] = $epgUrl;
                 }
                 if ($m3uUrl !== null) {
                     $config['m3u_url'] = $m3uUrl;
+                    $config['source'] = 'm3u';
                 }
 
                 $hasXtreamConfig = trim((string) ($config['host'] ?? '')) !== ''
@@ -120,6 +122,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 if ($hasXtreamConfig && !$hasActivation && $hasPendingTrial) {
                     create_trial_activation($pdo, $deviceId, $publicDeviceCode);
                 }
+                mark_latest_pending_device_session_validated($pdo, $deviceId);
 
                 $pdo->prepare("UPDATE devices SET xtream_status = :xtream_status, updated_at = NOW() WHERE device_id = :device_id")
                     ->execute([

@@ -28,6 +28,11 @@ interface ActivationApiService {
         @Body request: PlaylistSetupSessionRequest,
     ): CreateActivationSessionResponse
 
+    @POST("api/clear_playlist_config.php")
+    suspend fun clearPlaylistConfig(
+        @Body request: ClearPlaylistConfigRequest,
+    ): ClearPlaylistConfigResponse
+
     @POST("api/licenses/activate.php")
     suspend fun activateLicense(
         @Body request: ActivateLicenseRequest,
@@ -64,6 +69,16 @@ data class CreateActivationSessionRequest(
 data class PlaylistSetupSessionRequest(
     @SerializedName("device_id") val deviceId: String,
     @SerializedName("device_token") val deviceToken: String,
+)
+
+data class ClearPlaylistConfigRequest(
+    @SerializedName("device_id") val deviceId: String,
+    @SerializedName("device_token") val deviceToken: String,
+    @SerializedName("host") val host: String? = null,
+    @SerializedName("username") val username: String? = null,
+    @SerializedName("password") val password: String? = null,
+    @SerializedName("epg_url") val epgUrl: String? = null,
+    @SerializedName("m3u_url") val m3uUrl: String? = null,
 )
 
 data class ActivateLicenseRequest(
@@ -107,6 +122,13 @@ data class CreateActivationSessionResponse(
     @SerializedName("error") val error: String? = null,
 )
 
+data class ClearPlaylistConfigResponse(
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("cleared") val cleared: Boolean = false,
+    @SerializedName("playlist_configured") val playlistConfigured: Boolean = false,
+    @SerializedName("error") val error: String? = null,
+)
+
 data class DeviceStatusResponse(
     @SerializedName("success") val success: Boolean = false,
     @SerializedName("status") val status: String? = null,
@@ -131,4 +153,5 @@ data class PlaylistConfigResponse(
     @SerializedName("password") val password: String? = null,
     @SerializedName("epg_url") val epgUrl: String? = null,
     @SerializedName("m3u_url") val m3uUrl: String? = null,
+    @SerializedName("source") val source: String? = null,
 )

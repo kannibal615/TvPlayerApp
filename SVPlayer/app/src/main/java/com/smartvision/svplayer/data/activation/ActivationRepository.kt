@@ -8,8 +8,8 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.smartvision.svplayer.BuildConfig
+import com.smartvision.svplayer.core.config.PlaylistProfile
 import com.smartvision.svplayer.core.config.PlaylistSource
-import com.smartvision.svplayer.core.config.XtreamAccount
 import com.smartvision.svplayer.core.config.XtreamAccountManager
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
@@ -119,7 +119,9 @@ class ActivationRepository(
             } else {
                 preferences[FREE_WITH_ADS_STATUS] = response.freeWithAdsStatus
             }
-            response.deviceToken?.takeIf { it.isNotBlank() }?.let { preferences[DEVICE_TOKEN] = it }
+            if (preferences[DEVICE_TOKEN].isNullOrBlank()) {
+                response.deviceToken?.takeIf { it.isNotBlank() }?.let { preferences[DEVICE_TOKEN] = it }
+            }
         }
 
         return RemoteActivationStatus(
@@ -210,6 +212,37 @@ class ActivationRepository(
         )
     }
 
+    suspend fun clearPlaylistConfig(profile: PlaylistProfile): Boolean {
+        val preferences = dataStore.data.first()
+        val deviceId = preferences[DEVICE_ID].orEmpty()
+        val deviceToken = preferences[DEVICE_TOKEN].orEmpty()
+        if (deviceId.isBlank() || deviceToken.isBlank()) {
+            throw ActivationException("Session appareil indisponible.")
+        }
+
+        val response = api.clearPlaylistConfig(
+            ClearPlaylistConfigRequest(
+                deviceId = deviceId,
+                deviceToken = deviceToken,
+                host = profile.xtreamHost.takeIf { it.isNotBlank() },
+                username = profile.xtreamUsername.takeIf { it.isNotBlank() },
+                password = profile.xtreamPassword.takeIf { it.isNotBlank() },
+                epgUrl = profile.epgUrl.takeIf { it.isNotBlank() },
+                m3uUrl = profile.m3uUrl.takeIf { it.isNotBlank() },
+            ),
+        )
+
+        if (!response.success) {
+            throw ActivationException(response.error ?: "Suppression playlist refusee.")
+        }
+        if (response.cleared || !response.playlistConfigured) {
+            dataStore.edit { updated ->
+                updated[PLAYLIST_CONFIGURED] = response.playlistConfigured
+            }
+        }
+        return response.cleared
+    }
+
     suspend fun checkStatus(): RemoteActivationStatus {
         val deviceId = ensureRegisteredDeviceId()
         val deviceToken = dataStore.data.first()[DEVICE_TOKEN]
@@ -224,30 +257,7 @@ class ActivationRepository(
 
         val resolved = persistStatusResponse(response, "Statut activation indisponible.")
 
-        response.playlistConfig?.let { playlist ->
-            playlist.epgUrl?.trim()?.takeIf { it.isNotBlank() }?.let(accountManager::updateEpgUrl)
-            playlist.m3uUrl?.trim()?.takeIf { it.isNotBlank() }?.let(accountManager::updateM3uUrl)
-            val account = playlist.toAccount()
-            val hasM3u = !playlist.m3uUrl.isNullOrBlank()
-            if (account != null) {
-                val id = accountManager.upsert(account)
-                accountManager.select(id)
-            }
-            when {
-                account != null && !hasM3u -> {
-                    accountManager.selectPlaylistSource(PlaylistSource.Xtream)
-                }
-                account == null && hasM3u -> {
-                    accountManager.selectPlaylistSource(PlaylistSource.M3u)
-                }
-                account != null && hasM3u && accountManager.activePlaylistSource.value == PlaylistSource.M3u -> {
-                    accountManager.selectPlaylistSource(PlaylistSource.M3u)
-                }
-                account != null && hasM3u && accountManager.activePlaylistSource.value == PlaylistSource.Xtream -> {
-                accountManager.selectPlaylistSource(PlaylistSource.Xtream)
-                }
-            }
-        }
+        response.playlistConfig?.let(::importPlaylistConfig)
 
         return resolved
     }
@@ -345,6 +355,24 @@ class ActivationRepository(
         )
     }
 
+    private fun importPlaylistConfig(playlist: PlaylistConfigResponse) {
+        val importedProfileId = accountManager.upsertWebPlaylistProfile(
+            sourceHint = playlist.sourceHint(),
+            xtreamHost = playlist.host.orEmpty(),
+            xtreamUsername = playlist.username.orEmpty(),
+            xtreamPassword = playlist.password.orEmpty(),
+            m3uUrl = playlist.m3uUrl.orEmpty(),
+            epgUrl = playlist.epgUrl.orEmpty(),
+        )
+        if (importedProfileId != null) return
+
+        playlist.epgUrl?.trim()?.takeIf { it.isNotBlank() }?.let(accountManager::updateEpgUrl)
+        playlist.m3uUrl?.trim()?.takeIf { it.isNotBlank() }?.let {
+            accountManager.updateM3uUrl(it)
+            accountManager.selectPlaylistSource(PlaylistSource.M3u)
+        }
+    }
+
     private suspend fun ensureRegisteredDeviceId(): String {
         val stored = dataStore.data.first()[DEVICE_ID]
         val publicCode = dataStore.data.first()[PUBLIC_DEVICE_CODE]
@@ -387,20 +415,12 @@ class ActivationRepository(
     }
 }
 
-private fun PlaylistConfigResponse.toAccount(): XtreamAccount? {
-    val normalizedHost = host?.trim()?.trimEnd('/').orEmpty()
-    val normalizedUsername = username?.trim().orEmpty()
-    val normalizedPassword = password.orEmpty()
-    if (normalizedHost.isBlank() || normalizedUsername.isBlank() || normalizedPassword.isBlank()) return null
-    return XtreamAccount(
-        id = "activation_portal",
-        name = "Compte SmartVision",
-        host = normalizedHost,
-        username = normalizedUsername,
-        password = normalizedPassword,
-        epgUrl = epgUrl?.trim().orEmpty(),
-    )
-}
+private fun PlaylistConfigResponse.sourceHint(): PlaylistSource? =
+    when (source?.trim()?.lowercase()) {
+        PlaylistSource.Xtream.storageValue -> PlaylistSource.Xtream
+        PlaylistSource.M3u.storageValue -> PlaylistSource.M3u
+        else -> null
+    }
 
 data class StoredActivationState(
     val deviceId: String,

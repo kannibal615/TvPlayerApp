@@ -272,7 +272,7 @@ class FullScreenPlayerViewModel(
                 _uiState.value = _uiState.value.copy(resumePositionMs = stored.positionMs)
             }
             val localPlayback = buildPlaybackRequest(kind.playbackKind(), contentId.toString())
-            if (localPlayback != null && _uiState.value.title.isGeneratedTitleFor(kind, contentId)) {
+            if (localPlayback != null) {
                 _uiState.value = _uiState.value.copy(
                     title = localPlayback.title.cleanTitle(),
                     subtitle = localPlayback.subtitle,

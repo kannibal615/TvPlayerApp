@@ -38,6 +38,7 @@ import com.smartvision.svplayer.data.private_media.PrivateMediaRepository
 import com.smartvision.svplayer.data.remote.XtreamApiClient
 import com.smartvision.svplayer.data.remote.XtreamApiService
 import com.smartvision.svplayer.data.remote.XtreamUrlFactory
+import com.smartvision.svplayer.data.remote.XTREAM_PROFILE_HOST_HEADER
 import com.smartvision.svplayer.data.repository.DefaultCatalogRepository
 import com.smartvision.svplayer.data.repository.DefaultSettingsRepository
 import com.smartvision.svplayer.data.repository.UserContentRepository
@@ -95,16 +96,25 @@ class AppContainer(context: Context) {
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor { chain ->
             val request = chain.request()
-            val target = credentialsProvider.current().normalizedHost.toHttpUrlOrNull()
+            val targetHost = request.header(XTREAM_PROFILE_HOST_HEADER)
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?: credentialsProvider.current().normalizedHost
+            val target = targetHost.toHttpUrlOrNull()
             if (target == null) {
-                chain.proceed(request)
+                chain.proceed(request.newBuilder().removeHeader(XTREAM_PROFILE_HOST_HEADER).build())
             } else {
                 val redirected = request.url.newBuilder()
                     .scheme(target.scheme)
                     .host(target.host)
                     .port(target.port)
                     .build()
-                chain.proceed(request.newBuilder().url(redirected).build())
+                chain.proceed(
+                    request.newBuilder()
+                        .removeHeader(XTREAM_PROFILE_HOST_HEADER)
+                        .url(redirected)
+                        .build(),
+                )
             }
         }
         .addInterceptor(NetworkActivityInterceptor(networkActivityTracker, "Xtream"))
@@ -239,6 +249,7 @@ class AppContainer(context: Context) {
     val xtreamRepository: XtreamRepository = XtreamRepository(
         apiClient = xtreamApiClient,
         urlFactory = urlFactory,
+        accountManager = accountManager,
     )
 
     val userContentRepository: UserContentRepository = UserContentRepository(

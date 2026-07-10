@@ -200,6 +200,52 @@ function has_valid_device_token(PDO $pdo, string $deviceId, string $token): bool
     return $statement->fetchColumn() !== false;
 }
 
+function has_validated_device_token(PDO $pdo, string $deviceId, string $token): bool
+{
+    if ($token === '' || strlen($token) > 128) {
+        return false;
+    }
+
+    $statement = $pdo->prepare(
+        "SELECT 1
+         FROM activation_session_tokens tokens
+         INNER JOIN activation_sessions sessions ON sessions.id = tokens.session_id
+         WHERE tokens.device_id = :device_id
+           AND tokens.token_hash = :token_hash
+           AND sessions.status = 'validated'
+         LIMIT 1"
+    );
+    $statement->execute([
+        'device_id' => $deviceId,
+        'token_hash' => device_token_hash($token),
+    ]);
+
+    return $statement->fetchColumn() !== false;
+}
+
+function mark_latest_pending_device_session_validated(PDO $pdo, string $deviceId): void
+{
+    if ($deviceId === '') {
+        return;
+    }
+
+    $statement = $pdo->prepare(
+        "UPDATE activation_sessions
+         SET status = 'validated', validated_at = COALESCE(validated_at, NOW())
+         WHERE id = (
+             SELECT id FROM (
+                 SELECT id
+                 FROM activation_sessions
+                 WHERE device_id = :device_id
+                   AND status = 'pending'
+                 ORDER BY id DESC
+                 LIMIT 1
+             ) latest_session
+         )"
+    );
+    $statement->execute(['device_id' => $deviceId]);
+}
+
 function normalize_xtream_host(mixed $value): string
 {
     $host = rtrim(trim((string) $value), '/');
