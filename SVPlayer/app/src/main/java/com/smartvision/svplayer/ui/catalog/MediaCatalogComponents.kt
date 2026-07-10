@@ -354,7 +354,7 @@ fun CatalogCategoryRow(
     val borderColor by animateColorAsState(
         targetValue = when {
             focusState.isFocused -> focusStyle.accent
-            selected -> SmartVisionColors.Primary
+            selected -> focusStyle.selectedAccent
             else -> SmartVisionColors.Border
         },
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
@@ -377,17 +377,18 @@ fun CatalogCategoryRow(
                 focusRequester = focusRequester,
                 pressed = pressed,
                 focusedScale = 1.04f,
-                glowColor = SmartVisionColors.Primary,
+                glowColor = focusStyle.accent,
                 cornerRadius = MediaCatalogDimens.ItemRadius,
             )
             .zIndex(if (focusState.isFocused) 2f else 0f)
             .clip(shape)
             .background(
-                if (active) {
+                if (focusState.isFocused || selected) {
+                    val roleBackground = if (focusState.isFocused) focusStyle.background else focusStyle.selectedBackground
                     Brush.horizontalGradient(
                         listOf(
-                            SmartVisionColors.Primary.copy(alpha = 0.82f),
-                            SmartVisionColors.PrimaryDark.copy(alpha = 0.72f),
+                            roleBackground,
+                            SmartVisionColors.SurfaceElevated.copy(alpha = 0.82f),
                         ),
                     )
                 } else {

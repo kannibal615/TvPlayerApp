@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.MarkEmailUnread
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -61,6 +62,8 @@ import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
+import com.smartvision.svplayer.ui.home.HomeHeaderTab
+import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,6 +74,16 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun NotificationsRoute(
+    currentRoute: String,
+    tabs: List<HomeHeaderTab>,
+    onNavigate: (String) -> Unit,
+    onSync: () -> Unit,
+    onSettings: () -> Unit,
+    onProfile: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
+    hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     onBack: () -> Unit,
     onNotificationsSeen: () -> Unit,
     updateNotification: AppUpdateInfo? = null,
@@ -95,8 +108,18 @@ fun NotificationsRoute(
 
     NotificationsScreen(
         state = state,
+        currentRoute = currentRoute,
+        tabs = tabs,
+        onNavigate = onNavigate,
+        onSync = onSync,
+        onSettings = onSettings,
+        onProfile = onProfile,
+        onLicenseKey = onLicenseKey,
+        showLicenseKey = showLicenseKey,
+        hasNewNotifications = hasNewNotifications,
+        notificationBadgeCount = notificationBadgeCount,
         onBack = onBack,
-        onRefresh = viewModel::refresh,
+        onRefresh = { viewModel.refresh(markSeen = true, onSeen = onNotificationsSeen) },
         updateNotification = updateNotification,
         onOpenUpdate = onOpenUpdate,
         strings = strings,
@@ -107,6 +130,16 @@ fun NotificationsRoute(
 @Composable
 private fun NotificationsScreen(
     state: NotificationsUiState,
+    currentRoute: String,
+    tabs: List<HomeHeaderTab>,
+    onNavigate: (String) -> Unit,
+    onSync: () -> Unit,
+    onSettings: () -> Unit,
+    onProfile: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
+    hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     updateNotification: AppUpdateInfo?,
@@ -115,12 +148,13 @@ private fun NotificationsScreen(
     modifier: Modifier = Modifier,
 ) {
     BackHandler(onBack = onBack)
-    val backFocusRequester = remember { FocusRequester() }
+    val refreshFocusRequester = remember { FocusRequester() }
+    val currentTabFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
         withFrameNanos { }
         delay(90)
-        runCatching { backFocusRequester.requestFocus() }
+        runCatching { refreshFocusRequester.requestFocus() }
     }
 
     Column(
@@ -136,24 +170,31 @@ private fun NotificationsScreen(
                     radius = 1500f,
                 ),
             )
-            .padding(horizontal = 34.dp, vertical = 24.dp),
+            .padding(horizontal = 34.dp, vertical = 18.dp),
     ) {
+        TvHeader(
+            currentRoute = currentRoute,
+            tabs = tabs,
+            onNavigate = onNavigate,
+            onSync = onSync,
+            onSettings = onSettings,
+            onProfile = onProfile,
+            onNotifications = {},
+            onLicenseKey = onLicenseKey,
+            showLicenseKey = showLicenseKey,
+            hasNewNotifications = hasNewNotifications,
+            notificationBadgeCount = notificationBadgeCount,
+            currentTabFocusRequester = currentTabFocusRequester,
+            contentDownFocusRequester = refreshFocusRequester,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(14.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TvButton(
-                text = strings.back,
-                leadingIcon = Icons.Default.ArrowBack,
-                onClick = onBack,
-                focusRequester = backFocusRequester,
-                variant = TvButtonVariant.Secondary,
-                contentPadding = PaddingValues(horizontal = 18.dp),
-                modifier = Modifier.height(42.dp),
-            )
-            Spacer(Modifier.width(18.dp))
             Icon(Icons.Default.Notifications, contentDescription = null, tint = SmartVisionColors.CyanAccent)
             Spacer(Modifier.width(10.dp))
             Text(
@@ -168,6 +209,7 @@ private fun NotificationsScreen(
                 leadingIcon = Icons.Default.Refresh,
                 onClick = onRefresh,
                 enabled = !state.loading,
+                focusRequester = refreshFocusRequester,
                 variant = TvButtonVariant.Secondary,
                 modifier = Modifier.height(42.dp),
             )
@@ -190,20 +232,33 @@ private fun NotificationsScreen(
                     )
                 }
                 state.errorMessage != null -> {
-                    Text(
-                        text = state.errorMessage,
-                        color = SmartVisionColors.Error,
-                        style = SmartVisionType.Body,
+                    Column(
                         modifier = Modifier.align(Alignment.Center),
-                    )
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(text = state.errorMessage, color = SmartVisionColors.Error, style = SmartVisionType.Body)
+                        Spacer(Modifier.height(12.dp))
+                        TvButton(
+                            text = strings.liveTvRetry,
+                            leadingIcon = Icons.Default.Refresh,
+                            onClick = onRefresh,
+                            variant = TvButtonVariant.Secondary,
+                        )
+                    }
                 }
                 state.notifications.isEmpty() && updateNotification == null -> {
-                    Text(
-                        text = strings.noNotifications,
-                        color = SmartVisionColors.TextSecondary,
-                        style = SmartVisionType.Body,
+                    Column(
                         modifier = Modifier.align(Alignment.Center),
-                    )
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = null,
+                            tint = SmartVisionColors.CyanAccent.copy(alpha = 0.76f),
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Text(text = strings.noNotifications, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Body)
+                    }
                 }
                 else -> {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -251,6 +306,7 @@ private fun NotificationRow(
         message = notification.message,
         createdAt = notification.createdAt,
         priority = notification.priority,
+        unread = !notification.seen,
         leadingIcon = if (notification.isUpdateNotification()) Icons.Default.FileDownload else null,
         onClick = onClick,
     )
@@ -262,6 +318,7 @@ private fun NotificationCard(
     message: String,
     createdAt: String,
     priority: String,
+    unread: Boolean = false,
     leadingIcon: ImageVector? = null,
     onClick: (() -> Unit)?,
 ) {
@@ -314,6 +371,14 @@ private fun NotificationCard(
                     modifier = Modifier.padding(end = 12.dp),
                 )
             }
+            if (unread) {
+                Icon(
+                    imageVector = Icons.Default.MarkEmailUnread,
+                    contentDescription = "Unread",
+                    tint = SmartVisionColors.CyanAccent,
+                    modifier = Modifier.padding(end = 10.dp),
+                )
+            }
             Text(
                 text = title,
                 color = SmartVisionColors.TextPrimary,
@@ -327,6 +392,15 @@ private fun NotificationCard(
                 text = createdAt,
                 color = SmartVisionColors.TextSecondary,
                 style = SmartVisionType.Caption,
+            )
+        }
+        if (priority.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = priority.uppercase(),
+                color = if (priority == "urgent") SmartVisionColors.Warning else SmartVisionColors.CyanAccent,
+                style = SmartVisionType.Caption,
+                fontWeight = FontWeight.Bold,
             )
         }
         Spacer(Modifier.height(8.dp))
@@ -379,11 +453,7 @@ class NotificationsViewModel(
                     state.update {
                         it.copy(
                             loading = false,
-                            notifications = if (markSeen) {
-                                notifications.map { notification -> notification.copy(seen = true) }
-                            } else {
-                                notifications
-                            },
+                            notifications = notifications,
                             errorMessage = null,
                         )
                     }

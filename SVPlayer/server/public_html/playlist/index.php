@@ -26,11 +26,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $hostInput = trim((string) ($_POST['host'] ?? ''));
     $usernameInput = trim((string) ($_POST['username'] ?? ''));
     $passwordInput = trim((string) ($_POST['password'] ?? ''));
+    $clearEpg = $postedConfigType === 'epg' && isset($_POST['clear_epg']);
     $hasXtreamInput = $postedConfigType === 'xtream';
     $host = $hasXtreamInput ? normalize_xtream_host($hostInput) : null;
     $username = $hasXtreamInput ? clean_optional_text($usernameInput, 180) : null;
     $password = $hasXtreamInput ? clean_optional_text($passwordInput, 255) : null;
-    $epgUrl = $postedConfigType === 'epg' ? normalize_epg_url($_POST['epg_url'] ?? null) : null;
+    $epgUrl = $postedConfigType === 'epg' && !$clearEpg ? normalize_epg_url($_POST['epg_url'] ?? null) : null;
     $m3uUrl = $postedConfigType === 'm3u' ? normalize_playlist_url($_POST['m3u_url'] ?? null) : null;
 
     $postedDevice = $publicDeviceCode;
@@ -51,7 +52,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     } elseif ($m3uUrl === '') {
         $message = 'URL M3U invalide.';
         $messageType = 'error';
-    } elseif ($postedConfigType === 'epg' && $epgUrl === null) {
+    } elseif ($postedConfigType === 'epg' && $epgUrl === null && !$clearEpg) {
         $message = 'Renseignez une URL EPG.';
         $messageType = 'error';
     } elseif ($postedConfigType === 'm3u' && $m3uUrl === null) {
@@ -97,13 +98,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     $config['password'] = $password;
                     $config['source'] = 'xtream';
                 }
-                if ($epgUrl !== null) {
+                if ($clearEpg) {
+                    unset($config['epg_url']);
+                } elseif ($epgUrl !== null) {
                     $config['epg_url'] = $epgUrl;
                 }
                 if ($m3uUrl !== null) {
                     $config['m3u_url'] = $m3uUrl;
                     $config['source'] = 'm3u';
                 }
+                $config['provided_fields'] = array_values(array_filter([
+                    $hasXtreamInput ? 'xtream' : null,
+                    $postedConfigType === 'epg' ? 'epg' : null,
+                    $m3uUrl !== null ? 'm3u' : null,
+                ]));
 
                 $hasXtreamConfig = trim((string) ($config['host'] ?? '')) !== ''
                     && trim((string) ($config['username'] ?? '')) !== ''
@@ -136,7 +144,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     $publicDeviceCode,
                     $hasXtreamInput,
                     $m3uUrl !== null,
-                    $epgUrl !== null,
+                    $postedConfigType === 'epg',
                     'playlist_page'
                 );
 
@@ -203,6 +211,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     <div class="field"><label for="playlist-device-epg">Code TV</label><input id="playlist-device-epg" name="device" type="text" inputmode="text" maxlength="6" value="<?= sv_h($postedDevice) ?>" placeholder="ABC123" required></div>
                     <div class="field"><label for="playlist-epg">Lien EPG</label><input id="playlist-epg" name="epg_url" type="url" value="<?= sv_h($postedEpg) ?>" placeholder="https://serveur.example/epg.xml" autocomplete="url" required></div>
                     <button class="button button-primary" type="submit">Envoyer le lien EPG</button>
+                    <button class="button button-secondary" type="submit" name="clear_epg" value="1" formnovalidate>Supprimer le lien EPG</button>
                 </form>
             </section>
         </div>

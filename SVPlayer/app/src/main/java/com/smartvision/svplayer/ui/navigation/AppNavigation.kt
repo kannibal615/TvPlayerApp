@@ -144,12 +144,18 @@ fun AppNavigation(
         playerSettings.focusColor,
         playerSettings.focusEffect,
         playerSettings.focusBackground,
+        playerSettings.focusSelectedColor,
+        playerSettings.focusActiveColor,
+        playerSettings.focusParentColor,
     ) {
         TvFocusStyles.fromKeys(
             playerSettings.focusStyle,
             playerSettings.focusColor,
             playerSettings.focusEffect,
             playerSettings.focusBackground,
+            playerSettings.focusSelectedColor,
+            playerSettings.focusActiveColor,
+            playerSettings.focusParentColor,
         )
     }
     val backStack by navController.currentBackStackEntryAsState()
@@ -162,6 +168,7 @@ fun AppNavigation(
     var liveReturnFocusChannelId by remember { mutableStateOf<Int?>(null) }
     var movieReturnFocusId by remember { mutableStateOf<Int?>(null) }
     var seriesReturnFocusId by remember { mutableStateOf<Int?>(null) }
+    var episodeReturnFocusSeriesId by remember { mutableStateOf<Int?>(null) }
     var homeHeaderFocusRequest by remember { mutableStateOf(0) }
     var homeHeaderFocusTarget by remember { mutableStateOf(HomeHeaderFocusTarget.CurrentTab) }
     var profilePickerCompleted by remember { mutableStateOf(false) }
@@ -757,7 +764,6 @@ fun AppNavigation(
                 onReturnFocusConsumed = { movieReturnFocusId = null },
                 onOpenMovieDetails = { movieId -> navController.navigate("movie_detail/$movieId") },
                 onWatchMovie = { movieId ->
-                    movieReturnFocusId = movieId
                     navController.navigate("movie_player/$movieId")
                 },
             )
@@ -783,7 +789,7 @@ fun AppNavigation(
                 onReturnFocusConsumed = { seriesReturnFocusId = null },
                 onOpenSeriesDetails = { seriesId -> navController.navigate("series_detail/$seriesId") },
                 onWatchEpisode = { episodeId, seriesId ->
-                    seriesReturnFocusId = seriesId
+                    episodeReturnFocusSeriesId = seriesId
                     navController.navigate("episode_player/$episodeId")
                 },
             )
@@ -887,6 +893,16 @@ fun AppNavigation(
         }
         composable(AppRoute.Notifications.route) {
             NotificationsRoute(
+                currentRoute = currentRoute,
+                tabs = tabs,
+                onNavigate = navigateFromHeader,
+                onSync = launchSyncCatalog,
+                onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                onLicenseKey = { showLicensePurchaseQr = true },
+                showLicenseKey = activationState.shouldShowLicenseKey,
+                hasNewNotifications = hasNewNotifications,
+                notificationBadgeCount = notificationBadgeCount,
                 onBack = {
                     homeHeaderFocusTarget = HomeHeaderFocusTarget.Notifications
                     homeHeaderFocusRequest += 1
@@ -955,7 +971,7 @@ fun AppNavigation(
                     kind = FullScreenContentKind.Movie,
                     onBack = { navController.popBackStack() },
                     onBackWithCurrentContent = { currentMovieId ->
-                        if (movieReturnFocusId != null) movieReturnFocusId = currentMovieId
+                        movieReturnFocusId = currentMovieId
                         navController.popBackStack()
                     },
                     onPlayMovie = { nextMovieId ->
@@ -1006,6 +1022,13 @@ fun AppNavigation(
                     streamId = episodeId,
                     kind = FullScreenContentKind.Episode,
                     onBack = { navController.popBackStack() },
+                    onBackWithCurrentContent = {
+                        episodeReturnFocusSeriesId?.let { seriesId ->
+                            seriesReturnFocusId = seriesId
+                        }
+                        episodeReturnFocusSeriesId = null
+                        navController.popBackStack()
+                    },
                     onPlayEpisode = { nextEpisodeId ->
                         navController.navigate("episode_player/$nextEpisodeId") {
                             popUpTo("episode_player/{episodeId}") { inclusive = true }
@@ -1036,7 +1059,7 @@ fun AppNavigation(
                     hasNewNotifications = hasNewNotifications,
                     notificationBadgeCount = notificationBadgeCount,
                     onWatchEpisode = { episodeId ->
-                        seriesReturnFocusId = seriesId
+                        episodeReturnFocusSeriesId = seriesId
                         navController.navigate("episode_player/$episodeId")
                     },
                 )

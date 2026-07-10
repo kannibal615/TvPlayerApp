@@ -363,6 +363,7 @@ class ActivationRepository(
             xtreamPassword = playlist.password.orEmpty(),
             m3uUrl = playlist.m3uUrl.orEmpty(),
             epgUrl = playlist.epgUrl.orEmpty(),
+            epgProvided = "epg" in playlist.providedFields || playlist.providedFields.isEmpty(),
         )
         if (importedProfileId != null) return
 

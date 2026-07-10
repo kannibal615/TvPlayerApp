@@ -490,6 +490,10 @@ fun HomeScreen(
         }.onSuccess {
             catalogWorkUiState = catalogWorkUiState.completed()
             container.clearStartupCatalogWork(request.requestedAtMs)
+            delay(2_500L)
+            if (!catalogWorkUiState.active && catalogWorkUiState.errorMessage == null) {
+                catalogWorkUiState = HomeCatalogWorkUiState.Idle
+            }
         }.onFailure { error ->
             Log.w(HomeFocusLogTag, "startup catalog work failed: ${error.javaClass.simpleName}", error)
             catalogWorkUiState = catalogWorkUiState.failed(strings.catalogWorkFailed)
@@ -815,12 +819,16 @@ private data class HomeCatalogWorkUiState(
             "series" -> series
             else -> return null
         }
-        if (section.phase == SyncStatus.SyncSectionPhase.COMPLETED) return null
-        if (!active && section.phase != SyncStatus.SyncSectionPhase.ERROR) return null
+        if (!active &&
+            section.phase != SyncStatus.SyncSectionPhase.ERROR &&
+            section.phase != SyncStatus.SyncSectionPhase.COMPLETED
+        ) return null
         val running = section.phase != SyncStatus.SyncSectionPhase.WAITING &&
-            section.phase != SyncStatus.SyncSectionPhase.ERROR
+            section.phase != SyncStatus.SyncSectionPhase.ERROR &&
+            section.phase != SyncStatus.SyncSectionPhase.COMPLETED
         val label = when {
             section.phase == SyncStatus.SyncSectionPhase.ERROR -> section.message ?: strings.catalogWorkFailed
+            section.phase == SyncStatus.SyncSectionPhase.COMPLETED -> section.message ?: strings.catalogWorkCompleted
             kind == StartupCatalogWorkKind.LoadLocal -> strings.catalogLoadInProgress
             else -> strings.catalogDownloadInProgress
         }
@@ -829,6 +837,7 @@ private data class HomeCatalogWorkUiState(
             active = active && running,
             error = section.phase == SyncStatus.SyncSectionPhase.ERROR,
             label = label,
+            completed = section.phase == SyncStatus.SyncSectionPhase.COMPLETED,
         )
     }
 

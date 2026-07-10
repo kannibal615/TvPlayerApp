@@ -35,6 +35,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -128,6 +130,16 @@ data class VodPreviewContent(
     val loading: Boolean = false,
 )
 
+data class VodPreviewEpisode(
+    val id: Int,
+    val seasonNumber: Int,
+    val episodeNumber: Int,
+    val title: String,
+    val durationLabel: String?,
+    val progressPercent: Int = 0,
+    val resume: Boolean = false,
+)
+
 @Composable
 fun VodContentRow(
     title: String,
@@ -153,7 +165,7 @@ fun VodContentRow(
     val borderColor by animateColorAsState(
         targetValue = when {
             focusState.isFocused -> focusStyle.accent
-            selected -> SmartVisionColors.Primary
+            selected -> focusStyle.selectedAccent
             else -> SmartVisionColors.Border
         },
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
@@ -176,7 +188,7 @@ fun VodContentRow(
                 focusRequester = focusRequester,
                 pressed = pressed,
                 focusedScale = 1.025f,
-                glowColor = SmartVisionColors.Primary,
+                glowColor = focusStyle.accent,
                 cornerRadius = MediaCatalogDimens.ItemRadius,
             )
             .onFocusChanged { focus ->
@@ -196,10 +208,11 @@ fun VodContentRow(
             .zIndex(if (focusState.isFocused) 2f else 0f)
             .clip(shape)
             .background(
-                if (active) {
+                if (focusState.isFocused || selected) {
+                    val roleBackground = if (focusState.isFocused) focusStyle.background else focusStyle.selectedBackground
                     Brush.horizontalGradient(
                         listOf(
-                            SmartVisionColors.PrimaryDark.copy(alpha = 0.70f),
+                            roleBackground,
                             SmartVisionColors.SurfaceElevated.copy(alpha = 0.94f),
                         ),
                     )
@@ -564,8 +577,30 @@ fun VodPreviewPanel(
     monetizationManager: MonetizationManager? = null,
     premiumPurchaseUrl: String = "",
     tvCode: String = "",
+    seriesEpisodes: List<VodPreviewEpisode> = emptyList(),
+    selectedSeriesEpisodeId: Int? = null,
+    onSeriesEpisodeSelected: (Int) -> Unit = {},
+    seasonsLabel: String = "Seasons",
+    episodesLoadingLabel: String = "Loading...",
+    episodesEmptyLabel: String = "No episodes available.",
+    resumeLabel: String = "Resume",
+    progressLabel: String = "Progress",
 ) {
     val miniPlayerFocusRequester = remember { FocusRequester() }
+    val isSeriesPreview = content?.id?.startsWith("series-") == true
+    val availableSeasons = remember(seriesEpisodes) {
+        seriesEpisodes.map { it.seasonNumber }.distinct().sorted()
+    }
+    var selectedSeason by remember(content?.id, selectedSeriesEpisodeId, availableSeasons) {
+        mutableIntStateOf(
+            seriesEpisodes.firstOrNull { it.id == selectedSeriesEpisodeId }?.seasonNumber
+                ?: availableSeasons.firstOrNull()
+                ?: 1,
+        )
+    }
+    val visibleSeriesEpisodes = remember(seriesEpisodes, selectedSeason) {
+        seriesEpisodes.filter { it.seasonNumber == selectedSeason }
+    }
     MediaCatalogPanel(
         title = title,
         modifier = modifier,
@@ -717,45 +752,234 @@ fun VodPreviewPanel(
                 }
             }
 
-            item(key = "${content.id}-plot") {
-                PreviewInfoLine(label = "Resume", value = content.plot?.takeIf { it.isNotBlank() } ?: "Aucun resume disponible.")
+            if (isSeriesPreview) {
+                item(key = "${content.id}-season-selector") {
+                    SeriesSeasonSelector(
+                        seasons = availableSeasons,
+                        selectedSeason = selectedSeason,
+                        onSeasonSelected = { selectedSeason = it },
+                        label = seasonsLabel,
+                    )
+                }
+                if (content.loading) {
+                    item(key = "${content.id}-episodes-loading") {
+                        PreviewInfoLine(label = "Episodes", value = episodesLoadingLabel)
+                    }
+                } else if (visibleSeriesEpisodes.isEmpty()) {
+                    item(key = "${content.id}-episodes-empty") {
+                        PreviewInfoLine(label = "Episodes", value = episodesEmptyLabel)
+                    }
+                } else {
+                    items(
+                        items = visibleSeriesEpisodes,
+                        key = { episode -> "${content.id}-episode-${episode.id}" },
+                    ) { episode ->
+                        SeriesPreviewEpisodeRow(
+                            episode = episode,
+                            selected = episode.id == selectedSeriesEpisodeId,
+                            onClick = { onSeriesEpisodeSelected(episode.id) },
+                            resumeLabel = resumeLabel,
+                            progressLabel = progressLabel,
+                        )
+                    }
+                }
             }
 
-            content.durationLabel?.takeIf { it.isNotBlank() }?.let { duration ->
-                item(key = "${content.id}-duration") {
-                    PreviewInfoLine(label = "Duree", value = duration)
+            if (!isSeriesPreview) {
+                item(key = "${content.id}-plot") {
+                    PreviewInfoLine(label = "Resume", value = content.plot?.takeIf { it.isNotBlank() } ?: "Aucun resume disponible.")
                 }
-            }
-            content.sideLabel?.takeIf { it.isNotBlank() && it != content.durationLabel }?.let { sideLabel ->
-                item(key = "${content.id}-side") {
-                    PreviewInfoLine(label = if (content.id.startsWith("series-")) "Saisons / episodes" else "Info", value = sideLabel)
-                }
-            }
-            content.year?.takeIf { it.isNotBlank() }?.let { year ->
-                item(key = "${content.id}-year") {
-                    PreviewInfoLine(label = "Annee", value = year)
-                }
-            }
-            content.rating?.takeIf { it.isNotBlank() }?.let { rating ->
-                item(key = "${content.id}-rating") {
-                    PreviewInfoLine(label = "Note", value = "\u2605 $rating/10")
-                }
-            }
-            content.genre?.takeIf { it.isNotBlank() }?.let { genre ->
-                item(key = "${content.id}-genre") {
-                    PreviewInfoLine(label = "Genre", value = genre)
-                }
-            }
 
-            content.creditLabel?.takeIf { it.isNotBlank() }?.let { creditLabel ->
-                item(key = "${content.id}-credit") {
-                    PreviewInfoLine(label = creditLabel.substringBefore(':'), value = creditLabel.substringAfter(':', creditLabel))
+                content.durationLabel?.takeIf { it.isNotBlank() }?.let { duration ->
+                    item(key = "${content.id}-duration") {
+                        PreviewInfoLine(label = "Duree", value = duration)
+                    }
+                }
+                content.sideLabel?.takeIf { it.isNotBlank() && it != content.durationLabel }?.let { sideLabel ->
+                    item(key = "${content.id}-side") {
+                        PreviewInfoLine(label = "Info", value = sideLabel)
+                    }
+                }
+                content.year?.takeIf { it.isNotBlank() }?.let { year ->
+                    item(key = "${content.id}-year") {
+                        PreviewInfoLine(label = "Annee", value = year)
+                    }
+                }
+                content.rating?.takeIf { it.isNotBlank() }?.let { rating ->
+                    item(key = "${content.id}-rating") {
+                        PreviewInfoLine(label = "Note", value = "\u2605 $rating/10")
+                    }
+                }
+                content.genre?.takeIf { it.isNotBlank() }?.let { genre ->
+                    item(key = "${content.id}-genre") {
+                        PreviewInfoLine(label = "Genre", value = genre)
+                    }
+                }
+
+                content.creditLabel?.takeIf { it.isNotBlank() }?.let { creditLabel ->
+                    item(key = "${content.id}-credit") {
+                        PreviewInfoLine(label = creditLabel.substringBefore(':'), value = creditLabel.substringAfter(':', creditLabel))
+                    }
+                }
+                content.cast?.takeIf { it.isNotBlank() }?.let { cast ->
+                    item(key = "${content.id}-cast") {
+                        PreviewInfoLine(label = "Cast", value = cast)
+                    }
                 }
             }
-            content.cast?.takeIf { it.isNotBlank() }?.let { cast ->
-                item(key = "${content.id}-cast") {
-                    PreviewInfoLine(label = "Cast", value = cast)
+        }
+    }
+}
+
+@Composable
+private fun SeriesSeasonSelector(
+    seasons: List<Int>,
+    selectedSeason: Int,
+    onSeasonSelected: (Int) -> Unit,
+    label: String,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(SmartVisionColors.Surface.copy(alpha = 0.72f))
+            .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
+            .padding(10.dp),
+    ) {
+        Text(
+            text = label.uppercase(),
+            color = SmartVisionColors.TextSecondary,
+            style = CatalogMetaStyle,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(8.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(seasons, key = { it }) { season ->
+                val focusState = rememberTvFocusState()
+                val active = season == selectedSeason
+                Box(
+                    modifier = Modifier
+                        .height(38.dp)
+                        .width(72.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(
+                            when {
+                                focusState.isFocused -> LocalTvFocusStyle.current.background
+                                active -> LocalTvFocusStyle.current.parentBackground
+                                else -> Color.White.copy(alpha = 0.05f)
+                            },
+                        )
+                        .border(
+                            BorderStroke(
+                                if (focusState.isFocused) 2.dp else 1.dp,
+                                when {
+                                    focusState.isFocused -> LocalTvFocusStyle.current.accent
+                                    active -> LocalTvFocusStyle.current.parentAccent
+                                    else -> SmartVisionColors.Border
+                                },
+                            ),
+                            RoundedCornerShape(7.dp),
+                        )
+                        .tvFocusTarget(state = focusState, focusedScale = 1.03f)
+                        .clickable(onClick = { onSeasonSelected(season) })
+                        .padding(horizontal = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "S${season.toString().padStart(2, '0')}",
+                        color = SmartVisionColors.TextPrimary,
+                        style = CatalogMetaStyle,
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SeriesPreviewEpisodeRow(
+    episode: VodPreviewEpisode,
+    selected: Boolean,
+    onClick: () -> Unit,
+    resumeLabel: String,
+    progressLabel: String,
+) {
+    val focusState = rememberTvFocusState()
+    val shape = RoundedCornerShape(8.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(
+                when {
+                    focusState.isFocused -> LocalTvFocusStyle.current.background
+                    selected -> LocalTvFocusStyle.current.selectedBackground
+                    else -> SmartVisionColors.Surface.copy(alpha = 0.64f)
+                },
+            )
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) 2.dp else 1.dp,
+                    when {
+                        focusState.isFocused -> LocalTvFocusStyle.current.accent
+                        selected -> LocalTvFocusStyle.current.selectedAccent
+                        else -> SmartVisionColors.Border
+                    },
+                ),
+                shape,
+            )
+            .tvFocusTarget(state = focusState, focusedScale = 1.015f)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "S${episode.seasonNumber.toString().padStart(2, '0')}E${episode.episodeNumber.toString().padStart(2, '0')}",
+                color = if (selected) LocalTvFocusStyle.current.accent else SmartVisionColors.CyanAccent,
+                style = CatalogMetaStyle,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.width(68.dp),
+            )
+            Text(
+                text = episode.title,
+                color = SmartVisionColors.TextPrimary,
+                style = CatalogMetaStyle,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            episode.durationLabel?.takeIf { it.isNotBlank() }?.let { duration ->
+                Text(text = duration, color = SmartVisionColors.TextSecondary, style = CatalogMetaStyle)
+            }
+        }
+        if (episode.resume || episode.progressPercent > 0) {
+            Spacer(Modifier.height(7.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (episode.resume) resumeLabel.uppercase() else progressLabel.uppercase(),
+                    color = SmartVisionColors.CyanAccent,
+                    style = CatalogMetaStyle,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(78.dp),
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color.White.copy(alpha = 0.10f)),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(episode.progressPercent.coerceIn(0, 100) / 100f)
+                            .height(3.dp)
+                            .background(SmartVisionColors.CyanAccent),
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Text("${episode.progressPercent}%", color = SmartVisionColors.TextSecondary, style = CatalogMetaStyle)
             }
         }
     }

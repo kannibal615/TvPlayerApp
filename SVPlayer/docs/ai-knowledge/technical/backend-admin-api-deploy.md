@@ -198,3 +198,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-05: `api/notifications.php` evite la jointure utilisateur sauf besoin reel de ciblage `users`, afin de reduire le temps de reponse et les erreurs `SocketTimeoutException` cote Android.
 - 2026-07-05: ajout des defaults admin/API `app_feature_access` pour Recorder et Media Center sans nouveau fichier PHP.
 - 2026-07-05: `media_center` controle maintenant l'affichage/acces du menu Media Center cote Android.
+- 2026-07-10: PlaylistWeb et `save_playlist_config.php` stockent `provided_fields` dans le payload chiffre. Android ne confond plus un ancien `epg_url` conserve avec un EPG fourni lors du dernier envoi; la page `/playlist/` propose aussi une suppression EPG explicite.

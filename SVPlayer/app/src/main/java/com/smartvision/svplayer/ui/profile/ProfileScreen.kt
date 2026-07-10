@@ -128,6 +128,8 @@ import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
+import com.smartvision.svplayer.ui.home.HomeVisualBackground
+import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -339,6 +341,7 @@ private fun ProfileScreen(
     val currentTabFocusRequester = remember { FocusRequester() }
     val licenseSectionFocusRequester = remember { FocusRequester() }
     val xtreamSectionFocusRequester = remember { FocusRequester() }
+    val deviceCatalogFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
         delay(ProfileFocusRequestDelayMillis)
@@ -349,7 +352,7 @@ private fun ProfileScreen(
         if (!showXtreamSyncDialog) {
             delay(ProfileFocusRequestDelayMillis)
             when (pendingFocusSection) {
-                ProfileSection.Xtream -> runCatching { xtreamSectionFocusRequester.requestFocus() }
+                ProfileSection.Xtream -> runCatching { deviceCatalogFocusRequester.requestFocus() }
                 else -> Unit
             }
             pendingFocusSection = null
@@ -472,6 +475,7 @@ private fun ProfileScreen(
                         onSynchronizePlaylistProfile = onSynchronizePlaylistProfile,
                         onDeleteXtreamAccount = onDeleteXtreamAccount,
                         sectionFocusRequester = xtreamSectionFocusRequester,
+                        deviceCatalogFocusRequester = deviceCatalogFocusRequester,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     ProfileSection.History -> ProfileHistoryPanel(state = state, modifier = Modifier.fillMaxWidth())
@@ -660,6 +664,7 @@ private fun XtreamPanel(
     onSynchronizePlaylistProfile: (String) -> Unit,
     onDeleteXtreamAccount: (String) -> Unit,
     sectionFocusRequester: FocusRequester,
+    deviceCatalogFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     var profileToEdit by remember { mutableStateOf<PlaylistProfile?>(null) }
@@ -764,7 +769,11 @@ private fun XtreamPanel(
             )
         }
         Spacer(Modifier.height(8.dp))
-        DeviceCatalogInlineSection(state = state, syncStatus = syncStatus)
+        DeviceCatalogInlineSection(
+            state = state,
+            syncStatus = syncStatus,
+            focusRequester = deviceCatalogFocusRequester,
+        )
     }
 
     profileAvatarToEdit?.let { profile ->
@@ -1844,6 +1853,7 @@ private fun XtreamSyncCountCard(
     progress: SyncStatus.SyncSectionProgress,
     showProgress: Boolean,
     enabled: Boolean = true,
+    visualStyle: HomeVisualStyle? = null,
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(7.dp)
@@ -1869,6 +1879,14 @@ private fun XtreamSyncCountCard(
                 shape,
             ),
     ) {
+        visualStyle?.let { style ->
+            HomeVisualBackground(style = style, modifier = Modifier.fillMaxSize())
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF020712).copy(alpha = 0.62f)),
+            )
+        }
         if (showProgress && enabled && progress.percent < 100) {
             Box(
                 modifier = Modifier
@@ -2654,6 +2672,7 @@ private fun DevicePanel(
 private fun DeviceCatalogInlineSection(
     state: ProfileUiState,
     syncStatus: SyncStatus,
+    focusRequester: FocusRequester,
 ) {
     var focused by remember { mutableStateOf(false) }
     val focusStyle = LocalTvFocusStyle.current
@@ -2661,6 +2680,7 @@ private fun DeviceCatalogInlineSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .focusRequester(focusRequester)
             .onFocusChanged { focused = it.isFocused }
             .focusable()
             .clip(shape)
@@ -2678,6 +2698,8 @@ private fun DeviceCatalogInlineSection(
             Icon(Icons.Default.Devices, contentDescription = null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(8.dp))
             Text("Appareil et catalogue", color = SmartVisionColors.TextPrimary, style = SmartVisionType.Label, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.weight(1f))
+            DeviceCatalogSyncHeaderStatus(syncStatus)
         }
         Spacer(Modifier.height(12.dp))
         DeviceCatalogContent(state, syncStatus)
@@ -2698,12 +2720,19 @@ private fun DeviceCatalogContent(
     val progress = syncStatus.catalogProgressOrDefault(state.account)
     val showProgress = syncStatus is SyncStatus.Running || syncStatus is SyncStatus.Error
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-        XtreamSyncCountCard("Live TV", progress.live, showProgress, modifier = Modifier.weight(1f))
+        XtreamSyncCountCard(
+            "Live TV",
+            progress.live,
+            showProgress,
+            visualStyle = HomeVisualStyle.Signal,
+            modifier = Modifier.weight(1f),
+        )
         XtreamSyncCountCard(
             "Films",
             progress.movies,
             showProgress,
             enabled = state.activePlaylistSource == PlaylistSource.Xtream,
+            visualStyle = HomeVisualStyle.Cinema,
             modifier = Modifier.weight(1f),
         )
         XtreamSyncCountCard(
@@ -2711,14 +2740,15 @@ private fun DeviceCatalogContent(
             progress.series,
             showProgress,
             enabled = state.activePlaylistSource == PlaylistSource.Xtream,
+            visualStyle = HomeVisualStyle.Series,
             modifier = Modifier.weight(1f),
         )
     }
     Spacer(Modifier.height(12.dp))
-    ProfileInfoRow("Profil catalogue", catalogProfileName)
-    ProfileInfoRow("Code TV", state.tvCode)
-    ProfileInfoRow("Derniere sync", state.account.lastSync ?: "Jamais")
-    DeviceCatalogSyncStatus(syncStatus)
+    Row(horizontalArrangement = Arrangement.spacedBy(18.dp), modifier = Modifier.fillMaxWidth()) {
+        ProfileInfoRow("Code TV", state.tvCode, modifier = Modifier.weight(1f))
+        ProfileInfoRow("Profil catalogue", catalogProfileName, modifier = Modifier.weight(1f))
+    }
     if (state.errorMessage != null) {
         Spacer(Modifier.height(10.dp))
         Text(
@@ -2732,10 +2762,9 @@ private fun DeviceCatalogContent(
 }
 
 @Composable
-private fun DeviceCatalogSyncStatus(syncStatus: SyncStatus) {
+private fun DeviceCatalogSyncHeaderStatus(syncStatus: SyncStatus) {
     when (syncStatus) {
         is SyncStatus.Running -> {
-            Spacer(Modifier.height(10.dp))
             Text(
                 text = syncStatus.message,
                 color = SmartVisionColors.CyanAccent,
@@ -2746,7 +2775,6 @@ private fun DeviceCatalogSyncStatus(syncStatus: SyncStatus) {
             )
         }
         is SyncStatus.Success -> {
-            Spacer(Modifier.height(8.dp))
             Text(
                 text = syncStatus.message,
                 color = SmartVisionColors.Success,
@@ -2757,7 +2785,6 @@ private fun DeviceCatalogSyncStatus(syncStatus: SyncStatus) {
             )
         }
         is SyncStatus.Error -> {
-            Spacer(Modifier.height(8.dp))
             Text(
                 text = syncStatus.message,
                 color = SmartVisionColors.Error,
@@ -2900,9 +2927,9 @@ private fun ProfileMetric(
 }
 
 @Composable
-private fun ProfileInfoRow(label: String, value: String) {
+private fun ProfileInfoRow(label: String, value: String, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(28.dp),
         verticalAlignment = Alignment.CenterVertically,

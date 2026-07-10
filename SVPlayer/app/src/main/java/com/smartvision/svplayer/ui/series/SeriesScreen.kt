@@ -65,6 +65,7 @@ import com.smartvision.svplayer.ui.catalog.VodCatalogLoadingSkeleton
 import com.smartvision.svplayer.ui.catalog.VodContentListLoadingSkeleton
 import com.smartvision.svplayer.ui.catalog.VodContentRow
 import com.smartvision.svplayer.ui.catalog.VodPreviewContent
+import com.smartvision.svplayer.ui.catalog.VodPreviewEpisode
 import com.smartvision.svplayer.ui.catalog.VodPreviewPanel
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
@@ -123,6 +124,7 @@ fun SeriesScreen(
     val behaviorScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
     var returnFocusHandled by remember { mutableStateOf(false) }
+    var pendingFirstSeriesFocusCategoryId by remember { mutableStateOf<String?>(null) }
     var seriesToDelete by remember { mutableStateOf<SeriesItemUi?>(null) }
     var deletedSeriesIdAwaitingFocus by remember { mutableStateOf<Int?>(null) }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
@@ -263,7 +265,10 @@ fun SeriesScreen(
                     currentTabFocusRequester = currentTabFocusRequester,
                     listState = categoryListState,
                     onCategory = { category ->
-                        if (inputReady) viewModel.selectCategory(category)
+                        if (inputReady) {
+                            pendingFirstSeriesFocusCategoryId = category.id
+                            viewModel.selectCategory(category)
+                        }
                     },
                     modifier = Modifier
                         .weight(0.22f)
@@ -274,6 +279,8 @@ fun SeriesScreen(
                     firstSeriesFocusRequester = firstSeriesFocusRequester,
                     returnSeriesFocusRequester = returnSeriesFocusRequester,
                     returnFocusSeriesId = returnFocusSeriesId,
+                    focusFirstAfterCategoryId = pendingFirstSeriesFocusCategoryId,
+                    onFirstAfterCategoryFocused = { pendingFirstSeriesFocusCategoryId = null },
                     onReturnFocusConsumed = {
                         returnFocusHandled = true
                         onReturnFocusConsumed()
@@ -322,6 +329,24 @@ fun SeriesScreen(
                     monetizationManager = container.monetizationManager,
                     premiumPurchaseUrl = premiumPurchaseUrl,
                     tvCode = tvCode,
+                    seriesEpisodes = state.episodes.map { episode ->
+                        VodPreviewEpisode(
+                            id = episode.episodeId,
+                            seasonNumber = episode.seasonNumber,
+                            episodeNumber = episode.episodeNumber,
+                            title = episode.title,
+                            durationLabel = episode.duration,
+                            progressPercent = episode.progressPercent,
+                            resume = episode.episodeId == state.selectedPreviewEpisode?.episodeId && episode.resumePositionMs > 0L,
+                        )
+                    },
+                    selectedSeriesEpisodeId = state.selectedPreviewEpisode?.episodeId,
+                    onSeriesEpisodeSelected = viewModel::selectPreviewEpisode,
+                    seasonsLabel = strings.seasonsLabel,
+                    episodesLoadingLabel = strings.episodesLoading,
+                    episodesEmptyLabel = strings.episodesEmpty,
+                    resumeLabel = strings.resumePlayback,
+                    progressLabel = strings.progressLabel,
                     modifier = Modifier
                         .weight(0.34f)
                         .fillMaxHeight(),
@@ -409,6 +434,8 @@ private fun SeriesList(
     firstSeriesFocusRequester: FocusRequester,
     returnSeriesFocusRequester: FocusRequester,
     returnFocusSeriesId: Int?,
+    focusFirstAfterCategoryId: String?,
+    onFirstAfterCategoryFocused: () -> Unit,
     onReturnFocusConsumed: () -> Unit,
     rightFocusRequester: FocusRequester,
     onSearchQueryChange: (String) -> Unit,
@@ -420,11 +447,30 @@ private fun SeriesList(
 ) {
     val listState = rememberLazyListState()
 
+    LaunchedEffect(
+        focusFirstAfterCategoryId,
+        state.selectedCategoryId,
+        state.seriesLoading,
+        state.itemsLoading,
+        state.series.size,
+    ) {
+        val categoryId = focusFirstAfterCategoryId ?: return@LaunchedEffect
+        if (state.selectedCategoryId != categoryId || state.seriesLoading || state.itemsLoading) return@LaunchedEffect
+        if (state.series.isEmpty()) {
+            onFirstAfterCategoryFocused()
+            return@LaunchedEffect
+        }
+        listState.scrollToItem(0)
+        withFrameNanos { }
+        delay(80)
+        runCatching { firstSeriesFocusRequester.requestFocus() }
+        onFirstAfterCategoryFocused()
+    }
+
     LaunchedEffect(returnFocusSeriesId, state.series) {
         val seriesId = returnFocusSeriesId ?: return@LaunchedEffect
         val targetIndex = state.series.indexOfFirst { it.seriesId == seriesId }
         if (targetIndex < 0) {
-            if (!state.seriesLoading && state.series.isNotEmpty()) onReturnFocusConsumed()
             return@LaunchedEffect
         }
         listState.scrollToItem((targetIndex - 2).coerceAtLeast(0))

@@ -61,6 +61,7 @@ import coil.compose.AsyncImage
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
@@ -83,8 +84,15 @@ internal fun LiveTvFullscreenOverlay(
     onChangeBrightness: (Float) -> Unit,
     onCloseBrightness: () -> Unit,
     onBackToList: () -> Unit,
+    contextLabel: String = "Live | On air",
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
+    PremiumPlayerOverlayFrame(modifier = Modifier.fillMaxSize()) {
+        PremiumPlayerContextPill(
+            label = contextLabel,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 28.dp, top = 22.dp),
+        )
         if (playback.overlayRightText.isNotBlank()) {
             Text(
                 text = playback.overlayRightText,
@@ -153,9 +161,10 @@ private fun LiveTvBottomGlassBanner(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(95.dp)
-            .background(PlayerOverlaySurface.copy(alpha = 0.65f))
-            .padding(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 10.dp),
+            .padding(horizontal = 20.dp, vertical = 18.dp)
+            .premiumPlayerGlassSurface()
+            .height(104.dp)
+            .padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         LiveTvChannelLogo(
@@ -293,6 +302,7 @@ private fun LiveTvActionButton(
 ) {
     var focused by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
+    val focusStyle = LocalTvFocusStyle.current
     // Le favori sélectionné reste uniquement une icône rouge : pas de cercle/halo permanent.
     val showNeonHalo = enabled && (focused || active) && !selected
 
@@ -300,24 +310,24 @@ private fun LiveTvActionButton(
         targetValue = when {
             !enabled -> Color.White.copy(alpha = 0.28f)
             selected -> PlayerFavoriteRed
-            focused || active -> Color.White
+            focused || active -> focusStyle.accent
             else -> Color.White.copy(alpha = 0.92f)
         },
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "liveTvActionIcon",
     )
     val outerHalo by animateColorAsState(
-        targetValue = if (showNeonHalo) PlayerNeonBlue.copy(alpha = 0.10f) else Color.Transparent,
+        targetValue = if (showNeonHalo) focusStyle.accent.copy(alpha = 0.10f) else Color.Transparent,
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "liveTvActionOuterHalo",
     )
     val middleHalo by animateColorAsState(
-        targetValue = if (showNeonHalo) PlayerNeonBlue.copy(alpha = 0.16f) else Color.Transparent,
+        targetValue = if (showNeonHalo) focusStyle.accent.copy(alpha = 0.16f) else Color.Transparent,
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "liveTvActionMiddleHalo",
     )
     val innerHalo by animateColorAsState(
-        targetValue = if (showNeonHalo) PlayerNeonBlue.copy(alpha = 0.24f) else Color.Transparent,
+        targetValue = if (showNeonHalo) focusStyle.background else Color.Transparent,
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "liveTvActionInnerHalo",
     )

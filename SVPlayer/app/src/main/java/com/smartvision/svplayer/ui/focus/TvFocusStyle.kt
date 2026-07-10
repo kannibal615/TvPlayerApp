@@ -14,6 +14,12 @@ data class TvFocusStyle(
     val glowAlpha: Float,
     val accent: Color,
     val background: Color,
+    val selectedAccent: Color = SmartVisionColors.CyanAccent,
+    val selectedBackground: Color = SmartVisionColors.CyanAccent.copy(alpha = 0.24f),
+    val activeAccent: Color = SmartVisionColors.Primary,
+    val activeBackground: Color = SmartVisionColors.Primary.copy(alpha = 0.30f),
+    val parentAccent: Color = SmartVisionColors.FocusWhite,
+    val parentBackground: Color = SmartVisionColors.FocusWhite.copy(alpha = 0.12f),
     val effect: TvFocusEffect = TvFocusEffect.Frame,
 )
 
@@ -67,6 +73,9 @@ object TvFocusStyles {
         colorKey: String?,
         effectKey: String?,
         backgroundKey: String? = null,
+        selectedColorKey: String? = null,
+        activeColorKey: String? = null,
+        parentColorKey: String? = null,
     ): TvFocusStyle {
         val base = fromKey(styleKey)
         val effect = when {
@@ -89,6 +98,12 @@ object TvFocusStyles {
             accent = color,
             background = background,
             effect = effect,
+            selectedAccent = roleColor(selectedColorKey, Color(0xFF19F3FF)),
+            selectedBackground = roleColor(selectedColorKey, Color(0xFF19F3FF)).copy(alpha = 0.24f),
+            activeAccent = roleColor(activeColorKey, Color(0xFF2F6BFF)),
+            activeBackground = roleColor(activeColorKey, Color(0xFF2F6BFF)).copy(alpha = 0.30f),
+            parentAccent = roleColor(parentColorKey, SmartVisionColors.FocusWhite),
+            parentBackground = roleColor(parentColorKey, SmartVisionColors.FocusWhite).copy(alpha = 0.12f),
             glowAlpha = when (effect) {
                 TvFocusEffect.Frame -> 0.10f
                 TvFocusEffect.NeonGlow -> 0.46f
@@ -100,6 +115,14 @@ object TvFocusStyles {
     val FocusColors = listOf("White", "CyanNeon", "ElectricBlue")
     val FocusEffects = listOf("Frame", "NeonGlow", "GoldSweep")
     val FocusBackgrounds = listOf("BlueTransparent", "GoldTransparent", "WhiteTransparent")
+
+    private fun roleColor(key: String?, fallback: Color): Color = when {
+        key.equals("CyanNeon", ignoreCase = true) -> Color(0xFF19F3FF)
+        key.equals("ElectricBlue", ignoreCase = true) -> Color(0xFF2F6BFF)
+        key.equals("Gold", ignoreCase = true) -> GoldAccent
+        key.equals("White", ignoreCase = true) -> SmartVisionColors.FocusWhite
+        else -> fallback
+    }
 }
 
 val LocalTvFocusStyle = staticCompositionLocalOf { TvFocusStyles.Default }

@@ -154,4 +154,5 @@ data class PlaylistConfigResponse(
     @SerializedName("epg_url") val epgUrl: String? = null,
     @SerializedName("m3u_url") val m3uUrl: String? = null,
     @SerializedName("source") val source: String? = null,
+    @SerializedName("provided_fields") val providedFields: List<String> = emptyList(),
 )

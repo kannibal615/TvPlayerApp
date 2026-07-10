@@ -32,6 +32,9 @@ class DefaultSettingsRepository(
                 focusColor = preferences[FOCUS_COLOR] ?: "White",
                 focusEffect = preferences[FOCUS_EFFECT] ?: "Frame",
                 focusBackground = preferences[FOCUS_BACKGROUND] ?: "BlueTransparent",
+                focusSelectedColor = preferences[FOCUS_SELECTED_COLOR] ?: "CyanNeon",
+                focusActiveColor = preferences[FOCUS_ACTIVE_COLOR] ?: "ElectricBlue",
+                focusParentColor = preferences[FOCUS_PARENT_COLOR] ?: "White",
                 animationsEnabled = preferences[ANIMATIONS] ?: true,
                 videoRatio = preferences[VIDEO_RATIO] ?: "Fit",
                 bufferMode = preferences[BUFFER_MODE] ?: "Standard",
@@ -78,6 +81,18 @@ class DefaultSettingsRepository(
 
     override suspend fun setFocusBackground(value: String) {
         dataStore.edit { it[FOCUS_BACKGROUND] = value }
+    }
+
+    override suspend fun setFocusSelectedColor(value: String) {
+        dataStore.edit { it[FOCUS_SELECTED_COLOR] = value }
+    }
+
+    override suspend fun setFocusActiveColor(value: String) {
+        dataStore.edit { it[FOCUS_ACTIVE_COLOR] = value }
+    }
+
+    override suspend fun setFocusParentColor(value: String) {
+        dataStore.edit { it[FOCUS_PARENT_COLOR] = value }
     }
 
     override suspend fun setAnimationsEnabled(value: Boolean) {
@@ -130,6 +145,9 @@ class DefaultSettingsRepository(
         val FOCUS_COLOR = stringPreferencesKey("focus_color")
         val FOCUS_EFFECT = stringPreferencesKey("focus_effect")
         val FOCUS_BACKGROUND = stringPreferencesKey("focus_background")
+        val FOCUS_SELECTED_COLOR = stringPreferencesKey("focus_selected_color")
+        val FOCUS_ACTIVE_COLOR = stringPreferencesKey("focus_active_color")
+        val FOCUS_PARENT_COLOR = stringPreferencesKey("focus_parent_color")
         val ANIMATIONS = booleanPreferencesKey("animations_enabled")
         val VIDEO_RATIO = stringPreferencesKey("video_ratio")
         val BUFFER_MODE = stringPreferencesKey("buffer_mode")

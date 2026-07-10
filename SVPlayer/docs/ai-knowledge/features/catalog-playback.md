@@ -298,3 +298,6 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-07: Media prives rapproche son layout de YouTube: section principale player plus large, controls Media3 visibles/focusables en natif, WebView embed focusable et overlay plein ecran bas.
 - 2026-07-09: Movies et Series passent au layout 3 colonnes type Live TV, recherche centrale Room paginee, premier OK preview + focus Play, deuxieme OK fullscreen, et fiches detail accessibles uniquement via le bouton `Details`.
 - 2026-07-10: Movies/Series reconstruisent les URLs preview/player depuis Room avec l'extension locale, corrigent le cas `ALL` non-`mp4`, et le mini-player Preview devient une cible D-pad entre header et details.
+- 2026-07-10: apres OK sur une categorie Live/Movies/Series, la premiere ligne recoit le focus sans selection ni preview; le retour fullscreen Film attend la recomposition de la ligne source au lieu d'abandonner vers Categories.
+- 2026-07-10: l'apercu Series remplace les infos generiques par un navigateur saisons/episodes D-pad, choisit l'episode historique sinon S01E01, affiche la progression et conserve l'episode manuel pour Play et le deuxieme OK.
+- 2026-07-10: les overlays Live/Film/Serie partagent `PremiumPlayerOverlayFrame`, la surface glass et le contexte contenu, sans changement Media3, publicite ou ordre Back.

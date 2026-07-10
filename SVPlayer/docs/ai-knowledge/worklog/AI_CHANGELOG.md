@@ -1,5 +1,33 @@
 # AI Changelog
 
+## 2026-07-10 - Catalogues, Series, overlays, profil, notifications, EPG et focus global
+
+Type:
+- Android TV
+- UI/UX D-pad
+- backend/API
+- bugfix
+
+Resume:
+- Les categories Live/Movies/Series focalisent la premiere ligne sans selection ni preview; le retour Film attend la ligne source.
+- Series ajoute saisons, episodes, progression et reprise dans Preview; le deuxieme OK joue l'episode courant en fullscreen.
+- Les overlays fullscreen partagent une surface premium sans changer Media3, publicite ou Back.
+- Info compte/Home alignent visuels et progression catalogue; Notifications reutilise le header principal et force un refresh sans cache.
+- PlaylistWeb distingue les champs fournis et permet de supprimer l'EPG; le theme separe Focused/Selected/Active/Parent.
+
+Validation:
+- `:app:compileReleaseKotlin` : succes.
+- `php -l server/public_html/api/save_playlist_config.php` : succes.
+- `php -l server/public_html/playlist/index.php` : succes.
+
+Fichiers MD mis a jour:
+- `features/catalog-playback.md`
+- `ui-ux/tv-navigation-focus.md`
+- `ui-ux/screens-home-profile-settings.md`
+- `technical/backend-admin-api-deploy.md`
+- decision `2026-07-10-focus-state-roles.md`
+
+
 ## 2026-07-10 - Correction livraison PlaylistWeb depuis le site
 
 Type:

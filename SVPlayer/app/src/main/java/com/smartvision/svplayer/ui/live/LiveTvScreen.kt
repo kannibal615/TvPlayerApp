@@ -249,6 +249,7 @@ fun LiveTvScreen(
     var lastFocusedChannelId by remember { mutableStateOf<Int?>(null) }
     var categoryFocusTargetId by remember { mutableStateOf<String?>(null) }
     var channelFocusTargetId by remember { mutableStateOf<Int?>(null) }
+    var pendingFirstChannelFocusCategoryId by remember { mutableStateOf<String?>(null) }
     var inputReady by remember { mutableStateOf(false) }
     var initialCategoryFocusRestored by remember { mutableStateOf(false) }
     var minimumLoadingComplete by remember { mutableStateOf(false) }
@@ -351,6 +352,39 @@ fun LiveTvScreen(
             withFrameNanos { }
             currentFocusZone = LiveTvFocusZone.Channels
             runCatching { firstChannelFocusRequester.requestFocus() }
+        }
+    }
+
+    fun focusFirstChannelAfterCategorySelection(categoryId: String) {
+        focusScope.launch {
+            val firstChannel = visibleChannels.firstOrNull() ?: return@launch
+            channelFocusTargetId = firstChannel.streamId
+            lastFocusedChannelId = firstChannel.streamId
+            channelListState.scrollToItem(0)
+            if (!channelListState.awaitVisibleItem(0)) return@launch
+            withFrameNanos { }
+            currentFocusZone = LiveTvFocusZone.Channels
+            runCatching { firstChannelFocusRequester.requestFocus() }
+            if (state.selectedCategoryId == categoryId) {
+                pendingFirstChannelFocusCategoryId = null
+            }
+        }
+    }
+
+    LaunchedEffect(
+        pendingFirstChannelFocusCategoryId,
+        state.selectedCategoryId,
+        state.channelsLoading,
+        state.itemsLoading,
+        visibleChannels.size,
+    ) {
+        val categoryId = pendingFirstChannelFocusCategoryId ?: return@LaunchedEffect
+        if (state.selectedCategoryId != categoryId || state.channelsLoading || state.itemsLoading) return@LaunchedEffect
+        if (visibleChannels.isNotEmpty()) {
+            focusFirstChannelAfterCategorySelection(categoryId)
+        } else {
+            pendingFirstChannelFocusCategoryId = null
+            restoreSearchFocus()
         }
     }
 
@@ -476,9 +510,10 @@ fun LiveTvScreen(
                     },
                     onCategory = { category ->
                         if (inputReady) {
+                            pendingFirstChannelFocusCategoryId = category.id
                             viewModel.selectCategory(
                                 category = category,
-                                autoPreviewFirstChannel = !showFreeAdsPreview,
+                                autoPreviewFirstChannel = false,
                             )
                         }
                     },
@@ -731,7 +766,12 @@ private fun ChannelList(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            state.errorMessage != null && visibleChannels.isEmpty() -> ErrorState(
+            state.errorMessage != null &&
+                visibleChannels.isEmpty() &&
+                !state.categoriesLoading &&
+                !state.channelsLoading &&
+                !state.itemsLoading &&
+                !state.nextPageLoading -> ErrorState(
                 message = state.errorMessage,
                 retryLabel = strings.liveTvRetry,
                 onRetry = onRetry,
@@ -1518,7 +1558,7 @@ private fun CategoryRow(
     val borderColor by animateColorAsState(
         targetValue = when {
             focusState.isFocused -> focusStyle.accent
-            selected -> SmartVisionColors.Primary
+            selected -> focusStyle.parentAccent
             else -> SmartVisionColors.Border
         },
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
@@ -1549,7 +1589,7 @@ private fun CategoryRow(
                 focusRequester = focusRequester,
                 pressed = pressed,
                 focusedScale = 1.04f,
-                glowColor = SmartVisionColors.Primary,
+                glowColor = focusStyle.accent,
                 cornerRadius = LiveTvDimens.ItemRadius,
             )
             .zIndex(if (focusState.isFocused) 2f else 0f)
@@ -1560,11 +1600,12 @@ private fun CategoryRow(
             }
             .clip(shape)
             .background(
-                if (active) {
+                if (focusState.isFocused || selected) {
+                    val roleBackground = if (focusState.isFocused) focusStyle.background else focusStyle.parentBackground
                     Brush.horizontalGradient(
                         listOf(
-                            SmartVisionColors.Primary.copy(alpha = 0.82f),
-                            SmartVisionColors.PrimaryDark.copy(alpha = 0.72f),
+                            roleBackground,
+                            SmartVisionColors.SurfaceElevated.copy(alpha = 0.82f),
                         ),
                     )
                 } else {
@@ -1663,7 +1704,7 @@ private fun ChannelRow(
     val borderColor by animateColorAsState(
         targetValue = when {
             focusState.isFocused -> focusStyle.accent
-            selected -> SmartVisionColors.Primary
+            selected -> focusStyle.selectedAccent
             else -> SmartVisionColors.Border
         },
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
@@ -1712,7 +1753,7 @@ private fun ChannelRow(
                     focusRequester = rowFocusRequester,
                     pressed = pressed,
                     focusedScale = 1.035f,
-                    glowColor = SmartVisionColors.Primary,
+                    glowColor = focusStyle.accent,
                     cornerRadius = LiveTvDimens.ItemRadius,
                 )
                 .onFocusChanged { focus ->
@@ -1723,10 +1764,11 @@ private fun ChannelRow(
                 .zIndex(if (focusState.isFocused) 2f else 0f)
                 .clip(shape)
                 .background(
-                    if (active) {
+                    if (focusState.isFocused || selected) {
+                        val roleBackground = if (focusState.isFocused) focusStyle.background else focusStyle.selectedBackground
                         Brush.horizontalGradient(
                             listOf(
-                                SmartVisionColors.PrimaryDark.copy(alpha = 0.58f),
+                                roleBackground,
                                 SmartVisionColors.SurfaceElevated.copy(alpha = 0.94f),
                             ),
                         )

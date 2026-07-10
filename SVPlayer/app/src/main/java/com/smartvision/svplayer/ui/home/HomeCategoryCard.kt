@@ -210,7 +210,7 @@ fun HomeCategoryCard(
                         .background(Color.Black.copy(alpha = if (workOverlay.error) 0.70f else 0.62f)),
                 )
             }
-            if (workOverlay.active || workOverlay.error) {
+            if (workOverlay.active || workOverlay.error || workOverlay.completed) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -223,12 +223,16 @@ fun HomeCategoryCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = workOverlay.label,
-                            color = if (workOverlay.error) SmartVisionColors.Warning else Color.White,
+                            color = when {
+                                workOverlay.error -> SmartVisionColors.Warning
+                                workOverlay.completed -> SmartVisionColors.Success
+                                else -> Color.White
+                            },
                             style = SmartVisionType.Caption,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                         )
-                        if (!workOverlay.error) {
+                        if (!workOverlay.error && !workOverlay.completed) {
                             Text(
                                 text = "${(workOverlay.progress * 100f).toInt().coerceIn(0, 100)}%",
                                 color = Color.White,
@@ -249,6 +253,7 @@ data class HomeCategoryWorkOverlay(
     val active: Boolean,
     val error: Boolean,
     val label: String,
+    val completed: Boolean = false,
 )
 
 @Composable

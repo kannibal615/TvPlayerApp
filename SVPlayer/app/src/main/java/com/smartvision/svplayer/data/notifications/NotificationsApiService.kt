@@ -3,10 +3,12 @@ package com.smartvision.svplayer.data.notifications
 import com.google.gson.annotations.SerializedName
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Headers
 import retrofit2.http.POST
 import retrofit2.http.Query
 
 interface NotificationsApiService {
+    @Headers("Cache-Control: no-cache", "Pragma: no-cache")
     @GET("api/notifications.php")
     suspend fun getNotifications(
         @Query("device_id") deviceId: String,

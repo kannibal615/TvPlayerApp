@@ -18,11 +18,13 @@ $shortCode = normalize_activation_code($input['short_code'] ?? null);
 $hostInput = trim((string) ($input['host'] ?? ''));
 $usernameInput = trim((string) ($input['username'] ?? ''));
 $passwordInput = trim((string) ($input['password'] ?? ''));
+$clearEpg = filter_var($input['clear_epg'] ?? false, FILTER_VALIDATE_BOOLEAN);
 $hasXtreamInput = $hostInput !== '' || $usernameInput !== '' || $passwordInput !== '';
 $host = $hasXtreamInput ? normalize_xtream_host($hostInput) : null;
 $username = $hasXtreamInput ? clean_optional_text($usernameInput, 180) : null;
 $password = $hasXtreamInput ? clean_optional_text($passwordInput, 255) : null;
-$epgUrl = normalize_epg_url($input['epg_url'] ?? $input['epgUrl'] ?? null);
+$epgProvided = array_key_exists('epg_url', $input) || array_key_exists('epgUrl', $input) || $clearEpg;
+$epgUrl = $clearEpg ? null : normalize_epg_url($input['epg_url'] ?? $input['epgUrl'] ?? null);
 $m3uUrl = normalize_playlist_url($input['m3u_url'] ?? $input['m3uUrl'] ?? null);
 
 if (($deviceId === '' && $publicDeviceCode === '') || $shortCode === '') {
@@ -37,7 +39,7 @@ if ($epgUrl === '') {
 if ($m3uUrl === '') {
     json_response(['success' => false, 'error' => 'URL M3U invalide.'], 400);
 }
-if (!$hasXtreamInput && $epgUrl === null && $m3uUrl === null) {
+if (!$hasXtreamInput && !$epgProvided && $m3uUrl === null) {
     json_response(['success' => false, 'error' => 'Configuration playlist vide.'], 400);
 }
 
@@ -97,7 +99,9 @@ try {
         $config['password'] = $password;
         $config['source'] = 'xtream';
     }
-    if ($epgUrl !== null) {
+    if ($clearEpg) {
+        unset($config['epg_url']);
+    } elseif ($epgUrl !== null) {
         $config['epg_url'] = $epgUrl;
     }
     if ($m3uUrl !== null) {
@@ -106,6 +110,11 @@ try {
             $config['source'] = 'm3u';
         }
     }
+    $config['provided_fields'] = array_values(array_filter([
+        $hasXtreamInput ? 'xtream' : null,
+        $epgProvided ? 'epg' : null,
+        $m3uUrl !== null ? 'm3u' : null,
+    ]));
     $hasXtreamConfig = trim((string) ($config['host'] ?? '')) !== ''
         && trim((string) ($config['username'] ?? '')) !== ''
         && trim((string) ($config['password'] ?? '')) !== '';
@@ -141,7 +150,7 @@ try {
         clean_public_device_code($access['public_device_code'] ?? null),
         $hasXtreamInput,
         $m3uUrl !== null,
-        $epgUrl !== null,
+        $epgProvided,
         'xtream_qr'
     );
 

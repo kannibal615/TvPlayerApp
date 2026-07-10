@@ -235,6 +235,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
         xtreamPassword: String,
         m3uUrl: String,
         epgUrl: String,
+        epgProvided: Boolean = true,
     ): String? {
         val existing = _profiles.value.firstOrNull {
             it.name.equals(WebPlaylistProfileName, ignoreCase = true)
@@ -243,7 +244,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
         val normalizedUsername = xtreamUsername.trim().ifBlank { existing?.xtreamUsername.orEmpty() }
         val normalizedPassword = xtreamPassword.trim().ifBlank { existing?.xtreamPassword.orEmpty() }
         val normalizedM3u = m3uUrl.trim().ifBlank { existing?.m3uUrl.orEmpty() }
-        val normalizedEpg = epgUrl.trim().ifBlank { existing?.epgUrl.orEmpty() }
+        val normalizedEpg = if (epgProvided) epgUrl.trim() else existing?.epgUrl.orEmpty()
         val hasXtream = normalizedHost.isNotBlank() &&
             normalizedUsername.isNotBlank() &&
             normalizedPassword.isNotBlank()

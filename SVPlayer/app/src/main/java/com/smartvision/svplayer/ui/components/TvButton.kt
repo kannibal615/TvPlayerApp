@@ -73,7 +73,7 @@ fun TvButton(
 
     val targetBackground = when {
         variant == TvButtonVariant.Text -> Color.Transparent
-        selected -> SmartVisionColors.Primary.copy(alpha = 0.34f)
+        selected -> focusStyle.selectedBackground
         variant == TvButtonVariant.Exit && focusState.isFocused -> SmartVisionColors.Error
         variant == TvButtonVariant.Exit -> SmartVisionColors.Primary
         focusState.isFocused -> focusStyle.background
@@ -86,7 +86,7 @@ fun TvButton(
     val targetBorder = when {
         variant == TvButtonVariant.Exit && focusState.isFocused -> SmartVisionColors.Error
         focusState.isFocused -> focusStyle.accent
-        selected -> SmartVisionColors.CyanAccent
+        selected -> focusStyle.selectedAccent
         variant == TvButtonVariant.Success -> Color(0xFF28E08A)
         variant == TvButtonVariant.Danger -> Color(0xFFFF5A65)
         variant == TvButtonVariant.Primary -> SmartVisionColors.Primary

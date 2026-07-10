@@ -146,6 +146,7 @@ import com.smartvision.svplayer.media.MediaCenterFileType
 import com.smartvision.svplayer.media.MediaCenterPlayback
 import com.smartvision.svplayer.media.MediaCenterSource
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
@@ -1504,6 +1505,7 @@ private fun FullScreenPlayerScreen(
                         }
                     },
                     onBackToList = { exitPlayer("live_back_to_list_button") },
+                    contextLabel = strings?.playerLiveContext ?: "Live | On air",
                 )
             } else {
                 FullPlayerOverlay(
@@ -1578,6 +1580,11 @@ private fun FullScreenPlayerScreen(
                     onCloseBrightness = {
                         brightnessMode = false
                         showOverlay(requestPlayFocus = false)
+                    },
+                    contextLabel = if (playback.contentType == UserContentType.Episode) {
+                        strings?.playerSeriesContext ?: "Series | Episode"
+                    } else {
+                        strings?.playerMovieContext ?: "Movie"
                     },
                 )
             }
@@ -2157,31 +2164,28 @@ private fun FullPlayerOverlay(
     onChangeBrightness: (Float) -> Unit,
     onOpenSettings: () -> Unit,
     onCloseBrightness: () -> Unit,
+    contextLabel: String,
 ) {
     val isSeriesContent = playback.contentType == UserContentType.Episode
     val hasPrevious = playback.previousItem != null
     val hasNext = playback.nextItem != null
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    0f to Color.Transparent,
-                    0.52f to Color.Transparent,
-                    1f to Color.Black.copy(alpha = 0.82f),
-                ),
-            ),
-    ) {
+    PremiumPlayerOverlayFrame(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(start = 54.dp, end = 54.dp, bottom = 28.dp),
+                .padding(start = 40.dp, end = 40.dp, bottom = 24.dp)
+                .premiumPlayerGlassSurface()
+                .padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 14.dp),
         ) {
+            PremiumPlayerContextPill(
+                label = contextLabel,
+            )
+            Spacer(Modifier.height(10.dp))
             Text(
-                text = playback.title.uppercase(Locale.getDefault()),
+                text = playback.title,
                 color = Color.White,
-                style = PlayerTitleStyle.copy(fontSize = 30.sp, lineHeight = 34.sp),
+                style = PlayerTitleStyle.copy(fontSize = 29.sp, lineHeight = 34.sp),
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -2196,7 +2200,7 @@ private fun FullPlayerOverlay(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth(0.64f),
             )
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(16.dp))
             MovieSeriesProgressBar(
                 positionMs = positionMs,
                 durationMs = durationMs,
@@ -2204,7 +2208,7 @@ private fun FullPlayerOverlay(
                 onSeekBy = onSeekBy,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(14.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -2345,6 +2349,7 @@ private fun MovieSeriesProgressBar(
     modifier: Modifier = Modifier,
 ) {
     val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val safeDuration = durationMs.coerceAtLeast(1L)
@@ -2450,6 +2455,7 @@ private fun PlayerUtilityIconButton(
     selected: Boolean = false,
 ) {
     val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     Box(
@@ -2460,21 +2466,21 @@ private fun PlayerUtilityIconButton(
                 focusRequester = focusRequester,
                 pressed = pressed,
                 focusedScale = 1.08f,
-                glowColor = PlayerNeonBlue,
+                glowColor = focusStyle.accent,
                 cornerRadius = 50.dp,
             )
             .clip(CircleShape)
             .background(
                 when {
-                    focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.24f)
-                    selected -> Color(0xFFFF2E3A).copy(alpha = 0.16f)
+                    focusState.isFocused -> focusStyle.background
+                    selected -> focusStyle.selectedBackground
                     else -> Color.Transparent
                 },
             )
             .border(
                 BorderStroke(
                     if (focusState.isFocused || selected) 1.5.dp else 0.dp,
-                    if (selected) Color(0xFFFF2E3A).copy(alpha = 0.86f) else PlayerNeonBlue.copy(alpha = 0.86f),
+                    if (selected) focusStyle.selectedAccent else focusStyle.accent,
                 ),
                 CircleShape,
             )
@@ -3232,15 +3238,16 @@ private fun PlayerControlButton(
     iconSize: Dp = 20.dp,
 ) {
     val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val shape = CircleShape
     val outerGlowSize = maxOf(width, height) + if (primary) 12.dp else 8.dp
     val backgroundColor by animateColorAsState(
         targetValue = when {
-            primary && focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.34f)
+            primary && focusState.isFocused -> focusStyle.background
             primary -> PlayerButtonBackground.copy(alpha = 0.74f)
-            focusState.isFocused -> PlayerNeonBlue.copy(alpha = 0.24f)
+            focusState.isFocused -> focusStyle.background
             else -> PlayerButtonBackground.copy(alpha = 0.62f)
         },
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
@@ -3248,7 +3255,8 @@ private fun PlayerControlButton(
     )
     val borderColor by animateColorAsState(
         targetValue = when {
-            focusState.isFocused || primary -> PlayerNeonBlue
+            focusState.isFocused -> focusStyle.accent
+            primary -> focusStyle.activeAccent
             else -> Color.White.copy(alpha = 0.22f)
         },
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
@@ -3264,7 +3272,7 @@ private fun PlayerControlButton(
                 focusRequester = focusRequester,
                 pressed = pressed,
                 focusedScale = if (primary) 1.06f else 1.035f,
-                glowColor = PlayerNeonBlue,
+                glowColor = focusStyle.accent,
                 cornerRadius = 50.dp,
             )
             .zIndex(if (focusState.isFocused) 3f else 0f)
@@ -3282,7 +3290,7 @@ private fun PlayerControlButton(
             modifier = Modifier
                 .size(outerGlowSize)
                 .background(
-                    if (focusState.isFocused) PlayerNeonBlue.copy(alpha = 0.22f) else Color.Transparent,
+                    if (focusState.isFocused) focusStyle.background else Color.Transparent,
                     shape,
                 )
                 .padding(if (focusState.isFocused) 5.dp else 4.dp),

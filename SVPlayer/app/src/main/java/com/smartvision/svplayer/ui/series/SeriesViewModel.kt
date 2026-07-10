@@ -68,6 +68,8 @@ data class SeriesEpisodeUi(
     val duration: String?,
     val plot: String?,
     val streamUrl: String,
+    val progressPercent: Int = 0,
+    val resumePositionMs: Long = 0L,
 ) {
     val number: String = "S${seasonNumber.toString().padStart(2, '0')}E${episodeNumber.toString().padStart(2, '0')}"
 }
@@ -88,6 +90,7 @@ data class SeriesScreenState(
     val focusedSeriesId: Int? = null,
     val selectedSeriesId: Int? = null,
     val episodes: List<SeriesEpisodeUi> = emptyList(),
+    val selectedPreviewEpisodeId: Int? = null,
 ) {
     val selectedCategory: SeriesCategoryUi?
         get() = categories.firstOrNull { it.id == selectedCategoryId }
@@ -100,6 +103,9 @@ data class SeriesScreenState(
 
     val selectedPreviewEpisode: SeriesEpisodeUi?
         get() {
+            selectedPreviewEpisodeId?.let { selectedId ->
+                episodes.firstOrNull { it.episodeId == selectedId }?.let { return it }
+            }
             val preferredEpisodeId = selectedSeries?.preferredEpisodeId
             return episodes.firstOrNull { it.episodeId == preferredEpisodeId } ?: firstEpisode
         }
@@ -272,15 +278,24 @@ class SeriesViewModel(
             _uiState.update { it.copy(focusedSeriesId = series.seriesId, errorMessage = null) }
             return
         }
+        val resumeEpisodeId = historyProgress.firstOrNull { progress ->
+            progress.parentContentId?.toIntOrNull() == series.seriesId
+        }?.contentId?.toIntOrNull()
         _uiState.update {
             it.copy(
                 selectedSeriesId = series.seriesId,
                 focusedSeriesId = series.seriesId,
                 episodes = emptyList(),
+                selectedPreviewEpisodeId = resumeEpisodeId ?: series.preferredEpisodeId,
                 errorMessage = null,
             )
         }
         loadEpisodes(series.seriesId)
+    }
+
+    fun selectPreviewEpisode(episodeId: Int) {
+        if (_uiState.value.episodes.none { it.episodeId == episodeId }) return
+        _uiState.update { it.copy(selectedPreviewEpisodeId = episodeId, errorMessage = null) }
     }
 
     fun toggleFavorite(series: SeriesItemUi) {
@@ -639,12 +654,31 @@ class SeriesViewModel(
                 catalogRepository.getSeriesEpisodes(seriesId)
                     .filter { episode -> playerSettings.allowsContent(episode.title, episode.plot) }
                     .map { episode ->
-                    episode.toUiEpisode(xtreamRepository)
+                    val progress = historyProgress.firstOrNull { item ->
+                        item.contentId.toIntOrNull() == episode.episodeId
+                    }
+                    episode.toUiEpisode(xtreamRepository).copy(
+                        progressPercent = progress?.let { item ->
+                            if (item.durationMs > 0L) {
+                                ((item.positionMs * 100L) / item.durationMs).toInt().coerceIn(0, 100)
+                            } else {
+                                0
+                            }
+                        } ?: 0,
+                        resumePositionMs = progress?.positionMs ?: 0L,
+                    )
                 }
             }.onSuccess { episodes ->
                 _uiState.update {
                     if (it.selectedSeriesId == seriesId) {
-                        it.copy(episodesLoading = false, episodes = episodes)
+                        val preferredId = it.selectedPreviewEpisodeId
+                            ?.takeIf { episodeId -> episodes.any { episode -> episode.episodeId == episodeId } }
+                            ?: episodes.firstOrNull()?.episodeId
+                        it.copy(
+                            episodesLoading = false,
+                            episodes = episodes,
+                            selectedPreviewEpisodeId = preferredId,
+                        )
                     } else {
                         it.copy(episodesLoading = false)
                     }

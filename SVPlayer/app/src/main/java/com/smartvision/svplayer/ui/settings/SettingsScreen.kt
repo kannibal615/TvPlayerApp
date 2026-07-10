@@ -208,6 +208,9 @@ fun SettingsScreen(
             onSetFocusColor = { value -> scope.launch { container.settingsRepository.setFocusColor(value) } },
             onSetFocusEffect = { value -> scope.launch { container.settingsRepository.setFocusEffect(value) } },
             onSetFocusBackground = { value -> scope.launch { container.settingsRepository.setFocusBackground(value) } },
+            onSetFocusSelectedColor = { value -> scope.launch { container.settingsRepository.setFocusSelectedColor(value) } },
+            onSetFocusActiveColor = { value -> scope.launch { container.settingsRepository.setFocusActiveColor(value) } },
+            onSetFocusParentColor = { value -> scope.launch { container.settingsRepository.setFocusParentColor(value) } },
             onSetVideoRatio = { value -> scope.launch { container.settingsRepository.setVideoRatio(value) } },
             onSetAnimations = { value -> scope.launch { container.settingsRepository.setAnimationsEnabled(value) } },
             onSetRetry = { value -> scope.launch { container.settingsRepository.setRetryEnabled(value) } },
@@ -263,6 +266,9 @@ private fun SettingsMenuLayout(
     onSetFocusColor: (String) -> Unit,
     onSetFocusEffect: (String) -> Unit,
     onSetFocusBackground: (String) -> Unit,
+    onSetFocusSelectedColor: (String) -> Unit,
+    onSetFocusActiveColor: (String) -> Unit,
+    onSetFocusParentColor: (String) -> Unit,
     onSetVideoRatio: (String) -> Unit,
     onSetAnimations: (Boolean) -> Unit,
     onSetRetry: (Boolean) -> Unit,
@@ -487,6 +493,7 @@ private fun SettingsMenuLayout(
                     )
                 }
                 SettingsSection.Personalization -> {
+                    PersonalizationSectionTitle(strings.focusStyle)
                     SettingsChoice(
                         label = strings.focusStyle,
                         values = listOf(
@@ -527,11 +534,28 @@ private fun SettingsMenuLayout(
                         selected = settings.focusBackground,
                         onSelected = onSetFocusBackground,
                     )
-                    Text(
-                        text = "${strings.focusStyle}: ${settings.focusStyle} | ${strings.focusColor}: ${settings.focusColor} | ${strings.focusEffect}: ${settings.focusEffect} | ${strings.focusBackground}: ${settings.focusBackground}",
-                        color = SmartVisionColors.TextSecondary,
-                        style = SmartVisionType.Caption,
+                    Spacer(Modifier.height(12.dp))
+                    PersonalizationSectionTitle(strings.focusSelectedElement)
+                    SettingsChoice(
+                        label = strings.focusSelectedElement,
+                        values = focusRoleColorOptions(strings),
+                        selected = settings.focusSelectedColor,
+                        onSelected = onSetFocusSelectedColor,
                     )
+                    SettingsChoice(
+                        label = strings.focusActiveElement,
+                        values = focusRoleColorOptions(strings),
+                        selected = settings.focusActiveColor,
+                        onSelected = onSetFocusActiveColor,
+                    )
+                    SettingsChoice(
+                        label = strings.focusParentElement,
+                        values = focusRoleColorOptions(strings),
+                        selected = settings.focusParentColor,
+                        onSelected = onSetFocusParentColor,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    FocusStatePreview(strings = strings)
                 }
                 SettingsSection.Updates -> {
                     SettingsInfoRow(strings.installedVersion, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
@@ -782,6 +806,94 @@ private data class SettingsOption(
     val value: String,
     val label: String = value,
 )
+
+private fun focusRoleColorOptions(strings: SmartVisionStrings): List<SettingsOption> = listOf(
+    SettingsOption("White", strings.focusWhite),
+    SettingsOption("CyanNeon", strings.focusCyanNeon),
+    SettingsOption("ElectricBlue", strings.focusElectricBlue),
+    SettingsOption("Gold", strings.focusGold),
+)
+
+@Composable
+private fun PersonalizationSectionTitle(title: String) {
+    Text(
+        text = title.uppercase(),
+        color = SmartVisionColors.CyanAccent,
+        style = SmartVisionType.Caption,
+        fontWeight = FontWeight.Bold,
+    )
+    Spacer(Modifier.height(8.dp))
+}
+
+@Composable
+private fun FocusStatePreview(strings: SmartVisionStrings) {
+    val style = LocalTvFocusStyle.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF081526), RoundedCornerShape(8.dp))
+            .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
+            .padding(14.dp),
+    ) {
+        Text(
+            text = strings.focusLivePreview.uppercase(),
+            color = SmartVisionColors.TextSecondary,
+            style = SmartVisionType.Caption,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            FocusPreviewRoleCard(
+                label = strings.focusFocusedElement,
+                accent = style.accent,
+                background = style.background,
+                modifier = Modifier.weight(1f),
+            )
+            FocusPreviewRoleCard(
+                label = strings.focusSelectedElement,
+                accent = style.selectedAccent,
+                background = style.selectedBackground,
+                modifier = Modifier.weight(1f),
+            )
+            FocusPreviewRoleCard(
+                label = strings.focusActiveElement,
+                accent = style.activeAccent,
+                background = style.activeBackground,
+                modifier = Modifier.weight(1f),
+            )
+            FocusPreviewRoleCard(
+                label = strings.focusParentElement,
+                accent = style.parentAccent,
+                background = style.parentBackground,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun FocusPreviewRoleCard(
+    label: String,
+    accent: Color,
+    background: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .height(54.dp)
+            .background(background, RoundedCornerShape(7.dp))
+            .border(BorderStroke(2.dp, accent), RoundedCornerShape(7.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = SmartVisionColors.TextPrimary,
+            style = SmartVisionType.Caption,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+    }
+}
 
 private fun settingsOptions(vararg values: String): List<SettingsOption> = values.map { SettingsOption(it) }
 

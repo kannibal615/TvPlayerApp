@@ -123,6 +123,7 @@ fun MoviesScreen(
     val behaviorScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
     var returnFocusHandled by remember { mutableStateOf(false) }
+    var pendingFirstMovieFocusCategoryId by remember { mutableStateOf<String?>(null) }
     var movieToDelete by remember { mutableStateOf<MovieItemUi?>(null) }
     var deletedMovieIdAwaitingFocus by remember { mutableStateOf<Int?>(null) }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
@@ -263,7 +264,10 @@ fun MoviesScreen(
                     currentTabFocusRequester = currentTabFocusRequester,
                     listState = categoryListState,
                     onCategory = { category ->
-                        if (inputReady) viewModel.selectCategory(category)
+                        if (inputReady) {
+                            pendingFirstMovieFocusCategoryId = category.id
+                            viewModel.selectCategory(category)
+                        }
                     },
                     modifier = Modifier
                         .weight(0.22f)
@@ -274,6 +278,8 @@ fun MoviesScreen(
                     firstMovieFocusRequester = firstMovieFocusRequester,
                     returnMovieFocusRequester = returnMovieFocusRequester,
                     returnFocusMovieId = returnFocusMovieId,
+                    focusFirstAfterCategoryId = pendingFirstMovieFocusCategoryId,
+                    onFirstAfterCategoryFocused = { pendingFirstMovieFocusCategoryId = null },
                     onReturnFocusConsumed = {
                         returnFocusHandled = true
                         onReturnFocusConsumed()
@@ -315,6 +321,11 @@ fun MoviesScreen(
                     monetizationManager = container.monetizationManager,
                     premiumPurchaseUrl = premiumPurchaseUrl,
                     tvCode = tvCode,
+                    seasonsLabel = strings.seasonsLabel,
+                    episodesLoadingLabel = strings.episodesLoading,
+                    episodesEmptyLabel = strings.episodesEmpty,
+                    resumeLabel = strings.resumePlayback,
+                    progressLabel = strings.progressLabel,
                     modifier = Modifier
                         .weight(0.34f)
                         .fillMaxHeight(),
@@ -398,6 +409,8 @@ private fun MovieList(
     firstMovieFocusRequester: FocusRequester,
     returnMovieFocusRequester: FocusRequester,
     returnFocusMovieId: Int?,
+    focusFirstAfterCategoryId: String?,
+    onFirstAfterCategoryFocused: () -> Unit,
     onReturnFocusConsumed: () -> Unit,
     rightFocusRequester: FocusRequester,
     onSearchQueryChange: (String) -> Unit,
@@ -409,11 +422,30 @@ private fun MovieList(
 ) {
     val listState = rememberLazyListState()
 
+    LaunchedEffect(
+        focusFirstAfterCategoryId,
+        state.selectedCategoryId,
+        state.moviesLoading,
+        state.itemsLoading,
+        state.movies.size,
+    ) {
+        val categoryId = focusFirstAfterCategoryId ?: return@LaunchedEffect
+        if (state.selectedCategoryId != categoryId || state.moviesLoading || state.itemsLoading) return@LaunchedEffect
+        if (state.movies.isEmpty()) {
+            onFirstAfterCategoryFocused()
+            return@LaunchedEffect
+        }
+        listState.scrollToItem(0)
+        withFrameNanos { }
+        delay(80)
+        runCatching { firstMovieFocusRequester.requestFocus() }
+        onFirstAfterCategoryFocused()
+    }
+
     LaunchedEffect(returnFocusMovieId, state.movies) {
         val movieId = returnFocusMovieId ?: return@LaunchedEffect
         val targetIndex = state.movies.indexOfFirst { it.streamId == movieId }
         if (targetIndex < 0) {
-            if (!state.moviesLoading && state.movies.isNotEmpty()) onReturnFocusConsumed()
             return@LaunchedEffect
         }
         listState.scrollToItem((targetIndex - 2).coerceAtLeast(0))
