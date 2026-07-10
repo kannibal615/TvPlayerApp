@@ -60,7 +60,6 @@ import com.smartvision.svplayer.domain.access.PremiumFeatureGate
 import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
 import com.smartvision.svplayer.domain.access.PremiumFeatureGateState
 import com.smartvision.svplayer.domain.model.PlayerSettings
-import com.smartvision.svplayer.domain.model.SyncStatus
 import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import com.smartvision.svplayer.sync.CatalogSyncScheduler
 import com.smartvision.svplayer.ui.activation.ActivationScreen
@@ -164,10 +163,8 @@ fun AppNavigation(
     var profilePickerCompleted by remember { mutableStateOf(false) }
     var openProfilesAfterPicker by remember { mutableStateOf(false) }
     var profileSelectionLoading by remember { mutableStateOf(false) }
-    var profileSelectionProgress by remember { mutableStateOf(0f) }
     val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
     val xtreamConnectionState by container.xtreamConnectionManager.state.collectAsStateWithLifecycle()
-    val syncStatus by container.catalogRepository.syncStatus.collectAsStateWithLifecycle()
     val xtreamCatalogBlocked = activePlaylistSource == PlaylistSource.Xtream && xtreamConnectionState.blocksCatalogForNavigation
     val xtreamCatalogVisualBlocked = activePlaylistSource == PlaylistSource.Xtream && xtreamConnectionState.blocksCatalog
     val context = LocalContext.current
@@ -370,17 +367,6 @@ fun AppNavigation(
     val playlistProfiles by container.accountManager.profiles.collectAsStateWithLifecycle()
     val activeProfileId by container.accountManager.activeProfileId.collectAsStateWithLifecycle()
     val hasPlayableSource = xtreamAccounts.isNotEmpty() || m3uUrl.isNotBlank()
-    LaunchedEffect(profileSelectionLoading, syncStatus) {
-        if (!profileSelectionLoading) return@LaunchedEffect
-        val running = syncStatus as? SyncStatus.Running
-        profileSelectionProgress = when {
-            running != null && running.totalItems > 0 -> (0.35f + (running.completedItems.toFloat() / running.totalItems.toFloat()) * 0.60f)
-                .coerceIn(0.35f, 0.95f)
-            running != null -> 0.55f
-            profileSelectionProgress < 0.35f -> 0.35f
-            else -> profileSelectionProgress
-        }
-    }
     LaunchedEffect(
         activationState.localStateReady,
         activationState.checking,
@@ -495,7 +481,6 @@ fun AppNavigation(
             activeProfileId = activeProfileId,
             multiProfileAccess = multiProfileGate,
             selectionLoading = profileSelectionLoading,
-            selectionProgress = profileSelectionProgress,
             onLockedFeature = {
                 if (multiProfileGate.shouldShowUpgradePrompt) {
                     showLicensePurchaseQr = true
@@ -504,23 +489,9 @@ fun AppNavigation(
             onSelectProfile = { profileId ->
                 scope.launch {
                     profileSelectionLoading = true
-                    profileSelectionProgress = 0.15f
                     container.accountManager.activateProfile(profileId)
                     container.xtreamRepository.clearCaches()
                     container.catalogRepository.clearCatalogForProfileSwitch()
-                    profileSelectionProgress = 0.35f
-                    if (!container.catalogRepository.hasLocalCatalogForActiveProfile()) {
-                        runCatching {
-                            container.xtreamRepository.clearCaches()
-                            container.catalogRepository.invalidateLocalCatalogCache()
-                            container.synchronizeCatalog().getOrThrow()
-                            container.accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let { epgUrl ->
-                                container.epgRepository.synchronize(epgUrl)
-                            }
-                        }
-                    }
-                    profileSelectionProgress = 1f
-                    delay(180)
                     profilePickerCompleted = true
                     profileSelectionLoading = false
                 }

@@ -902,6 +902,9 @@ private suspend fun shouldRequestPostHomeCatalogSync(
     val source = container.accountManager.activePlaylistSource.value
     if (source == PlaylistSource.Xtream && !container.accountManager.current().isConfigured) return false
     if (source == PlaylistSource.M3u && container.accountManager.m3uUrl.value.isBlank()) return false
+    // A newly selected profile must reach HOME first. HOME then owns the first
+    // catalog synchronization and renders its progress on the Live/Movies/Series cards.
+    if (!container.catalogRepository.hasLocalCatalogForActiveProfile()) return true
     val settings = container.settingsRepository.settings.first()
     val policy = SyncFrequencyPolicy.from(settings.syncFrequency)
     if (policy.runOnStartup) return true

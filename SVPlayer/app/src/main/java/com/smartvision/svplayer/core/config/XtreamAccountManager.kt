@@ -281,7 +281,6 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
                 lastSyncAt = if (sourceChanged) null else existing?.lastSyncAt,
             ),
         )
-        activateProfile(profileId)
         return profileId
     }
 

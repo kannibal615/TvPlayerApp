@@ -1846,15 +1846,16 @@ private fun XtreamSyncCountCard(
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
+    val shape = RoundedCornerShape(7.dp)
     val valueColor = when {
         !enabled -> SmartVisionColors.TextSecondary
         progress.completed -> Color(0xFF7CFFB2)
         else -> SmartVisionColors.TextPrimary
     }
-    Column(
+    Box(
         modifier = modifier
-            .height(118.dp)
-            .clip(RoundedCornerShape(7.dp))
+            .height(126.dp)
+            .clip(shape)
             .background(
                 Brush.verticalGradient(
                     listOf(
@@ -1865,32 +1866,71 @@ private fun XtreamSyncCountCard(
             )
             .border(
                 BorderStroke(1.dp, if (enabled) SmartVisionColors.CyanAccent.copy(alpha = 0.38f) else SmartVisionColors.Border.copy(alpha = 0.44f)),
-                RoundedCornerShape(7.dp),
-            )
-            .padding(12.dp),
+                shape,
+            ),
     ) {
-        Text(title, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1)
-        Spacer(Modifier.height(5.dp))
-        Text(
-            text = if (enabled) progress.currentItems.toString() else "N/A",
-            color = valueColor,
-            style = SmartVisionType.TitleS,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-        )
-        Spacer(Modifier.weight(1f))
-        if (showProgress && enabled) {
-            LinearProgressIndicator(
-                progress = { progress.fraction },
+        if (showProgress && enabled && progress.percent < 100) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(5.dp)
-                    .clip(RoundedCornerShape(50)),
-                color = if (progress.completed) Color(0xFF7CFFB2) else SmartVisionColors.CyanAccent,
-                trackColor = Color.White.copy(alpha = 0.10f),
+                    .fillMaxHeight()
+                    .fillMaxWidth(1f - progress.fraction)
+                    .align(Alignment.CenterEnd)
+                    .background(Color.Black.copy(alpha = 0.38f)),
             )
         }
+        Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text(title, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1)
+                Spacer(Modifier.weight(1f))
+                if (showProgress && enabled) {
+                    Text(
+                        text = "${progress.percent}%",
+                        color = if (progress.completed) Color(0xFF7CFFB2) else SmartVisionColors.CyanAccent,
+                        style = SmartVisionType.Caption,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = if (enabled) progress.currentItems.toString() else "N/A",
+                color = valueColor,
+                style = SmartVisionType.TitleS,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+            if (showProgress && enabled) {
+                Text(
+                    text = progress.phase.profileSyncPhaseLabel(),
+                    color = if (progress.phase == SyncStatus.SyncSectionPhase.ERROR) SmartVisionColors.Error else SmartVisionColors.TextSecondary,
+                    style = SmartVisionType.Caption,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            if (showProgress && enabled) {
+                LinearProgressIndicator(
+                    progress = { progress.fraction },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(50)),
+                    color = if (progress.completed) Color(0xFF7CFFB2) else SmartVisionColors.CyanAccent,
+                    trackColor = Color.White.copy(alpha = 0.10f),
+                )
+            }
+        }
     }
+}
+
+private fun SyncStatus.SyncSectionPhase.profileSyncPhaseLabel(): String = when (this) {
+    SyncStatus.SyncSectionPhase.WAITING -> "En attente"
+    SyncStatus.SyncSectionPhase.RUNNING -> "Telechargement"
+    SyncStatus.SyncSectionPhase.IMPORTING -> "Import local"
+    SyncStatus.SyncSectionPhase.LOADING_TRENDS -> "Finalisation"
+    SyncStatus.SyncSectionPhase.COMPLETED -> "Termine"
+    SyncStatus.SyncSectionPhase.ERROR -> "Erreur"
 }
 
 @Composable
@@ -2655,10 +2695,24 @@ private fun DeviceCatalogContent(
         ?.trim()
         ?.ifBlank { null }
         ?: "Profil actif"
+    val progress = syncStatus.catalogProgressOrDefault(state.account)
+    val showProgress = syncStatus is SyncStatus.Running || syncStatus is SyncStatus.Error
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-        ProfileMetric("Live TV", state.account.liveCount.toString(), Modifier.weight(1f))
-        ProfileMetric("Films", state.account.movieCount.toString(), Modifier.weight(1f))
-        ProfileMetric("Series", state.account.seriesCount.toString(), Modifier.weight(1f))
+        XtreamSyncCountCard("Live TV", progress.live, showProgress, modifier = Modifier.weight(1f))
+        XtreamSyncCountCard(
+            "Films",
+            progress.movies,
+            showProgress,
+            enabled = state.activePlaylistSource == PlaylistSource.Xtream,
+            modifier = Modifier.weight(1f),
+        )
+        XtreamSyncCountCard(
+            "Series",
+            progress.series,
+            showProgress,
+            enabled = state.activePlaylistSource == PlaylistSource.Xtream,
+            modifier = Modifier.weight(1f),
+        )
     }
     Spacer(Modifier.height(12.dp))
     ProfileInfoRow("Profil catalogue", catalogProfileName)
@@ -2682,28 +2736,8 @@ private fun DeviceCatalogSyncStatus(syncStatus: SyncStatus) {
     when (syncStatus) {
         is SyncStatus.Running -> {
             Spacer(Modifier.height(10.dp))
-            LinearProgressIndicator(
-                progress = {
-                    if (syncStatus.totalItems > 0) {
-                        syncStatus.completedItems.toFloat() / syncStatus.totalItems.toFloat()
-                    } else {
-                        0f
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(5.dp)
-                    .clip(RoundedCornerShape(50)),
-                color = SmartVisionColors.CyanAccent,
-                trackColor = SmartVisionColors.Surface.copy(alpha = 0.84f),
-            )
-            Spacer(Modifier.height(8.dp))
             Text(
-                text = if (syncStatus.totalItems > 0) {
-                    "${syncStatus.message} ${syncStatus.completedItems} / ${syncStatus.totalItems} elements (${syncStatus.percent}%)"
-                } else {
-                    syncStatus.message
-                },
+                text = syncStatus.message,
                 color = SmartVisionColors.CyanAccent,
                 style = SmartVisionType.Caption,
                 fontWeight = FontWeight.SemiBold,

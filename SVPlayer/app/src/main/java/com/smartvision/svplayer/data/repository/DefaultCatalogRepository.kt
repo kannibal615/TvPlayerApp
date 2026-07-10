@@ -611,6 +611,7 @@ class DefaultCatalogRepository(
     }
 
     override suspend fun clearCatalogForProfileSwitch() = withContext(Dispatchers.IO) {
+        _syncStatus.value = SyncStatus.Idle
         invalidateLocalCatalogCache()
         bumpCatalogRevision()
     }
@@ -664,9 +665,15 @@ class DefaultCatalogRepository(
 
         val profileId = activeProfileId()
         val previousCatalogProgress = SyncStatus.CatalogProgress(
-            live = SyncStatus.SyncSectionProgress(previousItems = mediaDao.countLiveStreams(profileId)),
-            movies = SyncStatus.SyncSectionProgress(previousItems = mediaDao.countMovies(profileId)),
-            series = SyncStatus.SyncSectionProgress(previousItems = mediaDao.countSeries(profileId)),
+            live = mediaDao.countLiveStreams(profileId).let { count ->
+                SyncStatus.SyncSectionProgress(currentItems = count, previousItems = count)
+            },
+            movies = mediaDao.countMovies(profileId).let { count ->
+                SyncStatus.SyncSectionProgress(currentItems = count, previousItems = count)
+            },
+            series = mediaDao.countSeries(profileId).let { count ->
+                SyncStatus.SyncSectionProgress(currentItems = count, previousItems = count)
+            },
         )
         val syncWorkId = "catalog-sync-${System.currentTimeMillis()}"
         val syncWork = networkActivityTracker.begin(
@@ -799,22 +806,24 @@ class DefaultCatalogRepository(
                 updateProgress(message = message, fetched = fetched, remainingSteps = remainingSteps)
             }
 
-            database.withTransaction {
-                logSyncMemory(stage = "before_get_account")
-                val syncHost = credentials.normalizedHost
-                val account = api.getAccount(credentials.username, credentials.password, syncHost)
-                logSyncMemory(stage = "after_get_account")
-                updateProgress("Verification du compte Xtream...", fetched = 1, remainingSteps = 5)
-                profileDao.upsert(
-                    account.toProfileEntity(
-                        profileId = profileId,
-                        profileName = accountManager.profiles.value.firstOrNull { it.id == profileId }?.name.orEmpty(),
-                        credentials = credentials,
-                        now = now,
-                    ),
-                )
+            // Keep remote Xtream calls outside Room transactions. Some providers take
+            // several seconds per endpoint; holding a database transaction during that
+            // time blocks local catalog reads and makes the progress UI look frozen.
+            logSyncMemory(stage = "before_get_account")
+            val syncHost = credentials.normalizedHost
+            val account = api.getAccount(credentials.username, credentials.password, syncHost)
+            logSyncMemory(stage = "after_get_account")
+            updateProgress("Verification du compte Xtream...", fetched = 1, remainingSteps = 5)
+            profileDao.upsert(
+                account.toProfileEntity(
+                    profileId = profileId,
+                    profileName = accountManager.profiles.value.firstOrNull { it.id == profileId }?.name.orEmpty(),
+                    credentials = credentials,
+                    now = now,
+                ),
+            )
 
-                liveItems = synchronizeLiveSection(
+            liveItems = synchronizeLiveSection(
                     profileId = profileId,
                     host = syncHost,
                     username = credentials.username,
@@ -822,7 +831,7 @@ class DefaultCatalogRepository(
                     updateSectionProgress = ::updateSectionProgress,
                 )
 
-                movieItems = synchronizeMovieSection(
+            movieItems = synchronizeMovieSection(
                     profileId = profileId,
                     host = syncHost,
                     username = credentials.username,
@@ -831,7 +840,7 @@ class DefaultCatalogRepository(
                     updateSectionProgress = ::updateSectionProgress,
                 )
 
-                seriesItems = synchronizeSeriesSection(
+            seriesItems = synchronizeSeriesSection(
                     profileId = profileId,
                     host = syncHost,
                     username = credentials.username,
@@ -841,17 +850,16 @@ class DefaultCatalogRepository(
                     updateSectionProgress = ::updateSectionProgress,
                 )
 
-                logSyncMemory(stage = "before_sync_state_write", live = liveItems, movies = movieItems, series = seriesItems)
-                syncStateDao.upsert(
-                    SyncStateEntity(
-                        profileId = profileId,
-                        id = "catalog",
-                        lastSync = now,
-                        status = "success",
-                        message = "Synchronisation terminee",
-                    ),
-                )
-            }
+            logSyncMemory(stage = "before_sync_state_write", live = liveItems, movies = movieItems, series = seriesItems)
+            syncStateDao.upsert(
+                SyncStateEntity(
+                    profileId = profileId,
+                    id = "catalog",
+                    lastSync = now,
+                    status = "success",
+                    message = "Synchronisation terminee",
+                ),
+            )
             logSyncMemory(stage = "after_room_write", live = liveItems, movies = movieItems, series = seriesItems)
             accountManager.markProfileSynced(profileId, now)
             if (activeProfileId() == profileId) {
@@ -927,9 +935,11 @@ class DefaultCatalogRepository(
             liveCategories.size,
             4,
         )
-        categoryDao.deleteByType(profileId, MediaSection.Live.storageName)
-        upsertMappedInBatches(liveCategories, { it.toEntity(profileId, MediaSection.Live) }) { entities ->
-            categoryDao.upsertAll(entities)
+        database.withTransaction {
+            categoryDao.deleteByType(profileId, MediaSection.Live.storageName)
+            upsertMappedInBatches(liveCategories, { it.toEntity(profileId, MediaSection.Live) }) { entities ->
+                categoryDao.upsertAll(entities)
+            }
         }
 
         updateSectionProgress(
@@ -954,10 +964,25 @@ class DefaultCatalogRepository(
             liveItems,
             3,
         )
-        mediaDao.clearLiveStreams(profileId)
         val imageBaseHost = host
-        upsertMappedInBatches(liveStreams, { it.toEntity(profileId, imageBaseHost) }) { entities ->
-            mediaDao.upsertLiveStreams(entities)
+        database.withTransaction {
+            mediaDao.clearLiveStreams(profileId)
+            upsertMappedInBatches(
+                items = liveStreams,
+                mapper = { it.toEntity(profileId, imageBaseHost) },
+                upsert = mediaDao::upsertLiveStreams,
+                onBatchCommitted = { processed, total ->
+                    updateSectionProgress(
+                        "Import des chaines Live TV...",
+                        MediaSection.Live,
+                        SyncStatus.SyncSectionPhase.IMPORTING,
+                        78 + ((processed.toFloat() / total.coerceAtLeast(1)) * 20).toInt(),
+                        processed,
+                        0,
+                        0,
+                    )
+                },
+            )
         }
         logSyncMemory(stage = "after_live_room_write", live = liveItems)
         updateSectionProgress(
@@ -1001,9 +1026,11 @@ class DefaultCatalogRepository(
             movieCategories.size,
             2,
         )
-        categoryDao.deleteByType(profileId, MediaSection.Movies.storageName)
-        upsertMappedInBatches(movieCategories, { it.toEntity(profileId, MediaSection.Movies) }) { entities ->
-            categoryDao.upsertAll(entities)
+        database.withTransaction {
+            categoryDao.deleteByType(profileId, MediaSection.Movies.storageName)
+            upsertMappedInBatches(movieCategories, { it.toEntity(profileId, MediaSection.Movies) }) { entities ->
+                categoryDao.upsertAll(entities)
+            }
         }
 
         updateSectionProgress(
@@ -1050,10 +1077,25 @@ class DefaultCatalogRepository(
             movieItems,
             1,
         )
-        mediaDao.clearMovies(profileId)
         val imageBaseHost = host
-        upsertMappedInBatches(movies, { it.toEntity(profileId, imageBaseHost) }) { entities ->
-            mediaDao.upsertMovies(entities)
+        database.withTransaction {
+            mediaDao.clearMovies(profileId)
+            upsertMappedInBatches(
+                items = movies,
+                mapper = { it.toEntity(profileId, imageBaseHost) },
+                upsert = mediaDao::upsertMovies,
+                onBatchCommitted = { processed, total ->
+                    updateSectionProgress(
+                        "Import des films...",
+                        MediaSection.Movies,
+                        SyncStatus.SyncSectionPhase.IMPORTING,
+                        72 + ((processed.toFloat() / total.coerceAtLeast(1)) * 26).toInt(),
+                        processed,
+                        0,
+                        0,
+                    )
+                },
+            )
         }
         updateSectionProgress(
             "Films termines",
@@ -1103,9 +1145,11 @@ class DefaultCatalogRepository(
             seriesCategories.size,
             1,
         )
-        categoryDao.deleteByType(profileId, MediaSection.Series.storageName)
-        upsertMappedInBatches(seriesCategories, { it.toEntity(profileId, MediaSection.Series) }) { entities ->
-            categoryDao.upsertAll(entities)
+        database.withTransaction {
+            categoryDao.deleteByType(profileId, MediaSection.Series.storageName)
+            upsertMappedInBatches(seriesCategories, { it.toEntity(profileId, MediaSection.Series) }) { entities ->
+                categoryDao.upsertAll(entities)
+            }
         }
 
         updateSectionProgress(
@@ -1138,10 +1182,25 @@ class DefaultCatalogRepository(
             seriesItems,
             0,
         )
-        mediaDao.clearSeries(profileId)
         val imageBaseHost = host
-        upsertMappedInBatches(series, { it.toEntity(profileId, imageBaseHost) }) { entities ->
-            mediaDao.upsertSeries(entities)
+        database.withTransaction {
+            mediaDao.clearSeries(profileId)
+            upsertMappedInBatches(
+                items = series,
+                mapper = { it.toEntity(profileId, imageBaseHost) },
+                upsert = mediaDao::upsertSeries,
+                onBatchCommitted = { processed, total ->
+                    updateSectionProgress(
+                        "Import des series...",
+                        MediaSection.Series,
+                        SyncStatus.SyncSectionPhase.IMPORTING,
+                        70 + ((processed.toFloat() / total.coerceAtLeast(1)) * 28).toInt(),
+                        processed,
+                        0,
+                        0,
+                    )
+                },
+            )
         }
         updateSectionProgress(
             "Series terminees",
@@ -1429,6 +1488,7 @@ private fun randomTrendCandidateLimit(limit: Int): Int =
 private suspend fun <Remote, Local> upsertMappedInBatches(
     items: List<Remote>,
     mapper: (Remote) -> Local?,
+    onBatchCommitted: suspend (processed: Int, total: Int) -> Unit = { _, _ -> },
     upsert: suspend (List<Local>) -> Unit,
 ) {
     var index = 0
@@ -1442,6 +1502,7 @@ private suspend fun <Remote, Local> upsertMappedInBatches(
             upsert(mapped)
         }
         index = end
+        onBatchCommitted(index, items.size)
     }
 }
 

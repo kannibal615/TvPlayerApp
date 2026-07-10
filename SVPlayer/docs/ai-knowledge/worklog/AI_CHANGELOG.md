@@ -2885,3 +2885,11 @@ Fichiers code concernes:
 - `app/src/main/java/com/smartvision/svplayer/domain/repository/CatalogRepository.kt`
 - `app/src/main/java/com/smartvision/svplayer/ui/profile/ProfileScreen.kt`
 - `app/src/main/java/com/smartvision/svplayer/ui/player/FullScreenPlayerScreen.kt`
+
+## 2026-07-10 - Selection profil instantanee et progression catalogue par section
+
+- Who's watching n'execute plus la synchronisation catalogue avant Home: la selection active le profil, invalide les caches memoire et ouvre Home immediatement.
+- Home force la premiere synchronisation d'un profil sans catalogue local, meme en frequence manuelle/jamais, et conserve la progression classique sur les cards Live TV / Films / Series.
+- Un nouveau profil `PlaylistWeb` ne remplace plus automatiquement le profil actif existant; les profils deja synchronises restent cache-first lors des changements.
+- La synchronisation Xtream ne garde plus une transaction Room ouverte pendant les appels reseau. Les remplacements locaux sont transactionnels par section et publient une progression par lots importes.
+- Info compte > Appareil et catalogue et le popup de synchronisation affichent des cards Live TV / Films / Series avec compteur, phase, pourcentage, barre et revelation visuelle progressive.

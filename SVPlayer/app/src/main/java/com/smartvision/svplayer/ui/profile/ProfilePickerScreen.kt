@@ -58,7 +58,6 @@ fun ProfilePickerScreen(
     onSaveProfile: (PlaylistProfile) -> Unit,
     multiProfileAccess: PremiumFeatureGateResult,
     selectionLoading: Boolean,
-    selectionProgress: Float,
     onLockedFeature: () -> Unit,
 ) {
     val firstProfileFocus = remember { FocusRequester() }
