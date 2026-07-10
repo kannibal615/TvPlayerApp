@@ -234,7 +234,8 @@ fun ContinueWatchingRow(
                                 "visibleItems" to rowState.layoutInfo.visibleItemsInfo.size,
                             ),
                         )
-                        anchorFocusedItem(index)
+                        // Let LazyRow perform its native minimal reveal. Forcing every
+                        // focused item to index 0 made each D-pad step animate the whole row.
                     },
                     onFocusChanged = { focused ->
                         if (enablePreview) {

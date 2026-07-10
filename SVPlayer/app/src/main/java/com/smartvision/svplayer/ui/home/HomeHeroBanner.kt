@@ -1,8 +1,5 @@
 package com.smartvision.svplayer.ui.home
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -10,7 +7,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -22,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -31,7 +26,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -39,10 +33,7 @@ import coil.compose.AsyncImage
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.data.home.HomeSlide
-import com.smartvision.svplayer.ui.components.TvButton
-import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
-import com.smartvision.svplayer.ui.profile.SmartVisionQrDialog
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -52,10 +43,8 @@ import kotlinx.coroutines.delay
 fun HomeHeroBanner(
     strings: SmartVisionStrings,
     remoteSlides: List<HomeSlide>,
-    onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     val fallbackSlides = remember(strings) { defaultHomeHeroSlides(strings) }
     val slides = remember(remoteSlides, fallbackSlides) {
         remoteSlides.takeIf { it.isNotEmpty() }
@@ -63,7 +52,6 @@ fun HomeHeroBanner(
             ?: fallbackSlides
     }
     var slideIndex by remember { mutableIntStateOf(0) }
-    var selectedOffer by remember { mutableStateOf<HomeHeroSlide?>(null) }
     val slide = slides[slideIndex.coerceIn(slides.indices)]
     val shape = RoundedCornerShape(SmartVisionDimensions.HomePanelRadius)
 
@@ -103,8 +91,8 @@ fun HomeHeroBanner(
                 .background(
                     Brush.horizontalGradient(
                         listOf(
-                            Color(0xFF051020).copy(alpha = 0.98f),
-                            Color(0xFF051020).copy(alpha = 0.64f),
+                            Color(0xFF051020).copy(alpha = 0.88f),
+                            Color(0xFF051020).copy(alpha = 0.46f),
                             Color.Transparent,
                         ),
                     ),
@@ -129,22 +117,9 @@ fun HomeHeroBanner(
                 style = SmartVisionType.Label,
                 maxLines = 2,
             )
-            Spacer(Modifier.height(13.dp))
-            TvButton(
-                text = slide.buttonLabel.ifBlank { strings.homeHeroLearnMore },
-                onClick = {
-                    if (slide.route.isHomeAppRoute()) {
-                        onNavigate(slide.route)
-                    } else {
-                        selectedOffer = slide
-                    }
-                },
-                variant = TvButtonVariant.Primary,
-                modifier = Modifier.height(38.dp),
-            )
         }
 
-        Row(
+        androidx.compose.foundation.layout.Row(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 18.dp, bottom = 14.dp),
@@ -164,27 +139,6 @@ fun HomeHeroBanner(
         }
     }
 
-    selectedOffer?.let { offer ->
-        val offerUrl = offer.offerUrl()
-        SmartVisionQrDialog(
-            title = offer.title,
-            subtitle = offer.subtitle,
-            qrUrl = offerUrl,
-            width = 720.dp,
-            actionLabel = strings.heroOfferEmailAction,
-            onAction = {
-                val subject = Uri.encode("Offre SmartVision - ${offer.title}")
-                val body = Uri.encode("Bonjour,\n\nJe souhaite recevoir cette offre SmartVision : $offerUrl")
-                val emailIntent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:?subject=$subject&body=$body"))
-                try {
-                    context.startActivity(emailIntent)
-                } catch (_: ActivityNotFoundException) {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(offerUrl)))
-                }
-            },
-            onDismiss = { selectedOffer = null },
-        )
-    }
 }
 
 private data class HomeHeroSlide(
@@ -205,19 +159,10 @@ private fun HomeSlide.toHeroSlide(index: Int, fallbackSlides: List<HomeHeroSlide
     route = buttonRoute,
 )
 
-private fun String.isHomeAppRoute(): Boolean =
-    this == "home" || this == "live_tv" || this == "movies" || this == "series" || this == "youtube"
-
 private fun String.toAbsoluteAssetUrl(): String = when {
     isBlank() -> ""
     startsWith("http://") || startsWith("https://") -> this
     else -> BuildConfig.ACTIVATION_BASE_URL.trimEnd('/') + "/" + trimStart('/')
-}
-
-private fun HomeHeroSlide.offerUrl(): String = when {
-    route.startsWith("http://") || route.startsWith("https://") -> route
-    else -> BuildConfig.ACTIVATION_BASE_URL.trimEnd('/') +
-        "/account/?source=tv&intent=offer&offer=" + Uri.encode(title)
 }
 
 private fun defaultHomeHeroSlides(strings: SmartVisionStrings) = listOf(

@@ -91,8 +91,10 @@ fun SeriesScreen(
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
     notificationBadgeCount: Int,
+    returnFocusSeriesId: Int? = null,
+    onReturnFocusConsumed: () -> Unit = {},
     onOpenSeriesDetails: (Int) -> Unit,
-    onWatchEpisode: (Int) -> Unit,
+    onWatchEpisode: (episodeId: Int, seriesId: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
@@ -116,9 +118,11 @@ fun SeriesScreen(
     val currentTabFocusRequester = remember { FocusRequester() }
     val categoryListState = rememberLazyListState()
     val firstSeriesFocusRequester = remember { FocusRequester() }
+    val returnSeriesFocusRequester = remember { FocusRequester() }
     val previewPlayFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
+    var returnFocusHandled by remember { mutableStateOf(false) }
     var seriesToDelete by remember { mutableStateOf<SeriesItemUi?>(null) }
     var deletedSeriesIdAwaitingFocus by remember { mutableStateOf<Int?>(null) }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
@@ -168,8 +172,8 @@ fun SeriesScreen(
         deletedSeriesIdAwaitingFocus = null
     }
 
-    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), m3uActive, state.categories.size) {
-        if (accounts.isEmpty()) return@LaunchedEffect
+    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), m3uActive, state.categories.size, returnFocusSeriesId) {
+        if (accounts.isEmpty() || returnFocusSeriesId != null || returnFocusHandled) return@LaunchedEffect
         withFrameNanos { }
         delay(90)
         if (!m3uActive && !state.categoriesLoading && state.categories.isNotEmpty()) {
@@ -268,6 +272,12 @@ fun SeriesScreen(
                 SeriesList(
                     state = state,
                     firstSeriesFocusRequester = firstSeriesFocusRequester,
+                    returnSeriesFocusRequester = returnSeriesFocusRequester,
+                    returnFocusSeriesId = returnFocusSeriesId,
+                    onReturnFocusConsumed = {
+                        returnFocusHandled = true
+                        onReturnFocusConsumed()
+                    },
                     rightFocusRequester = previewPlayFocusRequester,
                     onSearchQueryChange = viewModel::updateContentSearchQuery,
                     onSeriesFocused = viewModel::focusSeries,
@@ -280,7 +290,7 @@ fun SeriesScreen(
                             )
                             val episodeId = viewModel.activateSeries(series)
                             if (episodeId != null) {
-                                onWatchEpisode(episodeId)
+                                onWatchEpisode(episodeId, series.seriesId)
                             }
                         }
                     },
@@ -297,7 +307,11 @@ fun SeriesScreen(
                         loading = state.episodesLoading,
                     ),
                     playFocusRequester = previewPlayFocusRequester,
-                    onPlay = { state.selectedPreviewEpisode?.let { onWatchEpisode(it.episodeId) } },
+                    onPlay = {
+                        val series = state.selectedSeries
+                        val episode = state.selectedPreviewEpisode
+                        if (series != null && episode != null) onWatchEpisode(episode.episodeId, series.seriesId)
+                    },
                     onDetails = { state.selectedSeries?.let { onOpenSeriesDetails(it.seriesId) } },
                     onFavorite = { state.selectedSeries?.let(viewModel::toggleFavorite) },
                     onDeleteHistory = { state.selectedSeries?.let { seriesToDelete = it } },
@@ -393,6 +407,9 @@ private fun SeriesCategoryList(
 private fun SeriesList(
     state: SeriesScreenState,
     firstSeriesFocusRequester: FocusRequester,
+    returnSeriesFocusRequester: FocusRequester,
+    returnFocusSeriesId: Int?,
+    onReturnFocusConsumed: () -> Unit,
     rightFocusRequester: FocusRequester,
     onSearchQueryChange: (String) -> Unit,
     onSeriesFocused: (SeriesItemUi) -> Unit,
@@ -403,7 +420,22 @@ private fun SeriesList(
 ) {
     val listState = rememberLazyListState()
 
+    LaunchedEffect(returnFocusSeriesId, state.series) {
+        val seriesId = returnFocusSeriesId ?: return@LaunchedEffect
+        val targetIndex = state.series.indexOfFirst { it.seriesId == seriesId }
+        if (targetIndex < 0) {
+            if (!state.seriesLoading && state.series.isNotEmpty()) onReturnFocusConsumed()
+            return@LaunchedEffect
+        }
+        listState.scrollToItem((targetIndex - 2).coerceAtLeast(0))
+        withFrameNanos { }
+        delay(80)
+        runCatching { returnSeriesFocusRequester.requestFocus() }
+        onReturnFocusConsumed()
+    }
+
     LaunchedEffect(state.selectedCategoryId, state.contentSearchQuery) {
+        if (returnFocusSeriesId != null) return@LaunchedEffect
         if (listState.layoutInfo.totalItemsCount > 0) listState.scrollToItem(0)
     }
     LaunchedEffect(listState, state.series.size, state.hasMoreItems, state.nextPageLoading, state.contentSearchQuery) {
@@ -484,7 +516,11 @@ private fun SeriesList(
                         imageUrl = series.backdropUrl ?: series.coverUrl,
                         fallbackText = series.title.take(2).uppercase(),
                         selected = series.seriesId == state.selectedSeriesId,
-                        focusRequester = if (index == 0) firstSeriesFocusRequester else itemFocusRequester,
+                        focusRequester = when {
+                            series.seriesId == returnFocusSeriesId -> returnSeriesFocusRequester
+                            index == 0 -> firstSeriesFocusRequester
+                            else -> itemFocusRequester
+                        },
                         rightFocusRequester = rightFocusRequester,
                         onFocused = { onSeriesFocused(series) },
                         onClick = { onSeriesClick(series) },

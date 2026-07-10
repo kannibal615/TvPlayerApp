@@ -70,6 +70,7 @@ import com.smartvision.svplayer.ui.appconfig.ConsentDialog
 import com.smartvision.svplayer.ui.detail.MovieDetailRoute
 import com.smartvision.svplayer.ui.detail.SeriesDetailRoute
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
+import com.smartvision.svplayer.ui.home.HomeHeaderFocusTarget
 import com.smartvision.svplayer.ui.home.HomeScreen
 import com.smartvision.svplayer.ui.home.HomeCollectionsScreen
 import com.smartvision.svplayer.ui.home.HomeCollectionKind
@@ -159,7 +160,10 @@ fun AppNavigation(
     var showXtreamSetupDialog by remember { mutableStateOf(false) }
     var premiumLicenseCode by remember { mutableStateOf("") }
     var liveReturnFocusChannelId by remember { mutableStateOf<Int?>(null) }
+    var movieReturnFocusId by remember { mutableStateOf<Int?>(null) }
+    var seriesReturnFocusId by remember { mutableStateOf<Int?>(null) }
     var homeHeaderFocusRequest by remember { mutableStateOf(0) }
+    var homeHeaderFocusTarget by remember { mutableStateOf(HomeHeaderFocusTarget.CurrentTab) }
     var profilePickerCompleted by remember { mutableStateOf(false) }
     var openProfilesAfterPicker by remember { mutableStateOf(false) }
     var profileSelectionLoading by remember { mutableStateOf(false) }
@@ -275,7 +279,8 @@ fun AppNavigation(
             }
         }
     }
-    fun navigateHomeWithHeaderFocus() {
+    fun navigateHomeWithHeaderFocus(target: HomeHeaderFocusTarget = HomeHeaderFocusTarget.CurrentTab) {
+        homeHeaderFocusTarget = target
         homeHeaderFocusRequest += 1
         navController.navigate(AppRoute.Home.route) {
             popUpTo(AppRoute.Home.route) { inclusive = false }
@@ -647,6 +652,7 @@ fun AppNavigation(
                 hasNewNotifications = hasNewNotifications,
                 notificationBadgeCount = notificationBadgeCount,
                 headerFocusRequest = homeHeaderFocusRequest,
+                headerFocusTarget = homeHeaderFocusTarget,
                 strings = strings,
                 xtreamCatalogBlocked = xtreamCatalogVisualBlocked,
                 xtreamCatalogNavigationBlocked = xtreamCatalogBlocked,
@@ -669,7 +675,7 @@ fun AppNavigation(
         composable(AppRoute.Profile.route) {
             ProfileRoute(
                 strings = strings,
-                onBack = { navigateHomeWithHeaderFocus() },
+                onBack = { navigateHomeWithHeaderFocus(HomeHeaderFocusTarget.Profile) },
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 currentRoute = currentRoute,
                 tabs = tabs,
@@ -747,8 +753,13 @@ fun AppNavigation(
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
                 notificationBadgeCount = notificationBadgeCount,
+                returnFocusMovieId = movieReturnFocusId,
+                onReturnFocusConsumed = { movieReturnFocusId = null },
                 onOpenMovieDetails = { movieId -> navController.navigate("movie_detail/$movieId") },
-                onWatchMovie = { movieId -> navController.navigate("movie_player/$movieId") },
+                onWatchMovie = { movieId ->
+                    movieReturnFocusId = movieId
+                    navController.navigate("movie_player/$movieId")
+                },
             )
         }
         composable(AppRoute.Series.route) {
@@ -768,8 +779,13 @@ fun AppNavigation(
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
                 notificationBadgeCount = notificationBadgeCount,
+                returnFocusSeriesId = seriesReturnFocusId,
+                onReturnFocusConsumed = { seriesReturnFocusId = null },
                 onOpenSeriesDetails = { seriesId -> navController.navigate("series_detail/$seriesId") },
-                onWatchEpisode = { episodeId -> navController.navigate("episode_player/$episodeId") },
+                onWatchEpisode = { episodeId, seriesId ->
+                    seriesReturnFocusId = seriesId
+                    navController.navigate("episode_player/$episodeId")
+                },
             )
         }
         composable(AppRoute.Media.route) {
@@ -850,7 +866,7 @@ fun AppNavigation(
         }
         composable(AppRoute.Settings.route) {
             SettingsScreen(
-                onBack = { navigateHomeWithHeaderFocus() },
+                onBack = { navigateHomeWithHeaderFocus(HomeHeaderFocusTarget.Settings) },
                 currentRoute = currentRoute,
                 tabs = tabs,
                 onNavigate = navigateFromHeader,
@@ -871,7 +887,11 @@ fun AppNavigation(
         }
         composable(AppRoute.Notifications.route) {
             NotificationsRoute(
-                onBack = { navController.popBackStack() },
+                onBack = {
+                    homeHeaderFocusTarget = HomeHeaderFocusTarget.Notifications
+                    homeHeaderFocusRequest += 1
+                    navController.popBackStack()
+                },
                 onNotificationsSeen = notificationBadgeViewModel::clearUnread,
                 updateNotification = appUpdateState.update,
                 onOpenUpdate = {
@@ -934,6 +954,10 @@ fun AppNavigation(
                     streamId = movieId,
                     kind = FullScreenContentKind.Movie,
                     onBack = { navController.popBackStack() },
+                    onBackWithCurrentContent = { currentMovieId ->
+                        if (movieReturnFocusId != null) movieReturnFocusId = currentMovieId
+                        navController.popBackStack()
+                    },
                     onPlayMovie = { nextMovieId ->
                         navController.navigate("movie_player/$nextMovieId") {
                             popUpTo("movie_player/{movieId}") { inclusive = true }
@@ -963,7 +987,10 @@ fun AppNavigation(
                     showLicenseKey = activationState.shouldShowLicenseKey,
                     hasNewNotifications = hasNewNotifications,
                     notificationBadgeCount = notificationBadgeCount,
-                    onWatchMovie = { id -> navController.navigate("movie_player/$id") },
+                    onWatchMovie = { id ->
+                        movieReturnFocusId = id
+                        navController.navigate("movie_player/$id")
+                    },
                 )
             }
         }
@@ -1008,7 +1035,10 @@ fun AppNavigation(
                     showLicenseKey = activationState.shouldShowLicenseKey,
                     hasNewNotifications = hasNewNotifications,
                     notificationBadgeCount = notificationBadgeCount,
-                    onWatchEpisode = { episodeId -> navController.navigate("episode_player/$episodeId") },
+                    onWatchEpisode = { episodeId ->
+                        seriesReturnFocusId = seriesId
+                        navController.navigate("episode_player/$episodeId")
+                    },
                 )
             }
         }
@@ -1020,8 +1050,10 @@ fun AppNavigation(
         currentRoute.startsWith("media_player/") ||
         currentRoute.startsWith("private_media_player/")
     BackHandler(enabled = !playerRouteActive) {
-        if (currentRoute == AppRoute.Settings.route || currentRoute == AppRoute.Profile.route) {
-            navigateHomeWithHeaderFocus()
+        if (currentRoute == AppRoute.Settings.route) {
+            navigateHomeWithHeaderFocus(HomeHeaderFocusTarget.Settings)
+        } else if (currentRoute == AppRoute.Profile.route) {
+            navigateHomeWithHeaderFocus(HomeHeaderFocusTarget.Profile)
         } else if (currentRoute != AppRoute.Home.route) {
             val popped = navController.popBackStack()
             if (!popped) {

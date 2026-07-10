@@ -272,12 +272,6 @@ fun LiveTvScreen(
         minimumLoadingComplete = true
     }
 
-    LaunchedEffect(returnFocusChannelId) {
-        val channelId = returnFocusChannelId ?: return@LaunchedEffect
-        viewModel.restoreFocusToChannel(channelId)
-        onReturnFocusConsumed()
-    }
-
     LaunchedEffect(container.activationRepository) {
         val activation = container.activationRepository.localState.first()
         tvCode = activation.publicDeviceCode.ifBlank { activation.deviceId.take(8).uppercase() }
@@ -358,6 +352,32 @@ fun LiveTvScreen(
             currentFocusZone = LiveTvFocusZone.Channels
             runCatching { firstChannelFocusRequester.requestFocus() }
         }
+    }
+
+    LaunchedEffect(returnFocusChannelId) {
+        val channelId = returnFocusChannelId ?: return@LaunchedEffect
+        // The player return owns initial focus. Without this guard, the regular startup
+        // effect can focus Categories a few frames after the channel restoration.
+        initialCategoryFocusRestored = true
+        channelFocusTargetId = channelId
+        lastFocusedChannelId = channelId
+        viewModel.restoreFocusToChannel(channelId)
+        repeat(40) {
+            val targetIndex = state.channels.indexOfFirst { it.streamId == channelId }
+            if (targetIndex >= 0) {
+                channelListState.scrollToItem((targetIndex - 2).coerceAtLeast(0))
+                if (!channelListState.awaitVisibleItem(targetIndex)) {
+                    channelListState.scrollToItem(targetIndex)
+                }
+                withFrameNanos { }
+                currentFocusZone = LiveTvFocusZone.Channels
+                runCatching { firstChannelFocusRequester.requestFocus() }
+                onReturnFocusConsumed()
+                return@LaunchedEffect
+            }
+            delay(50)
+        }
+        onReturnFocusConsumed()
     }
 
     val selectedCategoryVisible = state.categories.any { category -> category.id == state.selectedCategoryId }

@@ -2893,3 +2893,10 @@ Fichiers code concernes:
 - Un nouveau profil `PlaylistWeb` ne remplace plus automatiquement le profil actif existant; les profils deja synchronises restent cache-first lors des changements.
 - La synchronisation Xtream ne garde plus une transaction Room ouverte pendant les appels reseau. Les remplacements locaux sont transactionnels par section et publient une progression par lots importes.
 - Info compte > Appareil et catalogue et le popup de synchronisation affichent des cards Live TV / Films / Series avec compteur, phase, pourcentage, barre et revelation visuelle progressive.
+## 2026-07-10 - Restauration focus player et fluidite Home
+
+- Retour player: Live TV restaure la chaine ouverte sans repasser par Categories; Movies et Series restaurent la ligne source par identifiant et scroll local protege.
+- Navigation: Settings/Profile/Notifications restaurent leur controle d'origine dans le header Home.
+- Home: hero texte-only non focusable, marge haute stabilisee, luminosite relevee et cards Xtream sans agrandissement au focus.
+- Performance: suppression du re-ancrage horizontal anime a chaque card et creation de l'animation infinie GoldSweep uniquement pour ce style.
+- QA: `compileReleaseKotlin` et `assembleRelease` valides; APK installe uniquement sur `emulator-5554`. Retour Live et Movies, focus Settings et hero Home verifies visuellement sans crash. Series compilee et parcourue, mais aucun episode du premier item test n'etait disponible pour ouvrir le player.

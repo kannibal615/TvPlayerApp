@@ -28,7 +28,7 @@ object SmartVisionDimensions {
     val HomeScreenPadding = 32.dp
     val HomeHeaderTopPadding = 4.dp
     val HomeHeaderHeight = 44.dp
-    val HomeHeaderToHeroSpacing = 16.dp
+    val HomeHeaderToHeroSpacing = 20.dp
     val HomeHeroHeight = 132.dp
     val HomeCategoryHeight = 170.dp
     val HomeContentCardWidth = 112.dp

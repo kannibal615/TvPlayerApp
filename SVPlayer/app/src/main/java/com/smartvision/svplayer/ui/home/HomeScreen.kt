@@ -81,6 +81,7 @@ fun HomeScreen(
     onTrendingViewAll: () -> Unit,
     modifier: Modifier = Modifier,
     headerFocusRequest: Int = 0,
+    headerFocusTarget: HomeHeaderFocusTarget = HomeHeaderFocusTarget.CurrentTab,
 ) {
     val container = LocalAppContainer.current
     val context = LocalContext.current.applicationContext
@@ -104,6 +105,10 @@ fun HomeScreen(
     val catalogWorkActive = catalogWorkUiState.active
     val catalogSyncActive = catalogWorkActive && catalogWorkUiState.kind == StartupCatalogWorkKind.Synchronize
     val homeTabFocusRequester = remember { FocusRequester() }
+    val licenseFocusRequester = remember { FocusRequester() }
+    val notificationsFocusRequester = remember { FocusRequester() }
+    val profileFocusRequester = remember { FocusRequester() }
+    val settingsFocusRequester = remember { FocusRequester() }
     val liveFocusRequester = remember { FocusRequester() }
     val continueFirstFocusRequester = remember { FocusRequester() }
     val movieTrendFirstFocusRequester = remember { FocusRequester() }
@@ -412,11 +417,19 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(headerFocusRequest) {
+    LaunchedEffect(headerFocusRequest, headerFocusTarget) {
         if (headerFocusRequest > 0) {
+            scrollState.scrollTo(0)
             withFrameNanos { }
             delay(90)
-            runCatching { homeTabFocusRequester.requestFocus() }
+            val requester = when (headerFocusTarget) {
+                HomeHeaderFocusTarget.CurrentTab -> homeTabFocusRequester
+                HomeHeaderFocusTarget.License -> licenseFocusRequester
+                HomeHeaderFocusTarget.Notifications -> notificationsFocusRequester
+                HomeHeaderFocusTarget.Profile -> profileFocusRequester
+                HomeHeaderFocusTarget.Settings -> settingsFocusRequester
+            }
+            runCatching { requester.requestFocus() }
         }
     }
 
@@ -495,9 +508,9 @@ fun HomeScreen(
             .background(
                 Brush.radialGradient(
                     colors = listOf(
-                        SmartVisionColors.PrimaryDark.copy(alpha = 0.38f),
-                        SmartVisionColors.Background,
-                        Color(0xFF01040C),
+                        Color(0xFF123B70).copy(alpha = 0.72f),
+                        Color(0xFF09182B),
+                        Color(0xFF030914),
                     ),
                     radius = 1500f,
                 ),
@@ -524,6 +537,10 @@ fun HomeScreen(
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
             currentTabFocusRequester = homeTabFocusRequester,
+            licenseFocusRequester = licenseFocusRequester,
+            notificationsFocusRequester = notificationsFocusRequester,
+            profileFocusRequester = profileFocusRequester,
+            settingsFocusRequester = settingsFocusRequester,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -538,13 +555,6 @@ fun HomeScreen(
             HomeHeroBanner(
                 strings = strings,
                 remoteSlides = state.slides,
-                onNavigate = { route ->
-                    if (xtreamCatalogNavigationBlocked && route.isHomeXtreamRoute()) {
-                        onXtreamBlocked()
-                    } else {
-                        onNavigate(route)
-                    }
-                },
                 modifier = Modifier.fillMaxWidth(),
             )
 

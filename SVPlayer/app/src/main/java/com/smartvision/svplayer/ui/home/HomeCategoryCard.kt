@@ -95,7 +95,9 @@ fun HomeCategoryCard(
                 state = focusState,
                 focusRequester = focusRequester,
                 pressed = pressed,
-                focusedScale = 1.055f,
+                // HOME category cards keep a stable footprint: focus is expressed by
+                // the shared frame/glow instead of overlapping neighbouring content.
+                focusedScale = 1.0f,
                 glowColor = accent,
                 cornerRadius = SmartVisionDimensions.HomeCardRadius,
             )
@@ -117,8 +119,8 @@ fun HomeCategoryCard(
                 .background(
                     Brush.horizontalGradient(
                         listOf(
-                            Color(0xFF020712).copy(alpha = 0.88f),
-                            Color(0xFF020712).copy(alpha = 0.38f),
+                            Color(0xFF020712).copy(alpha = 0.72f),
+                            Color(0xFF020712).copy(alpha = 0.24f),
                             Color.Transparent,
                         ),
                     ),
@@ -129,7 +131,7 @@ fun HomeCategoryCard(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.Transparent, Color(0xFF020712).copy(alpha = 0.82f)),
+                        listOf(Color.Transparent, Color(0xFF020712).copy(alpha = 0.68f)),
                     ),
                 ),
         )

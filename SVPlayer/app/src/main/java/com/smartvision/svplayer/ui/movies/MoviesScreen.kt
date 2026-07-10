@@ -91,6 +91,8 @@ fun MoviesScreen(
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
     notificationBadgeCount: Int,
+    returnFocusMovieId: Int? = null,
+    onReturnFocusConsumed: () -> Unit = {},
     onOpenMovieDetails: (Int) -> Unit,
     onWatchMovie: (Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -116,9 +118,11 @@ fun MoviesScreen(
     val currentTabFocusRequester = remember { FocusRequester() }
     val categoryListState = rememberLazyListState()
     val firstMovieFocusRequester = remember { FocusRequester() }
+    val returnMovieFocusRequester = remember { FocusRequester() }
     val previewPlayFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
+    var returnFocusHandled by remember { mutableStateOf(false) }
     var movieToDelete by remember { mutableStateOf<MovieItemUi?>(null) }
     var deletedMovieIdAwaitingFocus by remember { mutableStateOf<Int?>(null) }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
@@ -168,8 +172,8 @@ fun MoviesScreen(
         deletedMovieIdAwaitingFocus = null
     }
 
-    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), m3uActive, state.categories.size) {
-        if (accounts.isEmpty()) return@LaunchedEffect
+    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), m3uActive, state.categories.size, returnFocusMovieId) {
+        if (accounts.isEmpty() || returnFocusMovieId != null || returnFocusHandled) return@LaunchedEffect
         withFrameNanos { }
         delay(90)
         if (!m3uActive && !state.categoriesLoading && state.categories.isNotEmpty()) {
@@ -268,6 +272,12 @@ fun MoviesScreen(
                 MovieList(
                     state = state,
                     firstMovieFocusRequester = firstMovieFocusRequester,
+                    returnMovieFocusRequester = returnMovieFocusRequester,
+                    returnFocusMovieId = returnFocusMovieId,
+                    onReturnFocusConsumed = {
+                        returnFocusHandled = true
+                        onReturnFocusConsumed()
+                    },
                     rightFocusRequester = previewPlayFocusRequester,
                     onSearchQueryChange = viewModel::updateContentSearchQuery,
                     onMovieFocused = viewModel::focusMovie,
@@ -386,6 +396,9 @@ private fun MovieCategoryList(
 private fun MovieList(
     state: MoviesScreenState,
     firstMovieFocusRequester: FocusRequester,
+    returnMovieFocusRequester: FocusRequester,
+    returnFocusMovieId: Int?,
+    onReturnFocusConsumed: () -> Unit,
     rightFocusRequester: FocusRequester,
     onSearchQueryChange: (String) -> Unit,
     onMovieFocused: (MovieItemUi) -> Unit,
@@ -396,7 +409,22 @@ private fun MovieList(
 ) {
     val listState = rememberLazyListState()
 
+    LaunchedEffect(returnFocusMovieId, state.movies) {
+        val movieId = returnFocusMovieId ?: return@LaunchedEffect
+        val targetIndex = state.movies.indexOfFirst { it.streamId == movieId }
+        if (targetIndex < 0) {
+            if (!state.moviesLoading && state.movies.isNotEmpty()) onReturnFocusConsumed()
+            return@LaunchedEffect
+        }
+        listState.scrollToItem((targetIndex - 2).coerceAtLeast(0))
+        withFrameNanos { }
+        delay(80)
+        runCatching { returnMovieFocusRequester.requestFocus() }
+        onReturnFocusConsumed()
+    }
+
     LaunchedEffect(state.selectedCategoryId, state.contentSearchQuery) {
+        if (returnFocusMovieId != null) return@LaunchedEffect
         if (listState.layoutInfo.totalItemsCount > 0) listState.scrollToItem(0)
     }
     LaunchedEffect(listState, state.movies.size, state.hasMoreItems, state.nextPageLoading, state.contentSearchQuery) {
@@ -477,7 +505,11 @@ private fun MovieList(
                         imageUrl = movie.backdropUrl ?: movie.posterUrl,
                         fallbackText = movie.title.take(2).uppercase(),
                         selected = movie.streamId == state.selectedMovieId,
-                        focusRequester = if (index == 0) firstMovieFocusRequester else itemFocusRequester,
+                        focusRequester = when {
+                            movie.streamId == returnFocusMovieId -> returnMovieFocusRequester
+                            index == 0 -> firstMovieFocusRequester
+                            else -> itemFocusRequester
+                        },
                         rightFocusRequester = rightFocusRequester,
                         onFocused = { onMovieFocused(movie) },
                         onClick = { onMovieClick(movie) },

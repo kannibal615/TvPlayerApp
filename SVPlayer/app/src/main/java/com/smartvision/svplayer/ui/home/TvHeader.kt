@@ -80,6 +80,14 @@ data class HomeHeaderTab(
     val warning: Boolean = false,
 )
 
+enum class HomeHeaderFocusTarget {
+    CurrentTab,
+    License,
+    Notifications,
+    Profile,
+    Settings,
+}
+
 @Composable
 fun TvHeader(
     currentRoute: String,
@@ -95,6 +103,10 @@ fun TvHeader(
     notificationBadgeCount: Int,
     modifier: Modifier = Modifier,
     currentTabFocusRequester: FocusRequester? = null,
+    licenseFocusRequester: FocusRequester? = null,
+    notificationsFocusRequester: FocusRequester? = null,
+    profileFocusRequester: FocusRequester? = null,
+    settingsFocusRequester: FocusRequester? = null,
     contentDownFocusRequester: FocusRequester? = null,
     onContentDown: (() -> Unit)? = null,
 ) {
@@ -130,6 +142,10 @@ fun TvHeader(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
+            licenseFocusRequester = licenseFocusRequester,
+            notificationsFocusRequester = notificationsFocusRequester,
+            profileFocusRequester = profileFocusRequester,
+            settingsFocusRequester = settingsFocusRequester,
             downFocusRequester = contentDownFocusRequester,
             onDown = onContentDown,
         )
@@ -148,6 +164,10 @@ fun HeaderControls(
     modifier: Modifier = Modifier,
     downFocusRequester: FocusRequester? = null,
     onDown: (() -> Unit)? = null,
+    licenseFocusRequester: FocusRequester? = null,
+    notificationsFocusRequester: FocusRequester? = null,
+    profileFocusRequester: FocusRequester? = null,
+    settingsFocusRequester: FocusRequester? = null,
 ) {
     Row(
         modifier = modifier,
@@ -162,6 +182,7 @@ fun HeaderControls(
             accent = SmartVisionColors.Warning,
             downFocusRequester = downFocusRequester,
             onDown = onDown,
+            focusRequester = licenseFocusRequester,
         )
         }
         HeaderIconButton(
@@ -172,6 +193,7 @@ fun HeaderControls(
         badgeCount = notificationBadgeCount,
         downFocusRequester = downFocusRequester,
         onDown = onDown,
+        focusRequester = notificationsFocusRequester,
     )
         HeaderIconButton(
             icon = Icons.Default.Person,
@@ -179,6 +201,7 @@ fun HeaderControls(
         onClick = onProfile,
         downFocusRequester = downFocusRequester,
         onDown = onDown,
+        focusRequester = profileFocusRequester,
     )
         HeaderIconButton(
             icon = Icons.Default.Settings,
@@ -186,6 +209,7 @@ fun HeaderControls(
         onClick = onSettings,
         downFocusRequester = downFocusRequester,
         onDown = onDown,
+        focusRequester = settingsFocusRequester,
     )
         HeaderDateTime()
     }
@@ -201,6 +225,7 @@ private fun HeaderIconButton(
     badgeCount: Int = 0,
     downFocusRequester: FocusRequester? = null,
     onDown: (() -> Unit)? = null,
+    focusRequester: FocusRequester? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -229,6 +254,7 @@ private fun HeaderIconButton(
                 }
                 .tvFocusTarget(
                     state = focusState,
+                    focusRequester = focusRequester,
                     pressed = pressed,
                     glowColor = accent,
                     cornerRadius = 10.dp,

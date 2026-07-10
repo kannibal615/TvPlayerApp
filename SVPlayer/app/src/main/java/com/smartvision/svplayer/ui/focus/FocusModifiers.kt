@@ -53,15 +53,23 @@ fun Modifier.tvFocusTarget(
 ): Modifier = composed {
     val density = LocalDensity.current
     val style = LocalTvFocusStyle.current
-    val shimmer by rememberInfiniteTransition(label = "focusGoldSweep").animateFloat(
-        initialValue = -0.35f,
-        targetValue = 1.35f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1700, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "focusGoldSweepProgress",
-    )
+    // Keep the infinite animation out of the composition for the regular focus styles.
+    // This modifier is used by hundreds of TV targets, so an always-running transition
+    // on every card produces avoidable recompositions while navigating large rows.
+    val shimmer = if (style.effect == TvFocusEffect.GoldSweep) {
+        val animatedShimmer by rememberInfiniteTransition(label = "focusGoldSweep").animateFloat(
+            initialValue = -0.35f,
+            targetValue = 1.35f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1700, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "focusGoldSweepProgress",
+        )
+        animatedShimmer
+    } else {
+        0f
+    }
     val cornerRadiusPx = with(density) { cornerRadius.toPx() }
     val borderPx = with(density) { (style.borderWidth + 1.dp).toPx() }
     val targetScale = focusedScale.takeIf { it != SmartVisionDimensions.FocusScale } ?: style.scale

@@ -153,11 +153,11 @@ fun TrendingContentRow(
         expandedItemId = null
         activePreviewId = null
         val pendingId = focusedItemId ?: return@LaunchedEffect
-        val pendingIndex = focusedIndex.takeIf { it >= 0 } ?: return@LaunchedEffect
+        if (focusedIndex < 0) return@LaunchedEffect
         delay(TrendingFocusStabilityMillis)
         if (focusedItemId != pendingId) return@LaunchedEffect
-        rowState.animateScrollToItem(pendingIndex)
-        if (focusedItemId != pendingId) return@LaunchedEffect
+        // LazyRow already keeps the focused child visible. Re-anchoring the row on every
+        // D-pad step caused a second, competing scroll animation.
         expandedItemId = pendingId
         delay(TrendingTransformMillis)
         if (focusedItemId == pendingId) {
