@@ -232,16 +232,8 @@ function mark_latest_pending_device_session_validated(PDO $pdo, string $deviceId
     $statement = $pdo->prepare(
         "UPDATE activation_sessions
          SET status = 'validated', validated_at = COALESCE(validated_at, NOW())
-         WHERE id = (
-             SELECT id FROM (
-                 SELECT id
-                 FROM activation_sessions
-                 WHERE device_id = :device_id
-                   AND status = 'pending'
-                 ORDER BY id DESC
-                 LIMIT 1
-             ) latest_session
-         )"
+         WHERE device_id = :device_id
+           AND status = 'pending'"
     );
     $statement->execute(['device_id' => $deviceId]);
 }

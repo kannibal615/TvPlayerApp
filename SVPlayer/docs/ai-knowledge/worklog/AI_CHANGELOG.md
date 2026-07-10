@@ -1,5 +1,32 @@
 # AI Changelog
 
+## 2026-07-10 - Correction livraison PlaylistWeb depuis le site
+
+Type:
+- backend/API
+- activation
+- bugfix
+
+Resume:
+- Diagnostic production sur `RCRPX8`: `device_status.php` indiquait `playlist_configured=true`, mais sans `device_token` valide il ne livrait pas `playlist_config`; `notifications.php` ne remontait aucune notification visible.
+- `create_playlist_setup_session.php` rattache maintenant le `device_token` courant a la session playlist deja `validated`.
+- Apres un envoi playlist accepte via `/playlist/` ou `save_playlist_config.php`, toutes les sessions pending du device sont validees afin que le token local conserve par l'app puisse recuperer la playlist.
+
+Validation:
+- `php -l server/public_html/api/helpers.php` : succes.
+- `php -l server/public_html/api/create_playlist_setup_session.php` : succes.
+- `php -l server/public_html/api/save_playlist_config.php` : succes.
+- `php -l server/public_html/playlist/index.php` : succes.
+- `php -l server/public_html/api/device_status.php` : succes.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/activation-license-trial-xtream.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `server/public_html/api/helpers.php`
+- `server/public_html/api/create_playlist_setup_session.php`
+
 ## 2026-07-10 - Nettoyage Appareil et catalogue Info compte
 
 Type:
