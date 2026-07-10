@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -55,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -73,7 +75,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.BuildConfig
@@ -85,6 +86,8 @@ import com.smartvision.svplayer.data.network.NetworkActivityStatus
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.components.TvConfirmationDialog
+import com.smartvision.svplayer.ui.components.TvDialogSurface
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.TvFocusStyles
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
@@ -132,8 +135,10 @@ fun SettingsScreen(
     val networkSnapshot by container.networkActivityTracker.snapshot.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var selectedSection by remember { mutableStateOf(SettingsSection.Preferences) }
+    var showClearLocalDataConfirmation by remember { mutableStateOf(false) }
     val strings = smartVisionStrings(settings.language)
     val lastUpdateLabel = remember(context) { context.smartVisionLastUpdateLabel() }
+    val currentTabFocusRequester = remember { FocusRequester() }
     val firstMenuFocusRequester = remember { FocusRequester() }
 
     BackHandler(onBack = onBack)
@@ -170,6 +175,9 @@ fun SettingsScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
+            currentTabFocusRequester = currentTabFocusRequester,
+            contentDownFocusRequester = firstMenuFocusRequester,
+            onContentDown = { runCatching { firstMenuFocusRequester.requestFocus() } },
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -179,6 +187,7 @@ fun SettingsScreen(
             selectedSection = selectedSection,
             onSectionSelected = { selectedSection = it },
             firstMenuFocusRequester = firstMenuFocusRequester,
+            headerFocusRequester = currentTabFocusRequester,
             settings = settings,
             accountsCount = accounts.size,
             activeAccount = activeAccount,
@@ -205,146 +214,31 @@ fun SettingsScreen(
             onSetParentalEnabled = { value -> scope.launch { container.settingsRepository.setParentalControlEnabled(value) } },
             onSetParentalPin = { value -> scope.launch { container.settingsRepository.setParentalPin(value) } },
             onSetParentalKeywords = { value -> scope.launch { container.settingsRepository.setParentalKeywords(value) } },
-            onClearLocalData = { scope.launch { container.settingsRepository.clearLocalData() } },
+            onClearLocalData = { showClearLocalDataConfirmation = true },
             parentalControlAllowed = parentalControlAllowed,
             onLockedFeature = onLockedFeature,
             strings = strings,
             lastUpdateLabel = lastUpdateLabel,
             modifier = Modifier.fillMaxSize(),
         )
-        return@Column
+    }
 
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            SettingsPanel(
-                title = "Preferences generales",
-                modifier = Modifier
-                    .weight(0.42f)
-                    .fillMaxHeight(),
-            ) {
-                SettingsChoice(
-                    label = strings.language,
-                    values = listOf(
-                        SettingsOption("English", strings.english),
-                        SettingsOption("Francais", strings.french),
-                    ),
-                    selected = settings.language,
-                    onSelected = { value -> scope.launch { container.settingsRepository.setLanguage(value) } },
-                )
-                SettingsChoice(
-                    label = strings.automaticSync,
-                    values = syncFrequencyOptions(strings),
-                    selected = settings.syncFrequency,
-                    onSelected = { value -> scope.launch { container.settingsRepository.setSyncFrequency(value) } },
-                )
-                SettingsChoice(
-                    label = strings.videoFormat,
-                    values = settingsOptions("Fit", "Fill", "Zoom"),
-                    selected = settings.videoRatio,
-                    onSelected = { scope.launch { container.settingsRepository.setVideoRatio(it) } },
-                )
-                SettingsChoice(
-                    label = strings.animations,
-                    values = listOf(
-                        SettingsOption("enabled", strings.enabled),
-                        SettingsOption("reduced", strings.reduced),
-                    ),
-                    selected = if (settings.animationsEnabled) "enabled" else "reduced",
-                    onSelected = { value -> scope.launch { container.settingsRepository.setAnimationsEnabled(value == "enabled") } },
-                )
-                SettingsChoice(
-                    label = strings.automaticReconnect,
-                    values = listOf(
-                        SettingsOption("enabled", strings.enabled),
-                        SettingsOption("disabled", strings.disabled),
-                    ),
-                    selected = if (settings.retryEnabled) "enabled" else "disabled",
-                    onSelected = { value -> scope.launch { container.settingsRepository.setRetryEnabled(value == "enabled") } },
-                )
-                SettingsInfoRow("Version", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
-                SettingsInfoRow(strings.activeXtreamAccount, activeAccount?.name ?: strings.none)
-                SettingsInfoRow(strings.activeServer, activeAccount?.host ?: strings.notConfigured)
-                Spacer(Modifier.height(12.dp))
-                TvButton(
-                    text = if (updateState.checking) "Recherche..." else "Chercher une mise a jour",
-                    leadingIcon = Icons.Default.Refresh,
-                    onClick = onCheckForUpdate,
-                    enabled = !updateState.checking && !updateState.installing,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
-                )
-                updateState.errorMessage?.let { message ->
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = message,
-                        color = SmartVisionColors.Error,
-                        style = SmartVisionType.Caption,
-                        maxLines = 2,
-                    )
+    if (showClearLocalDataConfirmation) {
+        TvConfirmationDialog(
+            title = strings.clearLocalDataConfirmationTitle,
+            message = strings.clearLocalDataConfirmationMessage,
+            confirmText = strings.delete,
+            cancelText = strings.cancel,
+            onDismiss = { showClearLocalDataConfirmation = false },
+            onConfirm = {
+                showClearLocalDataConfirmation = false
+                scope.launch {
+                    container.settingsRepository.clearLocalData()
+                    container.xtreamRepository.clearCaches()
+                    container.catalogRepository.clearCatalogForProfileSwitch()
                 }
-                if (updateState.checkedOnce && updateState.update == null && updateState.errorMessage == null && !updateState.checking) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = strings.appUpToDate,
-                        color = SmartVisionColors.TextSecondary,
-                        style = SmartVisionType.Caption,
-                        maxLines = 1,
-                    )
-                }
-                Spacer(Modifier.height(18.dp))
-                TvButton(
-                    text = strings.clearLocalData,
-                    leadingIcon = Icons.Default.Refresh,
-                    onClick = { scope.launch { container.settingsRepository.clearLocalData() } },
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
-                )
-            }
-
-            SettingsPanel(
-                title = "Maintenance et donnees",
-                modifier = Modifier
-                    .weight(0.58f)
-                    .fillMaxHeight(),
-            ) {
-                SettingsInfoRow("Frequence actuelle", settings.syncFrequency)
-                SettingsInfoRow(strings.activeAccount, activeAccount?.let { "${it.name} - ${it.username}" } ?: strings.none)
-                SettingsInfoRow(strings.bufferMode, settings.bufferMode)
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    text = "Les identifiants Xtream se gerent maintenant depuis Compte utilisateur afin de separer les reglages de l'application et les donnees client.",
-                    color = SmartVisionColors.TextSecondary,
-                    style = SmartVisionType.Body,
-                )
-                Spacer(Modifier.height(16.dp))
-                TvButton(
-                    text = "Verifier les mises a jour",
-                    leadingIcon = Icons.Default.Refresh,
-                    onClick = onCheckForUpdate,
-                    enabled = !updateState.checking && !updateState.installing,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
-                )
-                Spacer(Modifier.height(10.dp))
-                TvButton(
-                    text = strings.clearLocalData,
-                    leadingIcon = Icons.Default.Delete,
-                    onClick = { scope.launch { container.settingsRepository.clearLocalData() } },
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
-                )
-            }
-        }
+            },
+        )
     }
 }
 
@@ -353,6 +247,7 @@ private fun SettingsMenuLayout(
     selectedSection: SettingsSection,
     onSectionSelected: (SettingsSection) -> Unit,
     firstMenuFocusRequester: FocusRequester,
+    headerFocusRequester: FocusRequester,
     settings: PlayerSettings,
     accountsCount: Int,
     activeAccount: XtreamAccount?,
@@ -445,6 +340,13 @@ private fun SettingsMenuLayout(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp)
+                            .then(
+                                if (section == SettingsSection.Preferences) {
+                                    Modifier.focusProperties { up = headerFocusRequester }
+                                } else {
+                                    Modifier
+                                },
+                            )
                             .then(if (section == SettingsSection.Preferences) Modifier.focusRequester(firstMenuFocusRequester) else Modifier)
                             .alpha(if (isParental && !parentalControlAllowed) 0.28f else 1f),
                     )
@@ -680,7 +582,7 @@ private fun SettingsMenuLayout(
                         text = strings.clearLocalData,
                         leadingIcon = Icons.Default.Delete,
                         onClick = onClearLocalData,
-                        variant = TvButtonVariant.Secondary,
+                        variant = TvButtonVariant.Danger,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(44.dp),
@@ -1285,19 +1187,16 @@ private fun AccountEditorDialog(
 
     LaunchedEffect(Unit) {
         withFrameNanos { }
-        nameFocusRequester.requestFocus()
+        delay(80)
+        runCatching { nameFocusRequester.requestFocus() }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .width(570.dp)
-                .background(Color(0xFF0A1425), RoundedCornerShape(8.dp))
-                .border(BorderStroke(1.dp, SmartVisionColors.Primary), RoundedCornerShape(8.dp))
-                .padding(24.dp),
-        ) {
-            Text("Compte Xtream", color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(16.dp))
+    TvDialogSurface(
+        title = "Compte Xtream",
+        onDismiss = onDismiss,
+        width = 570.dp,
+        icon = Icons.Default.Person,
+    ) {
             SettingsTextField(
                 label = "Nom du compte",
                 value = name,
@@ -1359,7 +1258,6 @@ private fun AccountEditorDialog(
                     modifier = Modifier.height(42.dp),
                 )
             }
-        }
     }
 }
 
@@ -1378,19 +1276,16 @@ private fun ParentalPinDialog(
 
     LaunchedEffect(Unit) {
         withFrameNanos { }
-        pinFocusRequester.requestFocus()
+        delay(80)
+        runCatching { pinFocusRequester.requestFocus() }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .width(470.dp)
-                .background(Color(0xFF0A1425), RoundedCornerShape(8.dp))
-                .border(BorderStroke(1.dp, SmartVisionColors.Primary), RoundedCornerShape(8.dp))
-                .padding(24.dp),
-        ) {
-            Text(title, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(16.dp))
+    TvDialogSurface(
+        title = title,
+        onDismiss = onDismiss,
+        width = 470.dp,
+        icon = Icons.Default.Lock,
+    ) {
             SettingsTextField(
                 label = strings.pinCode,
                 value = pin,
@@ -1425,7 +1320,6 @@ private fun ParentalPinDialog(
                     modifier = Modifier.height(42.dp),
                 )
             }
-        }
     }
 }
 
@@ -1445,19 +1339,16 @@ private fun ParentalCreatePinDialog(
 
     LaunchedEffect(Unit) {
         withFrameNanos { }
-        pinFocusRequester.requestFocus()
+        delay(80)
+        runCatching { pinFocusRequester.requestFocus() }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .width(470.dp)
-                .background(Color(0xFF0A1425), RoundedCornerShape(8.dp))
-                .border(BorderStroke(1.dp, SmartVisionColors.Primary), RoundedCornerShape(8.dp))
-                .padding(24.dp),
-        ) {
-            Text(title, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(16.dp))
+    TvDialogSurface(
+        title = title,
+        onDismiss = onDismiss,
+        width = 470.dp,
+        icon = Icons.Default.Lock,
+    ) {
             SettingsTextField(
                 label = strings.newPin,
                 value = pin,
@@ -1493,7 +1384,6 @@ private fun ParentalCreatePinDialog(
                     modifier = Modifier.height(42.dp),
                 )
             }
-        }
     }
 }
 
@@ -1569,13 +1459,13 @@ private fun SettingsTextField(
                     Key.DirectionDown -> {
                         editing = false
                         keyboardController?.hide()
-                        nextFocusRequester?.requestFocus()
+                        runCatching { nextFocusRequester?.requestFocus() }
                         nextFocusRequester != null
                     }
                     Key.DirectionUp -> {
                         editing = false
                         keyboardController?.hide()
-                        previousFocusRequester?.requestFocus()
+                        runCatching { previousFocusRequester?.requestFocus() }
                         previousFocusRequester != null
                     }
                     else -> false

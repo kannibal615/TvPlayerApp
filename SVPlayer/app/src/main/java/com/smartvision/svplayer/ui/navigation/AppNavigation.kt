@@ -19,6 +19,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -27,6 +30,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -89,6 +93,9 @@ import com.smartvision.svplayer.ui.series.SeriesScreen
 import com.smartvision.svplayer.ui.settings.SettingsScreen
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.components.TvConfirmationDialog
+import com.smartvision.svplayer.ui.components.TvDialogSurface
+import com.smartvision.svplayer.ui.components.TvDialogTone
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.TvFocusStyles
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -440,6 +447,7 @@ fun AppNavigation(
         )
         if (showExitConfirmation) {
             ExitConfirmationDialog(
+                strings = strings,
                 onDismiss = { showExitConfirmation = false },
                 onExit = { activity?.finishAffinity() },
             )
@@ -470,6 +478,7 @@ fun AppNavigation(
         )
         if (showExitConfirmation) {
             ExitConfirmationDialog(
+                strings = strings,
                 onDismiss = { showExitConfirmation = false },
                 onExit = { activity?.finishAffinity() },
             )
@@ -540,6 +549,7 @@ fun AppNavigation(
         )
         if (showExitConfirmation) {
             ExitConfirmationDialog(
+                strings = strings,
                 onDismiss = { showExitConfirmation = false },
                 onExit = { activity?.finishAffinity() },
             )
@@ -687,6 +697,7 @@ fun AppNavigation(
         }
         composable(AppRoute.Profile.route) {
             ProfileRoute(
+                strings = strings,
                 onBack = { navigateHomeWithHeaderFocus() },
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 currentRoute = currentRoute,
@@ -753,6 +764,7 @@ fun AppNavigation(
                 LaunchedEffect(Unit) { showXtreamConnectionDialog = true }
                 PlaceholderRouteScreen("Movies", "Connexion Xtream indisponible.")
             } else MoviesScreen(
+                strings = strings,
                 currentRoute = currentRoute,
                 tabs = tabs,
                 onNavigate = navigateFromHeader,
@@ -773,6 +785,7 @@ fun AppNavigation(
                 LaunchedEffect(Unit) { showXtreamConnectionDialog = true }
                 PlaceholderRouteScreen("Series", "Connexion Xtream indisponible.")
             } else SeriesScreen(
+                strings = strings,
                 currentRoute = currentRoute,
                 tabs = tabs,
                 onNavigate = navigateFromHeader,
@@ -1050,6 +1063,7 @@ fun AppNavigation(
 
     if (showExitConfirmation) {
         ExitConfirmationDialog(
+            strings = strings,
             onDismiss = { showExitConfirmation = false },
             onExit = { activity?.finishAffinity() },
         )
@@ -1156,143 +1170,92 @@ private fun XtreamConnectionAlertDialog(
     onContinue: () -> Unit,
 ) {
     val retryFocusRequester = remember { FocusRequester() }
+    val continueFocusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(Unit) {
-        retryFocusRequester.requestFocus()
+    LaunchedEffect(state.checking) {
+        withFrameNanos { }
+        delay(80)
+        runCatching {
+            if (state.checking) continueFocusRequester.requestFocus() else retryFocusRequester.requestFocus()
+        }
     }
 
-    Dialog(onDismissRequest = onContinue) {
-        Column(
-            modifier = Modifier
-                .width(720.dp)
-                .background(
-                    Brush.verticalGradient(listOf(Color(0xFF142033), Color(0xFF07101D))),
-                    RoundedCornerShape(16.dp),
-                )
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)), RoundedCornerShape(16.dp))
-                .padding(horizontal = 34.dp, vertical = 30.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = "Connexion Xtream indisponible",
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.TitleS,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
+    TvDialogSurface(
+        title = "Connexion Xtream indisponible",
+        onDismiss = onContinue,
+        width = 720.dp,
+        tone = TvDialogTone.Warning,
+        icon = Icons.Default.Warning,
+    ) {
+        Text(
+            text = "L'application n'arrive pas a se connecter au serveur Xtream associe a votre compte. Vos chaines, films et series sont temporairement indisponibles. Vous pouvez modifier vos identifiants, reessayer la connexion ou continuer sur l'application.",
+            color = SmartVisionColors.TextSecondary,
+            style = SmartVisionType.Body,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (state.message.isNotBlank()) {
             Spacer(Modifier.height(12.dp))
             Text(
-                text = "L'application n'arrive pas a se connecter au serveur Xtream associe a votre compte. Vos chaines, films et series sont temporairement indisponibles. Vous pouvez modifier vos identifiants, reessayer la connexion ou continuer sur l'application.",
-                color = SmartVisionColors.TextSecondary,
-                style = SmartVisionType.Body,
+                text = state.message,
+                color = SmartVisionColors.Warning,
+                style = SmartVisionType.Caption,
                 textAlign = TextAlign.Center,
-            )
-            if (state.message.isNotBlank()) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = state.message,
-                    color = SmartVisionColors.Warning,
-                    style = SmartVisionType.Caption,
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-            Spacer(Modifier.height(24.dp))
-            Row(
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TvButton(
-                    text = "Modifier les identifiants",
-                    onClick = onEditCredentials,
-                    variant = TvButtonVariant.Secondary,
-                    contentPadding = PaddingValues(horizontal = 18.dp),
-                    modifier = Modifier.height(44.dp),
-                )
-                Spacer(Modifier.width(10.dp))
-                TvButton(
-                    text = if (state.checking) "Verification..." else "Reessayer la connexion",
-                    onClick = onRetry,
-                    enabled = !state.checking,
-                    focusRequester = retryFocusRequester,
-                    contentPadding = PaddingValues(horizontal = 18.dp),
-                    modifier = Modifier.height(44.dp),
-                )
-                Spacer(Modifier.width(10.dp))
-                TvButton(
-                    text = "Aller sur l'application",
-                    onClick = onContinue,
-                    variant = TvButtonVariant.Text,
-                    contentPadding = PaddingValues(horizontal = 18.dp),
-                    modifier = Modifier.height(44.dp),
-                )
-            }
+            )
+        }
+        Spacer(Modifier.height(24.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TvButton(
+                text = "Modifier les identifiants",
+                onClick = onEditCredentials,
+                variant = TvButtonVariant.Secondary,
+                contentPadding = PaddingValues(horizontal = 18.dp),
+                modifier = Modifier.height(44.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            TvButton(
+                text = if (state.checking) "Verification..." else "Reessayer la connexion",
+                onClick = onRetry,
+                enabled = !state.checking,
+                focusRequester = retryFocusRequester,
+                contentPadding = PaddingValues(horizontal = 18.dp),
+                modifier = Modifier.height(44.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            TvButton(
+                text = "Aller sur l'application",
+                onClick = onContinue,
+                variant = TvButtonVariant.Text,
+                focusRequester = continueFocusRequester,
+                contentPadding = PaddingValues(horizontal = 18.dp),
+                modifier = Modifier.height(44.dp),
+            )
         }
     }
 }
 
 @Composable
 private fun ExitConfirmationDialog(
+    strings: SmartVisionStrings,
     onDismiss: () -> Unit,
     onExit: () -> Unit,
 ) {
-    val cancelFocusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        cancelFocusRequester.requestFocus()
-    }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .width(520.dp)
-                .background(
-                    Brush.verticalGradient(listOf(Color(0xFF111C2E), Color(0xFF07101F))),
-                    RoundedCornerShape(16.dp),
-                )
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)), RoundedCornerShape(16.dp))
-                .padding(horizontal = 36.dp, vertical = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = "Quitter SmartVision ?",
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.TitleS,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = "Êtes-vous sûr de vouloir quitter l’application ?",
-                color = SmartVisionColors.TextSecondary,
-                style = SmartVisionType.Body,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(24.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                TvButton(
-                    text = "Annuler",
-                    onClick = onDismiss,
-                    focusRequester = cancelFocusRequester,
-                    variant = TvButtonVariant.Secondary,
-                    contentPadding = PaddingValues(horizontal = 22.dp),
-                    modifier = Modifier.height(44.dp),
-                )
-                Spacer(Modifier.width(12.dp))
-                TvButton(
-                    text = "Quitter",
-                    onClick = onExit,
-                    variant = TvButtonVariant.Exit,
-                    contentPadding = PaddingValues(horizontal = 22.dp),
-                    modifier = Modifier.height(44.dp),
-                )
-            }
-        }
-    }
+    TvConfirmationDialog(
+        title = strings.exitAppTitle,
+        message = strings.exitAppMessage,
+        confirmText = strings.exitAppAction,
+        cancelText = strings.cancel,
+        tone = TvDialogTone.Warning,
+        icon = Icons.Default.ExitToApp,
+        onDismiss = onDismiss,
+        onConfirm = onExit,
+    )
 }
 
 @Composable

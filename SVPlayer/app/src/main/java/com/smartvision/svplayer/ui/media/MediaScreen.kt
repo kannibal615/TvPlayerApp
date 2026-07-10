@@ -1,3 +1,5 @@
+@file:androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
+
 package com.smartvision.svplayer.ui.media
 
 import android.annotation.SuppressLint
@@ -67,10 +69,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
@@ -93,7 +97,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
@@ -116,6 +119,8 @@ import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.components.TvConfirmationDialog
+import com.smartvision.svplayer.ui.components.TvDialogSurface
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
@@ -162,13 +167,26 @@ fun MediaScreen(
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val currentTabFocusRequester = remember { FocusRequester() }
     val firstFocusRequester = remember { FocusRequester() }
+    val lockedActionFocusRequester = remember { FocusRequester() }
     var renameTarget by remember { mutableStateOf<MediaFileUi?>(null) }
     var moveTarget by remember { mutableStateOf<MediaFileUi?>(null) }
     var deleteTarget by remember { mutableStateOf<MediaFileUi?>(null) }
+    var restoreLibraryFocusRequest by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(access.allowed) {
-        if (access.allowed) {
+    LaunchedEffect(access.allowed, access.shouldShowUpgradePrompt) {
+        withFrameNanos { }
+        delay(160)
+        when {
+            access.allowed -> runCatching { firstFocusRequester.requestFocus() }
+            access.shouldShowUpgradePrompt -> runCatching { lockedActionFocusRequester.requestFocus() }
+            else -> runCatching { currentTabFocusRequester.requestFocus() }
+        }
+    }
+    LaunchedEffect(restoreLibraryFocusRequest) {
+        if (restoreLibraryFocusRequest > 0) {
+            withFrameNanos { }
             delay(160)
             runCatching { firstFocusRequester.requestFocus() }
         }
@@ -209,6 +227,17 @@ fun MediaScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
+            currentTabFocusRequester = currentTabFocusRequester,
+            contentDownFocusRequester = when {
+                access.allowed -> firstFocusRequester
+                access.shouldShowUpgradePrompt -> lockedActionFocusRequester
+                else -> null
+            },
+            onContentDown = when {
+                access.allowed -> ({ runCatching { firstFocusRequester.requestFocus() } })
+                access.shouldShowUpgradePrompt -> ({ runCatching { lockedActionFocusRequester.requestFocus() } })
+                else -> null
+            },
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -219,6 +248,8 @@ fun MediaScreen(
                 strings = strings,
                 access = access,
                 onLockedFeature = onLockedFeature,
+                focusRequester = lockedActionFocusRequester,
+                headerFocusRequester = currentTabFocusRequester,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -265,6 +296,7 @@ fun MediaScreen(
                 if (transferAccess.allowed) viewModel.startPhoneExport() else onLockedFeature()
             },
             firstFocusRequester = firstFocusRequester,
+            headerFocusRequester = currentTabFocusRequester,
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
@@ -302,6 +334,7 @@ fun MediaScreen(
             onDelete = {
                 deleteTarget = null
                 viewModel.deleteFile(file.id)
+                restoreLibraryFocusRequest += 1
             },
         )
     }
@@ -319,6 +352,8 @@ private fun LockedMediaCenter(
     strings: SmartVisionStrings,
     access: PremiumFeatureGateResult,
     onLockedFeature: () -> Unit,
+    focusRequester: FocusRequester,
+    headerFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     val subtitle = if (access.state == PremiumFeatureGateState.BlockedExpired) {
@@ -364,6 +399,8 @@ private fun LockedMediaCenter(
                 onClick = onLockedFeature,
                 enabled = access.shouldShowUpgradePrompt,
                 variant = TvButtonVariant.Primary,
+                focusRequester = focusRequester,
+                modifier = Modifier.focusProperties { up = headerFocusRequester },
             )
         }
     }
@@ -394,6 +431,7 @@ private fun MediaWorkspace(
     onImportPhone: () -> Unit,
     onExportPhone: () -> Unit,
     firstFocusRequester: FocusRequester,
+    headerFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     val firstContentFocusRequester = remember { FocusRequester() }
@@ -449,6 +487,7 @@ private fun MediaWorkspace(
             onImportPhone = onImportPhone,
             onExportPhone = onExportPhone,
             firstFocusRequester = firstFocusRequester,
+            headerFocusRequester = headerFocusRequester,
             modifier = Modifier
                 .weight(if (privateMode) 0.20f else 0.24f)
                 .fillMaxHeight(),
@@ -503,6 +542,7 @@ private fun MediaLibraryPanel(
     onImportPhone: () -> Unit,
     onExportPhone: () -> Unit,
     firstFocusRequester: FocusRequester,
+    headerFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     MediaCatalogPanel(
@@ -517,6 +557,7 @@ private fun MediaLibraryPanel(
                 onClick = onToggleLocalGroup,
                 selected = state.selectedSource == MediaSource.Local,
                 focusRequester = firstFocusRequester,
+                upFocusRequester = headerFocusRequester,
             )
             if (state.localExpanded) {
                 listOf(MediaArea.AllFiles, MediaArea.Recordings, MediaArea.Imports, MediaArea.Transfers).forEach { area ->
@@ -667,6 +708,7 @@ private fun MediaAreaButton(
     selected: Boolean,
     onClick: () -> Unit,
     focusRequester: FocusRequester?,
+    upFocusRequester: FocusRequester? = null,
     indent: androidx.compose.ui.unit.Dp = 0.dp,
     height: androidx.compose.ui.unit.Dp = 40.dp,
     enabled: Boolean = true,
@@ -683,6 +725,9 @@ private fun MediaAreaButton(
         modifier = Modifier
             .fillMaxWidth()
             .height(height)
+            .focusProperties {
+                if (upFocusRequester != null) up = upFocusRequester
+            }
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -2284,6 +2329,10 @@ private fun PrivateMediaPreviewPanel(
     modifier: Modifier = Modifier,
 ) {
     val canOpenPlayer = item != null
+    val previewFocusState = rememberTvFocusState()
+    val previewInteractionSource = remember { MutableInteractionSource() }
+    val previewPressed by previewInteractionSource.collectIsPressedAsState()
+    val previewFocusStyle = LocalTvFocusStyle.current
 
     MediaCatalogPanel(
         title = "",
@@ -2308,13 +2357,30 @@ private fun PrivateMediaPreviewPanel(
                     .align(Alignment.CenterHorizontally)
                     .fillMaxWidth(0.95f)
                     .aspectRatio(16f / 9f)
+                    .tvFocusTarget(
+                        state = previewFocusState,
+                        enabled = item != null && canOpenPlayer,
+                        pressed = previewPressed,
+                        focusedScale = 1.02f,
+                        glowColor = SmartVisionColors.Primary,
+                        cornerRadius = 12.dp,
+                    )
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color.Black.copy(alpha = 0.45f))
-                    .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(12.dp))
+                    .border(
+                        BorderStroke(
+                            if (previewFocusState.isFocused) previewFocusStyle.borderWidth else 1.dp,
+                            if (previewFocusState.isFocused) previewFocusStyle.accent else SmartVisionColors.Border,
+                        ),
+                        RoundedCornerShape(12.dp),
+                    )
                     .clickable(
                         enabled = item != null && canOpenPlayer,
+                        interactionSource = previewInteractionSource,
+                        indication = null,
                         onClick = { item?.id?.let(onOpenPlayer) },
-                    ),
+                    )
+                    .focusable(enabled = item != null && canOpenPlayer, interactionSource = previewInteractionSource),
                 contentAlignment = Alignment.Center,
             ) {
                 if (playback?.canPlay == true) {
@@ -2621,6 +2687,13 @@ private fun MediaTransferDialog(
             ?: strings.mediaExportPhoneSubtitle
     }
     val qrBitmap = remember(session.url) { createTransferQrBitmap(session.url, 520) }
+    val closeFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(session.url) {
+        withFrameNanos { }
+        delay(80)
+        runCatching { closeFocusRequester.requestFocus() }
+    }
 
     MediaDialogPanel(title = title, onDismiss = onDismiss) {
         Row(
@@ -2665,6 +2738,7 @@ private fun MediaTransferDialog(
             text = strings.recorderClose,
             onClick = onDismiss,
             variant = TvButtonVariant.Secondary,
+            focusRequester = closeFocusRequester,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(42.dp),
@@ -2712,6 +2786,14 @@ private fun MediaMoveDialog(
     onDismiss: () -> Unit,
     onMove: (Long?) -> Unit,
 ) {
+    val rootFolderFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(file.id) {
+        withFrameNanos { }
+        delay(80)
+        runCatching { rootFolderFocusRequester.requestFocus() }
+    }
+
     MediaDialogPanel(title = strings.mediaMoveTitle, onDismiss = onDismiss) {
         Text(
             text = file.displayName,
@@ -2740,6 +2822,7 @@ private fun MediaMoveDialog(
                     onClick = { onMove(null) },
                     selected = file.folderId == null,
                     variant = TvButtonVariant.Secondary,
+                    focusRequester = rootFolderFocusRequester,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(42.dp),
@@ -2776,31 +2859,15 @@ private fun MediaDeleteDialog(
     onDismiss: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    MediaDialogPanel(title = strings.mediaDeleteTitle, onDismiss = onDismiss) {
-        Text(
-            text = file.displayName,
-            color = SmartVisionColors.TextPrimary,
-            style = SmartVisionType.Label,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = strings.mediaDeleteSubtitle,
-            color = SmartVisionColors.TextSecondary,
-            style = SmartVisionType.Body,
-        )
-        DialogActions(
-            strings = strings,
-            confirmText = strings.delete,
-            confirmEnabled = true,
-            confirmVariant = TvButtonVariant.Danger,
-            focusConfirmOnOpen = true,
-            onDismiss = onDismiss,
-            onConfirm = onDelete,
-        )
-    }
+    TvConfirmationDialog(
+        title = strings.mediaDeleteTitle,
+        itemLabel = file.displayName,
+        message = strings.mediaDeleteSubtitle,
+        confirmText = strings.delete,
+        cancelText = strings.cancel,
+        onDismiss = onDismiss,
+        onConfirm = onDelete,
+    )
 }
 
 @Composable
@@ -2809,25 +2876,12 @@ private fun MediaDialogPanel(
     onDismiss: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .width(520.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xF20A1323))
-                .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(10.dp))
-                .padding(22.dp),
-        ) {
-            Text(
-                text = title,
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.TitleS,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-            )
-            Spacer(Modifier.height(16.dp))
-            content()
-        }
+    TvDialogSurface(
+        title = title,
+        onDismiss = onDismiss,
+        width = 520.dp,
+    ) {
+        content()
     }
 }
 

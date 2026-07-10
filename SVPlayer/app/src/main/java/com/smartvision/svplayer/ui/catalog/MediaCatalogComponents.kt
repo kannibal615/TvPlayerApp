@@ -41,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Modifier
@@ -83,6 +84,7 @@ import com.smartvision.svplayer.ui.home.HeaderTabButton
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import kotlinx.coroutines.delay
 
 val CatalogPanelTitleStyle = TextStyle(
     fontSize = 16.sp,
@@ -126,6 +128,9 @@ fun MediaCatalogHeader(
     hasNewNotifications: Boolean,
     notificationBadgeCount: Int,
     modifier: Modifier = Modifier,
+    currentTabFocusRequester: FocusRequester? = null,
+    contentDownFocusRequester: FocusRequester? = null,
+    onContentDown: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier.height(MediaCatalogDimens.HeaderHeight),
@@ -147,6 +152,9 @@ fun MediaCatalogHeader(
                     onNavigate = onNavigate,
                     height = 36.dp,
                     horizontalPadding = 6.dp,
+                    focusRequester = currentTabFocusRequester.takeIf { tab.route == currentRoute },
+                    downFocusRequester = contentDownFocusRequester,
+                    onDown = onContentDown,
                 )
             }
         }
@@ -159,6 +167,8 @@ fun MediaCatalogHeader(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
+            downFocusRequester = contentDownFocusRequester,
+            onDown = onContentDown,
         )
     }
 }
@@ -184,7 +194,9 @@ fun CatalogSearchField(
 
     LaunchedEffect(editing) {
         if (editing) {
-            inputFocusRequester.requestFocus()
+            withFrameNanos { }
+            delay(40)
+            runCatching { inputFocusRequester.requestFocus() }
             keyboardController?.show()
         }
     }
@@ -331,6 +343,7 @@ fun CatalogCategoryRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
+    upFocusRequester: FocusRequester? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -352,6 +365,13 @@ fun CatalogCategoryRow(
         modifier = modifier
             .fillMaxWidth()
             .height(MediaCatalogDimens.CategoryRowHeight)
+            .then(
+                if (upFocusRequester != null) {
+                    Modifier.focusProperties { up = upFocusRequester }
+                } else {
+                    Modifier
+                },
+            )
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,

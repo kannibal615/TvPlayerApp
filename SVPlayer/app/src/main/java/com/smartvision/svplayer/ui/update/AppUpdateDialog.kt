@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
@@ -28,9 +29,11 @@ import androidx.compose.ui.window.Dialog
 import com.smartvision.svplayer.data.update.AppUpdateInfo
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.components.TvDialogSurface
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import kotlinx.coroutines.delay
 
 @Composable
 fun AppUpdateDialog(
@@ -43,27 +46,21 @@ fun AppUpdateDialog(
 ) {
     val installFocusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(update.versionCode) {
-        installFocusRequester.requestFocus()
+    LaunchedEffect(update.versionCode, installing) {
+        if (!installing) {
+            withFrameNanos { }
+            delay(80)
+            runCatching { installFocusRequester.requestFocus() }
+        }
     }
 
-    Dialog(onDismissRequest = { if (!update.mandatory && !installing) onDismiss() }) {
-        Column(
-            modifier = Modifier
-                .width(560.dp)
-                .background(
-                    Brush.verticalGradient(listOf(Color(0xFF13213A), Color(0xFF07101F))),
-                    RoundedCornerShape(8.dp),
-                )
-                .padding(30.dp),
-        ) {
-            Text(
-                text = strings.updateAvailableTitle,
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.TitleS,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(10.dp))
+    TvDialogSurface(
+        title = strings.updateAvailableTitle,
+        onDismiss = { if (!update.mandatory && !installing) onDismiss() },
+        width = 560.dp,
+        icon = Icons.Default.SystemUpdate,
+        dismissOnClickOutside = !update.mandatory && !installing,
+    ) {
             Text(
                 text = strings.updateDialogMessage.format(update.versionName),
                 color = SmartVisionColors.TextSecondary,
@@ -111,6 +108,5 @@ fun AppUpdateDialog(
                     )
                 }
             }
-        }
     }
 }

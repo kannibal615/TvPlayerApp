@@ -1,6 +1,7 @@
 package com.smartvision.svplayer
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
@@ -95,6 +96,7 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
+    @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.isSettingsShortcut()) {
             Log.d(

@@ -68,8 +68,8 @@ fun ProfilePickerScreen(
         ?.takeIf { id -> profiles.any { it.id == id } }
         ?: profiles.firstOrNull()?.id
 
-    LaunchedEffect(profiles, initialFocusProfileId) {
-        if (profiles.isNotEmpty()) {
+    LaunchedEffect(profiles, initialFocusProfileId, selectionLoading) {
+        if (profiles.isNotEmpty() && !selectionLoading) {
             delay(180)
             runCatching { firstProfileFocus.requestFocus() }
         }

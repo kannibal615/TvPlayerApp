@@ -113,6 +113,7 @@ import com.smartvision.svplayer.ui.catalog.CatalogMetaStyle
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
+import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
@@ -151,7 +152,9 @@ fun YoutubeScreen(
         initialValue = PlayerSettings(),
     )
     val strings = smartVisionStrings(playerSettings.language)
+    val currentTabFocusRequester = remember { FocusRequester() }
     val selectedCategoryFocusRequester = remember { FocusRequester() }
+    val categoryListState = rememberLazyListState()
     val firstVideoFocusRequester = remember { FocusRequester() }
     val playerFocusRequester = remember { FocusRequester() }
     val firstPlayerSuggestionFocusRequester = remember { FocusRequester() }
@@ -164,6 +167,7 @@ fun YoutubeScreen(
     var youtubeFullScreen by remember { mutableStateOf(false) }
     var youtubeResumeSeconds by remember { mutableStateOf(0.0) }
     var showYoutubeSettings by remember { mutableStateOf(false) }
+    var pendingYoutubeClear by remember { mutableStateOf<YoutubeClearTarget?>(null) }
     var completedVideoId by remember { mutableStateOf<String?>(null) }
     var pendingAutoAdvanceFromVideoId by remember { mutableStateOf<String?>(null) }
     var restoreVideoFocusAfterPlayer by remember { mutableStateOf(false) }
@@ -174,11 +178,18 @@ fun YoutubeScreen(
         else -> null
     }
 
-    LaunchedEffect(state.categories.isNotEmpty(), playingVideo?.videoId) {
-        if (state.categories.isNotEmpty() && playingVideo == null) {
+    LaunchedEffect(state.categories.size, state.selectedCategoryId, playingVideo?.videoId) {
+        if (playingVideo == null && state.categories.isNotEmpty()) {
+            val selectedIndex = state.categories.indexOfFirst { it.id == state.selectedCategoryId }
+                .coerceAtLeast(0)
+            categoryListState.scrollToItem(selectedIndex)
             withFrameNanos { }
             delay(120)
             runCatching { selectedCategoryFocusRequester.requestFocus() }
+        } else if (playingVideo == null) {
+            withFrameNanos { }
+            delay(80)
+            runCatching { currentTabFocusRequester.requestFocus() }
         }
     }
 
@@ -345,6 +356,9 @@ fun YoutubeScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
+            currentTabFocusRequester = currentTabFocusRequester,
+            contentDownFocusRequester = selectedCategoryFocusRequester,
+            onContentDown = { runCatching { selectedCategoryFocusRequester.requestFocus() } },
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -378,6 +392,8 @@ fun YoutubeScreen(
                     state = state,
                     strings = strings,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
+                    headerFocusRequester = currentTabFocusRequester,
+                    listState = categoryListState,
                     onCategory = viewModel::selectCategory,
                     modifier = Modifier
                         .weight(0.22f)
@@ -454,11 +470,54 @@ fun YoutubeScreen(
             favoritesCount = state.favoriteVideoIds.size,
             searchCount = state.recentSearches.size,
             onToggleAutoplay = { viewModel.setYoutubeAutoplayEnabled(!state.youtubeAutoplayEnabled) },
-            onClearSearchHistory = viewModel::clearSearchHistory,
-            onClearVideoHistory = viewModel::clearVideoHistory,
-            onClearFavorites = viewModel::clearYoutubeFavorites,
+            onClearSearchHistory = {
+                showYoutubeSettings = false
+                pendingYoutubeClear = YoutubeClearTarget.SearchHistory
+            },
+            onClearVideoHistory = {
+                showYoutubeSettings = false
+                pendingYoutubeClear = YoutubeClearTarget.WatchHistory
+            },
+            onClearFavorites = {
+                showYoutubeSettings = false
+                pendingYoutubeClear = YoutubeClearTarget.Favorites
+            },
             onDismiss = { showYoutubeSettings = false },
         )
+    }
+
+    pendingYoutubeClear?.let { target ->
+        TvConfirmationDialog(
+            title = target.title(strings),
+            message = strings.destructiveActionWarning,
+            confirmText = strings.delete,
+            cancelText = strings.cancel,
+            onDismiss = {
+                pendingYoutubeClear = null
+                showYoutubeSettings = true
+            },
+            onConfirm = {
+                when (target) {
+                    YoutubeClearTarget.SearchHistory -> viewModel.clearSearchHistory()
+                    YoutubeClearTarget.WatchHistory -> viewModel.clearVideoHistory()
+                    YoutubeClearTarget.Favorites -> viewModel.clearYoutubeFavorites()
+                }
+                pendingYoutubeClear = null
+                showYoutubeSettings = true
+            },
+        )
+    }
+}
+
+private enum class YoutubeClearTarget {
+    SearchHistory,
+    WatchHistory,
+    Favorites;
+
+    fun title(strings: SmartVisionStrings): String = when (this) {
+        SearchHistory -> strings.youtubeClearSearchHistory
+        WatchHistory -> strings.youtubeClearWatchHistory
+        Favorites -> strings.youtubeClearFavorites
     }
 }
 
@@ -467,6 +526,8 @@ private fun YoutubeCategoryList(
     state: YoutubeScreenState,
     strings: SmartVisionStrings,
     selectedCategoryFocusRequester: FocusRequester,
+    headerFocusRequester: FocusRequester,
+    listState: androidx.compose.foundation.lazy.LazyListState,
     onCategory: (YoutubeCategoryUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -476,11 +537,12 @@ private fun YoutubeCategoryList(
         trailing = { YoutubeLogoMark() },
     ) {
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
             contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
         ) {
-            items(state.categories, key = { it.id }) { category ->
+            itemsIndexed(state.categories, key = { _, category -> category.id }) { index, category ->
                 CatalogCategoryRow(
                     label = category.localizedLabel(strings),
                     count = category.count,
@@ -491,6 +553,7 @@ private fun YoutubeCategoryList(
                     } else {
                         null
                     },
+                    upFocusRequester = headerFocusRequester.takeIf { index == 0 },
                     onClick = { onCategory(category) },
                 )
             }

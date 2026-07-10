@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -42,6 +43,7 @@ import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import kotlinx.coroutines.delay
 
 @Composable
 fun XtreamSetupDialog(
@@ -54,7 +56,11 @@ fun XtreamSetupDialog(
     var error by remember { mutableStateOf<String?>(null) }
     val firstFocus = remember { FocusRequester() }
 
-    LaunchedEffect(Unit) { firstFocus.requestFocus() }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        delay(80)
+        runCatching { firstFocus.requestFocus() }
+    }
 
     Dialog(onDismissRequest = onLater) {
         Column(
@@ -134,7 +140,9 @@ private fun SetupField(
     val focusStyle = LocalTvFocusStyle.current
     LaunchedEffect(editing) {
         if (editing) {
-            focusRequester.requestFocus()
+            withFrameNanos { }
+            delay(40)
+            runCatching { focusRequester.requestFocus() }
             keyboardController?.show()
         }
     }

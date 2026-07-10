@@ -26,10 +26,15 @@ class StartupStateStore(context: Context) {
     }
 
     fun bootId(): String {
-        val bootCount = runCatching {
-            Settings.Global.getInt(storageContext.contentResolver, Settings.Global.BOOT_COUNT)
-        }.getOrNull()
-        return bootCount?.toString() ?: "uptime:${System.currentTimeMillis() / 3_600_000L}"
+        val bootCount = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            runCatching {
+                Settings.Global.getInt(storageContext.contentResolver, Settings.Global.BOOT_COUNT)
+            }.getOrNull()
+        } else {
+            null
+        }
+        val approximateBootHour = (System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()) / 3_600_000L
+        return bootCount?.toString() ?: "boot_hour:$approximateBootHour"
     }
 
     fun markAutostartAttempt(source: AutostartSource): Int {

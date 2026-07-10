@@ -178,6 +178,9 @@ fun DetailHeader(
     hasNewNotifications: Boolean,
     notificationBadgeCount: Int,
     modifier: Modifier = Modifier,
+    currentTabFocusRequester: FocusRequester? = null,
+    contentDownFocusRequester: FocusRequester? = null,
+    onContentDown: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier.height(DetailDimens.HeaderHeight),
@@ -197,6 +200,9 @@ fun DetailHeader(
                     onNavigate = onNavigate,
                     height = 34.dp,
                     horizontalPadding = 6.dp,
+                    focusRequester = currentTabFocusRequester.takeIf { tab.route == currentRoute },
+                    downFocusRequester = contentDownFocusRequester,
+                    onDown = onContentDown,
                 )
             }
         }
@@ -208,6 +214,8 @@ fun DetailHeader(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
+            downFocusRequester = contentDownFocusRequester,
+            onDown = onContentDown,
         )
     }
 }
@@ -232,6 +240,7 @@ fun DetailActionButton(
     modifier: Modifier = Modifier,
     primary: Boolean = false,
     selected: Boolean = false,
+    enabled: Boolean = true,
     focusRequester: FocusRequester? = null,
     bringIntoViewOnFocus: Boolean = true,
 ) {
@@ -258,10 +267,15 @@ fun DetailActionButton(
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "detailActionBorder",
     )
-    val contentColor = if (primary || active) Color.White else SmartVisionColors.TextSecondary
+    val contentColor = when {
+        !enabled -> SmartVisionColors.TextSecondary.copy(alpha = 0.48f)
+        primary || active -> Color.White
+        else -> SmartVisionColors.TextSecondary
+    }
 
     Row(
         modifier = modifier
+            .alpha(if (enabled) 1f else 0.56f)
             .then(if (bringIntoViewOnFocus) Modifier.detailBringIntoViewOnFocus() else Modifier)
             .tvFocusTarget(
                 state = focusState,
@@ -278,8 +292,8 @@ fun DetailActionButton(
                 BorderStroke(if (focusState.isFocused) 2.dp else 1.dp, borderColor),
                 shape,
             )
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .focusable(interactionSource = interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null, enabled = enabled, onClick = onClick)
+            .focusable(enabled = enabled, interactionSource = interactionSource)
             .padding(horizontal = 12.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,

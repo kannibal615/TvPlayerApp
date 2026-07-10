@@ -5,8 +5,6 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
-import android.os.UserManager
 import com.smartvision.svplayer.MainActivity
 import com.smartvision.svplayer.SVPlayerApplication
 import com.smartvision.svplayer.core.data.AppContainer
@@ -66,8 +64,7 @@ class AutostartManager(
     }
 
     private fun canLaunchUi(source: AutostartSource): Boolean {
-        val userManager = appContext.getSystemService(Context.USER_SERVICE) as? UserManager
-        val isUnlocked = userManager?.isUserUnlocked ?: true
+        val isUnlocked = appContext.isUserUnlockedCompat()
         return when (source) {
             AutostartSource.LOCKED_BOOT_COMPLETED -> isUnlocked
             AutostartSource.USER_PRESENT,
@@ -107,7 +104,7 @@ class AutostartManager(
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
-            alarmManager.setExactAndAllowWhileIdle(
+            alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 System.currentTimeMillis() + FALLBACK_DELAY_MS,
                 pendingIntent,
@@ -120,8 +117,7 @@ class AutostartManager(
     }
 
     private fun reportDiagnosticsIfUnlocked() {
-        val userManager = appContext.getSystemService(Context.USER_SERVICE) as? UserManager
-        if (userManager?.isUserUnlocked == false) return
+        if (!appContext.isUserUnlockedCompat()) return
         runCatching {
             ((appContext as? SVPlayerApplication)?.appContainer ?: AppContainer(appContext))
                 .deviceDiagnosticsReporter

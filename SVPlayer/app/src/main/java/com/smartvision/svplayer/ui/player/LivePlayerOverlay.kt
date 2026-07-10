@@ -375,7 +375,7 @@ internal fun LiveTvEpgSidePanel(
     val closeFocusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         delay(100)
-        closeFocusRequester.requestFocus()
+        runCatching { closeFocusRequester.requestFocus() }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

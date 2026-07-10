@@ -2,7 +2,6 @@ package com.smartvision.svplayer.startup
 
 import android.content.Context
 import android.os.SystemClock
-import android.os.UserManager
 import androidx.work.CoroutineWorker
 import androidx.work.Data
 import androidx.work.WorkerParameters
@@ -23,8 +22,7 @@ class PlaylistSyncWorker(
     override suspend fun doWork(): Result {
         val startedAt = SystemClock.elapsedRealtime()
         val source = AutoSyncSource.entries.firstOrNull { it.name == inputData.getString(KEY_SOURCE) } ?: AutoSyncSource.BOOT
-        val userManager = applicationContext.getSystemService(Context.USER_SERVICE) as? UserManager
-        val isUnlocked = userManager?.isUserUnlocked ?: true
+        val isUnlocked = applicationContext.isUserUnlockedCompat()
 
         if (!stateStore.isBackgroundSyncEnabled()) {
             log(source, "disabled", startedAt, null, "background_sync_disabled")

@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.app.ApplicationExitInfo
 import android.content.Context
 import android.os.Build
+import androidx.annotation.RequiresApi
 import android.os.Process
 import android.util.Log
 import com.google.gson.Gson
@@ -244,6 +245,7 @@ class AnomalyReporter(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.R)
 private fun ApplicationExitInfo.reasonName(): String =
     when (reason) {
         ApplicationExitInfo.REASON_CRASH -> "CRASH"

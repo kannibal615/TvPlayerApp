@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -331,6 +332,7 @@ private fun MovieDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     val playFocusRequester = androidx.compose.runtime.remember { FocusRequester() }
+    val currentTabFocusRequester = androidx.compose.runtime.remember { FocusRequester() }
     val listState = rememberLazyListState()
     LaunchedEffect(state.movieId) {
         listState.scrollToItem(0)
@@ -354,6 +356,9 @@ private fun MovieDetailScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
+            currentTabFocusRequester = currentTabFocusRequester,
+            contentDownFocusRequester = playFocusRequester,
+            onContentDown = { runCatching { playFocusRequester.requestFocus() } },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = DetailDimens.ScreenPadding)
@@ -379,6 +384,7 @@ private fun MovieDetailScreen(
                         onRetry = onRetry,
                         onFavorite = onFavorite,
                         playFocusRequester = playFocusRequester,
+                        headerFocusRequester = currentTabFocusRequester,
                         modifier = Modifier.width(720.dp),
                     )
                     Spacer(Modifier.weight(1f))
@@ -420,6 +426,7 @@ private fun MovieDetailInfo(
     onRetry: () -> Unit,
     onFavorite: () -> Unit,
     playFocusRequester: FocusRequester,
+    headerFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -467,6 +474,7 @@ private fun MovieDetailInfo(
                 focusRequester = playFocusRequester,
                 bringIntoViewOnFocus = false,
                 modifier = Modifier
+                    .focusProperties { up = headerFocusRequester }
                     .width(168.dp)
                     .height(DetailDimens.ActionHeight),
             )
@@ -475,6 +483,7 @@ private fun MovieDetailInfo(
                 icon = Icons.Default.FavoriteBorder,
                 onClick = onFavorite,
                 modifier = Modifier
+                    .focusProperties { up = headerFocusRequester }
                     .width(184.dp)
                     .height(DetailDimens.ActionHeight),
             )

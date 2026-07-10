@@ -67,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -121,11 +122,14 @@ import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.components.TvConfirmationDialog
+import com.smartvision.svplayer.ui.components.TvDialogSurface
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.TvHeader
+import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
@@ -142,6 +146,7 @@ import java.util.Locale
 
 @Composable
 fun ProfileRoute(
+    strings: SmartVisionStrings,
     onBack: () -> Unit,
     onSettings: () -> Unit,
     currentRoute: String,
@@ -192,6 +197,7 @@ fun ProfileRoute(
     }
 
     ProfileScreen(
+        strings = strings,
         state = state,
         syncStatus = syncStatus,
         onBack = onBack,
@@ -291,6 +297,7 @@ fun ProfileRoute(
 
 @Composable
 private fun ProfileScreen(
+    strings: SmartVisionStrings,
     state: ProfileUiState,
     syncStatus: SyncStatus,
     onBack: () -> Unit,
@@ -329,6 +336,7 @@ private fun ProfileScreen(
     var selectedSection by remember { mutableStateOf(ProfileSection.License) }
     var showXtreamSyncDialog by remember { mutableStateOf(false) }
     var pendingFocusSection by remember { mutableStateOf<ProfileSection?>(null) }
+    val currentTabFocusRequester = remember { FocusRequester() }
     val licenseSectionFocusRequester = remember { FocusRequester() }
     val xtreamSectionFocusRequester = remember { FocusRequester() }
 
@@ -375,6 +383,9 @@ private fun ProfileScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
+            currentTabFocusRequester = currentTabFocusRequester,
+            contentDownFocusRequester = licenseSectionFocusRequester,
+            onContentDown = { runCatching { licenseSectionFocusRequester.requestFocus() } },
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -414,6 +425,13 @@ private fun ProfileScreen(
                             else -> null
                         },
                         modifier = Modifier
+                            .then(
+                                if (section == ProfileSection.License) {
+                                    Modifier.focusProperties { up = currentTabFocusRequester }
+                                } else {
+                                    Modifier
+                                },
+                            )
                             .fillMaxWidth()
                             .height(46.dp),
                     )
@@ -437,6 +455,7 @@ private fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     ProfileSection.Xtream -> XtreamPanel(
+                        strings = strings,
                         state = state,
                         syncStatus = syncStatus,
                         multiProfileAccess = multiProfileAccess,
@@ -452,6 +471,7 @@ private fun ProfileScreen(
                         onDeletePlaylistProfile = onDeletePlaylistProfile,
                         onSynchronizePlaylistProfile = onSynchronizePlaylistProfile,
                         onDeleteXtreamAccount = onDeleteXtreamAccount,
+                        sectionFocusRequester = xtreamSectionFocusRequester,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     ProfileSection.History -> ProfileHistoryPanel(state = state, modifier = Modifier.fillMaxWidth())
@@ -623,6 +643,7 @@ private enum class ProfileSection(
 
 @Composable
 private fun XtreamPanel(
+    strings: SmartVisionStrings,
     state: ProfileUiState,
     syncStatus: SyncStatus,
     multiProfileAccess: PremiumFeatureGateResult,
@@ -638,6 +659,7 @@ private fun XtreamPanel(
     onDeletePlaylistProfile: (String) -> Unit,
     onSynchronizePlaylistProfile: (String) -> Unit,
     onDeleteXtreamAccount: (String) -> Unit,
+    sectionFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     var profileToEdit by remember { mutableStateOf<PlaylistProfile?>(null) }
@@ -648,9 +670,23 @@ private fun XtreamPanel(
     var profileAvatarToEdit by remember { mutableStateOf<PlaylistProfile?>(null) }
     var showEpgEditor by remember { mutableStateOf(false) }
     var showM3uEditor by remember { mutableStateOf(false) }
+    var deletedProfileIdAwaitingFocus by remember { mutableStateOf<String?>(null) }
+    val profileListFocusRequester = remember { FocusRequester() }
     val selectedProfile = state.playlistProfiles.firstOrNull { it.id == selectedProfileId }
         ?: state.playlistProfiles.firstOrNull { it.id == state.activePlaylistProfileId }
         ?: state.playlistProfiles.firstOrNull()
+
+    LaunchedEffect(deletedProfileIdAwaitingFocus, state.playlistProfiles) {
+        val deletedId = deletedProfileIdAwaitingFocus ?: return@LaunchedEffect
+        if (state.playlistProfiles.any { it.id == deletedId }) return@LaunchedEffect
+        delay(ProfileFocusRequestDelayMillis)
+        if (state.playlistProfiles.isNotEmpty() || multiProfileAccess.allowed) {
+            runCatching { profileListFocusRequester.requestFocus() }
+        } else {
+            runCatching { sectionFocusRequester.requestFocus() }
+        }
+        deletedProfileIdAwaitingFocus = null
+    }
 
     ProfilePanel(
         title = "Info compte",
@@ -687,6 +723,7 @@ private fun XtreamPanel(
                     onLockedFeature()
                 }
             },
+            restoreFocusRequester = profileListFocusRequester,
         )
         if (profileDetailVisible) selectedProfile?.let { profile ->
             Spacer(Modifier.height(8.dp))
@@ -764,9 +801,15 @@ private fun XtreamPanel(
     profileToDelete?.let { profile ->
         ConfirmPlaylistProfileDeleteDialog(
             profile = profile,
+            strings = strings,
             onDismiss = { profileToDelete = null },
             onConfirm = {
                 profileToDelete = null
+                val deletedIndex = state.playlistProfiles.indexOfFirst { it.id == profile.id }
+                selectedProfileId = state.playlistProfiles.getOrNull(deletedIndex + 1)?.id
+                    ?: state.playlistProfiles.getOrNull(deletedIndex - 1)?.id
+                profileDetailVisible = false
+                deletedProfileIdAwaitingFocus = profile.id
                 onDeletePlaylistProfile(profile.id)
             },
         )
@@ -821,6 +864,7 @@ private fun PlaylistProfilesSection(
     onOpen: (PlaylistProfile) -> Unit,
     onSelect: (String) -> Unit,
     onEdit: (PlaylistProfile) -> Unit,
+    restoreFocusRequester: FocusRequester,
 ) {
     Column(
         modifier = Modifier
@@ -843,6 +887,7 @@ private fun PlaylistProfilesSection(
                 onClick = onAdd,
                 leadingIcon = Icons.Default.Add,
                 enabled = !multiProfileLocked,
+                focusRequester = restoreFocusRequester.takeIf { profiles.isEmpty() },
                 modifier = Modifier
                     .width(150.dp)
                     .height(40.dp),
@@ -872,6 +917,7 @@ private fun PlaylistProfilesSection(
                     onOpen = { onOpen(profile) },
                     onSelect = { onSelect(profile.id) },
                     onEdit = { onEdit(profile) },
+                    externalFocusRequester = restoreFocusRequester.takeIf { profile.id == selectedProfileId },
                 )
                 Spacer(Modifier.height(7.dp))
             }
@@ -887,9 +933,11 @@ private fun PlaylistProfileRow(
     onOpen: () -> Unit,
     onSelect: () -> Unit,
     onEdit: () -> Unit,
+    externalFocusRequester: FocusRequester? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val rowFocusRequester = remember { FocusRequester() }
+    val internalRowFocusRequester = remember { FocusRequester() }
+    val rowFocusRequester = externalFocusRequester ?: internalRowFocusRequester
     val toggleFocusRequester = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
     val focusStyle = LocalTvFocusStyle.current
@@ -1331,7 +1379,7 @@ private fun SynchronizationCard(
                 onClick = onDelete,
                 enabled = syncStatus !is SyncStatus.Running,
                 leadingIcon = Icons.Default.Delete,
-                variant = TvButtonVariant.Secondary,
+                variant = TvButtonVariant.Danger,
                 modifier = Modifier
                     .width(132.dp)
                     .height(42.dp),
@@ -1515,22 +1563,12 @@ private fun UrlEditorDialog(
         runCatching { urlFocusRequester.requestFocus() }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .width(600.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF0A1425))
-                .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent), RoundedCornerShape(8.dp))
-                .padding(22.dp),
-        ) {
-            Text(
-                text = title,
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.TitleS,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(14.dp))
+    TvDialogSurface(
+        title = title,
+        onDismiss = onDismiss,
+        width = 600.dp,
+        icon = Icons.Default.Edit,
+    ) {
             ProfileEditTextField(
                 label = "URL",
                 value = url,
@@ -1568,7 +1606,6 @@ private fun UrlEditorDialog(
                     modifier = Modifier.height(42.dp),
                 )
             }
-        }
     }
 }
 
@@ -1997,22 +2034,12 @@ fun PlaylistProfileEditorDialog(
         runCatching { nameFocusRequester.requestFocus() }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .width(660.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF0A1425))
-                .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent), RoundedCornerShape(8.dp))
-                .padding(22.dp),
-        ) {
-            Text(
-                text = if (initial == null) "Ajouter un profil" else "Modifier le profil",
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.TitleS,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(14.dp))
+    TvDialogSurface(
+        title = if (initial == null) "Ajouter un profil" else "Modifier le profil",
+        onDismiss = onDismiss,
+        width = 660.dp,
+        icon = Icons.Default.Person,
+    ) {
             ProfileEditTextField(
                 label = "Nom du profil",
                 value = name,
@@ -2112,7 +2139,6 @@ fun PlaylistProfileEditorDialog(
                     modifier = Modifier.height(42.dp),
                 )
             }
-        }
     }
 }
 
@@ -2127,22 +2153,12 @@ private fun ProfileAvatarPickerDialog(
     }
     val saveFocusRequester = remember { FocusRequester() }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .width(560.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF0A1425))
-                .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent), RoundedCornerShape(8.dp))
-                .padding(22.dp),
-        ) {
-            Text(
-                text = "Modifier la photo de profil",
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.TitleS,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(16.dp))
+    TvDialogSurface(
+        title = "Modifier la photo de profil",
+        onDismiss = onDismiss,
+        width = 560.dp,
+        icon = Icons.Default.Person,
+    ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 ProfileAvatarPresetIds.chunked(5).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -2177,7 +2193,6 @@ private fun ProfileAvatarPickerDialog(
                     modifier = Modifier.height(42.dp),
                 )
             }
-        }
     }
 }
 
@@ -2317,46 +2332,19 @@ private fun PlaylistProfileDetailDialog(
 @Composable
 private fun ConfirmPlaylistProfileDeleteDialog(
     profile: PlaylistProfile,
+    strings: SmartVisionStrings,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .width(500.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF0A1425))
-                .border(BorderStroke(1.dp, SmartVisionColors.Error.copy(alpha = 0.78f)), RoundedCornerShape(8.dp))
-                .padding(22.dp),
-        ) {
-            Text("Supprimer ce profil ?", color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = profile.name,
-                color = SmartVisionColors.TextSecondary,
-                style = SmartVisionType.Body,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(18.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TvButton(
-                    text = "Annuler",
-                    onClick = onDismiss,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier.height(42.dp),
-                )
-                Spacer(Modifier.width(10.dp))
-                TvButton(
-                    text = "Supprimer",
-                    onClick = onConfirm,
-                    leadingIcon = Icons.Default.Delete,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier.height(42.dp),
-                )
-            }
-        }
-    }
+    TvConfirmationDialog(
+        title = strings.profileDeleteTitle,
+        itemLabel = profile.name,
+        message = strings.profileDeleteMessage,
+        confirmText = strings.delete,
+        cancelText = strings.cancel,
+        onDismiss = onDismiss,
+        onConfirm = onConfirm,
+    )
 }
 
 @Composable
@@ -2459,56 +2447,6 @@ private fun XtreamAccountEditorDialog(
                         }
                     },
                     focusRequester = saveFocusRequester,
-                    modifier = Modifier.height(42.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ConfirmXtreamDeleteDialog(
-    account: XtreamAccount,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .width(500.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF0A1425))
-                .border(BorderStroke(1.dp, SmartVisionColors.Error.copy(alpha = 0.78f)), RoundedCornerShape(8.dp))
-                .padding(22.dp),
-        ) {
-            Text(
-                text = "Supprimer ce compte Xtream ?",
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.TitleS,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = account.username.ifBlank { account.host },
-                color = SmartVisionColors.TextSecondary,
-                style = SmartVisionType.Body,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(18.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TvButton(
-                    text = "Annuler",
-                    onClick = onDismiss,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier.height(42.dp),
-                )
-                Spacer(Modifier.width(10.dp))
-                TvButton(
-                    text = "Supprimer",
-                    onClick = onConfirm,
-                    leadingIcon = Icons.Default.Delete,
-                    variant = TvButtonVariant.Secondary,
                     modifier = Modifier.height(42.dp),
                 )
             }

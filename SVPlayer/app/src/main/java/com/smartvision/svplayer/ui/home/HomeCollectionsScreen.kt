@@ -11,15 +11,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +38,7 @@ import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import kotlinx.coroutines.delay
 
 enum class HomeCollectionKind {
     ContinueWatching,
@@ -68,6 +72,8 @@ fun HomeCollectionsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val settings by container.settingsRepository.settings.collectAsStateWithLifecycle(initialValue = PlayerSettings())
     val strings = smartVisionStrings(settings.language)
+    val backFocusRequester = remember { FocusRequester() }
+    val firstContentFocusRequester = remember { FocusRequester() }
     LaunchedEffect(kind) {
         if (kind == HomeCollectionKind.Trending) {
             viewModel.refreshTrending(forceRefresh = false)
@@ -84,6 +90,15 @@ fun HomeCollectionsScreen(
             CollectionSection(strings.trendingSeries, state.trendingSeries),
         )
     }.filter { it.items.isNotEmpty() }
+    LaunchedEffect(kind, sections.isNotEmpty()) {
+        withFrameNanos { }
+        delay(90)
+        if (sections.isNotEmpty()) {
+            runCatching { firstContentFocusRequester.requestFocus() }
+        } else {
+            runCatching { backFocusRequester.requestFocus() }
+        }
+    }
 
     BackHandler(onBack = onBack)
 
@@ -110,6 +125,7 @@ fun HomeCollectionsScreen(
                 text = strings.back,
                 leadingIcon = Icons.Default.ArrowBack,
                 onClick = onBack,
+                focusRequester = backFocusRequester,
                 variant = TvButtonVariant.Secondary,
                 modifier = Modifier.height(42.dp),
             )
@@ -129,13 +145,19 @@ fun HomeCollectionsScreen(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(26.dp),
         ) {
-            items(sections, key = { it.title }) { section ->
+            itemsIndexed(sections, key = { _, section -> section.title }) { index, section ->
                 ContinueWatchingRow(
                     title = section.title,
                     items = section.items,
                     onItemClick = onItemClick,
                     showViewAll = false,
                     blockedMessage = strings.connectionUnavailable,
+                    firstItemFocusRequester = firstContentFocusRequester.takeIf { index == 0 },
+                    onUpFromRow = if (index == 0) {
+                        { runCatching { backFocusRequester.requestFocus() } }
+                    } else {
+                        null
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

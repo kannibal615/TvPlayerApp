@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,7 +43,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.smartvision.svplayer.BuildConfig
@@ -68,7 +68,9 @@ import com.smartvision.svplayer.ui.catalog.VodPreviewContent
 import com.smartvision.svplayer.ui.catalog.VodPreviewPanel
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
+import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
@@ -77,6 +79,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun MoviesScreen(
+    strings: SmartVisionStrings,
     currentRoute: String,
     tabs: List<HomeHeaderTab>,
     onNavigate: (String) -> Unit,
@@ -110,11 +113,14 @@ fun MoviesScreen(
     val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
     val m3uActive = activePlaylistSource == PlaylistSource.M3u && m3uUrl.isNotBlank()
     val selectedCategoryFocusRequester = remember { FocusRequester() }
+    val currentTabFocusRequester = remember { FocusRequester() }
+    val categoryListState = rememberLazyListState()
     val firstMovieFocusRequester = remember { FocusRequester() }
     val previewPlayFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
     var movieToDelete by remember { mutableStateOf<MovieItemUi?>(null) }
+    var deletedMovieIdAwaitingFocus by remember { mutableStateOf<Int?>(null) }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
     var tvCode by remember { mutableStateOf("") }
     var premiumPurchaseUrl by remember {
@@ -144,11 +150,32 @@ fun MoviesScreen(
         }
     }
 
-    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), m3uActive, state.categories.isNotEmpty()) {
-        if (!m3uActive && accounts.isNotEmpty() && !state.categoriesLoading && state.categories.isNotEmpty()) {
-            withFrameNanos { }
-            delay(120)
-            runCatching { selectedCategoryFocusRequester.requestFocus() }
+    suspend fun focusSelectedCategory() {
+        val selectedIndex = state.categories.indexOfFirst { it.id == state.selectedCategoryId }
+            .takeIf { it >= 0 }
+            ?: 0
+        if (state.categories.isEmpty()) return
+        categoryListState.scrollToItem(selectedIndex)
+        withFrameNanos { }
+        delay(80)
+        runCatching { selectedCategoryFocusRequester.requestFocus() }
+    }
+
+    LaunchedEffect(deletedMovieIdAwaitingFocus, state.movies) {
+        val deletedId = deletedMovieIdAwaitingFocus ?: return@LaunchedEffect
+        if (state.movies.any { it.streamId == deletedId }) return@LaunchedEffect
+        focusSelectedCategory()
+        deletedMovieIdAwaitingFocus = null
+    }
+
+    LaunchedEffect(state.categoriesLoading, accounts.isNotEmpty(), m3uActive, state.categories.size) {
+        if (accounts.isEmpty()) return@LaunchedEffect
+        withFrameNanos { }
+        delay(90)
+        if (!m3uActive && !state.categoriesLoading && state.categories.isNotEmpty()) {
+            focusSelectedCategory()
+        } else {
+            runCatching { currentTabFocusRequester.requestFocus() }
         }
     }
 
@@ -182,6 +209,12 @@ fun MoviesScreen(
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
             modifier = Modifier.fillMaxWidth(),
+            currentTabFocusRequester = currentTabFocusRequester,
+            onContentDown = if (!m3uActive && accounts.isNotEmpty() && state.categories.isNotEmpty()) {
+                { behaviorScope.launch { focusSelectedCategory() } }
+            } else {
+                null
+            },
         )
 
         Spacer(Modifier.height(MediaCatalogDimens.HeaderGap))
@@ -223,6 +256,8 @@ fun MoviesScreen(
                 MovieCategoryList(
                     state = state,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
+                    currentTabFocusRequester = currentTabFocusRequester,
+                    listState = categoryListState,
                     onCategory = { category ->
                         if (inputReady) viewModel.selectCategory(category)
                     },
@@ -279,12 +314,16 @@ fun MoviesScreen(
     }
 
     movieToDelete?.let { movie ->
-        ConfirmHistoryDeleteDialog(
-            title = "Supprimer ce film de l'historique ?",
-            itemName = movie.title,
+        TvConfirmationDialog(
+            title = strings.moviesDeleteHistoryTitle,
+            itemLabel = movie.title,
+            message = strings.destructiveActionWarning,
+            confirmText = strings.delete,
+            cancelText = strings.cancel,
             onDismiss = { movieToDelete = null },
             onConfirm = {
                 movieToDelete = null
+                deletedMovieIdAwaitingFocus = movie.streamId
                 viewModel.deleteHistoryMovie(movie)
             },
         )
@@ -307,6 +346,8 @@ private fun MovieItemUi.toBehaviorContent(): BehaviorContent =
 private fun MovieCategoryList(
     state: MoviesScreenState,
     selectedCategoryFocusRequester: FocusRequester,
+    currentTabFocusRequester: FocusRequester,
+    listState: LazyListState,
     onCategory: (MovieCategoryUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -318,6 +359,7 @@ private fun MovieCategoryList(
         modifier = modifier,
     ) {
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
             contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
@@ -325,13 +367,14 @@ private fun MovieCategoryList(
             itemsIndexed(
                 state.categories,
                 key = { _, category -> category.id },
-            ) { _, category ->
+            ) { index, category ->
                 CatalogCategoryRow(
                     label = category.label,
                     count = category.count,
                     icon = movieCategoryIcon(category.label),
                     selected = category.id == state.selectedCategoryId,
                     focusRequester = if (category.id == focusCategoryId) selectedCategoryFocusRequester else null,
+                    upFocusRequester = currentTabFocusRequester.takeIf { index == 0 },
                     onClick = { onCategory(category) },
                 )
             }
@@ -440,45 +483,6 @@ private fun MovieList(
                         onClick = { onMovieClick(movie) },
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ConfirmHistoryDeleteDialog(
-    title: String,
-    itemName: String,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .width(520.dp)
-                .background(Color(0xFF0A1425), RoundedCornerShape(8.dp))
-                .border(BorderStroke(1.dp, SmartVisionColors.Error.copy(alpha = 0.78f)), RoundedCornerShape(8.dp))
-                .padding(22.dp),
-        ) {
-            Text(title, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS)
-            Spacer(Modifier.height(10.dp))
-            Text(itemName, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Body, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(18.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TvButton(
-                    text = "Annuler",
-                    onClick = onDismiss,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier.height(42.dp),
-                )
-                Spacer(Modifier.width(10.dp))
-                TvButton(
-                    text = "Supprimer",
-                    onClick = onConfirm,
-                    leadingIcon = Icons.Default.Delete,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier.height(42.dp),
-                )
             }
         }
     }

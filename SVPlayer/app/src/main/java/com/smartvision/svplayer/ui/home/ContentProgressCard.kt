@@ -1,3 +1,5 @@
+@file:androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
+
 package com.smartvision.svplayer.ui.home
 
 import android.graphics.Color as AndroidColor

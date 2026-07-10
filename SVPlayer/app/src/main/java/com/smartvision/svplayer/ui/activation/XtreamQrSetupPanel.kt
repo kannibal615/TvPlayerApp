@@ -42,6 +42,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -161,7 +162,7 @@ fun XtreamQrSetupPanel(
     LaunchedEffect(Unit) {
         refresh()
         delay(220)
-        hostFocus.requestFocus()
+        runCatching { hostFocus.requestFocus() }
     }
 
     LaunchedEffect(session?.shortCode) {
@@ -392,7 +393,9 @@ private fun XtreamField(
 
     LaunchedEffect(editing) {
         if (editing) {
-            fieldFocusRequester.requestFocus()
+            withFrameNanos { }
+            delay(40)
+            runCatching { fieldFocusRequester.requestFocus() }
             keyboardController?.show()
         }
     }
@@ -416,11 +419,11 @@ private fun XtreamField(
                         true
                     }
                     event.key == Key.DirectionDown && !editing -> {
-                        next?.requestFocus()
+                        runCatching { next?.requestFocus() }
                         next != null
                     }
                     event.key == Key.DirectionUp && !editing -> {
-                        previous?.requestFocus()
+                        runCatching { previous?.requestFocus() }
                         previous != null
                     }
                     else -> false

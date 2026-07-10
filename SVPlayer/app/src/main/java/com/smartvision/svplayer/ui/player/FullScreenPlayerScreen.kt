@@ -1,3 +1,5 @@
+@file:androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
+
 package com.smartvision.svplayer.ui.player
 
 import android.os.Handler
@@ -1141,11 +1143,7 @@ private fun FullScreenPlayerScreen(
         if (overlayVisible && activeMenu == PlayerOverlayMenu.None && !brightnessMode && nextEpisodeCountdown == null) {
             if (focusPlayWhenOverlayShows) {
                 delay(120)
-                if (playback.contentType == UserContentType.Live) {
-                    playFocusRequester.requestFocus()
-                } else {
-                    playFocusRequester.requestFocus()
-                }
+                runCatching { playFocusRequester.requestFocus() }
                 focusPlayWhenOverlayShows = false
             }
             delay(4_800)
@@ -1728,7 +1726,7 @@ private fun FullScreenAdOverlay(
     LaunchedEffect(skipEnabled) {
         if (skipEnabled) {
             delay(80)
-            skipFocusRequester.requestFocus()
+            runCatching { skipFocusRequester.requestFocus() }
         }
     }
 
@@ -3093,7 +3091,7 @@ private fun PlayerOptionMenu(
 
     LaunchedEffect(title) {
         delay(100)
-        firstFocusRequester.requestFocus()
+        runCatching { firstFocusRequester.requestFocus() }
     }
 
     Box(
@@ -3155,7 +3153,7 @@ private fun NextEpisodeCard(
 
     LaunchedEffect(nextEpisode.episodeId) {
         delay(100)
-        playNowFocusRequester.requestFocus()
+        runCatching { playNowFocusRequester.requestFocus() }
     }
 
     Column(

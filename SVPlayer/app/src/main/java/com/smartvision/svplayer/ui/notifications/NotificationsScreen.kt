@@ -35,8 +35,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -64,6 +66,7 @@ import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -112,6 +115,13 @@ private fun NotificationsScreen(
     modifier: Modifier = Modifier,
 ) {
     BackHandler(onBack = onBack)
+    val backFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        delay(90)
+        runCatching { backFocusRequester.requestFocus() }
+    }
 
     Column(
         modifier = modifier
@@ -138,6 +148,7 @@ private fun NotificationsScreen(
                 text = strings.back,
                 leadingIcon = Icons.Default.ArrowBack,
                 onClick = onBack,
+                focusRequester = backFocusRequester,
                 variant = TvButtonVariant.Secondary,
                 contentPadding = PaddingValues(horizontal = 18.dp),
                 modifier = Modifier.height(42.dp),

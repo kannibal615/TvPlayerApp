@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,6 +84,7 @@ import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import kotlinx.coroutines.delay
 
 @Composable
 fun ActivationScreen(
@@ -172,7 +174,11 @@ private fun ActivationMainPanel(
     var licenseCode by remember { mutableStateOf("") }
     val licenseFocus = remember { FocusRequester() }
 
-    LaunchedEffect(Unit) { licenseFocus.requestFocus() }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        delay(80)
+        runCatching { licenseFocus.requestFocus() }
+    }
 
     GlassShell(width = 1000.dp) {
         Row(
@@ -324,7 +330,11 @@ private fun TrialExpiredPanel(
     onEnterLicense: () -> Unit,
 ) {
     val continueFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { continueFocus.requestFocus() }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        delay(80)
+        runCatching { continueFocus.requestFocus() }
+    }
 
     GlassShell(width = 1000.dp) {
         Row(
@@ -466,7 +476,11 @@ private fun ActivationPurchaseDialog(
     onDismiss: () -> Unit,
 ) {
     val closeFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { closeFocus.requestFocus() }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        delay(80)
+        runCatching { closeFocus.requestFocus() }
+    }
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -529,7 +543,7 @@ private fun LicenseInput(
 
     LaunchedEffect(editing) {
         if (editing) {
-            fieldFocusRequester.requestFocus()
+            runCatching { fieldFocusRequester.requestFocus() }
             keyboardController?.show()
         }
     }

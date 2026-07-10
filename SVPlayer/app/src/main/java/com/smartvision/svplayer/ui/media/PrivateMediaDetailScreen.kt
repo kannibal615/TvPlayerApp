@@ -1,5 +1,8 @@
+@file:androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
+
 package com.smartvision.svplayer.ui.media
 
+import androidx.activity.compose.BackHandler
 import android.annotation.SuppressLint
 import android.net.Uri
 import android.os.Build
@@ -46,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -88,6 +92,10 @@ fun PrivateMediaDetailRoute(
     var loading by remember(itemId) { mutableStateOf(true) }
     var item by remember(itemId) { mutableStateOf<PrivateMediaDetailsDto?>(null) }
     var error by remember(itemId) { mutableStateOf<String?>(null) }
+    val backFocusRequester = remember { FocusRequester() }
+    val playFocusRequester = remember { FocusRequester() }
+
+    BackHandler(onBack = onBack)
 
     LaunchedEffect(itemId) {
         loading = true
@@ -96,6 +104,14 @@ fun PrivateMediaDetailRoute(
             .onFailure { error = it.message ?: strings.mediaPlaybackUnavailable }
             .getOrNull()
         loading = false
+    }
+
+    LaunchedEffect(loading, item?.id) {
+        kotlinx.coroutines.delay(100)
+        val canPlay = item?.let { it.isPlayable || !it.embedUrl.isNullOrBlank() } == true
+        runCatching {
+            if (!loading && canPlay) playFocusRequester.requestFocus() else backFocusRequester.requestFocus()
+        }
     }
 
     Column(
@@ -113,6 +129,7 @@ fun PrivateMediaDetailRoute(
         TvButton(
             text = strings.back,
             onClick = onBack,
+            focusRequester = backFocusRequester,
             modifier = Modifier.height(40.dp),
         )
         when {
@@ -120,7 +137,13 @@ fun PrivateMediaDetailRoute(
                 CircularProgressIndicator(color = SmartVisionColors.CyanAccent)
             }
             item == null -> PrivateMediaDetailMessage(error ?: strings.mediaPrivateEmpty)
-            else -> PrivateMediaDetailContent(strings = strings, item = item!!, onPlay = { onPlay(itemId) })
+            else -> PrivateMediaDetailContent(
+                strings = strings,
+                item = item!!,
+                onPlay = { onPlay(itemId) },
+                playFocusRequester = playFocusRequester,
+                backFocusRequester = backFocusRequester,
+            )
         }
     }
 }
@@ -130,6 +153,8 @@ private fun PrivateMediaDetailContent(
     strings: SmartVisionStrings,
     item: PrivateMediaDetailsDto,
     onPlay: () -> Unit,
+    playFocusRequester: FocusRequester,
+    backFocusRequester: FocusRequester,
 ) {
     Row(
         modifier = Modifier.fillMaxSize(),
@@ -187,7 +212,9 @@ private fun PrivateMediaDetailContent(
                 onClick = onPlay,
                 enabled = item.isPlayable || !item.embedUrl.isNullOrBlank(),
                 leadingIcon = Icons.Default.PlayArrow,
+                focusRequester = playFocusRequester,
                 modifier = Modifier
+                    .focusProperties { up = backFocusRequester }
                     .fillMaxWidth()
                     .height(44.dp),
             )
@@ -205,6 +232,9 @@ fun PrivateMediaPlayerRoute(
     var loading by remember(itemId) { mutableStateOf(true) }
     var playback by remember(itemId) { mutableStateOf<PrivateMediaPlaybackResponse?>(null) }
     var error by remember(itemId) { mutableStateOf<String?>(null) }
+    val backFocusRequester = remember { FocusRequester() }
+
+    BackHandler(onBack = onBack)
 
     LaunchedEffect(itemId) {
         loading = true
@@ -213,6 +243,13 @@ fun PrivateMediaPlayerRoute(
             .onFailure { error = it.message ?: strings.mediaPlaybackUnavailable }
             .getOrNull()
         loading = false
+    }
+
+    LaunchedEffect(loading, playback) {
+        if (playback == null) {
+            kotlinx.coroutines.delay(100)
+            runCatching { backFocusRequester.requestFocus() }
+        }
     }
 
     Box(
@@ -232,6 +269,7 @@ fun PrivateMediaPlayerRoute(
             text = strings.back,
             onClick = onBack,
             variant = TvButtonVariant.Secondary,
+            focusRequester = backFocusRequester,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(18.dp)

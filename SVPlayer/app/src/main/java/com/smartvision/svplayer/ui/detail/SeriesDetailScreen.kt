@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -380,11 +381,25 @@ private fun SeriesDetailScreen(
 ) {
     val firstEpisodeFocusRequester = remember { FocusRequester() }
     val playFocusRequester = remember { FocusRequester() }
+    val favoriteFocusRequester = remember { FocusRequester() }
+    val retryFocusRequester = remember { FocusRequester() }
+    val currentTabFocusRequester = remember { FocusRequester() }
     val listState = rememberLazyListState()
-    LaunchedEffect(state.seriesId) {
+    LaunchedEffect(state.loading, state.errorMessage, state.firstEpisode?.episodeId) {
+        if (state.loading) {
+            delay(80)
+            runCatching { currentTabFocusRequester.requestFocus() }
+            return@LaunchedEffect
+        }
         listState.scrollToItem(0)
         delay(120)
-        runCatching { playFocusRequester.requestFocus() }
+        runCatching {
+            when {
+                state.firstEpisode != null -> playFocusRequester.requestFocus()
+                state.errorMessage != null -> retryFocusRequester.requestFocus()
+                else -> favoriteFocusRequester.requestFocus()
+            }
+        }
     }
 
     DetailBackground(imageUrl = state.backgroundUrl, modifier = modifier) {
@@ -400,6 +415,21 @@ private fun SeriesDetailScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
+            currentTabFocusRequester = currentTabFocusRequester,
+            contentDownFocusRequester = when {
+                state.firstEpisode != null -> playFocusRequester
+                state.errorMessage != null -> retryFocusRequester
+                else -> favoriteFocusRequester
+            },
+            onContentDown = {
+                runCatching {
+                    when {
+                        state.firstEpisode != null -> playFocusRequester.requestFocus()
+                        state.errorMessage != null -> retryFocusRequester.requestFocus()
+                        else -> favoriteFocusRequester.requestFocus()
+                    }
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = DetailDimens.ScreenPadding)
@@ -426,6 +456,9 @@ private fun SeriesDetailScreen(
                         onRetry = onRetry,
                         onFavorite = onFavorite,
                         playFocusRequester = playFocusRequester,
+                        favoriteFocusRequester = favoriteFocusRequester,
+                        retryFocusRequester = retryFocusRequester,
+                        headerFocusRequester = currentTabFocusRequester,
                         modifier = Modifier.width(720.dp),
                     )
                     Spacer(Modifier.weight(1f))
@@ -492,6 +525,9 @@ private fun SeriesHeroInfo(
     onRetry: () -> Unit,
     onFavorite: () -> Unit,
     playFocusRequester: FocusRequester,
+    favoriteFocusRequester: FocusRequester,
+    retryFocusRequester: FocusRequester,
+    headerFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -540,9 +576,11 @@ private fun SeriesHeroInfo(
                 icon = Icons.Default.PlayArrow,
                 onClick = onWatchEpisode,
                 primary = true,
+                enabled = state.firstEpisode != null,
                 focusRequester = playFocusRequester,
                 bringIntoViewOnFocus = false,
                 modifier = Modifier
+                    .focusProperties { up = headerFocusRequester }
                     .width(162.dp)
                     .height(DetailDimens.ActionHeight),
             )
@@ -550,7 +588,9 @@ private fun SeriesHeroInfo(
                 text = if (state.isFavorite) "Retirer des favoris" else "Ajouter aux favoris",
                 icon = Icons.Default.FavoriteBorder,
                 onClick = onFavorite,
+                focusRequester = favoriteFocusRequester,
                 modifier = Modifier
+                    .focusProperties { up = headerFocusRequester }
                     .width(190.dp)
                     .height(DetailDimens.ActionHeight),
             )
@@ -559,7 +599,9 @@ private fun SeriesHeroInfo(
                     text = "Reessayer",
                     icon = Icons.Default.Sync,
                     onClick = onRetry,
+                    focusRequester = retryFocusRequester,
                     modifier = Modifier
+                        .focusProperties { up = headerFocusRequester }
                         .width(132.dp)
                         .height(DetailDimens.ActionHeight),
                 )

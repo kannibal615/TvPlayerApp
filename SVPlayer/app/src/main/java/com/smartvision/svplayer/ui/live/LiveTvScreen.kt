@@ -1,3 +1,5 @@
+@file:androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
+
 package com.smartvision.svplayer.ui.live
 
 import android.graphics.Bitmap
@@ -99,7 +101,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -129,6 +130,7 @@ import com.smartvision.svplayer.data.monetization.smartVisionMediaSourceFactory
 import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
@@ -563,9 +565,12 @@ fun LiveTvScreen(
     }
 
     channelToDelete?.let { channel ->
-        ConfirmHistoryDeleteDialog(
+        TvConfirmationDialog(
             title = strings.liveTvDeleteHistoryTitle,
-            itemName = channel.name,
+            itemLabel = channel.name,
+            message = strings.destructiveActionWarning,
+            confirmText = strings.delete,
+            cancelText = strings.cancel,
             onDismiss = { channelToDelete = null },
             onConfirm = {
                 channelToDelete = null
@@ -1794,52 +1799,6 @@ private fun EpgHeaderIndicator() {
             .size(width = 42.dp, height = 28.dp)
             .focusProperties { canFocus = false },
     )
-}
-
-@Composable
-private fun ConfirmHistoryDeleteDialog(
-    title: String,
-    itemName: String,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .width(520.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF0A1425))
-                .border(BorderStroke(1.dp, SmartVisionColors.Error.copy(alpha = 0.78f)), RoundedCornerShape(8.dp))
-                .padding(22.dp),
-        ) {
-            Text(title, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = itemName,
-                color = SmartVisionColors.TextSecondary,
-                style = SmartVisionType.Body,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(18.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TvButton(
-                    text = "Annuler",
-                    onClick = onDismiss,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier.height(42.dp),
-                )
-                Spacer(Modifier.width(10.dp))
-                TvButton(
-                    text = "Supprimer",
-                    onClick = onConfirm,
-                    leadingIcon = Icons.Default.Delete,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier.height(42.dp),
-                )
-            }
-        }
-    }
 }
 
 @Composable

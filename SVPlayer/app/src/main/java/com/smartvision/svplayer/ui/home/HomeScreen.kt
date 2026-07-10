@@ -396,7 +396,8 @@ fun HomeScreen(
         playStartupChimeOnHome(context)
         viewModel.refreshSlides()
         withFrameNanos { }
-        liveFocusRequester.requestFocus()
+        delay(80)
+        runCatching { liveFocusRequester.requestFocus() }
         viewModel.refreshTrending(forceRefresh = false)
         PerformanceDiagnosticRecorder.record(
             sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
