@@ -80,6 +80,7 @@ fun HomeScreen(
     onContinueViewAll: () -> Unit,
     onTrendingViewAll: () -> Unit,
     modifier: Modifier = Modifier,
+    headerFocusRequest: Int = 0,
 ) {
     val container = LocalAppContainer.current
     val context = LocalContext.current.applicationContext
@@ -102,6 +103,7 @@ fun HomeScreen(
     var catalogWorkUiState by remember { mutableStateOf(HomeCatalogWorkUiState.Idle) }
     val catalogWorkActive = catalogWorkUiState.active
     val catalogSyncActive = catalogWorkActive && catalogWorkUiState.kind == StartupCatalogWorkKind.Synchronize
+    val homeTabFocusRequester = remember { FocusRequester() }
     val liveFocusRequester = remember { FocusRequester() }
     val continueFirstFocusRequester = remember { FocusRequester() }
     val movieTrendFirstFocusRequester = remember { FocusRequester() }
@@ -409,6 +411,14 @@ fun HomeScreen(
         }
     }
 
+    LaunchedEffect(headerFocusRequest) {
+        if (headerFocusRequest > 0) {
+            withFrameNanos { }
+            delay(90)
+            runCatching { homeTabFocusRequester.requestFocus() }
+        }
+    }
+
     LaunchedEffect(startupWorkRequest.requestedAtMs) {
         if (!startupWorkRequest.active) return@LaunchedEffect
         val request = startupWorkRequest
@@ -512,6 +522,7 @@ fun HomeScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
+            currentTabFocusRequester = homeTabFocusRequester,
             modifier = Modifier.fillMaxWidth(),
         )
 

@@ -87,6 +87,8 @@ import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.TvFocusStyles
+import com.smartvision.svplayer.ui.home.HomeHeaderTab
+import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -95,11 +97,23 @@ import com.smartvision.svplayer.ui.update.AppUpdateUiState
 import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import java.util.UUID
 import java.util.Date
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    currentRoute: String,
+    tabs: List<HomeHeaderTab>,
+    onNavigate: (String) -> Unit,
+    onSync: () -> Unit,
+    onSettings: () -> Unit,
+    onProfile: () -> Unit,
+    onNotifications: () -> Unit,
+    onLicenseKey: () -> Unit,
+    showLicenseKey: Boolean,
+    hasNewNotifications: Boolean,
+    notificationBadgeCount: Int,
     updateState: AppUpdateUiState,
     onCheckForUpdate: () -> Unit,
     onSyncCatalog: () -> Unit,
@@ -120,8 +134,14 @@ fun SettingsScreen(
     var selectedSection by remember { mutableStateOf(SettingsSection.Preferences) }
     val strings = smartVisionStrings(settings.language)
     val lastUpdateLabel = remember(context) { context.smartVisionLastUpdateLabel() }
+    val firstMenuFocusRequester = remember { FocusRequester() }
 
     BackHandler(onBack = onBack)
+
+    LaunchedEffect(Unit) {
+        delay(180)
+        runCatching { firstMenuFocusRequester.requestFocus() }
+    }
 
     Column(
         modifier = modifier
@@ -136,30 +156,29 @@ fun SettingsScreen(
                     radius = 1500f,
                 ),
             )
-            .padding(horizontal = 34.dp, vertical = 24.dp),
+            .padding(horizontal = 34.dp, vertical = 18.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TvButton(
-                text = strings.back,
-                leadingIcon = Icons.Default.ArrowBack,
-                onClick = onBack,
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier.height(42.dp),
-            )
-            Spacer(Modifier.width(20.dp))
-            Text(
-                text = strings.settings,
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.TitleL,
-                fontWeight = FontWeight.Bold,
-            )
-        }
+        TvHeader(
+            currentRoute = currentRoute,
+            tabs = tabs,
+            onNavigate = onNavigate,
+            onSync = onSync,
+            onSettings = onSettings,
+            onProfile = onProfile,
+            onNotifications = onNotifications,
+            onLicenseKey = onLicenseKey,
+            showLicenseKey = showLicenseKey,
+            hasNewNotifications = hasNewNotifications,
+            notificationBadgeCount = notificationBadgeCount,
+            modifier = Modifier.fillMaxWidth(),
+        )
 
-        Spacer(Modifier.height(22.dp))
+        Spacer(Modifier.height(14.dp))
 
         SettingsMenuLayout(
             selectedSection = selectedSection,
             onSectionSelected = { selectedSection = it },
+            firstMenuFocusRequester = firstMenuFocusRequester,
             settings = settings,
             accountsCount = accounts.size,
             activeAccount = activeAccount,
@@ -333,6 +352,7 @@ fun SettingsScreen(
 private fun SettingsMenuLayout(
     selectedSection: SettingsSection,
     onSectionSelected: (SettingsSection) -> Unit,
+    firstMenuFocusRequester: FocusRequester,
     settings: PlayerSettings,
     accountsCount: Int,
     activeAccount: XtreamAccount?,
@@ -425,6 +445,7 @@ private fun SettingsMenuLayout(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp)
+                            .then(if (section == SettingsSection.Preferences) Modifier.focusRequester(firstMenuFocusRequester) else Modifier)
                             .alpha(if (isParental && !parentalControlAllowed) 0.28f else 1f),
                     )
                     if (isParental) {

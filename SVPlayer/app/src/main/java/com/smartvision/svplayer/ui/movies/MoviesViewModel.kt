@@ -629,7 +629,7 @@ private fun Movie.toUiMovie(
         year = year?.take(4)?.takeIf { it.all(Char::isDigit) },
         duration = duration?.takeIf { it.isNotBlank() },
         plot = plot?.takeIf { it.isNotBlank() },
-        streamUrl = xtreamRepository.buildMovieStreamUrl(streamId),
+        streamUrl = xtreamRepository.buildMovieStreamUrl(streamId, containerExtension),
         isFavorite = streamId in favoriteIds,
     )
 

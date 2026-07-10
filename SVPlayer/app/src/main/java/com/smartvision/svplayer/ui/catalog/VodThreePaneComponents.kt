@@ -60,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -562,6 +563,7 @@ fun VodPreviewPanel(
     premiumPurchaseUrl: String = "",
     tvCode: String = "",
 ) {
+    val miniPlayerFocusRequester = remember { FocusRequester() }
     MediaCatalogPanel(
         title = title,
         modifier = modifier,
@@ -572,18 +574,21 @@ fun VodPreviewPanel(
                         icon = Icons.Default.PlayArrow,
                         contentDescription = "Play",
                         focusRequester = playFocusRequester,
+                        downFocusRequester = miniPlayerFocusRequester,
                         onClick = onPlay,
                         primary = true,
                     )
                     PreviewIconButton(
                         icon = Icons.Default.Info,
                         contentDescription = "Details",
+                        downFocusRequester = miniPlayerFocusRequester,
                         onClick = onDetails,
                     )
                     if (showDeleteHistory) {
                         PreviewIconButton(
                             icon = Icons.Default.Delete,
                             contentDescription = "Supprimer",
+                            downFocusRequester = miniPlayerFocusRequester,
                             onClick = onDeleteHistory,
                             danger = true,
                         )
@@ -591,6 +596,7 @@ fun VodPreviewPanel(
                         PreviewIconButton(
                             icon = if (content.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                             contentDescription = "Favori",
+                            downFocusRequester = miniPlayerFocusRequester,
                             onClick = onFavorite,
                             selected = content.isFavorite,
                         )
@@ -633,6 +639,16 @@ fun VodPreviewPanel(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(16f / 9f)
+                        .focusRequester(miniPlayerFocusRequester)
+                        .onPreviewKeyEvent { event ->
+                            if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionUp) {
+                                runCatching { playFocusRequester.requestFocus() }
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        .focusable()
                         .clip(RoundedCornerShape(MediaCatalogDimens.ItemRadius))
                         .background(Color.Black)
                         .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(MediaCatalogDimens.ItemRadius)),
@@ -1211,6 +1227,7 @@ private fun PreviewIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
+    downFocusRequester: FocusRequester? = null,
     primary: Boolean = false,
     selected: Boolean = false,
     danger: Boolean = false,
@@ -1244,6 +1261,13 @@ private fun PreviewIconButton(
                 focusedScale = 1.08f,
                 glowColor = if (danger) SmartVisionColors.Error else SmartVisionColors.Primary,
                 cornerRadius = 5.dp,
+            )
+            .then(
+                if (downFocusRequester != null) {
+                    Modifier.focusProperties { down = downFocusRequester }
+                } else {
+                    Modifier
+                },
             )
             .clip(shape)
             .background(background)

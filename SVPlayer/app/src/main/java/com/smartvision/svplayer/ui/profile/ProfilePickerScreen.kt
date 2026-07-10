@@ -22,7 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -132,9 +132,8 @@ fun ProfilePickerScreen(
                 )
             }
             Spacer(Modifier.height(54.dp))
-            ProfileSelectionProgressBar(
+            ProfileSelectionLoadingIndicator(
                 visible = selectionLoading,
-                progress = selectionProgress,
                 modifier = Modifier
                     .width(260.dp)
                     .height(46.dp),
@@ -292,9 +291,8 @@ private fun PickerEditButton(
 }
 
 @Composable
-private fun ProfileSelectionProgressBar(
+private fun ProfileSelectionLoadingIndicator(
     visible: Boolean,
-    progress: Float,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -302,13 +300,10 @@ private fun ProfileSelectionProgressBar(
         contentAlignment = Alignment.Center,
     ) {
         if (visible) {
-            LinearProgressIndicator(
-                progress = { progress.coerceIn(0f, 1f) },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(50)),
+            CircularProgressIndicator(
                 color = SmartVisionColors.CyanAccent,
-                trackColor = SmartVisionColors.Surface.copy(alpha = 0.84f),
+                strokeWidth = 4.dp,
+                modifier = Modifier.size(38.dp),
             )
         }
     }

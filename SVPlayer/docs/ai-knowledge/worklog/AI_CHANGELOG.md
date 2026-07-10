@@ -1,5 +1,29 @@
 # AI Changelog
 
+## 2026-07-10 - Settings header, focus profil et preview VOD ALL
+
+Type:
+- Android TV
+- focus/navigation
+- profils playlist
+- UI catalogue
+
+Resume:
+- Settings reutilise le header principal comme Info compte, donne le focus initial au premier item du menu et Back depuis Settings/Info compte retourne sur Home avec focus sur l'onglet Home du header.
+- Info compte supprime le menu gauche `Appareil et catalogue`; son contenu reste en bas de `Info compte` comme section focusable non cliquable pour permettre le scroll.
+- Les changements de profil depuis Info compte et Who's watching invalident les caches et synchronisent le catalogue du profil actif sans declencher le faux popup Xtream du quick-check.
+- Who's watching remplace la barre lineaire par le cercle de chargement bleu.
+- Movies/Series reconstruisent les URLs preview/player depuis Room avec l'extension locale, corrigeant les previews `ALL` chez les fournisseurs non-`mp4`; le mini-player Preview devient focusable entre header et details.
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin` : succes.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
 ## 2026-07-10 - Who's watching, multi-profils premium et correctifs catalogues
 
 Type:

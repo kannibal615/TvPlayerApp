@@ -182,6 +182,15 @@ fun ProfileRoute(
         }
     }
 
+    suspend fun synchronizeActiveProfileCatalog(): Result<Unit> = runCatching {
+        container.xtreamRepository.clearCaches()
+        container.catalogRepository.invalidateLocalCatalogCache()
+        container.synchronizeCatalog().getOrThrow()
+        container.accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let { epgUrl ->
+            container.epgRepository.synchronize(epgUrl)
+        }
+    }
+
     ProfileScreen(
         state = state,
         syncStatus = syncStatus,
@@ -222,7 +231,7 @@ fun ProfileRoute(
                 scope.launch {
                     container.catalogRepository.clearCatalogForProfileSwitch()
                     if (!container.catalogRepository.hasLocalCatalogForActiveProfile()) {
-                        onSyncCatalog()
+                        synchronizeActiveProfileCatalog()
                     }
                 }
             }
@@ -233,7 +242,7 @@ fun ProfileRoute(
             scope.launch {
                 container.catalogRepository.clearCatalogForProfileSwitch()
                 if (!container.catalogRepository.hasLocalCatalogForActiveProfile()) {
-                    onSyncCatalog()
+                    synchronizeActiveProfileCatalog()
                 }
             }
         },
@@ -246,7 +255,7 @@ fun ProfileRoute(
                 if (wasActiveProfile && container.accountManager.activeProfileId.value != null &&
                     !container.catalogRepository.hasLocalCatalogForActiveProfile()
                 ) {
-                    onSyncCatalog()
+                    synchronizeActiveProfileCatalog()
                 }
             }
         },
@@ -255,7 +264,7 @@ fun ProfileRoute(
             container.xtreamRepository.clearCaches()
             scope.launch {
                 container.catalogRepository.clearCatalogForProfileSwitch()
-                onSyncCatalog()
+                synchronizeActiveProfileCatalog()
             }
         },
         onSaveXtreamAccount = { account ->
@@ -318,7 +327,6 @@ private fun ProfileScreen(
     var pendingFocusSection by remember { mutableStateOf<ProfileSection?>(null) }
     val licenseSectionFocusRequester = remember { FocusRequester() }
     val xtreamSectionFocusRequester = remember { FocusRequester() }
-    val deviceSectionFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
         delay(ProfileFocusRequestDelayMillis)
@@ -330,7 +338,6 @@ private fun ProfileScreen(
             delay(ProfileFocusRequestDelayMillis)
             when (pendingFocusSection) {
                 ProfileSection.Xtream -> runCatching { xtreamSectionFocusRequester.requestFocus() }
-                ProfileSection.Device -> runCatching { deviceSectionFocusRequester.requestFocus() }
                 else -> Unit
             }
             pendingFocusSection = null
@@ -400,7 +407,6 @@ private fun ProfileScreen(
                         focusRequester = when (section) {
                             ProfileSection.License -> licenseSectionFocusRequester
                             ProfileSection.Xtream -> xtreamSectionFocusRequester
-                            ProfileSection.Device -> deviceSectionFocusRequester
                             else -> null
                         },
                         modifier = Modifier
@@ -444,7 +450,6 @@ private fun ProfileScreen(
                         onDeleteXtreamAccount = onDeleteXtreamAccount,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    ProfileSection.Device -> DevicePanel(state = state, modifier = Modifier.fillMaxWidth())
                     ProfileSection.History -> ProfileHistoryPanel(state = state, modifier = Modifier.fillMaxWidth())
                     ProfileSection.Help -> ProfileHelpPanel(modifier = Modifier.fillMaxWidth())
                     ProfileSection.SettingsShortcut -> Unit
@@ -482,8 +487,8 @@ private fun ProfileScreen(
             },
             onReturn = {
                 showXtreamSyncDialog = false
-                selectedSection = ProfileSection.Device
-                pendingFocusSection = ProfileSection.Device
+                selectedSection = ProfileSection.Xtream
+                pendingFocusSection = ProfileSection.Xtream
             },
         )
     }
@@ -607,7 +612,6 @@ private enum class ProfileSection(
 ) {
     License("Licence SmartVision", Icons.Default.Verified),
     Xtream("Info compte", Icons.Default.Person),
-    Device("Appareil et catalogue", Icons.Default.Devices),
     History("Historique", Icons.Default.History),
     Help("Aide", Icons.Default.HelpOutline),
     SettingsShortcut("Parametres", Icons.Default.Settings),
@@ -2705,12 +2709,23 @@ private fun DevicePanel(
 private fun DeviceCatalogInlineSection(
     state: ProfileUiState,
 ) {
+    var focused by remember { mutableStateOf(false) }
+    val focusStyle = LocalTvFocusStyle.current
+    val shape = RoundedCornerShape(7.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(7.dp))
-            .background(SmartVisionColors.Surface.copy(alpha = 0.58f))
-            .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.78f)), RoundedCornerShape(7.dp))
+            .onFocusChanged { focused = it.isFocused }
+            .focusable()
+            .clip(shape)
+            .background(if (focused) focusStyle.background else SmartVisionColors.Surface.copy(alpha = 0.58f))
+            .border(
+                BorderStroke(
+                    if (focused) focusStyle.borderWidth else 1.dp,
+                    if (focused) focusStyle.accent else SmartVisionColors.Border.copy(alpha = 0.78f),
+                ),
+                shape,
+            )
             .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

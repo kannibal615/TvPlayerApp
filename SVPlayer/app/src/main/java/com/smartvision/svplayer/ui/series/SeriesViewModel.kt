@@ -800,7 +800,7 @@ private fun Episode.toUiEpisode(xtreamRepository: XtreamRepository): SeriesEpiso
         title = title.cleanTitle(),
         duration = duration,
         plot = plot,
-        streamUrl = xtreamRepository.buildEpisodeStreamUrl(episodeId),
+        streamUrl = xtreamRepository.buildEpisodeStreamUrl(episodeId, containerExtension),
     )
 
 private fun XtreamSeriesEpisode.toUiEpisode(xtreamRepository: XtreamRepository): SeriesEpisodeUi =

@@ -283,11 +283,17 @@ class XtreamRepository(
     fun buildMovieStreamUrl(movie: XtreamMovieStream): String =
         urlFactory.movie(movie.streamId, movie.containerExtension)
 
+    fun buildMovieStreamUrl(movieId: Int, extension: String): String =
+        urlFactory.movie(movieId, extension)
+
     fun buildMovieStreamUrl(movieId: Int): String =
         moviesById[movieId]?.let(::buildMovieStreamUrl) ?: urlFactory.movie(movieId, "mp4")
 
     fun buildEpisodeStreamUrl(episode: XtreamSeriesEpisode): String =
         urlFactory.episode(episode.episodeId, episode.containerExtension)
+
+    fun buildEpisodeStreamUrl(episodeId: Int, extension: String): String =
+        urlFactory.episode(episodeId, extension)
 
     fun buildEpisodeStreamUrl(episodeId: Int): String =
         episodesById[episodeId]?.let(::buildEpisodeStreamUrl) ?: urlFactory.episode(episodeId, "mp4")

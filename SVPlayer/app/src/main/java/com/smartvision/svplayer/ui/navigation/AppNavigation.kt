@@ -153,6 +153,7 @@ fun AppNavigation(
     var showXtreamSetupDialog by remember { mutableStateOf(false) }
     var premiumLicenseCode by remember { mutableStateOf("") }
     var liveReturnFocusChannelId by remember { mutableStateOf<Int?>(null) }
+    var homeHeaderFocusRequest by remember { mutableStateOf(0) }
     var profilePickerCompleted by remember { mutableStateOf(false) }
     var openProfilesAfterPicker by remember { mutableStateOf(false) }
     var profileSelectionLoading by remember { mutableStateOf(false) }
@@ -268,6 +269,14 @@ fun AppNavigation(
             if (currentRoute != AppRoute.Settings.route) {
                 navController.navigateSingleTop(AppRoute.Settings.route)
             }
+        }
+    }
+    fun navigateHomeWithHeaderFocus() {
+        homeHeaderFocusRequest += 1
+        navController.navigate(AppRoute.Home.route) {
+            popUpTo(AppRoute.Home.route) { inclusive = false }
+            launchSingleTop = true
+            restoreState = true
         }
     }
     LaunchedEffect(Unit) {
@@ -486,7 +495,14 @@ fun AppNavigation(
                     container.catalogRepository.clearCatalogForProfileSwitch()
                     profileSelectionProgress = 0.35f
                     if (!container.catalogRepository.hasLocalCatalogForActiveProfile()) {
-                        syncCatalog()
+                        runCatching {
+                            container.xtreamRepository.clearCaches()
+                            container.catalogRepository.invalidateLocalCatalogCache()
+                            container.synchronizeCatalog().getOrThrow()
+                            container.accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let { epgUrl ->
+                                container.epgRepository.synchronize(epgUrl)
+                            }
+                        }
                     }
                     profileSelectionProgress = 1f
                     delay(180)
@@ -503,7 +519,14 @@ fun AppNavigation(
                     scope.launch {
                         container.catalogRepository.clearCatalogForProfileSwitch()
                         if (!container.catalogRepository.hasLocalCatalogForActiveProfile()) {
-                            syncCatalog()
+                            runCatching {
+                                container.xtreamRepository.clearCaches()
+                                container.catalogRepository.invalidateLocalCatalogCache()
+                                container.synchronizeCatalog().getOrThrow()
+                                container.accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let { epgUrl ->
+                                    container.epgRepository.synchronize(epgUrl)
+                                }
+                            }
                         }
                     }
                 }
@@ -610,6 +633,7 @@ fun AppNavigation(
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
                 notificationBadgeCount = notificationBadgeCount,
+                headerFocusRequest = homeHeaderFocusRequest,
                 strings = strings,
                 xtreamCatalogBlocked = xtreamCatalogVisualBlocked,
                 xtreamCatalogNavigationBlocked = xtreamCatalogBlocked,
@@ -631,7 +655,7 @@ fun AppNavigation(
         }
         composable(AppRoute.Profile.route) {
             ProfileRoute(
-                onBack = { navController.popBackStack() },
+                onBack = { navigateHomeWithHeaderFocus() },
                 onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
                 currentRoute = currentRoute,
                 tabs = tabs,
@@ -810,7 +834,18 @@ fun AppNavigation(
         }
         composable(AppRoute.Settings.route) {
             SettingsScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navigateHomeWithHeaderFocus() },
+                currentRoute = currentRoute,
+                tabs = tabs,
+                onNavigate = navigateFromHeader,
+                onSync = launchSyncCatalog,
+                onSettings = {},
+                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                onLicenseKey = { showLicensePurchaseQr = true },
+                showLicenseKey = activationState.shouldShowLicenseKey,
+                hasNewNotifications = hasNewNotifications,
+                notificationBadgeCount = notificationBadgeCount,
                 updateState = appUpdateState,
                 onCheckForUpdate = { appUpdateViewModel.checkForUpdate(revealDialog = true) },
                 onSyncCatalog = launchSyncCatalog,
@@ -969,7 +1004,9 @@ fun AppNavigation(
         currentRoute.startsWith("media_player/") ||
         currentRoute.startsWith("private_media_player/")
     BackHandler(enabled = !playerRouteActive) {
-        if (currentRoute != AppRoute.Home.route) {
+        if (currentRoute == AppRoute.Settings.route || currentRoute == AppRoute.Profile.route) {
+            navigateHomeWithHeaderFocus()
+        } else if (currentRoute != AppRoute.Home.route) {
             val popped = navController.popBackStack()
             if (!popped) {
                 navController.navigateSingleTop(AppRoute.Home.route)
