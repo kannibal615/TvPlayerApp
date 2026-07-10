@@ -1,5 +1,50 @@
 # AI Changelog
 
+## 2026-07-10 - Nettoyage Appareil et catalogue Info compte
+
+Type:
+- Android TV
+- UI TV
+- profil
+
+Resume:
+- La section integree `Appareil et catalogue` n'affiche plus les lignes `Identifiant appareil`, `Version` et `Portail`.
+- Ajout de la ligne `Profil catalogue` pour montrer le profil actif auquel appartiennent les compteurs catalogue.
+- La barre et le message de synchronisation sont rendus dans cette section, afin de rester visibles pendant une synchronisation.
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --console=plain` : succes.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/ui/profile/ProfileScreen.kt`
+
+## 2026-07-10 - Timeout et fallback Series pour synchro Xtream bloquee
+
+Type:
+- Android TV
+- bugfix
+- catalogue
+- diagnostic Fire Stick
+
+Resume:
+- Diagnostic Fire Stick: Network Activity affichait `Catalog synchronization` et `Catalog Series` en `Running` depuis plus de 63 minutes, bloque sur `Telechargement des series...` avant `after_get_series`.
+- Ajout d'un timeout dur sur le `get_series` global Xtream et d'un fallback par categorie `get_series&category_id=...` avec deduplication par `series_id`.
+- En cas de timeout aussi sur une categorie, la synchro echoue proprement et les activites Network Activity passent en erreur au lieu de rester indefiniment actives.
+
+Validation:
+- `.\gradlew.bat :app:compileReleaseKotlin --no-daemon --console=plain` : succes.
+
+Fichiers MD mis a jour:
+- `docs/ai-knowledge/features/catalog-playback.md`
+- `docs/ai-knowledge/worklog/AI_CHANGELOG.md`
+
+Fichiers code concernes:
+- `app/src/main/java/com/smartvision/svplayer/data/repository/DefaultCatalogRepository.kt`
+
 ## 2026-07-10 - Profil PlaylistWeb pour envois depuis le site
 
 Type:

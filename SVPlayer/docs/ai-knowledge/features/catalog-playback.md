@@ -37,6 +37,8 @@ Depuis le 2026-06-30, la synchronisation manuelle depuis Info compte publie auss
 
 Depuis le 2026-07-01, la synchronisation Xtream emet aussi des logs memoire `SVSyncMemory` pour diagnostiquer les OOM Firestick. Les jalons couvrent le debut de synchro, les appels compte/categories/Live/Films/Series, les ecritures Room par section, l'invalidation du cache local et les erreurs. Ces logs ne changent pas le comportement utilisateur et ne doivent pas exposer les identifiants Xtream.
 
+Depuis le 2026-07-10, le telechargement global Xtream `get_series` est borne par un timeout dur. Si ce endpoint global reste bloque alors que des categories Series existent, la synchronisation bascule vers `get_series&category_id=...`, complete les `category_id` manquants, deduplique par `series_id`, puis importe Room. Si le fallback par categorie bloque aussi, la synchro echoue proprement et Network Activity ne doit plus rester indefiniment en `Running`.
+
 Depuis le 2026-07-01, un lien M3U peut devenir la source active du catalogue Live TV. Les entrees M3U sont parsees depuis `#EXTINF`, groupees par `group-title`, stockees dans `live_streams` avec `source = m3u` et `directStreamUrl`, puis lues sans `XtreamUrlFactory`. Quand M3U est actif, Movies et Series sont vides pour respecter la regle une seule source active.
 
 Depuis le 2026-07-01, l'URL EPG XMLTV est telechargee dans un cache local borne lors d'une synchronisation manuelle ou catalogue, mais pas pendant le splash. Depuis le 2026-07-05, `EpgRepository.synchronizeIfStale(url, minAgeMs)` conserve `lastSuccessAt` et `urlHash`, un `EpgSyncWorker` horaire rafraichit l'EPG avec contrainte reseau sans synchronisation catalogue complete, et le clic chaine tente un refresh stale-aware avant de rafraichir uniquement la chaine selectionnee dans l'UI.
@@ -94,6 +96,7 @@ Xtream:
 - `XtreamRepository.kt` gere les appels remote.
 - `DefaultCatalogRepository.kt` consolide remote/cache.
 - La synchronisation Films tente d'abord `get_vod_streams` global. Si le fournisseur renvoie `0` film alors que des categories VOD existent, elle recharge les films par `category_id`, assigne le dossier aux reponses sans `category_id`, deduplique par `stream_id`, puis importe Room. Ne pas remplacer ce fallback sans verifier les providers Xtream qui ne servent pas l'endpoint VOD global.
+- La synchronisation Series tente d'abord `get_series` global avec timeout dur; en cas de blocage, elle recharge les series par categorie, assigne le dossier aux reponses sans `category_id`, deduplique par `series_id`, puis importe Room.
 - Depuis le 2026-07-03, les URL d'images catalogue sont normalisees a l'entree et a la sortie Room: `stream_icon`, `cover`, posters et backdrops Xtream acceptent URL absolue, URL `//`, chemin absolu `/...`, chemin relatif, espaces et slashes echappes. Les valeurs vides comme `null`, `n/a`, `none` ou `0` sont ignorees. Cette logique restaure les logos Live TV et posters Films/Series quand un fournisseur ne renvoie pas directement une URL HTTP complete.
 - `SynchronizeCatalogUseCase` declenche la synchro.
 - `XtreamUrlFactory.kt` construit les URL de lecture.

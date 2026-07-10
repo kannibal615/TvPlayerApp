@@ -727,45 +727,7 @@ private fun XtreamPanel(
             )
         }
         Spacer(Modifier.height(8.dp))
-        DeviceCatalogInlineSection(state = state)
-        when (syncStatus) {
-            is SyncStatus.Running -> {
-                Spacer(Modifier.height(10.dp))
-                LinearProgressIndicator(
-                    progress = { if (syncStatus.totalItems > 0) syncStatus.completedItems.toFloat() / syncStatus.totalItems.toFloat() else 0f },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(50)),
-                    color = SmartVisionColors.CyanAccent,
-                    trackColor = SmartVisionColors.Surface.copy(alpha = 0.84f),
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = if (syncStatus.totalItems > 0) {
-                        "${syncStatus.message} ${syncStatus.completedItems} / ${syncStatus.totalItems} elements (${syncStatus.percent}%)"
-                    } else {
-                        syncStatus.message
-                    },
-                    color = SmartVisionColors.CyanAccent,
-                    style = SmartVisionType.Caption,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-            is SyncStatus.Success -> Text(
-                text = syncStatus.message,
-                color = SmartVisionColors.Success,
-                style = SmartVisionType.Caption,
-                fontWeight = FontWeight.SemiBold,
-            )
-            is SyncStatus.Error -> Text(
-                text = syncStatus.message,
-                color = SmartVisionColors.Error,
-                style = SmartVisionType.Caption,
-                fontWeight = FontWeight.SemiBold,
-            )
-            else -> Unit
-        }
+        DeviceCatalogInlineSection(state = state, syncStatus = syncStatus)
     }
 
     profileAvatarToEdit?.let { profile ->
@@ -2698,6 +2660,7 @@ private fun ConversionPanel(
 @Composable
 private fun DevicePanel(
     state: ProfileUiState,
+    syncStatus: SyncStatus = SyncStatus.Idle,
     modifier: Modifier = Modifier,
 ) {
     ProfilePanel(
@@ -2705,13 +2668,14 @@ private fun DevicePanel(
         icon = Icons.Default.Devices,
         modifier = modifier,
     ) {
-        DeviceCatalogContent(state)
+        DeviceCatalogContent(state, syncStatus)
     }
 }
 
 @Composable
 private fun DeviceCatalogInlineSection(
     state: ProfileUiState,
+    syncStatus: SyncStatus,
 ) {
     var focused by remember { mutableStateOf(false) }
     val focusStyle = LocalTvFocusStyle.current
@@ -2738,36 +2702,102 @@ private fun DeviceCatalogInlineSection(
             Text("Appareil et catalogue", color = SmartVisionColors.TextPrimary, style = SmartVisionType.Label, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(12.dp))
-        DeviceCatalogContent(state)
+        DeviceCatalogContent(state, syncStatus)
     }
 }
 
 @Composable
 private fun DeviceCatalogContent(
     state: ProfileUiState,
+    syncStatus: SyncStatus,
 ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            ProfileMetric("Live TV", state.account.liveCount.toString(), Modifier.weight(1f))
-            ProfileMetric("Films", state.account.movieCount.toString(), Modifier.weight(1f))
-            ProfileMetric("Series", state.account.seriesCount.toString(), Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(12.dp))
-        ProfileInfoRow("Code TV", state.tvCode)
-        ProfileInfoRow("Identifiant appareil", state.deviceId.ifBlank { "Generation..." })
-        ProfileInfoRow("Derniere sync", state.account.lastSync ?: "Jamais")
-        ProfileInfoRow("Version", BuildConfig.VERSION_NAME)
-        ProfileInfoRow("Portail", BuildConfig.ACTIVATION_BASE_URL.removeSuffix("/"))
-        if (state.errorMessage != null) {
+    val catalogProfileName = state.playlistProfiles
+        .firstOrNull { it.id == state.activePlaylistProfileId }
+        ?.name
+        ?.trim()
+        ?.ifBlank { null }
+        ?: "Profil actif"
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+        ProfileMetric("Live TV", state.account.liveCount.toString(), Modifier.weight(1f))
+        ProfileMetric("Films", state.account.movieCount.toString(), Modifier.weight(1f))
+        ProfileMetric("Series", state.account.seriesCount.toString(), Modifier.weight(1f))
+    }
+    Spacer(Modifier.height(12.dp))
+    ProfileInfoRow("Profil catalogue", catalogProfileName)
+    ProfileInfoRow("Code TV", state.tvCode)
+    ProfileInfoRow("Derniere sync", state.account.lastSync ?: "Jamais")
+    DeviceCatalogSyncStatus(syncStatus)
+    if (state.errorMessage != null) {
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = state.errorMessage,
+            color = SmartVisionColors.Error,
+            style = SmartVisionType.Caption,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun DeviceCatalogSyncStatus(syncStatus: SyncStatus) {
+    when (syncStatus) {
+        is SyncStatus.Running -> {
             Spacer(Modifier.height(10.dp))
+            LinearProgressIndicator(
+                progress = {
+                    if (syncStatus.totalItems > 0) {
+                        syncStatus.completedItems.toFloat() / syncStatus.totalItems.toFloat()
+                    } else {
+                        0f
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(5.dp)
+                    .clip(RoundedCornerShape(50)),
+                color = SmartVisionColors.CyanAccent,
+                trackColor = SmartVisionColors.Surface.copy(alpha = 0.84f),
+            )
+            Spacer(Modifier.height(8.dp))
             Text(
-                text = state.errorMessage,
-                color = SmartVisionColors.Error,
+                text = if (syncStatus.totalItems > 0) {
+                    "${syncStatus.message} ${syncStatus.completedItems} / ${syncStatus.totalItems} elements (${syncStatus.percent}%)"
+                } else {
+                    syncStatus.message
+                },
+                color = SmartVisionColors.CyanAccent,
                 style = SmartVisionType.Caption,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        is SyncStatus.Success -> {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = syncStatus.message,
+                color = SmartVisionColors.Success,
+                style = SmartVisionType.Caption,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        is SyncStatus.Error -> {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = syncStatus.message,
+                color = SmartVisionColors.Error,
+                style = SmartVisionType.Caption,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        else -> Unit
     }
+}
 
 @Composable
 private fun XtreamSummaryPanel(

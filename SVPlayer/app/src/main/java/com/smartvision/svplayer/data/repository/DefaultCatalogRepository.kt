@@ -24,6 +24,8 @@ import com.smartvision.svplayer.data.playlist.EpgRepository
 import com.smartvision.svplayer.data.playlist.M3uPlaylistClient
 import com.smartvision.svplayer.data.remote.XtreamApiService
 import com.smartvision.svplayer.data.remote.XtreamUrlFactory
+import com.smartvision.svplayer.data.remote.dto.XtreamCategoryDto
+import com.smartvision.svplayer.data.remote.dto.XtreamSeriesDto
 import com.smartvision.svplayer.domain.model.AccountProfile
 import com.smartvision.svplayer.domain.model.Category
 import com.smartvision.svplayer.domain.model.Episode
@@ -51,7 +53,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 class DefaultCatalogRepository(
     private val database: SVDatabase,
@@ -1114,7 +1118,15 @@ class DefaultCatalogRepository(
             0,
         )
         logSyncMemory(stage = "before_get_series", live = liveItems, movies = movieItems, seriesCategories = seriesCategories.size)
-        val series = api.getSeries(username = username, password = password, host = host)
+        val series = fetchSeriesWithFallback(
+            host = host,
+            username = username,
+            password = password,
+            categories = seriesCategories,
+            liveItems = liveItems,
+            movieItems = movieItems,
+            updateSectionProgress = updateSectionProgress,
+        )
         val seriesItems = series.size
         logSyncMemory(stage = "after_get_series", live = liveItems, movies = movieItems, series = seriesItems)
         updateSectionProgress(
@@ -1142,6 +1154,61 @@ class DefaultCatalogRepository(
         )
         logSyncMemory(stage = "after_series_room_write", live = liveItems, movies = movieItems, series = seriesItems)
         return seriesItems
+    }
+
+    private suspend fun fetchSeriesWithFallback(
+        host: String,
+        username: String,
+        password: String,
+        categories: List<XtreamCategoryDto>,
+        liveItems: Int,
+        movieItems: Int,
+        updateSectionProgress: suspend (String, MediaSection, SyncStatus.SyncSectionPhase, Int, Int?, Int, Int) -> Unit,
+    ): List<XtreamSeriesDto> {
+        return try {
+            withTimeout(GlobalSeriesFetchTimeoutMs) {
+                api.getSeries(username = username, password = password, host = host)
+            }
+        } catch (timeout: TimeoutCancellationException) {
+            val categoryIds = categories.mapNotNull { category -> category.id?.takeIf { it.isNotBlank() } }
+            if (categoryIds.isEmpty()) throw timeout
+            updateSectionProgress(
+                "Telechargement des series par categories...",
+                MediaSection.Series,
+                SyncStatus.SyncSectionPhase.RUNNING,
+                44,
+                null,
+                0,
+                categoryIds.size,
+            )
+            logSyncMemory(stage = "series_global_timeout_fallback", live = liveItems, movies = movieItems, seriesCategories = categories.size)
+            val fetched = mutableListOf<XtreamSeriesDto>()
+            categoryIds
+                .forEachIndexed { index, categoryId ->
+                    val categorySeries = withTimeout(CategorySeriesFetchTimeoutMs) {
+                        api.getSeries(
+                            username = username,
+                            password = password,
+                            categoryId = categoryId,
+                            host = host,
+                        )
+                    }.map { series ->
+                        if (series.categoryId.isNullOrBlank()) series.copy(categoryId = categoryId) else series
+                    }
+                    fetched += categorySeries
+                    val percent = 44 + (((index + 1).toFloat() / categoryIds.size.toFloat()) * 22).toInt()
+                    updateSectionProgress(
+                        "Telechargement des series par categories...",
+                        MediaSection.Series,
+                        SyncStatus.SyncSectionPhase.RUNNING,
+                        percent.coerceIn(44, 66),
+                        fetched.size,
+                        categorySeries.size,
+                        categoryIds.size - index - 1,
+                    )
+                }
+            fetched.distinctBy { it.seriesId }
+        }
     }
 
     override suspend fun toggleFavorite(contentType: String, contentId: String) = withContext(Dispatchers.IO) {
@@ -1434,6 +1501,8 @@ private fun String.toSqlLikeContainsPattern(): String =
 
 private const val SyncInsertBatchSize = 500
 private const val CatalogPageMaxLimit = 500
+private const val GlobalSeriesFetchTimeoutMs = 120_000L
+private const val CategorySeriesFetchTimeoutMs = 60_000L
 private const val SyncMemoryTag = "SVSyncMemory"
 private const val TrendingMovieType = "movie"
 private const val TrendingSeriesType = "series"
