@@ -1,5 +1,31 @@
 # AI Changelog
 
+## 2026-07-10 - Overlay fullscreen Films/Series pixel-perfect
+
+Type:
+- Android TV
+- UI/UX D-pad
+- player Media3
+
+Resume:
+- Films et Series utilisent un composable partage `VodFullscreenControlsOverlay`, calibre par proportions sur la reference 1680x945.
+- Le panneau glass, badges, favoris, episodes, settings et labels sont retires de cet overlay; il reste le gradient, titre/saison-episode, progression et exactement sept commandes.
+- Les sauts passent a 10 secondes, la sortie fullscreen devient fonctionnelle et le routage explicite Gauche/Droite/OK conserve un halo bleu unique sur l'index actif.
+- Live TV et Media local conservent leur implementation actuelle.
+
+Validation:
+- `:app:compileReleaseKotlin` : succes.
+- `:app:assembleRelease` : succes (`0.1.116`, versionCode `139`).
+- APK final installe sur AVD `SmartVision_TV_720p_Light` : succes.
+- captures Film et Serie 1280x720 + override viewport 1920x1080 : effectuees.
+- lecture/pause, +10 s (`32:41 -> 32:51`), navigation horizontale, halo mobile, luminosite et sortie fullscreen : verifies sur AVD.
+- comparaison cote a cote et superposition 50 % avec la reference : effectuees.
+
+Fichiers MD mis a jour:
+- `features/catalog-playback.md`
+- `ui-ux/tv-navigation-focus.md`
+
+
 ## 2026-07-10 - Catalogues, Series, overlays, profil, notifications, EPG et focus global
 
 Type:

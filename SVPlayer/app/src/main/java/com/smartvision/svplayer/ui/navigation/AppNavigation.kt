@@ -979,6 +979,7 @@ fun AppNavigation(
                             popUpTo("movie_player/{movieId}") { inclusive = true }
                         }
                     },
+                    strings = strings,
                 )
             }
         }
@@ -1034,6 +1035,7 @@ fun AppNavigation(
                             popUpTo("episode_player/{episodeId}") { inclusive = true }
                         }
                     },
+                    strings = strings,
                 )
             }
         }

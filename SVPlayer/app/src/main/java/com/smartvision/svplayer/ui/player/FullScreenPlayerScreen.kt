@@ -199,6 +199,8 @@ data class FullScreenPlayback(
     val nextItem: AdjacentPlayback? = null,
     val nextEpisode: NextEpisodePlayback? = null,
     val seriesEpisodes: List<PlayerEpisodeItem> = emptyList(),
+    val seasonNumber: Int? = null,
+    val episodeNumber: Int? = null,
     val resumePositionMs: Long = 0L,
     val epgPrograms: List<FullScreenEpgProgram> = emptyList(),
 )
@@ -475,6 +477,8 @@ class FullScreenPlayerViewModel(
                 categoryId = series?.categoryId,
                 overlayRightText = episode.seasonEpisodeLabel(),
                 parentContentId = episode.seriesId,
+                seasonNumber = episode.seasonNumber,
+                episodeNumber = episode.episodeNumber,
                 previousItem = previousEpisode?.let {
                     AdjacentPlayback(
                         streamId = it.episodeId,
@@ -703,6 +707,7 @@ private fun FullScreenPlayerScreen(
     var episodesPanelVisible by remember(playback.streamId) { mutableStateOf(false) }
     var brightnessMode by remember(playback.streamId) { mutableStateOf(false) }
     var brightnessValue by remember(playback.streamId) { mutableStateOf(50f) }
+    var vodFocusedControlIndex by remember(playback.streamId) { mutableIntStateOf(3) }
     var nextEpisodeCountdown by remember { mutableStateOf<Int?>(null) }
     var nextEpisodeDismissed by remember(playback.streamId) { mutableStateOf(false) }
     var adGateActive by remember(playback.streamId) { mutableStateOf(false) }
@@ -747,7 +752,16 @@ private fun FullScreenPlayerScreen(
         overlayVisible = true
         overlayTick += 1
         if (!wasVisible || requestPlayFocus) {
-            focusPlayWhenOverlayShows = requestPlayFocus || playback.contentType == UserContentType.Live
+            focusPlayWhenOverlayShows = requestPlayFocus ||
+                playback.contentType == UserContentType.Live ||
+                playback.contentType == UserContentType.Movie ||
+                playback.contentType == UserContentType.Episode
+            if (
+                playback.contentType == UserContentType.Movie ||
+                playback.contentType == UserContentType.Episode
+            ) {
+                vodFocusedControlIndex = 3
+            }
         }
     }
 
@@ -1022,6 +1036,76 @@ private fun FullScreenPlayerScreen(
                 }
             }
             else -> exitPlayer(source)
+        }
+    }
+
+    fun handleVodOverlayKey(keyCode: Int): Boolean {
+        val isVod = playback.contentType == UserContentType.Movie ||
+            playback.contentType == UserContentType.Episode
+        if (!isVod || adGateActive || episodesPanelVisible || activeMenu != PlayerOverlayMenu.None) return false
+        if (!overlayVisible) {
+            if (keyCode in overlayKeyCodes) {
+                vodFocusedControlIndex = 3
+                showOverlay(requestPlayFocus = true)
+                return true
+            }
+            return false
+        }
+        if (brightnessMode) {
+            return when (keyCode) {
+                AndroidKeyEvent.KEYCODE_DPAD_LEFT -> {
+                    brightnessValue = (brightnessValue - 5f).coerceIn(0f, 100f)
+                    showOverlay(requestPlayFocus = false)
+                    true
+                }
+                AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> {
+                    brightnessValue = (brightnessValue + 5f).coerceIn(0f, 100f)
+                    showOverlay(requestPlayFocus = false)
+                    true
+                }
+                AndroidKeyEvent.KEYCODE_DPAD_CENTER,
+                AndroidKeyEvent.KEYCODE_ENTER,
+                -> {
+                    brightnessMode = false
+                    vodFocusedControlIndex = 0
+                    showOverlay(requestPlayFocus = false)
+                    true
+                }
+                else -> false
+            }
+        }
+        return when (keyCode) {
+            AndroidKeyEvent.KEYCODE_DPAD_LEFT -> {
+                vodFocusedControlIndex = (vodFocusedControlIndex - 1).coerceAtLeast(0)
+                showOverlay(requestPlayFocus = false)
+                true
+            }
+            AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> {
+                vodFocusedControlIndex = (vodFocusedControlIndex + 1).coerceAtMost(6)
+                showOverlay(requestPlayFocus = false)
+                true
+            }
+            AndroidKeyEvent.KEYCODE_DPAD_CENTER,
+            AndroidKeyEvent.KEYCODE_ENTER,
+            -> {
+                when (vodFocusedControlIndex) {
+                    0 -> brightnessMode = true
+                    1 -> playAdjacent(playback.previousItem)
+                    2 -> if (player.isCurrentMediaItemSeekable) {
+                        player.seekTo((player.currentPosition - 10_000L).coerceAtLeast(0L))
+                    }
+                    3 -> if (player.isPlaying) player.pause() else player.play()
+                    4 -> if (player.isCurrentMediaItemSeekable) {
+                        val seekLimit = durationMs.takeIf { it > 0L } ?: Long.MAX_VALUE
+                        player.seekTo((player.currentPosition + 10_000L).coerceAtMost(seekLimit))
+                    }
+                    5 -> playAdjacent(playback.nextItem)
+                    6 -> exitPlayer("vod_exit_fullscreen_key")
+                }
+                showOverlay(requestPlayFocus = false)
+                true
+            }
+            else -> false
         }
     }
 
@@ -1366,6 +1450,9 @@ private fun FullScreenPlayerScreen(
                 if (event.nativeKeyEvent.action == AndroidKeyEvent.ACTION_DOWN && handleLiveChannelKey(keyCode)) {
                     return@onPreviewKeyEvent true
                 }
+                if (event.nativeKeyEvent.action == AndroidKeyEvent.ACTION_DOWN && handleVodOverlayKey(keyCode)) {
+                    return@onPreviewKeyEvent true
+                }
                 if (event.nativeKeyEvent.action == AndroidKeyEvent.ACTION_DOWN && keyCode in overlayKeyCodes) {
                     showOverlay()
                 }
@@ -1390,6 +1477,8 @@ private fun FullScreenPlayerScreen(
                             }
 
                             event.action == AndroidKeyEvent.ACTION_DOWN && handleLiveChannelKey(keyCode) -> true
+
+                            event.action == AndroidKeyEvent.ACTION_DOWN && handleVodOverlayKey(keyCode) -> true
 
                             event.action == AndroidKeyEvent.ACTION_DOWN &&
                                 keyCode in overlayKeyCodes &&
@@ -1422,6 +1511,10 @@ private fun FullScreenPlayerScreen(
                         }
 
                         event.action == AndroidKeyEvent.ACTION_DOWN && handleLiveChannelKey(keyCode) -> {
+                            true
+                        }
+
+                        event.action == AndroidKeyEvent.ACTION_DOWN && handleVodOverlayKey(keyCode) -> {
                             true
                         }
 
@@ -1506,6 +1599,72 @@ private fun FullScreenPlayerScreen(
                     },
                     onBackToList = { exitPlayer("live_back_to_list_button") },
                     contextLabel = strings?.playerLiveContext ?: "Live | On air",
+                )
+            } else if (
+                playback.contentType == UserContentType.Movie ||
+                playback.contentType == UserContentType.Episode
+            ) {
+                val vodSubtitle = if (playback.contentType == UserContentType.Episode) {
+                    val season = playback.seasonNumber
+                    val episode = playback.episodeNumber
+                    if (season != null && episode != null) {
+                        "${strings?.playerSeasonLabel ?: "Season"} $season · " +
+                            "${strings?.playerEpisodeLabel ?: "Episode"} $episode"
+                    } else {
+                        playback.overlayRightText.takeIf { it.isNotBlank() }
+                    }
+                } else {
+                    null
+                }
+                VodFullscreenControlsOverlay(
+                    title = playback.title,
+                    subtitle = vodSubtitle,
+                    isPlaying = isPlaying,
+                    errorText = errorText,
+                    positionMs = positionMs,
+                    durationMs = durationMs,
+                    focusedControlIndex = vodFocusedControlIndex,
+                    onFocusedControlChange = { vodFocusedControlIndex = it },
+                    playFocusRequester = playFocusRequester,
+                    brightnessFocusRequester = brightnessButtonFocusRequester,
+                    brightnessMode = brightnessMode,
+                    brightnessValue = brightnessValue,
+                    onOpenBrightness = {
+                        brightnessMode = true
+                        showOverlay(requestPlayFocus = false)
+                    },
+                    onChangeBrightness = { delta ->
+                        brightnessValue = (brightnessValue + delta).coerceIn(0f, 100f)
+                        showOverlay(requestPlayFocus = false)
+                    },
+                    onCloseBrightness = {
+                        brightnessMode = false
+                        showOverlay(requestPlayFocus = false)
+                        coroutineScope.launch {
+                            delay(120)
+                            runCatching { brightnessButtonFocusRequester.requestFocus() }
+                        }
+                    },
+                    onPlayPrevious = { playAdjacent(playback.previousItem) },
+                    onSeekBack = {
+                        if (player.isCurrentMediaItemSeekable) {
+                            player.seekTo((player.currentPosition - 10_000L).coerceAtLeast(0L))
+                        }
+                        showOverlay()
+                    },
+                    onPlayPause = {
+                        if (player.isPlaying) player.pause() else player.play()
+                        showOverlay()
+                    },
+                    onSeekForward = {
+                        if (player.isCurrentMediaItemSeekable) {
+                            val seekLimit = durationMs.takeIf { it > 0L } ?: Long.MAX_VALUE
+                            player.seekTo((player.currentPosition + 10_000L).coerceAtMost(seekLimit))
+                        }
+                        showOverlay()
+                    },
+                    onPlayNext = { playAdjacent(playback.nextItem) },
+                    onExitFullscreen = { exitPlayer("vod_exit_fullscreen_button") },
                 )
             } else {
                 FullPlayerOverlay(
@@ -3538,7 +3697,7 @@ private fun formatLocalMediaSize(bytes: Long): String {
 private fun Long.validDurationMs(): Long =
     takeIf { it > 0L && it != C.TIME_UNSET } ?: 0L
 
-private fun Long.formatPlaybackTime(): String {
+internal fun Long.formatPlaybackTime(): String {
     val totalSeconds = (this / 1_000L).coerceAtLeast(0L)
     val hours = totalSeconds / 3_600L
     val minutes = (totalSeconds % 3_600L) / 60L
