@@ -66,6 +66,7 @@ fun HomeCategoryCard(
     blocked: Boolean = false,
     blockedMessage: String = "Connection unavailable",
     workOverlay: HomeCategoryWorkOverlay? = null,
+    kidsMode: Boolean = false,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -112,7 +113,7 @@ fun HomeCategoryCard(
             )
             .focusable(interactionSource = interactionSource),
     ) {
-        HomeVisualBackground(style = category.visualStyle, modifier = Modifier.fillMaxSize())
+        HomeVisualBackground(style = category.visualStyle, kidsMode = kidsMode, modifier = Modifier.fillMaxSize())
         Box(
             modifier = Modifier
                 .fillMaxSize()

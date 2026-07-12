@@ -13,6 +13,14 @@ val ProfileAvatarPresetIds: List<String> = listOf(
     "midnight",
 )
 
+val KidsProfileAvatarPresetIds: List<String> = listOf(
+    "kids_sky",
+    "kids_star",
+    "kids_mint",
+    "kids_coral",
+    "kids_sun",
+)
+
 fun profileAvatarIdForName(value: String): String {
     val key = value.trim().ifBlank { "profile" }
     val index = kotlin.math.abs(key.lowercase().hashCode()).mod(ProfileAvatarPresetIds.size)

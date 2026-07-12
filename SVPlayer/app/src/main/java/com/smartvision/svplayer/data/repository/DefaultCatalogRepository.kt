@@ -5,6 +5,7 @@ import androidx.room.withTransaction
 import com.smartvision.svplayer.core.config.PlaylistProfile
 import com.smartvision.svplayer.core.config.PlaylistProfileStatus
 import com.smartvision.svplayer.core.config.PlaylistSource
+import com.smartvision.svplayer.core.config.ProfileType
 import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.data.local.SVDatabase
 import com.smartvision.svplayer.data.local.dao.CategoryDao
@@ -13,6 +14,7 @@ import com.smartvision.svplayer.data.local.dao.MediaDao
 import com.smartvision.svplayer.data.local.dao.ProfileDao
 import com.smartvision.svplayer.data.local.dao.ProgressDao
 import com.smartvision.svplayer.data.local.dao.SyncStateDao
+import com.smartvision.svplayer.data.local.dao.YoutubeDao
 import com.smartvision.svplayer.data.local.entity.FavoriteEntity
 import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.local.entity.SyncStateEntity
@@ -40,6 +42,7 @@ import com.smartvision.svplayer.domain.model.TvSeries
 import com.smartvision.svplayer.domain.repository.CatalogContentCounts
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.LocalCatalogSnapshot
+import com.smartvision.svplayer.domain.profile.KidsContentFilter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -70,6 +73,7 @@ class DefaultCatalogRepository(
     private val favoriteDao: FavoriteDao,
     private val progressDao: ProgressDao,
     private val syncStateDao: SyncStateDao,
+    private val youtubeDao: YoutubeDao,
     private val networkActivityTracker: NetworkActivityTracker,
 ) : CatalogRepository {
     private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
@@ -79,6 +83,7 @@ class DefaultCatalogRepository(
     private val localCatalogSnapshotCache = LocalCatalogSnapshotCache()
     private val syncMutex = Mutex()
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val kidsContentFilter = KidsContentFilter()
 
     init {
         observeActiveProfileChanges()
@@ -644,6 +649,28 @@ class DefaultCatalogRepository(
         bumpCatalogRevision()
     }
 
+    override suspend fun deleteProfileData(profileId: String) = withContext(Dispatchers.IO) {
+        database.withTransaction {
+            categoryDao.deleteByProfile(profileId)
+            mediaDao.clearLiveStreams(profileId)
+            mediaDao.clearMovies(profileId)
+            mediaDao.clearSeries(profileId)
+            mediaDao.clearEpisodesByProfile(profileId)
+            mediaDao.clearTrendingByProfile(profileId)
+            mediaDao.clearHomePreviewCacheByProfile(profileId)
+            mediaDao.clearTmdbMappingsByProfile(profileId)
+            favoriteDao.deleteByProfile(profileId)
+            progressDao.deleteByProfile(profileId)
+            syncStateDao.deleteByProfile(profileId)
+            profileDao.delete(profileId)
+            youtubeDao.clearSearchHistory(profileId)
+            youtubeDao.clearVideoHistory(profileId)
+            youtubeDao.clearSelections(profileId)
+        }
+        invalidateLocalCatalogCache()
+        bumpCatalogRevision()
+    }
+
     private fun observeActiveProfileChanges() {
         repositoryScope.launch {
             var currentProfileId = activeProfileId()
@@ -670,6 +697,9 @@ class DefaultCatalogRepository(
 
     private fun activeProfileId(): String =
         accountManager.activeProfileIdOrDefault()
+
+    private fun isKidsProfile(profileId: String): Boolean =
+        accountManager.profiles.value.firstOrNull { it.id == profileId }?.type == ProfileType.KIDS
 
     private fun imageBaseHost(): String =
         accountManager.current().normalizedHost
@@ -963,11 +993,10 @@ class DefaultCatalogRepository(
             liveCategories.size,
             4,
         )
-        database.withTransaction {
+        val kidsProfile = isKidsProfile(profileId)
+        if (!kidsProfile) database.withTransaction {
             categoryDao.deleteByType(profileId, MediaSection.Live.storageName)
-            upsertMappedInBatches(liveCategories, { it.toEntity(profileId, MediaSection.Live) }) { entities ->
-                categoryDao.upsertAll(entities)
-            }
+            upsertMappedInBatches(liveCategories, { it.toEntity(profileId, MediaSection.Live) }) { entities -> categoryDao.upsertAll(entities) }
         }
 
         updateSectionProgress(
@@ -980,7 +1009,13 @@ class DefaultCatalogRepository(
             3,
         )
         logSyncMemory(stage = "before_get_live_streams", liveCategories = liveCategories.size)
-        val liveStreams = api.getLiveStreams(username = username, password = password, host = host)
+        val downloadedLiveStreams = api.getLiveStreams(username = username, password = password, host = host)
+        val liveCategoryNames = liveCategories.associate { it.id to it.name }
+        val liveStreams = if (kidsProfile) downloadedLiveStreams.filter { stream ->
+            kidsContentFilter.isAllowed(liveCategoryNames[stream.categoryId], stream.name)
+        } else downloadedLiveStreams
+        val allowedLiveCategoryIds = liveStreams.mapNotNull { it.categoryId }.toSet()
+        val visibleLiveCategories = if (kidsProfile) liveCategories.filter { it.id in allowedLiveCategoryIds } else liveCategories
         val liveItems = liveStreams.size
         logSyncMemory(stage = "after_get_live_streams", live = liveItems, liveCategories = liveCategories.size)
         updateSectionProgress(
@@ -994,6 +1029,10 @@ class DefaultCatalogRepository(
         )
         val imageBaseHost = host
         database.withTransaction {
+            if (kidsProfile) {
+                categoryDao.deleteByType(profileId, MediaSection.Live.storageName)
+                upsertMappedInBatches(visibleLiveCategories, { it.toEntity(profileId, MediaSection.Live) }) { entities -> categoryDao.upsertAll(entities) }
+            }
             mediaDao.clearLiveStreams(profileId)
             upsertMappedInBatches(
                 items = liveStreams,
@@ -1054,11 +1093,10 @@ class DefaultCatalogRepository(
             movieCategories.size,
             2,
         )
-        database.withTransaction {
+        val kidsProfile = isKidsProfile(profileId)
+        if (!kidsProfile) database.withTransaction {
             categoryDao.deleteByType(profileId, MediaSection.Movies.storageName)
-            upsertMappedInBatches(movieCategories, { it.toEntity(profileId, MediaSection.Movies) }) { entities ->
-                categoryDao.upsertAll(entities)
-            }
+            upsertMappedInBatches(movieCategories, { it.toEntity(profileId, MediaSection.Movies) }) { entities -> categoryDao.upsertAll(entities) }
         }
 
         updateSectionProgress(
@@ -1094,7 +1132,13 @@ class DefaultCatalogRepository(
                 .distinctBy { it.streamId }
             logSyncMemory(stage = "after_get_movies_by_category", live = liveItems, movies = movies.size, movieCategories = movieCategories.size)
         }
-        val movieItems = movies.size
+        val movieCategoryNames = movieCategories.associate { it.id to it.name }
+        val visibleMovies = if (kidsProfile) movies.filter { movie ->
+            kidsContentFilter.isAllowed(movieCategoryNames[movie.categoryId], movie.name)
+        } else movies
+        val allowedMovieCategoryIds = visibleMovies.mapNotNull { it.categoryId }.toSet()
+        val visibleMovieCategories = if (kidsProfile) movieCategories.filter { it.id in allowedMovieCategoryIds } else movieCategories
+        val movieItems = visibleMovies.size
         logSyncMemory(stage = "after_get_movies", live = liveItems, movies = movieItems, movieCategories = movieCategories.size)
         updateSectionProgress(
             "Import des films...",
@@ -1107,9 +1151,13 @@ class DefaultCatalogRepository(
         )
         val imageBaseHost = host
         database.withTransaction {
+            if (kidsProfile) {
+                categoryDao.deleteByType(profileId, MediaSection.Movies.storageName)
+                upsertMappedInBatches(visibleMovieCategories, { it.toEntity(profileId, MediaSection.Movies) }) { entities -> categoryDao.upsertAll(entities) }
+            }
             mediaDao.clearMovies(profileId)
             upsertMappedInBatches(
-                items = movies,
+                items = visibleMovies,
                 mapper = { it.toEntity(profileId, imageBaseHost) },
                 upsert = mediaDao::upsertMovies,
                 onBatchCommitted = { processed, total ->
@@ -1173,11 +1221,10 @@ class DefaultCatalogRepository(
             seriesCategories.size,
             1,
         )
-        database.withTransaction {
+        val kidsProfile = isKidsProfile(profileId)
+        if (!kidsProfile) database.withTransaction {
             categoryDao.deleteByType(profileId, MediaSection.Series.storageName)
-            upsertMappedInBatches(seriesCategories, { it.toEntity(profileId, MediaSection.Series) }) { entities ->
-                categoryDao.upsertAll(entities)
-            }
+            upsertMappedInBatches(seriesCategories, { it.toEntity(profileId, MediaSection.Series) }) { entities -> categoryDao.upsertAll(entities) }
         }
 
         updateSectionProgress(
@@ -1190,7 +1237,7 @@ class DefaultCatalogRepository(
             0,
         )
         logSyncMemory(stage = "before_get_series", live = liveItems, movies = movieItems, seriesCategories = seriesCategories.size)
-        val series = fetchSeriesWithFallback(
+        val downloadedSeries = fetchSeriesWithFallback(
             host = host,
             username = username,
             password = password,
@@ -1199,6 +1246,12 @@ class DefaultCatalogRepository(
             movieItems = movieItems,
             updateSectionProgress = updateSectionProgress,
         )
+        val seriesCategoryNames = seriesCategories.associate { it.id to it.name }
+        val series = if (kidsProfile) downloadedSeries.filter { item ->
+            kidsContentFilter.isAllowed(seriesCategoryNames[item.categoryId], item.name, item.genre, item.plot)
+        } else downloadedSeries
+        val allowedSeriesCategoryIds = series.mapNotNull { it.categoryId }.toSet()
+        val visibleSeriesCategories = if (kidsProfile) seriesCategories.filter { it.id in allowedSeriesCategoryIds } else seriesCategories
         val seriesItems = series.size
         logSyncMemory(stage = "after_get_series", live = liveItems, movies = movieItems, series = seriesItems)
         updateSectionProgress(
@@ -1212,6 +1265,10 @@ class DefaultCatalogRepository(
         )
         val imageBaseHost = host
         database.withTransaction {
+            if (kidsProfile) {
+                categoryDao.deleteByType(profileId, MediaSection.Series.storageName)
+                upsertMappedInBatches(visibleSeriesCategories, { it.toEntity(profileId, MediaSection.Series) }) { entities -> categoryDao.upsertAll(entities) }
+            }
             mediaDao.clearSeries(profileId)
             upsertMappedInBatches(
                 items = series,
@@ -1405,7 +1462,14 @@ class DefaultCatalogRepository(
         return try {
             val now = System.currentTimeMillis()
             val profileId = activeProfileId()
-            val playlist = m3uPlaylistClient.fetch(m3uUrl)
+            val downloadedPlaylist = m3uPlaylistClient.fetch(m3uUrl)
+            val playlist = if (isKidsProfile(profileId)) {
+                downloadedPlaylist.copy(
+                    channels = downloadedPlaylist.channels.filter { channel ->
+                        kidsContentFilter.isAllowed(channel.group, channel.name)
+                    },
+                )
+            } else downloadedPlaylist
             syncWork.update(message = "Chargement catalogue M3U...", progressPercent = 50, currentItems = 1, totalItems = 2)
             liveWork.update(
                 status = NetworkActivityStatus.Importing,

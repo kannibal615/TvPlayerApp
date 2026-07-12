@@ -21,6 +21,18 @@ data class CategoryItemCount(
 
 @Dao
 interface MediaDao {
+    @Query("DELETE FROM episodes WHERE profileId = :profileId")
+    suspend fun clearEpisodesByProfile(profileId: String)
+
+    @Query("DELETE FROM trending_media WHERE profileId = :profileId")
+    suspend fun clearTrendingByProfile(profileId: String)
+
+    @Query("DELETE FROM home_trending_preview_cache WHERE profileId = :profileId")
+    suspend fun clearHomePreviewCacheByProfile(profileId: String)
+
+    @Query("DELETE FROM tmdb_content_mapping WHERE profileId = :profileId")
+    suspend fun clearTmdbMappingsByProfile(profileId: String)
+
     @Query("SELECT * FROM live_streams WHERE profileId = :profileId ORDER BY number, name")
     fun observeLiveStreams(profileId: String): Flow<List<LiveStreamEntity>>
 

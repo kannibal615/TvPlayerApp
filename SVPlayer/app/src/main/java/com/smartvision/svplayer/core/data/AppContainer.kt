@@ -41,6 +41,8 @@ import com.smartvision.svplayer.data.remote.XtreamUrlFactory
 import com.smartvision.svplayer.data.remote.XTREAM_PROFILE_HOST_HEADER
 import com.smartvision.svplayer.data.repository.DefaultCatalogRepository
 import com.smartvision.svplayer.data.repository.DefaultSettingsRepository
+import com.smartvision.svplayer.core.profile.ProfilePinManager
+import com.smartvision.svplayer.data.xtream.XtreamCredentialsValidator
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.data.tmdb.TmdbApiService
@@ -89,6 +91,7 @@ class AppContainer(context: Context) {
     val startupCatalogWork: StateFlow<StartupCatalogWorkRequest> = _startupCatalogWork
     val networkActivityTracker = NetworkActivityTracker()
     val accountManager = XtreamAccountManager(appContext)
+    val profilePinManager = ProfilePinManager(appContext)
     private val credentialsProvider = accountManager
     private val database = SVDatabase.build(appContext)
     private val urlFactory = XtreamUrlFactory(credentialsProvider)
@@ -130,6 +133,7 @@ class AppContainer(context: Context) {
         .build()
 
     private val api = retrofit.create(XtreamApiService::class.java)
+    val xtreamCredentialsValidator = XtreamCredentialsValidator(api)
     private val xtreamApiClient = XtreamApiClient(api, credentialsProvider)
 
     private val activationOkHttpClient = OkHttpClient.Builder()
@@ -289,6 +293,7 @@ class AppContainer(context: Context) {
         favoriteDao = database.favoriteDao(),
         apiKey = BuildConfig.YOUTUBE_API_KEY,
         behaviorReporter = youtubeBehaviorReporter,
+        accountManager = accountManager,
     )
     val tmdbRepository = TmdbRepository(
         api = tmdbApi,
@@ -310,10 +315,11 @@ class AppContainer(context: Context) {
         favoriteDao = database.favoriteDao(),
         progressDao = database.progressDao(),
         syncStateDao = database.syncStateDao(),
+        youtubeDao = database.youtubeDao(),
         networkActivityTracker = networkActivityTracker,
     )
     val settingsRepository: SettingsRepository =
-        DefaultSettingsRepository(appContext, appContext.settingsDataStore, database)
+        DefaultSettingsRepository(appContext, appContext.settingsDataStore, database, profilePinManager, accountManager)
 
     val homeContentRepository = HomeContentRepository(
         catalogRepository = catalogRepository,

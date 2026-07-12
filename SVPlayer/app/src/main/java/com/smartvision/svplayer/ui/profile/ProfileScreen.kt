@@ -12,6 +12,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +26,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -102,13 +106,17 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.config.PlaylistProfile
+import com.smartvision.svplayer.core.config.CredentialsMode
+import com.smartvision.svplayer.core.config.ProfileType
 import com.smartvision.svplayer.core.config.PlaylistProfileStatus
 import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.config.ProfileAvatarPresetIds
+import com.smartvision.svplayer.core.config.KidsProfileAvatarPresetIds
 import com.smartvision.svplayer.core.config.XtreamAccount
 import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.core.config.profileAvatarIdForName
 import com.smartvision.svplayer.core.data.LocalAppContainer
+import com.smartvision.svplayer.data.xtream.XtreamCredentialsValidationResult
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.activation.ActivationException
 import com.smartvision.svplayer.data.activation.ActivationRepository
@@ -257,12 +265,13 @@ fun ProfileRoute(
         onDeletePlaylistProfile = { profileId ->
             val profileToDelete = container.accountManager.profiles.value.firstOrNull { it.id == profileId }
             val wasActiveProfile = profileId == container.accountManager.activeProfileId.value
-            container.accountManager.deleteProfile(profileId)
-            container.xtreamRepository.clearCaches()
             scope.launch {
                 profileToDelete?.let { deletedProfile ->
                     runCatching { container.activationRepository.clearPlaylistConfig(deletedProfile) }
                 }
+                container.catalogRepository.deleteProfileData(profileId)
+                container.accountManager.deleteProfile(profileId)
+                container.xtreamRepository.clearCaches()
                 container.catalogRepository.clearCatalogForProfileSwitch()
                 if (wasActiveProfile && container.accountManager.activeProfileId.value != null &&
                     !container.catalogRepository.hasLocalCatalogForActiveProfile()
@@ -667,6 +676,7 @@ private fun XtreamPanel(
     deviceCatalogFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
+    val container = LocalAppContainer.current
     var profileToEdit by remember { mutableStateOf<PlaylistProfile?>(null) }
     var selectedProfileId by remember { mutableStateOf<String?>(null) }
     var profileDetailVisible by remember { mutableStateOf(false) }
@@ -762,9 +772,18 @@ private fun XtreamPanel(
                     selectedProfileId = profile.id
                     onSynchronizePlaylistProfile(profile.id)
                 },
+                onToggleLock = {
+                    if (container.profilePinManager.hasPin()) {
+                        onSavePlaylistProfile(profile.copy(isLocked = !profile.isLocked))
+                        selectedProfileId = profile.id
+                    }
+                },
+                pinConfigured = container.profilePinManager.hasPin(),
                 onDelete = {
-                    selectedProfileId = profile.id
-                    profileToDelete = profile
+                    if (profile.type != ProfileType.ADMIN) {
+                        selectedProfileId = profile.id
+                        profileToDelete = profile
+                    }
                 },
             )
         }
@@ -792,6 +811,7 @@ private fun XtreamPanel(
     if (showProfileEditor) {
         PlaylistProfileEditorDialog(
             initial = profileToEdit,
+            adminProfile = state.playlistProfiles.firstOrNull { it.type == ProfileType.ADMIN },
             existingNames = state.playlistProfiles
                 .filterNot { it.id == profileToEdit?.id }
                 .map { it.name },
@@ -1140,6 +1160,8 @@ private fun PlaylistProfileDetailsPanel(
     onEditM3u: () -> Unit,
     onEditEpg: () -> Unit,
     onSynchronize: () -> Unit,
+    onToggleLock: () -> Unit,
+    pinConfigured: Boolean,
     onDelete: () -> Unit,
 ) {
     Column(
@@ -1180,11 +1202,32 @@ private fun PlaylistProfileDetailsPanel(
             }
         }
         Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(7.dp))
+                .background(SmartVisionColors.Surface.copy(alpha = 0.58f))
+                .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.78f)), RoundedCornerShape(7.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SourceToggleButton(active = profile.isLocked, enabled = pinConfigured, onClick = onToggleLock)
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text("Profile lock", color = SmartVisionColors.TextPrimary, style = SmartVisionType.Label)
+                Text(
+                    if (pinConfigured) "Uses the administrator parental PIN" else "Configure the parental PIN first",
+                    color = SmartVisionColors.TextSecondary,
+                    style = SmartVisionType.Caption,
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
         XtreamAccountCard(
             account = profile.toXtreamAccountOrNull(),
             active = profile.source == PlaylistSource.Xtream,
             editEnabled = true,
-            deleteEnabled = true,
+            deleteEnabled = profile.type != ProfileType.ADMIN,
             onToggleSource = { onSelectSource(PlaylistSource.Xtream) },
             onEdit = onEditProfile,
             onEditQr = onShowXtreamSetupQr,
@@ -2063,21 +2106,40 @@ private fun XtreamConnectedAccountSection(
 @Composable
 fun PlaylistProfileEditorDialog(
     initial: PlaylistProfile?,
+    createType: ProfileType? = null,
+    adminProfile: PlaylistProfile? = null,
     existingNames: List<String>,
     onDismiss: () -> Unit,
     onSave: (PlaylistProfile) -> Unit,
 ) {
+    val container = LocalAppContainer.current
+    val validationScope = rememberCoroutineScope()
+    val profileType = initial?.type ?: createType ?: ProfileType.NORMAL
+    var credentialsMode by remember(initial?.id, profileType) {
+        mutableStateOf(
+            if (profileType == ProfileType.ADMIN) CredentialsMode.CUSTOM
+            else initial?.credentialsMode ?: if (adminProfile != null) CredentialsMode.SHARED_WITH_ADMIN else CredentialsMode.CUSTOM,
+        )
+    }
     var name by remember(initial?.id) { mutableStateOf(initial?.name ?: "") }
     var avatarId by remember(initial?.id) {
-        mutableStateOf(initial?.avatarId?.ifBlank { null } ?: profileAvatarIdForName(initial?.name ?: "profile"))
+        mutableStateOf(
+            initial?.avatarId?.ifBlank { null }
+                ?: if (profileType == ProfileType.KIDS) KidsProfileAvatarPresetIds.first()
+                else profileAvatarIdForName(initial?.name ?: "profile"),
+        )
     }
-    var source by remember(initial?.id) { mutableStateOf(initial?.source ?: PlaylistSource.Xtream) }
+    var source by remember(initial?.id) {
+        mutableStateOf(initial?.source ?: adminProfile?.source ?: PlaylistSource.Xtream)
+    }
     var host by remember(initial?.id) { mutableStateOf(initial?.xtreamHost ?: "") }
     var username by remember(initial?.id) { mutableStateOf(initial?.xtreamUsername ?: "") }
     var password by remember(initial?.id) { mutableStateOf(initial?.xtreamPassword ?: "") }
     var m3uUrl by remember(initial?.id) { mutableStateOf(initial?.m3uUrl ?: "") }
     var epgUrl by remember(initial?.id) { mutableStateOf(initial?.epgUrl ?: "") }
     var error by remember { mutableStateOf<String?>(null) }
+    var validationMessage by remember { mutableStateOf<String?>(null) }
+    var validatingCredentials by remember { mutableStateOf(false) }
     val nameFocusRequester = remember { FocusRequester() }
     val firstSourceFocusRequester = remember { FocusRequester() }
     val hostFocusRequester = remember { FocusRequester() }
@@ -2087,16 +2149,60 @@ fun PlaylistProfileEditorDialog(
     val epgFocusRequester = remember { FocusRequester() }
     val saveFocusRequester = remember { FocusRequester() }
 
+    fun buildProfile(normalizedName: String, normalizedHost: String = host): PlaylistProfile =
+        PlaylistProfile(
+            id = initial?.id.orEmpty(),
+            name = normalizedName,
+            source = if (credentialsMode == CredentialsMode.SHARED_WITH_ADMIN) adminProfile?.source ?: source else source,
+            type = profileType,
+            credentialsMode = credentialsMode,
+            isLocked = initial?.isLocked ?: false,
+            avatarId = avatarId,
+            avatarColorHex = initial?.avatarColorHex.orEmpty(),
+            xtreamHost = if (credentialsMode == CredentialsMode.CUSTOM) normalizedHost else "",
+            xtreamUsername = if (credentialsMode == CredentialsMode.CUSTOM) username else "",
+            xtreamPassword = if (credentialsMode == CredentialsMode.CUSTOM) password else "",
+            m3uUrl = if (credentialsMode == CredentialsMode.CUSTOM) m3uUrl else "",
+            epgUrl = if (credentialsMode == CredentialsMode.CUSTOM) epgUrl else "",
+            createdAt = initial?.createdAt ?: System.currentTimeMillis(),
+            lastSyncAt = initial?.lastSyncAt,
+        )
+
+    fun validateCustomXtream(onSuccess: (String) -> Unit) {
+        validatingCredentials = true
+        validationMessage = null
+        error = null
+        validationScope.launch {
+            when (val result = container.xtreamCredentialsValidator.validate(host, username, password)) {
+                is XtreamCredentialsValidationResult.Success -> {
+                    host = result.normalizedHost
+                    validationMessage = "Xtream connection successful."
+                    onSuccess(result.normalizedHost)
+                }
+                is XtreamCredentialsValidationResult.Failure -> error = result.message
+            }
+            validatingCredentials = false
+        }
+    }
+
     LaunchedEffect(Unit) {
         delay(ProfileFocusRequestDelayMillis)
         runCatching { nameFocusRequester.requestFocus() }
     }
 
     TvDialogSurface(
-        title = if (initial == null) "Ajouter un profil" else "Modifier le profil",
+        title = when {
+            initial != null -> "Modifier le profil"
+            profileType == ProfileType.KIDS -> "Add Kids Profile"
+            else -> "Add Normal Profile"
+        },
         onDismiss = onDismiss,
         width = 660.dp,
         icon = Icons.Default.Person,
+        modifier = Modifier
+            .heightIn(max = 600.dp)
+            .verticalScroll(rememberScrollState())
+            .imePadding(),
     ) {
             ProfileEditTextField(
                 label = "Nom du profil",
@@ -2108,7 +2214,8 @@ fun PlaylistProfileEditorDialog(
             Text("Photo de profil", color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                ProfileAvatarPresetIds.forEach { presetId ->
+                val avatarPresets = if (profileType == ProfileType.KIDS) KidsProfileAvatarPresetIds else ProfileAvatarPresetIds
+                avatarPresets.forEach { presetId ->
                     ProfileAvatarPresetButton(
                         avatarId = presetId,
                         selected = avatarId == presetId,
@@ -2118,7 +2225,26 @@ fun PlaylistProfileEditorDialog(
                 }
             }
             Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            if (profileType != ProfileType.ADMIN && adminProfile != null) {
+                Text("Xtream credentials", color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    TvButton(
+                        text = "Same as administrator",
+                        onClick = { credentialsMode = CredentialsMode.SHARED_WITH_ADMIN },
+                        variant = if (credentialsMode == CredentialsMode.SHARED_WITH_ADMIN) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+                        modifier = Modifier.weight(1f).height(42.dp),
+                    )
+                    TvButton(
+                        text = "Other credentials",
+                        onClick = { credentialsMode = CredentialsMode.CUSTOM },
+                        variant = if (credentialsMode == CredentialsMode.CUSTOM) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+                        modifier = Modifier.weight(1f).height(42.dp),
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+            if (credentialsMode == CredentialsMode.CUSTOM) Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 TvButton(
                     text = "Xtream Codes",
                     onClick = { source = PlaylistSource.Xtream },
@@ -2137,19 +2263,30 @@ fun PlaylistProfileEditorDialog(
                         .height(42.dp),
                 )
             }
-            Spacer(Modifier.height(12.dp))
-            if (source == PlaylistSource.Xtream) {
+            if (credentialsMode == CredentialsMode.CUSTOM) Spacer(Modifier.height(12.dp))
+            if (credentialsMode == CredentialsMode.CUSTOM && source == PlaylistSource.Xtream) {
                 ProfileEditTextField("URL serveur", host, { host = it }, hostFocusRequester, nameFocusRequester, usernameFocusRequester)
                 ProfileEditTextField("Username", username, { username = it }, usernameFocusRequester, hostFocusRequester, passwordFocusRequester)
                 ProfileEditTextField("Password", password, { password = it }, passwordFocusRequester, usernameFocusRequester, epgFocusRequester, password = true)
                 ProfileEditTextField("URL EPG optionnelle", epgUrl, { epgUrl = it }, epgFocusRequester, passwordFocusRequester, saveFocusRequester)
-            } else {
+                TvButton(
+                    text = if (validatingCredentials) "Testing..." else "Test connection",
+                    enabled = !validatingCredentials && host.isNotBlank() && username.isNotBlank() && password.isNotBlank(),
+                    onClick = { validateCustomXtream {} },
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier.height(42.dp),
+                )
+            } else if (credentialsMode == CredentialsMode.CUSTOM) {
                 ProfileEditTextField("Lien M3U", m3uUrl, { m3uUrl = it }, m3uFocusRequester, nameFocusRequester, epgFocusRequester)
                 ProfileEditTextField("Lien EPG optionnel", epgUrl, { epgUrl = it }, epgFocusRequester, m3uFocusRequester, saveFocusRequester)
             }
             error?.let {
                 Spacer(Modifier.height(6.dp))
                 Text(it, color = SmartVisionColors.Error, style = SmartVisionType.Caption)
+            }
+            validationMessage?.let {
+                Spacer(Modifier.height(6.dp))
+                Text(it, color = SmartVisionColors.Success, style = SmartVisionType.Caption)
             }
             Spacer(Modifier.height(14.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -2161,36 +2298,26 @@ fun PlaylistProfileEditorDialog(
                 )
                 Spacer(Modifier.width(10.dp))
                 TvButton(
-                    text = "Enregistrer",
+                    text = if (validatingCredentials) "Validating..." else "Enregistrer",
+                    enabled = !validatingCredentials,
                     onClick = {
                         val normalizedName = name.trim()
                         error = when {
                             normalizedName.isBlank() -> "Le nom du profil est obligatoire."
                             existingNames.any { it.equals(normalizedName, ignoreCase = true) } -> "Un profil porte deja ce nom."
-                            source == PlaylistSource.Xtream && (host.isBlank() || username.isBlank() || password.isBlank()) -> "URL, username et password sont obligatoires."
-                            source == PlaylistSource.M3u && m3uUrl.isBlank() -> "Le lien M3U est obligatoire."
-                            source == PlaylistSource.Xtream && !host.looksLikeUrlHost() -> "URL serveur Xtream invalide."
-                            source == PlaylistSource.M3u && !m3uUrl.looksLikeHttpUrl() -> "Lien M3U invalide."
-                            epgUrl.isNotBlank() && !epgUrl.looksLikeHttpUrl() -> "URL EPG invalide."
+                            credentialsMode == CredentialsMode.CUSTOM && source == PlaylistSource.Xtream && (host.isBlank() || username.isBlank() || password.isBlank()) -> "URL, username et password sont obligatoires."
+                            credentialsMode == CredentialsMode.CUSTOM && source == PlaylistSource.M3u && m3uUrl.isBlank() -> "Le lien M3U est obligatoire."
+                            credentialsMode == CredentialsMode.CUSTOM && source == PlaylistSource.Xtream && !host.looksLikeUrlHost() -> "URL serveur Xtream invalide."
+                            credentialsMode == CredentialsMode.CUSTOM && source == PlaylistSource.M3u && !m3uUrl.looksLikeHttpUrl() -> "Lien M3U invalide."
+                            credentialsMode == CredentialsMode.CUSTOM && epgUrl.isNotBlank() && !epgUrl.looksLikeHttpUrl() -> "URL EPG invalide."
                             else -> null
                         }
                         if (error == null) {
-                            onSave(
-                                PlaylistProfile(
-                                    id = initial?.id.orEmpty(),
-                                    name = normalizedName,
-                                    source = source,
-                                    avatarId = avatarId,
-                                    avatarColorHex = initial?.avatarColorHex.orEmpty(),
-                                    xtreamHost = host,
-                                    xtreamUsername = username,
-                                    xtreamPassword = password,
-                                    m3uUrl = m3uUrl,
-                                    epgUrl = epgUrl,
-                                    createdAt = initial?.createdAt ?: System.currentTimeMillis(),
-                                    lastSyncAt = initial?.lastSyncAt,
-                                ),
-                            )
+                            if (credentialsMode == CredentialsMode.CUSTOM && source == PlaylistSource.Xtream) {
+                                validateCustomXtream { normalizedHost -> onSave(buildProfile(normalizedName, normalizedHost)) }
+                            } else {
+                                onSave(buildProfile(normalizedName))
+                            }
                         }
                     },
                     focusRequester = saveFocusRequester,
@@ -2523,6 +2650,8 @@ private fun ProfileEditTextField(
     password: Boolean = false,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val bringIntoViewScope = rememberCoroutineScope()
     var editing by remember { mutableStateOf(false) }
     var focused by remember { mutableStateOf(false) }
     val focusStyle = LocalTvFocusStyle.current
@@ -2546,9 +2675,16 @@ private fun ProfileEditTextField(
         modifier = Modifier
             .fillMaxWidth()
             .height(42.dp)
+            .bringIntoViewRequester(bringIntoViewRequester)
             .focusRequester(focusRequester)
             .onFocusChanged { focusState ->
                 focused = focusState.isFocused
+                if (focusState.isFocused) {
+                    bringIntoViewScope.launch {
+                        delay(120)
+                        bringIntoViewRequester.bringIntoView()
+                    }
+                }
                 if (!focusState.isFocused) {
                     editing = false
                     keyboardController?.hide()
@@ -4149,6 +4285,11 @@ private fun avatarSpec(avatarId: String, fallbackColorHex: String): ProfileAvata
         "gold" -> ProfileAvatarSpec(Color(0xFFFFB703), Color(0xFF8A5A00))
         "rose" -> ProfileAvatarSpec(Color(0xFFFF4D8D), Color(0xFF7F1D5A))
         "midnight" -> ProfileAvatarSpec(Color(0xFF1D4ED8), Color(0xFF020617))
+        "kids_sky" -> ProfileAvatarSpec(Color(0xFF38BDF8), Color(0xFF4F46E5))
+        "kids_star" -> ProfileAvatarSpec(Color(0xFFFBBF24), Color(0xFFF97316))
+        "kids_mint" -> ProfileAvatarSpec(Color(0xFF34D399), Color(0xFF0EA5E9))
+        "kids_coral" -> ProfileAvatarSpec(Color(0xFFFB7185), Color(0xFFA855F7))
+        "kids_sun" -> ProfileAvatarSpec(Color(0xFFFDE047), Color(0xFFEC4899))
         else -> ProfileAvatarSpec(fallback, fallback.copy(alpha = 0.72f))
     }
 }

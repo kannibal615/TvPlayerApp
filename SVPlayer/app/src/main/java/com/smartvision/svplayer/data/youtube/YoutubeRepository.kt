@@ -1,5 +1,6 @@
 package com.smartvision.svplayer.data.youtube
 
+import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.data.local.dao.YoutubeDao
 import com.smartvision.svplayer.data.local.dao.FavoriteDao
 import com.smartvision.svplayer.data.local.entity.FavoriteEntity
@@ -9,6 +10,7 @@ import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.withContext
 
 data class YoutubeCategory(
@@ -43,6 +45,7 @@ class YoutubeRepository(
     private val favoriteDao: FavoriteDao,
     private val apiKey: String,
     private val behaviorReporter: YoutubeBehaviorReporter,
+    private val accountManager: XtreamAccountManager,
 ) {
     val categories: List<YoutubeCategory> = listOf(
         YoutubeCategory("history", "Historique", ""),
@@ -57,24 +60,28 @@ class YoutubeRepository(
         YoutubeCategory("kids", "Enfants", "enfants"),
     )
 
-    fun observeRecentSearches(): Flow<List<YoutubeSearchEntity>> = dao.observeRecentSearches()
+    fun observeRecentSearches(): Flow<List<YoutubeSearchEntity>> =
+        accountManager.activeProfileId.flatMapLatest { dao.observeRecentSearches(profileId()) }
 
-    fun observeRecentVideos(): Flow<List<YoutubeVideoHistoryEntity>> = dao.observeRecentVideos()
+    fun observeRecentVideos(): Flow<List<YoutubeVideoHistoryEntity>> =
+        accountManager.activeProfileId.flatMapLatest { dao.observeRecentVideos(profileId()) }
 
-    fun observeRecentVideoItems(): Flow<List<YoutubeVideo>> = dao.observeRecentVideos().map { videos ->
+    fun observeRecentVideoItems(): Flow<List<YoutubeVideo>> = observeRecentVideos().map { videos ->
         videos.map { it.toVideo() }
     }
 
-    fun observeRecentVideoCount(): Flow<Int> = dao.observeRecentVideoCount()
+    fun observeRecentVideoCount(): Flow<Int> =
+        accountManager.activeProfileId.flatMapLatest { dao.observeRecentVideoCount(profileId()) }
 
-    fun observeFavoriteIds(): Flow<List<FavoriteEntity>> = favoriteDao.observeByType(YoutubeProfileId, YoutubeFavoriteContentType)
+    fun observeFavoriteIds(): Flow<List<FavoriteEntity>> =
+        accountManager.activeProfileId.flatMapLatest { favoriteDao.observeByType(profileId(), YoutubeFavoriteContentType) }
 
     suspend fun loadCategory(categoryId: String, pageToken: String? = null): YoutubePage = withContext(Dispatchers.IO) {
         val category = categories.firstOrNull { it.id == categoryId }
             ?: categories.first { it.id == "trending" }
         when (category.id) {
             "history" -> YoutubePage(
-                videos = dao.getRecentVideos().map { it.toVideo() },
+                videos = dao.getRecentVideos(profileId()).map { it.toVideo() },
                 nextPageToken = null,
             )
             "favorites" -> YoutubePage(
@@ -108,7 +115,7 @@ class YoutubeRepository(
         require(clean.isNotBlank() || cleanChannelId.isNotBlank()) { "Recherche YouTube vide." }
         ensureApiKey()
         if (recordSearch && clean.isNotBlank()) {
-            dao.upsertSearch(YoutubeSearchEntity(query = clean.take(120), updatedAt = System.currentTimeMillis()))
+            dao.upsertSearch(YoutubeSearchEntity(profileId = profileId(), query = clean.take(120), updatedAt = System.currentTimeMillis()))
         }
         val response = api.searchVideos(
             apiKey = apiKey,
@@ -128,6 +135,7 @@ class YoutubeRepository(
         val now = System.currentTimeMillis()
         dao.upsertVideo(
             YoutubeVideoHistoryEntity(
+                profileId = profileId(),
                 videoId = video.videoId,
                 title = video.title.take(220),
                 channelTitle = video.channelTitle.take(160),
@@ -142,7 +150,7 @@ class YoutubeRepository(
                 updatedAt = now,
             ),
         )
-        dao.upsertSelection(YoutubeSelectionEntity(id = "last", videoId = video.videoId, updatedAt = now))
+        dao.upsertSelection(YoutubeSelectionEntity(profileId = profileId(), id = "last", videoId = video.videoId, updatedAt = now))
         behaviorReporter.report("VIDEO_OPENED", video, sourceScreen)
     }
 
@@ -151,31 +159,32 @@ class YoutubeRepository(
     }
 
     suspend fun toggleFavorite(video: YoutubeVideo) = withContext(Dispatchers.IO) {
-        val existing = favoriteDao.get(YoutubeProfileId, YoutubeFavoriteContentType, video.videoId)
+        val profileId = profileId()
+        val existing = favoriteDao.get(profileId, YoutubeFavoriteContentType, video.videoId)
         if (existing == null) {
-            favoriteDao.upsert(FavoriteEntity(YoutubeProfileId, YoutubeFavoriteContentType, video.videoId, System.currentTimeMillis()))
+            favoriteDao.upsert(FavoriteEntity(profileId, YoutubeFavoriteContentType, video.videoId, System.currentTimeMillis()))
         } else {
-            favoriteDao.delete(YoutubeProfileId, YoutubeFavoriteContentType, video.videoId)
+            favoriteDao.delete(profileId, YoutubeFavoriteContentType, video.videoId)
         }
     }
 
     suspend fun previousFromHistory(currentVideoId: String): YoutubeVideo? = withContext(Dispatchers.IO) {
-        val history = dao.getRecentVideos(limit = 100).map { it.toVideo() }
+        val history = dao.getRecentVideos(profileId(), limit = 100).map { it.toVideo() }
         val currentIndex = history.indexOfFirst { it.videoId == currentVideoId }
         history.getOrNull(currentIndex + 1)
     }
 
     suspend fun clearSearchHistory() = withContext(Dispatchers.IO) {
-        dao.clearSearchHistory()
+        dao.clearSearchHistory(profileId())
     }
 
     suspend fun clearVideoHistory() = withContext(Dispatchers.IO) {
-        dao.clearVideoHistory()
-        dao.clearSelections()
+        dao.clearVideoHistory(profileId())
+        dao.clearSelections(profileId())
     }
 
     suspend fun clearYoutubeFavorites() = withContext(Dispatchers.IO) {
-        favoriteDao.deleteByType(YoutubeProfileId, YoutubeFavoriteContentType)
+        favoriteDao.deleteByType(profileId(), YoutubeFavoriteContentType)
     }
 
     suspend fun suggestVideos(video: YoutubeVideo): List<YoutubeVideo> = withContext(Dispatchers.IO) {
@@ -216,7 +225,7 @@ class YoutubeRepository(
     }
 
     private suspend fun personalizedTrending(pageToken: String?): YoutubePage {
-        val history = dao.getRecentVideos(limit = 30)
+        val history = dao.getRecentVideos(profileId(), limit = 30)
         return if (pageToken != null || history.isEmpty()) {
             popularVideos(pageToken)
         } else {
@@ -227,7 +236,7 @@ class YoutubeRepository(
 
     private suspend fun personalizedCategory(baseQuery: String, pageToken: String?): YoutubePage {
         if (pageToken != null) return searchPage(baseQuery, pageToken = pageToken, recordSearch = false)
-        val history = dao.getRecentVideos(limit = 30)
+        val history = dao.getRecentVideos(profileId(), limit = 30)
         return if (history.isEmpty()) {
             searchPage(baseQuery, pageToken = null, recordSearch = false)
         } else {
@@ -290,11 +299,11 @@ class YoutubeRepository(
     }
 
     private suspend fun favoriteVideos(): List<YoutubeVideo> {
-        val favoriteIds = favoriteDao.getByType(YoutubeProfileId, YoutubeFavoriteContentType)
+        val favoriteIds = favoriteDao.getByType(profileId(), YoutubeFavoriteContentType)
             .sortedByDescending { it.createdAt }
             .map { it.contentId }
         if (favoriteIds.isEmpty()) return emptyList()
-        val historyById = dao.getRecentVideos(limit = 500).map { it.toVideo() }.associateBy { it.videoId }
+        val historyById = dao.getRecentVideos(profileId(), limit = 500).map { it.toVideo() }.associateBy { it.videoId }
         val missingById = favoriteIds
             .filterNot { it in historyById }
             .takeIf { it.isNotEmpty() }
@@ -302,6 +311,8 @@ class YoutubeRepository(
             .orEmpty()
         return favoriteIds.mapNotNull { historyById[it] ?: missingById[it] }
     }
+
+    private fun profileId(): String = accountManager.activeProfileIdOrDefault()
 
     private suspend fun popularVideos(pageToken: String?): YoutubePage {
         val response = api.mostPopularVideos(apiKey = apiKey, pageToken = pageToken)
@@ -324,7 +335,6 @@ class YoutubeRepository(
     }
 }
 
-private const val YoutubeProfileId = "youtube"
 
 private fun YoutubeVideoHistoryEntity.toVideo(): YoutubeVideo =
     YoutubeVideo(

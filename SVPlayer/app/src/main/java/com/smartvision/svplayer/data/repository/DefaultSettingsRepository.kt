@@ -6,22 +6,42 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.data.local.SVDatabase
+import com.smartvision.svplayer.core.profile.ProfilePinManager
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.startup.StartupStateStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
 class DefaultSettingsRepository(
     context: Context,
     private val dataStore: DataStore<Preferences>,
     private val database: SVDatabase,
+    private val profilePinManager: ProfilePinManager,
+    private val accountManager: XtreamAccountManager,
 ) : SettingsRepository {
     private val startupStateStore = StartupStateStore(context)
+    private val migrationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    init {
+        migrationScope.launch {
+            val legacyPin = dataStore.data.first()[PARENTAL_PIN].orEmpty()
+            if (profilePinManager.migrateLegacyPinIfNeeded(legacyPin)) {
+                dataStore.edit { it[PARENTAL_PIN] = CONFIGURED_PIN_MARKER }
+            }
+        }
+    }
 
     override val settings: Flow<PlayerSettings> =
-        dataStore.data.map { preferences ->
+        combine(dataStore.data, accountManager.activeProfileId) { preferences, profileId ->
             PlayerSettings(
                 displaySize = preferences[DISPLAY_SIZE] ?: "Normal",
                 language = preferences[LANGUAGE] ?: "English",
@@ -36,11 +56,15 @@ class DefaultSettingsRepository(
                 focusActiveColor = preferences[FOCUS_ACTIVE_COLOR] ?: "ElectricBlue",
                 focusParentColor = preferences[FOCUS_PARENT_COLOR] ?: "White",
                 animationsEnabled = preferences[ANIMATIONS] ?: true,
-                videoRatio = preferences[VIDEO_RATIO] ?: "Fit",
-                bufferMode = preferences[BUFFER_MODE] ?: "Standard",
-                retryEnabled = preferences[RETRY] ?: true,
+                videoRatio = preferences[profileStringKey(VIDEO_RATIO_KEY, profileId)] ?: preferences[VIDEO_RATIO] ?: "Fit",
+                bufferMode = preferences[profileStringKey(BUFFER_MODE_KEY, profileId)] ?: preferences[BUFFER_MODE] ?: "Standard",
+                retryEnabled = preferences[profileBooleanKey(RETRY_KEY, profileId)] ?: preferences[RETRY] ?: true,
                 parentalControlEnabled = preferences[PARENTAL_CONTROL_ENABLED] ?: false,
-                parentalPin = preferences[PARENTAL_PIN] ?: "",
+                parentalPin = if (profilePinManager.hasPin() || preferences[PARENTAL_PIN].orEmpty().isNotBlank()) {
+                    CONFIGURED_PIN_MARKER
+                } else {
+                    ""
+                },
                 parentalKeywords = preferences[PARENTAL_KEYWORDS] ?: "adults; porn; xxx",
             )
         }
@@ -100,15 +124,15 @@ class DefaultSettingsRepository(
     }
 
     override suspend fun setVideoRatio(value: String) {
-        dataStore.edit { it[VIDEO_RATIO] = value }
+        dataStore.edit { it[profileStringKey(VIDEO_RATIO_KEY, accountManager.activeProfileId.value)] = value }
     }
 
     override suspend fun setBufferMode(value: String) {
-        dataStore.edit { it[BUFFER_MODE] = value }
+        dataStore.edit { it[profileStringKey(BUFFER_MODE_KEY, accountManager.activeProfileId.value)] = value }
     }
 
     override suspend fun setRetryEnabled(value: Boolean) {
-        dataStore.edit { it[RETRY] = value }
+        dataStore.edit { it[profileBooleanKey(RETRY_KEY, accountManager.activeProfileId.value)] = value }
     }
 
     override suspend fun setParentalControlEnabled(value: Boolean) {
@@ -116,14 +140,18 @@ class DefaultSettingsRepository(
     }
 
     override suspend fun setParentalPin(value: String) {
-        dataStore.edit { it[PARENTAL_PIN] = value.filter(Char::isDigit).take(8) }
+        profilePinManager.setPin(value)
+        dataStore.edit { it[PARENTAL_PIN] = CONFIGURED_PIN_MARKER }
     }
+
+    override fun verifyParentalPin(value: String): Boolean = profilePinManager.verifyPin(value)
 
     override suspend fun setParentalKeywords(value: String) {
         dataStore.edit { it[PARENTAL_KEYWORDS] = value.take(500) }
     }
 
     override suspend fun resetParentalControl() {
+        profilePinManager.clear()
         dataStore.edit {
             it[PARENTAL_CONTROL_ENABLED] = false
             it[PARENTAL_PIN] = ""
@@ -155,5 +183,15 @@ class DefaultSettingsRepository(
         val PARENTAL_CONTROL_ENABLED = booleanPreferencesKey("parental_control_enabled")
         val PARENTAL_PIN = stringPreferencesKey("parental_pin")
         val PARENTAL_KEYWORDS = stringPreferencesKey("parental_keywords")
+        const val CONFIGURED_PIN_MARKER = "configured"
+        const val VIDEO_RATIO_KEY = "video_ratio"
+        const val BUFFER_MODE_KEY = "buffer_mode"
+        const val RETRY_KEY = "retry_enabled"
     }
+
+    private fun profileStringKey(base: String, profileId: String?) =
+        stringPreferencesKey("${base}_${profileId.orEmpty().ifBlank { "default" }}")
+
+    private fun profileBooleanKey(base: String, profileId: String?) =
+        booleanPreferencesKey("${base}_${profileId.orEmpty().ifBlank { "default" }}")
 }

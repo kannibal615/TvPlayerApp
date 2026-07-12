@@ -20,6 +20,9 @@ interface CategoryDao {
     @Query("DELETE FROM categories WHERE profileId = :profileId AND type = :type")
     suspend fun deleteByType(profileId: String, type: String)
 
+    @Query("DELETE FROM categories WHERE profileId = :profileId")
+    suspend fun deleteByProfile(profileId: String)
+
     @Upsert
     suspend fun upsertAll(categories: List<CategoryEntity>)
 }

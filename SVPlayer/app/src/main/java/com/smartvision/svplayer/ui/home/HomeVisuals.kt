@@ -25,10 +25,11 @@ import kotlin.math.min
 @Composable
 fun HomeVisualBackground(
     style: HomeVisualStyle,
+    kidsMode: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val colors = style.visualColors()
-    val imageRes = style.homeCardImageRes()
+    val imageRes = if (kidsMode) style.kidsHomeCardImageRes() else style.homeCardImageRes()
 
     if (imageRes != null) {
         Box(
@@ -350,5 +351,13 @@ private fun HomeVisualStyle.homeCardImageRes(): Int? =
         HomeVisualStyle.Signal -> R.drawable.live_tv_bg
         HomeVisualStyle.Cinema -> R.drawable.films_bg
         HomeVisualStyle.Series -> R.drawable.series_bg
+        else -> null
+    }
+
+private fun HomeVisualStyle.kidsHomeCardImageRes(): Int? =
+    when (this) {
+        HomeVisualStyle.Signal -> R.drawable.kids_live_tv_bg
+        HomeVisualStyle.Cinema -> R.drawable.kids_movies_bg
+        HomeVisualStyle.Series -> R.drawable.kids_series_bg
         else -> null
     }

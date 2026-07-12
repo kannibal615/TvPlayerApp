@@ -1,6 +1,13 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-07-11.
+Derniere mise a jour: 2026-07-12.
+
+## Profils Kids et dialogues
+
+- Le picker conserve le focus initial sur le profil actif et change son background par focus via `Crossfade`.
+- Les actions verrouillees ouvrent un dialogue PIN a quatre chiffres; annuler retourne au picker sans navigation anticipee.
+- Le formulaire profil est borne en hauteur, scrollable, applique `imePadding` et demande `bringIntoView()` lorsque le clavier TV ouvre un champ.
+- La selection de profil reste immediate; les nettoyages de cache et synchronisations ne bloquent pas le clic.
 
 ## 1. Objectif
 

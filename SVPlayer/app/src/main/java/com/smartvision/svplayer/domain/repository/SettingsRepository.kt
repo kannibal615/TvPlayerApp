@@ -24,6 +24,7 @@ interface SettingsRepository {
     suspend fun setRetryEnabled(value: Boolean)
     suspend fun setParentalControlEnabled(value: Boolean)
     suspend fun setParentalPin(value: String)
+    fun verifyParentalPin(value: String): Boolean
     suspend fun setParentalKeywords(value: String)
     suspend fun resetParentalControl()
     suspend fun clearLocalData()

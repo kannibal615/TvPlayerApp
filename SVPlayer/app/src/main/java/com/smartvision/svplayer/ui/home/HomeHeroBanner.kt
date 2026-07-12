@@ -43,11 +43,19 @@ import kotlinx.coroutines.delay
 fun HomeHeroBanner(
     strings: SmartVisionStrings,
     remoteSlides: List<HomeSlide>,
+    kidsMode: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val fallbackSlides = remember(strings) { defaultHomeHeroSlides(strings) }
-    val slides = remember(remoteSlides, fallbackSlides) {
-        remoteSlides.takeIf { it.isNotEmpty() }
+    val slides = remember(remoteSlides, fallbackSlides, kidsMode) {
+        if (kidsMode) {
+            listOf(
+                fallbackSlides.first().copy(
+                    imageRes = R.drawable.kids_home_hero,
+                    imageUrl = "",
+                ),
+            )
+        } else remoteSlides.takeIf { it.isNotEmpty() }
             ?.mapIndexed { index, slide -> slide.toHeroSlide(index, fallbackSlides) }
             ?: fallbackSlides
     }

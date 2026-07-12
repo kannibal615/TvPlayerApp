@@ -25,4 +25,7 @@ interface FavoriteDao {
 
     @Query("DELETE FROM favorites WHERE profileId = :profileId AND contentType = :contentType")
     suspend fun deleteByType(profileId: String, contentType: String)
+
+    @Query("DELETE FROM favorites WHERE profileId = :profileId")
+    suspend fun deleteByProfile(profileId: String)
 }

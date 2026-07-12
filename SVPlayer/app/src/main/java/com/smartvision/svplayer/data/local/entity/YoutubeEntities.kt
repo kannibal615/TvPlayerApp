@@ -3,15 +3,17 @@ package com.smartvision.svplayer.data.local.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "youtube_searches")
+@Entity(tableName = "youtube_searches", primaryKeys = ["profileId", "query"])
 data class YoutubeSearchEntity(
-    @PrimaryKey val query: String,
+    val profileId: String,
+    val query: String,
     val updatedAt: Long,
 )
 
-@Entity(tableName = "youtube_video_history")
+@Entity(tableName = "youtube_video_history", primaryKeys = ["profileId", "videoId"])
 data class YoutubeVideoHistoryEntity(
-    @PrimaryKey val videoId: String,
+    val profileId: String,
+    val videoId: String,
     val title: String,
     val channelTitle: String,
     val thumbnailUrl: String?,
@@ -25,9 +27,10 @@ data class YoutubeVideoHistoryEntity(
     val updatedAt: Long,
 )
 
-@Entity(tableName = "youtube_selection")
+@Entity(tableName = "youtube_selection", primaryKeys = ["profileId", "id"])
 data class YoutubeSelectionEntity(
-    @PrimaryKey val id: String,
+    val profileId: String,
+    val id: String,
     val videoId: String?,
     val updatedAt: Long,
 )

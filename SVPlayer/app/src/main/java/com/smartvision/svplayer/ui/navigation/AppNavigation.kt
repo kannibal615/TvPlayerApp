@@ -51,6 +51,8 @@ import androidx.navigation.compose.rememberNavController
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.config.PlaylistSource
+import com.smartvision.svplayer.core.config.ProfileType
+import com.smartvision.svplayer.core.profile.ProfilePermissions
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.monetization.resolveMonetizationStatus
@@ -175,6 +177,14 @@ fun AppNavigation(
     var openProfilesAfterPicker by remember { mutableStateOf(false) }
     var profileSelectionLoading by remember { mutableStateOf(false) }
     val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
+    val playlistProfiles by container.accountManager.profiles.collectAsStateWithLifecycle()
+    val activeProfileId by container.accountManager.activeProfileId.collectAsStateWithLifecycle()
+    val activeProfile = remember(playlistProfiles, activeProfileId) {
+        playlistProfiles.firstOrNull { it.id == activeProfileId }
+    }
+    val profilePermissions = remember(activeProfile?.type) {
+        ProfilePermissions.forType(activeProfile?.type ?: ProfileType.ADMIN)
+    }
     val xtreamConnectionState by container.xtreamConnectionManager.state.collectAsStateWithLifecycle()
     val xtreamCatalogBlocked = activePlaylistSource == PlaylistSource.Xtream && xtreamConnectionState.blocksCatalogForNavigation
     val xtreamCatalogVisualBlocked = activePlaylistSource == PlaylistSource.Xtream && xtreamConnectionState.blocksCatalog
@@ -249,9 +259,10 @@ fun AppNavigation(
         featureKey = "parental_control",
         status = monetizationStatus,
     )
-    val tabs = remember(youtubeAllowed, mediaCenterGate, strings, xtreamCatalogVisualBlocked) {
+    val tabs = remember(youtubeAllowed, mediaCenterGate, strings, xtreamCatalogVisualBlocked, activeProfile?.type) {
         headerTabs(strings).mapNotNull { tab ->
             when {
+                activeProfile?.type == ProfileType.KIDS && tab.route == AppRoute.Media.route -> null
                 tab.route == AppRoute.Youtube.route -> tab.copy(locked = !youtubeAllowed)
                 tab.route == AppRoute.Media.route && !mediaCenterGate.showDisabledControl -> null
                 tab.route == AppRoute.Media.route -> tab.copy(locked = mediaCenterGate.locked)
@@ -261,10 +272,12 @@ fun AppNavigation(
         }
     }
     val navigateFromHeader: (String) -> Unit = { route ->
-        if (route.isXtreamCatalogRoute() && xtreamCatalogBlocked) {
+        if (!route.isAllowedFor(profilePermissions)) {
+            navController.navigateSingleTop(AppRoute.Home.route)
+        } else if (route.isXtreamCatalogRoute() && xtreamCatalogBlocked) {
             showXtreamConnectionDialog = true
         } else if (route == AppRoute.Youtube.route && !youtubeAllowed) {
-            showLicensePurchaseQr = true
+            if (profilePermissions.canAccessPremium) showLicensePurchaseQr = true
         } else if (route == AppRoute.Media.route && !mediaCenterGate.allowed) {
             if (mediaCenterGate.shouldShowUpgradePrompt) {
                 showLicensePurchaseQr = true
@@ -284,6 +297,13 @@ fun AppNavigation(
             if (currentRoute != AppRoute.Settings.route) {
                 navController.navigateSingleTop(AppRoute.Settings.route)
             }
+        }
+    }
+    val onProfileAction: () -> Unit = {
+        if (!profilePermissions.canManageProfiles) {
+            profilePickerCompleted = false
+        } else {
+            navigateFromHeader(AppRoute.Profile.route)
         }
     }
     fun navigateHomeWithHeaderFocus(target: HomeHeaderFocusTarget = HomeHeaderFocusTarget.CurrentTab) {
@@ -376,8 +396,6 @@ fun AppNavigation(
 
     val xtreamAccounts by container.accountManager.accounts.collectAsStateWithLifecycle()
     val m3uUrl by container.accountManager.m3uUrl.collectAsStateWithLifecycle()
-    val playlistProfiles by container.accountManager.profiles.collectAsStateWithLifecycle()
-    val activeProfileId by container.accountManager.activeProfileId.collectAsStateWithLifecycle()
     val hasPlayableSource = xtreamAccounts.isNotEmpty() || m3uUrl.isNotBlank()
     LaunchedEffect(
         activationState.localStateReady,
@@ -498,6 +516,7 @@ fun AppNavigation(
                     showLicensePurchaseQr = true
                 }
             },
+            onVerifyPin = container.settingsRepository::verifyParentalPin,
             onSelectProfile = { profileId ->
                 scope.launch {
                     profileSelectionLoading = true
@@ -618,7 +637,7 @@ fun AppNavigation(
         }
     }
     LaunchedEffect(showLicensePurchaseQr, activationState.shouldShowLicenseKey) {
-        if (showLicensePurchaseQr && !activationState.shouldShowLicenseKey) {
+        if (showLicensePurchaseQr && (!activationState.shouldShowLicenseKey || !profilePermissions.canAccessPremium)) {
             showLicensePurchaseQr = false
             premiumLicenseCode = ""
         }
@@ -634,6 +653,19 @@ fun AppNavigation(
     val notificationBadgeCount = notificationBadgeState.unreadCount + updateNotificationCount
 
     CompositionLocalProvider(LocalTvFocusStyle provides focusStyle) {
+    val routeAllowedForProfile = currentRoute.isAllowedFor(profilePermissions)
+    LaunchedEffect(currentRoute, profilePermissions) {
+        if (!routeAllowedForProfile) {
+            navController.navigate(AppRoute.Home.route) {
+                launchSingleTop = true
+                popUpTo(AppRoute.Home.route) { inclusive = false }
+            }
+        }
+    }
+    if (!routeAllowedForProfile) {
+        Box(Modifier.fillMaxSize().background(SmartVisionColors.Background))
+        return@CompositionLocalProvider
+    }
     LaunchedEffect(openProfilesAfterPicker) {
         if (openProfilesAfterPicker) {
             navController.navigateSingleTop(AppRoute.Profile.route)
@@ -651,9 +683,9 @@ fun AppNavigation(
                 tabs = tabs,
                 onNavigate = navigateFromHeader,
                 onSync = launchSyncCatalog,
-                onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
-                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
-                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                onSettings = { navigateFromHeader(AppRoute.Settings.route) },
+                onProfile = onProfileAction,
+                onNotifications = { navigateFromHeader(AppRoute.Notifications.route) },
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
@@ -731,9 +763,9 @@ fun AppNavigation(
                 tabs = tabs,
                 onNavigate = navigateFromHeader,
                 onSync = launchSyncCatalog,
-                onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
-                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
-                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                onSettings = { navigateFromHeader(AppRoute.Settings.route) },
+                onProfile = onProfileAction,
+                onNotifications = { navigateFromHeader(AppRoute.Notifications.route) },
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
@@ -753,9 +785,9 @@ fun AppNavigation(
                 tabs = tabs,
                 onNavigate = navigateFromHeader,
                 onSync = launchSyncCatalog,
-                onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
-                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
-                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                onSettings = { navigateFromHeader(AppRoute.Settings.route) },
+                onProfile = onProfileAction,
+                onNotifications = { navigateFromHeader(AppRoute.Notifications.route) },
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
@@ -778,9 +810,9 @@ fun AppNavigation(
                 tabs = tabs,
                 onNavigate = navigateFromHeader,
                 onSync = launchSyncCatalog,
-                onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
-                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
-                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                onSettings = { navigateFromHeader(AppRoute.Settings.route) },
+                onProfile = onProfileAction,
+                onNotifications = { navigateFromHeader(AppRoute.Notifications.route) },
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
@@ -803,9 +835,9 @@ fun AppNavigation(
                     tabs = tabs,
                     onNavigate = navigateFromHeader,
                     onSync = launchSyncCatalog,
-                    onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
-                    onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
-                    onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                    onSettings = { navigateFromHeader(AppRoute.Settings.route) },
+                    onProfile = onProfileAction,
+                    onNotifications = { navigateFromHeader(AppRoute.Notifications.route) },
                     onLicenseKey = { showLicensePurchaseQr = true },
                     showLicenseKey = activationState.shouldShowLicenseKey,
                     hasNewNotifications = hasNewNotifications,
@@ -860,9 +892,9 @@ fun AppNavigation(
                     tabs = tabs,
                     onNavigate = navigateFromHeader,
                     onSync = launchSyncCatalog,
-                    onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
-                    onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
-                    onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                    onSettings = { navigateFromHeader(AppRoute.Settings.route) },
+                    onProfile = onProfileAction,
+                    onNotifications = { navigateFromHeader(AppRoute.Notifications.route) },
                     onLicenseKey = { showLicensePurchaseQr = true },
                     showLicenseKey = activationState.shouldShowLicenseKey,
                     hasNewNotifications = hasNewNotifications,
@@ -878,8 +910,8 @@ fun AppNavigation(
                 onNavigate = navigateFromHeader,
                 onSync = launchSyncCatalog,
                 onSettings = {},
-                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
-                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                onProfile = onProfileAction,
+                onNotifications = { navigateFromHeader(AppRoute.Notifications.route) },
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
@@ -887,7 +919,7 @@ fun AppNavigation(
                 updateState = appUpdateState,
                 onCheckForUpdate = { appUpdateViewModel.checkForUpdate(revealDialog = true) },
                 onSyncCatalog = launchSyncCatalog,
-                parentalControlAllowed = parentalControlAllowed,
+                parentalControlAllowed = parentalControlAllowed && profilePermissions.canManageParentalPin,
                 onLockedFeature = { showLicensePurchaseQr = true },
             )
         }
@@ -897,8 +929,8 @@ fun AppNavigation(
                 tabs = tabs,
                 onNavigate = navigateFromHeader,
                 onSync = launchSyncCatalog,
-                onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
-                onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                onSettings = { navigateFromHeader(AppRoute.Settings.route) },
+                onProfile = onProfileAction,
                 onLicenseKey = { showLicensePurchaseQr = true },
                 showLicenseKey = activationState.shouldShowLicenseKey,
                 hasNewNotifications = hasNewNotifications,
@@ -991,15 +1023,21 @@ fun AppNavigation(
             } else if (movieId == null) {
                 PlaceholderRouteScreen("Detail film", "Film introuvable.")
             } else {
-                MovieDetailRoute(
+                KidsContentRouteGuard(
+                    kidsMode = activeProfile?.type == ProfileType.KIDS,
+                    contentKey = "movie:$movieId:${activeProfileId.orEmpty()}",
+                    isAllowed = { container.catalogRepository.getMovieById(movieId) != null },
+                    onDenied = { navController.navigateSingleTop(AppRoute.Home.route) },
+                ) {
+                    MovieDetailRoute(
                     movieId = movieId,
                     currentRoute = AppRoute.Movies.route,
                     tabs = tabs,
                     onNavigate = navigateFromHeader,
                     onSync = launchSyncCatalog,
-                    onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
-                    onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
-                    onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                    onSettings = { navigateFromHeader(AppRoute.Settings.route) },
+                    onProfile = onProfileAction,
+                    onNotifications = { navigateFromHeader(AppRoute.Notifications.route) },
                     onLicenseKey = { showLicensePurchaseQr = true },
                     showLicenseKey = activationState.shouldShowLicenseKey,
                     hasNewNotifications = hasNewNotifications,
@@ -1036,7 +1074,8 @@ fun AppNavigation(
                         }
                     },
                     strings = strings,
-                )
+                    )
+                }
             }
         }
         composable("series_detail/{seriesId}") { entry ->
@@ -1047,15 +1086,21 @@ fun AppNavigation(
             } else if (seriesId == null) {
                 PlaceholderRouteScreen("Detail serie", "Serie introuvable.")
             } else {
-                SeriesDetailRoute(
+                KidsContentRouteGuard(
+                    kidsMode = activeProfile?.type == ProfileType.KIDS,
+                    contentKey = "series:$seriesId:${activeProfileId.orEmpty()}",
+                    isAllowed = { container.catalogRepository.getSeriesByIds(listOf(seriesId)).isNotEmpty() },
+                    onDenied = { navController.navigateSingleTop(AppRoute.Home.route) },
+                ) {
+                    SeriesDetailRoute(
                     seriesId = seriesId,
                     currentRoute = AppRoute.Series.route,
                     tabs = tabs,
                     onNavigate = navigateFromHeader,
                     onSync = launchSyncCatalog,
-                    onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
-                    onProfile = { navController.navigateSingleTop(AppRoute.Profile.route) },
-                    onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                    onSettings = { navigateFromHeader(AppRoute.Settings.route) },
+                    onProfile = onProfileAction,
+                    onNotifications = { navigateFromHeader(AppRoute.Notifications.route) },
                     onLicenseKey = { showLicensePurchaseQr = true },
                     showLicenseKey = activationState.shouldShowLicenseKey,
                     hasNewNotifications = hasNewNotifications,
@@ -1064,7 +1109,8 @@ fun AppNavigation(
                         episodeReturnFocusSeriesId = seriesId
                         navController.navigate("episode_player/$episodeId")
                     },
-                )
+                    )
+                }
             }
         }
     }
@@ -1344,6 +1390,41 @@ private fun NavHostController.navigateFromContinueItem(item: ContinueItem) {
 
 private fun String.isXtreamCatalogRoute(): Boolean =
     this == AppRoute.Live.route || this == AppRoute.Movies.route || this == AppRoute.Series.route
+
+private fun String.isAllowedFor(permissions: ProfilePermissions): Boolean {
+    val baseRoute = substringBefore('/')
+    return when (baseRoute) {
+        AppRoute.Settings.route -> permissions.canAccessSettings
+        AppRoute.Notifications.route -> permissions.canAccessNotifications
+        AppRoute.Media.route -> permissions.canAccessMedia
+        AppRoute.Profile.route -> permissions.canManageProfiles
+        else -> true
+    }
+}
+
+@Composable
+private fun KidsContentRouteGuard(
+    kidsMode: Boolean,
+    contentKey: String,
+    isAllowed: suspend () -> Boolean,
+    onDenied: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    var checked by remember(contentKey, kidsMode) { mutableStateOf(!kidsMode) }
+    var allowed by remember(contentKey, kidsMode) { mutableStateOf(!kidsMode) }
+    LaunchedEffect(contentKey, kidsMode) {
+        if (kidsMode) {
+            allowed = runCatching { isAllowed() }.getOrDefault(false)
+            checked = true
+            if (!allowed) onDenied()
+        }
+    }
+    if (checked && allowed) {
+        content()
+    } else {
+        PlaceholderRouteScreen("Kids profile", "Content unavailable for this profile.")
+    }
+}
 
 private enum class AppRoute(val route: String) {
     Home("home"),

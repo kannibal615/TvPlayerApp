@@ -1,6 +1,15 @@
 # Ecrans Home, Catalogues, Profile, Settings et YouTube
 
-Derniere mise a jour: 2026-07-10.
+Derniere mise a jour: 2026-07-12.
+
+## Profils ADMIN, NORMAL et KIDS
+
+- `PlaylistProfile` porte `ProfileType`, `CredentialsMode` et `isLocked`; l'ID historique est conserve lors de la migration du premier profil vers `ADMIN`.
+- `ProfilePickerScreen` ordonne ADMIN puis profils secondaires, `Add Kids Profile` et `Add Normal Profile`; badge ADMIN, cadenas et background au focus sont integres sans remplacer la structure du picker.
+- Si l'administrateur est verrouille, les deux cartes d'ajout utilisent le PIN parental avant d'ouvrir le formulaire. Les profils verrouilles utilisent le meme dialogue.
+- Le formulaire partage les identifiants ADMIN par defaut, masque alors les champs, valide les credentials custom avant sauvegarde et utilise scroll/IME/bring-into-view pour la TV.
+- Le header affiche l'avatar actif. En mode Kids, il garde uniquement Home, Live TV, Movies, Series, YouTube et l'avatar a droite.
+- Le Home Kids conserve hero, cards et carrousels; seuls les assets `kids_home_hero`, `kids_live_tv_bg`, `kids_movies_bg`, `kids_series_bg` et les donnees filtrees changent.
 
 ## 1. Objectif
 

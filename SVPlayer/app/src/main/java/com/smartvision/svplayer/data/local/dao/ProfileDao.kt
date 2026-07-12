@@ -13,4 +13,7 @@ interface ProfileDao {
 
     @Upsert
     suspend fun upsert(profile: ProfileEntity)
+
+    @Query("DELETE FROM profiles WHERE id = :id")
+    suspend fun delete(id: String)
 }

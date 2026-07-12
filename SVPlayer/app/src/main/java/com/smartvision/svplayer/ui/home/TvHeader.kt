@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Settings
@@ -35,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -58,6 +58,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.smartvision.svplayer.R
+import com.smartvision.svplayer.core.config.PlaylistProfile
+import com.smartvision.svplayer.core.config.ProfileType
+import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.YoutubeLogoIcon
@@ -110,6 +113,11 @@ fun TvHeader(
     contentDownFocusRequester: FocusRequester? = null,
     onContentDown: (() -> Unit)? = null,
 ) {
+    val container = LocalAppContainer.current
+    val profiles by container.accountManager.profiles.collectAsStateWithLifecycle()
+    val activeProfileId by container.accountManager.activeProfileId.collectAsStateWithLifecycle()
+    val activeProfile = profiles.firstOrNull { it.id == activeProfileId }
+    val kidsMode = activeProfile?.type == ProfileType.KIDS
     Row(
         modifier = modifier.height(SmartVisionDimensions.HomeHeaderHeight),
         verticalAlignment = Alignment.CenterVertically,
@@ -146,6 +154,8 @@ fun TvHeader(
             notificationsFocusRequester = notificationsFocusRequester,
             profileFocusRequester = profileFocusRequester,
             settingsFocusRequester = settingsFocusRequester,
+            activeProfile = activeProfile,
+            kidsMode = kidsMode,
             downFocusRequester = contentDownFocusRequester,
             onDown = onContentDown,
         )
@@ -168,13 +178,15 @@ fun HeaderControls(
     notificationsFocusRequester: FocusRequester? = null,
     profileFocusRequester: FocusRequester? = null,
     settingsFocusRequester: FocusRequester? = null,
+    activeProfile: PlaylistProfile? = null,
+    kidsMode: Boolean = false,
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (showLicenseKey) {
+        if (showLicenseKey && !kidsMode) {
             HeaderIconButton(
                 icon = Icons.Default.Key,
             contentDescription = "Acheter une licence",
@@ -185,33 +197,100 @@ fun HeaderControls(
             focusRequester = licenseFocusRequester,
         )
         }
-        HeaderIconButton(
-            icon = Icons.Default.Notifications,
-            contentDescription = "Notifications",
-            onClick = onNotifications,
-        showBadge = hasNewNotifications,
-        badgeCount = notificationBadgeCount,
-        downFocusRequester = downFocusRequester,
-        onDown = onDown,
-        focusRequester = notificationsFocusRequester,
-    )
-        HeaderIconButton(
-            icon = Icons.Default.Person,
-        contentDescription = "Profil",
-        onClick = onProfile,
-        downFocusRequester = downFocusRequester,
-        onDown = onDown,
-        focusRequester = profileFocusRequester,
-    )
-        HeaderIconButton(
-            icon = Icons.Default.Settings,
-        contentDescription = "Parametres",
-        onClick = onSettings,
-        downFocusRequester = downFocusRequester,
-        onDown = onDown,
-        focusRequester = settingsFocusRequester,
-    )
-        HeaderDateTime()
+        if (!kidsMode) {
+            HeaderIconButton(
+                icon = Icons.Default.Notifications,
+                contentDescription = "Notifications",
+                onClick = onNotifications,
+                showBadge = hasNewNotifications,
+                badgeCount = notificationBadgeCount,
+                downFocusRequester = downFocusRequester,
+                onDown = onDown,
+                focusRequester = notificationsFocusRequester,
+            )
+        }
+        HeaderAvatarButton(
+            profile = activeProfile,
+            onClick = onProfile,
+            downFocusRequester = downFocusRequester,
+            onDown = onDown,
+            focusRequester = profileFocusRequester,
+        )
+        if (!kidsMode) {
+            HeaderIconButton(
+                icon = Icons.Default.Settings,
+                contentDescription = "Parametres",
+                onClick = onSettings,
+                downFocusRequester = downFocusRequester,
+                onDown = onDown,
+                focusRequester = settingsFocusRequester,
+            )
+            HeaderDateTime()
+        }
+    }
+}
+
+@Composable
+private fun HeaderAvatarButton(
+    profile: PlaylistProfile?,
+    onClick: () -> Unit,
+    downFocusRequester: FocusRequester?,
+    onDown: (() -> Unit)?,
+    focusRequester: FocusRequester?,
+) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val focusStyle = LocalTvFocusStyle.current
+    val shape = RoundedCornerShape(10.dp)
+    val avatarColor = remember(profile?.avatarColorHex) {
+        runCatching { Color(android.graphics.Color.parseColor(profile?.avatarColorHex.orEmpty())) }
+            .getOrDefault(SmartVisionColors.Primary)
+    }
+    val initials = profile?.name.orEmpty().trim().split(Regex("\\s+"))
+        .filter(String::isNotBlank)
+        .take(2)
+        .joinToString("") { it.take(1).uppercase() }
+        .ifBlank { "P" }
+    Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .then(if (downFocusRequester != null) Modifier.focusProperties { down = downFocusRequester } else Modifier)
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown && onDown != null) {
+                        onDown()
+                        true
+                    } else false
+                }
+                .tvFocusTarget(
+                    state = focusState,
+                    focusRequester = focusRequester,
+                    pressed = pressed,
+                    glowColor = SmartVisionColors.Primary,
+                    cornerRadius = 10.dp,
+                )
+                .clip(shape)
+                .background(avatarColor)
+                .border(
+                    BorderStroke(
+                        if (focusState.isFocused) focusStyle.borderWidth else SmartVisionDimensions.PanelBorder,
+                        if (focusState.isFocused) focusStyle.accent else SmartVisionColors.Border,
+                    ),
+                    shape,
+                )
+                .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+                .focusable(interactionSource = interactionSource),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = initials,
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+            )
+        }
     }
 }
 

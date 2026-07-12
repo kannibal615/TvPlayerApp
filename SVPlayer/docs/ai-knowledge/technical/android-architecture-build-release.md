@@ -1,6 +1,13 @@
 # Android Architecture, Build et Release
 
-Derniere mise a jour: 2026-07-07.
+Derniere mise a jour: 2026-07-12.
+
+## Persistance profils v14
+
+- Room v14 ajoute `profileId` aux recherches, historique et selection YouTube; la migration 13->14 rattache les lignes existantes au profil actif.
+- Les credentials custom sont chiffres AES/GCM avec une cle Android Keystore et ne sont plus persistes dans le JSON des profils.
+- Le PIN parental est derive avec PBKDF2-HMAC-SHA256, sel aleatoire et comparaison constante; l'ancien PIN DataStore est migre vers un marqueur `configured`.
+- `videoRatio`, `bufferMode` et `retryEnabled` sont scopes par profil avec fallback sur les anciennes valeurs globales.
 
 ## 1. Objectif
 

@@ -22,4 +22,7 @@ interface ProgressDao {
 
     @Query("DELETE FROM playback_progress WHERE profileId = :profileId AND contentType = :contentType AND contentId = :contentId")
     suspend fun delete(profileId: String, contentType: String, contentId: String)
+
+    @Query("DELETE FROM playback_progress WHERE profileId = :profileId")
+    suspend fun deleteByProfile(profileId: String)
 }

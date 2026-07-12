@@ -1,6 +1,14 @@
 # Catalogue, Playlist et Lecture
 
-Derniere mise a jour: 2026-07-11.
+Derniere mise a jour: 2026-07-12.
+
+## Catalogue Kids
+
+- `KidsContentFilter` centralise normalisation Unicode, termes multilingues, preuves fortes/moyennes et exclusions prioritaires.
+- Pour un profil `KIDS`, les listes Xtream ou M3U sont filtrees pendant la synchronisation avant ecriture Room. Seuls les items autorises et leurs categories non vides sont persistes sous le `profileId` Kids.
+- Recherches, favoris, historiques, reprises, tendances et Home reutilisent donc les repositories existants avec des donnees deja filtrees.
+- Les routes detail film/serie verifient que l'ID existe dans le catalogue Room du profil Kids avant de monter l'ecran; les lecteurs exigent aussi une entite locale via `buildPlaybackRequest`.
+- Une suppression de profil efface categories, medias, episodes, favoris, progression, tendances, caches, mappings TMDB, synchro et historique YouTube du `profileId`.
 
 ## 1. Objectif
 

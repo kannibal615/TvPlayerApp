@@ -1,6 +1,8 @@
 package com.smartvision.svplayer.core.config
 
 import android.content.Context
+import com.smartvision.svplayer.core.profile.ProfileCredentialsStore
+import com.smartvision.svplayer.core.profile.StoredProfileCredentials
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,10 +41,34 @@ enum class PlaylistProfileStatus(val storageValue: String) {
     }
 }
 
+enum class ProfileType(val storageValue: String) {
+    ADMIN("admin"),
+    NORMAL("normal"),
+    KIDS("kids");
+
+    companion object {
+        fun fromStorage(value: String?, fallback: ProfileType = NORMAL): ProfileType =
+            entries.firstOrNull { it.storageValue == value } ?: fallback
+    }
+}
+
+enum class CredentialsMode(val storageValue: String) {
+    SHARED_WITH_ADMIN("shared_with_admin"),
+    CUSTOM("custom");
+
+    companion object {
+        fun fromStorage(value: String?): CredentialsMode =
+            entries.firstOrNull { it.storageValue == value } ?: CUSTOM
+    }
+}
+
 data class PlaylistProfile(
     val id: String,
     val name: String,
     val source: PlaylistSource,
+    val type: ProfileType = ProfileType.NORMAL,
+    val credentialsMode: CredentialsMode = CredentialsMode.CUSTOM,
+    val isLocked: Boolean = false,
     val avatarId: String = "",
     val avatarColorHex: String = "",
     val xtreamHost: String = "",
@@ -56,7 +82,7 @@ data class PlaylistProfile(
     val status: PlaylistProfileStatus = PlaylistProfileStatus.NotConfigured,
 ) {
     val isConfigured: Boolean
-        get() = when (source) {
+        get() = credentialsMode == CredentialsMode.SHARED_WITH_ADMIN || when (source) {
             PlaylistSource.Xtream -> xtreamHost.isNotBlank() && xtreamUsername.isNotBlank() && xtreamPassword.isNotBlank()
             PlaylistSource.M3u -> m3uUrl.isNotBlank()
         }
@@ -64,6 +90,7 @@ data class PlaylistProfile(
 
 class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
     private val preferences = context.getSharedPreferences("xtream_accounts", Context.MODE_PRIVATE)
+    private val credentialsStore = ProfileCredentialsStore(context)
     private val _accounts = MutableStateFlow(loadAccounts())
     val accounts: StateFlow<List<XtreamAccount>> = _accounts.asStateFlow()
 
@@ -97,6 +124,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
 
     init {
         migrateLegacyProfileIfNeeded()
+        migrateProfileRolesIfNeeded()
         if (_activeProfileId.value == null) {
             _activeProfileId.value = _profiles.value.firstOrNull()?.id
         }
@@ -194,23 +222,46 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
     fun upsertProfile(profile: PlaylistProfile): String {
         val now = System.currentTimeMillis()
         val id = profile.id.ifBlank { UUID.randomUUID().toString() }
+        val existing = _profiles.value.firstOrNull { it.id == id }
+        val normalizedType = when {
+            existing?.type == ProfileType.ADMIN -> ProfileType.ADMIN
+            profile.type == ProfileType.ADMIN && _profiles.value.any { it.id != id && it.type == ProfileType.ADMIN } ->
+                throw IllegalArgumentException("Un profil administrateur existe deja.")
+            _profiles.value.isEmpty() -> ProfileType.ADMIN
+            else -> profile.type
+        }
+        val normalizedCredentialsMode = if (normalizedType == ProfileType.ADMIN) {
+            CredentialsMode.CUSTOM
+        } else {
+            profile.credentialsMode
+        }
         val normalized = profile.copy(
             id = id,
             name = profile.name.trim(),
+            type = normalizedType,
+            credentialsMode = normalizedCredentialsMode,
             avatarId = profile.avatarId.ifBlank { profileAvatarIdForName(profile.name.ifBlank { id }) },
             avatarColorHex = profile.avatarColorHex.ifBlank { avatarColorForName(profile.name.ifBlank { id }) },
-            xtreamHost = profile.xtreamHost.trim().trimEnd('/'),
-            xtreamUsername = profile.xtreamUsername.trim(),
-            xtreamPassword = profile.xtreamPassword.trim(),
-            m3uUrl = profile.m3uUrl.trim(),
-            epgUrl = profile.epgUrl.trim(),
+            xtreamHost = if (normalizedCredentialsMode == CredentialsMode.CUSTOM) profile.xtreamHost.trim().trimEnd('/') else "",
+            xtreamUsername = if (normalizedCredentialsMode == CredentialsMode.CUSTOM) profile.xtreamUsername.trim() else "",
+            xtreamPassword = if (normalizedCredentialsMode == CredentialsMode.CUSTOM) profile.xtreamPassword.trim() else "",
+            m3uUrl = if (normalizedCredentialsMode == CredentialsMode.CUSTOM) profile.m3uUrl.trim() else "",
+            epgUrl = if (normalizedCredentialsMode == CredentialsMode.CUSTOM) profile.epgUrl.trim() else "",
             createdAt = profile.createdAt.takeIf { it > 0L } ?: now,
             updatedAt = now,
         )
         require(normalized.name.isNotBlank()) { "Le nom du profil est obligatoire." }
         require(normalized.isConfigured) { "La source du profil est incomplete." }
+        if (normalized.credentialsMode == CredentialsMode.SHARED_WITH_ADMIN) {
+            require(adminProfile()?.isConfigured == true) { "Le profil administrateur n'est pas configure." }
+        }
         require(_profiles.value.none { it.id != id && it.name.equals(normalized.name, ignoreCase = true) }) {
             "Un profil porte deja ce nom."
+        }
+        if (normalized.credentialsMode == CredentialsMode.CUSTOM) {
+            credentialsStore.put(id, normalized.toStoredCredentials())
+        } else {
+            credentialsStore.delete(id)
         }
         val wasEmpty = _profiles.value.isEmpty()
         val existingWasActive = _activeProfileId.value == id
@@ -220,7 +271,8 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             _activeProfileId.value = id
         }
         refreshProfileStatuses()
-        if (existingWasActive || _activeProfileId.value == id) {
+        val activeUsesAdminCredentials = activeProfile()?.credentialsMode == CredentialsMode.SHARED_WITH_ADMIN
+        if (existingWasActive || _activeProfileId.value == id || (normalized.type == ProfileType.ADMIN && activeUsesAdminCredentials)) {
             activeProfile()?.let(::applyProfileToLegacyState)
         }
         persist()
@@ -289,7 +341,10 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
     fun activateProfile(profileId: String) {
         val profile = _profiles.value.firstOrNull { it.id == profileId }
             ?: throw IllegalArgumentException("Profil introuvable.")
-        if (_activeProfileId.value == profile.id) return
+        if (_activeProfileId.value == profile.id) {
+            applyProfileToLegacyState(profile)
+            return
+        }
         _activeProfileId.value = profile.id
         applyProfileToLegacyState(profile)
         refreshProfileStatuses()
@@ -318,7 +373,9 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
 
     @Synchronized
     fun deleteProfile(profileId: String) {
+        requireProfileDeletionAllowed(_profiles.value.firstOrNull { it.id == profileId })
         _profiles.value = _profiles.value.filterNot { it.id == profileId }
+        credentialsStore.delete(profileId)
         if (_activeProfileId.value == profileId) {
             _activeProfileId.value = _profiles.value.firstOrNull()?.id
         }
@@ -348,6 +405,22 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
     fun activeProfile(): PlaylistProfile? =
         _profiles.value.firstOrNull { it.id == _activeProfileId.value }
 
+    fun adminProfile(): PlaylistProfile? =
+        _profiles.value.firstOrNull { it.type == ProfileType.ADMIN }
+
+    fun resolvedProfile(profile: PlaylistProfile): PlaylistProfile {
+        if (profile.credentialsMode != CredentialsMode.SHARED_WITH_ADMIN) return profile
+        val admin = adminProfile() ?: return profile
+        return profile.copy(
+            source = admin.source,
+            xtreamHost = admin.xtreamHost,
+            xtreamUsername = admin.xtreamUsername,
+            xtreamPassword = admin.xtreamPassword,
+            m3uUrl = admin.m3uUrl,
+            epgUrl = admin.epgUrl,
+        )
+    }
+
     fun activeProfileIdOrDefault(): String =
         _activeProfileId.value ?: DefaultProfileId
 
@@ -367,6 +440,8 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             id = UUID.randomUUID().toString(),
             name = "Profil principal",
             source = source,
+            type = ProfileType.ADMIN,
+            credentialsMode = CredentialsMode.CUSTOM,
             avatarId = profileAvatarIdForName("Profil principal"),
             avatarColorHex = avatarColorForName("Profil principal"),
             xtreamHost = activeAccount?.host.orEmpty(),
@@ -377,9 +452,14 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             createdAt = now,
             updatedAt = now,
         )
+        credentialsStore.put(profile.id, profile.toStoredCredentials())
         _profiles.value = listOf(profile)
         _activeProfileId.value = profile.id
         refreshProfileStatuses()
+    }
+
+    private fun migrateProfileRolesIfNeeded() {
+        _profiles.value = normalizeProfileRoles(_profiles.value)
     }
 
     private fun ensureLegacyProfileExists() {
@@ -390,17 +470,18 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
     }
 
     private fun applyProfileToLegacyState(profile: PlaylistProfile) {
-        _activePlaylistSource.value = profile.source
-        _epgUrl.value = profile.epgUrl
-        _m3uUrl.value = profile.m3uUrl
-        if (profile.source == PlaylistSource.Xtream && profile.xtreamHost.isNotBlank()) {
+        val resolved = resolvedProfile(profile)
+        _activePlaylistSource.value = resolved.source
+        _epgUrl.value = resolved.epgUrl
+        _m3uUrl.value = resolved.m3uUrl
+        if (resolved.source == PlaylistSource.Xtream && resolved.xtreamHost.isNotBlank()) {
             val account = XtreamAccount(
                 id = profile.id,
                 name = profile.name,
-                host = profile.xtreamHost,
-                username = profile.xtreamUsername,
-                password = profile.xtreamPassword,
-                epgUrl = profile.epgUrl,
+                host = resolved.xtreamHost,
+                username = resolved.xtreamUsername,
+                password = resolved.xtreamPassword,
+                epgUrl = resolved.epgUrl,
             )
             _accounts.value = listOf(account)
             _activeAccountId.value = account.id
@@ -422,7 +503,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
         val activeId = _activeProfileId.value
         _profiles.value = _profiles.value.map { profile ->
             val status = when {
-                !profile.isConfigured -> PlaylistProfileStatus.NotConfigured
+                !resolvedProfile(profile).isConfigured -> PlaylistProfileStatus.NotConfigured
                 profile.id == activeId -> PlaylistProfileStatus.Active
                 else -> PlaylistProfileStatus.Inactive
             }
@@ -432,7 +513,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
 
     private fun persist() {
         val json = JSONArray().apply {
-            _accounts.value.forEach { account ->
+            if (_profiles.value.isEmpty()) _accounts.value.forEach { account ->
                 put(
                     JSONObject()
                         .put("id", account.id)
@@ -477,21 +558,39 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
         val json = JSONArray(preferences.getString(KEY_PROFILES, "[]"))
         (0 until json.length()).map { index ->
             val item = json.getJSONObject(index)
+            val profileId = item.getString("id")
+            val stored = credentialsStore.get(profileId)
+            val legacy = StoredProfileCredentials(
+                xtreamHost = item.optString("xtream_host"),
+                xtreamUsername = item.optString("xtream_username"),
+                xtreamPassword = item.optString("xtream_password"),
+                m3uUrl = item.optString("m3u_url"),
+                epgUrl = item.optString("epg_url"),
+            )
+            val credentials = stored ?: legacy.also {
+                if (it.hasValues()) credentialsStore.put(profileId, it)
+            }
             PlaylistProfile(
-                id = item.getString("id"),
+                id = profileId,
                 name = item.optString("name"),
                 source = PlaylistSource.fromStorage(item.optString("source")),
+                type = ProfileType.fromStorage(
+                    item.optString("profile_type"),
+                    fallback = if (index == 0) ProfileType.ADMIN else ProfileType.NORMAL,
+                ),
+                credentialsMode = CredentialsMode.fromStorage(item.optString("credentials_mode")),
+                isLocked = item.optBoolean("is_locked", false),
                 avatarId = item.optString("avatar_id").ifBlank {
                     profileAvatarIdForName(item.optString("name").ifBlank { item.getString("id") })
                 },
                 avatarColorHex = item.optString("avatar_color_hex").ifBlank {
                     avatarColorForName(item.optString("name").ifBlank { item.getString("id") })
                 },
-                xtreamHost = item.optString("xtream_host"),
-                xtreamUsername = item.optString("xtream_username"),
-                xtreamPassword = item.optString("xtream_password"),
-                m3uUrl = item.optString("m3u_url"),
-                epgUrl = item.optString("epg_url"),
+                xtreamHost = credentials.xtreamHost,
+                xtreamUsername = credentials.xtreamUsername,
+                xtreamPassword = credentials.xtreamPassword,
+                m3uUrl = credentials.m3uUrl,
+                epgUrl = credentials.epgUrl,
                 createdAt = item.optLong("created_at", System.currentTimeMillis()),
                 updatedAt = item.optLong("updated_at", System.currentTimeMillis()),
                 lastSyncAt = item.takeIf { it.has("last_sync_at") && !it.isNull("last_sync_at") }?.optLong("last_sync_at"),
@@ -508,13 +607,11 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
                         .put("id", profile.id)
                         .put("name", profile.name)
                         .put("source", profile.source.storageValue)
+                        .put("profile_type", profile.type.storageValue)
+                        .put("credentials_mode", profile.credentialsMode.storageValue)
+                        .put("is_locked", profile.isLocked)
                         .put("avatar_id", profile.avatarId.ifBlank { profileAvatarIdForName(profile.name) })
                         .put("avatar_color_hex", profile.avatarColorHex.ifBlank { avatarColorForName(profile.name) })
-                        .put("xtream_host", profile.xtreamHost)
-                        .put("xtream_username", profile.xtreamUsername)
-                        .put("xtream_password", profile.xtreamPassword)
-                        .put("m3u_url", profile.m3uUrl)
-                        .put("epg_url", profile.epgUrl)
                         .put("created_at", profile.createdAt)
                         .put("updated_at", profile.updatedAt)
                         .put("last_sync_at", profile.lastSyncAt)
@@ -541,6 +638,39 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             PlaylistSource.Xtream -> current().isConfigured
             PlaylistSource.M3u -> _m3uUrl.value.isNotBlank()
         }
+}
+
+private fun PlaylistProfile.toStoredCredentials(): StoredProfileCredentials = StoredProfileCredentials(
+    xtreamHost = xtreamHost,
+    xtreamUsername = xtreamUsername,
+    xtreamPassword = xtreamPassword,
+    m3uUrl = m3uUrl,
+    epgUrl = epgUrl,
+)
+
+private fun StoredProfileCredentials.hasValues(): Boolean =
+    xtreamHost.isNotBlank() || xtreamUsername.isNotBlank() || xtreamPassword.isNotBlank() ||
+        m3uUrl.isNotBlank() || epgUrl.isNotBlank()
+
+internal fun normalizeProfileRoles(profiles: List<PlaylistProfile>): List<PlaylistProfile> {
+    if (profiles.isEmpty()) return profiles
+    val ordered = profiles.sortedBy { it.createdAt }
+    val selectedAdminId = ordered.firstOrNull { it.type == ProfileType.ADMIN }?.id ?: ordered.first().id
+    return ordered.map { profile ->
+        when {
+            profile.id == selectedAdminId -> profile.copy(
+                type = ProfileType.ADMIN,
+                credentialsMode = CredentialsMode.CUSTOM,
+            )
+            profile.type == ProfileType.ADMIN -> profile.copy(type = ProfileType.NORMAL)
+            else -> profile
+        }
+    }
+}
+
+internal fun requireProfileDeletionAllowed(profile: PlaylistProfile?) {
+    require(profile != null) { "Profil introuvable." }
+    require(profile.type != ProfileType.ADMIN) { "Le profil administrateur ne peut pas etre supprime." }
 }
 
 private val ProfileAvatarPalette = listOf(

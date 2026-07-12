@@ -216,6 +216,7 @@ fun SettingsScreen(
             onSetRetry = { value -> scope.launch { container.settingsRepository.setRetryEnabled(value) } },
             onSetParentalEnabled = { value -> scope.launch { container.settingsRepository.setParentalControlEnabled(value) } },
             onSetParentalPin = { value -> scope.launch { container.settingsRepository.setParentalPin(value) } },
+            onVerifyParentalPin = container.settingsRepository::verifyParentalPin,
             onSetParentalKeywords = { value -> scope.launch { container.settingsRepository.setParentalKeywords(value) } },
             onClearLocalData = { showClearLocalDataConfirmation = true },
             parentalControlAllowed = parentalControlAllowed,
@@ -274,6 +275,7 @@ private fun SettingsMenuLayout(
     onSetRetry: (Boolean) -> Unit,
     onSetParentalEnabled: (Boolean) -> Unit,
     onSetParentalPin: (String) -> Unit,
+    onVerifyParentalPin: (String) -> Boolean,
     onSetParentalKeywords: (String) -> Unit,
     onClearLocalData: () -> Unit,
     parentalControlAllowed: Boolean,
@@ -744,7 +746,7 @@ private fun SettingsMenuLayout(
                 pendingParentalEnabled = null
             },
             onSubmit = { pin ->
-                if (pin == settings.parentalPin) {
+                if (onVerifyParentalPin(pin)) {
                     parentalUnlocked = true
                     showUnlockPinDialog = false
                     val pending = pendingParentalEnabled
@@ -1401,7 +1403,7 @@ private fun ParentalPinDialog(
             SettingsTextField(
                 label = strings.pinCode,
                 value = pin,
-                onValueChange = { pin = it.filter(Char::isDigit).take(8) },
+                onValueChange = { pin = it.filter(Char::isDigit).take(4) },
                 focusRequester = pinFocusRequester,
                 nextFocusRequester = submitFocusRequester,
                 password = true,
@@ -1423,7 +1425,7 @@ private fun ParentalPinDialog(
                     text = strings.apply,
                     focusRequester = submitFocusRequester,
                     onClick = {
-                        if (pin.length < 4) {
+                        if (pin.length != 4) {
                             error = strings.pinRequired
                         } else if (!onSubmit(pin)) {
                             error = strings.pinIncorrect
@@ -1464,7 +1466,7 @@ private fun ParentalCreatePinDialog(
             SettingsTextField(
                 label = strings.newPin,
                 value = pin,
-                onValueChange = { pin = it.filter(Char::isDigit).take(8) },
+                onValueChange = { pin = it.filter(Char::isDigit).take(4) },
                 focusRequester = pinFocusRequester,
                 nextFocusRequester = confirmFocusRequester,
                 password = true,
@@ -1472,7 +1474,7 @@ private fun ParentalCreatePinDialog(
             SettingsTextField(
                 label = strings.confirmPin,
                 value = confirmPin,
-                onValueChange = { confirmPin = it.filter(Char::isDigit).take(8) },
+                onValueChange = { confirmPin = it.filter(Char::isDigit).take(4) },
                 focusRequester = confirmFocusRequester,
                 previousFocusRequester = pinFocusRequester,
                 nextFocusRequester = saveFocusRequester,
@@ -1488,7 +1490,7 @@ private fun ParentalCreatePinDialog(
                     focusRequester = saveFocusRequester,
                     onClick = {
                         when {
-                            pin.length < 4 -> error = strings.pinRequired
+                            pin.length != 4 -> error = strings.pinRequired
                             pin != confirmPin -> error = strings.pinsDoNotMatch
                             else -> onCreate(pin)
                         }

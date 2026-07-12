@@ -1,6 +1,6 @@
 # SmartVision AI Knowledge Root
 
-Derniere mise a jour: 2026-07-11.
+Derniere mise a jour: 2026-07-12.
 
 Ce fichier est le point d'entree court pour les agents IA. Lire ce fichier avant `AGENTS.md`, `PROJECT_NOTES.md` ou tout gros fichier legacy. Les anciens MD restent des sources historiques et ne doivent plus etre lus par defaut.
 
@@ -15,6 +15,7 @@ Etat technique constate le 2026-07-07:
 - entree TV: `MainActivity -> ui/navigation/AppNavigation.kt`
 - lecture video: AndroidX Media3 ExoPlayer natif
 - sources utilisateur: multi-profils locaux dans `XtreamAccountManager`, avec migration du compte/lien existant vers `Profil principal`, selection active projetee vers les anciens flows `current()`, `m3uUrl`, `epgUrl`, `activePlaylistSource`, et catalogues/historiques IPTV isoles par `profileId` en Room depuis la version 13.
+- profils: le premier profil est migre en `ADMIN`; les profils `NORMAL` et `KIDS` peuvent partager dynamiquement les identifiants administrateur ou utiliser un coffre Android Keystore distinct. Le PIN parental est hache et les routes Kids sont protegees dans `AppNavigation`.
 - backend local: `server/public_html/`
 - deploiement: `scripts/deploy_activation_phase1.ps1`
 - ADB Windows de reference pour tests Firestick: `C:\Users\ONEDEV\AppData\Local\Android\Sdk\platform-tools\adb.exe`; Firestick Wi-Fi connue: `192.168.1.33:5555`.

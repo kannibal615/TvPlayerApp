@@ -1,5 +1,13 @@
 # AI Changelog
 
+## 2026-07-12 - Profils ADMIN/NORMAL/KIDS
+
+- Ajout migration ADMIN unique, credentials partages/custom chiffres, PIN parental hache, verrouillage profils et permissions routes/header.
+- Picker TV adapte avec cartes Kids/Normal, badge/cadenas, PIN, Crossfade, formulaire scroll/IME et validation Xtream.
+- Filtre Kids multilingue central applique avant Room aux synchros Xtream/M3U; routes details et suppression profilee renforcees.
+- Room 13->14 profile l'historique/recommandations YouTube; reglages de lecture scopes par profil.
+- Ajout de quatre visuels Kids originaux embarques et de tests unitaires migration/permissions/filtrage.
+
 ## 2026-07-12 - Filtres rapides des categories Live TV
 
 Type:

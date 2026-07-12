@@ -12,20 +12,20 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface YoutubeDao {
-    @Query("SELECT * FROM youtube_searches ORDER BY updatedAt DESC LIMIT :limit")
-    fun observeRecentSearches(limit: Int = 10): Flow<List<YoutubeSearchEntity>>
+    @Query("SELECT * FROM youtube_searches WHERE profileId = :profileId ORDER BY updatedAt DESC LIMIT :limit")
+    fun observeRecentSearches(profileId: String, limit: Int = 10): Flow<List<YoutubeSearchEntity>>
 
-    @Query("SELECT * FROM youtube_video_history ORDER BY updatedAt DESC LIMIT :limit")
-    fun observeRecentVideos(limit: Int = 20): Flow<List<YoutubeVideoHistoryEntity>>
+    @Query("SELECT * FROM youtube_video_history WHERE profileId = :profileId ORDER BY updatedAt DESC LIMIT :limit")
+    fun observeRecentVideos(profileId: String, limit: Int = 20): Flow<List<YoutubeVideoHistoryEntity>>
 
-    @Query("SELECT COUNT(*) FROM youtube_video_history")
-    fun observeRecentVideoCount(): Flow<Int>
+    @Query("SELECT COUNT(*) FROM youtube_video_history WHERE profileId = :profileId")
+    fun observeRecentVideoCount(profileId: String): Flow<Int>
 
-    @Query("SELECT * FROM youtube_video_history ORDER BY updatedAt DESC LIMIT :limit")
-    suspend fun getRecentVideos(limit: Int = 100): List<YoutubeVideoHistoryEntity>
+    @Query("SELECT * FROM youtube_video_history WHERE profileId = :profileId ORDER BY updatedAt DESC LIMIT :limit")
+    suspend fun getRecentVideos(profileId: String, limit: Int = 100): List<YoutubeVideoHistoryEntity>
 
-    @Query("SELECT * FROM youtube_selection WHERE id = 'last' LIMIT 1")
-    suspend fun getLastSelection(): YoutubeSelectionEntity?
+    @Query("SELECT * FROM youtube_selection WHERE profileId = :profileId AND id = 'last' LIMIT 1")
+    suspend fun getLastSelection(profileId: String): YoutubeSelectionEntity?
 
     @Query("SELECT * FROM youtube_behavior_events WHERE syncedAt IS NULL ORDER BY createdAt ASC LIMIT :limit")
     suspend fun getPendingBehaviorEvents(limit: Int = 40): List<YoutubeBehaviorEventEntity>
@@ -45,12 +45,12 @@ interface YoutubeDao {
     @Query("UPDATE youtube_behavior_events SET syncedAt = :syncedAt WHERE id IN (:ids)")
     suspend fun markBehaviorEventsSynced(ids: List<Long>, syncedAt: Long)
 
-    @Query("DELETE FROM youtube_searches")
-    suspend fun clearSearchHistory()
+    @Query("DELETE FROM youtube_searches WHERE profileId = :profileId")
+    suspend fun clearSearchHistory(profileId: String)
 
-    @Query("DELETE FROM youtube_video_history")
-    suspend fun clearVideoHistory()
+    @Query("DELETE FROM youtube_video_history WHERE profileId = :profileId")
+    suspend fun clearVideoHistory(profileId: String)
 
-    @Query("DELETE FROM youtube_selection")
-    suspend fun clearSelections()
+    @Query("DELETE FROM youtube_selection WHERE profileId = :profileId")
+    suspend fun clearSelections(profileId: String)
 }

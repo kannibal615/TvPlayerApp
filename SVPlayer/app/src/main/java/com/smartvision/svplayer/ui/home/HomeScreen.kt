@@ -37,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.config.PlaylistSource
+import com.smartvision.svplayer.core.config.ProfileType
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
 import com.smartvision.svplayer.core.ui.viewModelFactory
@@ -101,6 +102,9 @@ fun HomeScreen(
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val startupWorkRequest by container.startupCatalogWork.collectAsStateWithLifecycle()
+    val profiles by container.accountManager.profiles.collectAsStateWithLifecycle()
+    val activeProfileId by container.accountManager.activeProfileId.collectAsStateWithLifecycle()
+    val kidsMode = profiles.firstOrNull { it.id == activeProfileId }?.type == ProfileType.KIDS
     var catalogWorkUiState by remember { mutableStateOf(HomeCatalogWorkUiState.Idle) }
     val catalogWorkActive = catalogWorkUiState.active
     val catalogSyncActive = catalogWorkActive && catalogWorkUiState.kind == StartupCatalogWorkKind.Synchronize
@@ -559,6 +563,7 @@ fun HomeScreen(
             HomeHeroBanner(
                 strings = strings,
                 remoteSlides = state.slides,
+                kidsMode = kidsMode,
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -585,6 +590,7 @@ fun HomeScreen(
                         blocked = xtreamCatalogBlocked,
                         blockedMessage = strings.connectionUnavailable,
                         workOverlay = catalogWorkUiState.overlayFor(category.id, strings),
+                        kidsMode = kidsMode,
                         focusRequester = if (category.id == "live") liveFocusRequester else null,
                         onDown = if (hasContinueWatching || hasMovieTrends || hasSeriesTrends) {
                             { requestFirstHomeRowFocus() }

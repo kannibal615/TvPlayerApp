@@ -60,7 +60,7 @@ import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
         MediaFileEntity::class,
         RecordingJobEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = true,
 )
 abstract class SVDatabase : RoomDatabase() {
@@ -89,6 +89,7 @@ abstract class SVDatabase : RoomDatabase() {
                     Migration10To11,
                     Migration11To12,
                     Migration12To13(context),
+                    Migration13To14(context),
                 )
                 .build()
 
@@ -585,6 +586,39 @@ abstract class SVDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX index_tmdb_content_mapping_tmdbId ON tmdb_content_mapping(tmdbId)")
                 db.execSQL("CREATE INDEX index_tmdb_content_mapping_profileId_contentType_confidence ON tmdb_content_mapping(profileId, contentType, confidence)")
                 db.execSQL("CREATE INDEX index_tmdb_content_mapping_profileId_updatedAt ON tmdb_content_mapping(profileId, updatedAt)")
+            }
+        }
+
+        private fun Migration13To14(context: Context) = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val profileId = context
+                    .getSharedPreferences("xtream_accounts", Context.MODE_PRIVATE)
+                    .getString("active_playlist_profile_id", null)
+                    ?.takeIf { it.isNotBlank() }
+                    ?: "default"
+                val safeProfileId = profileId.replace("'", "''")
+                db.execSQL(
+                    "CREATE TABLE youtube_searches_new (profileId TEXT NOT NULL, query TEXT NOT NULL, updatedAt INTEGER NOT NULL, PRIMARY KEY(profileId, query))",
+                )
+                db.execSQL("INSERT INTO youtube_searches_new SELECT '$safeProfileId', query, updatedAt FROM youtube_searches")
+                db.execSQL("DROP TABLE youtube_searches")
+                db.execSQL("ALTER TABLE youtube_searches_new RENAME TO youtube_searches")
+
+                db.execSQL(
+                    "CREATE TABLE youtube_video_history_new (profileId TEXT NOT NULL, videoId TEXT NOT NULL, title TEXT NOT NULL, channelTitle TEXT NOT NULL, thumbnailUrl TEXT, publishedAt TEXT, channelId TEXT, viewCount INTEGER, durationIso TEXT, durationSeconds INTEGER, categoryId TEXT, tags TEXT, updatedAt INTEGER NOT NULL, PRIMARY KEY(profileId, videoId))",
+                )
+                db.execSQL(
+                    "INSERT INTO youtube_video_history_new SELECT '$safeProfileId', videoId, title, channelTitle, thumbnailUrl, publishedAt, channelId, viewCount, durationIso, durationSeconds, categoryId, tags, updatedAt FROM youtube_video_history",
+                )
+                db.execSQL("DROP TABLE youtube_video_history")
+                db.execSQL("ALTER TABLE youtube_video_history_new RENAME TO youtube_video_history")
+
+                db.execSQL(
+                    "CREATE TABLE youtube_selection_new (profileId TEXT NOT NULL, id TEXT NOT NULL, videoId TEXT, updatedAt INTEGER NOT NULL, PRIMARY KEY(profileId, id))",
+                )
+                db.execSQL("INSERT INTO youtube_selection_new SELECT '$safeProfileId', id, videoId, updatedAt FROM youtube_selection")
+                db.execSQL("DROP TABLE youtube_selection")
+                db.execSQL("ALTER TABLE youtube_selection_new RENAME TO youtube_selection")
             }
         }
     }

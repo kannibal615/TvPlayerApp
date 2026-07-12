@@ -81,6 +81,7 @@ interface CatalogRepository {
     suspend fun hasLocalCatalogForActiveProfile(): Boolean
     fun invalidateLocalCatalogCache()
     suspend fun clearCatalogForProfileSwitch()
+    suspend fun deleteProfileData(profileId: String)
     suspend fun synchronize(): Result<Unit>
     suspend fun toggleFavorite(contentType: String, contentId: String)
     suspend fun getSeriesEpisodes(seriesId: Int): List<Episode>
