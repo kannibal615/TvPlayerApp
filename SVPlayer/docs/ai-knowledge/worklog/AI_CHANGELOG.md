@@ -1,5 +1,12 @@
 # AI Changelog
 
+## 2026-07-12 - Menus, PIN, diagnostic Kids et filtres Live
+
+- Deplace le panneau Licence en premiere position de Settings et le controle parental dans Info compte.
+- Centralise les saisies PIN dans un pave numerique TV sans clavier Android.
+- Ajoute la phase reelle `FILTERING`, profil Kids, compteurs et duree aux diagnostics de synchronisation Home.
+- Fixe les fleches de filtres Live hors de la LazyRow et resynchronise scroll, filtre, categorie et chaines.
+
 ## 2026-07-12 - Header catalogue en profil Kids
 
 - Movies, Series et YouTube transmettent maintenant le profil actif au header catalogue partage.

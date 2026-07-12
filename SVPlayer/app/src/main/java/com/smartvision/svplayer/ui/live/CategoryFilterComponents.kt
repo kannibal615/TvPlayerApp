@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -80,42 +81,55 @@ internal fun CategoryFilterBar(
     }
     val state = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    LaunchedEffect(activeFilterCode, items) {
+        val activeIndex = items.indexOfFirst { it.code == activeFilterCode }
+        if (activeIndex >= 0) state.animateScrollToItem(activeIndex)
+    }
 
     Column {
         Box(Modifier.fillMaxWidth().height(1.dp).background(SmartVisionColors.Border.copy(alpha = 0.7f)))
         Spacer(Modifier.height(5.dp))
-        LazyRow(
-            state = state,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            contentPadding = PaddingValues(horizontal = 1.dp),
-        ) {
-            itemsIndexed(items, key = { _, item -> item.code ?: "__all_filters__" }) { index, item ->
-                val selected = item.code == activeFilterCode
-                CategoryFilterChip(
-                    label = item.identity?.displayName ?: strings.liveTvCategoryFilterAll,
-                    visual = item.identity?.let(FlagResolver::visual),
-                    count = item.count,
-                    selected = selected,
-                    modifier = if (selected) Modifier.focusRequester(activeFilterFocusRequester) else Modifier,
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (state.canScrollBackward) {
+                CategoryFilterArrowChip(
+                    left = true,
                     categoryListFocusRequester = categoryListFocusRequester,
                     headerFocusRequester = headerFocusRequester,
-                    onFocused = { scope.launch { state.animateScrollToItem(index) } },
-                    onClick = { onApplyFilter(item.code) },
+                    onClick = { scope.launch { state.animateScrollToItem((state.firstVisibleItemIndex - VisibleFilterStep).coerceAtLeast(0)) } },
                 )
             }
-            item(key = "__more_filters__") {
-                CategoryFilterMoreChip(
-                    categoryListFocusRequester = categoryListFocusRequester,
-                    headerFocusRequester = headerFocusRequester,
-                    onClick = {
-                        scope.launch {
-                            val nextIndex = (state.firstVisibleItemIndex + VisibleFilterStep)
-                                .coerceAtMost(items.lastIndex)
-                            state.animateScrollToItem(nextIndex)
-                        }
-                    },
-                )
+            LazyRow(
+                state = state,
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                contentPadding = PaddingValues(horizontal = 1.dp),
+            ) {
+                itemsIndexed(items, key = { _, item -> item.code ?: "__all_filters__" }) { index, item ->
+                    val selected = item.code == activeFilterCode
+                    CategoryFilterChip(
+                        label = item.identity?.displayName ?: strings.liveTvCategoryFilterAll,
+                        visual = item.identity?.let(FlagResolver::visual),
+                        count = item.count,
+                        selected = selected,
+                        modifier = if (selected) Modifier.focusRequester(activeFilterFocusRequester) else Modifier,
+                        categoryListFocusRequester = categoryListFocusRequester,
+                        headerFocusRequester = headerFocusRequester,
+                        onFocused = { scope.launch { state.animateScrollToItem(index) } },
+                        onClick = { onApplyFilter(item.code) },
+                    )
+                }
             }
+            CategoryFilterArrowChip(
+                left = false,
+                enabled = state.canScrollForward,
+                categoryListFocusRequester = categoryListFocusRequester,
+                headerFocusRequester = headerFocusRequester,
+                onClick = {
+                    scope.launch {
+                        state.animateScrollToItem((state.firstVisibleItemIndex + VisibleFilterStep).coerceAtMost(items.lastIndex))
+                    }
+                },
+            )
         }
     }
 }
@@ -194,13 +208,13 @@ private fun CategoryFilterChip(
 }
 
 @Composable
-private fun CategoryFilterMoreChip(categoryListFocusRequester: FocusRequester, headerFocusRequester: FocusRequester, onClick: () -> Unit) {
+private fun CategoryFilterArrowChip(left: Boolean, enabled: Boolean = true, categoryListFocusRequester: FocusRequester, headerFocusRequester: FocusRequester, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     Box(Modifier.size(34.dp).clip(RoundedCornerShape(7.dp)).background(Color(0xB40B1B31))
         .border(1.dp, if (focused) SmartVisionColors.CyanAccent else SmartVisionColors.Border, RoundedCornerShape(7.dp))
         .focusProperties { down = categoryListFocusRequester; up = headerFocusRequester }
-        .onFocusChanged { focused = it.isFocused }.focusable().clickable(onClick = onClick), contentAlignment = Alignment.Center) {
-        Icon(Icons.Default.ChevronRight, null, tint = SmartVisionColors.TextPrimary)
+        .onFocusChanged { focused = it.isFocused }.focusable(enabled).clickable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
+        Icon(if (left) Icons.Default.ChevronLeft else Icons.Default.ChevronRight, null, tint = SmartVisionColors.TextPrimary.copy(alpha = if (enabled) 1f else 0.3f))
     }
 }
 

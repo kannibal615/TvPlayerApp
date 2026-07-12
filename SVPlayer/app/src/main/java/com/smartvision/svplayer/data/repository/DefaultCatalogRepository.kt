@@ -757,6 +757,14 @@ class DefaultCatalogRepository(
         var livePercent = 0
         var moviesPercent = 0
         var seriesPercent = 0
+        var liveMessage: String? = null
+        var moviesMessage: String? = null
+        var seriesMessage: String? = null
+        var liveTotal: Int? = null
+        var moviesTotal: Int? = null
+        var seriesTotal: Int? = null
+        val activeProfile = accountManager.profiles.value.firstOrNull { it.id == profileId }
+        val syncStartedAt = System.currentTimeMillis()
         fun currentCatalogProgress(): SyncStatus.CatalogProgress =
             SyncStatus.CatalogProgress(
                 live = previousCatalogProgress.live.copy(
@@ -764,22 +772,33 @@ class DefaultCatalogRepository(
                     completed = liveCompleted,
                     phase = livePhase,
                     progressPercent = livePercent,
+                    message = liveMessage,
+                    totalItems = liveTotal,
                 ),
                 movies = previousCatalogProgress.movies.copy(
                     currentItems = movieItems,
                     completed = moviesCompleted,
                     phase = moviesPhase,
                     progressPercent = moviesPercent,
+                    message = moviesMessage,
+                    totalItems = moviesTotal,
                 ),
                 series = previousCatalogProgress.series.copy(
                     currentItems = seriesItems,
                     completed = seriesCompleted,
                     phase = seriesPhase,
                     progressPercent = seriesPercent,
+                    message = seriesMessage,
+                    totalItems = seriesTotal,
                 ),
             )
 
-        _syncStatus.value = SyncStatus.Running(catalogProgress = previousCatalogProgress)
+        _syncStatus.value = SyncStatus.Running(
+            catalogProgress = previousCatalogProgress,
+            profileName = activeProfile?.name.orEmpty(),
+            kidsMode = activeProfile?.type == com.smartvision.svplayer.core.config.ProfileType.KIDS,
+            startedAtMs = syncStartedAt,
+        )
         try {
             logSyncMemory(
                 stage = "xtream_sync_start",
@@ -809,6 +828,9 @@ class DefaultCatalogRepository(
                     completedItems = completedItems,
                     totalItems = totalItems,
                     catalogProgress = currentCatalogProgress(),
+                    profileName = activeProfile?.name.orEmpty(),
+                    kidsMode = activeProfile?.type == com.smartvision.svplayer.core.config.ProfileType.KIDS,
+                    startedAtMs = syncStartedAt,
                 )
             }
             suspend fun updateSectionProgress(
@@ -822,6 +844,8 @@ class DefaultCatalogRepository(
             ) {
                 when (section) {
                     MediaSection.Live -> {
+                        liveMessage = message
+                        if ((phase == SyncStatus.SyncSectionPhase.FILTERING || (phase == SyncStatus.SyncSectionPhase.IMPORTING && livePhase != phase)) && currentItems != null) liveTotal = currentItems
                         livePhase = phase
                         livePercent = percent.coerceIn(0, 100)
                         currentItems?.let { liveItems = it }
@@ -835,6 +859,8 @@ class DefaultCatalogRepository(
                         if (liveCompleted) liveWork.complete("Live TV ready")
                     }
                     MediaSection.Movies -> {
+                        moviesMessage = message
+                        if ((phase == SyncStatus.SyncSectionPhase.FILTERING || (phase == SyncStatus.SyncSectionPhase.IMPORTING && moviesPhase != phase)) && currentItems != null) moviesTotal = currentItems
                         moviesPhase = phase
                         moviesPercent = percent.coerceIn(0, 100)
                         currentItems?.let { movieItems = it }
@@ -848,6 +874,8 @@ class DefaultCatalogRepository(
                         if (moviesCompleted) moviesWork.complete("Movies ready")
                     }
                     MediaSection.Series -> {
+                        seriesMessage = message
+                        if ((phase == SyncStatus.SyncSectionPhase.FILTERING || (phase == SyncStatus.SyncSectionPhase.IMPORTING && seriesPhase != phase)) && currentItems != null) seriesTotal = currentItems
                         seriesPhase = phase
                         seriesPercent = percent.coerceIn(0, 100)
                         currentItems?.let { seriesItems = it }
@@ -1011,6 +1039,15 @@ class DefaultCatalogRepository(
         logSyncMemory(stage = "before_get_live_streams", liveCategories = liveCategories.size)
         val downloadedLiveStreams = api.getLiveStreams(username = username, password = password, host = host)
         val liveCategoryNames = liveCategories.associate { it.id to it.name }
+        if (kidsProfile) updateSectionProgress(
+            "Filtrage Kids des chaines Live TV...",
+            MediaSection.Live,
+            SyncStatus.SyncSectionPhase.FILTERING,
+            62,
+            downloadedLiveStreams.size,
+            0,
+            0,
+        )
         val liveStreams = if (kidsProfile) downloadedLiveStreams.filter { stream ->
             kidsContentFilter.isAllowed(liveCategoryNames[stream.categoryId], stream.name)
         } else downloadedLiveStreams
@@ -1133,6 +1170,15 @@ class DefaultCatalogRepository(
             logSyncMemory(stage = "after_get_movies_by_category", live = liveItems, movies = movies.size, movieCategories = movieCategories.size)
         }
         val movieCategoryNames = movieCategories.associate { it.id to it.name }
+        if (kidsProfile) updateSectionProgress(
+            "Filtrage Kids des films...",
+            MediaSection.Movies,
+            SyncStatus.SyncSectionPhase.FILTERING,
+            60,
+            movies.size,
+            0,
+            0,
+        )
         val visibleMovies = if (kidsProfile) movies.filter { movie ->
             kidsContentFilter.isAllowed(movieCategoryNames[movie.categoryId], movie.name)
         } else movies
@@ -1247,6 +1293,15 @@ class DefaultCatalogRepository(
             updateSectionProgress = updateSectionProgress,
         )
         val seriesCategoryNames = seriesCategories.associate { it.id to it.name }
+        if (kidsProfile) updateSectionProgress(
+            "Filtrage Kids des series...",
+            MediaSection.Series,
+            SyncStatus.SyncSectionPhase.FILTERING,
+            60,
+            downloadedSeries.size,
+            0,
+            0,
+        )
         val series = if (kidsProfile) downloadedSeries.filter { item ->
             kidsContentFilter.isAllowed(seriesCategoryNames[item.categoryId], item.name, item.genre, item.plot)
         } else downloadedSeries
@@ -1566,6 +1621,7 @@ private fun SyncStatus.SyncSectionPhase.toNetworkActivityStatus(): NetworkActivi
     when (this) {
         SyncStatus.SyncSectionPhase.WAITING -> NetworkActivityStatus.Queued
         SyncStatus.SyncSectionPhase.RUNNING,
+        SyncStatus.SyncSectionPhase.FILTERING,
         SyncStatus.SyncSectionPhase.LOADING_TRENDS -> NetworkActivityStatus.Running
         SyncStatus.SyncSectionPhase.IMPORTING -> NetworkActivityStatus.Importing
         SyncStatus.SyncSectionPhase.COMPLETED -> NetworkActivityStatus.Completed

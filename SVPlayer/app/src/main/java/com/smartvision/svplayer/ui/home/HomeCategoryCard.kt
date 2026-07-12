@@ -241,6 +241,9 @@ fun HomeCategoryCard(
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                             )
+                            workOverlay.detail?.let { detail ->
+                                Text(detail, color = Color.White.copy(alpha = 0.78f), style = SmartVisionType.Caption, maxLines = 1)
+                            }
                         }
                     }
                 }
@@ -255,6 +258,7 @@ data class HomeCategoryWorkOverlay(
     val error: Boolean,
     val label: String,
     val completed: Boolean = false,
+    val detail: String? = null,
 )
 
 @Composable

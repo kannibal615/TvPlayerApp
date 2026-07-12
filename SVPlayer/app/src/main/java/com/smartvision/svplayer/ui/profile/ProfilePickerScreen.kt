@@ -59,6 +59,10 @@ import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.TvDialogSurface
+import com.smartvision.svplayer.ui.components.NumericPinDialog
+import com.smartvision.svplayer.core.data.LocalAppContainer
+import com.smartvision.svplayer.ui.i18n.smartVisionStrings
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
@@ -279,49 +283,15 @@ private fun ProfilePickerPinDialog(
     onDismiss: () -> Unit,
     onVerify: (String) -> Boolean,
 ) {
-    var pin by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf(false) }
-    val pinFocusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        delay(100)
-        runCatching { pinFocusRequester.requestFocus() }
-    }
-
-    TvDialogSurface(
+    val settings by LocalAppContainer.current.settingsRepository.settings.collectAsStateWithLifecycle(
+        initialValue = com.smartvision.svplayer.domain.model.PlayerSettings(),
+    )
+    NumericPinDialog(
         title = "Enter administrator PIN",
+        strings = smartVisionStrings(settings.language),
         onDismiss = onDismiss,
-        width = 460.dp,
-        icon = Icons.Default.Lock,
-    ) {
-        OutlinedTextField(
-            value = pin,
-            onValueChange = {
-                pin = it.filter(Char::isDigit).take(4)
-                error = false
-            },
-            modifier = Modifier.fillMaxWidth().focusRequester(pinFocusRequester),
-            singleLine = true,
-            label = { Text("4-digit PIN") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-            visualTransformation = PasswordVisualTransformation(),
-            isError = error,
-        )
-        if (error) {
-            Spacer(Modifier.height(6.dp))
-            Text("Incorrect PIN. Try again.", color = SmartVisionColors.Error, style = SmartVisionType.Caption)
-        }
-        Spacer(Modifier.height(20.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TvButton(text = "Cancel", onClick = onDismiss, variant = TvButtonVariant.Secondary)
-            Spacer(Modifier.width(10.dp))
-            TvButton(
-                text = "Unlock",
-                enabled = pin.length == 4,
-                onClick = { error = !onVerify(pin) },
-            )
-        }
-    }
+        onSubmit = onVerify,
+    )
 }
 
 @Composable

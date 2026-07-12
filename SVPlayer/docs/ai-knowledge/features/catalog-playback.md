@@ -2,6 +2,8 @@
 
 Derniere mise a jour: 2026-07-12.
 
+`SyncStatus.SyncSectionProgress` publie maintenant le message d'etape, le total connu et la phase `FILTERING` pour les profils Kids. Les cartes Home affichent profil Kids, duree ecoulee, compteurs et etape reelle; un appel reseau au total inconnu conserve son libelle au lieu de simuler une progression lineaire.
+
 ## Catalogue Kids
 
 - `KidsContentFilter` centralise normalisation Unicode, termes multilingues, preuves fortes/moyennes et exclusions prioritaires.

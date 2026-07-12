@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -86,6 +87,7 @@ import com.smartvision.svplayer.data.network.NetworkActivityStatus
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.components.NumericPinDialog
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.components.TvDialogSurface
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
@@ -102,6 +104,11 @@ import java.util.UUID
 import java.util.Date
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.smartvision.svplayer.core.ui.viewModelFactory
+import com.smartvision.svplayer.ui.profile.ProfileViewModel
+import com.smartvision.svplayer.ui.profile.LicensePanel
+import com.smartvision.svplayer.ui.profile.SmartVisionQrDialog
 
 @Composable
 fun SettingsScreen(
@@ -134,12 +141,22 @@ fun SettingsScreen(
     )
     val networkSnapshot by container.networkActivityTracker.snapshot.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    var selectedSection by remember { mutableStateOf(SettingsSection.Preferences) }
+    var selectedSection by remember { mutableStateOf(SettingsSection.License) }
     var showClearLocalDataConfirmation by remember { mutableStateOf(false) }
     val strings = smartVisionStrings(settings.language)
     val lastUpdateLabel = remember(context) { context.smartVisionLastUpdateLabel() }
     val currentTabFocusRequester = remember { FocusRequester() }
     val firstMenuFocusRequester = remember { FocusRequester() }
+    val licenseViewModel: ProfileViewModel = viewModel(
+        factory = viewModelFactory {
+            ProfileViewModel(
+                activationRepository = container.activationRepository,
+                accountManager = container.accountManager,
+                catalogRepository = container.catalogRepository,
+            )
+        },
+    )
+    val licenseState by licenseViewModel.uiState.collectAsStateWithLifecycle()
 
     BackHandler(onBack = onBack)
 
@@ -221,9 +238,29 @@ fun SettingsScreen(
             onClearLocalData = { showClearLocalDataConfirmation = true },
             parentalControlAllowed = parentalControlAllowed,
             onLockedFeature = onLockedFeature,
+            licenseState = licenseState,
+            onRefreshLicense = licenseViewModel::refresh,
+            onShowLicenseQr = licenseViewModel::showLicenseQr,
             strings = strings,
             lastUpdateLabel = lastUpdateLabel,
             modifier = Modifier.fillMaxSize(),
+        )
+    }
+
+    licenseState.qrDialog?.let { qr ->
+        SmartVisionQrDialog(
+            title = qr.title,
+            subtitle = qr.subtitle,
+            qrUrl = qr.url,
+            tvCode = licenseState.tvCode,
+            code = qr.code,
+            loading = qr.loading,
+            error = qr.error ?: licenseState.errorMessage,
+            licenseCode = if (qr.allowsLicenseEntry) licenseState.licenseCode else "",
+            onLicenseCodeChange = if (qr.allowsLicenseEntry) licenseViewModel::updateLicenseCode else null,
+            onSubmitLicenseCode = if (qr.allowsLicenseEntry) licenseViewModel::activateLicense else null,
+            submittingLicense = licenseState.submittingLicense,
+            onDismiss = licenseViewModel::dismissQr,
         )
     }
 
@@ -280,6 +317,9 @@ private fun SettingsMenuLayout(
     onClearLocalData: () -> Unit,
     parentalControlAllowed: Boolean,
     onLockedFeature: () -> Unit,
+    licenseState: com.smartvision.svplayer.ui.profile.ProfileUiState,
+    onRefreshLicense: () -> Unit,
+    onShowLicenseQr: () -> Unit,
     strings: SmartVisionStrings,
     lastUpdateLabel: String,
     modifier: Modifier = Modifier,
@@ -330,7 +370,7 @@ private fun SettingsMenuLayout(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            SettingsSection.entries.forEach { section ->
+            SettingsSection.entries.filterNot { it == SettingsSection.Parental }.forEach { section ->
                 val isParental = section == SettingsSection.Parental
                 Box(modifier = Modifier.fillMaxWidth()) {
                     TvButton(
@@ -349,13 +389,13 @@ private fun SettingsMenuLayout(
                             .fillMaxWidth()
                             .height(48.dp)
                             .then(
-                                if (section == SettingsSection.Preferences) {
+                                if (section == SettingsSection.License) {
                                     Modifier.focusProperties { up = headerFocusRequester }
                                 } else {
                                     Modifier
                                 },
                             )
-                            .then(if (section == SettingsSection.Preferences) Modifier.focusRequester(firstMenuFocusRequester) else Modifier)
+                            .then(if (section == SettingsSection.License) Modifier.focusRequester(firstMenuFocusRequester) else Modifier)
                             .alpha(if (isParental && !parentalControlAllowed) 0.28f else 1f),
                     )
                     if (isParental) {
@@ -393,6 +433,14 @@ private fun SettingsMenuLayout(
             contentFocusable = selectedSection == SettingsSection.Network,
         ) {
             when (selectedSection) {
+                SettingsSection.License -> LicensePanel(
+                    state = licenseState,
+                    onRefresh = onRefreshLicense,
+                    onShowLicenseQr = onShowLicenseQr,
+                    onShowPrivacyOptions = {},
+                    privacyOptionsRequired = false,
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 SettingsSection.Preferences -> {
                     SettingsChoice(
                         label = strings.language,
@@ -783,6 +831,7 @@ private fun SettingsMenuLayout(
 private enum class SettingsSection(
     val icon: ImageVector,
 ) {
+    License(Icons.Default.Verified),
     Preferences(Icons.Default.Settings),
     Sync(Icons.Default.CloudSync),
     Network(Icons.Default.CloudSync),
@@ -794,6 +843,7 @@ private enum class SettingsSection(
 }
 
 private fun SettingsSection.label(strings: SmartVisionStrings): String = when (this) {
+    SettingsSection.License -> "Licence SmartVision"
     SettingsSection.Preferences -> strings.generalPreferences
     SettingsSection.Sync -> strings.sync
     SettingsSection.Network -> strings.networkActivity
@@ -1382,59 +1432,12 @@ private fun ParentalPinDialog(
     onDismiss: () -> Unit,
     onSubmit: (String) -> Boolean,
 ) {
-    var pin by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
-    var recoveryMessage by remember { mutableStateOf<String?>(null) }
-    val pinFocusRequester = remember { FocusRequester() }
-    val submitFocusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        withFrameNanos { }
-        delay(80)
-        runCatching { pinFocusRequester.requestFocus() }
-    }
-
-    TvDialogSurface(
+    NumericPinDialog(
         title = title,
+        strings = strings,
         onDismiss = onDismiss,
-        width = 470.dp,
-        icon = Icons.Default.Lock,
-    ) {
-            SettingsTextField(
-                label = strings.pinCode,
-                value = pin,
-                onValueChange = { pin = it.filter(Char::isDigit).take(4) },
-                focusRequester = pinFocusRequester,
-                nextFocusRequester = submitFocusRequester,
-                password = true,
-            )
-            error?.let { Text(it, color = SmartVisionColors.Error, style = SmartVisionType.Caption) }
-            recoveryMessage?.let { Text(it, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption) }
-            Spacer(Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TvButton(text = strings.cancel, onClick = onDismiss, variant = TvButtonVariant.Secondary, modifier = Modifier.height(42.dp))
-                Spacer(Modifier.width(10.dp))
-                TvButton(
-                    text = strings.forgotPinByEmail,
-                    onClick = { recoveryMessage = strings.pinEmailUnavailable },
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier.height(42.dp),
-                )
-                Spacer(Modifier.width(10.dp))
-                TvButton(
-                    text = strings.apply,
-                    focusRequester = submitFocusRequester,
-                    onClick = {
-                        if (pin.length != 4) {
-                            error = strings.pinRequired
-                        } else if (!onSubmit(pin)) {
-                            error = strings.pinIncorrect
-                        }
-                    },
-                    modifier = Modifier.height(42.dp),
-                )
-            }
-    }
+        onSubmit = onSubmit,
+    )
 }
 
 @Composable
@@ -1444,61 +1447,13 @@ private fun ParentalCreatePinDialog(
     onDismiss: () -> Unit,
     onCreate: (String) -> Unit,
 ) {
-    var pin by remember { mutableStateOf("") }
-    var confirmPin by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
-    val pinFocusRequester = remember { FocusRequester() }
-    val confirmFocusRequester = remember { FocusRequester() }
-    val saveFocusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        withFrameNanos { }
-        delay(80)
-        runCatching { pinFocusRequester.requestFocus() }
-    }
-
-    TvDialogSurface(
+    NumericPinDialog(
         title = title,
+        strings = strings,
+        requireConfirmation = true,
         onDismiss = onDismiss,
-        width = 470.dp,
-        icon = Icons.Default.Lock,
-    ) {
-            SettingsTextField(
-                label = strings.newPin,
-                value = pin,
-                onValueChange = { pin = it.filter(Char::isDigit).take(4) },
-                focusRequester = pinFocusRequester,
-                nextFocusRequester = confirmFocusRequester,
-                password = true,
-            )
-            SettingsTextField(
-                label = strings.confirmPin,
-                value = confirmPin,
-                onValueChange = { confirmPin = it.filter(Char::isDigit).take(4) },
-                focusRequester = confirmFocusRequester,
-                previousFocusRequester = pinFocusRequester,
-                nextFocusRequester = saveFocusRequester,
-                password = true,
-            )
-            error?.let { Text(it, color = SmartVisionColors.Error, style = SmartVisionType.Caption) }
-            Spacer(Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TvButton(text = strings.cancel, onClick = onDismiss, variant = TvButtonVariant.Secondary, modifier = Modifier.height(42.dp))
-                Spacer(Modifier.width(10.dp))
-                TvButton(
-                    text = strings.apply,
-                    focusRequester = saveFocusRequester,
-                    onClick = {
-                        when {
-                            pin.length != 4 -> error = strings.pinRequired
-                            pin != confirmPin -> error = strings.pinsDoNotMatch
-                            else -> onCreate(pin)
-                        }
-                    },
-                    modifier = Modifier.height(42.dp),
-                )
-            }
-    }
+        onSubmit = { pin -> onCreate(pin); true },
+    )
 }
 
 @Composable

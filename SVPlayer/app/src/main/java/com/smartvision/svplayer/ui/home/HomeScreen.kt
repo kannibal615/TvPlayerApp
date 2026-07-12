@@ -779,6 +779,9 @@ private data class HomeCatalogWorkUiState(
     val movies: HomeCatalogSectionUiState = HomeCatalogSectionUiState(),
     val series: HomeCatalogSectionUiState = HomeCatalogSectionUiState(),
     val errorMessage: String? = null,
+    val profileName: String = "",
+    val kidsMode: Boolean = false,
+    val startedAtMs: Long? = null,
 ) {
     fun withSection(
         section: MediaSection,
@@ -844,6 +847,17 @@ private data class HomeCatalogWorkUiState(
             error = section.phase == SyncStatus.SyncSectionPhase.ERROR,
             label = label,
             completed = section.phase == SyncStatus.SyncSectionPhase.COMPLETED,
+            detail = buildString {
+                if (profileName.isNotBlank()) append(profileName)
+                if (kidsMode) { if (isNotEmpty()) append(" • "); append("Kids") }
+                startedAtMs?.let { started ->
+                    if (isNotEmpty()) append(" • ")
+                    append(((System.currentTimeMillis() - started).coerceAtLeast(0L) / 1_000L)).append("s")
+                }
+                if (section.currentItems > 0 && isNotEmpty()) append(" • ")
+                if (section.currentItems > 0) append(section.currentItems)
+                section.totalItems?.takeIf { it > 0 }?.let { append(" / ").append(it) }
+            }.ifBlank { null },
         )
     }
 
@@ -872,6 +886,8 @@ private data class HomeCatalogSectionUiState(
     val phase: SyncStatus.SyncSectionPhase = SyncStatus.SyncSectionPhase.WAITING,
     val progress: Int = 0,
     val message: String? = null,
+    val currentItems: Int = 0,
+    val totalItems: Int? = null,
 )
 
 private fun SyncStatus.toHomeCatalogWorkUiState(
@@ -884,6 +900,9 @@ private fun SyncStatus.toHomeCatalogWorkUiState(
             kind = kind,
             source = source,
             active = true,
+            profileName = profileName,
+            kidsMode = kidsMode,
+            startedAtMs = startedAtMs,
             live = catalogProgress.live.toHomeSectionUiState(),
             movies = if (source == PlaylistSource.Xtream) catalogProgress.movies.toHomeSectionUiState() else HomeCatalogSectionUiState(
                 phase = SyncStatus.SyncSectionPhase.COMPLETED,
@@ -917,6 +936,9 @@ private fun SyncStatus.SyncSectionProgress.toHomeSectionUiState(): HomeCatalogSe
     HomeCatalogSectionUiState(
         phase = phase,
         progress = percent,
+        message = message,
+        currentItems = currentItems,
+        totalItems = totalItems,
     )
 
 private const val HomeFocusLogTag = "SVHomeFocus"

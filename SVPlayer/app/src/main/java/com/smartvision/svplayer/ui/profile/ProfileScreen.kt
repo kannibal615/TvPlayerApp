@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Refresh
@@ -59,6 +60,7 @@ import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -130,6 +132,7 @@ import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.components.NumericPinDialog
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.components.TvDialogSurface
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
@@ -344,17 +347,16 @@ private fun ProfileScreen(
     onDismissQr: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
-    var selectedSection by remember { mutableStateOf(ProfileSection.License) }
+    var selectedSection by remember { mutableStateOf(ProfileSection.Xtream) }
     var showXtreamSyncDialog by remember { mutableStateOf(false) }
     var pendingFocusSection by remember { mutableStateOf<ProfileSection?>(null) }
     val currentTabFocusRequester = remember { FocusRequester() }
-    val licenseSectionFocusRequester = remember { FocusRequester() }
     val xtreamSectionFocusRequester = remember { FocusRequester() }
     val deviceCatalogFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
         delay(ProfileFocusRequestDelayMillis)
-        runCatching { licenseSectionFocusRequester.requestFocus() }
+        runCatching { xtreamSectionFocusRequester.requestFocus() }
     }
 
     LaunchedEffect(pendingFocusSection, showXtreamSyncDialog) {
@@ -396,8 +398,8 @@ private fun ProfileScreen(
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
             currentTabFocusRequester = currentTabFocusRequester,
-            contentDownFocusRequester = licenseSectionFocusRequester,
-            onContentDown = { runCatching { licenseSectionFocusRequester.requestFocus() } },
+            contentDownFocusRequester = xtreamSectionFocusRequester,
+            onContentDown = { runCatching { xtreamSectionFocusRequester.requestFocus() } },
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -432,13 +434,12 @@ private fun ProfileScreen(
                             }
                         },
                         focusRequester = when (section) {
-                            ProfileSection.License -> licenseSectionFocusRequester
                             ProfileSection.Xtream -> xtreamSectionFocusRequester
                             else -> null
                         },
                         modifier = Modifier
                             .then(
-                                if (section == ProfileSection.License) {
+                                if (section == ProfileSection.Xtream) {
                                     Modifier.focusProperties { up = currentTabFocusRequester }
                                 } else {
                                     Modifier
@@ -458,14 +459,6 @@ private fun ProfileScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 when (selectedSection) {
-                    ProfileSection.License -> LicensePanel(
-                        state = state,
-                        onRefresh = onRefresh,
-                        onShowLicenseQr = onShowLicenseQr,
-                        onShowPrivacyOptions = onShowPrivacyOptions,
-                        privacyOptionsRequired = privacyOptionsRequired,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                     ProfileSection.Xtream -> XtreamPanel(
                         strings = strings,
                         state = state,
@@ -485,6 +478,11 @@ private fun ProfileScreen(
                         onDeleteXtreamAccount = onDeleteXtreamAccount,
                         sectionFocusRequester = xtreamSectionFocusRequester,
                         deviceCatalogFocusRequester = deviceCatalogFocusRequester,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    ProfileSection.Parental -> ProfileParentalPanel(
+                        strings = strings,
+                        onApply = { onSync() },
                         modifier = Modifier.fillMaxWidth(),
                     )
                     ProfileSection.History -> ProfileHistoryPanel(state = state, modifier = Modifier.fillMaxWidth())
@@ -571,7 +569,7 @@ private fun ProfileTopBar(
 }
 
 @Composable
-private fun LicensePanel(
+internal fun LicensePanel(
     state: ProfileUiState,
     onRefresh: () -> Unit,
     onShowLicenseQr: () -> Unit,
@@ -643,12 +641,107 @@ private fun LicensePanel(
     }
 }
 
+@Composable
+private fun ProfileParentalPanel(
+    strings: SmartVisionStrings,
+    onApply: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val container = LocalAppContainer.current
+    val settings by container.settingsRepository.settings.collectAsStateWithLifecycle(
+        initialValue = com.smartvision.svplayer.domain.model.PlayerSettings(),
+    )
+    val scope = rememberCoroutineScope()
+    var unlocked by remember { mutableStateOf(settings.parentalPin.isBlank()) }
+    var showUnlock by remember { mutableStateOf(false) }
+    var showCreate by remember { mutableStateOf(false) }
+    var keywords by remember(settings.parentalKeywords) { mutableStateOf(settings.parentalKeywords) }
+
+    ProfilePanel(title = strings.parentalControl, icon = Icons.Default.Lock, modifier = modifier) {
+        if (!unlocked) {
+            Text(strings.unlockParentalControl, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Body)
+            Spacer(Modifier.height(12.dp))
+            TvButton(text = strings.enterPin, onClick = { showUnlock = true }, modifier = Modifier.height(44.dp))
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                TvButton(
+                    text = strings.enabled,
+                    selected = settings.parentalControlEnabled,
+                    onClick = { scope.launch { container.settingsRepository.setParentalControlEnabled(true) } },
+                    variant = if (settings.parentalControlEnabled) TvButtonVariant.Success else TvButtonVariant.Secondary,
+                    modifier = Modifier.weight(1f).height(42.dp),
+                )
+                TvButton(
+                    text = strings.disabled,
+                    selected = !settings.parentalControlEnabled,
+                    onClick = { scope.launch { container.settingsRepository.setParentalControlEnabled(false) } },
+                    variant = if (settings.parentalControlEnabled) TvButtonVariant.Secondary else TvButtonVariant.Danger,
+                    modifier = Modifier.weight(1f).height(42.dp),
+                )
+            }
+            Spacer(Modifier.height(14.dp))
+            TvButton(
+                text = if (settings.parentalPin.isBlank()) strings.createPin else strings.changePin,
+                onClick = { showCreate = true },
+                variant = TvButtonVariant.Secondary,
+                modifier = Modifier.height(40.dp),
+            )
+            Spacer(Modifier.height(14.dp))
+            OutlinedTextField(
+                value = keywords,
+                onValueChange = { keywords = it },
+                label = { Text(strings.hiddenKeywords) },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+            )
+            Spacer(Modifier.height(10.dp))
+            TvButton(
+                text = strings.apply,
+                onClick = {
+                    scope.launch { container.settingsRepository.setParentalKeywords(keywords) }
+                    onApply()
+                },
+                modifier = Modifier.fillMaxWidth().height(44.dp),
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(strings.parentalHelp, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
+        }
+    }
+
+    if (showUnlock) {
+        NumericPinDialog(
+            title = strings.enterPin,
+            strings = strings,
+            onDismiss = { showUnlock = false },
+            onSubmit = { pin ->
+                container.settingsRepository.verifyParentalPin(pin).also { valid ->
+                    if (valid) { unlocked = true; showUnlock = false }
+                }
+            },
+        )
+    }
+    if (showCreate) {
+        NumericPinDialog(
+            title = if (settings.parentalPin.isBlank()) strings.createPin else strings.changePin,
+            strings = strings,
+            requireConfirmation = true,
+            onDismiss = { showCreate = false },
+            onSubmit = { pin ->
+                scope.launch { container.settingsRepository.setParentalPin(pin) }
+                unlocked = true
+                showCreate = false
+                true
+            },
+        )
+    }
+}
+
 private enum class ProfileSection(
     val label: String,
     val icon: ImageVector,
 ) {
-    License("Licence SmartVision", Icons.Default.Verified),
     Xtream("Info compte", Icons.Default.Person),
+    Parental("Controle parental", Icons.Default.Lock),
     History("Historique", Icons.Default.History),
     Help("Aide", Icons.Default.HelpOutline),
     SettingsShortcut("Parametres", Icons.Default.Settings),
@@ -1988,6 +2081,7 @@ private fun XtreamSyncCountCard(
 private fun SyncStatus.SyncSectionPhase.profileSyncPhaseLabel(): String = when (this) {
     SyncStatus.SyncSectionPhase.WAITING -> "En attente"
     SyncStatus.SyncSectionPhase.RUNNING -> "Telechargement"
+    SyncStatus.SyncSectionPhase.FILTERING -> "Filtrage Kids"
     SyncStatus.SyncSectionPhase.IMPORTING -> "Import local"
     SyncStatus.SyncSectionPhase.LOADING_TRENDS -> "Finalisation"
     SyncStatus.SyncSectionPhase.COMPLETED -> "Termine"

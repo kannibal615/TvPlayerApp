@@ -121,6 +121,7 @@ sealed interface SyncStatus {
     enum class SyncSectionPhase {
         WAITING,
         RUNNING,
+        FILTERING,
         IMPORTING,
         LOADING_TRENDS,
         COMPLETED,
@@ -133,6 +134,8 @@ sealed interface SyncStatus {
         val completed: Boolean = false,
         val phase: SyncSectionPhase = SyncSectionPhase.WAITING,
         val progressPercent: Int? = null,
+        val message: String? = null,
+        val totalItems: Int? = null,
     ) {
         val percent: Int
             get() = when {
@@ -160,6 +163,9 @@ sealed interface SyncStatus {
         val completedItems: Int = 0,
         val totalItems: Int = 0,
         val catalogProgress: CatalogProgress = CatalogProgress(),
+        val profileName: String = "",
+        val kidsMode: Boolean = false,
+        val startedAtMs: Long = System.currentTimeMillis(),
     ) : SyncStatus {
         val percent: Int =
             if (totalItems > 0) ((completedItems.toFloat() / totalItems.toFloat()) * 100).toInt().coerceIn(0, 100) else 0
