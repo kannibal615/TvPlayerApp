@@ -1,5 +1,16 @@
 # AI Changelog
 
+## 2026-07-12 - Header catalogue en profil Kids
+
+- Movies, Series et YouTube transmettent maintenant le profil actif au header catalogue partage.
+- En mode Kids, Licence/Premium, Notifications et Parametres y sont masques comme sur Home et Live TV; avatar et date/heure restent visibles.
+
+## 2026-07-12 - Live TV, cache hero et identite Kids
+
+- Corrige la divergence categorie/chaines Live TV, compacte les filtres et rend la fleche droite reellement scrollante.
+- Deduplique les synchronisations concurrentes et ajoute le cache hero disque quotidien valide.
+- Ajoute badge/fond/date Kids, renforce le filtre central et ajoute le changement de profil au dialogue de sortie.
+
 ## 2026-07-12 - Profils ADMIN/NORMAL/KIDS
 
 - Ajout migration ADMIN unique, credentials partages/custom chiffres, PIN parental hache, verrouillage profils et permissions routes/header.

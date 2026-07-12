@@ -30,6 +30,7 @@ Le focus global est derive des settings utilisateur:
 - L'utilisateur navigue avec la telecommande.
 - Les actions doivent etre focusables et pas seulement clickables.
 - Home, Live TV, Movies, Series, Media, YouTube, Settings, Profile et Notifications partagent une logique de header.
+- En profil Kids, les headers Home/Live TV et catalogue Movies/Series/YouTube masquent les actions Licence/Premium, Notifications et Parametres; l'avatar de profil et la date/heure restent visibles.
 - Le header principal affiche aussi une date/heure non focusable a droite (`HH:mm:ss` puis `dd/MM/yyyy`), separee des boutons globaux par un trait vertical discret.
 - Les formulaires doivent permettre Haut/Bas entre champs.
 - Les popups doivent etre navigables au D-pad.
@@ -236,3 +237,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-10: Info compte > Profils affiche/masque le detail par OK sur la ligne. L'avatar du header detail est focusable et ouvre un popup de 10 avatars standards; apres selection, le focus passe sur `Enregistrer`, puis le retour se fait vers la photo apres fermeture. Le nom se modifie via le stylo du header.
 - 2026-07-10: Settings adopte le header principal, focus initial sur le premier menu, et Back Settings/Info compte retourne sur Home avec focus header Home. Info compte supprime le menu `Appareil et catalogue` mais garde son contenu focusable en bas du panneau. Movies/Series rendent le mini-player Preview focusable entre les boutons header et les details.
 - 2026-07-11: les overlays fullscreen Films/Series et Live partagent le meme contrat D-pad. Bas masque l'overlay et rend le focus au `PlayerView`; Gauche/Droite parcourent uniquement les commandes actives; Haut cible la barre seulement si Media3 autorise le seek; les sliders progression/luminosite gardent un `FocusRequester` stable et le halo radial bleu commun. Quand l'overlay Live est masque, Haut/Bas conservent le zapping historique; quand il est visible, Bas ne zappe jamais.
+- 2026-07-12: la rangee de filtres Live est compactee et sa fleche droite fait defiler le contenu. Le picker applique le fond Kids au focus d'un profil Kids et affiche un badge ourson PNG. Le header commun conserve date/heure en mode Kids. Le dialogue de sortie actif propose aussi `Change profile` / `Changer de profil`.

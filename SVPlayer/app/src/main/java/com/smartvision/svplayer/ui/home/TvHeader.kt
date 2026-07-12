@@ -225,8 +225,8 @@ fun HeaderControls(
                 onDown = onDown,
                 focusRequester = settingsFocusRequester,
             )
-            HeaderDateTime()
         }
+        HeaderDateTime()
     }
 }
 

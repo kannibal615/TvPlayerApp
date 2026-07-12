@@ -147,6 +147,8 @@ fun TvConfirmationDialog(
     tone: TvDialogTone = TvDialogTone.Destructive,
     icon: ImageVector? = null,
     confirmEnabled: Boolean = true,
+    secondaryText: String? = null,
+    onSecondary: (() -> Unit)? = null,
 ) {
     val cancelFocusRequester = remember { FocusRequester() }
 
@@ -197,6 +199,16 @@ fun TvConfirmationDialog(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (!secondaryText.isNullOrBlank() && onSecondary != null) {
+                TvButton(
+                    text = secondaryText,
+                    onClick = onSecondary,
+                    variant = TvButtonVariant.Primary,
+                    contentPadding = PaddingValues(horizontal = 18.dp),
+                    modifier = Modifier.height(44.dp),
+                )
+                Spacer(Modifier.width(12.dp))
+            }
             TvButton(
                 text = cancelText,
                 onClick = onDismiss,

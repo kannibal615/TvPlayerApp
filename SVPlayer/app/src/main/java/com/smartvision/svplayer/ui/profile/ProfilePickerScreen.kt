@@ -161,7 +161,13 @@ fun ProfilePickerScreen(
                         focusRequester = if (profile.id == initialFocusProfileId) firstProfileFocus else null,
                         enabled = !selectionLoading,
                         editEnabled = multiProfileAccess.allowed && !selectionLoading,
-                        onFocused = { backgroundTarget = PickerBackgroundTarget.Standard },
+                        onFocused = {
+                            backgroundTarget = if (profile.type == ProfileType.KIDS) {
+                                PickerBackgroundTarget.Kids
+                            } else {
+                                PickerBackgroundTarget.Standard
+                            }
+                        },
                         onClick = { if (!selectionLoading) requestAction(PickerProtectedAction.Select(profile), profile.isLocked) },
                         onEdit = {
                             if (multiProfileAccess.allowed) {
@@ -363,6 +369,16 @@ private fun ProfilePickerCard(
             contentAlignment = Alignment.Center,
         ) {
             PlaylistProfileAvatar(profile = profile, modifier = Modifier.matchParentSize())
+            if (profile.type == ProfileType.KIDS) {
+                Image(
+                    painter = painterResource(R.drawable.kids_profile_badge),
+                    contentDescription = "Kids profile",
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(6.dp)
+                        .size(30.dp),
+                )
+            }
             if (profile.isLocked) {
                 Icon(
                     Icons.Default.Lock,

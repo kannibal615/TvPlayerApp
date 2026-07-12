@@ -42,6 +42,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Modifier
@@ -72,6 +73,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.smartvision.svplayer.R
+import com.smartvision.svplayer.core.config.ProfileType
+import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.YoutubeLogoIcon
@@ -132,6 +135,12 @@ fun MediaCatalogHeader(
     contentDownFocusRequester: FocusRequester? = null,
     onContentDown: (() -> Unit)? = null,
 ) {
+    val container = LocalAppContainer.current
+    val profiles by container.accountManager.profiles.collectAsStateWithLifecycle()
+    val activeProfileId by container.accountManager.activeProfileId.collectAsStateWithLifecycle()
+    val activeProfile = profiles.firstOrNull { it.id == activeProfileId }
+    val kidsMode = activeProfile?.type == ProfileType.KIDS
+
     Row(
         modifier = modifier.height(MediaCatalogDimens.HeaderHeight),
         verticalAlignment = Alignment.CenterVertically,
@@ -169,6 +178,8 @@ fun MediaCatalogHeader(
             notificationBadgeCount = notificationBadgeCount,
             downFocusRequester = contentDownFocusRequester,
             onDown = onContentDown,
+            activeProfile = activeProfile,
+            kidsMode = kidsMode,
         )
     }
 }

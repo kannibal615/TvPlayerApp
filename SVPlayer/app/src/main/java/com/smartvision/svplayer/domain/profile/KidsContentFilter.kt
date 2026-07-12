@@ -43,8 +43,15 @@ class KidsContentFilter {
         )
 
         val EXCLUSION_TERMS = setOf(
-            "adult", "adults", "porn", "porno", "xxx", "erotic", "erotique", "hentai",
-            "violence extreme", "horror gore", "casino", "gambling", "18+", "rated r", "tv ma",
+            "adult", "adults", "adulte", "adultes",
+            "sex", "sexe", "sexual", "sexuel", "sexuelle",
+            "porn", "porno", "pornography", "pornographie", "xxx", "xx",
+            "erotic", "erotique", "hentai",
+            "crime", "crimes", "criminal", "criminel",
+            "horror", "horreur", "gore",
+            "war", "warfare", "guerre",
+            "violence", "violent", "violente", "violence extreme", "horror gore",
+            "casino", "gambling", "18+", "rated r", "tv ma",
         )
     }
 }

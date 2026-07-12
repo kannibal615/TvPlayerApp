@@ -169,7 +169,7 @@ private fun HomeSlide.toHeroSlide(index: Int, fallbackSlides: List<HomeHeroSlide
 
 private fun String.toAbsoluteAssetUrl(): String = when {
     isBlank() -> ""
-    startsWith("http://") || startsWith("https://") -> this
+    startsWith("http://") || startsWith("https://") || startsWith("file:") -> this
     else -> BuildConfig.ACTIVATION_BASE_URL.trimEnd('/') + "/" + trimStart('/')
 }
 

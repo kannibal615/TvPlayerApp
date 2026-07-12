@@ -1139,6 +1139,10 @@ fun AppNavigation(
         ExitConfirmationDialog(
             strings = strings,
             onDismiss = { showExitConfirmation = false },
+            onChangeProfile = {
+                showExitConfirmation = false
+                profilePickerCompleted = false
+            },
             onExit = { activity?.finishAffinity() },
         )
     }
@@ -1319,6 +1323,7 @@ private fun ExitConfirmationDialog(
     strings: SmartVisionStrings,
     onDismiss: () -> Unit,
     onExit: () -> Unit,
+    onChangeProfile: (() -> Unit)? = null,
 ) {
     TvConfirmationDialog(
         title = strings.exitAppTitle,
@@ -1329,6 +1334,8 @@ private fun ExitConfirmationDialog(
         icon = Icons.Default.ExitToApp,
         onDismiss = onDismiss,
         onConfirm = onExit,
+        secondaryText = strings.changeProfile.takeIf { onChangeProfile != null },
+        onSecondary = onChangeProfile,
     )
 }
 

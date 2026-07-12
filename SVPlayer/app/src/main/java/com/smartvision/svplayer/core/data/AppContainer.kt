@@ -216,7 +216,12 @@ class AppContainer(context: Context) {
         networkActivityTracker = networkActivityTracker,
     )
 
-    val homeSlidesRepository = HomeSlidesRepository(homeSlidesApi, networkActivityTracker)
+    val homeSlidesRepository = HomeSlidesRepository(
+        appContext = appContext,
+        api = homeSlidesApi,
+        okHttpClient = activationOkHttpClient,
+        networkActivityTracker = networkActivityTracker,
+    )
     val notificationsRepository = NotificationsRepository(
         activationRepository = activationRepository,
         api = notificationsApi,
