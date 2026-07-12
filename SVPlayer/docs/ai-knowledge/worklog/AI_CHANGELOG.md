@@ -1,5 +1,16 @@
 # AI Changelog
 
+## 2026-07-12 - Home paysage, tendances par profil et filtres Live
+
+- Remplace les cards portrait/expansion par des cards paysage fixes `220,4 x 124 dp` (au moins cinq visibles en 1280 px), avec scale conteneur et preview Xtream muet partage apres 550 ms.
+- Supprime YouTube des previews Home, les boutons View all, les routes `continue_watching` / `trending` et `HomeCollectionsScreen`.
+- Persiste les tendances uniquement pendant la synchronisation, par profil, avec tri deterministe note/nouveaute et exclusion adulte; Room passe en v15.
+- Corrige le cache Continue Watching par profil, le retour Home avec pile nettoyee et la synchronisation Admin d'un profil cible sans activation.
+- Ouvre Live/Movies/Series sur All, conserve All dans un filtre Live, deplace le filtre actif en deuxieme position, supprime la fleche droite et applique au premier clic.
+- Restaure la demande PIN/creation PIN des l'ouverture de Controle parental dans Info compte.
+- Release `0.1.118` / `148`: `:app:assembleRelease` reussi en 13 min 14 s; APK `47263353` octets, SHA256 `a4abb71da9eafaaf1990bdc77f6117a93d1d5c59aab4640a773623ddf67a9bea`.
+- Production verifiee: manifeste et `api/app_update.php` en `0.1.118 (148)`, APK `smartvision-tv-v148-a4abb71d.apk`. Le test post-upload `create_playlist_setup_session.php` a retourne HTTP 500 apres publication et reste a diagnostiquer.
+
 ## 2026-07-12 - Menus, PIN, diagnostic Kids et filtres Live
 
 - Deplace le panneau Licence en premiere position de Settings et le controle parental dans Info compte.

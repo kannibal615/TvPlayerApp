@@ -100,10 +100,14 @@ object CategoryFilterResolver {
 
     fun filterCategories(categories: List<LiveTvCategory>, normalizedCode: String?): List<LiveTvCategory> {
         if (normalizedCode == null) return categories
-        return categories.filter { category ->
+        val all = categories.firstOrNull { it.id == AllLiveCategoryId }
+        val filtered = categories.filter { category ->
+            if (category.id in SpecialLiveCategoryIds) return@filter false
             val code = CategoryCodeParser.parse(category.label) ?: return@filter false
             resolve(code, Locale.ROOT).normalizedCode == normalizedCode
         }
+        val filteredAll = all?.copy(count = filtered.sumOf { it.count ?: 0 })
+        return listOfNotNull(filteredAll) + filtered
     }
 }
 

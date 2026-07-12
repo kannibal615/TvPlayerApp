@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.Icon
@@ -74,8 +73,9 @@ internal fun CategoryFilterBar(
     headerFocusRequester: FocusRequester,
     onApplyFilter: (String?) -> Unit,
 ) {
-    val items = remember(filters, strings.liveTvCategoryFilterAll) {
-        listOf(FilterBarItem(null, null, 0)) + filters.map {
+    val items = remember(filters, activeFilterCode, strings.liveTvCategoryFilterAll) {
+        val orderedFilters = orderFiltersForBar(filters, activeFilterCode)
+        listOf(FilterBarItem(null, null, 0)) + orderedFilters.map {
             FilterBarItem(it.identity.normalizedCode, it.identity, it.categoryCount)
         }
     }
@@ -91,8 +91,7 @@ internal fun CategoryFilterBar(
         Spacer(Modifier.height(5.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
             if (state.canScrollBackward) {
-                CategoryFilterArrowChip(
-                    left = true,
+                CategoryFilterLeftArrowChip(
                     categoryListFocusRequester = categoryListFocusRequester,
                     headerFocusRequester = headerFocusRequester,
                     onClick = { scope.launch { state.animateScrollToItem((state.firstVisibleItemIndex - VisibleFilterStep).coerceAtLeast(0)) } },
@@ -119,20 +118,12 @@ internal fun CategoryFilterBar(
                     )
                 }
             }
-            CategoryFilterArrowChip(
-                left = false,
-                enabled = state.canScrollForward,
-                categoryListFocusRequester = categoryListFocusRequester,
-                headerFocusRequester = headerFocusRequester,
-                onClick = {
-                    scope.launch {
-                        state.animateScrollToItem((state.firstVisibleItemIndex + VisibleFilterStep).coerceAtMost(items.lastIndex))
-                    }
-                },
-            )
         }
     }
 }
+
+internal fun orderFiltersForBar(filters: List<CategoryFilter>, activeFilterCode: String?): List<CategoryFilter> =
+    filters.sortedBy { filter -> if (filter.identity.normalizedCode == activeFilterCode) 0 else 1 }
 
 @Composable
 internal fun CategoryFilterIconButton(
@@ -187,12 +178,22 @@ private fun CategoryFilterChip(
     }
     Box {
         Row(
-            modifier.height(34.dp)
+            modifier.height(30.dp)
                 .clip(RoundedCornerShape(7.dp))
                 .background(if (selected) SmartVisionColors.Primary.copy(alpha = 0.72f) else Color(0xB40B1B31))
                 .border(BorderStroke(if (focused) focusStyle.borderWidth else 1.dp, if (focused) focusStyle.accent else SmartVisionColors.Border), RoundedCornerShape(7.dp))
                 .focusProperties { down = categoryListFocusRequester; up = headerFocusRequester }
                 .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused() }
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown &&
+                        event.key in setOf(Key.Enter, Key.NumPadEnter, Key.DirectionCenter)
+                    ) {
+                        onClick()
+                        true
+                    } else {
+                        false
+                    }
+                }
                 .focusable().clickable(remember { MutableInteractionSource() }, null, onClick = onClick)
                 .semantics { contentDescription = "$label, $count"; this.selected = selected }
                 .padding(horizontal = if (visual == null) 10.dp else 7.dp),
@@ -208,13 +209,13 @@ private fun CategoryFilterChip(
 }
 
 @Composable
-private fun CategoryFilterArrowChip(left: Boolean, enabled: Boolean = true, categoryListFocusRequester: FocusRequester, headerFocusRequester: FocusRequester, onClick: () -> Unit) {
+private fun CategoryFilterLeftArrowChip(enabled: Boolean = true, categoryListFocusRequester: FocusRequester, headerFocusRequester: FocusRequester, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     Box(Modifier.size(34.dp).clip(RoundedCornerShape(7.dp)).background(Color(0xB40B1B31))
         .border(1.dp, if (focused) SmartVisionColors.CyanAccent else SmartVisionColors.Border, RoundedCornerShape(7.dp))
         .focusProperties { down = categoryListFocusRequester; up = headerFocusRequester }
         .onFocusChanged { focused = it.isFocused }.focusable(enabled).clickable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
-        Icon(if (left) Icons.Default.ChevronLeft else Icons.Default.ChevronRight, null, tint = SmartVisionColors.TextPrimary.copy(alpha = if (enabled) 1f else 0.3f))
+        Icon(Icons.Default.ChevronLeft, null, tint = SmartVisionColors.TextPrimary.copy(alpha = if (enabled) 1f else 0.3f))
     }
 }
 

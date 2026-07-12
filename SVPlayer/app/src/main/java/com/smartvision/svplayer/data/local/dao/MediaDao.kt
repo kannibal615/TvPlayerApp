@@ -54,11 +54,28 @@ interface MediaDao {
     @Query("SELECT * FROM live_streams WHERE profileId = :profileId AND categoryId = :categoryId ORDER BY number, name LIMIT :limit OFFSET :offset")
     suspend fun getLiveStreamsByCategoryPage(profileId: String, categoryId: String, limit: Int, offset: Int): List<LiveStreamEntity>
 
+    @Query("SELECT * FROM live_streams WHERE profileId = :profileId AND categoryId IN (:categoryIds) ORDER BY number, name LIMIT :limit OFFSET :offset")
+    suspend fun getLiveStreamsByCategoriesPage(
+        profileId: String,
+        categoryIds: List<String>,
+        limit: Int,
+        offset: Int,
+    ): List<LiveStreamEntity>
+
     @Query("SELECT * FROM live_streams WHERE profileId = :profileId AND name LIKE :pattern ESCAPE '\\' ORDER BY number, name LIMIT :limit OFFSET :offset")
     suspend fun searchLiveStreamsPage(profileId: String, pattern: String, limit: Int, offset: Int): List<LiveStreamEntity>
 
     @Query("SELECT * FROM live_streams WHERE profileId = :profileId AND categoryId = :categoryId AND name LIKE :pattern ESCAPE '\\' ORDER BY number, name LIMIT :limit OFFSET :offset")
     suspend fun searchLiveStreamsByCategoryPage(profileId: String, categoryId: String, pattern: String, limit: Int, offset: Int): List<LiveStreamEntity>
+
+    @Query("SELECT * FROM live_streams WHERE profileId = :profileId AND categoryId IN (:categoryIds) AND name LIKE :pattern ESCAPE '\\' ORDER BY number, name LIMIT :limit OFFSET :offset")
+    suspend fun searchLiveStreamsByCategoriesPage(
+        profileId: String,
+        categoryIds: List<String>,
+        pattern: String,
+        limit: Int,
+        offset: Int,
+    ): List<LiveStreamEntity>
 
     @Query("SELECT * FROM live_streams WHERE profileId = :profileId AND streamId IN (:streamIds)")
     suspend fun getLiveStreamsByIds(profileId: String, streamIds: List<Int>): List<LiveStreamEntity>
@@ -159,17 +176,30 @@ interface MediaDao {
         streamId: Int,
     ): MovieEntity?
 
-    @Query("SELECT * FROM movies WHERE profileId = :profileId ORDER BY RANDOM() LIMIT :limit")
-    suspend fun getTrendingMovies(profileId: String, limit: Int): List<MovieEntity>
+    @Query(
+        "SELECT * FROM movies WHERE profileId = :profileId " +
+            "AND TRIM(COALESCE(rating, '')) != '' " +
+            "AND CAST(REPLACE(rating, ',', '.') AS REAL) > 0 " +
+            "ORDER BY CAST(REPLACE(rating, ',', '.') AS REAL) DESC, addedAt DESC, " +
+            "CAST(COALESCE(year, '0') AS INTEGER) DESC, streamId ASC LIMIT :limit",
+    )
+    suspend fun getTopRatedMovieCandidates(profileId: String, limit: Int): List<MovieEntity>
 
     @Query(
-        "SELECT * FROM movies " +
-            "WHERE profileId = :profileId " +
-            "AND CAST(REPLACE(COALESCE(rating, '0'), ',', '.') AS REAL) >= 9.0 " +
-            "ORDER BY CAST(REPLACE(COALESCE(rating, '0'), ',', '.') AS REAL) DESC, RANDOM() " +
-            "LIMIT :limit",
+        "SELECT * FROM movies WHERE profileId = :profileId AND categoryId IN (:categoryIds) " +
+            "ORDER BY addedAt DESC, CAST(COALESCE(year, '0') AS INTEGER) DESC, streamId ASC LIMIT :limit",
     )
-    suspend fun getBestRatedMovies(profileId: String, limit: Int): List<MovieEntity>
+    suspend fun getNewestMovieCandidatesByCategory(
+        profileId: String,
+        categoryIds: List<String>,
+        limit: Int,
+    ): List<MovieEntity>
+
+    @Query(
+        "SELECT * FROM movies WHERE profileId = :profileId " +
+            "ORDER BY addedAt DESC, CAST(COALESCE(year, '0') AS INTEGER) DESC, streamId ASC LIMIT :limit",
+    )
+    suspend fun getNewestMovieCandidates(profileId: String, limit: Int): List<MovieEntity>
 
     @Query("DELETE FROM movies WHERE profileId = :profileId")
     suspend fun clearMovies(profileId: String)
@@ -218,19 +248,35 @@ interface MediaDao {
     @Query("SELECT * FROM series WHERE profileId = :profileId AND seriesId = :seriesId")
     suspend fun getSeries(profileId: String, seriesId: Int): SeriesEntity?
 
-    @Query("SELECT * FROM series WHERE profileId = :profileId ORDER BY RANDOM() LIMIT :limit")
-    suspend fun getTrendingSeries(profileId: String, limit: Int): List<SeriesEntity>
+    @Query(
+        "SELECT * FROM series WHERE profileId = :profileId " +
+            "AND TRIM(COALESCE(rating, '')) != '' " +
+            "AND CAST(REPLACE(rating, ',', '.') AS REAL) > 0 " +
+            "ORDER BY CAST(REPLACE(rating, ',', '.') AS REAL) DESC, addedAt DESC, " +
+            "CAST(COALESCE(year, '0') AS INTEGER) DESC, seriesId ASC LIMIT :limit",
+    )
+    suspend fun getTopRatedSeriesCandidates(profileId: String, limit: Int): List<SeriesEntity>
 
     @Query(
-        "SELECT * FROM series " +
-            "WHERE profileId = :profileId " +
-            "AND CAST(REPLACE(COALESCE(rating, '0'), ',', '.') AS REAL) >= 9.0 " +
-            "ORDER BY CAST(REPLACE(COALESCE(rating, '0'), ',', '.') AS REAL) DESC, RANDOM() " +
-            "LIMIT :limit",
+        "SELECT * FROM series WHERE profileId = :profileId AND categoryId IN (:categoryIds) " +
+            "ORDER BY addedAt DESC, CAST(COALESCE(year, '0') AS INTEGER) DESC, seriesId ASC LIMIT :limit",
     )
-    suspend fun getBestRatedSeries(profileId: String, limit: Int): List<SeriesEntity>
+    suspend fun getNewestSeriesCandidatesByCategory(
+        profileId: String,
+        categoryIds: List<String>,
+        limit: Int,
+    ): List<SeriesEntity>
 
-    @Query("SELECT * FROM trending_media WHERE profileId = :profileId AND contentType = :contentType")
+    @Query(
+        "SELECT * FROM series WHERE profileId = :profileId " +
+            "ORDER BY addedAt DESC, CAST(COALESCE(year, '0') AS INTEGER) DESC, seriesId ASC LIMIT :limit",
+    )
+    suspend fun getNewestSeriesCandidates(profileId: String, limit: Int): List<SeriesEntity>
+
+    @Query(
+        "SELECT * FROM trending_media WHERE profileId = :profileId AND contentType = :contentType " +
+            "ORDER BY updatedAt DESC, rating DESC, contentId ASC",
+    )
     suspend fun getTrendingMedia(profileId: String, contentType: String): List<TrendingMediaEntity>
 
     @Query("SELECT contentId FROM trending_media WHERE profileId = :profileId AND contentType = :contentType")

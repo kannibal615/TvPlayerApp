@@ -57,6 +57,7 @@ interface CatalogRepository {
     suspend fun getSeriesCatalogSnapshot(): LocalCatalogSnapshot<TvSeries>
     suspend fun getLiveChannelsPage(categoryId: String?, offset: Int, limit: Int): List<LiveChannel>
     suspend fun searchLiveChannelsPage(categoryId: String?, query: String, offset: Int, limit: Int): List<LiveChannel>
+    suspend fun getLiveChannelsByCategoryIdsPage(categoryIds: List<String>, query: String, offset: Int, limit: Int): List<LiveChannel>
     suspend fun getLiveChannelById(streamId: Int): LiveChannel?
     suspend fun getPreviousLiveChannel(streamId: Int): LiveChannel?
     suspend fun getNextLiveChannel(streamId: Int): LiveChannel?
@@ -73,8 +74,6 @@ interface CatalogRepository {
     suspend fun getLiveChannelsByIds(streamIds: List<Int>): List<LiveChannel>
     suspend fun getMoviesByIds(streamIds: List<Int>): List<Movie>
     suspend fun getSeriesByIds(seriesIds: List<Int>): List<TvSeries>
-    suspend fun getTrendingMovies(limit: Int): List<Movie>
-    suspend fun getTrendingSeries(limit: Int): List<TvSeries>
     suspend fun getTrendingMovieItems(limit: Int): List<TrendingCatalogItem>
     suspend fun getTrendingSeriesItems(limit: Int): List<TrendingCatalogItem>
     suspend fun getCatalogContentCounts(): CatalogContentCounts
@@ -82,7 +81,7 @@ interface CatalogRepository {
     fun invalidateLocalCatalogCache()
     suspend fun clearCatalogForProfileSwitch()
     suspend fun deleteProfileData(profileId: String)
-    suspend fun synchronize(): Result<Unit>
+    suspend fun synchronize(profileId: String? = null): Result<Unit>
     suspend fun toggleFavorite(contentType: String, contentId: String)
     suspend fun getSeriesEpisodes(seriesId: Int): List<Episode>
     suspend fun getEpisodeById(episodeId: Int): Episode?

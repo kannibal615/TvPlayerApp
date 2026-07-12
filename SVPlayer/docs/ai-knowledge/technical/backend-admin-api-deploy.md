@@ -1,6 +1,6 @@
 # Backend, Admin, API et Deploiement
 
-Derniere mise a jour: 2026-07-10.
+Derniere mise a jour: 2026-07-13.
 
 ## 1. Objectif
 
@@ -39,6 +39,7 @@ Deploy:
 - genere le manifeste de version;
 - cree une notification de release;
 - execute les tests publics sauf `-SkipTests`.
+- La publication `0.1.118 (148)` a bien mis en ligne manifeste/API/APK, mais le test post-upload `create_playlist_setup_session.php` a retourne HTTP 500; ce controle backend reste a diagnostiquer separement.
 - le wrapper `scripts/release_prod.ps1` incremente automatiquement `versionCode`, lance le build release Android puis appelle ce script avec `-SkipInstall -SkipTests` par defaut, avant de verifier publiquement le manifeste, `api/app_update.php`, l'APK versionne et l'APK stable.
 
 Regle release:

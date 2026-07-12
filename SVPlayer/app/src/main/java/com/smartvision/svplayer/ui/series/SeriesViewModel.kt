@@ -19,6 +19,7 @@ import com.smartvision.svplayer.domain.model.sortedByHistorySignals
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
+import com.smartvision.svplayer.ui.catalog.AllCategoryPolicy
 import java.util.Locale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -757,7 +758,7 @@ private fun List<SeriesCategoryUi>.withSpecialCategories(
             label = "Historique",
             count = historyCount,
         ),
-    ) + filterNot { it.id in SpecialSeriesCategoryIds }
+    ) + filterNot { it.id in SpecialSeriesCategoryIds || AllCategoryPolicy.isEquivalent(it.label) }
         .sortedByHistorySignals(historySignals) { it.id }
 
 private fun List<SeriesCategoryUi>.initialCategoryForPlaylist(): SeriesCategoryUi? =

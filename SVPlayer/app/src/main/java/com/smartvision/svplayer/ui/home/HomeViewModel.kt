@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
 import com.smartvision.svplayer.data.home.HomeTrendingPreparedPreview
 import com.smartvision.svplayer.data.home.HomeContentRepository
+import com.smartvision.svplayer.data.home.HomeTrendingPolicy
+import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.home.HomeSlide
 import com.smartvision.svplayer.data.home.HomeSlidesRepository
@@ -48,6 +50,7 @@ class HomeViewModel(
     private val catalogRepository: CatalogRepository,
     private val homeSlidesRepository: HomeSlidesRepository,
     private val homeContentRepository: HomeContentRepository,
+    private val accountManager: XtreamAccountManager,
 ) : ViewModel() {
     private val cachedContinueWatching = userContentRepository
         .getCachedRecentProgressSnapshot(limit = ContinueWatchingSnapshotLimit)
@@ -77,6 +80,7 @@ class HomeViewModel(
             val startedAt = SystemClock.elapsedRealtime()
             val recent = progress
                 .filter { it.positionMs > 5_000L }
+                .filterNot { HomeTrendingPolicy.containsAdultMarker(it.title, it.subtitle) }
                 .map { userContentRepository.enrichProgress(it) }
                 .distinctBy(::historyGroupingKey)
                 .take(10)
@@ -146,6 +150,25 @@ class HomeViewModel(
             ),
         )
         refreshSlides()
+        observeProfileChanges()
+    }
+
+    private fun observeProfileChanges() {
+        viewModelScope.launch {
+            var previousProfileId = accountManager.activeProfileIdOrDefault()
+            accountManager.activeProfileId.collect {
+                val nextProfileId = accountManager.activeProfileIdOrDefault()
+                if (nextProfileId == previousProfileId) return@collect
+                previousProfileId = nextProfileId
+                trendingRefreshJob?.cancel()
+                trendingPreviewPrepareJobs.values.forEach { job -> job.cancel() }
+                trendingPreviewPrepareJobs.clear()
+                trendingMovies.value = emptyList()
+                trendingSeries.value = emptyList()
+                trendingLoading.value = true
+                refreshTrending(forceRefresh = false)
+            }
+        }
     }
 
     fun refreshSlides(forceRefresh: Boolean = false) {

@@ -74,8 +74,6 @@ import com.smartvision.svplayer.ui.detail.SeriesDetailRoute
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.HomeHeaderFocusTarget
 import com.smartvision.svplayer.ui.home.HomeScreen
-import com.smartvision.svplayer.ui.home.HomeCollectionsScreen
-import com.smartvision.svplayer.ui.home.HomeCollectionKind
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.live.LiveTvScreen
@@ -703,12 +701,6 @@ fun AppNavigation(
                         navController.navigateFromContinueItem(item)
                     }
                 },
-                onContinueViewAll = {
-                    if (xtreamCatalogBlocked) showXtreamConnectionDialog = true else navController.navigate(AppRoute.ContinueWatching.route)
-                },
-                onTrendingViewAll = {
-                    if (xtreamCatalogBlocked) showXtreamConnectionDialog = true else navController.navigate(AppRoute.Trending.route)
-                },
             )
         }
         composable(AppRoute.Profile.route) {
@@ -733,23 +725,11 @@ fun AppNavigation(
                 },
                 onSyncCatalog = syncCatalog,
                 onActivationChanged = activationViewModel::checkNow,
-            )
-        }
-        composable(AppRoute.ContinueWatching.route) {
-            HomeCollectionsScreen(
-                kind = HomeCollectionKind.ContinueWatching,
-                onBack = { navController.popBackStack() },
-                onItemClick = { item ->
-                    if (xtreamCatalogBlocked) showXtreamConnectionDialog = true else navController.navigateFromContinueItem(item)
-                },
-            )
-        }
-        composable(AppRoute.Trending.route) {
-            HomeCollectionsScreen(
-                kind = HomeCollectionKind.Trending,
-                onBack = { navController.popBackStack() },
-                onItemClick = { item ->
-                    if (xtreamCatalogBlocked) showXtreamConnectionDialog = true else navController.navigateFromContinueItem(item)
+                onActiveProfileChanged = {
+                    navController.navigate(AppRoute.Home.route) {
+                        popUpTo(AppRoute.Home.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
                 },
             )
         }
@@ -1049,6 +1029,7 @@ fun AppNavigation(
                 )
             }
         }
+        }
         composable("episode_player/{episodeId}") { entry ->
             val episodeId = entry.arguments?.getString("episodeId")?.toIntOrNull()
             if (xtreamCatalogBlocked) {
@@ -1075,7 +1056,6 @@ fun AppNavigation(
                     },
                     strings = strings,
                     )
-                }
             }
         }
         composable("series_detail/{seriesId}") { entry ->
@@ -1443,8 +1423,6 @@ private enum class AppRoute(val route: String) {
     Settings("settings"),
     Profile("profile"),
     Notifications("notifications"),
-    ContinueWatching("continue_watching"),
-    Trending("trending"),
 }
 
 private fun headerTabs(strings: SmartVisionStrings) = listOf(

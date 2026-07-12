@@ -70,6 +70,7 @@ data class XtreamSeriesDto(
     @SerializedName("rating") val rating: String?,
     @SerializedName("episode_run_time") val episodeRunTime: String?,
     @SerializedName("category_id") val categoryId: String?,
+    @SerializedName(value = "last_modified", alternate = ["added"]) val added: String?,
 )
 
 data class XtreamSeriesInfoDto(

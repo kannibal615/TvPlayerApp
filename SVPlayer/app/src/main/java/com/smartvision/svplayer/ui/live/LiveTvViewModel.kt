@@ -17,6 +17,7 @@ import com.smartvision.svplayer.domain.model.sortedByHistorySignals
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
+import com.smartvision.svplayer.ui.catalog.AllCategoryPolicy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
@@ -221,7 +222,8 @@ class LiveTvViewModel(
                 ?.takeIf { selectedId -> userSelectedCategory && filteredCategories.any { category -> category.id == selectedId } }
             val initialCategory = existingSelection
                 ?.let { selectedId -> filteredCategories.firstOrNull { category -> category.id == selectedId } }
-                ?: if (activeFilterCode == null) filteredCategories.initialCategoryAfterHistory() else filteredCategories.firstOrNull()
+                ?: filteredCategories.firstOrNull { category -> category.id == AllLiveCategoryId }
+                ?: filteredCategories.firstOrNull()
             if (!userSelectedCategory) {
                 autoSelectedCategoryId = initialCategory?.id
             }
@@ -246,7 +248,8 @@ class LiveTvViewModel(
         val validCode = normalizedCode?.takeIf { code ->
             current.categoryFilters.any { it.identity.normalizedCode == code }
         }
-        val firstCategory = CategoryFilterResolver.filterCategories(current.categories, validCode).firstOrNull()
+        val firstCategory = CategoryFilterResolver.filterCategories(current.categories, validCode)
+            .firstOrNull { it.id == AllLiveCategoryId }
         _uiState.update { state ->
             state.copy(
                 activeCategoryFilterCode = validCode,
@@ -525,7 +528,7 @@ class LiveTvViewModel(
     private fun refreshAutomaticInitialSelectionIfNeeded() {
         if (userSelectedCategory) return
         val state = _uiState.value
-        val target = state.categories.initialCategoryAfterHistory() ?: return
+        val target = state.visibleCategories.firstOrNull { it.id == AllLiveCategoryId } ?: return
         if (target.id != state.selectedCategoryId) {
             selectCategory(target, userInitiated = false)
         }
@@ -710,7 +713,21 @@ class LiveTvViewModel(
 
             runCatchingNonCancellation {
                 val searchQuery = _uiState.value.channelSearchQuery.trim()
-                val page = if (searchQuery.isNotBlank()) {
+                val filteredCategoryIds = _uiState.value.activeCategoryFilterCode?.let {
+                    _uiState.value.visibleCategories
+                        .asSequence()
+                        .filterNot { category -> category.id in SpecialLiveCategoryIds }
+                        .map { category -> category.id }
+                        .toList()
+                }.orEmpty()
+                val page = if (categoryId == null && filteredCategoryIds.isNotEmpty()) {
+                    catalogRepository.getLiveChannelsByCategoryIdsPage(
+                        categoryIds = filteredCategoryIds,
+                        query = searchQuery,
+                        offset = startOffset,
+                        limit = LiveItemsPageSize,
+                    )
+                } else if (searchQuery.isNotBlank()) {
                     catalogRepository.searchLiveChannelsPage(categoryId, searchQuery, startOffset, LiveItemsPageSize)
                 } else if (categoryId == null) {
                     catalogRepository.getAllLiveChannelsPage(startOffset, LiveItemsPageSize)
@@ -792,7 +809,7 @@ private const val InitialCategoryLimit = 20
 private val EpgRefreshMinAgeMs = TimeUnit.HOURS.toMillis(1)
 private const val FavoriteLiveCategoryId = "__favorites_live__"
 private const val HistoryLiveCategoryId = "__history_live__"
-private const val AllLiveCategoryId = "__all_live__"
+internal const val AllLiveCategoryId = "__all_live__"
 internal val SpecialLiveCategoryIds = setOf(AllLiveCategoryId, FavoriteLiveCategoryId, HistoryLiveCategoryId)
 
 private fun List<LiveTvCategory>.withSpecialCategories(
@@ -820,17 +837,8 @@ private fun List<LiveTvCategory>.withSpecialCategories(
             count = historyCount,
             kind = LiveTvCategoryKind.Generic,
         ),
-    ) + filterNot { it.id in SpecialLiveCategoryIds }
+    ) + filterNot { it.id in SpecialLiveCategoryIds || AllCategoryPolicy.isEquivalent(it.label) }
         .sortedByHistorySignals(historySignals) { it.id }
-
-private fun List<LiveTvCategory>.initialCategoryAfterHistory(): LiveTvCategory? {
-    val historyIndex = indexOfFirst { it.id == HistoryLiveCategoryId }
-    return if (historyIndex >= 0) {
-        drop(historyIndex + 1).firstOrNull() ?: getOrNull(historyIndex)
-    } else {
-        firstOrNull()
-    }
-}
 
 private suspend fun <T> runCatchingNonCancellation(block: suspend () -> T): Result<T> =
     try {

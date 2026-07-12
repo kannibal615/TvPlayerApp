@@ -60,7 +60,7 @@ import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
         MediaFileEntity::class,
         RecordingJobEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = true,
 )
 abstract class SVDatabase : RoomDatabase() {
@@ -90,6 +90,7 @@ abstract class SVDatabase : RoomDatabase() {
                     Migration11To12,
                     Migration12To13(context),
                     Migration13To14(context),
+                    Migration14To15,
                 )
                 .build()
 
@@ -619,6 +620,15 @@ abstract class SVDatabase : RoomDatabase() {
                 db.execSQL("INSERT INTO youtube_selection_new SELECT '$safeProfileId', id, videoId, updatedAt FROM youtube_selection")
                 db.execSQL("DROP TABLE youtube_selection")
                 db.execSQL("ALTER TABLE youtube_selection_new RENAME TO youtube_selection")
+            }
+        }
+
+        private val Migration14To15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE movies ADD COLUMN addedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE series ADD COLUMN addedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_movies_profileId_addedAt ON movies(profileId, addedAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_series_profileId_addedAt ON series(profileId, addedAt)")
             }
         }
     }

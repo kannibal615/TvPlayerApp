@@ -15,9 +15,13 @@ import com.smartvision.svplayer.data.local.dao.ProfileDao
 import com.smartvision.svplayer.data.local.dao.ProgressDao
 import com.smartvision.svplayer.data.local.dao.SyncStateDao
 import com.smartvision.svplayer.data.local.dao.YoutubeDao
+import com.smartvision.svplayer.data.home.HomeTrendingPolicy
 import com.smartvision.svplayer.data.local.entity.FavoriteEntity
+import com.smartvision.svplayer.data.local.entity.MovieEntity
 import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
+import com.smartvision.svplayer.data.local.entity.SeriesEntity
 import com.smartvision.svplayer.data.local.entity.SyncStateEntity
+import com.smartvision.svplayer.data.local.entity.TrendingMediaEntity
 import com.smartvision.svplayer.data.network.NetworkActivityHandle
 import com.smartvision.svplayer.data.network.NetworkActivityStatus
 import com.smartvision.svplayer.data.network.NetworkActivityTracker
@@ -353,6 +357,32 @@ class DefaultCatalogRepository(
             }
         }
 
+    override suspend fun getLiveChannelsByCategoryIdsPage(
+        categoryIds: List<String>,
+        query: String,
+        offset: Int,
+        limit: Int,
+    ): List<LiveChannel> = withContext(Dispatchers.IO) {
+        if (categoryIds.isEmpty() || !isLiveCatalogConfigured()) return@withContext emptyList()
+        val profileId = activeProfileId()
+        val safeLimit = limit.coerceIn(1, CatalogPageMaxLimit)
+        val safeOffset = offset.coerceAtLeast(0)
+        val categoryNames = categoryDao.getByType(profileId, MediaSection.Live.storageName).associate { it.id to it.name }
+        val streams = query.trim().takeIf { it.isNotBlank() }?.let { cleanQuery ->
+            mediaDao.searchLiveStreamsByCategoriesPage(
+                profileId,
+                categoryIds,
+                cleanQuery.toSqlLikeContainsPattern(),
+                safeLimit,
+                safeOffset,
+            )
+        } ?: mediaDao.getLiveStreamsByCategoriesPage(profileId, categoryIds, safeLimit, safeOffset)
+        val imageBaseHost = imageBaseHost()
+        streams.map { stream ->
+            stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository)
+        }
+    }
+
     override suspend fun getLiveChannelById(streamId: Int): LiveChannel? =
         withContext(Dispatchers.IO) {
             if (!isLiveCatalogConfigured()) return@withContext null
@@ -544,28 +574,6 @@ class DefaultCatalogRepository(
                 .map { series -> series.toDomain(categoryNames[series.categoryId] ?: "Series", imageBaseHost) }
         }
 
-    override suspend fun getTrendingMovies(limit: Int): List<Movie> = withContext(Dispatchers.IO) {
-        if (accountManager.activePlaylistSource.value != PlaylistSource.Xtream || accountManager.accounts.value.isEmpty()) {
-            return@withContext emptyList()
-        }
-        val profileId = activeProfileId()
-        val categoryNames = categoryDao.getByType(profileId, MediaSection.Movies.storageName).associate { it.id to it.name }
-        val imageBaseHost = imageBaseHost()
-        mediaDao.getTrendingMovies(profileId, limit)
-            .map { movie -> movie.toDomain(categoryNames[movie.categoryId] ?: "Films", imageBaseHost) }
-    }
-
-    override suspend fun getTrendingSeries(limit: Int): List<TvSeries> = withContext(Dispatchers.IO) {
-        if (accountManager.activePlaylistSource.value != PlaylistSource.Xtream || accountManager.accounts.value.isEmpty()) {
-            return@withContext emptyList()
-        }
-        val profileId = activeProfileId()
-        val categoryNames = categoryDao.getByType(profileId, MediaSection.Series.storageName).associate { it.id to it.name }
-        val imageBaseHost = imageBaseHost()
-        mediaDao.getTrendingSeries(profileId, limit)
-            .map { series -> series.toDomain(categoryNames[series.categoryId] ?: "Series", imageBaseHost) }
-    }
-
     override suspend fun getTrendingMovieItems(limit: Int): List<TrendingCatalogItem> = withContext(Dispatchers.IO) {
         if (accountManager.activePlaylistSource.value != PlaylistSource.Xtream || accountManager.accounts.value.isEmpty()) {
             return@withContext emptyList()
@@ -573,7 +581,9 @@ class DefaultCatalogRepository(
         val profileId = activeProfileId()
         val categoryNames = categoryDao.getByType(profileId, MediaSection.Movies.storageName).associate { it.id to it.name }
         val imageBaseHost = imageBaseHost()
-        mediaDao.getTrendingMovies(profileId, randomTrendCandidateLimit(limit))
+        val persisted = mediaDao.getTrendingMedia(profileId, TrendingMovieType)
+        val order = persisted.mapIndexed { index, item -> item.contentId to index }.toMap()
+        mediaDao.getMoviesByIds(profileId, persisted.map { it.contentId })
             .asSequence()
             .map { movie ->
                 TrendingCatalogItem(
@@ -588,7 +598,8 @@ class DefaultCatalogRepository(
                 )
             }
             .filterNot { it.containsAdultMarker() }
-            .take(limit)
+            .sortedBy { order[it.contentId] ?: Int.MAX_VALUE }
+            .take(limit.coerceAtMost(HomeTrendingPolicy.SectionLimit))
             .toList()
     }
 
@@ -599,7 +610,9 @@ class DefaultCatalogRepository(
         val profileId = activeProfileId()
         val categoryNames = categoryDao.getByType(profileId, MediaSection.Series.storageName).associate { it.id to it.name }
         val imageBaseHost = imageBaseHost()
-        mediaDao.getTrendingSeries(profileId, randomTrendCandidateLimit(limit))
+        val persisted = mediaDao.getTrendingMedia(profileId, TrendingSeriesType)
+        val order = persisted.mapIndexed { index, item -> item.contentId to index }.toMap()
+        mediaDao.getSeriesByIds(profileId, persisted.map { it.contentId })
             .asSequence()
             .map { series ->
                 TrendingCatalogItem(
@@ -614,7 +627,8 @@ class DefaultCatalogRepository(
                 )
             }
             .filterNot { it.containsAdultMarker() }
-            .take(limit)
+            .sortedBy { order[it.contentId] ?: Int.MAX_VALUE }
+            .take(limit.coerceAtMost(HomeTrendingPolicy.SectionLimit))
             .toList()
     }
 
@@ -708,20 +722,30 @@ class DefaultCatalogRepository(
         _catalogRevision.value += 1L
     }
 
-    override suspend fun synchronize(): Result<Unit> = syncMutex.withLock {
+    override suspend fun synchronize(profileId: String?): Result<Unit> = syncMutex.withLock {
         withContext(Dispatchers.IO) {
-        if (accountManager.activePlaylistSource.value == PlaylistSource.M3u) {
-            return@withContext synchronizeM3u()
+        val requestedProfile = profileId
+            ?.let { requestedId -> accountManager.profiles.value.firstOrNull { it.id == requestedId } }
+            ?: accountManager.activeProfile()
+        val resolvedProfile = requestedProfile?.let(accountManager::resolvedProfile)
+        if (resolvedProfile?.source == PlaylistSource.M3u) {
+            return@withContext synchronizeM3u(resolvedProfile)
         }
 
-        val credentials = accountManager.current()
+        val credentials = resolvedProfile?.let {
+            com.smartvision.svplayer.core.config.XtreamCredentials(
+                host = it.xtreamHost,
+                username = it.xtreamUsername,
+                password = it.xtreamPassword,
+            )
+        } ?: accountManager.current()
         if (!credentials.isConfigured) {
             val message = "Aucun compte Xtream configure"
             _syncStatus.value = SyncStatus.Error(message)
             return@withContext Result.failure(IllegalStateException(message))
         }
 
-        val profileId = activeProfileId()
+        val profileId = requestedProfile?.id ?: activeProfileId()
         val previousCatalogProgress = SyncStatus.CatalogProgress(
             live = mediaDao.countLiveStreams(profileId).let { count ->
                 SyncStatus.SyncSectionProgress(currentItems = count, previousItems = count)
@@ -763,7 +787,7 @@ class DefaultCatalogRepository(
         var liveTotal: Int? = null
         var moviesTotal: Int? = null
         var seriesTotal: Int? = null
-        val activeProfile = accountManager.profiles.value.firstOrNull { it.id == profileId }
+        val activeProfile = requestedProfile ?: accountManager.profiles.value.firstOrNull { it.id == profileId }
         val syncStartedAt = System.currentTimeMillis()
         fun currentCatalogProgress(): SyncStatus.CatalogProgress =
             SyncStatus.CatalogProgress(
@@ -936,6 +960,9 @@ class DefaultCatalogRepository(
                     updateSectionProgress = ::updateSectionProgress,
                 )
 
+            updateProgress("Calcul des tendances du profil...", remainingSteps = 1)
+            persistTrendingSelections(profileId = profileId, synchronizedAt = now)
+
             logSyncMemory(stage = "before_sync_state_write", live = liveItems, movies = movieItems, series = seriesItems)
             syncStateDao.upsert(
                 SyncStateEntity(
@@ -991,6 +1018,56 @@ class DefaultCatalogRepository(
             Result.failure(error)
         }
     }
+    }
+
+    private suspend fun persistTrendingSelections(profileId: String, synchronizedAt: Long) {
+        val movieCategories = categoryDao.getByType(profileId, MediaSection.Movies.storageName)
+        val seriesCategories = categoryDao.getByType(profileId, MediaSection.Series.storageName)
+        val movieCategoryNames = movieCategories.associate { it.id to it.name }
+        val seriesCategoryNames = seriesCategories.associate { it.id to it.name }
+        val movieNoveltyIds = movieCategories.filter { HomeTrendingPolicy.isNoveltyCategory(it.name) }.map { it.id }
+        val seriesNoveltyIds = seriesCategories.filter { HomeTrendingPolicy.isNoveltyCategory(it.name) }.map { it.id }
+
+        val ratedMovies = mediaDao.getTopRatedMovieCandidates(profileId, HomeTrendingPolicy.CandidateLimit)
+        val newestMovies = if (movieNoveltyIds.isNotEmpty()) {
+            mediaDao.getNewestMovieCandidatesByCategory(profileId, movieNoveltyIds, HomeTrendingPolicy.CandidateLimit)
+        } else {
+            mediaDao.getNewestMovieCandidates(profileId, HomeTrendingPolicy.CandidateLimit)
+        }
+        val ratedSeries = mediaDao.getTopRatedSeriesCandidates(profileId, HomeTrendingPolicy.CandidateLimit)
+        val newestSeries = if (seriesNoveltyIds.isNotEmpty()) {
+            mediaDao.getNewestSeriesCandidatesByCategory(profileId, seriesNoveltyIds, HomeTrendingPolicy.CandidateLimit)
+        } else {
+            mediaDao.getNewestSeriesCandidates(profileId, HomeTrendingPolicy.CandidateLimit)
+        }
+
+        val movies = HomeTrendingPolicy.selectDeterministic(
+            ratedCandidates = ratedMovies,
+            newestCandidates = newestMovies,
+            idOf = MovieEntity::streamId,
+            ratingOf = { it.rating.toTrendingRating().takeIf { rating -> rating > 0f } },
+            addedAtOf = MovieEntity::addedAt,
+            yearOf = { it.year?.take(4)?.toIntOrNull() },
+            allowed = { movie -> !containsAdultMarker(movie.title, movieCategoryNames[movie.categoryId]) },
+        )
+            .mapIndexed { index, movie -> movie.toTrendingEntity(profileId, synchronizedAt - index) }
+        val series = HomeTrendingPolicy.selectDeterministic(
+            ratedCandidates = ratedSeries,
+            newestCandidates = newestSeries,
+            idOf = SeriesEntity::seriesId,
+            ratingOf = { it.rating.toTrendingRating().takeIf { rating -> rating > 0f } },
+            addedAtOf = SeriesEntity::addedAt,
+            yearOf = { it.year?.take(4)?.toIntOrNull() },
+            allowed = { item -> !containsAdultMarker(item.title, seriesCategoryNames[item.categoryId]) },
+        )
+            .mapIndexed { index, item -> item.toTrendingEntity(profileId, synchronizedAt - index) }
+
+        database.withTransaction {
+            mediaDao.clearTrendingMedia(profileId, TrendingMovieType)
+            mediaDao.clearTrendingMedia(profileId, TrendingSeriesType)
+            if (movies.isNotEmpty()) mediaDao.upsertTrendingMedia(movies)
+            if (series.isNotEmpty()) mediaDao.upsertTrendingMedia(series)
+        }
     }
 
     private suspend fun synchronizeLiveSection(
@@ -1481,9 +1558,9 @@ class DefaultCatalogRepository(
         )
     }
 
-    private suspend fun synchronizeM3u(): Result<Unit> {
-        val m3uUrl = accountManager.m3uUrl.value
-        val epgUrl = accountManager.epgUrl.value
+    private suspend fun synchronizeM3u(profile: PlaylistProfile): Result<Unit> {
+        val m3uUrl = profile.m3uUrl
+        val epgUrl = profile.epgUrl
         if (m3uUrl.isBlank()) {
             val message = "Aucun lien M3U configure"
             _syncStatus.value = SyncStatus.Error(message)
@@ -1516,7 +1593,7 @@ class DefaultCatalogRepository(
         )
         return try {
             val now = System.currentTimeMillis()
-            val profileId = activeProfileId()
+            val profileId = profile.id
             val downloadedPlaylist = m3uPlaylistClient.fetch(m3uUrl)
             val playlist = if (isKidsProfile(profileId)) {
                 downloadedPlaylist.copy(
@@ -1629,13 +1706,35 @@ private fun SyncStatus.SyncSectionPhase.toNetworkActivityStatus(): NetworkActivi
     }
 
 private fun TrendingCatalogItem.containsAdultMarker(): Boolean =
-    listOf(title, categoryName)
-        .any { value -> AdultContentPattern.containsMatchIn(value) }
+    containsAdultMarker(title, categoryName)
 
-private fun randomTrendCandidateLimit(limit: Int): Int =
-    (limit * RandomTrendCandidateMultiplier)
-        .coerceAtLeast(limit)
-        .coerceAtMost(RandomTrendCandidateMax)
+private fun containsAdultMarker(vararg values: String?): Boolean =
+    HomeTrendingPolicy.containsAdultMarker(*values)
+
+private fun MovieEntity.toTrendingEntity(profileId: String, rankTimestamp: Long): TrendingMediaEntity =
+    TrendingMediaEntity(
+        profileId = profileId,
+        contentType = TrendingMovieType,
+        contentId = streamId,
+        sampleContentId = streamId,
+        sampleExtension = containerExtension,
+        rating = rating.toTrendingRating(),
+        updatedAt = rankTimestamp,
+    )
+
+private fun SeriesEntity.toTrendingEntity(profileId: String, rankTimestamp: Long): TrendingMediaEntity =
+    TrendingMediaEntity(
+        profileId = profileId,
+        contentType = TrendingSeriesType,
+        contentId = seriesId,
+        sampleContentId = null,
+        sampleExtension = null,
+        rating = rating.toTrendingRating(),
+        updatedAt = rankTimestamp,
+    )
+
+private fun String?.toTrendingRating(): Float =
+    this?.trim()?.replace(',', '.')?.toFloatOrNull()?.takeIf { it.isFinite() && it > 0f } ?: 0f
 
 private suspend fun <Remote, Local> upsertMappedInBatches(
     items: List<Remote>,
@@ -1719,12 +1818,6 @@ private const val CategorySeriesFetchTimeoutMs = 60_000L
 private const val SyncMemoryTag = "SVSyncMemory"
 private const val TrendingMovieType = "movie"
 private const val TrendingSeriesType = "series"
-private const val RandomTrendCandidateMultiplier = 5
-private const val RandomTrendCandidateMax = 100
-private val AdultContentPattern = Regex(
-    "(^|[^a-z0-9])(adult|adults|adulte|porn|porno|xxx|erotic|erotique|sex|sexy|18\\+)([^a-z0-9]|$)",
-    RegexOption.IGNORE_CASE,
-)
 
 private fun LiveChannel.withEpg(epgRepository: EpgRepository): LiveChannel {
     val programs = epgRepository.loadPrograms(epgChannelId, name)

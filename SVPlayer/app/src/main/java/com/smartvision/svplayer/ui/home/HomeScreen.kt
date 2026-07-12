@@ -78,14 +78,13 @@ fun HomeScreen(
     xtreamCatalogNavigationBlocked: Boolean,
     onXtreamBlocked: () -> Unit,
     onContentClick: (ContinueItem) -> Unit,
-    onContinueViewAll: () -> Unit,
-    onTrendingViewAll: () -> Unit,
     modifier: Modifier = Modifier,
     headerFocusRequest: Int = 0,
     headerFocusTarget: HomeHeaderFocusTarget = HomeHeaderFocusTarget.CurrentTab,
 ) {
     val container = LocalAppContainer.current
     val context = LocalContext.current.applicationContext
+    val previewController = rememberHomePreviewController(context)
     val focusScope = rememberCoroutineScope()
     val density = LocalDensity.current
     val scrollState = rememberScrollState()
@@ -97,6 +96,7 @@ fun HomeScreen(
                 catalogRepository = container.catalogRepository,
                 homeSlidesRepository = container.homeSlidesRepository,
                 homeContentRepository = container.homeContentRepository,
+                accountManager = container.accountManager,
             )
         },
     )
@@ -383,7 +383,7 @@ fun HomeScreen(
                 event = "home_header_refresh_started",
             )
             viewModel.refreshSlides(forceRefresh = true)
-            viewModel.refreshTrending(forceRefresh = true)
+            viewModel.refreshTrending(forceRefresh = false)
             continueRowState.scrollToItem(0)
             movieTrendRowState.scrollToItem(0)
             seriesTrendRowState.scrollToItem(0)
@@ -444,27 +444,11 @@ fun HomeScreen(
         runCatching {
             when (request.kind) {
                 StartupCatalogWorkKind.Synchronize -> {
-                    var moviesTrendsLoaded = false
-                    var seriesTrendsLoaded = false
                     val statusJob = launch {
                         container.catalogRepository.syncStatus.collect { status ->
                             val nextState = status.toHomeCatalogWorkUiState(request.kind, request.source)
                             if (nextState != null) {
                                 catalogWorkUiState = nextState
-                                if (request.source == PlaylistSource.Xtream &&
-                                    nextState.movies.phase == SyncStatus.SyncSectionPhase.COMPLETED &&
-                                    !moviesTrendsLoaded
-                                ) {
-                                    moviesTrendsLoaded = true
-                                    launch { viewModel.loadSavedTrendingMovies(forceRefresh = true) }
-                                }
-                                if (request.source == PlaylistSource.Xtream &&
-                                    nextState.series.phase == SyncStatus.SyncSectionPhase.COMPLETED &&
-                                    !seriesTrendsLoaded
-                                ) {
-                                    seriesTrendsLoaded = true
-                                    launch { viewModel.loadSavedTrendingSeries(forceRefresh = true) }
-                                }
                             }
                         }
                     }
@@ -479,8 +463,8 @@ fun HomeScreen(
                         container.catalogRepository.invalidateLocalCatalogCache()
                         container.synchronizeCatalog().getOrThrow()
                         if (request.source == PlaylistSource.Xtream) {
-                            if (!moviesTrendsLoaded) viewModel.loadSavedTrendingMovies(forceRefresh = true)
-                            if (!seriesTrendsLoaded) viewModel.loadSavedTrendingSeries(forceRefresh = true)
+                            viewModel.loadSavedTrendingMovies(forceRefresh = true)
+                            viewModel.loadSavedTrendingSeries(forceRefresh = true)
                         }
                     } finally {
                         statusJob.cancel()
@@ -608,9 +592,7 @@ fun HomeScreen(
                 ContinueWatchingRow(
                     title = strings.continueWatching,
                     items = state.continueWatching,
-                    showViewAll = true,
-                    viewAllText = strings.viewAll,
-                    onViewAll = onContinueViewAll,
+                    previewController = previewController,
                     onItemClick = onContentClick,
                     lazyListState = continueRowState,
                     firstItemFocusRequester = continueFirstFocusRequester,
@@ -641,9 +623,7 @@ fun HomeScreen(
                 TrendingContentRow(
                     title = strings.trendingMovies,
                     items = state.trendingMovies,
-                    showViewAll = true,
-                    viewAllText = strings.viewAll,
-                    onViewAll = onTrendingViewAll,
+                    previewController = previewController,
                     onItemClick = onContentClick,
                     onPrepareItem = viewModel::prepareTrendingPreview,
                     onPrepareItems = viewModel::prefetchTrendingPreviews,
@@ -683,9 +663,7 @@ fun HomeScreen(
                 TrendingContentRow(
                     title = strings.trendingSeries,
                     items = state.trendingSeries,
-                    showViewAll = true,
-                    viewAllText = strings.viewAll,
-                    onViewAll = onTrendingViewAll,
+                    previewController = previewController,
                     onItemClick = onContentClick,
                     onPrepareItem = viewModel::prepareTrendingPreview,
                     onPrepareItems = viewModel::prefetchTrendingPreviews,

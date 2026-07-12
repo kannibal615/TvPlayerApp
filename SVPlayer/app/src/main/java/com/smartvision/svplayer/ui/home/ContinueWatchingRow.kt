@@ -71,9 +71,6 @@ fun ContinueWatchingRow(
     items: List<ContinueItem>,
     onItemClick: (ContinueItem) -> Unit,
     modifier: Modifier = Modifier,
-    showViewAll: Boolean = false,
-    viewAllText: String = "View all",
-    onViewAll: () -> Unit = {},
     lazyListState: LazyListState? = null,
     firstItemFocusRequester: FocusRequester? = null,
     onDownFromRow: (() -> Unit)? = null,
@@ -83,6 +80,7 @@ fun ContinueWatchingRow(
     blocked: Boolean = false,
     blockedMessage: String = "Connection unavailable",
     onBlockedClick: () -> Unit = {},
+    previewController: HomePreviewController,
 ) {
     val fallbackRowState = rememberLazyListState()
     val rowState = lazyListState ?: fallbackRowState
@@ -90,9 +88,9 @@ fun ContinueWatchingRow(
     var focusedItemId by remember { mutableStateOf<String?>(null) }
     var focusedPreviewId by remember { mutableStateOf<String?>(null) }
     var anchorJob by remember { mutableStateOf<Job?>(null) }
-    val totalFocusableItems = items.size + if (showViewAll) 1 else 0
-    val itemsSignature = remember(items, showViewAll) {
-        items.joinToString("|", postfix = "|$showViewAll") { it.id }
+    val totalFocusableItems = items.size
+    val itemsSignature = remember(items) {
+        items.joinToString("|") { it.id }
     }
 
     DisposableEffect(rowState) {
@@ -109,7 +107,6 @@ fun ContinueWatchingRow(
             fields = mapOf(
                 "row" to title,
                 "items" to items.size,
-                "showViewAll" to showViewAll,
                 "totalFocusableItems" to totalFocusableItems,
             ),
         )
@@ -197,20 +194,10 @@ fun ContinueWatchingRow(
                 .fillMaxWidth()
                 .height(SmartVisionDimensions.HomeContentCardHeight),
             contentPadding = PaddingValues(horizontal = SmartVisionDimensions.HomeRowEdgePadding),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
-                val targetCardWidth = if (enablePreview && focusedPreviewId == item.id) {
-                    SmartVisionDimensions.HomeContentPreviewCardWidth
-                } else {
-                    SmartVisionDimensions.HomeContentCardWidth
-                }
-                val cardWidth by animateDpAsState(
-                    targetValue = targetCardWidth,
-                    animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
-                    label = "homeRowCardWidth",
-                )
                 ContentProgressCard(
                     item = item,
                     onClick = { if (blocked) onBlockedClick() else onItemClick(item) },
@@ -228,7 +215,7 @@ fun ContinueWatchingRow(
                                 "title" to item.title,
                                 "previewMode" to item.previewMode.name,
                                 "hasPreviewUrl" to !item.previewUrl.isNullOrBlank(),
-                                "targetCardWidthDp" to targetCardWidth.value,
+                                "targetCardWidthDp" to SmartVisionDimensions.HomeContentPreviewCardWidth.value,
                                 "transformDelayMs" to HomeCardPreviewTransformDelayMillis,
                                 "firstVisibleItemIndex" to rowState.firstVisibleItemIndex,
                                 "visibleItems" to rowState.layoutInfo.visibleItemsInfo.size,
@@ -257,23 +244,11 @@ fun ContinueWatchingRow(
                     resumeOverlayText = resumeOverlayText,
                     blocked = blocked,
                     blockedMessage = blockedMessage,
+                    previewController = previewController,
                     modifier = Modifier
-                        .width(cardWidth)
+                        .width(SmartVisionDimensions.HomeContentPreviewCardWidth)
                         .height(SmartVisionDimensions.HomeContentCardHeight),
                 )
-            }
-            if (showViewAll) {
-                item(key = "view_all_$title") {
-                    ViewAllButton(
-                        text = viewAllText,
-                        onClick = { if (blocked) onBlockedClick() else onViewAll() },
-                        onDown = onDownFromRow,
-                        onUp = onUpFromRow,
-                        modifier = Modifier
-                            .width(78.dp)
-                            .height(SmartVisionDimensions.HomeContentCardHeight),
-                    )
-                }
             }
             item(key = "tail_spacer_$title") {
                 Spacer(
@@ -287,7 +262,7 @@ fun ContinueWatchingRow(
 }
 
 private const val HomeRowLogTag = "SVHomeFocus"
-private const val HomeCardPreviewTransformDelayMillis = 1_000L
+private const val HomeCardPreviewTransformDelayMillis = 550L
 
 @Composable
 private fun RowChevronButton(

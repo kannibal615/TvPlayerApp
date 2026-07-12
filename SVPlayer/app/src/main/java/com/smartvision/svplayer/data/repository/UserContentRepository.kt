@@ -45,15 +45,16 @@ class UserContentRepository(
 
     fun getCachedRecentProgressSnapshot(limit: Int = 60): List<PlaybackProgressEntity>? =
         recentProgressSnapshot
-            ?.takeIf { it.limit == limit }
+            ?.takeIf { it.limit == limit && it.profileId == accountManager.activeProfileIdOrDefault() }
             ?.items
 
     suspend fun getRecentProgressSnapshot(limit: Int = 60): List<PlaybackProgressEntity> =
         withContext(Dispatchers.IO) {
-            progressDao.observeRecent(profileIdFor(UserContentType.Movie), limit)
+            val profileId = profileIdFor(UserContentType.Movie)
+            progressDao.observeRecent(profileId, limit)
                 .first()
                 .map { enrichProgress(it) }
-                .also { recentProgressSnapshot = RecentProgressSnapshot(limit, it) }
+                .also { recentProgressSnapshot = RecentProgressSnapshot(profileId, limit, it) }
         }
 
     fun observeHistory(contentType: String, limit: Int = 100): Flow<List<PlaybackProgressEntity>> {
@@ -223,6 +224,7 @@ class UserContentRepository(
 }
 
 private data class RecentProgressSnapshot(
+    val profileId: String,
     val limit: Int,
     val items: List<PlaybackProgressEntity>,
 )

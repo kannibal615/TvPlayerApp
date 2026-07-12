@@ -3,6 +3,7 @@ package com.smartvision.svplayer.ui.live
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CategoryFilterResolverTest {
@@ -44,6 +45,17 @@ class CategoryFilterResolverTest {
         val after = CategoryFilterResolver.buildFilters(listOf(category("2", "|TR| SPORT")), Locale.FRENCH)
         assertEquals(listOf("FR"), before.map { it.identity.normalizedCode })
         assertEquals(listOf("TR"), after.map { it.identity.normalizedCode })
+    }
+
+    @Test fun `active filter moves first while all category remains available`() {
+        val all = category(AllLiveCategoryId, "ALL")
+        val categories = listOf(all, category("1", "|DE| NEWS"), category("2", "|FR| CINEMA"))
+        val filters = CategoryFilterResolver.buildFilters(categories, Locale.FRENCH)
+        val ordered = orderFiltersForBar(filters, "FR")
+
+        assertEquals("FR", ordered.first().identity.normalizedCode)
+        assertEquals(listOf(AllLiveCategoryId, "2"), CategoryFilterResolver.filterCategories(categories, "FR").map { it.id })
+        assertTrue(CategoryFilterResolver.filterCategories(categories, "FR").first().id == AllLiveCategoryId)
     }
 
     private fun category(id: String, label: String) =

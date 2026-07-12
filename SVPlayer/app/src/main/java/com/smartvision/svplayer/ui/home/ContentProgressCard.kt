@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Modifier
@@ -100,6 +101,7 @@ fun ContentProgressCard(
     resumeOverlayText: String = "Resume playback",
     blocked: Boolean = false,
     blockedMessage: String = "Connection unavailable",
+    previewController: HomePreviewController,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -112,20 +114,20 @@ fun ContentProgressCard(
         label = "contentCardBorder",
     )
     val isLive = item.mediaType == "LIVE"
-    val previewDisabledForSession = UnsupportedHomePreviewCache.isUnsupported(item.previewUrl)
     val previewActive = enablePreview &&
         focusState.isFocused &&
         !blocked &&
         !item.previewUrl.isNullOrBlank() &&
-        item.previewMode != HomePreviewMode.None &&
-        !previewDisabledForSession
+        item.previewMode != HomePreviewMode.None
     val previewPosterUrl = item.previewImageUrl ?: item.imageUrl
-    var showPreview by remember(item.id, item.previewUrl) { mutableStateOf(false) }
+    val activePreviewId by previewController.activePreviewId.collectAsStateWithLifecycle()
+    val showPreview = activePreviewId == item.id
     val trendPreviewVisible = showPreview && item.previewMode == HomePreviewMode.TrendSegments
 
     LaunchedEffect(focusState.isFocused) {
         onFocusChanged(focusState.isFocused)
         if (focusState.isFocused) onFocused()
+        if (!focusState.isFocused) previewController.stop(item.id)
         // PERF_DIAG: focus-to-preview marker for black-frame and delayed mini-player diagnosis.
         PerformanceDiagnosticRecorder.record(
             sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
@@ -137,7 +139,6 @@ fun ContentProgressCard(
                 "enablePreview" to enablePreview,
                 "blocked" to blocked,
                 "previewActive" to previewActive,
-                "previewDisabledForSession" to previewDisabledForSession,
                 "previewMode" to item.previewMode.name,
                 "hasPreviewUrl" to !item.previewUrl.isNullOrBlank(),
                 "hasPoster" to !previewPosterUrl.isNullOrBlank(),
@@ -145,12 +146,11 @@ fun ContentProgressCard(
         )
     }
 
-    LaunchedEffect(previewActive, item.previewUrl) {
-        showPreview = false
+    LaunchedEffect(previewActive, item.previewUrl, item.previewStartPositionMs) {
         if (previewActive) {
-            // PERF_FIX: a short focus debounce avoids creating/releasing ExoPlayer during fast D-pad passes.
-            delay(HomePreviewFocusDebounceMillis)
-            showPreview = true
+            previewController.play(item.id, item.previewUrl.orEmpty(), item.previewStartPositionMs)
+        } else {
+            previewController.stop(item.id)
         }
         PerformanceDiagnosticRecorder.record(
             sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
@@ -165,6 +165,10 @@ fun ContentProgressCard(
                 "urlHash" to (item.previewUrl?.hashCode() ?: 0),
             ),
         )
+    }
+
+    DisposableEffect(item.id, previewController) {
+        onDispose { previewController.stop(item.id) }
     }
 
     Box(
@@ -192,7 +196,7 @@ fun ContentProgressCard(
                 state = focusState,
                 focusRequester = focusRequester,
                 pressed = pressed,
-                focusedScale = 1.0f,
+                focusedScale = 1.04f,
                 glowColor = SmartVisionColors.Primary,
                 cornerRadius = SmartVisionDimensions.HomeContentRadius,
             )
@@ -224,12 +228,9 @@ fun ContentProgressCard(
             )
         }
         if (showPreview && item.previewUrl != null) {
-            HomeMutedPreviewPlayer(
-                url = item.previewUrl,
-                mode = item.previewMode,
-                startPositionMs = item.previewStartPositionMs,
-                posterUrl = previewPosterUrl,
-                resumeOverlayText = resumeOverlayText,
+            HomePreviewSurface(
+                controller = previewController,
+                previewId = item.id,
                 modifier = Modifier.fillMaxSize(),
             )
         }

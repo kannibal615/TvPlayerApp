@@ -10,12 +10,12 @@ class SynchronizeCatalogUseCase(
 ) {
     private val invocationMutex = Mutex()
 
-    suspend operator fun invoke(): Result<Unit> {
+    suspend operator fun invoke(profileId: String? = null): Result<Unit> {
         if (repository.syncStatus.value is SyncStatus.Running || !invocationMutex.tryLock()) {
             return Result.success(Unit)
         }
         return try {
-            repository.synchronize()
+            repository.synchronize(profileId)
         } finally {
             invocationMutex.unlock()
         }

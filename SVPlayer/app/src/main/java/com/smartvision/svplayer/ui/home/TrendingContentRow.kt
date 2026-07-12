@@ -85,7 +85,6 @@ import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.youtube.YoutubePlaybackMode
-import com.smartvision.svplayer.ui.youtube.YoutubeWebPlayer
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Job
@@ -102,9 +101,6 @@ fun TrendingContentRow(
     onPrepareItem: (ContinueItem) -> Unit,
     onPrepareItems: (List<ContinueItem>) -> Unit,
     modifier: Modifier = Modifier,
-    showViewAll: Boolean = false,
-    viewAllText: String = "View all",
-    onViewAll: () -> Unit = {},
     lazyListState: LazyListState? = null,
     firstItemFocusRequester: FocusRequester? = null,
     onDownFromRow: (() -> Unit)? = null,
@@ -112,22 +108,21 @@ fun TrendingContentRow(
     blocked: Boolean = false,
     blockedMessage: String = "Connection unavailable",
     onBlockedClick: () -> Unit = {},
+    previewController: HomePreviewController,
 ) {
     val fallbackRowState = rememberLazyListState()
     val rowState = lazyListState ?: fallbackRowState
     var focusedItemId by remember { mutableStateOf<String?>(null) }
     var focusedIndex by remember { mutableIntStateOf(-1) }
-    var expandedItemId by remember { mutableStateOf<String?>(null) }
     var activePreviewId by remember { mutableStateOf<String?>(null) }
-    val totalFocusableItems = items.size + if (showViewAll) 1 else 0
-    val itemsSignature = remember(items, showViewAll) {
-        items.joinToString("|", postfix = "|$showViewAll") { it.id }
+    val totalFocusableItems = items.size
+    val itemsSignature = remember(items) {
+        items.joinToString("|") { it.id }
     }
 
     LaunchedEffect(itemsSignature) {
         focusedItemId = null
         focusedIndex = -1
-        expandedItemId = null
         activePreviewId = null
         if (rowState.firstVisibleItemIndex != 0 || rowState.firstVisibleItemScrollOffset != 0) {
             rowState.scrollToItem(0)
@@ -145,21 +140,17 @@ fun TrendingContentRow(
             val safeFirst = first.coerceIn(0, items.lastIndex)
             val safeLast = (last + TrendingPrefetchAhead)
                 .coerceIn(safeFirst, items.lastIndex)
-            onPrepareItems(items.subList(safeFirst, safeLast + 1))
+            Unit
         }
     }
 
     LaunchedEffect(focusedItemId, focusedIndex) {
-        expandedItemId = null
         activePreviewId = null
         val pendingId = focusedItemId ?: return@LaunchedEffect
         if (focusedIndex < 0) return@LaunchedEffect
         delay(TrendingFocusStabilityMillis)
         if (focusedItemId != pendingId) return@LaunchedEffect
-        // LazyRow already keeps the focused child visible. Re-anchoring the row on every
-        // D-pad step caused a second, competing scroll animation.
-        expandedItemId = pendingId
-        delay(TrendingTransformMillis)
+        items.getOrNull(focusedIndex)?.let(onPrepareItem)
         if (focusedItemId == pendingId) {
             activePreviewId = pendingId
         }
@@ -180,26 +171,15 @@ fun TrendingContentRow(
                 .fillMaxWidth()
                 .height(SmartVisionDimensions.HomeContentCardHeight),
             contentPadding = PaddingValues(horizontal = SmartVisionDimensions.HomeRowEdgePadding),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
-                val expanded = expandedItemId == item.id
-                val cardWidth by androidx.compose.animation.core.animateDpAsState(
-                    targetValue = if (expanded) {
-                        SmartVisionDimensions.HomeContentPreviewCardWidth
-                    } else {
-                        SmartVisionDimensions.HomeContentCardWidth
-                    },
-                    animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
-                    label = "trendingCardWidth",
-                )
                 TrendingPreviewCard(
                     item = item,
-                    expanded = expanded,
                     enablePreview = activePreviewId == item.id &&
                         item.previewPrepared &&
-                        (!item.previewUrl.isNullOrBlank() || !item.previewYoutubeKey.isNullOrBlank()),
+                        !item.previewUrl.isNullOrBlank(),
                     onClick = { if (blocked) onBlockedClick() else onItemClick(item) },
                     focusRequester = if (index == 0) firstItemFocusRequester else null,
                     onFocused = {
@@ -220,23 +200,11 @@ fun TrendingContentRow(
                     blockLeft = index == 0,
                     blocked = blocked,
                     blockedMessage = blockedMessage,
+                    previewController = previewController,
                     modifier = Modifier
-                        .width(cardWidth)
+                        .width(SmartVisionDimensions.HomeContentPreviewCardWidth)
                         .height(SmartVisionDimensions.HomeContentCardHeight),
                 )
-            }
-            if (showViewAll) {
-                item(key = "trending_view_all_$title") {
-                    TrendingViewAllButton(
-                        text = viewAllText,
-                        onClick = { if (blocked) onBlockedClick() else onViewAll() },
-                        onDown = onDownFromRow,
-                        onUp = onUpFromRow,
-                        modifier = Modifier
-                            .width(78.dp)
-                            .height(SmartVisionDimensions.HomeContentCardHeight),
-                    )
-                }
             }
             item(key = "trending_tail_spacer_$title") {
                 Spacer(
@@ -252,7 +220,6 @@ fun TrendingContentRow(
 @Composable
 private fun TrendingPreviewCard(
     item: ContinueItem,
-    expanded: Boolean,
     enablePreview: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -264,6 +231,7 @@ private fun TrendingPreviewCard(
     blockLeft: Boolean = false,
     blocked: Boolean = false,
     blockedMessage: String = "Connection unavailable",
+    previewController: HomePreviewController,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -275,22 +243,27 @@ private fun TrendingPreviewCard(
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
         label = "trendingCardBorder",
     )
-    val landscapeAlpha by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0f,
-        animationSpec = tween(TrendingImageCrossfadeMillis.toInt(), easing = FastOutSlowInEasing),
-        label = "trendingLandscapeAlpha",
-    )
-    val previewDisabledForSession = UnsupportedTrendingPreviewCache.isUnsupported(item.previewUrl)
-    val previewUrl = item.previewUrl.takeUnless { previewDisabledForSession }
-    val previewYoutubeKey = item.previewYoutubeKey?.takeIf { it.isNotBlank() }
+    val previewUrl = item.previewUrl
     val posterUrl = item.imageUrl
     val landscapeUrl = item.previewImageUrl
-    val hasBackdrop = item.previewBackdropAvailable && !landscapeUrl.isNullOrBlank()
     val infoRight = item.previewDurationLabel ?: item.remaining
 
     LaunchedEffect(focusState.isFocused) {
         onFocusChanged(focusState.isFocused)
         if (focusState.isFocused) onFocused()
+        if (!focusState.isFocused) previewController.stop(item.id)
+    }
+
+    LaunchedEffect(enablePreview, previewUrl, focusState.isFocused) {
+        if (enablePreview && focusState.isFocused && previewUrl != null) {
+            previewController.play(item.id, previewUrl, item.previewStartPositionMs)
+        } else {
+            previewController.stop(item.id)
+        }
+    }
+
+    DisposableEffect(item.id, previewController) {
+        onDispose { previewController.stop(item.id) }
     }
 
     Box(
@@ -318,7 +291,7 @@ private fun TrendingPreviewCard(
                 state = focusState,
                 focusRequester = focusRequester,
                 pressed = pressed,
-                focusedScale = 1.0f,
+                focusedScale = HomeCardFocusedScale,
                 glowColor = SmartVisionColors.Primary,
                 cornerRadius = SmartVisionDimensions.HomeContentRadius,
             )
@@ -333,74 +306,29 @@ private fun TrendingPreviewCard(
             .focusable(interactionSource = interactionSource),
     ) {
         HomeVisualBackground(style = item.visualStyle, modifier = Modifier.fillMaxSize())
-        if (!posterUrl.isNullOrBlank()) {
+        if (item.previewBackdropAvailable && !landscapeUrl.isNullOrBlank()) {
             AsyncImage(
-                model = posterUrl,
+                model = landscapeUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.Center,
                 modifier = Modifier.fillMaxSize(),
             )
-        }
-        if (expanded) {
-            if (hasBackdrop) {
-                AsyncImage(
-                    model = landscapeUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.Center,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .alpha(landscapeAlpha),
-                )
-            } else if (!posterUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = posterUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.Center,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .blur(14.dp)
-                        .alpha(landscapeAlpha),
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.30f * landscapeAlpha)),
-                )
-                AsyncImage(
-                    model = posterUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit,
-                    alignment = Alignment.Center,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .fillMaxHeight()
-                        .fillMaxWidth(0.46f)
-                        .alpha(landscapeAlpha),
-                )
-            }
-        }
-        if (expanded && enablePreview && previewYoutubeKey != null) {
-            YoutubeWebPlayer(
-                videoId = previewYoutubeKey,
-                mode = YoutubePlaybackMode.Preview,
-                keyboardControlsEnabled = false,
-                modifier = Modifier.fillMaxSize(),
-            )
-        } else if (expanded && enablePreview && previewUrl != null) {
-            TrendingMutedPreviewPlayer(
-                url = previewUrl,
-                startPositionMs = item.previewStartPositionMs,
-                fallbackStartPositionMs = item.previewFallbackStartPositionMs,
-                knownDurationMs = item.previewDurationMs,
-                posterUrl = landscapeUrl ?: posterUrl,
-                onPreviewUnavailable = { UnsupportedTrendingPreviewCache.markUnsupported(previewUrl) },
-                modifier = Modifier.fillMaxSize(),
+        } else if (!posterUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = posterUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                alignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize().padding(horizontal = 34.dp),
             )
         }
-        if (expanded) {
+        HomePreviewSurface(
+            controller = previewController,
+            previewId = item.id,
+            modifier = Modifier.fillMaxSize(),
+        )
+        if (focusState.isFocused) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -749,7 +677,8 @@ private object UnsupportedTrendingPreviewCache {
     }
 }
 
-private const val TrendingFocusStabilityMillis = 1_000L
+private const val TrendingFocusStabilityMillis = 550L
+private const val HomeCardFocusedScale = 1.04f
 private const val TrendingTransformMillis = 1_000L
 private const val TrendingImageCrossfadeMillis = 260L
 private const val TrendingVideoPrepareDelayMillis = 900L

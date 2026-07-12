@@ -30,6 +30,7 @@ data class LiveStreamEntity(
     indices = [
         Index(value = ["profileId", "categoryId"]),
         Index(value = ["profileId", "categoryId", "number", "title"]),
+        Index(value = ["profileId", "addedAt"]),
     ],
 )
 data class MovieEntity(
@@ -45,6 +46,7 @@ data class MovieEntity(
     val duration: String?,
     val plot: String?,
     val containerExtension: String,
+    val addedAt: Long = 0L,
 )
 
 @Entity(
@@ -53,6 +55,7 @@ data class MovieEntity(
     indices = [
         Index(value = ["profileId", "categoryId"]),
         Index(value = ["profileId", "categoryId", "number", "title"]),
+        Index(value = ["profileId", "addedAt"]),
     ],
 )
 data class SeriesEntity(
@@ -67,6 +70,7 @@ data class SeriesEntity(
     val rating: String?,
     val seasonsCount: Int?,
     val plot: String?,
+    val addedAt: Long = 0L,
 )
 
 @Entity(

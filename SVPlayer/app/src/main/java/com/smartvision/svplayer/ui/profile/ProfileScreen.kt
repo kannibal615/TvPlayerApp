@@ -175,6 +175,7 @@ fun ProfileRoute(
     onLockedFeature: () -> Unit,
     onSyncCatalog: suspend () -> Result<Unit>,
     onActivationChanged: () -> Unit,
+    onActiveProfileChanged: () -> Unit,
 ) {
     val container = LocalAppContainer.current
     val context = LocalContext.current
@@ -260,9 +261,7 @@ fun ProfileRoute(
             container.xtreamRepository.clearCaches()
             scope.launch {
                 container.catalogRepository.clearCatalogForProfileSwitch()
-                if (!container.catalogRepository.hasLocalCatalogForActiveProfile()) {
-                    synchronizeActiveProfileCatalog()
-                }
+                onActiveProfileChanged()
             }
         },
         onDeletePlaylistProfile = { profileId ->
@@ -284,11 +283,14 @@ fun ProfileRoute(
             }
         },
         onSynchronizePlaylistProfile = { profileId ->
-            container.accountManager.activateProfile(profileId)
-            container.xtreamRepository.clearCaches()
             scope.launch {
-                container.catalogRepository.clearCatalogForProfileSwitch()
-                synchronizeActiveProfileCatalog()
+                val target = container.accountManager.profiles.value.firstOrNull { it.id == profileId }
+                    ?: return@launch
+                container.catalogRepository.synchronize(profileId).getOrThrow()
+                val resolved = container.accountManager.resolvedProfile(target)
+                resolved.epgUrl.takeIf { it.isNotBlank() }?.let { epgUrl ->
+                    container.epgRepository.synchronize(epgUrl)
+                }
             }
         },
         onSaveXtreamAccount = { account ->
@@ -347,8 +349,15 @@ private fun ProfileScreen(
     onDismissQr: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
+    val container = LocalAppContainer.current
+    val scope = rememberCoroutineScope()
+    val parentalSettings by container.settingsRepository.settings.collectAsStateWithLifecycle(
+        initialValue = com.smartvision.svplayer.domain.model.PlayerSettings(),
+    )
     var selectedSection by remember { mutableStateOf(ProfileSection.Xtream) }
     var showXtreamSyncDialog by remember { mutableStateOf(false) }
+    var showParentalUnlockDialog by remember { mutableStateOf(false) }
+    var showParentalCreateDialog by remember { mutableStateOf(false) }
     var pendingFocusSection by remember { mutableStateOf<ProfileSection?>(null) }
     val currentTabFocusRequester = remember { FocusRequester() }
     val xtreamSectionFocusRequester = remember { FocusRequester() }
@@ -429,6 +438,12 @@ private fun ProfileScreen(
                         onClick = {
                             if (section == ProfileSection.SettingsShortcut) {
                                 onSettings()
+                            } else if (section == ProfileSection.Parental) {
+                                if (parentalSettings.parentalPin.isBlank()) {
+                                    showParentalCreateDialog = true
+                                } else {
+                                    showParentalUnlockDialog = true
+                                }
                             } else {
                                 selectedSection = section
                             }
@@ -483,6 +498,7 @@ private fun ProfileScreen(
                     ProfileSection.Parental -> ProfileParentalPanel(
                         strings = strings,
                         onApply = { onSync() },
+                        initiallyUnlocked = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     ProfileSection.History -> ProfileHistoryPanel(state = state, modifier = Modifier.fillMaxWidth())
@@ -491,6 +507,36 @@ private fun ProfileScreen(
                 }
             }
         }
+    }
+
+    if (showParentalUnlockDialog) {
+        NumericPinDialog(
+            title = strings.enterPin,
+            strings = strings,
+            onDismiss = { showParentalUnlockDialog = false },
+            onSubmit = { pin ->
+                container.settingsRepository.verifyParentalPin(pin).also { valid ->
+                    if (valid) {
+                        showParentalUnlockDialog = false
+                        selectedSection = ProfileSection.Parental
+                    }
+                }
+            },
+        )
+    }
+    if (showParentalCreateDialog) {
+        NumericPinDialog(
+            title = strings.createPin,
+            strings = strings,
+            requireConfirmation = true,
+            onDismiss = { showParentalCreateDialog = false },
+            onSubmit = { pin ->
+                scope.launch { container.settingsRepository.setParentalPin(pin) }
+                showParentalCreateDialog = false
+                selectedSection = ProfileSection.Parental
+                true
+            },
+        )
     }
 
     state.qrDialog?.let { qr ->
@@ -645,6 +691,7 @@ internal fun LicensePanel(
 private fun ProfileParentalPanel(
     strings: SmartVisionStrings,
     onApply: () -> Unit,
+    initiallyUnlocked: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
@@ -652,7 +699,9 @@ private fun ProfileParentalPanel(
         initialValue = com.smartvision.svplayer.domain.model.PlayerSettings(),
     )
     val scope = rememberCoroutineScope()
-    var unlocked by remember { mutableStateOf(settings.parentalPin.isBlank()) }
+    var unlocked by remember(initiallyUnlocked, settings.parentalPin) {
+        mutableStateOf(initiallyUnlocked || settings.parentalPin.isBlank())
+    }
     var showUnlock by remember { mutableStateOf(false) }
     var showCreate by remember { mutableStateOf(false) }
     var keywords by remember(settings.parentalKeywords) { mutableStateOf(settings.parentalKeywords) }

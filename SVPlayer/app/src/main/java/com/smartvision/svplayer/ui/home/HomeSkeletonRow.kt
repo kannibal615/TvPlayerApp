@@ -61,22 +61,15 @@ fun HomeSkeletonRow(
                 .fillMaxWidth()
                 .height(SmartVisionDimensions.HomeContentCardHeight),
             contentPadding = PaddingValues(horizontal = SmartVisionDimensions.HomeRowEdgePadding),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
             userScrollEnabled = false,
         ) {
-            items(itemCount) { index ->
-                val isPreviewShape = index == 0
+            items(itemCount) {
                 HomeSkeletonCard(
                     alpha = alpha,
                     modifier = Modifier
-                        .width(
-                            if (isPreviewShape) {
-                                SmartVisionDimensions.HomeContentPreviewCardWidth
-                            } else {
-                                SmartVisionDimensions.HomeContentCardWidth
-                            },
-                        )
+                        .width(SmartVisionDimensions.HomeContentPreviewCardWidth)
                         .fillMaxHeight(),
                 )
             }

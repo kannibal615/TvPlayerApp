@@ -60,6 +60,7 @@ fun XtreamMovieDto.toEntity(profileId: String, imageBaseHost: String? = null): M
         duration = null,
         plot = null,
         containerExtension = containerExtension.orEmpty().ifBlank { "mp4" },
+        addedAt = added.toEpochSecondsOrZero(),
     )
 }
 
@@ -77,8 +78,12 @@ fun XtreamSeriesDto.toEntity(profileId: String, imageBaseHost: String? = null): 
         rating = rating,
         seasonsCount = null,
         plot = plot,
+        addedAt = added.toEpochSecondsOrZero(),
     )
 }
+
+private fun String?.toEpochSecondsOrZero(): Long =
+    this?.trim()?.toLongOrNull()?.coerceAtLeast(0L) ?: 0L
 
 fun XtreamEpisodeDto.toEntity(profileId: String, seriesId: Int, seasonNumber: Int): EpisodeEntity? {
     val safeId = id?.toIntOrNull() ?: return null

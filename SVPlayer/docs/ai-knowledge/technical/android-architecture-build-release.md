@@ -2,9 +2,10 @@
 
 Derniere mise a jour: 2026-07-12.
 
-## Persistance profils v14
+## Persistance profils v15
 
 - Room v14 ajoute `profileId` aux recherches, historique et selection YouTube; la migration 13->14 rattache les lignes existantes au profil actif.
+- Room v15 ajoute `addedAt` aux films et series pour le classement deterministe des tendances et le fallback nouveautes.
 - Les credentials custom sont chiffres AES/GCM avec une cle Android Keystore et ne sont plus persistes dans le JSON des profils.
 - Le PIN parental est derive avec PBKDF2-HMAC-SHA256, sel aleatoire et comparaison constante; l'ancien PIN DataStore est migre vers un marqueur `configured`.
 - `videoRatio`, `bufferMode` et `retryEnabled` sont scopes par profil avec fallback sur les anciennes valeurs globales.
@@ -24,9 +25,9 @@ Observabilite reseau:
 - `SettingsScreen` affiche ces etats dans `Network Activity` / `Activite reseau`: actifs, recents, progression, taille, debit, duree, source/section et erreurs.
 - Ne jamais exposer les query params, tokens, identifiants Xtream, mots de passe ou URLs de lecture dans ce tracker.
 
-Gradle local constate le 2026-07-07:
-- `versionCode = 119`
-- `versionName = "0.1.115"`
+Gradle local constate le 2026-07-13:
+- `versionCode = 148`
+- `versionName = "0.1.118"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`
