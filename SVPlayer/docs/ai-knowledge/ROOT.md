@@ -1,6 +1,6 @@
 # SmartVision AI Knowledge Root
 
-Derniere mise a jour: 2026-07-10.
+Derniere mise a jour: 2026-07-11.
 
 Ce fichier est le point d'entree court pour les agents IA. Lire ce fichier avant `AGENTS.md`, `PROJECT_NOTES.md` ou tout gros fichier legacy. Les anciens MD restent des sources historiques et ne doivent plus etre lus par defaut.
 

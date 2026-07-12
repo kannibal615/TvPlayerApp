@@ -405,6 +405,34 @@ class DefaultCatalogRepository(
             )
         }
 
+    override suspend fun getMovieById(streamId: Int): Movie? = withContext(Dispatchers.IO) {
+        if (!isXtreamCatalogConfigured()) return@withContext null
+        val profileId = activeProfileId()
+        val categoryNames = categoryDao.getByType(profileId, MediaSection.Movies.storageName).associate { it.id to it.name }
+        mediaDao.getMovie(profileId, streamId)
+            ?.let { it.toDomain(categoryNames[it.categoryId] ?: "Films", imageBaseHost()) }
+    }
+
+    override suspend fun getPreviousMovie(streamId: Int): Movie? = adjacentMovie(streamId, previous = true)
+
+    override suspend fun getNextMovie(streamId: Int): Movie? = adjacentMovie(streamId, previous = false)
+
+    private suspend fun adjacentMovie(streamId: Int, previous: Boolean): Movie? = withContext(Dispatchers.IO) {
+        if (!isXtreamCatalogConfigured()) return@withContext null
+        val profileId = activeProfileId()
+        val current = mediaDao.getMovie(profileId, streamId) ?: return@withContext null
+        val adjacent = if (previous) {
+            mediaDao.getPreviousMovie(profileId, current.categoryId, current.number, current.title, current.streamId)
+        } else {
+            mediaDao.getNextMovie(profileId, current.categoryId, current.number, current.title, current.streamId)
+        } ?: return@withContext null
+        val categoryName = categoryDao.getByType(profileId, MediaSection.Movies.storageName)
+            .firstOrNull { it.id == adjacent.categoryId }
+            ?.name
+            ?: "Films"
+        adjacent.toDomain(categoryName, imageBaseHost())
+    }
+
     override suspend fun searchMoviesPage(categoryId: String?, query: String, offset: Int, limit: Int): List<Movie> =
         withContext(Dispatchers.IO) {
             if (!isXtreamCatalogConfigured()) return@withContext emptyList()
@@ -1282,6 +1310,10 @@ class DefaultCatalogRepository(
 
     override suspend fun getSeriesEpisodes(seriesId: Int): List<Episode> = withContext(Dispatchers.IO) {
         mediaDao.getEpisodes(activeProfileId(), seriesId).map { it.toDomain() }
+    }
+
+    override suspend fun getEpisodeById(episodeId: Int): Episode? = withContext(Dispatchers.IO) {
+        mediaDao.getEpisode(activeProfileId(), episodeId)?.toDomain()
     }
 
     override suspend fun buildPlaybackRequest(kind: PlaybackKind, id: String): PlaybackRequest? =

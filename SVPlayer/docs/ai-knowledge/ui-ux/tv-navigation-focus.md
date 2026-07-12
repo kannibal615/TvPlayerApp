@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-07-10.
+Derniere mise a jour: 2026-07-11.
 
 ## 1. Objectif
 
@@ -227,3 +227,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-10: `ProfilePickerScreen` supprime `Manage profiles`; `Add Profile` ouvre le formulaire profil directement, le stylo du nom ouvre le meme formulaire pre-rempli, et OK sur un profil affiche une progress bar jusqu'a Home. Le multi-profil est gatee par `multi_profile`: Premium et essai actif autorises, Free Ads verrouille avec couronne sur l'ajout.
 - 2026-07-10: Info compte > Profils affiche/masque le detail par OK sur la ligne. L'avatar du header detail est focusable et ouvre un popup de 10 avatars standards; apres selection, le focus passe sur `Enregistrer`, puis le retour se fait vers la photo apres fermeture. Le nom se modifie via le stylo du header.
 - 2026-07-10: Settings adopte le header principal, focus initial sur le premier menu, et Back Settings/Info compte retourne sur Home avec focus header Home. Info compte supprime le menu `Appareil et catalogue` mais garde son contenu focusable en bas du panneau. Movies/Series rendent le mini-player Preview focusable entre les boutons header et les details.
+- 2026-07-11: les overlays fullscreen Films/Series et Live partagent le meme contrat D-pad. Bas masque l'overlay et rend le focus au `PlayerView`; Gauche/Droite parcourent uniquement les commandes actives; Haut cible la barre seulement si Media3 autorise le seek; les sliders progression/luminosite gardent un `FocusRequester` stable et le halo radial bleu commun. Quand l'overlay Live est masque, Haut/Bas conservent le zapping historique; quand il est visible, Bas ne zappe jamais.

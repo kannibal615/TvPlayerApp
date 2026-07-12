@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,19 +44,34 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import java.util.Locale
 
-private val VodProgressStart = Color(0xFF009DFF)
-private val VodProgressEnd = Color(0xFF12C8FF)
-private val VodTrackColor = Color(0xFF393C40).copy(alpha = 0.72f)
-private val VodFocusBlue = Color(0xFF1687FF)
+internal val VodProgressStart = Color(0xFF009DFF)
+internal val VodProgressEnd = Color(0xFF12C8FF)
+internal val VodTrackColor = Color(0xFF393C40).copy(alpha = 0.72f)
+internal val VodFocusBlue = Color(0xFF1687FF)
+
+internal fun referencePlayerGradient(): Brush = Brush.verticalGradient(
+    0.00f to Color.Transparent,
+    0.54f to Color.Transparent,
+    0.66f to Color.Black.copy(alpha = 0.18f),
+    0.79f to Color.Black.copy(alpha = 0.62f),
+    0.91f to Color.Black.copy(alpha = 0.88f),
+    1.00f to Color.Black.copy(alpha = 0.97f),
+)
 
 /**
  * Movie/series fullscreen controls calibrated from the official 1680 x 945 reference.
@@ -69,10 +85,17 @@ internal fun VodFullscreenControlsOverlay(
     errorText: String?,
     positionMs: Long,
     durationMs: Long,
+    canSeek: Boolean,
+    hasPrevious: Boolean,
+    hasNext: Boolean,
     focusedControlIndex: Int,
+    progressFocused: Boolean,
     onFocusedControlChange: (Int) -> Unit,
+    onProgressFocused: () -> Unit,
+    onSeekBy: (Long) -> Unit,
     playFocusRequester: FocusRequester,
     brightnessFocusRequester: FocusRequester,
+    progressFocusRequester: FocusRequester,
     brightnessMode: Boolean,
     brightnessValue: Float,
     onOpenBrightness: () -> Unit,
@@ -96,14 +119,7 @@ internal fun VodFullscreenControlsOverlay(
         modifier = modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(
-                    0.00f to Color.Transparent,
-                    0.54f to Color.Transparent,
-                    0.66f to Color.Black.copy(alpha = 0.18f),
-                    0.79f to Color.Black.copy(alpha = 0.62f),
-                    0.91f to Color.Black.copy(alpha = 0.88f),
-                    1.00f to Color.Black.copy(alpha = 0.97f),
-                ),
+                referencePlayerGradient(),
             ),
     ) {
         val density = LocalDensity.current
@@ -169,6 +185,12 @@ internal fun VodFullscreenControlsOverlay(
             elapsedWidth = maxWidth * 0.044f,
             endGap = maxWidth * 0.018f,
             durationWidth = maxWidth * 0.057f,
+            enabled = canSeek,
+            focused = progressFocused,
+            focusRequester = progressFocusRequester,
+            downFocusRequester = playFocusRequester,
+            onFocused = onProgressFocused,
+            onSeekBy = onSeekBy,
             modifier = Modifier
                 .offset(y = maxHeight * 0.837f)
                 .fillMaxWidth()
@@ -181,19 +203,33 @@ internal fun VodFullscreenControlsOverlay(
         val playIconSize = maxHeight * 0.047f
         val controlsTop = maxHeight * 0.894f
 
-        VodFocusIconButton(
-            icon = Icons.Outlined.WbSunny,
-            contentDescription = "Brightness",
-            focusRequester = brightnessFocusRequester,
-            leftFocusRequester = exitFocusRequester,
-            rightFocusRequester = previousFocusRequester,
-            onClick = onOpenBrightness,
-            hitSize = controlHitSize,
-            iconSize = normalIconSize,
-            modifier = Modifier.offset(x = maxWidth * 0.0545f, y = controlsTop),
-            forceFocused = focusedControlIndex == 0,
-            onFocused = { onFocusedControlChange(0) },
-        )
+        if (brightnessMode) {
+            VodInlineBrightnessSlider(
+                value = brightnessValue,
+                focusRequester = brightnessFocusRequester,
+                onChange = onChangeBrightness,
+                onClose = onCloseBrightness,
+                modifier = Modifier
+                    .offset(x = maxWidth * 0.0545f, y = controlsTop)
+                    .width(maxWidth * 0.22f)
+                    .height(controlHitSize),
+            )
+        } else {
+            VodFocusIconButton(
+                icon = Icons.Outlined.WbSunny,
+                contentDescription = "Brightness",
+                focusRequester = brightnessFocusRequester,
+                leftFocusRequester = exitFocusRequester,
+                rightFocusRequester = previousFocusRequester,
+                upFocusRequester = progressFocusRequester,
+                onClick = onOpenBrightness,
+                hitSize = controlHitSize,
+                iconSize = normalIconSize,
+                modifier = Modifier.offset(x = maxWidth * 0.0545f, y = controlsTop),
+                forceFocused = focusedControlIndex == 0,
+                onFocused = { onFocusedControlChange(0) },
+            )
+        }
 
         VodFocusIconButton(
             icon = Icons.Default.SkipPrevious,
@@ -201,7 +237,9 @@ internal fun VodFullscreenControlsOverlay(
             focusRequester = previousFocusRequester,
             leftFocusRequester = brightnessFocusRequester,
             rightFocusRequester = seekBackFocusRequester,
+            upFocusRequester = progressFocusRequester,
             onClick = onPlayPrevious,
+            enabled = hasPrevious,
             hitSize = controlHitSize,
             iconSize = normalIconSize,
             forceFocused = focusedControlIndex == 1,
@@ -217,6 +255,7 @@ internal fun VodFullscreenControlsOverlay(
             focusRequester = seekBackFocusRequester,
             leftFocusRequester = previousFocusRequester,
             rightFocusRequester = playFocusRequester,
+            upFocusRequester = progressFocusRequester,
             onClick = onSeekBack,
             hitSize = controlHitSize,
             iconSize = normalIconSize,
@@ -233,6 +272,7 @@ internal fun VodFullscreenControlsOverlay(
             focusRequester = playFocusRequester,
             leftFocusRequester = seekBackFocusRequester,
             rightFocusRequester = seekForwardFocusRequester,
+            upFocusRequester = progressFocusRequester,
             onClick = onPlayPause,
             hitSize = controlHitSize,
             iconSize = playIconSize,
@@ -250,7 +290,9 @@ internal fun VodFullscreenControlsOverlay(
             focusRequester = seekForwardFocusRequester,
             leftFocusRequester = playFocusRequester,
             rightFocusRequester = nextFocusRequester,
+            upFocusRequester = progressFocusRequester,
             onClick = onSeekForward,
+            enabled = canSeek,
             hitSize = controlHitSize,
             iconSize = normalIconSize,
             forceFocused = focusedControlIndex == 4,
@@ -266,7 +308,9 @@ internal fun VodFullscreenControlsOverlay(
             focusRequester = nextFocusRequester,
             leftFocusRequester = seekForwardFocusRequester,
             rightFocusRequester = exitFocusRequester,
+            upFocusRequester = progressFocusRequester,
             onClick = onPlayNext,
+            enabled = hasNext,
             hitSize = controlHitSize,
             iconSize = normalIconSize,
             forceFocused = focusedControlIndex == 5,
@@ -283,6 +327,7 @@ internal fun VodFullscreenControlsOverlay(
             focusRequester = exitFocusRequester,
             leftFocusRequester = nextFocusRequester,
             rightFocusRequester = brightnessFocusRequester,
+            upFocusRequester = progressFocusRequester,
             onClick = onExitFullscreen,
             hitSize = controlHitSize,
             iconSize = normalIconSize,
@@ -290,17 +335,6 @@ internal fun VodFullscreenControlsOverlay(
             forceFocused = focusedControlIndex == 6,
             onFocused = { onFocusedControlChange(6) },
         )
-
-        if (brightnessMode) {
-            PlayerBrightnessSlider(
-                value = brightnessValue,
-                onChange = onChangeBrightness,
-                onClose = onCloseBrightness,
-                modifier = Modifier
-                    .offset(x = maxWidth * 0.054f, y = maxHeight * 0.824f)
-                    .width(maxWidth * 0.25f),
-            )
-        }
 
         errorText?.let { message ->
             Text(
@@ -319,7 +353,7 @@ internal fun VodFullscreenControlsOverlay(
 }
 
 @Composable
-private fun VodReferenceProgressBar(
+internal fun VodReferenceProgressBar(
     positionMs: Long,
     durationMs: Long,
     timeStyle: TextStyle,
@@ -328,16 +362,49 @@ private fun VodReferenceProgressBar(
     elapsedWidth: Dp,
     endGap: Dp,
     durationWidth: Dp,
+    enabled: Boolean,
+    focused: Boolean,
+    focusRequester: FocusRequester,
+    downFocusRequester: FocusRequester,
+    onFocused: () -> Unit,
+    onSeekBy: (Long) -> Unit,
+    leftLabel: String = positionMs.formatPlaybackTime(),
+    rightLabel: String = durationMs.formatPlaybackTime(),
+    progressOverride: Float? = null,
+    trailingLabel: String? = null,
+    trailingColor: Color = VodProgressEnd,
+    trailingWidth: Dp = 0.dp,
     modifier: Modifier = Modifier,
 ) {
     val safeDuration = durationMs.coerceAtLeast(1L)
-    val progress = (positionMs.toFloat() / safeDuration.toFloat()).coerceIn(0f, 1f)
+    val progress = (progressOverride ?: (positionMs.toFloat() / safeDuration.toFloat())).coerceIn(0f, 1f)
     Row(
-        modifier = modifier,
+        modifier = modifier
+            .focusRequester(focusRequester)
+            .focusProperties {
+                canFocus = enabled
+                down = downFocusRequester
+            }
+            .onFocusChanged { if (it.isFocused || it.hasFocus) onFocused() }
+            .focusable(enabled = enabled)
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.DirectionLeft -> if (enabled) {
+                        onSeekBy(-10_000L)
+                        true
+                    } else false
+                    Key.DirectionRight -> if (enabled) {
+                        onSeekBy(10_000L)
+                        true
+                    } else false
+                    else -> false
+                }
+            },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = positionMs.formatPlaybackTime(),
+            text = leftLabel,
             color = Color.White.copy(alpha = 0.94f),
             style = timeStyle,
             maxLines = 1,
@@ -373,9 +440,12 @@ private fun VodReferenceProgressBar(
                     .height(thumbSize),
                 contentAlignment = Alignment.CenterEnd,
             ) {
+                if (focused) {
+                    VodFocusHalo(thumbSize * 3.6f)
+                }
                 Box(
                     modifier = Modifier
-                        .size(thumbSize)
+                        .size(if (focused) thumbSize * 1.12f else thumbSize)
                         .clip(CircleShape)
                         .background(Color(0xFFF7F7F7)),
                 )
@@ -383,28 +453,41 @@ private fun VodReferenceProgressBar(
         }
         Spacer(Modifier.width(endGap))
         Text(
-            text = durationMs.formatPlaybackTime(),
+            text = rightLabel,
             color = Color.White.copy(alpha = 0.94f),
             style = timeStyle,
             textAlign = TextAlign.End,
             maxLines = 1,
             modifier = Modifier.width(durationWidth),
         )
+        if (!trailingLabel.isNullOrBlank()) {
+            Spacer(Modifier.width(endGap))
+            Text(
+                text = trailingLabel,
+                color = trailingColor,
+                style = timeStyle,
+                textAlign = TextAlign.End,
+                maxLines = 1,
+                modifier = Modifier.width(trailingWidth),
+            )
+        }
     }
 }
 
 @Composable
-private fun VodFocusIconButton(
+internal fun VodFocusIconButton(
     icon: ImageVector,
     contentDescription: String,
     focusRequester: FocusRequester,
     leftFocusRequester: FocusRequester,
     rightFocusRequester: FocusRequester,
+    upFocusRequester: FocusRequester,
     onClick: () -> Unit,
     hitSize: Dp,
     iconSize: Dp,
     modifier: Modifier = Modifier,
     prominent: Boolean = false,
+    enabled: Boolean = true,
     forceFocused: Boolean = false,
     onFocused: () -> Unit = {},
 ) {
@@ -416,41 +499,136 @@ private fun VodFocusIconButton(
             .zIndex(if (focused || forceFocused) 2f else 0f)
             .focusRequester(focusRequester)
             .focusProperties {
+                canFocus = enabled
                 left = leftFocusRequester
                 right = rightFocusRequester
+                up = upFocusRequester
             }
             .onFocusChanged {
                 focused = it.isFocused
                 if (it.isFocused) onFocused()
             }
             .clickable(
+                enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
             )
-            .focusable(interactionSource = interactionSource),
+            .focusable(enabled = enabled, interactionSource = interactionSource),
         contentAlignment = Alignment.Center,
     ) {
-        val displayFocused = forceFocused
+        val displayFocused = enabled && (focused || forceFocused)
         if (displayFocused) {
-            Box(
-                modifier = Modifier
-                    .size(hitSize * 1.35f)
-                    .background(
-                        Brush.radialGradient(
-                            0.00f to VodFocusBlue.copy(alpha = 0.72f),
-                            0.34f to VodFocusBlue.copy(alpha = 0.38f),
-                            0.68f to VodFocusBlue.copy(alpha = 0.13f),
-                            1.00f to Color.Transparent,
-                        ),
-                    ),
-            )
+            VodFocusHalo(hitSize * 1.35f)
         }
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = if (displayFocused || prominent) Color.White else Color.White.copy(alpha = 0.92f),
+            tint = when {
+                !enabled -> Color.White.copy(alpha = 0.28f)
+                displayFocused || prominent -> Color.White
+                else -> Color.White.copy(alpha = 0.92f)
+            },
             modifier = Modifier.size(iconSize),
         )
     }
+}
+
+@Composable
+internal fun VodInlineBrightnessSlider(
+    value: Float,
+    focusRequester: FocusRequester,
+    onChange: (Float) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val progress = (value / 100f).coerceIn(0f, 1f)
+    var focused by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        runCatching { focusRequester.requestFocus() }
+    }
+    Row(
+        modifier = modifier
+            .focusRequester(focusRequester)
+            .onFocusChanged { focused = it.isFocused || it.hasFocus }
+            .focusable()
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.DirectionLeft -> {
+                        onChange(-5f)
+                        true
+                    }
+                    Key.DirectionRight -> {
+                        onChange(5f)
+                        true
+                    }
+                    Key.Enter, Key.DirectionCenter, Key.Back -> {
+                        onClose()
+                        true
+                    }
+                    else -> false
+                }
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.WbSunny,
+            contentDescription = "Brightness",
+            tint = Color.White.copy(alpha = 0.94f),
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(Modifier.width(10.dp))
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(34.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .clip(CircleShape)
+                    .background(VodTrackColor),
+            )
+            Box(
+                Modifier
+                    .fillMaxWidth(progress)
+                    .height(3.dp)
+                    .clip(CircleShape)
+                    .background(Brush.horizontalGradient(listOf(VodProgressStart, VodProgressEnd))),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress.coerceAtLeast(0.001f))
+                    .height(34.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                if (focused) VodFocusHalo(34.dp)
+                Box(
+                    Modifier
+                        .size(if (focused) 13.dp else 12.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFF7F7F7)),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun VodFocusHalo(size: Dp) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .background(
+                Brush.radialGradient(
+                    0.00f to VodFocusBlue.copy(alpha = 0.72f),
+                    0.34f to VodFocusBlue.copy(alpha = 0.38f),
+                    0.68f to VodFocusBlue.copy(alpha = 0.13f),
+                    1.00f to Color.Transparent,
+                ),
+            ),
+    )
 }

@@ -119,6 +119,34 @@ interface MediaDao {
     @Query("SELECT * FROM movies WHERE profileId = :profileId AND streamId = :streamId")
     suspend fun getMovie(profileId: String, streamId: Int): MovieEntity?
 
+    @Query(
+        "SELECT * FROM movies WHERE profileId = :profileId AND categoryId IS :categoryId " +
+            "AND (number < :number OR (number = :number AND title < :title) " +
+            "OR (number = :number AND title = :title AND streamId < :streamId)) " +
+            "ORDER BY number DESC, title DESC, streamId DESC LIMIT 1",
+    )
+    suspend fun getPreviousMovie(
+        profileId: String,
+        categoryId: String?,
+        number: Int,
+        title: String,
+        streamId: Int,
+    ): MovieEntity?
+
+    @Query(
+        "SELECT * FROM movies WHERE profileId = :profileId AND categoryId IS :categoryId " +
+            "AND (number > :number OR (number = :number AND title > :title) " +
+            "OR (number = :number AND title = :title AND streamId > :streamId)) " +
+            "ORDER BY number, title, streamId LIMIT 1",
+    )
+    suspend fun getNextMovie(
+        profileId: String,
+        categoryId: String?,
+        number: Int,
+        title: String,
+        streamId: Int,
+    ): MovieEntity?
+
     @Query("SELECT * FROM movies WHERE profileId = :profileId ORDER BY RANDOM() LIMIT :limit")
     suspend fun getTrendingMovies(profileId: String, limit: Int): List<MovieEntity>
 

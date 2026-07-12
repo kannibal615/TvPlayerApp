@@ -1,5 +1,25 @@
 # AI Changelog
 
+## 2026-07-11 - Stabilisation fullscreen VOD et overlay Live unifie
+
+Type:
+- Android TV / Fire TV
+- UI/UX D-pad
+- Media3 ExoPlayer
+
+Resume:
+- Films/Series: DPAD Bas masque l'overlay, progressbar focusable avec seek borne et halo partage, luminosite inline, voisins Films/Episodes resolus depuis Room et boutons de limites desactives.
+- Live TV: nouvel overlay conforme a la reference Films/Series, logo/nom/EPG courant-suivant/progression EPG, commandes non seekables sans -10/+10 et adaptation dynamique aux capacites Media3 reelles.
+- Les changements de film, episode ou chaine reutilisent le player route existant et protegent un appui OK contre les doubles navigations.
+
+Validation:
+- `:app:compileReleaseKotlin` : succes.
+- `:app:assembleRelease` : succes (`0.1.116`, versionCode `140`).
+- APK final installe sur AVD `SmartVision_TV_720p_Light` : succes.
+- Film et Serie reels: DPAD Bas, progression, luminosite inline, Film suivant et Episode suivant verifies; S01E01 vers S01E02 confirme.
+- Live non seekable reel BFM Business: EPG courant/suivant, progression EPG, absence -10/+10 et DPAD Bas verifies.
+- Aucun flux Live seekable reel disponible n'a permis une validation runtime de la variante DVR; la logique est compilee et bornee par la timeline Media3.
+
 ## 2026-07-10 - Overlay fullscreen Films/Series pixel-perfect
 
 Type:

@@ -114,6 +114,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -139,6 +140,9 @@ import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.data.xtream.XtreamConnectionManager
 import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
 import com.smartvision.svplayer.domain.model.LiveChannel
+import com.smartvision.svplayer.domain.model.Movie
+import com.smartvision.svplayer.domain.model.Episode
+import com.smartvision.svplayer.domain.model.TvSeries
 import com.smartvision.svplayer.domain.model.PlaybackKind
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.usecase.BuildPlaybackRequestUseCase
@@ -291,6 +295,8 @@ class FullScreenPlayerViewModel(
             }
             if (kind == FullScreenContentKind.Live) {
                 refreshLivePlaybackFromLocalCatalog()
+            } else if (kind == FullScreenContentKind.Movie || kind == FullScreenContentKind.Episode) {
+                refreshVodPlaybackFromLocalCatalog()
             }
         }
     }
@@ -395,6 +401,28 @@ class FullScreenPlayerViewModel(
             epgPrograms = epgPrograms,
             fallback = _uiState.value,
         )
+    }
+
+    private suspend fun refreshVodPlaybackFromLocalCatalog() {
+        when (kind) {
+            FullScreenContentKind.Movie -> {
+                val movie = catalogRepository.getMovieById(contentId) ?: return
+                val previous = catalogRepository.getPreviousMovie(contentId)
+                val next = catalogRepository.getNextMovie(contentId)
+                _uiState.value = movie.toFullScreenPlayback(previous, next, _uiState.value)
+            }
+            FullScreenContentKind.Episode -> {
+                val episode = catalogRepository.getEpisodeById(contentId) ?: return
+                val episodes = catalogRepository.getSeriesEpisodes(episode.seriesId)
+                    .sortedWith(compareBy<Episode> { it.seasonNumber }.thenBy { it.episodeNumber })
+                val currentIndex = episodes.indexOfFirst { it.episodeId == episode.episodeId }
+                val previous = episodes.getOrNull(currentIndex - 1)
+                val next = episodes.getOrNull(currentIndex + 1)
+                val series = catalogRepository.getSeriesByIds(listOf(episode.seriesId)).firstOrNull()
+                _uiState.value = episode.toFullScreenPlayback(series, episodes, previous, next, _uiState.value)
+            }
+            else -> Unit
+        }
     }
 
     private fun resolveMovie(
@@ -687,6 +715,7 @@ private fun FullScreenPlayerScreen(
     val playFocusRequester = remember { FocusRequester() }
     val episodesButtonFocusRequester = remember { FocusRequester() }
     val brightnessButtonFocusRequester = remember { FocusRequester() }
+    val progressFocusRequester = remember { FocusRequester() }
     val settingsButtonFocusRequester = remember { FocusRequester() }
     var overlayVisible by remember { mutableStateOf(true) }
     var overlayTick by remember { mutableIntStateOf(0) }
@@ -708,6 +737,15 @@ private fun FullScreenPlayerScreen(
     var brightnessMode by remember(playback.streamId) { mutableStateOf(false) }
     var brightnessValue by remember(playback.streamId) { mutableStateOf(50f) }
     var vodFocusedControlIndex by remember(playback.streamId) { mutableIntStateOf(3) }
+    var vodProgressFocused by remember(playback.streamId) { mutableStateOf(false) }
+    var liveFocusedControlIndex by remember(playback.streamId) { mutableIntStateOf(3) }
+    var liveProgressFocused by remember(playback.streamId) { mutableStateOf(false) }
+    var liveSeekable by remember(playback.streamId) { mutableStateOf(false) }
+    var liveWindowDurationMs by remember(playback.streamId) { mutableLongStateOf(0L) }
+    var liveWindowIsDynamic by remember(playback.streamId) { mutableStateOf(false) }
+    var liveWindowIsLive by remember(playback.streamId) { mutableStateOf(false) }
+    var wallClockMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var adjacentNavigationPending by remember(playback.streamId) { mutableStateOf(false) }
     var nextEpisodeCountdown by remember { mutableStateOf<Int?>(null) }
     var nextEpisodeDismissed by remember(playback.streamId) { mutableStateOf(false) }
     var adGateActive by remember(playback.streamId) { mutableStateOf(false) }
@@ -761,6 +799,10 @@ private fun FullScreenPlayerScreen(
                 playback.contentType == UserContentType.Episode
             ) {
                 vodFocusedControlIndex = 3
+                vodProgressFocused = false
+            } else if (playback.contentType == UserContentType.Live) {
+                liveFocusedControlIndex = 3
+                liveProgressFocused = false
             }
         }
     }
@@ -827,28 +869,14 @@ private fun FullScreenPlayerScreen(
 
     fun playAdjacent(item: AdjacentPlayback?) {
         val target = item ?: return
+        if (adjacentNavigationPending) return
+        adjacentNavigationPending = true
         when (playback.contentType) {
             UserContentType.Live -> onPlayLive(target.streamId)
             UserContentType.Movie -> onPlayMovie(target.streamId)
             UserContentType.Episode -> onPlayEpisode(target.streamId)
             else -> Unit
         }
-    }
-
-    fun handleLiveChannelKey(keyCode: Int): Boolean {
-        if (playback.contentType != UserContentType.Live) return false
-        if (keyCode != AndroidKeyEvent.KEYCODE_DPAD_UP && keyCode != AndroidKeyEvent.KEYCODE_DPAD_DOWN) return false
-        if (adGateActive) return true
-        if (activeMenu != PlayerOverlayMenu.None) return false
-        if (overlayVisible || brightnessMode) return true
-        val target = if (keyCode == AndroidKeyEvent.KEYCODE_DPAD_UP) {
-            playback.previousItem
-        } else {
-            playback.nextItem
-        }
-        playAdjacent(target)
-        showOverlay()
-        return true
     }
 
     fun playerExitContext(step: String, extra: String = ""): String =
@@ -1039,7 +1067,179 @@ private fun FullScreenPlayerScreen(
         }
     }
 
-    fun handleVodOverlayKey(keyCode: Int): Boolean {
+    fun hideVodOverlayToPlayer() {
+        overlayVisible = false
+        brightnessMode = false
+        vodProgressFocused = false
+        focusPlayWhenOverlayShows = false
+        playerView.post { runCatching { playerView.requestFocus() } }
+    }
+
+    fun seekVodBy(deltaMs: Long) {
+        if (!player.isCurrentMediaItemSeekable) return
+        val upperBound = durationMs.takeIf { it > 0L } ?: player.duration.validDurationMs()
+        val target = if (upperBound > 0L) {
+            (player.currentPosition + deltaMs).coerceIn(0L, upperBound)
+        } else {
+            (player.currentPosition + deltaMs).coerceAtLeast(0L)
+        }
+        player.seekTo(target)
+        positionMs = target
+    }
+
+    fun refreshLiveCapabilities() {
+        if (playback.contentType != UserContentType.Live) return
+        val timeline = player.currentTimeline
+        val window = if (!timeline.isEmpty && player.currentMediaItemIndex in 0 until timeline.windowCount) {
+            timeline.getWindow(player.currentMediaItemIndex, Timeline.Window())
+        } else {
+            null
+        }
+        liveWindowDurationMs = window?.durationMs?.takeIf { it > 0L } ?: player.duration.validDurationMs()
+        liveWindowIsDynamic = window?.isDynamic == true
+        liveWindowIsLive = window?.isLive == true
+        val seekCommandAvailable = player.availableCommands.contains(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+        val usableWindow = liveWindowDurationMs > 0L && (liveWindowIsLive || liveWindowIsDynamic || window != null)
+        liveSeekable = player.isCurrentMediaItemSeekable && seekCommandAvailable && usableWindow
+        if (!liveSeekable) liveProgressFocused = false
+    }
+
+    fun seekLiveBy(deltaMs: Long) {
+        if (!liveSeekable) return
+        val upperBound = liveWindowDurationMs.takeIf { it > 0L }
+            ?: player.duration.validDurationMs().takeIf { it > 0L }
+            ?: return
+        val target = (player.currentPosition + deltaMs).coerceIn(0L, upperBound)
+        player.seekTo(target)
+        positionMs = target
+    }
+
+    fun toggleLivePlayback() {
+        if (player.isPlaying) {
+            player.pause()
+        } else {
+            val upperBound = liveWindowDurationMs.takeIf { it > 0L } ?: player.duration.validDurationMs()
+            if (upperBound > 0L && player.currentPosition !in 0L..upperBound) {
+                player.seekToDefaultPosition()
+            }
+            player.play()
+        }
+    }
+
+    fun hideLiveOverlayToPlayer() {
+        overlayVisible = false
+        brightnessMode = false
+        liveProgressFocused = false
+        focusPlayWhenOverlayShows = false
+        playerView.post { runCatching { playerView.requestFocus() } }
+    }
+
+    fun handleLiveChannelKey(keyCode: Int, repeatCount: Int = 0): Boolean {
+        if (playback.contentType != UserContentType.Live) return false
+        if (adGateActive) return true
+        if (activeMenu != PlayerOverlayMenu.None) return false
+        if (!overlayVisible) {
+            if (keyCode == AndroidKeyEvent.KEYCODE_DPAD_UP || keyCode == AndroidKeyEvent.KEYCODE_DPAD_DOWN) {
+                playAdjacent(if (keyCode == AndroidKeyEvent.KEYCODE_DPAD_UP) playback.previousItem else playback.nextItem)
+                showOverlay()
+                return true
+            }
+            return false
+        }
+        if (keyCode == AndroidKeyEvent.KEYCODE_DPAD_DOWN) {
+            hideLiveOverlayToPlayer()
+            return true
+        }
+        if (brightnessMode) {
+            return when (keyCode) {
+                AndroidKeyEvent.KEYCODE_DPAD_LEFT -> {
+                    brightnessValue = (brightnessValue - 5f).coerceIn(0f, 100f)
+                    showOverlay(requestPlayFocus = false)
+                    true
+                }
+                AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> {
+                    brightnessValue = (brightnessValue + 5f).coerceIn(0f, 100f)
+                    showOverlay(requestPlayFocus = false)
+                    true
+                }
+                AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER -> {
+                    brightnessMode = false
+                    liveFocusedControlIndex = 0
+                    showOverlay(requestPlayFocus = false)
+                    true
+                }
+                else -> false
+            }
+        }
+        if (liveProgressFocused) {
+            return when (keyCode) {
+                AndroidKeyEvent.KEYCODE_DPAD_LEFT -> {
+                    seekLiveBy(-10_000L)
+                    showOverlay(requestPlayFocus = false)
+                    true
+                }
+                AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> {
+                    seekLiveBy(10_000L)
+                    showOverlay(requestPlayFocus = false)
+                    true
+                }
+                else -> false
+            }
+        }
+        fun moveLiveFocus(direction: Int) {
+            val enabled = buildList {
+                add(0)
+                if (playback.previousItem != null) add(1)
+                if (liveSeekable) add(2)
+                add(3)
+                if (liveSeekable) add(4)
+                if (playback.nextItem != null) add(5)
+                add(6)
+            }
+            val current = enabled.indexOf(liveFocusedControlIndex).takeIf { it >= 0 } ?: enabled.indexOf(3)
+            liveFocusedControlIndex = enabled[(current + direction).coerceIn(0, enabled.lastIndex)]
+        }
+        return when (keyCode) {
+            AndroidKeyEvent.KEYCODE_DPAD_LEFT -> {
+                moveLiveFocus(-1)
+                showOverlay(requestPlayFocus = false)
+                true
+            }
+            AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> {
+                moveLiveFocus(1)
+                showOverlay(requestPlayFocus = false)
+                true
+            }
+            AndroidKeyEvent.KEYCODE_DPAD_UP -> {
+                if (liveSeekable) {
+                    liveProgressFocused = true
+                    coroutineScope.launch {
+                        delay(20)
+                        runCatching { progressFocusRequester.requestFocus() }
+                    }
+                    showOverlay(requestPlayFocus = false)
+                }
+                true
+            }
+            AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER -> {
+                if (repeatCount > 0) return true
+                when (liveFocusedControlIndex) {
+                    0 -> brightnessMode = true
+                    1 -> playAdjacent(playback.previousItem)
+                    2 -> seekLiveBy(-10_000L)
+                    3 -> toggleLivePlayback()
+                    4 -> seekLiveBy(10_000L)
+                    5 -> playAdjacent(playback.nextItem)
+                    6 -> exitPlayer("live_exit_fullscreen_key")
+                }
+                if (!adjacentNavigationPending) showOverlay(requestPlayFocus = false)
+                true
+            }
+            else -> false
+        }
+    }
+
+    fun handleVodOverlayKey(keyCode: Int, repeatCount: Int = 0): Boolean {
         val isVod = playback.contentType == UserContentType.Movie ||
             playback.contentType == UserContentType.Episode
         if (!isVod || adGateActive || episodesPanelVisible || activeMenu != PlayerOverlayMenu.None) return false
@@ -1050,6 +1250,10 @@ private fun FullScreenPlayerScreen(
                 return true
             }
             return false
+        }
+        if (keyCode == AndroidKeyEvent.KEYCODE_DPAD_DOWN) {
+            hideVodOverlayToPlayer()
+            return true
         }
         if (brightnessMode) {
             return when (keyCode) {
@@ -1074,35 +1278,70 @@ private fun FullScreenPlayerScreen(
                 else -> false
             }
         }
+        if (vodProgressFocused) {
+            return when (keyCode) {
+                AndroidKeyEvent.KEYCODE_DPAD_LEFT -> {
+                    seekVodBy(-10_000L)
+                    showOverlay(requestPlayFocus = false)
+                    true
+                }
+                AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> {
+                    seekVodBy(10_000L)
+                    showOverlay(requestPlayFocus = false)
+                    true
+                }
+                else -> false
+            }
+        }
+        fun moveVodFocus(direction: Int) {
+            val enabled = buildList {
+                add(0)
+                if (playback.previousItem != null) add(1)
+                if (player.isCurrentMediaItemSeekable) add(2)
+                add(3)
+                if (player.isCurrentMediaItemSeekable) add(4)
+                if (playback.nextItem != null) add(5)
+                add(6)
+            }
+            val current = enabled.indexOf(vodFocusedControlIndex).takeIf { it >= 0 } ?: enabled.indexOf(3)
+            vodFocusedControlIndex = enabled[(current + direction).coerceIn(0, enabled.lastIndex)]
+        }
         return when (keyCode) {
             AndroidKeyEvent.KEYCODE_DPAD_LEFT -> {
-                vodFocusedControlIndex = (vodFocusedControlIndex - 1).coerceAtLeast(0)
+                moveVodFocus(-1)
                 showOverlay(requestPlayFocus = false)
                 true
             }
             AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> {
-                vodFocusedControlIndex = (vodFocusedControlIndex + 1).coerceAtMost(6)
+                moveVodFocus(1)
                 showOverlay(requestPlayFocus = false)
+                true
+            }
+            AndroidKeyEvent.KEYCODE_DPAD_UP -> {
+                if (player.isCurrentMediaItemSeekable) {
+                    vodProgressFocused = true
+                    coroutineScope.launch {
+                        delay(20)
+                        runCatching { progressFocusRequester.requestFocus() }
+                    }
+                    showOverlay(requestPlayFocus = false)
+                }
                 true
             }
             AndroidKeyEvent.KEYCODE_DPAD_CENTER,
             AndroidKeyEvent.KEYCODE_ENTER,
             -> {
+                if (repeatCount > 0) return true
                 when (vodFocusedControlIndex) {
                     0 -> brightnessMode = true
                     1 -> playAdjacent(playback.previousItem)
-                    2 -> if (player.isCurrentMediaItemSeekable) {
-                        player.seekTo((player.currentPosition - 10_000L).coerceAtLeast(0L))
-                    }
+                    2 -> seekVodBy(-10_000L)
                     3 -> if (player.isPlaying) player.pause() else player.play()
-                    4 -> if (player.isCurrentMediaItemSeekable) {
-                        val seekLimit = durationMs.takeIf { it > 0L } ?: Long.MAX_VALUE
-                        player.seekTo((player.currentPosition + 10_000L).coerceAtMost(seekLimit))
-                    }
+                    4 -> seekVodBy(10_000L)
                     5 -> playAdjacent(playback.nextItem)
                     6 -> exitPlayer("vod_exit_fullscreen_key")
                 }
-                showOverlay(requestPlayFocus = false)
+                if (!adjacentNavigationPending) showOverlay(requestPlayFocus = false)
                 true
             }
             else -> false
@@ -1233,6 +1472,15 @@ private fun FullScreenPlayerScreen(
             }
             delay(4_800)
             overlayVisible = false
+            vodProgressFocused = false
+            liveProgressFocused = false
+        }
+    }
+
+    LaunchedEffect(playback.streamId, playback.contentType) {
+        while (true) {
+            wallClockMs = System.currentTimeMillis()
+            delay(1_000L)
         }
     }
 
@@ -1319,6 +1567,7 @@ private fun FullScreenPlayerScreen(
                 if (playbackState == Player.STATE_READY) {
                     errorText = null
                     stalledRefreshCount = 0
+                    refreshLiveCapabilities()
                 }
                 if (playbackState == Player.STATE_ENDED && adGateActive) {
                     buffering = true
@@ -1329,6 +1578,18 @@ private fun FullScreenPlayerScreen(
                     playbackCompletedReported = true
                     behaviorReporter.reportAsync(coroutineScope, "PLAYBACK_COMPLETED", behaviorContent("ended", player.currentPosition, player.duration))
                 }
+            }
+
+            override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+                refreshLiveCapabilities()
+            }
+
+            override fun onAvailableCommandsChanged(availableCommands: Player.Commands) {
+                refreshLiveCapabilities()
+            }
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                refreshLiveCapabilities()
             }
 
             override fun onTracksChanged(tracks: Tracks) {
@@ -1447,10 +1708,14 @@ private fun FullScreenPlayerScreen(
             .focusable()
             .onPreviewKeyEvent { event ->
                 val keyCode = event.nativeKeyEvent.keyCode
-                if (event.nativeKeyEvent.action == AndroidKeyEvent.ACTION_DOWN && handleLiveChannelKey(keyCode)) {
+                if (event.nativeKeyEvent.action == AndroidKeyEvent.ACTION_DOWN &&
+                    handleLiveChannelKey(keyCode, event.nativeKeyEvent.repeatCount)
+                ) {
                     return@onPreviewKeyEvent true
                 }
-                if (event.nativeKeyEvent.action == AndroidKeyEvent.ACTION_DOWN && handleVodOverlayKey(keyCode)) {
+                if (event.nativeKeyEvent.action == AndroidKeyEvent.ACTION_DOWN &&
+                    handleVodOverlayKey(keyCode, event.nativeKeyEvent.repeatCount)
+                ) {
                     return@onPreviewKeyEvent true
                 }
                 if (event.nativeKeyEvent.action == AndroidKeyEvent.ACTION_DOWN && keyCode in overlayKeyCodes) {
@@ -1476,9 +1741,9 @@ private fun FullScreenPlayerScreen(
                                 true
                             }
 
-                            event.action == AndroidKeyEvent.ACTION_DOWN && handleLiveChannelKey(keyCode) -> true
+                            event.action == AndroidKeyEvent.ACTION_DOWN && handleLiveChannelKey(keyCode, event.repeatCount) -> true
 
-                            event.action == AndroidKeyEvent.ACTION_DOWN && handleVodOverlayKey(keyCode) -> true
+                            event.action == AndroidKeyEvent.ACTION_DOWN && handleVodOverlayKey(keyCode, event.repeatCount) -> true
 
                             event.action == AndroidKeyEvent.ACTION_DOWN &&
                                 keyCode in overlayKeyCodes &&
@@ -1510,11 +1775,11 @@ private fun FullScreenPlayerScreen(
                             true
                         }
 
-                        event.action == AndroidKeyEvent.ACTION_DOWN && handleLiveChannelKey(keyCode) -> {
+                        event.action == AndroidKeyEvent.ACTION_DOWN && handleLiveChannelKey(keyCode, event.repeatCount) -> {
                             true
                         }
 
-                        event.action == AndroidKeyEvent.ACTION_DOWN && handleVodOverlayKey(keyCode) -> {
+                        event.action == AndroidKeyEvent.ACTION_DOWN && handleVodOverlayKey(keyCode, event.repeatCount) -> {
                             true
                         }
 
@@ -1560,27 +1825,32 @@ private fun FullScreenPlayerScreen(
 
         if (overlayVisible && !adGateActive && !episodesPanelVisible) {
             if (playback.contentType == UserContentType.Live) {
-                LiveTvFullscreenOverlay(
+                val liveDuration = liveWindowDurationMs.takeIf { it > 0L } ?: durationMs
+                val liveAtEdge = !liveSeekable || (liveDuration - positionMs) <= 10_000L
+                LiveFullscreenControlsOverlay(
                     playback = playback,
+                    isPlaying = isPlaying,
                     errorText = errorText,
-                    firstActionFocusRequester = playFocusRequester,
+                    positionMs = positionMs,
+                    durationMs = liveDuration,
+                    wallClockMs = wallClockMs,
+                    isSeekable = liveSeekable,
+                    isAtLiveEdge = liveAtEdge,
+                    focusedControlIndex = liveFocusedControlIndex,
+                    progressFocused = liveProgressFocused,
+                    onFocusedControlChange = {
+                        liveProgressFocused = false
+                        liveFocusedControlIndex = it
+                    },
+                    onProgressFocused = { liveProgressFocused = true },
+                    playFocusRequester = playFocusRequester,
                     brightnessFocusRequester = brightnessButtonFocusRequester,
-                    settingsFocusRequester = settingsButtonFocusRequester,
+                    progressFocusRequester = progressFocusRequester,
                     brightnessMode = brightnessMode,
                     brightnessValue = brightnessValue,
-                    settingsActive = activeMenu == PlayerOverlayMenu.Settings,
-                    isFavorite = isFavorite,
-                    onFavorite = {
-                        coroutineScope.launch {
-                            container.userContentRepository.toggleFavorite(playback.contentType, playback.streamId)
-                        }
-                        showOverlay(requestPlayFocus = false)
-                    },
-                    onOpenSettings = {
-                        brightnessMode = false
-                        activeMenu = PlayerOverlayMenu.Settings
-                        showOverlay(requestPlayFocus = false)
-                    },
+                    epgUnavailableLabel = strings?.liveTvEpgUnavailable ?: "EPG unavailable",
+                    nextLabel = strings?.playerLiveNextLabel ?: "Up next",
+                    directLabel = strings?.liveTvDirect ?: "Live",
                     onOpenBrightness = {
                         brightnessMode = true
                         showOverlay(requestPlayFocus = false)
@@ -1597,8 +1867,21 @@ private fun FullScreenPlayerScreen(
                             runCatching { brightnessButtonFocusRequester.requestFocus() }
                         }
                     },
-                    onBackToList = { exitPlayer("live_back_to_list_button") },
-                    contextLabel = strings?.playerLiveContext ?: "Live | On air",
+                    onPreviousChannel = { playAdjacent(playback.previousItem) },
+                    onSeekBack = {
+                        seekLiveBy(-10_000L)
+                        showOverlay(requestPlayFocus = false)
+                    },
+                    onPlayPause = {
+                        toggleLivePlayback()
+                        showOverlay(requestPlayFocus = false)
+                    },
+                    onSeekForward = {
+                        seekLiveBy(10_000L)
+                        showOverlay(requestPlayFocus = false)
+                    },
+                    onNextChannel = { playAdjacent(playback.nextItem) },
+                    onExitFullscreen = { exitPlayer("live_exit_fullscreen_button") },
                 )
             } else if (
                 playback.contentType == UserContentType.Movie ||
@@ -1623,10 +1906,23 @@ private fun FullScreenPlayerScreen(
                     errorText = errorText,
                     positionMs = positionMs,
                     durationMs = durationMs,
+                    canSeek = player.isCurrentMediaItemSeekable,
+                    hasPrevious = playback.previousItem != null,
+                    hasNext = playback.nextItem != null,
                     focusedControlIndex = vodFocusedControlIndex,
-                    onFocusedControlChange = { vodFocusedControlIndex = it },
+                    progressFocused = vodProgressFocused,
+                    onFocusedControlChange = {
+                        vodProgressFocused = false
+                        vodFocusedControlIndex = it
+                    },
+                    onProgressFocused = { vodProgressFocused = true },
+                    onSeekBy = { deltaMs ->
+                        seekVodBy(deltaMs)
+                        showOverlay(requestPlayFocus = false)
+                    },
                     playFocusRequester = playFocusRequester,
                     brightnessFocusRequester = brightnessButtonFocusRequester,
+                    progressFocusRequester = progressFocusRequester,
                     brightnessMode = brightnessMode,
                     brightnessValue = brightnessValue,
                     onOpenBrightness = {
@@ -1647,9 +1943,7 @@ private fun FullScreenPlayerScreen(
                     },
                     onPlayPrevious = { playAdjacent(playback.previousItem) },
                     onSeekBack = {
-                        if (player.isCurrentMediaItemSeekable) {
-                            player.seekTo((player.currentPosition - 10_000L).coerceAtLeast(0L))
-                        }
+                        seekVodBy(-10_000L)
                         showOverlay()
                     },
                     onPlayPause = {
@@ -1657,10 +1951,7 @@ private fun FullScreenPlayerScreen(
                         showOverlay()
                     },
                     onSeekForward = {
-                        if (player.isCurrentMediaItemSeekable) {
-                            val seekLimit = durationMs.takeIf { it > 0L } ?: Long.MAX_VALUE
-                            player.seekTo((player.currentPosition + 10_000L).coerceAtMost(seekLimit))
-                        }
+                        seekVodBy(10_000L)
                         showOverlay()
                     },
                     onPlayNext = { playAdjacent(playback.nextItem) },
@@ -2480,6 +2771,7 @@ private fun FullPlayerOverlay(
                     }
                 }
             }
+
         }
 
         errorText?.let { message ->
@@ -3599,6 +3891,77 @@ private fun LiveChannel.toAdjacentPlayback(): AdjacentPlayback =
         title = name.cleanTitle(),
         label = number.toLiveChannelNumber(streamId),
     )
+
+private fun Movie.toFullScreenPlayback(
+    previous: Movie?,
+    next: Movie?,
+    fallback: FullScreenPlayback,
+): FullScreenPlayback = fallback.copy(
+    streamId = streamId,
+    contentType = UserContentType.Movie,
+    title = title.cleanTitle(),
+    subtitle = categoryName,
+    status = duration ?: "Film",
+    infoPills = listOf("HD", containerExtension.uppercase()).distinct(),
+    imageUrl = posterUrl,
+    categoryId = categoryId,
+    overlayRightText = year.orEmpty(),
+    previousItem = previous?.let {
+        AdjacentPlayback(it.streamId, it.title.cleanTitle(), "Film precedent")
+    },
+    nextItem = next?.let {
+        AdjacentPlayback(it.streamId, it.title.cleanTitle(), "Film suivant")
+    },
+)
+
+private fun Episode.toFullScreenPlayback(
+    series: TvSeries?,
+    episodes: List<Episode>,
+    previous: Episode?,
+    next: Episode?,
+    fallback: FullScreenPlayback,
+): FullScreenPlayback {
+    val seriesTitle = series?.title?.cleanTitle() ?: fallback.title
+    val seriesImage = series?.posterUrl ?: fallback.imageUrl
+    return fallback.copy(
+        streamId = episodeId,
+        contentType = UserContentType.Episode,
+        title = seriesTitle,
+        subtitle = "${seasonEpisodeLabel()} - ${title.cleanTitle()}",
+        status = duration ?: "Episode",
+        infoPills = listOf("HD", containerExtension.uppercase()).distinct(),
+        imageUrl = seriesImage,
+        categoryId = series?.categoryId ?: fallback.categoryId,
+        overlayRightText = seasonEpisodeLabel(),
+        parentContentId = seriesId,
+        seasonNumber = seasonNumber,
+        episodeNumber = episodeNumber,
+        previousItem = previous?.let {
+            AdjacentPlayback(it.episodeId, it.title.cleanTitle(), it.seasonEpisodeLabel())
+        },
+        nextItem = next?.let {
+            AdjacentPlayback(it.episodeId, it.title.cleanTitle(), it.seasonEpisodeLabel())
+        },
+        nextEpisode = next?.let {
+            NextEpisodePlayback(it.episodeId, it.title.cleanTitle(), it.seasonEpisodeLabel(), seriesImage)
+        },
+        seriesEpisodes = episodes.map {
+            PlayerEpisodeItem(
+                episodeId = it.episodeId,
+                seasonNumber = it.seasonNumber,
+                episodeNumber = it.episodeNumber,
+                label = it.seasonEpisodeLabel(),
+                title = it.title.cleanTitle(),
+                duration = it.duration,
+                description = it.plot?.cleanTitle(),
+                thumbnailUrl = seriesImage,
+            )
+        },
+    )
+}
+
+private fun Episode.seasonEpisodeLabel(): String =
+    "S${seasonNumber.toString().padStart(2, '0')}E${episodeNumber.toString().padStart(2, '0')}"
 
 private fun String?.extractReleaseYear(): String? =
     this

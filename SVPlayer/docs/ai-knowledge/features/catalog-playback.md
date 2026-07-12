@@ -1,6 +1,6 @@
 # Catalogue, Playlist et Lecture
 
-Derniere mise a jour: 2026-07-10.
+Derniere mise a jour: 2026-07-11.
 
 ## 1. Objectif
 
@@ -78,6 +78,10 @@ Depuis le 2026-07-09, Movies et Series reutilisent aussi le comportement Live TV
 Depuis le 2026-07-10, les listes Movies/Series n'affichent plus `CatalogError` pendant les phases transitoires de chargement local: le message d'erreur attend la fin des chargements categories/items/episodes pour eviter un flash au centre. Les lignes VOD sont plus compactes (`64dp`), gardent une miniature paysage collee a la hauteur de ligne et reduisent la colonne droite pour donner plus de largeur au titre/metadonnees. Le panneau details Series ajoute explicitement `Saisons / episodes` sous le mini-player quand le compteur est connu.
 
 Depuis le 2026-07-10, les items Movies/Series lus depuis Room reconstruisent les URLs preview/player avec `containerExtension` au lieu de retomber sur `mp4` par defaut. Cela protege notamment le dossier `ALL`, qui passe par les pages Room globales, pour les fournisseurs qui utilisent `mkv`, `avi` ou une autre extension.
+
+Depuis le 2026-07-11, l'overlay fullscreen Films/Series conserve son design proportionnel 1680x945 mais corrige son contrat TV: DPAD Bas masque immediatement l'overlay sans interrompre Media3, Haut cible une progressbar focusable et seekable avec le halo bleu partage, et le slider luminosite remplace l'icone sur la meme ligne. Precedent/Suivant ne dependent plus du cache memoire Xtream: les films adjacents sont resolus dans l'ordre Room de la categorie courante et les episodes dans l'ordre saison/episode Room, y compris les passages inter-saisons. Les controles sans cible adjacente sont desactives.
+
+Depuis le 2026-07-11, `LiveFullscreenControlsOverlay` remplace le bandeau glass fullscreen Live par la meme geometrie, le meme gradient, la meme progressbar, le meme halo, le meme slider et les memes icones que Films/Series. Il affiche logo/nom, EPG courant/suivant et progression temporelle EPG. La presence de -10/+10 et le focus de la barre dependent des capacites Media3 reelles reevaluees sur timeline/media/commandes: `isCurrentMediaItemSeekable`, `COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM`, fenetre live/dynamique et duree valide. Un flux non seekable garde seulement luminosite, chaine precedente, play/pause, chaine suivante et sortie fullscreen; sa barre EPG reste informative.
 
 Depuis le 2026-07-07, `Media` ajoute une categorie `Media prives` separee des fichiers locaux. Android consomme uniquement `PrivateMediaRepository` vers les endpoints SmartVision `api/media/private/*`; aucun endpoint Eporner n'est appele depuis l'APK. Les sous-dossiers prives sont des categories/recherches admin (`Nouveautes`, `Populaires`, `Top semaine`, etc.) et la query/theme de chaque sous-dossier alimente `/items`. En mode prive, l'UI suit le fonctionnement YouTube: liste compacte et section principale dediee au player/miniature, premier OK lance le player inline, second OK ouvre le plein ecran. Depuis le 2026-07-08, les embeds prives utilisent `PrivateMediaTvWebView`: OK/Enter est d'abord laisse aux controles provider du WebView, avec fallback JS seulement si le WebView ne traite pas la touche. Le backend normalise les reponses provider en DTO internes et renvoie `HLS`/`MP4` uniquement pour des URLs directes compatibles; sinon `EMBED`/`PAGE_ONLY`/`UNAVAILABLE`. Le mode admin `Forcer lecture native HLS/MP4` est un mode de test base sur un vrai flux direct configure; il ne transforme pas un embed en flux. La fiche detail privee affiche les metadonnees et garde `Lecture indisponible` si le backend ne fournit pas un stream natif compatible.
 
@@ -302,3 +306,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-10: l'apercu Series remplace les infos generiques par un navigateur saisons/episodes D-pad, choisit l'episode historique sinon S01E01, affiche la progression et conserve l'episode manuel pour Play et le deuxieme OK.
 - 2026-07-10: les overlays Live/Film/Serie partagent `PremiumPlayerOverlayFrame`, la surface glass et le contexte contenu, sans changement Media3, publicite ou ordre Back.
 - 2026-07-10: Films et Series utilisent maintenant `VodFullscreenControlsOverlay`, calibre par proportions 1680x945: gradient noir sans panneau, titre et saison/episode, progression reelle, exactement sept commandes, sauts bornes de 10 secondes et sortie fullscreen fonctionnelle. Live TV et Media local conservent leurs overlays dedies/existants.
+- 2026-07-11: stabilisation fullscreen Films/Series (DPAD Bas, progressbar focusable/seekable, luminosite inline, voisins Room reels) puis remplacement de l'overlay Live par la meme reference visuelle, adaptee aux capacites seekables Media3 et a la progression EPG non seekable.
