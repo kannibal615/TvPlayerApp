@@ -82,12 +82,17 @@ data class LiveTvUiState(
     val currentOffset: Int = 0,
     val errorMessage: String? = null,
     val categories: List<LiveTvCategory> = emptyList(),
+    val categoryFilters: List<CategoryFilter> = emptyList(),
+    val activeCategoryFilterCode: String? = null,
     val selectedCategoryId: String? = null,
     val channels: List<LiveTvChannel> = emptyList(),
     val channelSearchQuery: String = "",
     val focusedChannelId: Int? = null,
     val selectedChannelId: Int? = null,
 ) {
+    val visibleCategories: List<LiveTvCategory>
+        get() = CategoryFilterResolver.filterCategories(categories, activeCategoryFilterCode)
+
     val selectedCategory: LiveTvCategory?
         get() = categories.firstOrNull { it.id == selectedCategoryId }
 
@@ -143,12 +148,16 @@ class LiveTvViewModel(
     }
 
     private fun reloadCatalogAfterRevision() {
+        val previousFilterCode = _uiState.value.activeCategoryFilterCode
         channelsJob?.cancel()
         localCategories = emptyList()
         pendingHistoryFocusAfterDelete = null
         userSelectedCategory = false
         autoSelectedCategoryId = null
-        _uiState.value = LiveTvUiState(categoriesLoading = true)
+        _uiState.value = LiveTvUiState(
+            categoriesLoading = true,
+            activeCategoryFilterCode = previousFilterCode,
+        )
         loadCategories()
     }
 
@@ -202,11 +211,15 @@ class LiveTvViewModel(
                 historyCount = historyProgress.size,
                 historySignals = historyCategorySignals,
             )
+            val filters = CategoryFilterResolver.buildFilters(visibleCategories)
+            val activeFilterCode = it.activeCategoryFilterCode
+                ?.takeIf { code -> filters.any { filter -> filter.identity.normalizedCode == code } }
+            val filteredCategories = CategoryFilterResolver.filterCategories(visibleCategories, activeFilterCode)
             val existingSelection = it.selectedCategoryId
-                ?.takeIf { selectedId -> userSelectedCategory && visibleCategories.any { category -> category.id == selectedId } }
+                ?.takeIf { selectedId -> userSelectedCategory && filteredCategories.any { category -> category.id == selectedId } }
             val initialCategory = existingSelection
-                ?.let { selectedId -> visibleCategories.firstOrNull { category -> category.id == selectedId } }
-                ?: visibleCategories.initialCategoryAfterHistory()
+                ?.let { selectedId -> filteredCategories.firstOrNull { category -> category.id == selectedId } }
+                ?: if (activeFilterCode == null) filteredCategories.initialCategoryAfterHistory() else filteredCategories.firstOrNull()
             if (!userSelectedCategory) {
                 autoSelectedCategoryId = initialCategory?.id
             }
@@ -214,6 +227,8 @@ class LiveTvViewModel(
                 categoriesLoading = false,
                 errorMessage = null,
                 categories = visibleCategories,
+                categoryFilters = filters,
+                activeCategoryFilterCode = activeFilterCode,
                 selectedCategoryId = initialCategory?.id,
             )
         }
@@ -222,6 +237,24 @@ class LiveTvViewModel(
         if (selectedCategoryChanged || (state.channels.isEmpty() && !state.channelsLoading)) {
             state.selectedCategory?.let { category -> selectCategory(category, userInitiated = false) }
         }
+    }
+
+    fun applyCategoryFilter(normalizedCode: String?): LiveTvCategory? {
+        val current = _uiState.value
+        val validCode = normalizedCode?.takeIf { code ->
+            current.categoryFilters.any { it.identity.normalizedCode == code }
+        }
+        val firstCategory = CategoryFilterResolver.filterCategories(current.categories, validCode).firstOrNull()
+        _uiState.update { state ->
+            state.copy(
+                activeCategoryFilterCode = validCode,
+                selectedCategoryId = firstCategory?.id,
+                focusedChannelId = null,
+                selectedChannelId = null,
+            )
+        }
+        firstCategory?.let { selectCategory(it, userInitiated = true) }
+        return firstCategory
     }
 
     fun refreshEpgCategoryAvailability() {
@@ -749,7 +782,7 @@ private val EpgRefreshMinAgeMs = TimeUnit.HOURS.toMillis(1)
 private const val FavoriteLiveCategoryId = "__favorites_live__"
 private const val HistoryLiveCategoryId = "__history_live__"
 private const val AllLiveCategoryId = "__all_live__"
-private val SpecialLiveCategoryIds = setOf(AllLiveCategoryId, FavoriteLiveCategoryId, HistoryLiveCategoryId)
+internal val SpecialLiveCategoryIds = setOf(AllLiveCategoryId, FavoriteLiveCategoryId, HistoryLiveCategoryId)
 
 private fun List<LiveTvCategory>.withSpecialCategories(
     allCount: Int?,

@@ -1,5 +1,22 @@
 # AI Changelog
 
+## 2026-07-12 - Filtres rapides des categories Live TV
+
+Type:
+- Android TV / Live TV
+- Catalogue Xtream et M3U
+- UI/UX D-pad
+
+Resume:
+- Detection stricte des prefixes de dossiers, priorites SmartVision et ISO generique avec fallback texte local.
+- Barre dynamique Tous/regions/pays/codes inconnus, panneau complet partage, compteurs, semantique et distinction focus/selection.
+- Projection filtree sans modifier les categories fournisseur; recalcul automatique au changement de catalogue/profil.
+
+Validation:
+- `:app:compileReleaseKotlin` : succes.
+- `:app:testReleaseUnitTest --tests com.smartvision.svplayer.ui.live.CategoryFilterResolverTest --tests com.smartvision.svplayer.data.repository.LocalCatalogSnapshotCacheTest` : succes.
+- Validation visuelle et D-pad sur appareil TV reel non executee dans cette intervention.
+
 ## 2026-07-11 - Stabilisation fullscreen VOD et overlay Live unifie
 
 Type:

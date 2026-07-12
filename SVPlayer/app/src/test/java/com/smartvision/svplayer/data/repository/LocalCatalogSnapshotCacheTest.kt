@@ -11,6 +11,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LocalCatalogSnapshotCacheTest {
+    private val profileId = "test-profile"
+
     @Test
     fun `returns stored live snapshot as cached on second read`() {
         val cache = LocalCatalogSnapshotCache()
@@ -30,8 +32,8 @@ class LocalCatalogSnapshotCacheTest {
             ),
         )
 
-        val stored = cache.putLive(snapshot)
-        val cached = cache.getLive()
+        val stored = cache.putLive(profileId, snapshot)
+        val cached = cache.getLive(profileId)
 
         assertFalse(stored.fromCache)
         assertTrue(cached?.fromCache == true)
@@ -42,14 +44,14 @@ class LocalCatalogSnapshotCacheTest {
     @Test
     fun `invalidate clears all stored snapshots`() {
         val cache = LocalCatalogSnapshotCache()
-        cache.putLive(LocalCatalogSnapshot(emptyList(), emptyList()))
-        cache.putMovies(LocalCatalogSnapshot(emptyList(), emptyList()))
-        cache.putSeries(LocalCatalogSnapshot(emptyList(), emptyList()))
+        cache.putLive(profileId, LocalCatalogSnapshot(emptyList(), emptyList()))
+        cache.putMovies(profileId, LocalCatalogSnapshot(emptyList(), emptyList()))
+        cache.putSeries(profileId, LocalCatalogSnapshot(emptyList(), emptyList()))
 
         cache.invalidate()
 
-        assertNull(cache.getLive())
-        assertNull(cache.getMovies())
-        assertNull(cache.getSeries())
+        assertNull(cache.getLive(profileId))
+        assertNull(cache.getMovies(profileId))
+        assertNull(cache.getSeries(profileId))
     }
 }

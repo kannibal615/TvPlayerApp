@@ -492,10 +492,10 @@ fun LiveTvScreen(
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     listState = categoryListState,
                     focusCategoryId = categoryFocusTargetId?.takeIf { targetId ->
-                        state.categories.any { it.id == targetId }
+                        state.visibleCategories.any { it.id == targetId }
                     }
                         ?: state.selectedCategoryId
-                        ?: state.categories.firstOrNull()?.id,
+                        ?: state.visibleCategories.firstOrNull()?.id,
                     headerFocusRequester = headerLiveFocusRequester,
                     onFocused = { category ->
                         currentFocusZone = LiveTvFocusZone.Categories
@@ -515,6 +515,13 @@ fun LiveTvScreen(
                                 category = category,
                                 autoPreviewFirstChannel = false,
                             )
+                        }
+                    },
+                    onApplyFilter = { code ->
+                        if (inputReady) {
+                            val firstCategory = viewModel.applyCategoryFilter(code)
+                            categoryFocusTargetId = firstCategory?.id
+                            lastFocusedCategoryId = firstCategory?.id
                         }
                     },
                     modifier = Modifier
@@ -646,9 +653,11 @@ private fun CategoryList(
     onFocused: (LiveTvCategory) -> Unit,
     onRestoreChannelFocus: () -> Unit,
     onCategory: (LiveTvCategory) -> Unit,
+    onApplyFilter: (String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val visibleCategories = state.categories
+    val visibleCategories = state.visibleCategories
+    val activeFilterFocusRequester = remember { FocusRequester() }
     LaunchedEffect(focusCategoryId, visibleCategories.size) {
         val index = visibleCategories.indexOfFirst { it.id == focusCategoryId }
         if (index >= 0) {
@@ -662,8 +671,28 @@ private fun CategoryList(
 
     LiveTvPanel(
         title = strings.liveTvCategories,
+        trailing = {
+            CategoryFilterIconButton(
+                filters = state.categoryFilters,
+                activeFilterCode = state.activeCategoryFilterCode,
+                strings = strings,
+                categoryListFocusRequester = selectedCategoryFocusRequester,
+                headerFocusRequester = headerFocusRequester,
+                onApplyFilter = onApplyFilter,
+            )
+        },
         modifier = modifier,
     ) {
+        CategoryFilterBar(
+            filters = state.categoryFilters,
+            activeFilterCode = state.activeCategoryFilterCode,
+            strings = strings,
+            activeFilterFocusRequester = activeFilterFocusRequester,
+            categoryListFocusRequester = selectedCategoryFocusRequester,
+            headerFocusRequester = headerFocusRequester,
+            onApplyFilter = onApplyFilter,
+        )
+        Spacer(Modifier.height(6.dp))
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -682,12 +711,21 @@ private fun CategoryList(
                     } else {
                         null
                     },
-                    upFocusRequester = headerFocusRequester.takeIf { category.id == visibleCategories.firstOrNull()?.id },
+                    upFocusRequester = activeFilterFocusRequester.takeIf { category.id == visibleCategories.firstOrNull()?.id },
                     onFocused = { onFocused(category) },
                     onRight = onRestoreChannelFocus,
                     onClick = { onCategory(category) },
                 )
             }
+        }
+        if (visibleCategories.isEmpty()) {
+            CategoryFilterEmptyState(
+                message = strings.liveTvCategoryFilterEmpty,
+                allLabel = strings.liveTvCategoryFilterAll,
+                focusRequester = selectedCategoryFocusRequester,
+                upFocusRequester = activeFilterFocusRequester,
+                onShowAll = { onApplyFilter(null) },
+            )
         }
     }
 }
