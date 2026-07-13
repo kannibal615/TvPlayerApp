@@ -42,10 +42,10 @@ Gradle local constate le 2026-07-13:
 
 Demarrage:
 - `MainActivity` est l'activite launcher TV/Android et utilise `Theme.SVPlayer.Splash` pour la preview systeme immediate.
-- Le theme systeme `Theme.SVPlayer.Splash` utilise `@drawable/splash_background` comme preview immediate; cette preview contient le fond splash et le logo wide reduit/centre.
-- Le startup Compose de `MainActivity` ne redessine plus le fond ni le logo: il garde la preview systeme visible et affiche seulement la progress bar, le statut et les diagnostics.
-- Les diagnostics startup visibles incluent pourcentage, etape courante/total, elements traites/restants quand connus, temps ecoule, ETA estimee et details Live/Films/Series pendant une synchronisation catalogue.
-- `MainActivity` attend la premiere frame Compose avant de lancer les checks startup, pour afficher immediatement la barre et les statuts au-dessus de la preview systeme.
+- Le theme systeme `Theme.SVPlayer.Splash` et `StartupExperience` reutilisent `startup_neon_background.webp` en plein ecran et `smartvision_logo_wide.png` aux memes dimensions/offsets: la preview Android et la premiere frame Compose gardent donc la meme composition sans second ecran ni `SplashActivity`.
+- Le startup applicatif suit les phases visuelles `LogoOnly -> Loading -> TransitionOut`. `LogoOnly` dure au moins `450 ms`; la zone de chargement ne devient visible qu'apres `700 ms`, puis le fondu croise vers `AppNavigation` dure `380 ms`.
+- `StartupProgressSnapshot` derive la barre des trois etapes locales reellement terminees. Aucun pourcentage, ETA ou compteur artificiel n'est affiche; les statuts passent par `SmartVisionStrings` en anglais/francais.
+- `MainActivity` attend la premiere frame Compose avant de lancer les checks startup. Un demarrage termine avant `700 ms` ouvre directement le parcours applicatif sans faire apparaitre la barre.
 - `MainActivity` applique le theme normal et remplace le `windowBackground` par un fond opaque neutre juste avant `AppNavigation`, afin que le fond/logo splash ne restent pas visibles derriere Home.
 - Depuis le 2026-07-03, `MainActivity` ne synchronise plus le catalogue et ne charge plus les categories/pages catalogue pendant le splash. Il lit seulement l'activation locale, efface toute demande startup residuelle, termine le splash rapidement et rend directement `AppNavigation` / Home. La decision de synchro automatique est deplacee apres le premier rendu Home; seule une vraie `Synchronize` peut bloquer la telecommande.
 - `MainActivity` met en cache le snapshot d'activation locale lu pendant le splash dans `AppContainer`; `ActivationViewModel` l'utilise comme etat initial. Le chemin Home actif ne doit donc plus afficher l'ecran tampon `localStateReady=false` entre le splash et Home.

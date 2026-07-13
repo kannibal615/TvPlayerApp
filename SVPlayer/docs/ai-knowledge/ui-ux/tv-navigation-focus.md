@@ -4,10 +4,11 @@ Derniere mise a jour: 2026-07-13.
 
 ## Profils Kids et dialogues
 
-- Le picker conserve le focus initial sur le profil actif et change son background par focus via `Crossfade`.
+- Le picker utilise des cles `profile.id` stables dans une `LazyRow`. Le focus initial cible le profil actif, sinon ADMIN, sinon le premier profil; Compose revele automatiquement les cartes hors ecran.
 - Les actions verrouillees ouvrent un dialogue PIN a quatre chiffres; annuler retourne au picker sans navigation anticipee.
 - Le formulaire profil est borne en hauteur, scrollable, applique `imePadding` et demande `bringIntoView()` lorsque le clavier TV ouvre un champ.
-- La selection de profil reste immediate; les nettoyages de cache et synchronisations ne bloquent pas le clic.
+- La selection de profil garde une validation visuelle courte sur la carte puis active le profil et purge les caches memoire. Le picker ne lance aucune synchronisation reseau; Home en reste proprietaire apres son rendu.
+- Sur une carte de profil reelle, Bas cible le crayon discret et Haut retourne a la carte. La fermeture du PIN ou du formulaire redemande le focus a la cible d'origine avec un `FocusRequester` stable.
 
 ## 1. Objectif
 

@@ -173,7 +173,7 @@ fun AppNavigation(
     var homeHeaderFocusTarget by remember { mutableStateOf(HomeHeaderFocusTarget.CurrentTab) }
     var profilePickerCompleted by remember { mutableStateOf(false) }
     var openProfilesAfterPicker by remember { mutableStateOf(false) }
-    var profileSelectionLoading by remember { mutableStateOf(false) }
+    var profileSelectionLoadingId by remember { mutableStateOf<String?>(null) }
     val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
     val playlistProfiles by container.accountManager.profiles.collectAsStateWithLifecycle()
     val activeProfileId by container.accountManager.activeProfileId.collectAsStateWithLifecycle()
@@ -508,7 +508,7 @@ fun AppNavigation(
             profiles = playlistProfiles.filter { it.isConfigured },
             activeProfileId = activeProfileId,
             multiProfileAccess = multiProfileGate,
-            selectionLoading = profileSelectionLoading,
+            selectionLoadingProfileId = profileSelectionLoadingId,
             onLockedFeature = {
                 if (multiProfileGate.shouldShowUpgradePrompt) {
                     showLicensePurchaseQr = true
@@ -517,32 +517,25 @@ fun AppNavigation(
             onVerifyPin = container.settingsRepository::verifyParentalPin,
             onSelectProfile = { profileId ->
                 scope.launch {
-                    profileSelectionLoading = true
-                    container.accountManager.activateProfile(profileId)
-                    container.xtreamRepository.clearCaches()
-                    container.catalogRepository.clearCatalogForProfileSwitch()
-                    profilePickerCompleted = true
-                    profileSelectionLoading = false
+                    profileSelectionLoadingId = profileId
+                    runCatching {
+                        container.accountManager.activateProfile(profileId)
+                        container.xtreamRepository.clearCaches()
+                        container.catalogRepository.clearCatalogForProfileSwitch()
+                    }.onSuccess {
+                        delay(160)
+                        profilePickerCompleted = true
+                    }
+                    profileSelectionLoadingId = null
                 }
             },
             onSaveProfile = { profile ->
-                val wasFirstProfile = container.accountManager.profiles.value.isEmpty()
                 val wasActiveProfile = profile.id.isNotBlank() && profile.id == container.accountManager.activeProfileId.value
-                val profileId = container.accountManager.upsertProfile(profile)
-                if (wasFirstProfile || wasActiveProfile) {
+                container.accountManager.upsertProfile(profile)
+                if (wasActiveProfile) {
                     container.xtreamRepository.clearCaches()
                     scope.launch {
                         container.catalogRepository.clearCatalogForProfileSwitch()
-                        if (!container.catalogRepository.hasLocalCatalogForActiveProfile()) {
-                            runCatching {
-                                container.xtreamRepository.clearCaches()
-                                container.catalogRepository.invalidateLocalCatalogCache()
-                                container.synchronizeCatalog().getOrThrow()
-                                container.accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let { epgUrl ->
-                                    container.epgRepository.synchronize(epgUrl)
-                                }
-                            }
-                        }
                     }
                 }
             },

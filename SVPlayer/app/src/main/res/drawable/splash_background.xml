@@ -8,16 +8,15 @@
     <item>
         <bitmap
             android:gravity="fill"
-            android:src="@drawable/smartvision_splash_bg" />
+            android:src="@drawable/startup_neon_background" />
     </item>
-<item
-    android:width="374dp"
-    android:height="95dp"
-    android:gravity="top|center_horizontal"
-    android:top="200dp"
-    android:bottom="768dp">
-    <bitmap
-        android:gravity="fill"
-        android:src="@drawable/smartvision_logo_wide" />
-</item>
+    <item
+        android:width="374dp"
+        android:height="95dp"
+        android:gravity="top|center_horizontal"
+        android:top="200dp">
+        <bitmap
+            android:gravity="fill"
+            android:src="@drawable/smartvision_logo_wide" />
+    </item>
 </layer-list>

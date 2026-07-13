@@ -1,5 +1,14 @@
 # AI Changelog
 
+## 2026-07-13 - Demarrage unifie et picker de profils dynamique
+
+- Unifie la preview Android et Compose autour du meme visuel, avec etats `LogoOnly`, `Loading` retarde et fondu croise vers l'application.
+- Retire pourcentage et statuts codes en dur; progression et textes EN/FR correspondent aux etapes locales terminees.
+- Remplace le picker fixe par une `LazyRow` a cles stables: noms exclusivement issus de `PlaylistProfile.name`, actions localisees, focus actif/ADMIN/premier et crayon accessible au D-pad Bas/Haut.
+- Compacte et centre le groupe de cartes, uniformise le diametre des avatars et place les crayons sous les cartes, hors du cadre.
+- Deplace toute synchronisation hors du picker; la selection ne fait que l'activation, la purge des caches memoire et la validation visuelle avant Home.
+- Validation: `:app:compileReleaseKotlin`, 6 tests release cibles et `:app:assembleRelease` reussis. APK installe sur Firestick AFTSSS; rendu, centrage et navigation carte/crayon verifies en `1920x1080`.
+
 ## 2026-07-13 - Filtre Kids v2, catalogues harmonises et focus TV
 
 - Ajoute le moteur Kids category-first multilingue, l'heritage sans score item, les exclusions adultes, les raisons/scores et le cache partage incremental Room v16.
