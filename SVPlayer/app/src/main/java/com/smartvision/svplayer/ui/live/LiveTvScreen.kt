@@ -133,7 +133,10 @@ import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.catalog.CatalogSortButton
+import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
+import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
+import com.smartvision.svplayer.ui.focus.awaitItemVisible
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
@@ -327,7 +330,7 @@ fun LiveTvScreen(
             if (targetIndex < 0) return@launch
             categoryFocusTargetId = targetId
             categoryListState.scrollToItem(targetIndex)
-            if (!categoryListState.awaitVisibleItem(targetIndex)) return@launch
+            if (!categoryListState.awaitItemVisible(targetIndex)) return@launch
             withFrameNanos { }
             currentFocusZone = LiveTvFocusZone.Categories
             runCatching { selectedCategoryFocusRequester.requestFocus() }
@@ -346,9 +349,9 @@ fun LiveTvScreen(
             if (targetIndex < 0) return@launch
             channelFocusTargetId = targetId
             channelListState.scrollToItem((targetIndex - 2).coerceAtLeast(0))
-            if (!channelListState.awaitVisibleItem(targetIndex)) {
+            if (!channelListState.awaitItemVisible(targetIndex)) {
                 channelListState.scrollToItem(targetIndex)
-                if (!channelListState.awaitVisibleItem(targetIndex)) return@launch
+                if (!channelListState.awaitItemVisible(targetIndex)) return@launch
             }
             withFrameNanos { }
             currentFocusZone = LiveTvFocusZone.Channels
@@ -362,7 +365,7 @@ fun LiveTvScreen(
             channelFocusTargetId = firstChannel.streamId
             lastFocusedChannelId = firstChannel.streamId
             channelListState.scrollToItem(0)
-            if (!channelListState.awaitVisibleItem(0)) return@launch
+            if (!channelListState.awaitItemVisible(0)) return@launch
             withFrameNanos { }
             currentFocusZone = LiveTvFocusZone.Channels
             runCatching { firstChannelFocusRequester.requestFocus() }
@@ -401,7 +404,7 @@ fun LiveTvScreen(
             val targetIndex = state.channels.indexOfFirst { it.streamId == channelId }
             if (targetIndex >= 0) {
                 channelListState.scrollToItem((targetIndex - 2).coerceAtLeast(0))
-                if (!channelListState.awaitVisibleItem(targetIndex)) {
+                if (!channelListState.awaitItemVisible(targetIndex)) {
                     channelListState.scrollToItem(targetIndex)
                 }
                 withFrameNanos { }
@@ -664,7 +667,7 @@ private fun CategoryList(
         val index = visibleCategories.indexOfFirst { it.id == focusCategoryId }
         if (index >= 0) {
             listState.scrollToItem(index)
-            if (listState.awaitVisibleItem(index)) {
+            if (listState.awaitItemVisible(index)) {
                 withFrameNanos { }
                 runCatching { selectedCategoryFocusRequester.requestFocus() }
             }
@@ -2964,71 +2967,30 @@ private fun LiveTvPanel(
     shape: Shape = RoundedCornerShape(LiveTvDimens.PanelRadius),
     content: @Composable () -> Unit,
 ) {
-    Column(
-        modifier = modifier
-            .clip(shape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xE80A1323),
-                        Color(0xEE07101E),
-                    ),
-                ),
-            )
-            .border(BorderStroke(1.dp, SmartVisionColors.Border), shape)
-            .padding(LiveTvDimens.PanelPadding),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(30.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = title,
-                color = SmartVisionColors.TextPrimary,
-                style = LiveTvPanelTitleStyle,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                modifier = Modifier.padding(start = LiveTvDimens.PanelHeaderTitleStartPadding),
-            )
-            Spacer(Modifier.weight(1f))
-            trailing?.invoke()
-        }
-
-        Spacer(Modifier.height(6.dp))
-
-        content()
-    }
+    MediaCatalogPanel(
+        title = title,
+        modifier = modifier,
+        trailing = trailing,
+        shape = shape,
+        content = content,
+    )
 }
 
 private const val LiveTvNextPageThreshold = 12
 
-private suspend fun LazyListState.awaitVisibleItem(index: Int): Boolean {
-    repeat(8) {
-        if (layoutInfo.visibleItemsInfo.any { item -> item.index == index }) {
-            return true
-        }
-        withFrameNanos { }
-    }
-    return layoutInfo.visibleItemsInfo.any { item -> item.index == index }
-}
-
 private object LiveTvDimens {
-    val ScreenPadding = 14.dp
-    val TopPadding = 4.dp
-    val BottomPadding = 16.dp
-    val HeaderHeight = 44.dp
-    val HeaderGap = 16.dp
-    val PanelGap = 8.dp
-    val PanelPadding = 8.dp
-    val PanelRadius = 8.dp
-    val ItemRadius = 7.dp
-    val ListGap = 5.dp
-    val CategoryRowHeight = 36.dp
+    val ScreenPadding = MediaCatalogDimens.ScreenPadding
+    val TopPadding = MediaCatalogDimens.TopPadding
+    val BottomPadding = MediaCatalogDimens.BottomPadding
+    val HeaderHeight = MediaCatalogDimens.HeaderHeight
+    val HeaderGap = MediaCatalogDimens.HeaderGap
+    val PanelGap = MediaCatalogDimens.PanelGap
+    val PanelRadius = MediaCatalogDimens.PanelRadius
+    val ItemRadius = MediaCatalogDimens.ItemRadius
+    val ListGap = MediaCatalogDimens.ListGap
+    val CategoryRowHeight = MediaCatalogDimens.CategoryRowHeight
     val ChannelRowHeight = 42.dp
     val ChannelListTopPadding = 12.dp
-    val PanelHeaderTitleStartPadding = 8.dp
 }
 
 private fun LiveTvChannel.toBehaviorContent(categoryLabel: String?): BehaviorContent =

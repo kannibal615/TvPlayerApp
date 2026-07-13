@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-07-12.
+Derniere mise a jour: 2026-07-13.
 
 ## Profils Kids et dialogues
 
@@ -155,6 +155,9 @@ Backend indirect:
 - Ne pas changer l'ordre D-pad sans valider les surfaces adjacentes.
 - Ne pas etendre l'interception globale Settings/Menu aux touches D-pad, OK, Back ou media: ces touches doivent rester gerees par les ecrans/player ou par Android via `super.dispatchKeyEvent(event)`.
 - Les transitions entre une liste de categories et une liste/grille de contenus ne doivent pas pointer directement vers le premier item lazy via `focusProperties`; si l'item sort de composition, DPAD droite/gauche peut crasher.
+- `LazyListState.awaitItemVisible()` est le helper partage Live/Movies/Series: scroller la cible, attendre sa composition, puis demander le focus.
+- Live/Movies/Series suivent le meme contrat explicite `categories <-> liste centrale <-> preview`; Movies/Series restaurent le dernier item focusse et selectionnent la ligne avant d'entrer dans Preview.
+- Media selectionne explicitement le fichier/item prive avant le transfert DPAD droite, puis rend DPAD gauche a la liste ou a la bibliotheque si la liste est vide.
 - Live TV Categories: OK applique le filtre au premier clic. `All` reste premier, le filtre actif passe en deuxieme position avec cle stable, puis la categorie `All` filtree est selectionnee et recoit le focus. La fleche droite est supprimee; les chips gardent leur largeur et passent a `30.dp` de haut.
 - Movies/Series 3 colonnes: DPAD droite depuis une ligne contenu peut cibler le bouton `Play` du panneau preview, mais le premier OK ne doit plus transferer automatiquement le focus vers `Play`; les restaurations initiales doivent rester protegees par `withFrameNanos`/delai court et `runCatching`.
 - Le texte doit rester lisible a distance TV.
@@ -205,7 +208,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-05: ajout de la route/header `Media`, verrou/couronne via `media_center`, alignement du header Detail, puis ecran Media Center connecte au stockage local avec listes fichiers/dossiers focusables, panneau apercu et dialogues Renommer/Deplacer/Supprimer.
 - 2026-07-05: Media Center ajoute la lecture locale video/audio/photo, un viewer photo plein ecran, un focus DPAD droite liste -> apercu, et un agencement plus compact; le header reduit encore les espacements et positionne la couronne au-dessus du label locked.
 - 2026-07-05: Media Center ajoute Importer tel. et Exporter tel. sous gate `media_phone_transfer`. Ces actions ouvrent un dialog QR focusable; la session reseau local s'arrete a la fermeture du dialog ou a la destruction du ViewModel.
-- 2026-07-05: stabilisation Media Center Lot 14: DPAD droite depuis la liste ne demande l'apercu que si un fichier est selectionne, et le focus cible le premier bouton d'apercu reellement actif (`Lire`, `Renommer` ou `Exporter tel.`). Les etats import/export telephone affichent une preparation visible.
+- 2026-07-13: Media Center selectionne d'abord la ligne lors de DPAD droite, attend l'etat selectionne compose puis cible la premiere action d'apercu; DPAD gauche restaure explicitement liste/bibliotheque.
 - 2026-07-05: Media Center rend `Supprimer` accessible au meme niveau que `Lire` et `Renommer`; le dialog de suppression prend le focus TV et les actions fichier utilisent l'id du fichier du dialog.
 - 2026-07-05: Media Center remplace le bouton lateral d'import telephone par un bloc focusable `Telephone -> TV`: `Recevoir fichier` quand le transfert est autorise, `Debloquer` avec message Premium/essai quand la feature `media_phone_transfer` est verrouillee.
 - 2026-07-05: Media Center adopte un agencement premium: colonne gauche studio/compteurs/stockage/hub transfert, stats en tete de liste, lignes fichier avec badges/pills et panneau apercu hero.

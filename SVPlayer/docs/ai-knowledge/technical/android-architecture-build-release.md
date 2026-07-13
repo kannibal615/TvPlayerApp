@@ -1,6 +1,6 @@
 # Android Architecture, Build et Release
 
-Derniere mise a jour: 2026-07-12.
+Derniere mise a jour: 2026-07-13.
 
 ## Persistance profils v15
 
@@ -9,6 +9,11 @@ Derniere mise a jour: 2026-07-12.
 - Les credentials custom sont chiffres AES/GCM avec une cle Android Keystore et ne sont plus persistes dans le JSON des profils.
 - Le PIN parental est derive avec PBKDF2-HMAC-SHA256, sel aleatoire et comparaison constante; l'ancien PIN DataStore est migre vers un marqueur `configured`.
 - `videoRatio`, `bufferMode` et `retryEnabled` sont scopes par profil avec fallback sur les anciennes valeurs globales.
+
+## Persistance Kids v16
+
+- Room v16 ajoute les tables partagees `kids_category_decisions` et `kids_item_decisions` ainsi que les index source/type/categorie/decision/version.
+- La migration `15 -> 16` ne modifie pas les tables catalogue existantes. Le schema exporte est `app/schemas/com.smartvision.svplayer.data.local.SVDatabase/16.json`.
 
 ## 1. Objectif
 
@@ -26,8 +31,8 @@ Observabilite reseau:
 - Ne jamais exposer les query params, tokens, identifiants Xtream, mots de passe ou URLs de lecture dans ce tracker.
 
 Gradle local constate le 2026-07-13:
-- `versionCode = 148`
-- `versionName = "0.1.118"`
+- `versionCode = 151`
+- `versionName = "0.1.120"`
 - `compileSdk = 36`
 - `targetSdk = 36`
 - `minSdk = 23`

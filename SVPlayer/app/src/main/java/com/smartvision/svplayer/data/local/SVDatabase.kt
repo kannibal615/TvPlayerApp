@@ -10,6 +10,7 @@ import com.smartvision.svplayer.data.local.dao.CategoryDao
 import com.smartvision.svplayer.data.local.dao.FavoriteDao
 import com.smartvision.svplayer.data.local.dao.MediaCenterDao
 import com.smartvision.svplayer.data.local.dao.MediaDao
+import com.smartvision.svplayer.data.local.dao.KidsFilterDao
 import com.smartvision.svplayer.data.local.dao.ProfileDao
 import com.smartvision.svplayer.data.local.dao.ProgressDao
 import com.smartvision.svplayer.data.local.dao.SyncStateDao
@@ -19,6 +20,8 @@ import com.smartvision.svplayer.data.local.entity.EpisodeEntity
 import com.smartvision.svplayer.data.local.entity.FavoriteEntity
 import com.smartvision.svplayer.data.local.entity.HomeTrendingPreviewCacheEntity
 import com.smartvision.svplayer.data.local.entity.LiveStreamEntity
+import com.smartvision.svplayer.data.local.entity.KidsCategoryDecisionEntity
+import com.smartvision.svplayer.data.local.entity.KidsItemDecisionEntity
 import com.smartvision.svplayer.data.local.entity.MediaFileEntity
 import com.smartvision.svplayer.data.local.entity.MediaFolderEntity
 import com.smartvision.svplayer.data.local.entity.MovieEntity
@@ -59,8 +62,10 @@ import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
         MediaFolderEntity::class,
         MediaFileEntity::class,
         RecordingJobEntity::class,
+        KidsCategoryDecisionEntity::class,
+        KidsItemDecisionEntity::class,
     ],
-    version = 15,
+    version = 16,
     exportSchema = true,
 )
 abstract class SVDatabase : RoomDatabase() {
@@ -72,6 +77,7 @@ abstract class SVDatabase : RoomDatabase() {
     abstract fun syncStateDao(): SyncStateDao
     abstract fun youtubeDao(): YoutubeDao
     abstract fun mediaCenterDao(): MediaCenterDao
+    abstract fun kidsFilterDao(): KidsFilterDao
 
     companion object {
         fun build(context: Context): SVDatabase =
@@ -91,6 +97,7 @@ abstract class SVDatabase : RoomDatabase() {
                     Migration12To13(context),
                     Migration13To14(context),
                     Migration14To15,
+                    Migration15To16,
                 )
                 .build()
 
@@ -629,6 +636,47 @@ abstract class SVDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE series ADD COLUMN addedAt INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_movies_profileId_addedAt ON movies(profileId, addedAt)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_series_profileId_addedAt ON series(profileId, addedAt)")
+            }
+        }
+
+        private val Migration15To16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS kids_category_decisions (" +
+                        "sourceKey TEXT NOT NULL, contentType TEXT NOT NULL, categoryId TEXT NOT NULL, " +
+                        "normalizedName TEXT NOT NULL, decision TEXT NOT NULL, score INTEGER NOT NULL, " +
+                        "source TEXT NOT NULL, reason TEXT NOT NULL, ruleVersion INTEGER NOT NULL, " +
+                        "metadataFingerprint TEXT NOT NULL, updatedAt INTEGER NOT NULL, " +
+                        "PRIMARY KEY(sourceKey, contentType, categoryId))",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_kids_category_decisions_sourceKey_contentType_decision " +
+                        "ON kids_category_decisions(sourceKey, contentType, decision)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_kids_category_decisions_ruleVersion " +
+                        "ON kids_category_decisions(ruleVersion)",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS kids_item_decisions (" +
+                        "sourceKey TEXT NOT NULL, contentType TEXT NOT NULL, contentId TEXT NOT NULL, categoryId TEXT, " +
+                        "allowed INTEGER NOT NULL, decision TEXT NOT NULL, score INTEGER NOT NULL, source TEXT NOT NULL, " +
+                        "reason TEXT NOT NULL, inheritedCategoryId TEXT, ruleVersion INTEGER NOT NULL, " +
+                        "metadataFingerprint TEXT NOT NULL, updatedAt INTEGER NOT NULL, " +
+                        "PRIMARY KEY(sourceKey, contentType, contentId))",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_kids_item_decisions_sourceKey_contentType_categoryId " +
+                        "ON kids_item_decisions(sourceKey, contentType, categoryId)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_kids_item_decisions_sourceKey_contentType_allowed " +
+                        "ON kids_item_decisions(sourceKey, contentType, allowed)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_kids_item_decisions_ruleVersion " +
+                        "ON kids_item_decisions(ruleVersion)",
+                )
             }
         }
     }

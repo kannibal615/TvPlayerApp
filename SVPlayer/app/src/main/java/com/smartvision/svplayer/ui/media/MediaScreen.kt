@@ -274,6 +274,7 @@ fun MediaScreen(
                     viewModel.selectPrivateItem(itemId)
                 }
             },
+            onPrivateItemFocused = viewModel::selectPrivateItem,
             onRefresh = viewModel::refreshStorage,
             onRefreshPrivate = viewModel::refreshPrivateMedia,
             onPrivateCategorySelected = viewModel::selectPrivateCategory,
@@ -417,6 +418,7 @@ private fun MediaWorkspace(
     onPrivateCategorySelected: (String) -> Unit,
     onFileSelected: (Long) -> Unit,
     onPrivateItemSelected: (String) -> Unit,
+    onPrivateItemFocused: (String) -> Unit,
     onRefresh: () -> Unit,
     onRefreshPrivate: () -> Unit,
     onSearchQueryChanged: (String) -> Unit,
@@ -438,6 +440,7 @@ private fun MediaWorkspace(
     val previewActionFocusRequester = remember { FocusRequester() }
     val previewPlayerFocusRequester = remember { FocusRequester() }
     var contentFocusSignal by remember { mutableIntStateOf(0) }
+    var pendingPreviewTarget by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(contentFocusSignal, state.selectedSource, state.selectedArea, state.visibleFiles.size, state.folders.size, state.privateItems.size) {
         if (contentFocusSignal > 0) {
@@ -446,15 +449,32 @@ private fun MediaWorkspace(
         }
     }
 
-    fun focusPreviewAction(): Boolean {
-        if (state.selectedSource == MediaSource.Local && state.selectedFile == null) return false
-        if (state.selectedSource == MediaSource.Private && state.selectedPrivateItem == null) return false
-        if (state.selectedSource == MediaSource.Private && !state.privatePreviewPlayback?.embedUrl.isNullOrBlank()) {
-            runCatching { previewPlayerFocusRequester.requestFocus() }
-        } else {
-            runCatching { previewActionFocusRequester.requestFocus() }
+    LaunchedEffect(pendingPreviewTarget, state.selectedFileId, state.selectedPrivateItemId) {
+        val target = pendingPreviewTarget ?: return@LaunchedEffect
+        val ready = when {
+            target.startsWith("local:") -> state.selectedFileId?.toString() == target.removePrefix("local:")
+            target.startsWith("private:") -> state.selectedPrivateItemId == target.removePrefix("private:")
+            else -> false
         }
-        return true
+        if (!ready) return@LaunchedEffect
+        withFrameNanos { }
+        runCatching { previewActionFocusRequester.requestFocus() }
+        pendingPreviewTarget = null
+    }
+
+    fun focusLibrary() {
+        runCatching { firstFocusRequester.requestFocus() }
+    }
+
+    fun focusContentOrLibrary() {
+        val hasContent = when {
+            state.selectedSource == MediaSource.Private -> state.privateItems.isNotEmpty()
+            state.selectedArea == MediaArea.Folders -> state.folders.isNotEmpty()
+            else -> state.visibleFiles.isNotEmpty()
+        }
+        runCatching {
+            if (hasContent) firstContentFocusRequester.requestFocus() else firstFocusRequester.requestFocus()
+        }
     }
 
     Row(
@@ -502,7 +522,15 @@ private fun MediaWorkspace(
             onRefreshPrivate = onRefreshPrivate,
             onSearchQueryChanged = onSearchQueryChanged,
             firstContentFocusRequester = firstContentFocusRequester,
-            onMoveRightToPreview = { focusPreviewAction() },
+            onMoveFileRightToPreview = { fileId ->
+                pendingPreviewTarget = "local:$fileId"
+                onFileSelected(fileId)
+            },
+            onMovePrivateRightToPreview = { itemId ->
+                pendingPreviewTarget = "private:$itemId"
+                onPrivateItemFocused(itemId)
+            },
+            onMoveLeftToLibrary = ::focusLibrary,
             modifier = Modifier
                 .weight(if (privateMode) 0.30f else 0.42f)
                 .fillMaxHeight(),
@@ -521,6 +549,7 @@ private fun MediaWorkspace(
             onExportPhone = onExportPhone,
             previewActionFocusRequester = previewActionFocusRequester,
             previewPlayerFocusRequester = previewPlayerFocusRequester,
+            onNavigateLeft = ::focusContentOrLibrary,
             modifier = Modifier
                 .weight(if (privateMode) 0.50f else 0.34f)
                 .fillMaxHeight(),
@@ -1156,7 +1185,9 @@ private fun MediaContentPanel(
     onRefreshPrivate: () -> Unit,
     onSearchQueryChanged: (String) -> Unit,
     firstContentFocusRequester: FocusRequester,
-    onMoveRightToPreview: () -> Boolean,
+    onMoveFileRightToPreview: (Long) -> Unit,
+    onMovePrivateRightToPreview: (String) -> Unit,
+    onMoveLeftToLibrary: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     MediaCatalogPanel(
@@ -1232,7 +1263,8 @@ private fun MediaContentPanel(
                         selectedItemId = state.selectedPrivateItemId,
                         onItemSelected = onPrivateItemSelected,
                         firstFocusRequester = firstContentFocusRequester,
-                        onMoveRightToPreview = onMoveRightToPreview,
+                        onMoveRightToPreview = onMovePrivateRightToPreview,
+                        onMoveLeftToLibrary = onMoveLeftToLibrary,
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
@@ -1243,6 +1275,7 @@ private fun MediaContentPanel(
                     strings = strings,
                     folders = state.folders,
                     firstFocusRequester = firstContentFocusRequester,
+                    onMoveLeftToLibrary = onMoveLeftToLibrary,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
@@ -1254,7 +1287,8 @@ private fun MediaContentPanel(
                     selectedFileId = state.selectedFileId,
                     onFileSelected = onFileSelected,
                     firstFocusRequester = firstContentFocusRequester,
-                    onMoveRightToPreview = onMoveRightToPreview,
+                    onMoveRightToPreview = onMoveFileRightToPreview,
+                    onMoveLeftToLibrary = onMoveLeftToLibrary,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
@@ -1470,7 +1504,8 @@ private fun MediaFileList(
     selectedFileId: Long?,
     onFileSelected: (Long) -> Unit,
     firstFocusRequester: FocusRequester,
-    onMoveRightToPreview: () -> Boolean,
+    onMoveRightToPreview: (Long) -> Unit,
+    onMoveLeftToLibrary: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (files.isEmpty()) {
@@ -1494,7 +1529,8 @@ private fun MediaFileList(
                 selected = file.id == selectedFileId,
                 onClick = { onFileSelected(file.id) },
                 focusRequester = if (index == 0) firstFocusRequester else null,
-                onMoveRightToPreview = onMoveRightToPreview,
+                onMoveRightToPreview = { onMoveRightToPreview(file.id) },
+                onMoveLeftToLibrary = onMoveLeftToLibrary,
             )
         }
     }
@@ -1505,6 +1541,7 @@ private fun MediaFolderList(
     strings: SmartVisionStrings,
     folders: List<MediaFolderUi>,
     firstFocusRequester: FocusRequester,
+    onMoveLeftToLibrary: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (folders.isEmpty()) {
@@ -1526,6 +1563,7 @@ private fun MediaFolderList(
                 strings = strings,
                 folder = folder,
                 focusRequester = if (index == 0) firstFocusRequester else null,
+                onMoveLeftToLibrary = onMoveLeftToLibrary,
             )
         }
     }
@@ -1538,7 +1576,8 @@ private fun PrivateMediaList(
     selectedItemId: String?,
     onItemSelected: (String) -> Unit,
     firstFocusRequester: FocusRequester,
-    onMoveRightToPreview: () -> Boolean,
+    onMoveRightToPreview: (String) -> Unit,
+    onMoveLeftToLibrary: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -1553,7 +1592,8 @@ private fun PrivateMediaList(
                 selected = item.id == selectedItemId,
                 onClick = { onItemSelected(item.id) },
                 focusRequester = if (index == 0) firstFocusRequester else null,
-                onMoveRightToPreview = onMoveRightToPreview,
+                onMoveRightToPreview = { onMoveRightToPreview(item.id) },
+                onMoveLeftToLibrary = onMoveLeftToLibrary,
             )
         }
     }
@@ -1584,7 +1624,8 @@ private fun PrivateMediaRow(
     selected: Boolean,
     onClick: () -> Unit,
     focusRequester: FocusRequester?,
-    onMoveRightToPreview: () -> Boolean,
+    onMoveRightToPreview: () -> Unit,
+    onMoveLeftToLibrary: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusState = rememberTvFocusState()
@@ -1607,10 +1648,17 @@ private fun PrivateMediaRow(
                 cornerRadius = MediaCatalogDimens.ItemRadius,
             )
             .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight) {
-                    onMoveRightToPreview()
-                } else {
-                    false
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.DirectionLeft -> {
+                        onMoveLeftToLibrary()
+                        true
+                    }
+                    Key.DirectionRight -> {
+                        onMoveRightToPreview()
+                        true
+                    }
+                    else -> false
                 }
             }
             .clip(shape)
@@ -1692,7 +1740,8 @@ private fun MediaFileRow(
     selected: Boolean,
     onClick: () -> Unit,
     focusRequester: FocusRequester?,
-    onMoveRightToPreview: () -> Boolean,
+    onMoveRightToPreview: () -> Unit,
+    onMoveLeftToLibrary: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusState = rememberTvFocusState()
@@ -1715,10 +1764,17 @@ private fun MediaFileRow(
                 cornerRadius = MediaCatalogDimens.ItemRadius,
             )
             .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight) {
-                    onMoveRightToPreview()
-                } else {
-                    false
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.DirectionLeft -> {
+                        onMoveLeftToLibrary()
+                        true
+                    }
+                    Key.DirectionRight -> {
+                        onMoveRightToPreview()
+                        true
+                    }
+                    else -> false
                 }
             }
             .clip(shape)
@@ -1836,6 +1892,7 @@ private fun MediaFolderRow(
     strings: SmartVisionStrings,
     folder: MediaFolderUi,
     focusRequester: FocusRequester?,
+    onMoveLeftToLibrary: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusState = rememberTvFocusState()
@@ -1855,6 +1912,14 @@ private fun MediaFolderRow(
                 glowColor = SmartVisionColors.Primary,
                 cornerRadius = MediaCatalogDimens.ItemRadius,
             )
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft) {
+                    onMoveLeftToLibrary()
+                    true
+                } else {
+                    false
+                }
+            }
             .clip(shape)
             .background(
                 if (focusState.isFocused) {
@@ -2164,6 +2229,7 @@ private fun MediaPreviewPanel(
     onExportPhone: () -> Unit,
     previewActionFocusRequester: FocusRequester,
     previewPlayerFocusRequester: FocusRequester,
+    onNavigateLeft: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (state.selectedSource == MediaSource.Private) {
@@ -2177,6 +2243,7 @@ private fun MediaPreviewPanel(
             onOpenPlayer = onOpenPrivateMediaPlayer,
             previewActionFocusRequester = previewActionFocusRequester,
             previewPlayerFocusRequester = previewPlayerFocusRequester,
+            onNavigateLeft = onNavigateLeft,
             modifier = modifier,
         )
         return
@@ -2194,7 +2261,14 @@ private fun MediaPreviewPanel(
     }
     MediaCatalogPanel(
         title = strings.mediaPreview,
-        modifier = modifier,
+        modifier = modifier.onPreviewKeyEvent { event ->
+            if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft) {
+                onNavigateLeft()
+                true
+            } else {
+                false
+            }
+        },
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -2326,6 +2400,7 @@ private fun PrivateMediaPreviewPanel(
     onOpenPlayer: (String) -> Unit,
     previewActionFocusRequester: FocusRequester,
     previewPlayerFocusRequester: FocusRequester,
+    onNavigateLeft: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val canOpenPlayer = item != null
@@ -2336,7 +2411,14 @@ private fun PrivateMediaPreviewPanel(
 
     MediaCatalogPanel(
         title = "",
-        modifier = modifier,
+        modifier = modifier.onPreviewKeyEvent { event ->
+            if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft) {
+                onNavigateLeft()
+                true
+            } else {
+                false
+            }
+        },
         titleContent = {
             Text(
                 text = item?.title ?: strings.mediaPrivate,

@@ -1,5 +1,7 @@
 package com.smartvision.svplayer.data.home
 
+import com.smartvision.svplayer.data.mock.ContinueItem
+import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -39,6 +41,39 @@ class HomeTrendingPolicyTest {
         assertTrue(HomeTrendingPolicy.isNoveltyCategory("New Releases"))
         assertTrue(HomeTrendingPolicy.containsAdultMarker("Films \u00C9rotiques"))
         assertFalse(HomeTrendingPolicy.containsAdultMarker("Films famille"))
+    }
+
+    @Test
+    fun `prepared preview never replaces the card image`() {
+        val item = ContinueItem(
+            id = "movie-42",
+            title = "Stable image",
+            meta = "Movie",
+            remaining = "",
+            progress = 0f,
+            visualStyle = HomeVisualStyle.Cinema,
+            imageUrl = "https://catalog.example/poster.jpg",
+        )
+        val prepared = HomeTrendingPreparedPreview(
+            contentType = "movie",
+            contentId = 42,
+            posterUrl = "https://metadata.example/new-poster.jpg",
+            backdropUrl = "https://metadata.example/backdrop.jpg",
+            durationLabel = "1h 30m",
+            durationMs = 5_400_000L,
+            previewUrl = "https://stream.example/preview.ts",
+            previewStartPositionMs = 10_000L,
+            previewFallbackStartPositionMs = 0L,
+            sampleLabel = null,
+            backdropAvailable = true,
+            previewAvailable = true,
+        )
+
+        val result = prepared.applyTo(item)
+
+        assertEquals(item.imageUrl, result.imageUrl)
+        assertEquals(prepared.backdropUrl, result.previewImageUrl)
+        assertTrue(result.previewPrepared)
     }
 
     private fun select(rated: List<Item>, newest: List<Item>, limit: Int): List<Item> =

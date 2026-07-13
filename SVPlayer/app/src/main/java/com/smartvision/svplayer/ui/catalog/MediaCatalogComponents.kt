@@ -84,6 +84,7 @@ import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.HeaderControls
 import com.smartvision.svplayer.ui.home.HeaderTabButton
+import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -135,53 +136,23 @@ fun MediaCatalogHeader(
     contentDownFocusRequester: FocusRequester? = null,
     onContentDown: (() -> Unit)? = null,
 ) {
-    val container = LocalAppContainer.current
-    val profiles by container.accountManager.profiles.collectAsStateWithLifecycle()
-    val activeProfileId by container.accountManager.activeProfileId.collectAsStateWithLifecycle()
-    val activeProfile = profiles.firstOrNull { it.id == activeProfileId }
-    val kidsMode = activeProfile?.type == ProfileType.KIDS
-
-    Row(
-        modifier = modifier.height(MediaCatalogDimens.HeaderHeight),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        MediaCatalogLogo()
-
-        Spacer(Modifier.width(8.dp))
-
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            tabs.forEach { tab ->
-                HeaderTabButton(
-                    tab = tab,
-                    currentRoute = currentRoute,
-                    onNavigate = onNavigate,
-                    height = 36.dp,
-                    horizontalPadding = 6.dp,
-                    focusRequester = currentTabFocusRequester.takeIf { tab.route == currentRoute },
-                    downFocusRequester = contentDownFocusRequester,
-                    onDown = onContentDown,
-                )
-            }
-        }
-
-        HeaderControls(
-            onNotifications = onNotifications,
-            onLicenseKey = onLicenseKey,
-            onProfile = onProfile,
-            onSettings = onSettings,
-            showLicenseKey = showLicenseKey,
-            hasNewNotifications = hasNewNotifications,
-            notificationBadgeCount = notificationBadgeCount,
-            downFocusRequester = contentDownFocusRequester,
-            onDown = onContentDown,
-            activeProfile = activeProfile,
-            kidsMode = kidsMode,
-        )
-    }
+    TvHeader(
+        currentRoute = currentRoute,
+        tabs = tabs,
+        onNavigate = onNavigate,
+        onSync = onSync,
+        onSettings = onSettings,
+        onProfile = onProfile,
+        onNotifications = onNotifications,
+        onLicenseKey = onLicenseKey,
+        showLicenseKey = showLicenseKey,
+        hasNewNotifications = hasNewNotifications,
+        notificationBadgeCount = notificationBadgeCount,
+        modifier = modifier,
+        currentTabFocusRequester = currentTabFocusRequester,
+        contentDownFocusRequester = contentDownFocusRequester,
+        onContentDown = onContentDown,
+    )
 }
 
 @Composable
@@ -283,18 +254,6 @@ fun CatalogSearchField(
 }
 
 @Composable
-private fun MediaCatalogLogo() {
-    Image(
-        painter = painterResource(R.drawable.smartvision_logo_wide),
-        contentDescription = "SmartVision IPTV Player",
-        contentScale = ContentScale.Fit,
-        modifier = Modifier
-            .width(178.dp)
-            .fillMaxHeight(),
-    )
-}
-
-@Composable
 fun MediaCatalogPanel(
     title: String,
     modifier: Modifier = Modifier,
@@ -315,12 +274,12 @@ fun MediaCatalogPanel(
                 ),
             )
             .border(BorderStroke(1.dp, SmartVisionColors.Border), shape)
-            .padding(horizontal = MediaCatalogDimens.PanelPadding, vertical = MediaCatalogDimens.PanelVerticalPadding),
+            .padding(MediaCatalogDimens.PanelPadding),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(34.dp),
+                .height(MediaCatalogDimens.PanelHeaderHeight),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(modifier = Modifier.weight(1f)) {
@@ -334,6 +293,7 @@ fun MediaCatalogPanel(
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = MediaCatalogDimens.PanelHeaderTitleStartPadding),
                     )
                 }
             }
@@ -357,6 +317,7 @@ fun CatalogCategoryRow(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
     upFocusRequester: FocusRequester? = null,
+    onRight: (() -> Unit)? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -385,6 +346,14 @@ fun CatalogCategoryRow(
                     Modifier
                 },
             )
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight && onRight != null) {
+                    onRight()
+                    true
+                } else {
+                    false
+                }
+            }
             .tvFocusTarget(
                 state = focusState,
                 focusRequester = focusRequester,
@@ -1061,12 +1030,13 @@ object MediaCatalogDimens {
     val HeaderHeight = 44.dp
     val HeaderGap = 16.dp
     val PanelGap = 8.dp
-    val PanelPadding = 14.dp
-    val PanelVerticalPadding = 10.dp
+    val PanelPadding = 8.dp
+    val PanelHeaderHeight = 30.dp
+    val PanelHeaderTitleStartPadding = 8.dp
     val PanelRadius = 8.dp
     val ItemRadius = 7.dp
     val ListGap = 5.dp
-    val CategoryRowHeight = 42.dp
+    val CategoryRowHeight = 36.dp
     val ContentRowHeight = 66.dp
     val MediaGridGap = 8.dp
     const val MediaGridColumns = 5

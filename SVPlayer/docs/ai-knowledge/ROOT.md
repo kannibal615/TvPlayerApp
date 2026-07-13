@@ -1,6 +1,6 @@
 # SmartVision AI Knowledge Root
 
-Derniere mise a jour: 2026-07-12.
+Derniere mise a jour: 2026-07-13.
 
 Ce fichier est le point d'entree court pour les agents IA. Lire ce fichier avant `AGENTS.md`, `PROJECT_NOTES.md` ou tout gros fichier legacy. Les anciens MD restent des sources historiques et ne doivent plus etre lus par defaut.
 
@@ -10,7 +10,7 @@ SmartVision / SVPlayer est une application Android TV native Kotlin/Compose pour
 
 Etat technique constate le 2026-07-13:
 - applicationId: `com.smartvision.svplayer`
-- version locale et production: `0.1.118` / `versionCode 148`
+- version locale: `0.1.120` / `versionCode 151`; derniere production verifiee dans ce depot: `0.1.118` / `versionCode 148`
 - langue officielle UI: anglais par defaut; deuxieme langue disponible: francais; futures langues a ajouter via le systeme i18n.
 - entree TV: `MainActivity -> ui/navigation/AppNavigation.kt`
 - lecture video: AndroidX Media3 ExoPlayer natif

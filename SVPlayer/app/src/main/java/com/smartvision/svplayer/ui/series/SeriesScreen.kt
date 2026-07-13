@@ -78,6 +78,7 @@ import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
+import com.smartvision.svplayer.ui.focus.awaitItemVisible
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -125,8 +126,11 @@ fun SeriesScreen(
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val currentTabFocusRequester = remember { FocusRequester() }
     val categoryListState = rememberLazyListState()
+    val seriesListState = rememberLazyListState()
     val firstSeriesFocusRequester = remember { FocusRequester() }
+    val focusedSeriesFocusRequester = remember { FocusRequester() }
     val returnSeriesFocusRequester = remember { FocusRequester() }
+    val seriesSearchFocusRequester = remember { FocusRequester() }
     val previewPlayFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
@@ -134,6 +138,7 @@ fun SeriesScreen(
     var pendingFirstSeriesFocusCategoryId by remember { mutableStateOf<String?>(null) }
     var seriesToDelete by remember { mutableStateOf<SeriesItemUi?>(null) }
     var deletedSeriesIdAwaitingFocus by remember { mutableStateOf<Int?>(null) }
+    var pendingPreviewSeriesId by remember { mutableStateOf<Int?>(null) }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
     var tvCode by remember { mutableStateOf("") }
     var premiumPurchaseUrl by remember {
@@ -169,9 +174,43 @@ fun SeriesScreen(
             ?: 0
         if (state.categories.isEmpty()) return
         categoryListState.scrollToItem(selectedIndex)
+        if (!categoryListState.awaitItemVisible(selectedIndex)) return
         withFrameNanos { }
-        delay(80)
         runCatching { selectedCategoryFocusRequester.requestFocus() }
+    }
+
+    suspend fun focusSeriesColumn() {
+        val seriesItems = state.displayedSeries
+        if (seriesItems.isEmpty()) {
+            runCatching { seriesSearchFocusRequester.requestFocus() }
+            return
+        }
+        val targetIndex = seriesItems.indexOfFirst { it.seriesId == state.focusedSeriesId }
+            .takeIf { it >= 0 }
+            ?: 0
+        seriesListState.scrollToItem((targetIndex - 2).coerceAtLeast(0))
+        if (!seriesListState.awaitItemVisible(targetIndex)) return
+        withFrameNanos { }
+        runCatching {
+            when {
+                state.focusedSeriesId == returnFocusSeriesId -> returnSeriesFocusRequester.requestFocus()
+                targetIndex == 0 -> firstSeriesFocusRequester.requestFocus()
+                else -> focusedSeriesFocusRequester.requestFocus()
+            }
+        }
+    }
+
+    fun enterSeriesPreview(series: SeriesItemUi) {
+        pendingPreviewSeriesId = series.seriesId
+        if (state.selectedSeriesId != series.seriesId) viewModel.activateSeries(series)
+    }
+
+    LaunchedEffect(pendingPreviewSeriesId, state.selectedSeriesId) {
+        val seriesId = pendingPreviewSeriesId ?: return@LaunchedEffect
+        if (state.selectedSeriesId != seriesId) return@LaunchedEffect
+        withFrameNanos { }
+        runCatching { previewPlayFocusRequester.requestFocus() }
+        pendingPreviewSeriesId = null
     }
 
     LaunchedEffect(deletedSeriesIdAwaitingFocus, state.series) {
@@ -277,13 +316,17 @@ fun SeriesScreen(
                             viewModel.selectCategory(category)
                         }
                     },
+                    onRight = { behaviorScope.launch { focusSeriesColumn() } },
                     modifier = Modifier
                         .weight(0.24f)
                         .fillMaxHeight(),
                 )
                 SeriesList(
                     state = state,
+                    listState = seriesListState,
+                    searchFocusRequester = seriesSearchFocusRequester,
                     firstSeriesFocusRequester = firstSeriesFocusRequester,
+                    focusedSeriesFocusRequester = focusedSeriesFocusRequester,
                     returnSeriesFocusRequester = returnSeriesFocusRequester,
                     returnFocusSeriesId = returnFocusSeriesId,
                     focusFirstAfterCategoryId = pendingFirstSeriesFocusCategoryId,
@@ -292,10 +335,11 @@ fun SeriesScreen(
                         returnFocusHandled = true
                         onReturnFocusConsumed()
                     },
-                    rightFocusRequester = previewPlayFocusRequester,
                     onSearchQueryChange = viewModel::updateContentSearchQuery,
                     onSortSelected = viewModel::setSortMode,
                     onSeriesFocused = viewModel::focusSeries,
+                    onRestoreCategoryFocus = { behaviorScope.launch { focusSelectedCategory() } },
+                    onEnterPreview = ::enterSeriesPreview,
                     onSeriesClick = { series ->
                         if (inputReady) {
                             container.behaviorReporter.reportAsync(
@@ -355,6 +399,7 @@ fun SeriesScreen(
                     episodesEmptyLabel = strings.episodesEmpty,
                     resumeLabel = strings.resumePlayback,
                     progressLabel = strings.progressLabel,
+                    onNavigateLeft = { behaviorScope.launch { focusSeriesColumn() } },
                     modifier = Modifier
                         .weight(0.34f)
                         .fillMaxHeight(),
@@ -403,6 +448,7 @@ private fun SeriesCategoryList(
     currentTabFocusRequester: FocusRequester,
     listState: LazyListState,
     onCategory: (SeriesCategoryUi) -> Unit,
+    onRight: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusCategoryId = state.categories.firstOrNull { it.id == state.selectedCategoryId }?.id
@@ -429,6 +475,7 @@ private fun SeriesCategoryList(
                     selected = category.id == state.selectedCategoryId,
                     focusRequester = if (category.id == focusCategoryId) selectedCategoryFocusRequester else null,
                     upFocusRequester = currentTabFocusRequester.takeIf { index == 0 },
+                    onRight = onRight,
                     onClick = { onCategory(category) },
                 )
             }
@@ -439,23 +486,25 @@ private fun SeriesCategoryList(
 @Composable
 private fun SeriesList(
     state: SeriesScreenState,
+    listState: LazyListState,
+    searchFocusRequester: FocusRequester,
     firstSeriesFocusRequester: FocusRequester,
+    focusedSeriesFocusRequester: FocusRequester,
     returnSeriesFocusRequester: FocusRequester,
     returnFocusSeriesId: Int?,
     focusFirstAfterCategoryId: String?,
     onFirstAfterCategoryFocused: () -> Unit,
     onReturnFocusConsumed: () -> Unit,
-    rightFocusRequester: FocusRequester,
     onSearchQueryChange: (String) -> Unit,
     onSortSelected: (SeriesSortMode) -> Unit,
     onSeriesFocused: (SeriesItemUi) -> Unit,
+    onRestoreCategoryFocus: () -> Unit,
+    onEnterPreview: (SeriesItemUi) -> Unit,
     onSeriesClick: (SeriesItemUi) -> Unit,
     onLoadNextPage: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val listState = rememberLazyListState()
-    val searchFocusRequester = remember { FocusRequester() }
     val sortFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(
@@ -472,21 +521,21 @@ private fun SeriesList(
             return@LaunchedEffect
         }
         listState.scrollToItem(0)
+        if (!listState.awaitItemVisible(0)) return@LaunchedEffect
         withFrameNanos { }
-        delay(80)
         runCatching { firstSeriesFocusRequester.requestFocus() }
         onFirstAfterCategoryFocused()
     }
 
-    LaunchedEffect(returnFocusSeriesId, state.series) {
+    LaunchedEffect(returnFocusSeriesId, state.displayedSeries) {
         val seriesId = returnFocusSeriesId ?: return@LaunchedEffect
-        val targetIndex = state.series.indexOfFirst { it.seriesId == seriesId }
+        val targetIndex = state.displayedSeries.indexOfFirst { it.seriesId == seriesId }
         if (targetIndex < 0) {
             return@LaunchedEffect
         }
         listState.scrollToItem((targetIndex - 2).coerceAtLeast(0))
+        if (!listState.awaitItemVisible(targetIndex)) return@LaunchedEffect
         withFrameNanos { }
-        delay(80)
         runCatching { returnSeriesFocusRequester.requestFocus() }
         onReturnFocusConsumed()
     }
@@ -506,22 +555,10 @@ private fun SeriesList(
     }
 
     MediaCatalogPanel(
-        title = state.selectedCategory?.label ?: "Series",
+        title = "Series",
         modifier = modifier,
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = if (state.contentSearchQuery.isBlank()) {
-                        state.selectedCategory?.count?.let { "$it series" } ?: "${state.series.size} series"
-                    } else {
-                        "${state.series.size} resultats"
-                    },
-                    color = SmartVisionColors.TextSecondary,
-                    style = CatalogMetaStyle,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.width(10.dp))
                 CatalogSearchField(
                     query = state.contentSearchQuery,
                     onQueryChange = onSearchQueryChange,
@@ -530,11 +567,17 @@ private fun SeriesList(
                         .width(190.dp)
                         .focusRequester(searchFocusRequester)
                         .onPreviewKeyEvent { event ->
-                            if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight) {
-                                runCatching { sortFocusRequester.requestFocus() }
-                                true
-                            } else {
-                                false
+                            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                            when (event.key) {
+                                Key.DirectionLeft -> {
+                                    onRestoreCategoryFocus()
+                                    true
+                                }
+                                Key.DirectionRight -> {
+                                    runCatching { sortFocusRequester.requestFocus() }
+                                    true
+                                }
+                                else -> false
                             }
                         },
                 )
@@ -594,10 +637,13 @@ private fun SeriesList(
                         focusRequester = when {
                             series.seriesId == returnFocusSeriesId -> returnSeriesFocusRequester
                             index == 0 -> firstSeriesFocusRequester
+                            series.seriesId == state.focusedSeriesId -> focusedSeriesFocusRequester
                             else -> itemFocusRequester
                         },
-                        rightFocusRequester = rightFocusRequester,
+                        rightFocusRequester = null,
                         upFocusRequester = sortFocusRequester.takeIf { index == 0 },
+                        onLeft = onRestoreCategoryFocus,
+                        onRight = { onEnterPreview(series) },
                         onFocused = { onSeriesFocused(series) },
                         onClick = { onSeriesClick(series) },
                     )

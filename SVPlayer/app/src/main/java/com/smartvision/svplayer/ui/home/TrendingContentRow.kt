@@ -98,7 +98,6 @@ fun TrendingContentRow(
     title: String,
     items: List<ContinueItem>,
     onItemClick: (ContinueItem) -> Unit,
-    onPrepareItem: (ContinueItem) -> Unit,
     onPrepareItems: (List<ContinueItem>) -> Unit,
     modifier: Modifier = Modifier,
     lazyListState: LazyListState? = null,
@@ -140,7 +139,7 @@ fun TrendingContentRow(
             val safeFirst = first.coerceIn(0, items.lastIndex)
             val safeLast = (last + TrendingPrefetchAhead)
                 .coerceIn(safeFirst, items.lastIndex)
-            Unit
+            onPrepareItems(items.subList(safeFirst, safeLast + 1))
         }
     }
 
@@ -150,7 +149,6 @@ fun TrendingContentRow(
         if (focusedIndex < 0) return@LaunchedEffect
         delay(TrendingFocusStabilityMillis)
         if (focusedItemId != pendingId) return@LaunchedEffect
-        items.getOrNull(focusedIndex)?.let(onPrepareItem)
         if (focusedItemId == pendingId) {
             activePreviewId = pendingId
         }
@@ -182,10 +180,6 @@ fun TrendingContentRow(
                         !item.previewUrl.isNullOrBlank(),
                     onClick = { if (blocked) onBlockedClick() else onItemClick(item) },
                     focusRequester = if (index == 0) firstItemFocusRequester else null,
-                    onFocused = {
-                        onPrepareItem(item)
-                        onPrepareItems(items.prefetchAround(index))
-                    },
                     onFocusChanged = { focused ->
                         if (focused) {
                             focusedItemId = item.id
@@ -224,7 +218,6 @@ private fun TrendingPreviewCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
-    onFocused: () -> Unit = {},
     onFocusChanged: (Boolean) -> Unit = {},
     onDown: (() -> Unit)? = null,
     onUp: (() -> Unit)? = null,
@@ -244,8 +237,7 @@ private fun TrendingPreviewCard(
         label = "trendingCardBorder",
     )
     val previewUrl = item.previewUrl
-    val displayedPosterUrl = item.previewImageUrl?.takeIf { item.previewBackdropAvailable }
-        ?: item.imageUrl
+    val displayedPosterUrl = item.imageUrl
     val metadata = listOfNotNull(
         item.previewDurationLabel?.takeIf { it.isNotBlank() },
         item.ratingLabel?.takeIf { it.isNotBlank() },
@@ -253,7 +245,6 @@ private fun TrendingPreviewCard(
 
     LaunchedEffect(focusState.isFocused) {
         onFocusChanged(focusState.isFocused)
-        if (focusState.isFocused) onFocused()
         if (!focusState.isFocused) previewController.stop(item.id)
     }
 
@@ -608,13 +599,6 @@ private fun TrendingViewAllButton(
     }
 }
 
-private fun List<ContinueItem>.prefetchAround(index: Int): List<ContinueItem> {
-    if (isEmpty()) return emptyList()
-    val start = index.coerceAtLeast(0)
-    val end = (start + TrendingPrefetchAhead).coerceAtMost(lastIndex)
-    return subList(start, end + 1)
-}
-
 private suspend fun resolvePreviewStart(
     player: Player,
     requestedStartPositionMs: Long,
@@ -677,8 +661,6 @@ private object UnsupportedTrendingPreviewCache {
 
 private const val TrendingFocusStabilityMillis = 550L
 private const val HomeCardFocusedScale = 1.04f
-private const val TrendingTransformMillis = 1_000L
-private const val TrendingImageCrossfadeMillis = 260L
 private const val TrendingVideoPrepareDelayMillis = 900L
 private const val TrendingVideoCrossfadeMillis = 650L
 private const val TrendingPrefetchAhead = 3

@@ -153,6 +153,8 @@ fun VodContentRow(
     focusRequester: FocusRequester?,
     rightFocusRequester: FocusRequester?,
     upFocusRequester: FocusRequester? = null,
+    onLeft: (() -> Unit)? = null,
+    onRight: (() -> Unit)? = null,
     onFocused: () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -201,6 +203,14 @@ fun VodContentRow(
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when {
+                    event.key == Key.DirectionLeft && onLeft != null -> {
+                        onLeft()
+                        true
+                    }
+                    event.key == Key.DirectionRight && onRight != null -> {
+                        onRight()
+                        true
+                    }
                     event.key == Key.DirectionUp && upFocusRequester != null -> {
                         runCatching { upFocusRequester.requestFocus() }
                         true
@@ -248,8 +258,8 @@ fun VodContentRow(
             imageUrl = imageUrl,
             fallbackText = fallbackText,
             modifier = Modifier
-                .width(114.dp)
-                .height(VodContentRowHeight),
+                .height(VodContentRowHeight)
+                .aspectRatio(16f / 9f),
             crop = true,
             framed = false,
         )
@@ -293,19 +303,20 @@ fun VodContentRow(
                     style = CatalogMetaStyle,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
+                sideLabel.takeIf { it.isNotBlank() && it !in subtitle }?.let {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = it,
+                        color = SmartVisionColors.TextSecondary,
+                        style = CatalogMetaStyle,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
-        Spacer(Modifier.width(6.dp))
-        Text(
-            text = sideLabel,
-            color = SmartVisionColors.TextSecondary,
-            style = CatalogMetaStyle,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.End,
-            modifier = Modifier.width(58.dp),
-        )
     }
 }
 
@@ -594,6 +605,7 @@ fun VodPreviewPanel(
     episodesEmptyLabel: String = "No episodes available.",
     resumeLabel: String = "Resume",
     progressLabel: String = "Progress",
+    onNavigateLeft: (() -> Unit)? = null,
 ) {
     val miniPlayerFocusRequester = remember { FocusRequester() }
     val isSeriesPreview = content?.id?.startsWith("series-") == true
@@ -623,6 +635,7 @@ fun VodPreviewPanel(
                         downFocusRequester = miniPlayerFocusRequester,
                         onClick = onPlay,
                         primary = true,
+                        onLeft = onNavigateLeft,
                     )
                     PreviewIconButton(
                         icon = Icons.Default.Info,
@@ -676,7 +689,16 @@ fun VodPreviewPanel(
         }
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft && onNavigateLeft != null) {
+                        onNavigateLeft()
+                        true
+                    } else {
+                        false
+                    }
+                },
             verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(bottom = 10.dp),
         ) {
@@ -1466,6 +1488,7 @@ private fun PreviewIconButton(
     primary: Boolean = false,
     selected: Boolean = false,
     danger: Boolean = false,
+    onLeft: (() -> Unit)? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -1504,6 +1527,14 @@ private fun PreviewIconButton(
                     Modifier
                 },
             )
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft && onLeft != null) {
+                    onLeft()
+                    true
+                } else {
+                    false
+                }
+            }
             .clip(shape)
             .background(background)
             .border(BorderStroke(if (focusState.isFocused) focusStyle.borderWidth else 1.dp, borderColor), shape)
@@ -1795,7 +1826,7 @@ private suspend fun ExoPlayer.fadeInVodMiniPlayerVolume() {
 }
 
 private val VodPreviewPercents = listOf(10, 30, 50, 80)
-private val VodContentRowHeight = 64.dp
+private val VodContentRowHeight = 56.dp
 private const val VodPreviewWarmupMillis = 3_000L
 private const val VodPreviewSegmentMillis = 15_000L
 private const val VodMiniPlayerAudioStartDelayMillis = 1_000L

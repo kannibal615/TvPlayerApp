@@ -1,5 +1,6 @@
 package com.smartvision.svplayer.data.repository
 
+import android.os.SystemClock
 import android.util.Log
 import androidx.room.withTransaction
 import com.smartvision.svplayer.core.config.PlaylistProfile
@@ -11,12 +12,15 @@ import com.smartvision.svplayer.data.local.SVDatabase
 import com.smartvision.svplayer.data.local.dao.CategoryDao
 import com.smartvision.svplayer.data.local.dao.FavoriteDao
 import com.smartvision.svplayer.data.local.dao.MediaDao
+import com.smartvision.svplayer.data.local.dao.KidsFilterDao
 import com.smartvision.svplayer.data.local.dao.ProfileDao
 import com.smartvision.svplayer.data.local.dao.ProgressDao
 import com.smartvision.svplayer.data.local.dao.SyncStateDao
 import com.smartvision.svplayer.data.local.dao.YoutubeDao
 import com.smartvision.svplayer.data.home.HomeTrendingPolicy
 import com.smartvision.svplayer.data.local.entity.FavoriteEntity
+import com.smartvision.svplayer.data.local.entity.KidsCategoryDecisionEntity
+import com.smartvision.svplayer.data.local.entity.KidsItemDecisionEntity
 import com.smartvision.svplayer.data.local.entity.MovieEntity
 import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.local.entity.SeriesEntity
@@ -47,6 +51,20 @@ import com.smartvision.svplayer.domain.repository.CatalogContentCounts
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.LocalCatalogSnapshot
 import com.smartvision.svplayer.domain.profile.KidsContentFilter
+import com.smartvision.svplayer.domain.profile.CachedKidsCategoryDecision
+import com.smartvision.svplayer.domain.profile.CachedKidsItemDecision
+import com.smartvision.svplayer.domain.profile.KidsCatalogFilterEngine
+import com.smartvision.svplayer.domain.profile.KidsCategoryClassification
+import com.smartvision.svplayer.domain.profile.KidsCategoryDecision
+import com.smartvision.svplayer.domain.profile.KidsCategoryInput
+import com.smartvision.svplayer.domain.profile.KidsContentClassification
+import com.smartvision.svplayer.domain.profile.KidsContentDecision
+import com.smartvision.svplayer.domain.profile.KidsContentKind
+import com.smartvision.svplayer.domain.profile.KidsContentMetadata
+import com.smartvision.svplayer.domain.profile.KidsDecisionSource
+import com.smartvision.svplayer.domain.profile.KidsFilterFingerprint
+import com.smartvision.svplayer.domain.profile.KidsFilterMetrics
+import com.smartvision.svplayer.domain.profile.KidsItemInput
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -79,6 +97,7 @@ class DefaultCatalogRepository(
     private val progressDao: ProgressDao,
     private val syncStateDao: SyncStateDao,
     private val youtubeDao: YoutubeDao,
+    private val kidsFilterDao: KidsFilterDao,
     private val networkActivityTracker: NetworkActivityTracker,
 ) : CatalogRepository {
     private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
@@ -89,6 +108,7 @@ class DefaultCatalogRepository(
     private val syncMutex = Mutex()
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val kidsContentFilter = KidsContentFilter()
+    private val kidsCatalogFilterEngine = KidsCatalogFilterEngine(kidsContentFilter)
 
     init {
         observeActiveProfileChanges()
@@ -942,6 +962,11 @@ class DefaultCatalogRepository(
             // time blocks local catalog reads and makes the progress UI look frozen.
             logSyncMemory(stage = "before_get_account")
             val syncHost = credentials.normalizedHost
+            val kidsSourceKey = KidsFilterFingerprint.source("xtream", syncHost.lowercase(), credentials.username)
+            if (isKidsProfile(profileId)) {
+                kidsFilterDao.deleteObsoleteCategoryRules(KidsContentFilter.RuleVersion)
+                kidsFilterDao.deleteObsoleteItemRules(KidsContentFilter.RuleVersion)
+            }
             val account = api.getAccount(credentials.username, credentials.password, syncHost)
             logSyncMemory(stage = "after_get_account")
             updateProgress("Verification du compte Xtream...", fetched = 1, remainingSteps = 5)
@@ -959,6 +984,7 @@ class DefaultCatalogRepository(
                     host = syncHost,
                     username = credentials.username,
                     password = credentials.password,
+                    kidsSourceKey = kidsSourceKey,
                     updateSectionProgress = ::updateSectionProgress,
                 )
 
@@ -967,6 +993,7 @@ class DefaultCatalogRepository(
                     host = syncHost,
                     username = credentials.username,
                     password = credentials.password,
+                    kidsSourceKey = kidsSourceKey,
                     liveItems = liveItems,
                     updateSectionProgress = ::updateSectionProgress,
                 )
@@ -976,6 +1003,7 @@ class DefaultCatalogRepository(
                     host = syncHost,
                     username = credentials.username,
                     password = credentials.password,
+                    kidsSourceKey = kidsSourceKey,
                     liveItems = liveItems,
                     movieItems = movieItems,
                     updateSectionProgress = ::updateSectionProgress,
@@ -1091,11 +1119,104 @@ class DefaultCatalogRepository(
         }
     }
 
+    private suspend fun <Remote, Local> filterAndImportKidsSection(
+        profileId: String,
+        sourceKey: String,
+        kind: KidsContentKind,
+        section: MediaSection,
+        categories: List<XtreamCategoryDto>,
+        items: List<Remote>,
+        toFilterInput: (Remote) -> KidsItemInput<Remote>?,
+        toLocalEntity: (Remote) -> Local?,
+        clearItems: suspend () -> Unit,
+        upsertItems: suspend (List<Local>) -> Unit,
+        onProgress: suspend (processed: Int, total: Int, kept: Int, metrics: KidsFilterMetrics) -> Unit,
+    ): KidsSectionImportResult {
+        val filterStartedAt = SystemClock.elapsedRealtime()
+        val categoryInputs = categories.mapNotNull { category ->
+            val id = category.id?.takeIf(String::isNotBlank) ?: return@mapNotNull null
+            KidsCategoryInput(id = id, name = category.name.orEmpty())
+        }
+        val categoryCache = kidsFilterDao.getCategoryDecisions(sourceKey, kind.storageName)
+            .associate { it.categoryId to it.toCachedDecision() }
+        val categoryBatch = kidsCatalogFilterEngine.evaluateCategories(categoryInputs, categoryCache)
+        val now = System.currentTimeMillis()
+        if (categoryBatch.cacheUpdates.isNotEmpty()) {
+            kidsFilterDao.upsertCategoryDecisions(
+                categoryBatch.cacheUpdates.map { it.toEntity(sourceKey, kind.storageName, now) },
+            )
+        }
+
+        var metrics = categoryBatch.metrics
+        var keptItems = 0
+        var processedItems = 0
+        val acceptedCategoryIds = linkedSetOf<String>()
+        database.withTransaction {
+            clearItems()
+            items.chunked(KidsFilterImportBatchSize).forEach { remoteBatch ->
+                val inputs = remoteBatch.mapNotNull(toFilterInput)
+                val cacheableIds = inputs.asSequence()
+                    .filter { input ->
+                        input.metadata.manualOverride != null ||
+                            input.categoryId?.let(categoryBatch.decisions::get)?.safe != true
+                    }
+                    .map { it.id }
+                    .distinct()
+                    .toList()
+                val itemCache = if (cacheableIds.isEmpty()) {
+                    emptyMap()
+                } else {
+                    kidsFilterDao.getItemDecisions(sourceKey, kind.storageName, cacheableIds)
+                        .associate { it.contentId to it.toCachedDecision() }
+                }
+                val filtered = kidsCatalogFilterEngine.filterItems(
+                    items = inputs,
+                    categoryDecisions = categoryBatch.decisions,
+                    cached = itemCache,
+                )
+                if (filtered.cacheUpdates.isNotEmpty()) {
+                    kidsFilterDao.upsertItemDecisions(
+                        filtered.cacheUpdates.map { it.toEntity(sourceKey, kind.storageName, now) },
+                    )
+                }
+                val mapped = filtered.acceptedItems.mapNotNull(toLocalEntity)
+                if (mapped.isNotEmpty()) upsertItems(mapped)
+                keptItems += mapped.size
+                processedItems += remoteBatch.size
+                acceptedCategoryIds += filtered.acceptedCategoryIds
+                metrics += filtered.metrics
+                onProgress(processedItems, items.size, keptItems, metrics)
+                yield()
+            }
+
+            categoryDao.deleteByType(profileId, section.storageName)
+            val visibleCategories = categories.filter { it.id in acceptedCategoryIds }
+            upsertMappedInBatches(
+                visibleCategories,
+                { it.toEntity(profileId, section) },
+            ) { entities ->
+                categoryDao.upsertAll(entities)
+            }
+        }
+        metrics = metrics.copy(durationMs = SystemClock.elapsedRealtime() - filterStartedAt)
+        Log.i(
+            KidsFilterLogTag,
+            "KidsFilter[${kind.storageName}]: ${metrics.categoriesProcessed} categories traitees, " +
+                "${metrics.categoriesEvaluated} evaluees, ${metrics.safeCategories} Kids, " +
+                "$keptItems conserves, ${metrics.inheritedItems} herites, " +
+                "${metrics.individuallyAnalyzedItems} analyses individuellement, " +
+                "${metrics.cacheHits} depuis cache, ${metrics.ambiguousItems} ambigus, " +
+                "${metrics.rejectedItems} rejetes, networkRequests=0, duree=${metrics.durationMs}ms",
+        )
+        return KidsSectionImportResult(keptItems = keptItems, metrics = metrics)
+    }
+
     private suspend fun synchronizeLiveSection(
         profileId: String,
         host: String,
         username: String,
         password: String,
+        kidsSourceKey: String,
         updateSectionProgress: suspend (String, MediaSection, SyncStatus.SyncSectionPhase, Int, Int?, Int, Int) -> Unit,
     ): Int {
         updateSectionProgress(
@@ -1136,9 +1257,8 @@ class DefaultCatalogRepository(
         )
         logSyncMemory(stage = "before_get_live_streams", liveCategories = liveCategories.size)
         val downloadedLiveStreams = api.getLiveStreams(username = username, password = password, host = host)
-        val liveCategoryNames = liveCategories.associate { it.id to it.name }
         if (kidsProfile) updateSectionProgress(
-            "Filtrage Kids des chaines Live TV...",
+            "Analyse des categories Kids Live TV...",
             MediaSection.Live,
             SyncStatus.SyncSectionPhase.FILTERING,
             62,
@@ -1146,25 +1266,49 @@ class DefaultCatalogRepository(
             0,
             0,
         )
-        val liveStreams = if (kidsProfile) downloadedLiveStreams.filterKidsWithProgress(
-            isAllowed = { stream -> kidsContentFilter.isAllowed(liveCategoryNames[stream.categoryId], stream.name) },
-            onProgress = { processed, total, kept ->
-                updateSectionProgress(
-                    "Filtrage Kids des chaines Live TV ($kept conserves, ${processed - kept} exclus)...",
-                    MediaSection.Live,
-                    SyncStatus.SyncSectionPhase.FILTERING,
-                    60 + (processed * 14 / total.coerceAtLeast(1)),
-                    processed,
-                    0,
-                    0,
-                )
-            },
-        ) else downloadedLiveStreams
-        val allowedLiveCategoryIds = liveStreams.mapNotNull { it.categoryId }.toSet()
-        val visibleLiveCategories = if (kidsProfile) liveCategories.filter { it.id in allowedLiveCategoryIds } else liveCategories
-        val liveItems = liveStreams.size
+        val imageBaseHost = host
+        val kidsImport = if (kidsProfile) {
+            filterAndImportKidsSection(
+                profileId = profileId,
+                sourceKey = kidsSourceKey,
+                kind = KidsContentKind.LIVE_CHANNEL,
+                section = MediaSection.Live,
+                categories = liveCategories,
+                items = downloadedLiveStreams,
+                toFilterInput = { stream ->
+                    val id = stream.streamId?.toString() ?: return@filterAndImportKidsSection null
+                    KidsItemInput(
+                        value = stream,
+                        id = id,
+                        categoryId = stream.categoryId,
+                        metadata = KidsContentMetadata(
+                            kind = KidsContentKind.LIVE_CHANNEL,
+                            title = stream.name,
+                        ),
+                    )
+                },
+                toLocalEntity = { it.toEntity(profileId, imageBaseHost) },
+                clearItems = { mediaDao.clearLiveStreams(profileId) },
+                upsertItems = mediaDao::upsertLiveStreams,
+                onProgress = { processed, total, kept, metrics ->
+                    updateSectionProgress(
+                        "Kids Live TV: $kept conserves, ${metrics.inheritedItems} herites, " +
+                            "${metrics.individuallyAnalyzedItems} analyses, ${metrics.cacheHits} cache",
+                        MediaSection.Live,
+                        SyncStatus.SyncSectionPhase.FILTERING,
+                        60 + (processed * 34 / total.coerceAtLeast(1)),
+                        processed,
+                        0,
+                        0,
+                    )
+                },
+            )
+        } else {
+            null
+        }
+        val liveItems = kidsImport?.keptItems ?: downloadedLiveStreams.size
         logSyncMemory(stage = "after_get_live_streams", live = liveItems, liveCategories = liveCategories.size)
-        updateSectionProgress(
+        if (!kidsProfile) updateSectionProgress(
             "Import des chaines Live TV...",
             MediaSection.Live,
             SyncStatus.SyncSectionPhase.IMPORTING,
@@ -1173,15 +1317,10 @@ class DefaultCatalogRepository(
             liveItems,
             3,
         )
-        val imageBaseHost = host
-        database.withTransaction {
-            if (kidsProfile) {
-                categoryDao.deleteByType(profileId, MediaSection.Live.storageName)
-                upsertMappedInBatches(visibleLiveCategories, { it.toEntity(profileId, MediaSection.Live) }) { entities -> categoryDao.upsertAll(entities) }
-            }
+        if (!kidsProfile) database.withTransaction {
             mediaDao.clearLiveStreams(profileId)
             upsertMappedInBatches(
-                items = liveStreams,
+                items = downloadedLiveStreams,
                 mapper = { it.toEntity(profileId, imageBaseHost) },
                 upsert = mediaDao::upsertLiveStreams,
                 onBatchCommitted = { processed, total ->
@@ -1215,6 +1354,7 @@ class DefaultCatalogRepository(
         host: String,
         username: String,
         password: String,
+        kidsSourceKey: String,
         liveItems: Int,
         updateSectionProgress: suspend (String, MediaSection, SyncStatus.SyncSectionPhase, Int, Int?, Int, Int) -> Unit,
     ): Int {
@@ -1278,9 +1418,8 @@ class DefaultCatalogRepository(
                 .distinctBy { it.streamId }
             logSyncMemory(stage = "after_get_movies_by_category", live = liveItems, movies = movies.size, movieCategories = movieCategories.size)
         }
-        val movieCategoryNames = movieCategories.associate { it.id to it.name }
         if (kidsProfile) updateSectionProgress(
-            "Filtrage Kids des films...",
+            "Analyse des categories Kids Films...",
             MediaSection.Movies,
             SyncStatus.SyncSectionPhase.FILTERING,
             60,
@@ -1288,25 +1427,49 @@ class DefaultCatalogRepository(
             0,
             0,
         )
-        val visibleMovies = if (kidsProfile) movies.filterKidsWithProgress(
-            isAllowed = { movie -> kidsContentFilter.isAllowed(movieCategoryNames[movie.categoryId], movie.name) },
-            onProgress = { processed, total, kept ->
-                updateSectionProgress(
-                    "Filtrage Kids des films ($kept conserves, ${processed - kept} exclus)...",
-                    MediaSection.Movies,
-                    SyncStatus.SyncSectionPhase.FILTERING,
-                    58 + (processed * 12 / total.coerceAtLeast(1)),
-                    processed,
-                    0,
-                    0,
-                )
-            },
-        ) else movies
-        val allowedMovieCategoryIds = visibleMovies.mapNotNull { it.categoryId }.toSet()
-        val visibleMovieCategories = if (kidsProfile) movieCategories.filter { it.id in allowedMovieCategoryIds } else movieCategories
-        val movieItems = visibleMovies.size
+        val imageBaseHost = host
+        val kidsImport = if (kidsProfile) {
+            filterAndImportKidsSection(
+                profileId = profileId,
+                sourceKey = kidsSourceKey,
+                kind = KidsContentKind.MOVIE,
+                section = MediaSection.Movies,
+                categories = movieCategories,
+                items = movies,
+                toFilterInput = { movie ->
+                    val id = movie.streamId?.toString() ?: return@filterAndImportKidsSection null
+                    KidsItemInput(
+                        value = movie,
+                        id = id,
+                        categoryId = movie.categoryId,
+                        metadata = KidsContentMetadata(
+                            kind = KidsContentKind.MOVIE,
+                            title = movie.name,
+                        ),
+                    )
+                },
+                toLocalEntity = { it.toEntity(profileId, imageBaseHost) },
+                clearItems = { mediaDao.clearMovies(profileId) },
+                upsertItems = mediaDao::upsertMovies,
+                onProgress = { processed, total, kept, metrics ->
+                    updateSectionProgress(
+                        "Kids Films: $kept conserves, ${metrics.inheritedItems} herites, " +
+                            "${metrics.individuallyAnalyzedItems} analyses, ${metrics.cacheHits} cache",
+                        MediaSection.Movies,
+                        SyncStatus.SyncSectionPhase.FILTERING,
+                        58 + (processed * 36 / total.coerceAtLeast(1)),
+                        processed,
+                        0,
+                        0,
+                    )
+                },
+            )
+        } else {
+            null
+        }
+        val movieItems = kidsImport?.keptItems ?: movies.size
         logSyncMemory(stage = "after_get_movies", live = liveItems, movies = movieItems, movieCategories = movieCategories.size)
-        updateSectionProgress(
+        if (!kidsProfile) updateSectionProgress(
             "Import des films...",
             MediaSection.Movies,
             SyncStatus.SyncSectionPhase.IMPORTING,
@@ -1315,15 +1478,10 @@ class DefaultCatalogRepository(
             movieItems,
             1,
         )
-        val imageBaseHost = host
-        database.withTransaction {
-            if (kidsProfile) {
-                categoryDao.deleteByType(profileId, MediaSection.Movies.storageName)
-                upsertMappedInBatches(visibleMovieCategories, { it.toEntity(profileId, MediaSection.Movies) }) { entities -> categoryDao.upsertAll(entities) }
-            }
+        if (!kidsProfile) database.withTransaction {
             mediaDao.clearMovies(profileId)
             upsertMappedInBatches(
-                items = visibleMovies,
+                items = movies,
                 mapper = { it.toEntity(profileId, imageBaseHost) },
                 upsert = mediaDao::upsertMovies,
                 onBatchCommitted = { processed, total ->
@@ -1357,6 +1515,7 @@ class DefaultCatalogRepository(
         host: String,
         username: String,
         password: String,
+        kidsSourceKey: String,
         liveItems: Int,
         movieItems: Int,
         updateSectionProgress: suspend (String, MediaSection, SyncStatus.SyncSectionPhase, Int, Int?, Int, Int) -> Unit,
@@ -1412,9 +1571,8 @@ class DefaultCatalogRepository(
             movieItems = movieItems,
             updateSectionProgress = updateSectionProgress,
         )
-        val seriesCategoryNames = seriesCategories.associate { it.id to it.name }
         if (kidsProfile) updateSectionProgress(
-            "Filtrage Kids des series...",
+            "Analyse des categories Kids Series...",
             MediaSection.Series,
             SyncStatus.SyncSectionPhase.FILTERING,
             60,
@@ -1422,25 +1580,51 @@ class DefaultCatalogRepository(
             0,
             0,
         )
-        val series = if (kidsProfile) downloadedSeries.filterKidsWithProgress(
-            isAllowed = { item -> kidsContentFilter.isAllowed(seriesCategoryNames[item.categoryId], item.name, item.genre, item.plot) },
-            onProgress = { processed, total, kept ->
-                updateSectionProgress(
-                    "Filtrage Kids des series ($kept conserves, ${processed - kept} exclus)...",
-                    MediaSection.Series,
-                    SyncStatus.SyncSectionPhase.FILTERING,
-                    58 + (processed * 12 / total.coerceAtLeast(1)),
-                    processed,
-                    0,
-                    0,
-                )
-            },
-        ) else downloadedSeries
-        val allowedSeriesCategoryIds = series.mapNotNull { it.categoryId }.toSet()
-        val visibleSeriesCategories = if (kidsProfile) seriesCategories.filter { it.id in allowedSeriesCategoryIds } else seriesCategories
-        val seriesItems = series.size
+        val imageBaseHost = host
+        val kidsImport = if (kidsProfile) {
+            filterAndImportKidsSection(
+                profileId = profileId,
+                sourceKey = kidsSourceKey,
+                kind = KidsContentKind.SERIES,
+                section = MediaSection.Series,
+                categories = seriesCategories,
+                items = downloadedSeries,
+                toFilterInput = { item ->
+                    val id = item.seriesId?.toString() ?: return@filterAndImportKidsSection null
+                    KidsItemInput(
+                        value = item,
+                        id = id,
+                        categoryId = item.categoryId,
+                        metadata = KidsContentMetadata(
+                            kind = KidsContentKind.SERIES,
+                            title = item.name,
+                            description = item.plot,
+                            genres = item.genre,
+                        ),
+                    )
+                },
+                toLocalEntity = { it.toEntity(profileId, imageBaseHost) },
+                clearItems = { mediaDao.clearSeries(profileId) },
+                upsertItems = mediaDao::upsertSeries,
+                onProgress = { processed, total, kept, metrics ->
+                    updateSectionProgress(
+                        "Kids Series: $kept conservees, ${metrics.inheritedItems} heritees, " +
+                            "${metrics.individuallyAnalyzedItems} analysees, ${metrics.cacheHits} cache",
+                        MediaSection.Series,
+                        SyncStatus.SyncSectionPhase.FILTERING,
+                        58 + (processed * 36 / total.coerceAtLeast(1)),
+                        processed,
+                        0,
+                        0,
+                    )
+                },
+            )
+        } else {
+            null
+        }
+        val seriesItems = kidsImport?.keptItems ?: downloadedSeries.size
         logSyncMemory(stage = "after_get_series", live = liveItems, movies = movieItems, series = seriesItems)
-        updateSectionProgress(
+        if (!kidsProfile) updateSectionProgress(
             "Import des series...",
             MediaSection.Series,
             SyncStatus.SyncSectionPhase.IMPORTING,
@@ -1449,15 +1633,10 @@ class DefaultCatalogRepository(
             seriesItems,
             0,
         )
-        val imageBaseHost = host
-        database.withTransaction {
-            if (kidsProfile) {
-                categoryDao.deleteByType(profileId, MediaSection.Series.storageName)
-                upsertMappedInBatches(visibleSeriesCategories, { it.toEntity(profileId, MediaSection.Series) }) { entities -> categoryDao.upsertAll(entities) }
-            }
+        if (!kidsProfile) database.withTransaction {
             mediaDao.clearSeries(profileId)
             upsertMappedInBatches(
-                items = series,
+                items = downloadedSeries,
                 mapper = { it.toEntity(profileId, imageBaseHost) },
                 upsert = mediaDao::upsertSeries,
                 onBatchCommitted = { processed, total ->
@@ -1649,19 +1828,69 @@ class DefaultCatalogRepository(
             val now = System.currentTimeMillis()
             val profileId = profile.id
             val downloadedPlaylist = m3uPlaylistClient.fetch(m3uUrl)
-            val playlist = if (isKidsProfile(profileId)) {
-                downloadedPlaylist.copy(
-                    channels = downloadedPlaylist.channels.filter { channel ->
-                        kidsContentFilter.isAllowed(channel.group, channel.name)
+            val kidsProfile = isKidsProfile(profileId)
+            val kidsImport: KidsSectionImportResult? = if (kidsProfile) {
+                kidsFilterDao.deleteObsoleteCategoryRules(KidsContentFilter.RuleVersion)
+                kidsFilterDao.deleteObsoleteItemRules(KidsContentFilter.RuleVersion)
+                val sourceKey = KidsFilterFingerprint.source("m3u", m3uUrl)
+                val categories = downloadedPlaylist.channels
+                    .distinctBy { it.categoryId }
+                    .map { channel ->
+                        XtreamCategoryDto(id = channel.categoryId, name = channel.group, parentId = null)
+                    }
+                filterAndImportKidsSection(
+                    profileId = profileId,
+                    sourceKey = sourceKey,
+                    kind = KidsContentKind.LIVE_CHANNEL,
+                    section = MediaSection.Live,
+                    categories = categories,
+                    items = downloadedPlaylist.channels,
+                    toFilterInput = { channel ->
+                        KidsItemInput(
+                            value = channel,
+                            id = channel.id.toString(),
+                            categoryId = channel.categoryId,
+                            metadata = KidsContentMetadata(
+                                kind = KidsContentKind.LIVE_CHANNEL,
+                                title = channel.name,
+                            ),
+                        )
+                    },
+                    toLocalEntity = { it.toEntity(profileId) },
+                    clearItems = { mediaDao.clearLiveStreams(profileId) },
+                    upsertItems = mediaDao::upsertLiveStreams,
+                    onProgress = { processed, total, kept, metrics ->
+                        val percent = 35 + (processed * 50 / total.coerceAtLeast(1))
+                        syncWork.update(
+                            message = "Kids M3U: $kept conserves, ${metrics.inheritedItems} herites, " +
+                                "${metrics.cacheHits} cache",
+                            progressPercent = percent,
+                            currentItems = processed,
+                            totalItems = total,
+                        )
+                        liveWork.update(
+                            status = NetworkActivityStatus.Importing,
+                            message = "Filtering and importing Kids channels",
+                            progressPercent = percent,
+                            currentItems = processed,
+                            totalItems = total,
+                        )
                     },
                 )
-            } else downloadedPlaylist
-            syncWork.update(message = "Chargement catalogue M3U...", progressPercent = 50, currentItems = 1, totalItems = 2)
+            } else null
+            val importedChannelCount = kidsImport?.keptItems ?: downloadedPlaylist.channels.size
+            val importedPercent = if (kidsProfile) 88 else 72
+            syncWork.update(
+                message = "Chargement catalogue M3U...",
+                progressPercent = if (kidsProfile) 88 else 50,
+                currentItems = 1,
+                totalItems = 2,
+            )
             liveWork.update(
                 status = NetworkActivityStatus.Importing,
                 message = "Importing M3U channels",
-                progressPercent = 72,
-                currentItems = playlist.channels.size,
+                progressPercent = importedPercent,
+                currentItems = importedChannelCount,
             )
             _syncStatus.value = SyncStatus.Running(
                 message = "Chargement catalogue M3U...",
@@ -1669,16 +1898,18 @@ class DefaultCatalogRepository(
                 totalItems = 2,
                 catalogProgress = SyncStatus.CatalogProgress(
                     live = SyncStatus.SyncSectionProgress(
-                        currentItems = playlist.channels.size,
+                        currentItems = importedChannelCount,
                         phase = SyncStatus.SyncSectionPhase.IMPORTING,
-                        progressPercent = 72,
+                        progressPercent = importedPercent,
                     ),
                 ),
             )
-            categoryDao.deleteByType(profileId, MediaSection.Live.storageName)
-            categoryDao.upsertAll(playlist.categories(profileId))
-            mediaDao.clearLiveStreams(profileId)
-            mediaDao.upsertLiveStreams(playlist.channels.map { it.toEntity(profileId) })
+            if (!kidsProfile) {
+                categoryDao.deleteByType(profileId, MediaSection.Live.storageName)
+                categoryDao.upsertAll(downloadedPlaylist.categories(profileId))
+                mediaDao.clearLiveStreams(profileId)
+                mediaDao.upsertLiveStreams(downloadedPlaylist.channels.map { it.toEntity(profileId) })
+            }
             categoryDao.deleteByType(profileId, MediaSection.Movies.storageName)
             categoryDao.deleteByType(profileId, MediaSection.Series.storageName)
             mediaDao.clearMovies(profileId)
@@ -1702,16 +1933,16 @@ class DefaultCatalogRepository(
                 message = "Synchronisation M3U terminee",
                 catalogProgress = SyncStatus.CatalogProgress(
                     live = SyncStatus.SyncSectionProgress(
-                        currentItems = playlist.channels.size,
+                        currentItems = importedChannelCount,
                         completed = true,
                         phase = SyncStatus.SyncSectionPhase.COMPLETED,
                         progressPercent = 100,
                     ),
                 ),
             )
-            liveWork.update(progressPercent = 100, currentItems = playlist.channels.size)
+            liveWork.update(progressPercent = 100, currentItems = importedChannelCount)
             liveWork.complete("Live TV ready")
-            syncWork.update(progressPercent = 100, currentItems = playlist.channels.size)
+            syncWork.update(progressPercent = 100, currentItems = importedChannelCount)
             syncWork.complete("Catalog ready")
             Result.success(Unit)
         } catch (error: Exception) {
@@ -1730,6 +1961,81 @@ class DefaultCatalogRepository(
         }
     }
 }
+
+private data class KidsSectionImportResult(
+    val keptItems: Int,
+    val metrics: KidsFilterMetrics,
+)
+
+private fun KidsCategoryDecisionEntity.toCachedDecision(): CachedKidsCategoryDecision =
+    CachedKidsCategoryDecision(
+        categoryId = categoryId,
+        normalizedName = normalizedName,
+        metadataFingerprint = metadataFingerprint,
+        ruleVersion = ruleVersion,
+        decision = KidsCategoryDecision(
+            classification = enumValueOrDefault(decision, KidsCategoryClassification.NOT_KIDS_CATEGORY),
+            score = score,
+            source = enumValueOrDefault(source, KidsDecisionSource.ITEM_SCORE),
+            reason = reason,
+        ),
+    )
+
+private fun KidsItemDecisionEntity.toCachedDecision(): CachedKidsItemDecision =
+    CachedKidsItemDecision(
+        contentId = contentId,
+        categoryId = categoryId,
+        metadataFingerprint = metadataFingerprint,
+        ruleVersion = ruleVersion,
+        decision = KidsContentDecision(
+            classification = enumValueOrDefault(decision, KidsContentClassification.NOT_KIDS_CONTENT),
+            score = score,
+            source = enumValueOrDefault(source, KidsDecisionSource.ITEM_SCORE),
+            reason = reason,
+            inheritedCategoryId = inheritedCategoryId,
+        ),
+    )
+
+private fun CachedKidsCategoryDecision.toEntity(
+    sourceKey: String,
+    contentType: String,
+    updatedAt: Long,
+): KidsCategoryDecisionEntity = KidsCategoryDecisionEntity(
+    sourceKey = sourceKey,
+    contentType = contentType,
+    categoryId = categoryId,
+    normalizedName = normalizedName,
+    decision = decision.classification.name,
+    score = decision.score,
+    source = decision.source.name,
+    reason = decision.reason,
+    ruleVersion = ruleVersion,
+    metadataFingerprint = metadataFingerprint,
+    updatedAt = updatedAt,
+)
+
+private fun CachedKidsItemDecision.toEntity(
+    sourceKey: String,
+    contentType: String,
+    updatedAt: Long,
+): KidsItemDecisionEntity = KidsItemDecisionEntity(
+    sourceKey = sourceKey,
+    contentType = contentType,
+    contentId = contentId,
+    categoryId = categoryId,
+    allowed = decision.allowed,
+    decision = decision.classification.name,
+    score = decision.score,
+    source = decision.source.name,
+    reason = decision.reason,
+    inheritedCategoryId = decision.inheritedCategoryId,
+    ruleVersion = ruleVersion,
+    metadataFingerprint = metadataFingerprint,
+    updatedAt = updatedAt,
+)
+
+private inline fun <reified T : Enum<T>> enumValueOrDefault(value: String, fallback: T): T =
+    runCatching { enumValueOf<T>(value) }.getOrDefault(fallback)
 
 private fun PlaylistSource.hasConfiguredCatalog(m3uUrl: String, hasXtream: Boolean): Boolean =
     when (this) {
@@ -1759,27 +2065,8 @@ private fun SyncStatus.SyncSectionPhase.toNetworkActivityStatus(): NetworkActivi
         SyncStatus.SyncSectionPhase.ERROR -> NetworkActivityStatus.Error
     }
 
-private suspend inline fun <T> List<T>.filterKidsWithProgress(
-    crossinline isAllowed: (T) -> Boolean,
-    crossinline onProgress: suspend (processed: Int, total: Int, kept: Int) -> Unit,
-): List<T> {
-    if (isEmpty()) {
-        onProgress(0, 0, 0)
-        return emptyList()
-    }
-    val kept = ArrayList<T>(size)
-    forEachIndexed { index, item ->
-        if (isAllowed(item)) kept += item
-        val processed = index + 1
-        if (processed == size || processed % KidsFilterProgressBatchSize == 0) {
-            onProgress(processed, size, kept.size)
-            yield()
-        }
-    }
-    return kept
-}
-
-private const val KidsFilterProgressBatchSize = 128
+private const val KidsFilterImportBatchSize = 256
+private const val KidsFilterLogTag = "SVKidsFilter"
 
 private fun TrendingCatalogItem.containsAdultMarker(): Boolean =
     containsAdultMarker(title, categoryName)

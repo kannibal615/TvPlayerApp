@@ -174,7 +174,7 @@ fun HomeScreen(
         .coerceAtLeast(0)
     val movieTrendScrollPx = with(density) {
         val continueBlockHeight = if (hasContinueWatching) {
-            SmartVisionDimensions.HomeContentRowHeight + SmartVisionDimensions.HomeTrendFoldOffset
+            SmartVisionDimensions.HomeContentRowHeight + SmartVisionDimensions.HomeContentSectionSpacing
         } else {
             0.dp
         }
@@ -182,7 +182,7 @@ fun HomeScreen(
     }.coerceAtLeast(0)
     val seriesTrendScrollPx = with(density) {
         val continueBlockHeight = if (hasContinueWatching) {
-            SmartVisionDimensions.HomeContentRowHeight + SmartVisionDimensions.HomeTrendFoldOffset
+            SmartVisionDimensions.HomeContentRowHeight + SmartVisionDimensions.HomeContentSectionSpacing
         } else {
             0.dp
         }
@@ -191,7 +191,7 @@ fun HomeScreen(
                 16.dp +
                 continueBlockHeight +
                 SmartVisionDimensions.HomeContentRowHeight +
-                16.dp
+                SmartVisionDimensions.HomeContentSectionSpacing
             ).roundToPx()
     }.coerceAtLeast(0)
 
@@ -610,13 +610,13 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth(),
                 )
-                Spacer(Modifier.height(SmartVisionDimensions.HomeTrendFoldOffset))
+                Spacer(Modifier.height(SmartVisionDimensions.HomeContentSectionSpacing))
             } else if (showContinueSkeleton) {
                 HomeSkeletonRow(
                     title = strings.continueWatching,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.height(SmartVisionDimensions.HomeTrendFoldOffset))
+                Spacer(Modifier.height(SmartVisionDimensions.HomeContentSectionSpacing))
             }
 
             if (hasMovieTrends) {
@@ -625,7 +625,6 @@ fun HomeScreen(
                     items = state.trendingMovies,
                     previewController = previewController,
                     onItemClick = onContentClick,
-                    onPrepareItem = viewModel::prepareTrendingPreview,
                     onPrepareItems = viewModel::prefetchTrendingPreviews,
                     lazyListState = movieTrendRowState,
                     firstItemFocusRequester = movieTrendFirstFocusRequester,
@@ -656,7 +655,7 @@ fun HomeScreen(
             }
 
             if ((hasMovieTrends || showMovieTrendSkeleton) && (hasSeriesTrends || showSeriesTrendSkeleton)) {
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(SmartVisionDimensions.HomeContentSectionSpacing))
             }
 
             if (hasSeriesTrends) {
@@ -665,7 +664,6 @@ fun HomeScreen(
                     items = state.trendingSeries,
                     previewController = previewController,
                     onItemClick = onContentClick,
-                    onPrepareItem = viewModel::prepareTrendingPreview,
                     onPrepareItems = viewModel::prefetchTrendingPreviews,
                     lazyListState = seriesTrendRowState,
                     firstItemFocusRequester = seriesTrendFirstFocusRequester,

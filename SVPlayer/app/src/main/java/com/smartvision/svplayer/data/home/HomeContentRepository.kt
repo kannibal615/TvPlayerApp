@@ -48,7 +48,6 @@ data class HomeTrendingPreparedPreview(
 ) {
     fun applyTo(item: ContinueItem): ContinueItem =
         item.copy(
-            imageUrl = item.imageUrl ?: posterUrl,
             previewImageUrl = backdropUrl.takeIf { backdropAvailable },
             remaining = durationLabel ?: sampleLabel ?: item.remaining,
             previewUrl = previewUrl,

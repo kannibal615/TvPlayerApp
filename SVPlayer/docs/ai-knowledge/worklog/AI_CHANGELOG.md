@@ -1,5 +1,14 @@
 # AI Changelog
 
+## 2026-07-13 - Filtre Kids v2, catalogues harmonises et focus TV
+
+- Ajoute le moteur Kids category-first multilingue, l'heritage sans score item, les exclusions adultes, les raisons/scores et le cache partage incremental Room v16.
+- Instrumente les metriques `SVKidsFilter` et traite/import les decisions par lots sans requete TMDB/reseau par item.
+- Aligne Live/Movies/Series sur les memes panneaux et proportions; titres centraux fixes, lignes VOD `56dp`, miniatures 16:9 et texte en largeur restante.
+- Stabilise les images Tendances sur `item.imageUrl`, deplace la preparation hors focus et centralise les espacements Home a `10dp`.
+- Fiabilise les transitions D-pad trois colonnes et Media avec attente de composition Lazy via `awaitItemVisible()`.
+- Validation: 15 tests release cibles puis 61 tests release complets reussis. `:app:assembleRelease` reussi en 7 min 55 s; APK local `0.1.120 (151)`, `47354422` octets, SHA256 `abe50e9b9fee3bffda1a1b0f963ffd858f8840c4da58554336d10b99c515df50`. APK exact installe et lance sans crash sur AVD TV 720p; aucun deploiement production demande.
+
 ## 2026-07-12 - Home paysage, tendances par profil et filtres Live
 
 - Remplace les cards portrait/expansion par des cards paysage fixes `220,4 x 124 dp` (au moins cinq visibles en 1280 px), avec scale conteneur et preview Xtream muet partage apres 550 ms.

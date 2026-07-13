@@ -40,7 +40,7 @@ object SmartVisionDimensions {
     val HomeContentRowHeight = 158.dp
     val HomeRowEdgePadding = 12.dp
     val HomeContentCardSpacing = 6.dp
-    val HomeTrendFoldOffset = 20.dp
+    val HomeContentSectionSpacing = 10.dp
     val HomePanelRadius = 8.dp
     val HomeCardRadius = 8.dp
     val HomeContentRadius = 6.dp

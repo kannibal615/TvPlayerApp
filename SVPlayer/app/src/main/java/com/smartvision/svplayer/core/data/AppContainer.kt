@@ -321,6 +321,7 @@ class AppContainer(context: Context) {
         progressDao = database.progressDao(),
         syncStateDao = database.syncStateDao(),
         youtubeDao = database.youtubeDao(),
+        kidsFilterDao = database.kidsFilterDao(),
         networkActivityTracker = networkActivityTracker,
     )
     val settingsRepository: SettingsRepository =

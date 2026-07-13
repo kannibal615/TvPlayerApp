@@ -77,6 +77,7 @@ import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
+import com.smartvision.svplayer.ui.focus.awaitItemVisible
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -124,8 +125,11 @@ fun MoviesScreen(
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val currentTabFocusRequester = remember { FocusRequester() }
     val categoryListState = rememberLazyListState()
+    val movieListState = rememberLazyListState()
     val firstMovieFocusRequester = remember { FocusRequester() }
+    val focusedMovieFocusRequester = remember { FocusRequester() }
     val returnMovieFocusRequester = remember { FocusRequester() }
+    val movieSearchFocusRequester = remember { FocusRequester() }
     val previewPlayFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
@@ -133,6 +137,7 @@ fun MoviesScreen(
     var pendingFirstMovieFocusCategoryId by remember { mutableStateOf<String?>(null) }
     var movieToDelete by remember { mutableStateOf<MovieItemUi?>(null) }
     var deletedMovieIdAwaitingFocus by remember { mutableStateOf<Int?>(null) }
+    var pendingPreviewMovieId by remember { mutableStateOf<Int?>(null) }
     var showFreeAdsPreview by remember { mutableStateOf(false) }
     var tvCode by remember { mutableStateOf("") }
     var premiumPurchaseUrl by remember {
@@ -168,9 +173,43 @@ fun MoviesScreen(
             ?: 0
         if (state.categories.isEmpty()) return
         categoryListState.scrollToItem(selectedIndex)
+        if (!categoryListState.awaitItemVisible(selectedIndex)) return
         withFrameNanos { }
-        delay(80)
         runCatching { selectedCategoryFocusRequester.requestFocus() }
+    }
+
+    suspend fun focusMovieColumn() {
+        val movies = state.displayedMovies
+        if (movies.isEmpty()) {
+            runCatching { movieSearchFocusRequester.requestFocus() }
+            return
+        }
+        val targetIndex = movies.indexOfFirst { it.streamId == state.focusedMovieId }
+            .takeIf { it >= 0 }
+            ?: 0
+        movieListState.scrollToItem((targetIndex - 2).coerceAtLeast(0))
+        if (!movieListState.awaitItemVisible(targetIndex)) return
+        withFrameNanos { }
+        runCatching {
+            when {
+                state.focusedMovieId == returnFocusMovieId -> returnMovieFocusRequester.requestFocus()
+                targetIndex == 0 -> firstMovieFocusRequester.requestFocus()
+                else -> focusedMovieFocusRequester.requestFocus()
+            }
+        }
+    }
+
+    fun enterMoviePreview(movie: MovieItemUi) {
+        pendingPreviewMovieId = movie.streamId
+        if (state.selectedMovieId != movie.streamId) viewModel.activateMovie(movie)
+    }
+
+    LaunchedEffect(pendingPreviewMovieId, state.selectedMovieId) {
+        val movieId = pendingPreviewMovieId ?: return@LaunchedEffect
+        if (state.selectedMovieId != movieId) return@LaunchedEffect
+        withFrameNanos { }
+        runCatching { previewPlayFocusRequester.requestFocus() }
+        pendingPreviewMovieId = null
     }
 
     LaunchedEffect(deletedMovieIdAwaitingFocus, state.movies) {
@@ -276,13 +315,17 @@ fun MoviesScreen(
                             viewModel.selectCategory(category)
                         }
                     },
+                    onRight = { behaviorScope.launch { focusMovieColumn() } },
                     modifier = Modifier
                         .weight(0.24f)
                         .fillMaxHeight(),
                 )
                 MovieList(
                     state = state,
+                    listState = movieListState,
+                    searchFocusRequester = movieSearchFocusRequester,
                     firstMovieFocusRequester = firstMovieFocusRequester,
+                    focusedMovieFocusRequester = focusedMovieFocusRequester,
                     returnMovieFocusRequester = returnMovieFocusRequester,
                     returnFocusMovieId = returnFocusMovieId,
                     focusFirstAfterCategoryId = pendingFirstMovieFocusCategoryId,
@@ -291,10 +334,11 @@ fun MoviesScreen(
                         returnFocusHandled = true
                         onReturnFocusConsumed()
                     },
-                    rightFocusRequester = previewPlayFocusRequester,
                     onSearchQueryChange = viewModel::updateContentSearchQuery,
                     onSortSelected = viewModel::setSortMode,
                     onMovieFocused = viewModel::focusMovie,
+                    onRestoreCategoryFocus = { behaviorScope.launch { focusSelectedCategory() } },
+                    onEnterPreview = ::enterMoviePreview,
                     onMovieClick = { movie ->
                         if (inputReady) {
                             container.behaviorReporter.reportAsync(
@@ -334,6 +378,7 @@ fun MoviesScreen(
                     episodesEmptyLabel = strings.episodesEmpty,
                     resumeLabel = strings.resumePlayback,
                     progressLabel = strings.progressLabel,
+                    onNavigateLeft = { behaviorScope.launch { focusMovieColumn() } },
                     modifier = Modifier
                         .weight(0.34f)
                         .fillMaxHeight(),
@@ -378,6 +423,7 @@ private fun MovieCategoryList(
     currentTabFocusRequester: FocusRequester,
     listState: LazyListState,
     onCategory: (MovieCategoryUi) -> Unit,
+    onRight: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusCategoryId = state.categories.firstOrNull { it.id == state.selectedCategoryId }?.id
@@ -404,6 +450,7 @@ private fun MovieCategoryList(
                     selected = category.id == state.selectedCategoryId,
                     focusRequester = if (category.id == focusCategoryId) selectedCategoryFocusRequester else null,
                     upFocusRequester = currentTabFocusRequester.takeIf { index == 0 },
+                    onRight = onRight,
                     onClick = { onCategory(category) },
                 )
             }
@@ -414,23 +461,25 @@ private fun MovieCategoryList(
 @Composable
 private fun MovieList(
     state: MoviesScreenState,
+    listState: LazyListState,
+    searchFocusRequester: FocusRequester,
     firstMovieFocusRequester: FocusRequester,
+    focusedMovieFocusRequester: FocusRequester,
     returnMovieFocusRequester: FocusRequester,
     returnFocusMovieId: Int?,
     focusFirstAfterCategoryId: String?,
     onFirstAfterCategoryFocused: () -> Unit,
     onReturnFocusConsumed: () -> Unit,
-    rightFocusRequester: FocusRequester,
     onSearchQueryChange: (String) -> Unit,
     onSortSelected: (MovieSortMode) -> Unit,
     onMovieFocused: (MovieItemUi) -> Unit,
+    onRestoreCategoryFocus: () -> Unit,
+    onEnterPreview: (MovieItemUi) -> Unit,
     onMovieClick: (MovieItemUi) -> Unit,
     onLoadNextPage: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val listState = rememberLazyListState()
-    val searchFocusRequester = remember { FocusRequester() }
     val sortFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(
@@ -447,21 +496,21 @@ private fun MovieList(
             return@LaunchedEffect
         }
         listState.scrollToItem(0)
+        if (!listState.awaitItemVisible(0)) return@LaunchedEffect
         withFrameNanos { }
-        delay(80)
         runCatching { firstMovieFocusRequester.requestFocus() }
         onFirstAfterCategoryFocused()
     }
 
-    LaunchedEffect(returnFocusMovieId, state.movies) {
+    LaunchedEffect(returnFocusMovieId, state.displayedMovies) {
         val movieId = returnFocusMovieId ?: return@LaunchedEffect
-        val targetIndex = state.movies.indexOfFirst { it.streamId == movieId }
+        val targetIndex = state.displayedMovies.indexOfFirst { it.streamId == movieId }
         if (targetIndex < 0) {
             return@LaunchedEffect
         }
         listState.scrollToItem((targetIndex - 2).coerceAtLeast(0))
+        if (!listState.awaitItemVisible(targetIndex)) return@LaunchedEffect
         withFrameNanos { }
-        delay(80)
         runCatching { returnMovieFocusRequester.requestFocus() }
         onReturnFocusConsumed()
     }
@@ -481,22 +530,10 @@ private fun MovieList(
     }
 
     MediaCatalogPanel(
-        title = state.selectedCategory?.label ?: "Films",
+        title = "Movies",
         modifier = modifier,
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = if (state.contentSearchQuery.isBlank()) {
-                        state.selectedCategory?.count?.let { "$it films" } ?: "${state.movies.size} films"
-                    } else {
-                        "${state.movies.size} resultats"
-                    },
-                    color = SmartVisionColors.TextSecondary,
-                    style = CatalogMetaStyle,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.width(10.dp))
                 CatalogSearchField(
                     query = state.contentSearchQuery,
                     onQueryChange = onSearchQueryChange,
@@ -505,11 +542,17 @@ private fun MovieList(
                         .width(190.dp)
                         .focusRequester(searchFocusRequester)
                         .onPreviewKeyEvent { event ->
-                            if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight) {
-                                runCatching { sortFocusRequester.requestFocus() }
-                                true
-                            } else {
-                                false
+                            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                            when (event.key) {
+                                Key.DirectionLeft -> {
+                                    onRestoreCategoryFocus()
+                                    true
+                                }
+                                Key.DirectionRight -> {
+                                    runCatching { sortFocusRequester.requestFocus() }
+                                    true
+                                }
+                                else -> false
                             }
                         },
                 )
@@ -569,10 +612,13 @@ private fun MovieList(
                         focusRequester = when {
                             movie.streamId == returnFocusMovieId -> returnMovieFocusRequester
                             index == 0 -> firstMovieFocusRequester
+                            movie.streamId == state.focusedMovieId -> focusedMovieFocusRequester
                             else -> itemFocusRequester
                         },
-                        rightFocusRequester = rightFocusRequester,
+                        rightFocusRequester = null,
                         upFocusRequester = sortFocusRequester.takeIf { index == 0 },
+                        onLeft = onRestoreCategoryFocus,
+                        onRight = { onEnterPreview(movie) },
                         onFocused = { onMovieFocused(movie) },
                         onClick = { onMovieClick(movie) },
                     )

@@ -1,12 +1,13 @@
 # HOME Tendances et previews Xtream
 
-Derniere mise a jour: 2026-07-12.
+Derniere mise a jour: 2026-07-13.
 
 ## Etat actuel
 
-- Continue watching, Tendances films et Tendances series utilisent des cards paysage 16:9 de `220,4 x 124 dp` des le premier rendu, afin d'en afficher au moins cinq sur une ligne en 1280 px.
+- Continue watching, Tendances films et Tendances series utilisent les memes cards paysage 16:9 fixes; cette intervention ne modifie ni leur taille ni leur espacement horizontal.
 - Le focus applique un scale `1.04` au conteneur complet sans changement de largeur ni de ratio.
-- Apres `550 ms` de focus stable, un unique `HomePreviewController` cree un player Media3 muet et lit uniquement une URL Xtream reconstruite en memoire.
+- Les metadonnees preview sont preparees par fenetre visible avec concurrence bornee. Apres `550 ms` de focus stable, un unique `HomePreviewController` peut lire l'URL Xtream reconstruite en memoire; le focus seul ne lance aucune requete.
+- `item.id` reste la cle Lazy et `item.imageUrl` l'unique URL d'image de card. Un backdrop de preview peut etre mis en cache mais ne remplace jamais l'image au focus/recomposition.
 - Une perte de focus, une autre preview, une sortie Home, un changement de profil ou `ON_STOP` arrete et libere le player.
 - Les previews ne passent jamais par le lecteur principal et n'ecrivent ni progression, ni historique, ni date de derniere lecture.
 - Films: lien Xtream du film avec extension locale.
@@ -27,12 +28,12 @@ Derniere mise a jour: 2026-07-12.
 
 - Ne jamais stocker une URL Xtream credentialisee dans Room.
 - Ne jamais creer un player par card.
-- Ne jamais demarrer une preparation reseau avant le delai de focus.
+- Ne jamais demarrer une requete uniquement a cause du focus; le prechargement borne des items visibles reste autorise.
 - Ne jamais reutiliser les donnees ou players d'un autre profil.
 - Ne pas reintroduire les routes ou boutons `View all` supprimes.
 
 ## Livraison 2026-07-13
 
-- Historique et Tendances: espacement 10 dp et cinq cartes 16:9 completes sur la largeur TV 720p de reference.
-- Tendances: aucun poster portrait dans `previewImageUrl`; fallback paysage jusqu'au backdrop ou a la premiere frame, overlay permanent titre/duree/note.
+- Historique et Tendances: espacement vertical commun `10dp`; dimensions et espacement horizontal des cards preserves.
+- Tendances: URL de card stable avant/pendant/apres focus; la preparation preview ne change que les metadonnees et la video.
 - Preview partagee: un controller, fondu audio 0-100 % sur deux secondes et boucle VOD Tendances 15/35/55/70/90 %, segments bornes a 25 secondes.
