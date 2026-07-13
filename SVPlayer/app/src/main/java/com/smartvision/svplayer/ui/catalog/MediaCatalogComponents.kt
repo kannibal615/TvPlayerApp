@@ -323,19 +323,21 @@ fun MediaCatalogPanel(
                 .height(34.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (titleContent != null) {
-                titleContent()
-            } else {
-                Text(
-                    text = title,
-                    color = SmartVisionColors.TextPrimary,
-                    style = CatalogPanelTitleStyle,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Box(modifier = Modifier.weight(1f)) {
+                if (titleContent != null) {
+                    titleContent()
+                } else {
+                    Text(
+                        text = title,
+                        color = SmartVisionColors.TextPrimary,
+                        style = CatalogPanelTitleStyle,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
-            Spacer(Modifier.weight(1f))
+            if (trailing != null) Spacer(Modifier.width(8.dp))
             trailing?.invoke()
         }
 

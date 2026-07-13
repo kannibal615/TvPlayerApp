@@ -106,6 +106,7 @@ fun TvHeader(
     notificationBadgeCount: Int,
     modifier: Modifier = Modifier,
     currentTabFocusRequester: FocusRequester? = null,
+    homeTabFocusRequester: FocusRequester? = null,
     licenseFocusRequester: FocusRequester? = null,
     notificationsFocusRequester: FocusRequester? = null,
     profileFocusRequester: FocusRequester? = null,
@@ -129,14 +130,18 @@ fun TvHeader(
             horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            tabs.forEach { tab ->
+            tabs.forEachIndexed { index, tab ->
                 HeaderTabButton(
                     tab = tab,
                     currentRoute = currentRoute,
                     onNavigate = onNavigate,
                     height = 38.dp,
                     horizontalPadding = 6.dp,
-                    focusRequester = currentTabFocusRequester.takeIf { tab.route == currentRoute },
+                    focusRequester = when {
+                        tab.route == currentRoute -> currentTabFocusRequester
+                        index == 0 -> homeTabFocusRequester
+                        else -> null
+                    },
                     downFocusRequester = contentDownFocusRequester,
                     onDown = onContentDown,
                 )

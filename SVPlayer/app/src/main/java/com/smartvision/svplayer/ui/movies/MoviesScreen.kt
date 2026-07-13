@@ -37,10 +37,16 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -271,7 +277,7 @@ fun MoviesScreen(
                         }
                     },
                     modifier = Modifier
-                        .weight(0.22f)
+                        .weight(0.24f)
                         .fillMaxHeight(),
                 )
                 MovieList(
@@ -305,7 +311,7 @@ fun MoviesScreen(
                     onLoadNextPage = viewModel::loadNextPage,
                     onRetry = viewModel::retryCurrentCategory,
                     modifier = Modifier
-                        .weight(0.44f)
+                        .weight(0.42f)
                         .fillMaxHeight(),
                 )
                 VodPreviewPanel(
@@ -424,6 +430,8 @@ private fun MovieList(
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
+    val searchFocusRequester = remember { FocusRequester() }
+    val sortFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(
         focusFirstAfterCategoryId,
@@ -458,7 +466,7 @@ private fun MovieList(
         onReturnFocusConsumed()
     }
 
-    LaunchedEffect(state.selectedCategoryId, state.contentSearchQuery) {
+    LaunchedEffect(state.selectedCategoryId, state.contentSearchQuery, state.sortMode) {
         if (returnFocusMovieId != null) return@LaunchedEffect
         if (listState.layoutInfo.totalItemsCount > 0) listState.scrollToItem(0)
     }
@@ -493,13 +501,25 @@ private fun MovieList(
                     query = state.contentSearchQuery,
                     onQueryChange = onSearchQueryChange,
                     placeholder = "Film",
-                    modifier = Modifier.width(190.dp),
+                    modifier = Modifier
+                        .width(190.dp)
+                        .focusRequester(searchFocusRequester)
+                        .onPreviewKeyEvent { event ->
+                            if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight) {
+                                runCatching { sortFocusRequester.requestFocus() }
+                                true
+                            } else {
+                                false
+                            }
+                        },
                 )
                 Spacer(Modifier.width(8.dp))
                 CatalogSortButton(
                     options = MovieSortMode.entries.map { it.label },
                     selectedIndex = state.sortMode.ordinal,
                     onSelected = { onSortSelected(MovieSortMode.entries[it]) },
+                    focusRequester = sortFocusRequester,
+                    leftFocusRequester = searchFocusRequester,
                 )
             }
         },
@@ -552,6 +572,7 @@ private fun MovieList(
                             else -> itemFocusRequester
                         },
                         rightFocusRequester = rightFocusRequester,
+                        upFocusRequester = sortFocusRequester.takeIf { index == 0 },
                         onFocused = { onMovieFocused(movie) },
                         onClick = { onMovieClick(movie) },
                     )

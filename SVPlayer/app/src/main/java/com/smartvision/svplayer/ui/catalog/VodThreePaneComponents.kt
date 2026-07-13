@@ -152,6 +152,7 @@ fun VodContentRow(
     selected: Boolean,
     focusRequester: FocusRequester?,
     rightFocusRequester: FocusRequester?,
+    upFocusRequester: FocusRequester? = null,
     onFocused: () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -177,8 +178,11 @@ fun VodContentRow(
             .fillMaxWidth()
             .height(VodContentRowHeight)
             .then(
-                if (rightFocusRequester != null) {
-                    Modifier.focusProperties { right = rightFocusRequester }
+                if (rightFocusRequester != null || upFocusRequester != null) {
+                    Modifier.focusProperties {
+                        if (rightFocusRequester != null) right = rightFocusRequester
+                        if (upFocusRequester != null) up = upFocusRequester
+                    }
                 } else {
                     Modifier
                 },
@@ -196,11 +200,16 @@ fun VodContentRow(
             }
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                if (event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter) {
-                    onClick()
-                    true
-                } else {
-                    false
+                when {
+                    event.key == Key.DirectionUp && upFocusRequester != null -> {
+                        runCatching { upFocusRequester.requestFocus() }
+                        true
+                    }
+                    event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter -> {
+                        onClick()
+                        true
+                    }
+                    else -> false
                 }
             }
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
@@ -354,7 +363,7 @@ fun VodCatalogLoadingSkeleton(
             rows = 10,
             rowHeight = 58.dp,
             shimmerBrush = shimmerBrush,
-            modifier = Modifier.weight(0.22f),
+            modifier = Modifier.weight(0.24f),
         )
         VodSkeletonPanel(
             titleWidth = 160.dp,
@@ -362,7 +371,7 @@ fun VodCatalogLoadingSkeleton(
             rowHeight = VodContentRowHeight,
             shimmerBrush = shimmerBrush,
             headerTrailing = true,
-            modifier = Modifier.weight(0.44f),
+            modifier = Modifier.weight(0.42f),
         )
         VodSkeletonPreviewPanel(
             shimmerBrush = shimmerBrush,

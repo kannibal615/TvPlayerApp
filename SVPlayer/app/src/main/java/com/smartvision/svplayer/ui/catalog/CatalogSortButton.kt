@@ -30,6 +30,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -37,21 +42,60 @@ import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import kotlinx.coroutines.delay
 
 @Composable
-fun CatalogSortButton(options: List<String>, selectedIndex: Int, onSelected: (Int) -> Unit) {
+fun CatalogSortButton(
+    options: List<String>,
+    selectedIndex: Int,
+    onSelected: (Int) -> Unit,
+    focusRequester: FocusRequester? = null,
+    leftFocusRequester: FocusRequester? = null,
+) {
     var open by remember { mutableStateOf(false) }
     var focused by remember { mutableStateOf(false) }
-    val buttonRequester = remember { FocusRequester() }
+    val internalButtonRequester = remember { FocusRequester() }
+    val buttonRequester = focusRequester ?: internalButtonRequester
+    val active = selectedIndex > 0
+    val backgroundColor = when {
+        focused -> SmartVisionColors.Primary.copy(alpha = 0.78f)
+        active -> SmartVisionColors.Primary.copy(alpha = 0.48f)
+        else -> Color(0xB40B1B31)
+    }
+    val borderColor = when {
+        focused -> SmartVisionColors.CyanAccent
+        active -> SmartVisionColors.Primary
+        else -> SmartVisionColors.Border
+    }
     Row(
-        modifier = Modifier.height(34.dp).width(154.dp)
-            .background(if (focused) SmartVisionColors.Primary.copy(alpha = 0.72f) else Color(0xB40B1B31), RoundedCornerShape(7.dp))
-            .border(1.dp, if (focused) SmartVisionColors.CyanAccent else SmartVisionColors.Border, RoundedCornerShape(7.dp))
-            .focusRequester(buttonRequester).onFocusChanged { focused = it.isFocused }.focusable().clickable { open = true }
-            .padding(horizontal = 9.dp),
+        modifier = Modifier.height(42.dp).width(42.dp)
+            .background(backgroundColor, RoundedCornerShape(7.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(7.dp))
+            .focusRequester(buttonRequester)
+            .onPreviewKeyEvent { event ->
+                val confirmationKey = event.key == Key.DirectionCenter ||
+                    event.key == Key.Enter ||
+                    event.key == Key.NumPadEnter
+                when {
+                    event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft && leftFocusRequester != null -> {
+                        runCatching { leftFocusRequester.requestFocus() }
+                        true
+                    }
+                    confirmationKey && event.type == KeyEventType.KeyDown -> true
+                    confirmationKey && event.type == KeyEventType.KeyUp -> {
+                        open = true
+                        true
+                    }
+                    else -> false
+                }
+            }
+            .onFocusChanged { focused = it.isFocused }.focusable().clickable { open = true }
+            .padding(9.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        horizontalArrangement = Arrangement.Center,
     ) {
-        Icon(Icons.Default.Sort, null, tint = SmartVisionColors.TextPrimary)
-        Text(options.getOrNull(selectedIndex) ?: "Trier", color = SmartVisionColors.TextPrimary, maxLines = 1)
+        Icon(
+            Icons.Default.Sort,
+            contentDescription = options.getOrNull(selectedIndex) ?: "Sort",
+            tint = if (active || focused) Color.White else SmartVisionColors.TextPrimary,
+        )
     }
     if (open) {
         val firstRequester = remember { FocusRequester() }
@@ -68,6 +112,22 @@ fun CatalogSortButton(options: List<String>, selectedIndex: Int, onSelected: (In
                             .then(if (index == selectedIndex) Modifier.focusRequester(firstRequester) else Modifier)
                             .background(if (index == selectedIndex) SmartVisionColors.Primary.copy(alpha = 0.65f) else Color(0xB40B1B31), RoundedCornerShape(8.dp))
                             .border(1.dp, if (itemFocused) SmartVisionColors.CyanAccent else SmartVisionColors.Border, RoundedCornerShape(8.dp))
+                            .onPreviewKeyEvent { event ->
+                                val confirmationKey = event.key == Key.DirectionCenter ||
+                                    event.key == Key.Enter ||
+                                    event.key == Key.NumPadEnter
+                                when {
+                                    !confirmationKey -> false
+                                    event.type == KeyEventType.KeyDown -> true
+                                    event.type == KeyEventType.KeyUp -> {
+                                        onSelected(index)
+                                        open = false
+                                        runCatching { buttonRequester.requestFocus() }
+                                        true
+                                    }
+                                    else -> false
+                                }
+                            }
                             .onFocusChanged { itemFocused = it.isFocused }.focusable().clickable {
                                 onSelected(index); open = false; runCatching { buttonRequester.requestFocus() }
                             }.padding(horizontal = 12.dp),

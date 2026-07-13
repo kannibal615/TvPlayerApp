@@ -244,7 +244,8 @@ private fun TrendingPreviewCard(
         label = "trendingCardBorder",
     )
     val previewUrl = item.previewUrl
-    val landscapeUrl = item.previewImageUrl
+    val displayedPosterUrl = item.previewImageUrl?.takeIf { item.previewBackdropAvailable }
+        ?: item.imageUrl
     val metadata = listOfNotNull(
         item.previewDurationLabel?.takeIf { it.isNotBlank() },
         item.ratingLabel?.takeIf { it.isNotBlank() },
@@ -308,13 +309,20 @@ private fun TrendingPreviewCard(
             .focusable(interactionSource = interactionSource),
     ) {
         HomeVisualBackground(style = item.visualStyle, modifier = Modifier.fillMaxSize())
-        if (item.previewBackdropAvailable && !landscapeUrl.isNullOrBlank()) {
+        if (!displayedPosterUrl.isNullOrBlank()) {
             AsyncImage(
-                model = landscapeUrl,
+                model = displayedPosterUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.Center,
                 modifier = Modifier.fillMaxSize(),
+            )
+        }
+        if (enablePreview) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
             )
         }
         HomePreviewSurface(

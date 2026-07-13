@@ -359,7 +359,7 @@ private fun ProfileScreen(
     var showParentalUnlockDialog by remember { mutableStateOf(false) }
     var showParentalCreateDialog by remember { mutableStateOf(false) }
     var pendingFocusSection by remember { mutableStateOf<ProfileSection?>(null) }
-    val currentTabFocusRequester = remember { FocusRequester() }
+    val homeTabFocusRequester = remember { FocusRequester() }
     val xtreamSectionFocusRequester = remember { FocusRequester() }
     val deviceCatalogFocusRequester = remember { FocusRequester() }
 
@@ -406,7 +406,7 @@ private fun ProfileScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
-            currentTabFocusRequester = currentTabFocusRequester,
+            homeTabFocusRequester = homeTabFocusRequester,
             contentDownFocusRequester = xtreamSectionFocusRequester,
             onContentDown = { runCatching { xtreamSectionFocusRequester.requestFocus() } },
             modifier = Modifier.fillMaxWidth(),
@@ -451,7 +451,21 @@ private fun ProfileScreen(
                             },
                             focusRequester = if (section == ProfileSection.Xtream) xtreamSectionFocusRequester else null,
                             modifier = Modifier
-                                .then(if (section == ProfileSection.Xtream) Modifier.focusProperties { up = currentTabFocusRequester } else Modifier)
+                                .then(
+                                    if (section == ProfileSection.Xtream) {
+                                        Modifier.onPreviewKeyEvent { event ->
+                                            if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionUp) {
+                                                runCatching { homeTabFocusRequester.requestFocus() }
+                                                true
+                                            } else {
+                                                false
+                                            }
+                                        }
+                                    } else {
+                                        Modifier
+                                    },
+                                )
+                                .then(if (section == ProfileSection.Xtream) Modifier.focusProperties { up = homeTabFocusRequester } else Modifier)
                                 .fillMaxWidth()
                                 .height(46.dp),
                         )

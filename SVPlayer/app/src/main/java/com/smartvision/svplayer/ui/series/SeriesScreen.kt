@@ -37,10 +37,16 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -272,7 +278,7 @@ fun SeriesScreen(
                         }
                     },
                     modifier = Modifier
-                        .weight(0.22f)
+                        .weight(0.24f)
                         .fillMaxHeight(),
                 )
                 SeriesList(
@@ -306,7 +312,7 @@ fun SeriesScreen(
                     onLoadNextPage = viewModel::loadNextPage,
                     onRetry = viewModel::retryCurrentCategory,
                     modifier = Modifier
-                        .weight(0.44f)
+                        .weight(0.42f)
                         .fillMaxHeight(),
                 )
                 VodPreviewPanel(
@@ -449,6 +455,8 @@ private fun SeriesList(
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
+    val searchFocusRequester = remember { FocusRequester() }
+    val sortFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(
         focusFirstAfterCategoryId,
@@ -483,7 +491,7 @@ private fun SeriesList(
         onReturnFocusConsumed()
     }
 
-    LaunchedEffect(state.selectedCategoryId, state.contentSearchQuery) {
+    LaunchedEffect(state.selectedCategoryId, state.contentSearchQuery, state.sortMode) {
         if (returnFocusSeriesId != null) return@LaunchedEffect
         if (listState.layoutInfo.totalItemsCount > 0) listState.scrollToItem(0)
     }
@@ -518,13 +526,25 @@ private fun SeriesList(
                     query = state.contentSearchQuery,
                     onQueryChange = onSearchQueryChange,
                     placeholder = "Serie",
-                    modifier = Modifier.width(190.dp),
+                    modifier = Modifier
+                        .width(190.dp)
+                        .focusRequester(searchFocusRequester)
+                        .onPreviewKeyEvent { event ->
+                            if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight) {
+                                runCatching { sortFocusRequester.requestFocus() }
+                                true
+                            } else {
+                                false
+                            }
+                        },
                 )
                 Spacer(Modifier.width(8.dp))
                 CatalogSortButton(
                     options = SeriesSortMode.entries.map { it.label },
                     selectedIndex = state.sortMode.ordinal,
                     onSelected = { onSortSelected(SeriesSortMode.entries[it]) },
+                    focusRequester = sortFocusRequester,
+                    leftFocusRequester = searchFocusRequester,
                 )
             }
         },
@@ -577,6 +597,7 @@ private fun SeriesList(
                             else -> itemFocusRequester
                         },
                         rightFocusRequester = rightFocusRequester,
+                        upFocusRequester = sortFocusRequester.takeIf { index == 0 },
                         onFocused = { onSeriesFocused(series) },
                         onClick = { onSeriesClick(series) },
                     )

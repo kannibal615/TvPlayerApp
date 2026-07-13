@@ -23,6 +23,7 @@ import com.smartvision.svplayer.ui.catalog.AllCategoryPolicy
 import java.util.Locale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -590,6 +591,7 @@ class SeriesViewModel(
                 }
                 loadVisibleMetadata(result.items)
             }.onFailure { error ->
+                if (error is CancellationException) return@onFailure
                 _uiState.update {
                     it.copy(
                         itemsLoading = false,
@@ -663,13 +665,20 @@ class SeriesViewModel(
         episodesJob = viewModelScope.launch {
             _uiState.update { it.copy(episodesLoading = true) }
             runCatching {
-                catalogRepository.getSeriesEpisodes(seriesId)
+                val localEpisodes = catalogRepository.getSeriesEpisodes(seriesId)
+                val episodes = if (localEpisodes.isNotEmpty()) {
+                    localEpisodes.map { episode -> episode.toUiEpisode(xtreamRepository) }
+                } else {
+                    xtreamRepository.getSeriesEpisodes(seriesId)
+                        .map { episode -> episode.toUiEpisode(xtreamRepository) }
+                }
+                episodes
                     .filter { episode -> playerSettings.allowsContent(episode.title, episode.plot) }
                     .map { episode ->
                     val progress = historyProgress.firstOrNull { item ->
                         item.contentId.toIntOrNull() == episode.episodeId
                     }
-                    episode.toUiEpisode(xtreamRepository).copy(
+                    episode.copy(
                         progressPercent = progress?.let { item ->
                             if (item.durationMs > 0L) {
                                 ((item.positionMs * 100L) / item.durationMs).toInt().coerceIn(0, 100)
@@ -696,6 +705,7 @@ class SeriesViewModel(
                     }
                 }
             }.onFailure { error ->
+                if (error is CancellationException) return@onFailure
                 _uiState.update {
                     it.copy(
                         episodesLoading = false,

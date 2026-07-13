@@ -757,12 +757,16 @@ private fun ChannelList(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val sortFocusRequester = remember { FocusRequester() }
     LaunchedEffect(focusChannelId, state.channelsLoading, visibleChannels.size) {
         if (!state.channelsLoading && focusChannelId != null) {
             visibleChannels.indexOfFirst { it.streamId == focusChannelId }
                 .takeIf { it >= 0 }
                 ?.let { index -> listState.scrollToItem((index - 2).coerceAtLeast(0)) }
         }
+    }
+    LaunchedEffect(state.sortMode) {
+        if (listState.layoutInfo.totalItemsCount > 0) listState.scrollToItem(0)
     }
     LaunchedEffect(listState, visibleChannels.size, state.hasMoreItems, state.nextPageLoading, searchQuery) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
@@ -797,6 +801,10 @@ private fun ChannelList(
                                 onRestoreHeaderFocus()
                                 true
                             }
+                            Key.DirectionRight -> {
+                                runCatching { sortFocusRequester.requestFocus() }
+                                true
+                            }
                             else -> false
                         }
                     },
@@ -806,6 +814,8 @@ private fun ChannelList(
                     options = LiveSortMode.entries.map { it.label },
                     selectedIndex = state.sortMode.ordinal,
                     onSelected = { onSortSelected(LiveSortMode.entries[it]) },
+                    focusRequester = sortFocusRequester,
+                    leftFocusRequester = searchFocusRequester,
                 )
             }
         },

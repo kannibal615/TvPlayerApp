@@ -145,7 +145,7 @@ fun SettingsScreen(
     var showClearLocalDataConfirmation by remember { mutableStateOf(false) }
     val strings = smartVisionStrings(settings.language)
     val lastUpdateLabel = remember(context) { context.smartVisionLastUpdateLabel() }
-    val currentTabFocusRequester = remember { FocusRequester() }
+    val homeTabFocusRequester = remember { FocusRequester() }
     val firstMenuFocusRequester = remember { FocusRequester() }
     val licenseViewModel: ProfileViewModel = viewModel(
         factory = viewModelFactory {
@@ -192,7 +192,7 @@ fun SettingsScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
-            currentTabFocusRequester = currentTabFocusRequester,
+            homeTabFocusRequester = homeTabFocusRequester,
             contentDownFocusRequester = firstMenuFocusRequester,
             onContentDown = { runCatching { firstMenuFocusRequester.requestFocus() } },
             modifier = Modifier.fillMaxWidth(),
@@ -204,7 +204,7 @@ fun SettingsScreen(
             selectedSection = selectedSection,
             onSectionSelected = { selectedSection = it },
             firstMenuFocusRequester = firstMenuFocusRequester,
-            headerFocusRequester = currentTabFocusRequester,
+            headerFocusRequester = homeTabFocusRequester,
             settings = settings,
             accountsCount = accounts.size,
             activeAccount = activeAccount,
@@ -388,6 +388,20 @@ private fun SettingsMenuLayout(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp)
+                            .then(
+                                if (section == SettingsSection.License) {
+                                    Modifier.onPreviewKeyEvent { event ->
+                                        if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionUp) {
+                                            runCatching { headerFocusRequester.requestFocus() }
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    }
+                                } else {
+                                    Modifier
+                                },
+                            )
                             .then(
                                 if (section == SettingsSection.License) {
                                     Modifier.focusProperties { up = headerFocusRequester }
