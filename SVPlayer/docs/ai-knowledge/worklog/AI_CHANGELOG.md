@@ -3028,3 +3028,11 @@ Fichiers code concernes:
 - Home: hero texte-only non focusable, marge haute stabilisee, luminosite relevee et cards Xtream sans agrandissement au focus.
 - Performance: suppression du re-ancrage horizontal anime a chaque card et creation de l'animation infinie GoldSweep uniquement pour ce style.
 - QA: `compileReleaseKotlin` et `assembleRelease` valides; APK installe uniquement sur `emulator-5554`. Retour Live et Movies, focus Settings et hero Home verifies visuellement sans crash. Series compilee et parcourue, mais aucun episode du premier item test n'etait disponible pour ouvrir le player.
+
+## 2026-07-13 - Progression Kids, Home, focus, filtres, tris et backend Playlist
+
+- Corrige le HTTP 500 de session Playlist cause par la reinsertion d'un `token_hash` unique.
+- Ajoute la progression Kids reelle par lots et les compteurs partages Home/Info compte.
+- Stabilise scroll/focus Parametres, pastille parentale et focus Who's Watching.
+- Finalise les cartes Home 16:9, overlays, premiere frame, audio progressif et segments Tendances.
+- Integre l'icone AR fournie et les tris stables D-pad Live TV/Films/Series.

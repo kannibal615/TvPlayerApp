@@ -132,6 +132,7 @@ import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
+import com.smartvision.svplayer.ui.catalog.CatalogSortButton
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
@@ -297,7 +298,7 @@ fun LiveTvScreen(
         }
     }
 
-    val visibleChannels = state.channels
+    val visibleChannels = state.displayedChannels
 
     fun restoreHeaderFocus() {
         focusScope.launch {
@@ -544,6 +545,7 @@ fun LiveTvScreen(
                     headerFocusRequester = headerLiveFocusRequester,
                     searchQuery = state.channelSearchQuery,
                     onSearchQueryChange = viewModel::updateChannelSearchQuery,
+                    onSortSelected = viewModel::setSortMode,
                     previewActionFocusRequester = firstPreviewActionFocusRequester.takeIf {
                         state.selectedChannel != null
                     },
@@ -742,6 +744,7 @@ private fun ChannelList(
     headerFocusRequester: FocusRequester,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
+    onSortSelected: (LiveSortMode) -> Unit,
     previewActionFocusRequester: FocusRequester?,
     onChannelFocused: (LiveTvChannel) -> Unit,
     onChannelFocusObserved: (LiveTvChannel) -> Unit,
@@ -774,7 +777,8 @@ private fun ChannelList(
         title = strings.liveTvChannels,
         modifier = modifier,
         trailing = {
-            CatalogSearchField(
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CatalogSearchField(
                 query = searchQuery,
                 onQueryChange = onSearchQueryChange,
                 placeholder = strings.liveTvSearchPlaceholder,
@@ -796,7 +800,14 @@ private fun ChannelList(
                             else -> false
                         }
                     },
-            )
+                )
+                Spacer(Modifier.width(8.dp))
+                CatalogSortButton(
+                    options = LiveSortMode.entries.map { it.label },
+                    selectedIndex = state.sortMode.ordinal,
+                    onSelected = { onSortSelected(LiveSortMode.entries[it]) },
+                )
+            }
         },
     ) {
         when {

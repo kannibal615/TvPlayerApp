@@ -30,3 +30,9 @@ Derniere mise a jour: 2026-07-12.
 - Ne jamais demarrer une preparation reseau avant le delai de focus.
 - Ne jamais reutiliser les donnees ou players d'un autre profil.
 - Ne pas reintroduire les routes ou boutons `View all` supprimes.
+
+## Livraison 2026-07-13
+
+- Historique et Tendances: espacement 10 dp et cinq cartes 16:9 completes sur la largeur TV 720p de reference.
+- Tendances: aucun poster portrait dans `previewImageUrl`; fallback paysage jusqu'au backdrop ou a la premiere frame, overlay permanent titre/duree/note.
+- Preview partagee: un controller, fondu audio 0-100 % sur deux secondes et boucle VOD Tendances 15/35/55/70/90 %, segments bornes a 25 secondes.

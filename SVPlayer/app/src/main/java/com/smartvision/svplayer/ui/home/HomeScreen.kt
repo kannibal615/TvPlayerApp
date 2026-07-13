@@ -835,6 +835,13 @@ private data class HomeCatalogWorkUiState(
                 if (section.currentItems > 0 && isNotEmpty()) append(" • ")
                 if (section.currentItems > 0) append(section.currentItems)
                 section.totalItems?.takeIf { it > 0 }?.let { append(" / ").append(it) }
+                section.keptItems?.let {
+                    if (isNotEmpty()) append(" • ")
+                    append(it).append(" conserves")
+                }
+                section.excludedItems?.takeIf { it > 0 }?.let {
+                    append(" • ").append(it).append(" exclus")
+                }
             }.ifBlank { null },
         )
     }
@@ -866,6 +873,8 @@ private data class HomeCatalogSectionUiState(
     val message: String? = null,
     val currentItems: Int = 0,
     val totalItems: Int? = null,
+    val keptItems: Int? = null,
+    val excludedItems: Int? = null,
 )
 
 private fun SyncStatus.toHomeCatalogWorkUiState(
@@ -917,6 +926,8 @@ private fun SyncStatus.SyncSectionProgress.toHomeSectionUiState(): HomeCatalogSe
         message = message,
         currentItems = currentItems,
         totalItems = totalItems,
+        keptItems = keptItems,
+        excludedItems = excludedItems,
     )
 
 private const val HomeFocusLogTag = "SVHomeFocus"

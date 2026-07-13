@@ -55,6 +55,11 @@ data class MovieItemUi(
         listOfNotNull(genre, rating?.let { "$it/10" }, year).joinToString(" | ").ifBlank { categoryLabel }
 }
 
+enum class MovieSortMode(val label: String) {
+    DEFAULT("Ordre par defaut"), TITLE_ASC("Titre A - Z"), TITLE_DESC("Titre Z - A"),
+    NEWEST("Date de sortie"), RATING("Mieux notes"), DURATION_ASC("Duree croissante"), DURATION_DESC("Duree decroissante"),
+}
+
 data class MoviesScreenState(
     val categoriesLoading: Boolean = true,
     val itemsLoading: Boolean = false,
@@ -69,7 +74,10 @@ data class MoviesScreenState(
     val movies: List<MovieItemUi> = emptyList(),
     val focusedMovieId: Int? = null,
     val selectedMovieId: Int? = null,
+    val sortMode: MovieSortMode = MovieSortMode.DEFAULT,
 ) {
+    val displayedMovies: List<MovieItemUi>
+        get() = movies.sortedWith(sortMode.comparator())
     val selectedCategory: MovieCategoryUi?
         get() = categories.firstOrNull { it.id == selectedCategoryId }
 
@@ -102,6 +110,10 @@ class MoviesViewModel(
         observeFavorites()
         observeHistory()
         loadCategories()
+    }
+
+    fun setSortMode(mode: MovieSortMode) {
+        _uiState.update { it.copy(sortMode = mode) }
     }
 
     private fun observeCatalogRevision() {
@@ -554,6 +566,18 @@ class MoviesViewModel(
     private fun catalogTotalCount(): Int? =
         localCategories.sumOf { it.count }.takeIf { it > 0 }
 }
+
+private fun MovieSortMode.comparator(): Comparator<MovieItemUi> = when (this) {
+    MovieSortMode.DEFAULT -> compareBy { it.number.toIntOrNull() ?: Int.MAX_VALUE }
+    MovieSortMode.TITLE_ASC -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.title }
+    MovieSortMode.TITLE_DESC -> compareByDescending<MovieItemUi> { it.title.lowercase(Locale.ROOT) }
+    MovieSortMode.NEWEST -> compareByDescending<MovieItemUi> { it.year?.take(4)?.toIntOrNull() ?: Int.MIN_VALUE }
+    MovieSortMode.RATING -> compareByDescending<MovieItemUi> { it.rating?.replace(',', '.')?.toDoubleOrNull() ?: Double.NEGATIVE_INFINITY }
+    MovieSortMode.DURATION_ASC -> compareBy { it.duration.durationMinutes() }
+    MovieSortMode.DURATION_DESC -> compareByDescending<MovieItemUi> { it.duration.durationMinutes() }
+}.thenBy { it.streamId }
+
+private fun String?.durationMinutes(): Int = this?.let { Regex("""\d+""").find(it)?.value?.toIntOrNull() } ?: Int.MAX_VALUE
 
 private data class PageLoadResult<T>(
     val items: List<T>,

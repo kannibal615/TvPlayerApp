@@ -60,6 +60,10 @@ data class SeriesItemUi(
         listOfNotNull(releaseDate?.take(4), genre, rating).joinToString(" | ").ifBlank { categoryLabel }
 }
 
+enum class SeriesSortMode(val label: String) {
+    DEFAULT("Ordre par defaut"), TITLE_ASC("Titre A - Z"), TITLE_DESC("Titre Z - A"), NEWEST("Date de sortie"), RATING("Mieux notees"),
+}
+
 data class SeriesEpisodeUi(
     val episodeId: Int,
     val seriesId: Int,
@@ -92,7 +96,10 @@ data class SeriesScreenState(
     val selectedSeriesId: Int? = null,
     val episodes: List<SeriesEpisodeUi> = emptyList(),
     val selectedPreviewEpisodeId: Int? = null,
+    val sortMode: SeriesSortMode = SeriesSortMode.DEFAULT,
 ) {
+    val displayedSeries: List<SeriesItemUi>
+        get() = series.sortedWith(sortMode.comparator())
     val selectedCategory: SeriesCategoryUi?
         get() = categories.firstOrNull { it.id == selectedCategoryId }
 
@@ -138,6 +145,10 @@ class SeriesViewModel(
         observeFavorites()
         observeHistory()
         loadCategories()
+    }
+
+    fun setSortMode(mode: SeriesSortMode) {
+        _uiState.update { it.copy(sortMode = mode) }
     }
 
     private fun observeCatalogRevision() {
@@ -708,6 +719,14 @@ class SeriesViewModel(
     private fun catalogTotalCount(): Int? =
         localCategories.sumOf { it.count }.takeIf { it > 0 }
 }
+
+private fun SeriesSortMode.comparator(): Comparator<SeriesItemUi> = when (this) {
+    SeriesSortMode.DEFAULT -> compareBy { it.number.toIntOrNull() ?: Int.MAX_VALUE }
+    SeriesSortMode.TITLE_ASC -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.title }
+    SeriesSortMode.TITLE_DESC -> compareByDescending<SeriesItemUi> { it.title.lowercase(Locale.ROOT) }
+    SeriesSortMode.NEWEST -> compareByDescending<SeriesItemUi> { it.releaseDate?.take(4)?.toIntOrNull() ?: Int.MIN_VALUE }
+    SeriesSortMode.RATING -> compareByDescending<SeriesItemUi> { it.rating?.replace(',', '.')?.toDoubleOrNull() ?: Double.NEGATIVE_INFINITY }
+}.thenBy { it.seriesId }
 
 private data class PageLoadResult<T>(
     val items: List<T>,

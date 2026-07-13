@@ -52,6 +52,7 @@ data class ContinueItem(
     val previewStartPositionMs: Long = 0L,
     val previewFallbackStartPositionMs: Long = 0L,
     val previewDurationLabel: String? = null,
+    val ratingLabel: String? = null,
     val previewDurationMs: Long? = null,
     val previewPrepared: Boolean = false,
     val previewBackdropAvailable: Boolean = false,

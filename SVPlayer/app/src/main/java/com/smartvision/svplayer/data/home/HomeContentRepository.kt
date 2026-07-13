@@ -49,7 +49,7 @@ data class HomeTrendingPreparedPreview(
     fun applyTo(item: ContinueItem): ContinueItem =
         item.copy(
             imageUrl = item.imageUrl ?: posterUrl,
-            previewImageUrl = backdropUrl ?: posterUrl ?: item.imageUrl,
+            previewImageUrl = backdropUrl.takeIf { backdropAvailable },
             remaining = durationLabel ?: sampleLabel ?: item.remaining,
             previewUrl = previewUrl,
             previewYoutubeKey = null,
@@ -58,7 +58,7 @@ data class HomeTrendingPreparedPreview(
             previewDurationLabel = durationLabel ?: sampleLabel,
             previewDurationMs = durationMs,
             previewPrepared = true,
-            previewBackdropAvailable = backdropAvailable,
+            previewBackdropAvailable = backdropAvailable && !backdropUrl.isNullOrBlank(),
             previewMode = if (previewAvailable) HomePreviewMode.TrendSegments else HomePreviewMode.None,
         )
 }
@@ -520,7 +520,8 @@ class HomeContentRepository(
             progress = 0f,
             visualStyle = HomeVisualStyle.Cinema,
             imageUrl = posterUrl,
-            previewImageUrl = posterUrl,
+            previewImageUrl = null,
+            ratingLabel = rating?.let { "$it/10" },
             mediaType = "FILM",
             previewUrl = null,
             previewMode = HomePreviewMode.None,
@@ -552,7 +553,8 @@ class HomeContentRepository(
             progress = 0f,
             visualStyle = HomeVisualStyle.Series,
             imageUrl = posterUrl,
-            previewImageUrl = posterUrl,
+            previewImageUrl = null,
+            ratingLabel = rating?.let { "$it/10" },
             mediaType = "SERIE",
             previewUrl = null,
             previewMode = HomePreviewMode.None,

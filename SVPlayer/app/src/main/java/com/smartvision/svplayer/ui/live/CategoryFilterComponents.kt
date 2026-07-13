@@ -47,6 +47,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -58,6 +59,7 @@ import androidx.compose.ui.window.Dialog
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import com.smartvision.svplayer.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -199,7 +201,15 @@ private fun CategoryFilterChip(
                 .padding(horizontal = if (visual == null) 10.dp else 7.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(visual ?: label, color = SmartVisionColors.TextPrimary, fontSize = if (visual == null) 11.sp else 17.sp, fontWeight = FontWeight.Bold)
+            if (label == "Arabic" || label == "Arabe") {
+                androidx.compose.foundation.Image(
+                    painter = painterResource(R.drawable.ic_filter_ar),
+                    contentDescription = label,
+                    modifier = Modifier.size(23.dp),
+                )
+            } else {
+                Text(visual ?: label, color = SmartVisionColors.TextPrimary, fontSize = if (visual == null) 11.sp else 17.sp, fontWeight = FontWeight.Bold)
+            }
         }
         if (showTooltip) {
             Text(label, color = SmartVisionColors.TextPrimary, fontSize = 10.sp, maxLines = 1,
@@ -237,7 +247,16 @@ private fun CategoryFilterPopup(filters: List<CategoryFilter>, activeCode: Strin
                     .border(1.dp, if (focused) SmartVisionColors.CyanAccent else SmartVisionColors.Border, RoundedCornerShape(8.dp))
                     .onFocusChanged { focused = it.isFocused }.focusable().clickable { onApply(code) }.padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (code == null) "•" else FlagResolver.visual(filter.identity), color = SmartVisionColors.TextPrimary, fontSize = 20.sp, modifier = Modifier.width(38.dp))
+                    if (code == "AR") {
+                        androidx.compose.foundation.Image(
+                            painter = painterResource(R.drawable.ic_filter_ar),
+                            contentDescription = filter.identity.displayName,
+                            modifier = Modifier.size(28.dp),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                    } else {
+                        Text(if (code == null) "•" else FlagResolver.visual(filter.identity), color = SmartVisionColors.TextPrimary, fontSize = 20.sp, modifier = Modifier.width(38.dp))
+                    }
                     Text(filter.identity.displayName, color = SmartVisionColors.TextPrimary, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     if (code != null) Text(filter.identity.sourceCode, color = SmartVisionColors.TextSecondary, modifier = Modifier.width(42.dp))
                     if (code != null) Text("${filter.categoryCount} ${strings.liveTvCategoryFilterFolders}", color = SmartVisionColors.TextSecondary, fontSize = 12.sp)

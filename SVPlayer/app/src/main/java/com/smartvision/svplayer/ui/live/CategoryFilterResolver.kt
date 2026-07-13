@@ -45,7 +45,7 @@ object CategoryFilterResolver {
     )
 
     private val rules = mapOf(
-        "AR" to Rule("Arab world", "Monde arabe", CategoryFilterType.LANGUAGE_GROUP, "ARAB", "AR"),
+        "AR" to Rule("Arabic", "Arabe", CategoryFilterType.LANGUAGE_GROUP, "ARAB", "AR"),
         "EU" to Rule("Europe", "Europe", CategoryFilterType.REGION, "EU", "EU"),
         "AS" to Rule("Asia", "Asie", CategoryFilterType.REGION, "ASIA", "AS"),
         "AF" to Rule("Africa", "Afrique", CategoryFilterType.REGION, "AFRICA", "AF"),

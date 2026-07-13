@@ -194,7 +194,7 @@ fun ContinueWatchingRow(
                 .fillMaxWidth()
                 .height(SmartVisionDimensions.HomeContentCardHeight),
             contentPadding = PaddingValues(horizontal = SmartVisionDimensions.HomeRowEdgePadding),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(SmartVisionDimensions.HomeContentCardSpacing),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->

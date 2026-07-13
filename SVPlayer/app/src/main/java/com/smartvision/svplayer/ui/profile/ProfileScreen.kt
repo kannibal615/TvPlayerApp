@@ -430,39 +430,45 @@ private fun ProfileScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 ProfileSection.entries.forEach { section ->
-                    TvButton(
-                        text = section.label,
-                        leadingIcon = section.icon,
-                        selected = selectedSection == section,
-                        variant = if (selectedSection == section) TvButtonVariant.Primary else TvButtonVariant.Text,
-                        onClick = {
-                            if (section == ProfileSection.SettingsShortcut) {
-                                onSettings()
-                            } else if (section == ProfileSection.Parental) {
-                                if (parentalSettings.parentalPin.isBlank()) {
-                                    showParentalCreateDialog = true
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        TvButton(
+                            text = section.label,
+                            leadingIcon = section.icon,
+                            selected = selectedSection == section,
+                            variant = if (selectedSection == section) TvButtonVariant.Primary else TvButtonVariant.Text,
+                            onClick = {
+                                if (section == ProfileSection.SettingsShortcut) {
+                                    onSettings()
+                                } else if (section == ProfileSection.Parental) {
+                                    if (parentalSettings.parentalPin.isBlank()) {
+                                        showParentalCreateDialog = true
+                                    } else {
+                                        showParentalUnlockDialog = true
+                                    }
                                 } else {
-                                    showParentalUnlockDialog = true
+                                    selectedSection = section
                                 }
-                            } else {
-                                selectedSection = section
-                            }
-                        },
-                        focusRequester = when (section) {
-                            ProfileSection.Xtream -> xtreamSectionFocusRequester
-                            else -> null
-                        },
-                        modifier = Modifier
-                            .then(
-                                if (section == ProfileSection.Xtream) {
-                                    Modifier.focusProperties { up = currentTabFocusRequester }
-                                } else {
-                                    Modifier
-                                },
+                            },
+                            focusRequester = if (section == ProfileSection.Xtream) xtreamSectionFocusRequester else null,
+                            modifier = Modifier
+                                .then(if (section == ProfileSection.Xtream) Modifier.focusProperties { up = currentTabFocusRequester } else Modifier)
+                                .fillMaxWidth()
+                                .height(46.dp),
+                        )
+                        if (section == ProfileSection.Parental) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .padding(end = 12.dp)
+                                    .size(11.dp)
+                                    .background(
+                                        if (parentalSettings.parentalControlEnabled) Color(0xFF20D878) else Color(0xFFFF4B4B),
+                                        RoundedCornerShape(50),
+                                    )
+                                    .border(1.dp, Color.White.copy(alpha = 0.72f), RoundedCornerShape(50)),
                             )
-                            .fillMaxWidth()
-                            .height(46.dp),
-                    )
+                        }
+                    }
                 }
             }
 
@@ -2104,12 +2110,27 @@ private fun XtreamSyncCountCard(
             )
             if (showProgress && enabled) {
                 Text(
-                    text = progress.phase.profileSyncPhaseLabel(),
+                    text = buildString {
+                        append(progress.message ?: progress.phase.profileSyncPhaseLabel())
+                        progress.totalItems?.takeIf { it > 0 }?.let { append(" • ").append(progress.currentItems).append("/").append(it) }
+                    },
                     color = if (progress.phase == SyncStatus.SyncSectionPhase.ERROR) SmartVisionColors.Error else SmartVisionColors.TextSecondary,
                     style = SmartVisionType.Caption,
                     fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
+                if (progress.keptItems != null || progress.excludedItems != null) {
+                    Text(
+                        text = listOfNotNull(
+                            progress.keptItems?.let { "$it conserves" },
+                            progress.excludedItems?.let { "$it exclus" },
+                        ).joinToString(" • "),
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Caption,
+                        maxLines = 1,
+                    )
+                }
             }
             Spacer(Modifier.weight(1f))
             if (showProgress && enabled) {

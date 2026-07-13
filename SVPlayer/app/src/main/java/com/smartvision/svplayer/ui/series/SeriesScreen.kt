@@ -58,6 +58,7 @@ import com.smartvision.svplayer.ui.catalog.CatalogEmpty
 import com.smartvision.svplayer.ui.catalog.CatalogError
 import com.smartvision.svplayer.ui.catalog.CatalogMetaStyle
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
+import com.smartvision.svplayer.ui.catalog.CatalogSortButton
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
@@ -287,6 +288,7 @@ fun SeriesScreen(
                     },
                     rightFocusRequester = previewPlayFocusRequester,
                     onSearchQueryChange = viewModel::updateContentSearchQuery,
+                    onSortSelected = viewModel::setSortMode,
                     onSeriesFocused = viewModel::focusSeries,
                     onSeriesClick = { series ->
                         if (inputReady) {
@@ -439,6 +441,7 @@ private fun SeriesList(
     onReturnFocusConsumed: () -> Unit,
     rightFocusRequester: FocusRequester,
     onSearchQueryChange: (String) -> Unit,
+    onSortSelected: (SeriesSortMode) -> Unit,
     onSeriesFocused: (SeriesItemUi) -> Unit,
     onSeriesClick: (SeriesItemUi) -> Unit,
     onLoadNextPage: () -> Unit,
@@ -517,6 +520,12 @@ private fun SeriesList(
                     placeholder = "Serie",
                     modifier = Modifier.width(190.dp),
                 )
+                Spacer(Modifier.width(8.dp))
+                CatalogSortButton(
+                    options = SeriesSortMode.entries.map { it.label },
+                    selectedIndex = state.sortMode.ordinal,
+                    onSelected = { onSortSelected(SeriesSortMode.entries[it]) },
+                )
             }
         },
     ) {
@@ -544,7 +553,7 @@ private fun SeriesList(
                 contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
             ) {
                 itemsIndexed(
-                    items = state.series,
+                    items = state.displayedSeries,
                     key = { _, series -> series.seriesId },
                 ) { index, series ->
                     val itemFocusRequester = remember(series.seriesId) { FocusRequester() }

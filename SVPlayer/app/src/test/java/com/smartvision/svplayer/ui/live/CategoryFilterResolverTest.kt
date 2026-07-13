@@ -22,7 +22,7 @@ class CategoryFilterResolverTest {
     }
 
     @Test fun `custom mappings win over ISO and aliases are normalized`() {
-        assertEquals("Monde arabe", CategoryFilterResolver.resolve("AR", Locale.FRENCH).displayName)
+        assertEquals("Arabe", CategoryFilterResolver.resolve("AR", Locale.FRENCH).displayName)
         assertEquals("GB", CategoryFilterResolver.resolve("UK", Locale.FRENCH).normalizedCode)
         assertEquals("Royaume-Uni", CategoryFilterResolver.resolve("GB", Locale.FRENCH).displayName)
         assertEquals(CategoryFilterType.UNKNOWN, CategoryFilterResolver.resolve("ZZ").type)

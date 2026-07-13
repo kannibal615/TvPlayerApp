@@ -62,6 +62,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import kotlinx.coroutines.withTimeout
 
 class DefaultCatalogRepository(
@@ -787,6 +788,12 @@ class DefaultCatalogRepository(
         var liveTotal: Int? = null
         var moviesTotal: Int? = null
         var seriesTotal: Int? = null
+        var liveKept: Int? = null
+        var moviesKept: Int? = null
+        var seriesKept: Int? = null
+        var liveExcluded: Int? = null
+        var moviesExcluded: Int? = null
+        var seriesExcluded: Int? = null
         val activeProfile = requestedProfile ?: accountManager.profiles.value.firstOrNull { it.id == profileId }
         val syncStartedAt = System.currentTimeMillis()
         fun currentCatalogProgress(): SyncStatus.CatalogProgress =
@@ -798,6 +805,8 @@ class DefaultCatalogRepository(
                     progressPercent = livePercent,
                     message = liveMessage,
                     totalItems = liveTotal,
+                    keptItems = liveKept,
+                    excludedItems = liveExcluded,
                 ),
                 movies = previousCatalogProgress.movies.copy(
                     currentItems = movieItems,
@@ -806,6 +815,8 @@ class DefaultCatalogRepository(
                     progressPercent = moviesPercent,
                     message = moviesMessage,
                     totalItems = moviesTotal,
+                    keptItems = moviesKept,
+                    excludedItems = moviesExcluded,
                 ),
                 series = previousCatalogProgress.series.copy(
                     currentItems = seriesItems,
@@ -814,6 +825,8 @@ class DefaultCatalogRepository(
                     progressPercent = seriesPercent,
                     message = seriesMessage,
                     totalItems = seriesTotal,
+                    keptItems = seriesKept,
+                    excludedItems = seriesExcluded,
                 ),
             )
 
@@ -865,6 +878,8 @@ class DefaultCatalogRepository(
                 currentItems: Int? = null,
                 fetched: Int = 0,
                 remainingSteps: Int = 0,
+                keptItems: Int? = null,
+                excludedItems: Int? = null,
             ) {
                 when (section) {
                     MediaSection.Live -> {
@@ -873,6 +888,8 @@ class DefaultCatalogRepository(
                         livePhase = phase
                         livePercent = percent.coerceIn(0, 100)
                         currentItems?.let { liveItems = it }
+                        keptItems?.let { liveKept = it }
+                        excludedItems?.let { liveExcluded = it }
                         liveCompleted = phase == SyncStatus.SyncSectionPhase.COMPLETED
                         liveWork.update(
                             status = phase.toNetworkActivityStatus(),
@@ -888,6 +905,8 @@ class DefaultCatalogRepository(
                         moviesPhase = phase
                         moviesPercent = percent.coerceIn(0, 100)
                         currentItems?.let { movieItems = it }
+                        keptItems?.let { moviesKept = it }
+                        excludedItems?.let { moviesExcluded = it }
                         moviesCompleted = phase == SyncStatus.SyncSectionPhase.COMPLETED
                         moviesWork.update(
                             status = phase.toNetworkActivityStatus(),
@@ -903,6 +922,8 @@ class DefaultCatalogRepository(
                         seriesPhase = phase
                         seriesPercent = percent.coerceIn(0, 100)
                         currentItems?.let { seriesItems = it }
+                        keptItems?.let { seriesKept = it }
+                        excludedItems?.let { seriesExcluded = it }
                         seriesCompleted = phase == SyncStatus.SyncSectionPhase.COMPLETED
                         seriesWork.update(
                             status = phase.toNetworkActivityStatus(),
@@ -1125,9 +1146,20 @@ class DefaultCatalogRepository(
             0,
             0,
         )
-        val liveStreams = if (kidsProfile) downloadedLiveStreams.filter { stream ->
-            kidsContentFilter.isAllowed(liveCategoryNames[stream.categoryId], stream.name)
-        } else downloadedLiveStreams
+        val liveStreams = if (kidsProfile) downloadedLiveStreams.filterKidsWithProgress(
+            isAllowed = { stream -> kidsContentFilter.isAllowed(liveCategoryNames[stream.categoryId], stream.name) },
+            onProgress = { processed, total, kept ->
+                updateSectionProgress(
+                    "Filtrage Kids des chaines Live TV ($kept conserves, ${processed - kept} exclus)...",
+                    MediaSection.Live,
+                    SyncStatus.SyncSectionPhase.FILTERING,
+                    60 + (processed * 14 / total.coerceAtLeast(1)),
+                    processed,
+                    0,
+                    0,
+                )
+            },
+        ) else downloadedLiveStreams
         val allowedLiveCategoryIds = liveStreams.mapNotNull { it.categoryId }.toSet()
         val visibleLiveCategories = if (kidsProfile) liveCategories.filter { it.id in allowedLiveCategoryIds } else liveCategories
         val liveItems = liveStreams.size
@@ -1256,9 +1288,20 @@ class DefaultCatalogRepository(
             0,
             0,
         )
-        val visibleMovies = if (kidsProfile) movies.filter { movie ->
-            kidsContentFilter.isAllowed(movieCategoryNames[movie.categoryId], movie.name)
-        } else movies
+        val visibleMovies = if (kidsProfile) movies.filterKidsWithProgress(
+            isAllowed = { movie -> kidsContentFilter.isAllowed(movieCategoryNames[movie.categoryId], movie.name) },
+            onProgress = { processed, total, kept ->
+                updateSectionProgress(
+                    "Filtrage Kids des films ($kept conserves, ${processed - kept} exclus)...",
+                    MediaSection.Movies,
+                    SyncStatus.SyncSectionPhase.FILTERING,
+                    58 + (processed * 12 / total.coerceAtLeast(1)),
+                    processed,
+                    0,
+                    0,
+                )
+            },
+        ) else movies
         val allowedMovieCategoryIds = visibleMovies.mapNotNull { it.categoryId }.toSet()
         val visibleMovieCategories = if (kidsProfile) movieCategories.filter { it.id in allowedMovieCategoryIds } else movieCategories
         val movieItems = visibleMovies.size
@@ -1379,9 +1422,20 @@ class DefaultCatalogRepository(
             0,
             0,
         )
-        val series = if (kidsProfile) downloadedSeries.filter { item ->
-            kidsContentFilter.isAllowed(seriesCategoryNames[item.categoryId], item.name, item.genre, item.plot)
-        } else downloadedSeries
+        val series = if (kidsProfile) downloadedSeries.filterKidsWithProgress(
+            isAllowed = { item -> kidsContentFilter.isAllowed(seriesCategoryNames[item.categoryId], item.name, item.genre, item.plot) },
+            onProgress = { processed, total, kept ->
+                updateSectionProgress(
+                    "Filtrage Kids des series ($kept conserves, ${processed - kept} exclus)...",
+                    MediaSection.Series,
+                    SyncStatus.SyncSectionPhase.FILTERING,
+                    58 + (processed * 12 / total.coerceAtLeast(1)),
+                    processed,
+                    0,
+                    0,
+                )
+            },
+        ) else downloadedSeries
         val allowedSeriesCategoryIds = series.mapNotNull { it.categoryId }.toSet()
         val visibleSeriesCategories = if (kidsProfile) seriesCategories.filter { it.id in allowedSeriesCategoryIds } else seriesCategories
         val seriesItems = series.size
@@ -1704,6 +1758,28 @@ private fun SyncStatus.SyncSectionPhase.toNetworkActivityStatus(): NetworkActivi
         SyncStatus.SyncSectionPhase.COMPLETED -> NetworkActivityStatus.Completed
         SyncStatus.SyncSectionPhase.ERROR -> NetworkActivityStatus.Error
     }
+
+private suspend inline fun <T> List<T>.filterKidsWithProgress(
+    crossinline isAllowed: (T) -> Boolean,
+    crossinline onProgress: suspend (processed: Int, total: Int, kept: Int) -> Unit,
+): List<T> {
+    if (isEmpty()) {
+        onProgress(0, 0, 0)
+        return emptyList()
+    }
+    val kept = ArrayList<T>(size)
+    forEachIndexed { index, item ->
+        if (isAllowed(item)) kept += item
+        val processed = index + 1
+        if (processed == size || processed % KidsFilterProgressBatchSize == 0) {
+            onProgress(processed, size, kept.size)
+            yield()
+        }
+    }
+    return kept
+}
+
+private const val KidsFilterProgressBatchSize = 128
 
 private fun TrendingCatalogItem.containsAdultMarker(): Boolean =
     containsAdultMarker(title, categoryName)

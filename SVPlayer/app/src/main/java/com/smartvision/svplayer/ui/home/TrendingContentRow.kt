@@ -171,7 +171,7 @@ fun TrendingContentRow(
                 .fillMaxWidth()
                 .height(SmartVisionDimensions.HomeContentCardHeight),
             contentPadding = PaddingValues(horizontal = SmartVisionDimensions.HomeRowEdgePadding),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(SmartVisionDimensions.HomeContentCardSpacing),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
@@ -244,9 +244,11 @@ private fun TrendingPreviewCard(
         label = "trendingCardBorder",
     )
     val previewUrl = item.previewUrl
-    val posterUrl = item.imageUrl
     val landscapeUrl = item.previewImageUrl
-    val infoRight = item.previewDurationLabel ?: item.remaining
+    val metadata = listOfNotNull(
+        item.previewDurationLabel?.takeIf { it.isNotBlank() },
+        item.ratingLabel?.takeIf { it.isNotBlank() },
+    ).distinct()
 
     LaunchedEffect(focusState.isFocused) {
         onFocusChanged(focusState.isFocused)
@@ -256,7 +258,7 @@ private fun TrendingPreviewCard(
 
     LaunchedEffect(enablePreview, previewUrl, focusState.isFocused) {
         if (enablePreview && focusState.isFocused && previewUrl != null) {
-            previewController.play(item.id, previewUrl, item.previewStartPositionMs)
+            previewController.play(item.id, previewUrl, item.previewStartPositionMs, item.previewMode)
         } else {
             previewController.stop(item.id)
         }
@@ -314,54 +316,43 @@ private fun TrendingPreviewCard(
                 alignment = Alignment.Center,
                 modifier = Modifier.fillMaxSize(),
             )
-        } else if (!posterUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = posterUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                alignment = Alignment.Center,
-                modifier = Modifier.fillMaxSize().padding(horizontal = 34.dp),
-            )
         }
         HomePreviewSurface(
             controller = previewController,
             previewId = item.id,
             modifier = Modifier.fillMaxSize(),
         )
-        if (focusState.isFocused) {
-            Box(
+        Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.34f)
                     .background(
                         Brush.verticalGradient(
                             listOf(
                                 Color.Transparent,
-                                Color.Black.copy(alpha = 0.78f),
+                                Color.Black.copy(alpha = 0.88f),
                             ),
-                            startY = 92f,
                         ),
                     ),
             )
-            Row(
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 9.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = 9.dp, vertical = 7.dp),
             ) {
                 Text(
                     text = item.title,
                     color = Color.White,
                     style = SmartVisionType.Caption.copy(fontSize = 12.sp, lineHeight = 14.sp),
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
                 )
-                if (infoRight.isNotBlank()) {
+                if (metadata.isNotEmpty()) {
                     Text(
-                        text = infoRight,
+                        text = metadata.joinToString(" • "),
                         color = Color.White.copy(alpha = 0.78f),
                         style = SmartVisionType.Caption.copy(fontSize = 10.sp, lineHeight = 12.sp),
                         maxLines = 1,
@@ -369,7 +360,6 @@ private fun TrendingPreviewCard(
                     )
                 }
             }
-        }
         if (blocked) {
             Box(
                 modifier = Modifier

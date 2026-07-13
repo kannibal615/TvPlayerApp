@@ -215,3 +215,11 @@ Working solution:
 Avoid next time:
 - Ne pas insister avec `C:\Program Files\Android\Android Studio\jbr` si `jvm.cfg` manque.
 - Ne pas considerer l'erreur Kotlin daemon comme une erreur applicative sans verifier les permissions `AppData`.
+
+## 2026-07-13 - HTTP 500 create_playlist_setup_session
+
+- Probleme: le test secondaire du deploiement echouait apres une publication APK reussie.
+- Cause: reinsertion du meme hash dans `activation_session_tokens.token_hash`, colonne UNIQUE.
+- Solution: conserver le token valide existant et creer seulement la nouvelle session/short code Playlist.
+- A eviter: dupliquer un token appareil pour chaque short code; le token authentifie l'appareil, le short code autorise l'operation web.
+- Fichiers/commande: `server/public_html/api/create_playlist_setup_session.php`, `php -l server/public_html/api/create_playlist_setup_session.php`.

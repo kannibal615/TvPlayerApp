@@ -1,6 +1,8 @@
 package com.smartvision.svplayer.ui.profile
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -38,6 +40,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -312,7 +316,11 @@ private fun ProfilePickerCard(
         runCatching { Color(android.graphics.Color.parseColor(profile.avatarColorHex)) }
             .getOrDefault(SmartVisionColors.Primary)
     }
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(120.dp)) {
+    val scale by animateFloatAsState(if (focused) 1.09f else 1f, tween(150), label = "profileFocusScale")
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(120.dp).zIndex(if (focused) 3f else 0f).graphicsLayer { scaleX = scale; scaleY = scale },
+    ) {
         Box(
             modifier = Modifier
                 .size(112.dp)
@@ -399,7 +407,11 @@ private fun AddProfileCard(
     val interactionSource = remember { MutableInteractionSource() }
     var focused by remember { mutableStateOf(false) }
     val focusStyle = LocalTvFocusStyle.current
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(120.dp)) {
+    val scale by animateFloatAsState(if (focused) 1.09f else 1f, tween(150), label = "addProfileFocusScale")
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(120.dp).zIndex(if (focused) 3f else 0f).graphicsLayer { scaleX = scale; scaleY = scale },
+    ) {
         Box(
             modifier = Modifier
                 .size(112.dp)

@@ -74,6 +74,10 @@ data class LiveTvProgram(
     val description: String,
 )
 
+enum class LiveSortMode(val label: String) {
+    DEFAULT("Ordre du fournisseur"), NAME_ASC("Nom A - Z"), NAME_DESC("Nom Z - A"), FAVORITES_FIRST("Favoris en premier"),
+}
+
 data class LiveTvUiState(
     val categoriesLoading: Boolean = true,
     val itemsLoading: Boolean = false,
@@ -90,7 +94,10 @@ data class LiveTvUiState(
     val channelSearchQuery: String = "",
     val focusedChannelId: Int? = null,
     val selectedChannelId: Int? = null,
+    val sortMode: LiveSortMode = LiveSortMode.DEFAULT,
 ) {
+    val displayedChannels: List<LiveTvChannel>
+        get() = channels.sortedWith(sortMode.comparator())
     val visibleCategories: List<LiveTvCategory>
         get() = CategoryFilterResolver.filterCategories(categories, activeCategoryFilterCode)
 
@@ -128,6 +135,10 @@ class LiveTvViewModel(
     private var autoSelectedCategoryId: String? = null
     private var loadedChannelsCategoryId: String? = null
     private var observedCatalogRevision: Long? = null
+
+    fun setSortMode(mode: LiveSortMode) {
+        _uiState.update { it.copy(sortMode = mode) }
+    }
 
     init {
         observeCatalogRevision()
@@ -791,6 +802,13 @@ class LiveTvViewModel(
     private fun catalogTotalCount(): Int? =
         localCategories.sumOf { it.count }.takeIf { it > 0 }
 }
+
+private fun LiveSortMode.comparator(): Comparator<LiveTvChannel> = when (this) {
+    LiveSortMode.DEFAULT -> compareBy { it.number.toIntOrNull() ?: Int.MAX_VALUE }
+    LiveSortMode.NAME_ASC -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
+    LiveSortMode.NAME_DESC -> compareByDescending<LiveTvChannel> { it.name.lowercase() }
+    LiveSortMode.FAVORITES_FIRST -> compareByDescending<LiveTvChannel> { it.isFavorite }
+}.thenBy { it.streamId }
 
 private data class PageLoadResult<T>(
     val items: List<T>,

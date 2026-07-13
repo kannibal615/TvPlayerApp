@@ -87,17 +87,6 @@ try {
         throw new RuntimeException('Unable to generate a unique setup code.');
     }
 
-    $sessionId = (int) $pdo->lastInsertId();
-    $insertToken = $pdo->prepare(
-        "INSERT INTO activation_session_tokens (session_id, device_id, token_hash, created_at)
-         VALUES (:session_id, :device_id, :token_hash, NOW())"
-    );
-    $insertToken->execute([
-        'session_id' => $sessionId,
-        'device_id' => $deviceId,
-        'token_hash' => device_token_hash($deviceToken),
-    ]);
-
     $qrUrl = smartvision_public_base_url()
         . '/xtream/?device=' . rawurlencode($publicDeviceCode)
         . '&session=' . rawurlencode($shortCode);

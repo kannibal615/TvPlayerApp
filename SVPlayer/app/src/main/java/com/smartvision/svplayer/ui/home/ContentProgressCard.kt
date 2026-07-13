@@ -148,7 +148,7 @@ fun ContentProgressCard(
 
     LaunchedEffect(previewActive, item.previewUrl, item.previewStartPositionMs) {
         if (previewActive) {
-            previewController.play(item.id, item.previewUrl.orEmpty(), item.previewStartPositionMs)
+            previewController.play(item.id, item.previewUrl.orEmpty(), item.previewStartPositionMs, item.previewMode)
         } else {
             previewController.stop(item.id)
         }
@@ -272,13 +272,18 @@ fun ContentProgressCard(
                 Text(
                     text = item.title,
                     color = Color.White,
-                    style = SmartVisionType.Caption.copy(fontSize = 11.sp, lineHeight = 14.sp),
+                    style = SmartVisionType.Caption.copy(
+                        fontSize = if (isLive) 14.sp else 11.sp,
+                        lineHeight = if (isLive) 17.sp else 14.sp,
+                    ),
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(4.dp))
-                ProgressBar(progress = item.progress)
+                if (!isLive) {
+                    Spacer(Modifier.height(4.dp))
+                    ProgressBar(progress = item.progress)
+                }
                 Spacer(Modifier.height(4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),

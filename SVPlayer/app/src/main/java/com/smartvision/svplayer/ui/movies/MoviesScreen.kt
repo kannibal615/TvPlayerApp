@@ -58,6 +58,7 @@ import com.smartvision.svplayer.ui.catalog.CatalogEmpty
 import com.smartvision.svplayer.ui.catalog.CatalogError
 import com.smartvision.svplayer.ui.catalog.CatalogMetaStyle
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
+import com.smartvision.svplayer.ui.catalog.CatalogSortButton
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
@@ -286,6 +287,7 @@ fun MoviesScreen(
                     },
                     rightFocusRequester = previewPlayFocusRequester,
                     onSearchQueryChange = viewModel::updateContentSearchQuery,
+                    onSortSelected = viewModel::setSortMode,
                     onMovieFocused = viewModel::focusMovie,
                     onMovieClick = { movie ->
                         if (inputReady) {
@@ -414,6 +416,7 @@ private fun MovieList(
     onReturnFocusConsumed: () -> Unit,
     rightFocusRequester: FocusRequester,
     onSearchQueryChange: (String) -> Unit,
+    onSortSelected: (MovieSortMode) -> Unit,
     onMovieFocused: (MovieItemUi) -> Unit,
     onMovieClick: (MovieItemUi) -> Unit,
     onLoadNextPage: () -> Unit,
@@ -492,6 +495,12 @@ private fun MovieList(
                     placeholder = "Film",
                     modifier = Modifier.width(190.dp),
                 )
+                Spacer(Modifier.width(8.dp))
+                CatalogSortButton(
+                    options = MovieSortMode.entries.map { it.label },
+                    selectedIndex = state.sortMode.ordinal,
+                    onSelected = { onSortSelected(MovieSortMode.entries[it]) },
+                )
             }
         },
     ) {
@@ -519,7 +528,7 @@ private fun MovieList(
                 contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
             ) {
                 itemsIndexed(
-                    items = state.movies,
+                    items = state.displayedMovies,
                     key = { _, movie -> movie.streamId },
                 ) { index, movie ->
                     val itemFocusRequester = remember(movie.streamId) { FocusRequester() }

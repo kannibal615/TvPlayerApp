@@ -361,7 +361,7 @@ private fun SettingsMenuLayout(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .width(292.dp)
                 .fillMaxHeight()
@@ -370,7 +370,7 @@ private fun SettingsMenuLayout(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            SettingsSection.entries.filterNot { it == SettingsSection.Parental }.forEach { section ->
+            items(SettingsSection.entries, key = { it.name }) { section ->
                 val isParental = section == SettingsSection.Parental
                 Box(modifier = Modifier.fillMaxWidth()) {
                     TvButton(

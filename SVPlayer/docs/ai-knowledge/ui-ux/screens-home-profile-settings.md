@@ -222,4 +222,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-10: Info compte > Appareil et catalogue recoit le focus apres fermeture du popup sync, affiche le statut dans son header, regroupe Code TV/profil catalogue, retire Derniere sync et reutilise les visuels HOME dans les trois cartes.
 - 2026-07-10: HOME garde les phases `SyncStatus.CatalogProgress` par carte et expose aussi le succes pendant 2,5 secondes avant retour a l'etat neutre.
 - 2026-07-10: Notifications reutilise le header principal, montre non-lu/date/priorite, fournit retry/etat vide et force chaque refresh GET sans cache avant mise a jour du badge.
+- 2026-07-13: Parametres utilise une `LazyColumn` auto-scrollable et son premier item est relie au header; Info compte expose une pastille parentale reactive. Who's Watching renforce le focus par scale/z-index. Le filtre AR utilise `ic_filter_ar.png` et le libelle `Arabic` / `Arabe`.
 - 2026-07-10: Personnalisation est regroupee en style de focus puis roles Selected/Active/Parent, avec menu iconé existant et apercu direct des quatre etats.

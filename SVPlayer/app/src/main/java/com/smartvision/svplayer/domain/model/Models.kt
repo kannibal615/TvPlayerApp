@@ -136,6 +136,8 @@ sealed interface SyncStatus {
         val progressPercent: Int? = null,
         val message: String? = null,
         val totalItems: Int? = null,
+        val keptItems: Int? = null,
+        val excludedItems: Int? = null,
     ) {
         val percent: Int
             get() = when {
