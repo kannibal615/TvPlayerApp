@@ -6,7 +6,10 @@ Derniere mise a jour: 2026-07-13.
 
 - Le picker utilise des cles `profile.id` stables dans une `LazyRow`. Le focus initial cible le profil actif, sinon ADMIN, sinon le premier profil; Compose revele automatiquement les cartes hors ecran.
 - Les actions verrouillees ouvrent un dialogue PIN a quatre chiffres; annuler retourne au picker sans navigation anticipee.
+- Tous les flux Create/Enter/Confirm PIN reutilisent `NumericPinDialog`: popup vertical compact centre, grille 3 x 4 a dimensions fixes, focus initial sur `1`, focus automatique sur `Apply` au quatrieme chiffre et shake rejouable limite aux quatre indicateurs en cas de refus. La derniere ligne route D-pad Bas vers les actions et les actions remontent vers la derniere ligne du clavier.
 - Le formulaire profil est borne en hauteur, scrollable, applique `imePadding` et demande `bringIntoView()` lorsque le clavier TV ouvre un champ.
+- Le formulaire partage depuis le picker et Info compte une mise en page TV compacte: nom et avatars en tete, sources Xtream/M3U fermees par defaut dans un accordeon exclusif, contenu scrollable et footer fixe. Depuis une source fermee ou le dernier champ visible, D-pad Bas cible `Enregistrer`.
+- La rangee d'avatars est horizontale et scrollable au focus; ADMIN accepte son avatar dedie et tous les avatars CLASSIC.
 - La selection de profil garde une validation visuelle courte sur la carte puis active le profil et purge les caches memoire. Le picker ne lance aucune synchronisation reseau; Home en reste proprietaire apres son rendu.
 - Sur une carte de profil reelle, Bas cible le crayon discret et Haut retourne a la carte. La fermeture du PIN ou du formulaire redemande le focus a la cible d'origine avec un `FocusRequester` stable.
 

@@ -46,7 +46,12 @@ private val LegacyKidsAvatarIds = mapOf(
 )
 
 fun canonicalProfileAvatarId(avatarId: String, type: ProfileType): String = when (type) {
-    ProfileType.ADMIN -> AdminProfileAvatarId
+    ProfileType.ADMIN -> when (avatarId) {
+        AdminProfileAvatarId -> AdminProfileAvatarId
+        in ProfileAvatarPresetIds -> avatarId
+        in LegacyClassicAvatarIds -> LegacyClassicAvatarIds.getValue(avatarId)
+        else -> AdminProfileAvatarId
+    }
     ProfileType.KIDS -> when (avatarId) {
         in KidsProfileAvatarPresetIds -> avatarId
         in LegacyKidsAvatarIds -> LegacyKidsAvatarIds.getValue(avatarId)

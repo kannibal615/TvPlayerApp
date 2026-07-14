@@ -7,9 +7,10 @@ import org.junit.Test
 class ProfileAvatarPresetsTest {
 
     @Test
-    fun adminAlwaysUsesDedicatedAvatar() {
+    fun adminDefaultsToDedicatedAvatarAndKeepsClassicSelection() {
         assertEquals(AdminProfileAvatarId, defaultProfileAvatarId(ProfileType.ADMIN))
-        assertEquals(AdminProfileAvatarId, canonicalProfileAvatarId("classic_wave", ProfileType.ADMIN))
+        assertEquals("classic_wave", canonicalProfileAvatarId("classic_wave", ProfileType.ADMIN))
+        assertEquals(AdminProfileAvatarId, canonicalProfileAvatarId("unknown", ProfileType.ADMIN))
     }
 
     @Test

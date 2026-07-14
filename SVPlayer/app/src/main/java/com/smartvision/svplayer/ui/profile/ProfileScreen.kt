@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -49,6 +50,8 @@ import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode2
@@ -89,6 +92,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -2301,6 +2305,7 @@ fun PlaylistProfileEditorDialog(
     var error by remember { mutableStateOf<String?>(null) }
     var validationMessage by remember { mutableStateOf<String?>(null) }
     var validatingCredentials by remember { mutableStateOf(false) }
+    var expandedSource by remember(initial?.id, profileType) { mutableStateOf<PlaylistSource?>(null) }
     val nameFocusRequester = remember { FocusRequester() }
     val firstSourceFocusRequester = remember { FocusRequester() }
     val hostFocusRequester = remember { FocusRequester() }
@@ -2309,6 +2314,37 @@ fun PlaylistProfileEditorDialog(
     val m3uFocusRequester = remember { FocusRequester() }
     val epgFocusRequester = remember { FocusRequester() }
     val saveFocusRequester = remember { FocusRequester() }
+
+/*     val configuration = LocalConfiguration.current
+    val dialogWidth = (configuration.screenWidthDp.dp - 48.dp).coerceAtMost(820.dp)
+    val requestedDialogHeight = when {
+        expandedSource != null -> 610.dp
+        profileType != ProfileType.ADMIN && adminProfile != null -> 500.dp
+        else -> 430.dp
+    }
+    val dialogHeight = requestedDialogHeight.coerceAtMost(configuration.screenHeightDp.dp - 32.dp) */
+
+
+val configuration = LocalConfiguration.current
+val dialogWidth = (configuration.screenWidthDp.dp * 0.50f)
+    .coerceIn(520.dp, 680.dp)
+val requestedDialogHeight = when {
+    expandedSource != null -> 500.dp
+    profileType != ProfileType.ADMIN && adminProfile != null -> 350.dp
+    else -> 350.dp}
+val dialogHeight = requestedDialogHeight.coerceAtMost(
+    configuration.screenHeightDp.dp * 0.75f)
+
+
+
+
+    val avatarPresets = remember(profileType) {
+        when (profileType) {
+            ProfileType.ADMIN -> listOf(AdminProfileAvatarId) + ProfileAvatarPresetIds
+            ProfileType.KIDS -> KidsProfileAvatarPresetIds
+            ProfileType.NORMAL -> ProfileAvatarPresetIds
+        }
+    }
 
     fun buildProfile(normalizedName: String, normalizedHost: String = host): PlaylistProfile =
         PlaylistProfile(
@@ -2358,38 +2394,46 @@ fun PlaylistProfileEditorDialog(
             else -> "Add Normal Profile"
         },
         onDismiss = onDismiss,
-        width = 660.dp,
+        width = dialogWidth,
         icon = Icons.Default.Person,
-        modifier = Modifier
-            .heightIn(max = 600.dp)
-            .verticalScroll(rememberScrollState())
-            .imePadding(),
+        modifier = Modifier.height(dialogHeight).imePadding(),
     ) {
-            ProfileEditTextField(
-                label = "Nom du profil",
-                value = name,
-                onValueChange = { name = it },
-                focusRequester = nameFocusRequester,
-                nextFocusRequester = firstSourceFocusRequester,
-            )
-            Text("Photo de profil", color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                val avatarPresets = when (profileType) {
-                    ProfileType.ADMIN -> listOf(AdminProfileAvatarId)
-                    ProfileType.KIDS -> KidsProfileAvatarPresetIds
-                    ProfileType.NORMAL -> ProfileAvatarPresetIds
-                }
-                avatarPresets.forEach { presetId ->
-                    ProfileAvatarPresetButton(
-                        avatarId = presetId,
-                        profileType = profileType,
-                        selected = avatarId == presetId,
-                        onClick = { avatarId = presetId },
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(modifier = Modifier.weight(0.42f)) {
+                    ProfileEditTextField(
+                        label = "Nom du profil",
+                        value = name,
+                        onValueChange = { name = it },
+                        focusRequester = nameFocusRequester,
+                        nextFocusRequester = firstSourceFocusRequester,
                     )
                 }
+                Column(modifier = Modifier.weight(0.58f)) {
+                    Text("Photo de profil", color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
+                    Spacer(Modifier.height(5.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    ) {
+                        avatarPresets.forEach { presetId ->
+                            ProfileAvatarPresetButton(
+                                avatarId = presetId,
+                                profileType = profileType,
+                                selected = avatarId == presetId,
+                                onClick = { avatarId = presetId },
+                            )
+                        }
+                    }
+                }
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             if (profileType != ProfileType.ADMIN && adminProfile != null) {
                 Text("Xtream credentials", color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
                 Spacer(Modifier.height(6.dp))
@@ -2397,8 +2441,14 @@ fun PlaylistProfileEditorDialog(
                     TvButton(
                         text = "Same as administrator",
                         onClick = { credentialsMode = CredentialsMode.SHARED_WITH_ADMIN },
+                        focusRequester = firstSourceFocusRequester,
                         variant = if (credentialsMode == CredentialsMode.SHARED_WITH_ADMIN) TvButtonVariant.Primary else TvButtonVariant.Secondary,
-                        modifier = Modifier.weight(1f).height(42.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .focusProperties {
+                                if (credentialsMode == CredentialsMode.SHARED_WITH_ADMIN) down = saveFocusRequester
+                            },
                     )
                     TvButton(
                         text = "Other credentials",
@@ -2412,36 +2462,72 @@ fun PlaylistProfileEditorDialog(
             if (credentialsMode == CredentialsMode.CUSTOM) Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 TvButton(
                     text = "Xtream Codes",
-                    onClick = { source = PlaylistSource.Xtream },
-                    focusRequester = firstSourceFocusRequester,
-                    variant = if (source == PlaylistSource.Xtream) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+                    onClick = {
+                        source = PlaylistSource.Xtream
+                        expandedSource = if (expandedSource == PlaylistSource.Xtream) null else PlaylistSource.Xtream
+                    },
+                    focusRequester = if (profileType == ProfileType.ADMIN || adminProfile == null) firstSourceFocusRequester else null,
+                    variant = if (expandedSource == PlaylistSource.Xtream) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+                    trailingContent = {
+                        Icon(
+                            if (expandedSource == PlaylistSource.Xtream) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = null,
+                        )
+                    },
                     modifier = Modifier
                         .weight(1f)
-                        .height(42.dp),
+                        .height(42.dp)
+                        .focusProperties {
+                            if (expandedSource == null) down = saveFocusRequester
+                        },
                 )
                 TvButton(
                     text = "Playlist M3U",
-                    onClick = { source = PlaylistSource.M3u },
-                    variant = if (source == PlaylistSource.M3u) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+                    onClick = {
+                        source = PlaylistSource.M3u
+                        expandedSource = if (expandedSource == PlaylistSource.M3u) null else PlaylistSource.M3u
+                    },
+                    variant = if (expandedSource == PlaylistSource.M3u) TvButtonVariant.Primary else TvButtonVariant.Secondary,
+                    trailingContent = {
+                        Icon(
+                            if (expandedSource == PlaylistSource.M3u) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = null,
+                        )
+                    },
                     modifier = Modifier
                         .weight(1f)
-                        .height(42.dp),
+                        .height(42.dp)
+                        .focusProperties {
+                            if (expandedSource == null) down = saveFocusRequester
+                        },
                 )
             }
             if (credentialsMode == CredentialsMode.CUSTOM) Spacer(Modifier.height(12.dp))
-            if (credentialsMode == CredentialsMode.CUSTOM && source == PlaylistSource.Xtream) {
+            if (credentialsMode == CredentialsMode.CUSTOM && expandedSource == PlaylistSource.Xtream) {
                 ProfileEditTextField("URL serveur", host, { host = it }, hostFocusRequester, nameFocusRequester, usernameFocusRequester)
-                ProfileEditTextField("Username", username, { username = it }, usernameFocusRequester, hostFocusRequester, passwordFocusRequester)
-                ProfileEditTextField("Password", password, { password = it }, passwordFocusRequester, usernameFocusRequester, epgFocusRequester, password = true)
+                Row(
+    horizontalArrangement = Arrangement.spacedBy(10.dp),
+    verticalAlignment = Alignment.Bottom,
+    modifier = Modifier.fillMaxWidth()
+) {
+    Column(modifier = Modifier.weight(1f)) {
+        ProfileEditTextField("Username", username, { username = it }, usernameFocusRequester, hostFocusRequester, passwordFocusRequester)
+    }
+    Column(modifier = Modifier.weight(1f)) {
+        ProfileEditTextField("Password", password, { password = it }, passwordFocusRequester, usernameFocusRequester, epgFocusRequester, password = true)
+    }
+    TvButton(
+        text = if (validatingCredentials) "Testing..." else "Test connection",
+        enabled = !validatingCredentials && host.isNotBlank() && username.isNotBlank() && password.isNotBlank(),
+        onClick = { validateCustomXtream {} },
+        variant = TvButtonVariant.Secondary,
+        modifier = Modifier
+            .width(150.dp)
+            .height(42.dp),
+    )
+}
                 ProfileEditTextField("URL EPG optionnelle", epgUrl, { epgUrl = it }, epgFocusRequester, passwordFocusRequester, saveFocusRequester)
-                TvButton(
-                    text = if (validatingCredentials) "Testing..." else "Test connection",
-                    enabled = !validatingCredentials && host.isNotBlank() && username.isNotBlank() && password.isNotBlank(),
-                    onClick = { validateCustomXtream {} },
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier.height(42.dp),
-                )
-            } else if (credentialsMode == CredentialsMode.CUSTOM) {
+            } else if (credentialsMode == CredentialsMode.CUSTOM && expandedSource == PlaylistSource.M3u) {
                 ProfileEditTextField("Lien M3U", m3uUrl, { m3uUrl = it }, m3uFocusRequester, nameFocusRequester, epgFocusRequester)
                 ProfileEditTextField("Lien EPG optionnel", epgUrl, { epgUrl = it }, epgFocusRequester, m3uFocusRequester, saveFocusRequester)
             }
@@ -2453,8 +2539,9 @@ fun PlaylistProfileEditorDialog(
                 Spacer(Modifier.height(6.dp))
                 Text(it, color = SmartVisionColors.Success, style = SmartVisionType.Caption)
             }
-            Spacer(Modifier.height(14.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TvButton(
                     text = "Annuler",
                     onClick = onDismiss,
@@ -2488,7 +2575,7 @@ fun PlaylistProfileEditorDialog(
                     focusRequester = saveFocusRequester,
                     modifier = Modifier.height(42.dp),
                 )
-            }
+        }
     }
 }
 
@@ -2504,7 +2591,7 @@ private fun ProfileAvatarPickerDialog(
     }
     val saveFocusRequester = remember { FocusRequester() }
     val avatarPresets = when (profileType) {
-        ProfileType.ADMIN -> listOf(AdminProfileAvatarId)
+        ProfileType.ADMIN -> listOf(AdminProfileAvatarId) + ProfileAvatarPresetIds
         ProfileType.KIDS -> KidsProfileAvatarPresetIds
         ProfileType.NORMAL -> ProfileAvatarPresetIds
     }

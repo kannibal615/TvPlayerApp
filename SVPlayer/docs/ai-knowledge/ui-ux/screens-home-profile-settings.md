@@ -7,9 +7,9 @@ Derniere mise a jour: 2026-07-14.
 - `PlaylistProfile` porte `ProfileType`, `CredentialsMode` et `isLocked`; l'ID historique est conserve lors de la migration du premier profil vers `ADMIN`.
 - `ProfilePickerScreen` utilise une `LazyRow`: profils configures reels ordonnes ADMIN puis date de creation, suivis des actions i18n enfant et profil normal. Les cartes sont cleees par `profile.id` et leur seul libelle est `PlaylistProfile.name`; aucun nom `Admin` ou `PlaylistWeb` n'est fabrique par l'UI.
 - Si l'administrateur est verrouille, les deux cartes d'ajout utilisent le PIN parental avant d'ouvrir le formulaire. Les profils verrouilles utilisent le meme dialogue.
-- Le formulaire partage les identifiants ADMIN par defaut, masque alors les champs, valide les credentials custom avant sauvegarde et utilise scroll/IME/bring-into-view pour la TV.
+- Le formulaire partage les identifiants ADMIN par defaut et conserve la validation existante. Il est commun au picker et a Info compte, adapte son titre/type, place nom et avatars sur la meme rangee, garde un footer fixe et ouvre Xtream/M3U dans un accordeon exclusif ferme par defaut.
 - Le header affiche l'avatar actif. En mode Kids, il garde uniquement Home, Live TV, Movies, Series, YouTube et l'avatar a droite.
-- Les photos de profil utilisent des PNG circulaires transparents pilotes uniquement par `avatarId` et `ProfileType`. ADMIN utilise `admin`; KIDS choisit un avatar `kid_*` aleatoire a la creation; NORMAL utilise le set `classic_*`. Les anciens IDs couleur restent compatibles via un mapping vers les nouveaux PNG, sans dependance au nom affiche.
+- Les photos de profil utilisent des PNG circulaires transparents pilotes uniquement par `avatarId` et `ProfileType`. ADMIN conserve `admin` par defaut mais peut choisir tous les avatars `classic_*`; KIDS choisit un avatar `kid_*` aleatoire a la creation; NORMAL utilise le set `classic_*`. Les anciens IDs couleur restent compatibles via un mapping vers les nouveaux PNG, sans dependance au nom affiche.
 - Le Home Kids conserve hero, cards et carrousels; seuls les assets `kids_home_hero`, `kids_live_tv_bg`, `kids_movies_bg`, `kids_series_bg` et les donnees filtrees changent.
 
 ## 1. Objectif

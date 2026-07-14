@@ -1,5 +1,13 @@
 # AI Changelog
 
+## 2026-07-14 - Popups compacts de gestion des profils
+
+- Recompose le formulaire partage picker/Info compte en popup TV responsive avec nom et avatars alignes, zone centrale scrollable et footer fixe.
+- Masque Xtream/M3U par defaut dans un accordeon exclusif; conserve les valeurs, validations, partage ADMIN et sauvegarde existants.
+- Route D-pad Bas vers `Enregistrer` depuis les derniers controles visibles et rend la rangee d'avatars horizontalement navigable.
+- Autorise ADMIN a conserver son avatar dedie ou a selectionner tous les avatars CLASSIC.
+- Validation: `:app:compileReleaseKotlin` reussi; aucune validation visuelle TV/AVD executee.
+
 ## 2026-07-14 - Nouveaux avatars de profils
 
 - Remplace les avatars generiques par 17 PNG circulaires transparents: 1 ADMIN, 8 KIDS et 8 CLASSIC non humains.
@@ -3062,3 +3070,7 @@ Fichiers code concernes:
 - Stabilise scroll/focus Parametres, pastille parentale et focus Who's Watching.
 - Finalise les cartes Home 16:9, overlays, premiere frame, audio progressif et segments Tendances.
 - Integre l'icone AR fournie et les tris stables D-pad Live TV/Films/Series.
+## 2026-07-14 - Popup PIN TV compact et navigation D-pad
+
+- `NumericPinDialog` suit le modele vertical compact: en-tete centre, indicateurs PIN circulaires, separateur cyan, clavier 3 x 4 centre et actions de largeur egale.
+- Les dimensions sont centralisees; le quatrieme chiffre focalise `Apply`, et chaque erreur vide le PIN, rejoue un shake court sur les seuls indicateurs puis restaure le focus sur `1`.
