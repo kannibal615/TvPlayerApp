@@ -10,6 +10,7 @@ import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.data.local.SVDatabase
 import com.smartvision.svplayer.core.profile.ProfilePinManager
 import com.smartvision.svplayer.domain.model.PlayerSettings
+import com.smartvision.svplayer.domain.parental.ParentalKeywordPolicy
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.startup.StartupStateStore
 import kotlinx.coroutines.flow.Flow
@@ -33,15 +34,24 @@ class DefaultSettingsRepository(
 
     init {
         migrationScope.launch {
-            val legacyPin = dataStore.data.first()[PARENTAL_PIN].orEmpty()
+            val preferences = dataStore.data.first()
+            val legacyPin = preferences[PARENTAL_PIN].orEmpty()
             if (profilePinManager.migrateLegacyPinIfNeeded(legacyPin)) {
                 dataStore.edit { it[PARENTAL_PIN] = CONFIGURED_PIN_MARKER }
+            }
+            if (preferences[PARENTAL_KEYWORDS_JSON].isNullOrBlank() && !preferences[PARENTAL_KEYWORDS].isNullOrBlank()) {
+                val migratedKeywords = ParentalKeywordPolicy.parseLegacy(preferences[PARENTAL_KEYWORDS].orEmpty())
+                dataStore.edit { it[PARENTAL_KEYWORDS_JSON] = ParentalKeywordPolicy.serialize(migratedKeywords) }
             }
         }
     }
 
     override val settings: Flow<PlayerSettings> =
         combine(dataStore.data, accountManager.activeProfileId) { preferences, profileId ->
+            val parentalKeywordValues = ParentalKeywordPolicy.parseJsonOrLegacy(
+                json = preferences[PARENTAL_KEYWORDS_JSON],
+                legacy = preferences[PARENTAL_KEYWORDS],
+            )
             PlayerSettings(
                 displaySize = preferences[DISPLAY_SIZE] ?: "Normal",
                 language = preferences[LANGUAGE] ?: "English",
@@ -65,7 +75,8 @@ class DefaultSettingsRepository(
                 } else {
                     ""
                 },
-                parentalKeywords = preferences[PARENTAL_KEYWORDS] ?: "adults; porn; xxx",
+                parentalKeywords = ParentalKeywordPolicy.legacyValue(parentalKeywordValues),
+                parentalKeywordValues = parentalKeywordValues,
             )
         }
 
@@ -147,7 +158,16 @@ class DefaultSettingsRepository(
     override fun verifyParentalPin(value: String): Boolean = profilePinManager.verifyPin(value)
 
     override suspend fun setParentalKeywords(value: String) {
-        dataStore.edit { it[PARENTAL_KEYWORDS] = value.take(500) }
+        replaceParentalKeywords(ParentalKeywordPolicy.parseLegacy(value))
+    }
+
+    override suspend fun replaceParentalKeywords(values: List<String>) {
+        val normalized = ParentalKeywordPolicy.normalize(values)
+        require(ParentalKeywordPolicy.fitsStorage(normalized)) { "Parental keyword list is too long" }
+        dataStore.edit {
+            it[PARENTAL_KEYWORDS] = ParentalKeywordPolicy.legacyValue(normalized)
+            it[PARENTAL_KEYWORDS_JSON] = ParentalKeywordPolicy.serialize(normalized)
+        }
     }
 
     override suspend fun resetParentalControl() {
@@ -155,7 +175,8 @@ class DefaultSettingsRepository(
         dataStore.edit {
             it[PARENTAL_CONTROL_ENABLED] = false
             it[PARENTAL_PIN] = ""
-            it[PARENTAL_KEYWORDS] = "adults; porn; xxx"
+            it[PARENTAL_KEYWORDS] = ParentalKeywordPolicy.legacyValue(ParentalKeywordPolicy.DefaultKeywords)
+            it[PARENTAL_KEYWORDS_JSON] = ParentalKeywordPolicy.serialize(ParentalKeywordPolicy.DefaultKeywords)
         }
     }
 
@@ -183,6 +204,7 @@ class DefaultSettingsRepository(
         val PARENTAL_CONTROL_ENABLED = booleanPreferencesKey("parental_control_enabled")
         val PARENTAL_PIN = stringPreferencesKey("parental_pin")
         val PARENTAL_KEYWORDS = stringPreferencesKey("parental_keywords")
+        val PARENTAL_KEYWORDS_JSON = stringPreferencesKey("parental_keywords_json")
         const val CONFIGURED_PIN_MARKER = "configured"
         const val VIDEO_RATIO_KEY = "video_ratio"
         const val BUFFER_MODE_KEY = "buffer_mode"

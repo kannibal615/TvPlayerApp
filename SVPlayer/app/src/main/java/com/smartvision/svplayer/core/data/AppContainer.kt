@@ -19,6 +19,7 @@ import com.smartvision.svplayer.data.home.HomeSlidesRepository
 import com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsApiService
 import com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter
 import com.smartvision.svplayer.data.local.SVDatabase
+import com.smartvision.svplayer.data.parental.RoomParentalCatalogRepository
 import com.smartvision.svplayer.data.monetization.MonetizationManager
 import com.smartvision.svplayer.data.monetization.MonetizationStore
 import com.smartvision.svplayer.data.monetization.IdleVastAdLoader
@@ -326,6 +327,7 @@ class AppContainer(context: Context) {
     )
     val settingsRepository: SettingsRepository =
         DefaultSettingsRepository(appContext, appContext.settingsDataStore, database, profilePinManager, accountManager)
+    val parentalCatalogRepository = RoomParentalCatalogRepository(database.parentalFilterDao())
 
     val homeContentRepository = HomeContentRepository(
         catalogRepository = catalogRepository,

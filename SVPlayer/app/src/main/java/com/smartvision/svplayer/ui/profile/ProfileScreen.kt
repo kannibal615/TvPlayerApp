@@ -64,7 +64,6 @@ import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -197,7 +196,19 @@ fun ProfileRoute(
             )
         },
     )
+    val parentalViewModel: ParentalControlViewModel = viewModel(
+        factory = viewModelFactory {
+            ParentalControlViewModel(
+                settingsRepository = container.settingsRepository,
+                parentalCatalogRepository = container.parentalCatalogRepository,
+                activeProfileId = container.accountManager.activeProfileId,
+                activeProfileIdProvider = container.accountManager::activeProfileIdOrDefault,
+                catalogRevision = container.catalogRepository.catalogRevision,
+            )
+        },
+    )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val parentalState by parentalViewModel.uiState.collectAsStateWithLifecycle()
     val syncStatus by container.catalogRepository.syncStatus.collectAsStateWithLifecycle()
     val privacyOptionsRequired by container.privacyConsentManager.privacyOptionsRequired
         .collectAsStateWithLifecycle()
@@ -315,6 +326,8 @@ fun ProfileRoute(
             }
         },
         onDismissQr = viewModel::dismissQr,
+        parentalState = parentalState,
+        parentalViewModel = parentalViewModel,
     )
 }
 
@@ -354,6 +367,8 @@ private fun ProfileScreen(
     onSynchronizePlaylistProfile: (String) -> Unit,
     onDeleteXtreamAccount: (String) -> Unit,
     onDismissQr: () -> Unit,
+    parentalState: ParentalControlUiState,
+    parentalViewModel: ParentalControlViewModel,
 ) {
     BackHandler(onBack = onBack)
     val container = LocalAppContainer.current
@@ -368,7 +383,12 @@ private fun ProfileScreen(
     var pendingFocusSection by remember { mutableStateOf<ProfileSection?>(null) }
     val homeTabFocusRequester = remember { FocusRequester() }
     val xtreamSectionFocusRequester = remember { FocusRequester() }
+    val parentalSectionFocusRequester = remember { FocusRequester() }
     val deviceCatalogFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(selectedSection) {
+        parentalViewModel.setVisible(selectedSection == ProfileSection.Parental)
+    }
 
     LaunchedEffect(Unit) {
         delay(ProfileFocusRequestDelayMillis)
@@ -456,7 +476,11 @@ private fun ProfileScreen(
                                     selectedSection = section
                                 }
                             },
-                            focusRequester = if (section == ProfileSection.Xtream) xtreamSectionFocusRequester else null,
+                            focusRequester = when (section) {
+                                ProfileSection.Xtream -> xtreamSectionFocusRequester
+                                ProfileSection.Parental -> parentalSectionFocusRequester
+                                else -> null
+                            },
                             modifier = Modifier
                                 .then(
                                     if (section == ProfileSection.Xtream) {
@@ -497,7 +521,13 @@ private fun ProfileScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .verticalScroll(rememberScrollState()),
+                    .then(
+                        if (selectedSection == ProfileSection.Parental) {
+                            Modifier
+                        } else {
+                            Modifier.verticalScroll(rememberScrollState())
+                        },
+                    ),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 when (selectedSection) {
@@ -522,11 +552,12 @@ private fun ProfileScreen(
                         deviceCatalogFocusRequester = deviceCatalogFocusRequester,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    ProfileSection.Parental -> ProfileParentalPanel(
+                    ProfileSection.Parental -> ParentalControlPanel(
                         strings = strings,
-                        onApply = { onSync() },
-                        initiallyUnlocked = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        state = parentalState,
+                        viewModel = parentalViewModel,
+                        onExitToMenu = { runCatching { parentalSectionFocusRequester.requestFocus() } },
+                        modifier = Modifier.fillMaxSize(),
                     )
                     ProfileSection.History -> ProfileHistoryPanel(state = state, modifier = Modifier.fillMaxWidth())
                     ProfileSection.Help -> ProfileHelpPanel(modifier = Modifier.fillMaxWidth())
@@ -711,104 +742,6 @@ internal fun LicensePanel(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun ProfileParentalPanel(
-    strings: SmartVisionStrings,
-    onApply: () -> Unit,
-    initiallyUnlocked: Boolean = false,
-    modifier: Modifier = Modifier,
-) {
-    val container = LocalAppContainer.current
-    val settings by container.settingsRepository.settings.collectAsStateWithLifecycle(
-        initialValue = com.smartvision.svplayer.domain.model.PlayerSettings(),
-    )
-    val scope = rememberCoroutineScope()
-    var unlocked by remember(initiallyUnlocked, settings.parentalPin) {
-        mutableStateOf(initiallyUnlocked || settings.parentalPin.isBlank())
-    }
-    var showUnlock by remember { mutableStateOf(false) }
-    var showCreate by remember { mutableStateOf(false) }
-    var keywords by remember(settings.parentalKeywords) { mutableStateOf(settings.parentalKeywords) }
-
-    ProfilePanel(title = strings.parentalControl, icon = Icons.Default.Lock, modifier = modifier) {
-        if (!unlocked) {
-            Text(strings.unlockParentalControl, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Body)
-            Spacer(Modifier.height(12.dp))
-            TvButton(text = strings.enterPin, onClick = { showUnlock = true }, modifier = Modifier.height(44.dp))
-        } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                TvButton(
-                    text = strings.enabled,
-                    selected = settings.parentalControlEnabled,
-                    onClick = { scope.launch { container.settingsRepository.setParentalControlEnabled(true) } },
-                    variant = if (settings.parentalControlEnabled) TvButtonVariant.Success else TvButtonVariant.Secondary,
-                    modifier = Modifier.weight(1f).height(42.dp),
-                )
-                TvButton(
-                    text = strings.disabled,
-                    selected = !settings.parentalControlEnabled,
-                    onClick = { scope.launch { container.settingsRepository.setParentalControlEnabled(false) } },
-                    variant = if (settings.parentalControlEnabled) TvButtonVariant.Secondary else TvButtonVariant.Danger,
-                    modifier = Modifier.weight(1f).height(42.dp),
-                )
-            }
-            Spacer(Modifier.height(14.dp))
-            TvButton(
-                text = if (settings.parentalPin.isBlank()) strings.createPin else strings.changePin,
-                onClick = { showCreate = true },
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier.height(40.dp),
-            )
-            Spacer(Modifier.height(14.dp))
-            OutlinedTextField(
-                value = keywords,
-                onValueChange = { keywords = it },
-                label = { Text(strings.hiddenKeywords) },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
-            )
-            Spacer(Modifier.height(10.dp))
-            TvButton(
-                text = strings.apply,
-                onClick = {
-                    scope.launch { container.settingsRepository.setParentalKeywords(keywords) }
-                    onApply()
-                },
-                modifier = Modifier.fillMaxWidth().height(44.dp),
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(strings.parentalHelp, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
-        }
-    }
-
-    if (showUnlock) {
-        NumericPinDialog(
-            title = strings.enterPin,
-            strings = strings,
-            onDismiss = { showUnlock = false },
-            onSubmit = { pin ->
-                container.settingsRepository.verifyParentalPin(pin).also { valid ->
-                    if (valid) { unlocked = true; showUnlock = false }
-                }
-            },
-        )
-    }
-    if (showCreate) {
-        NumericPinDialog(
-            title = if (settings.parentalPin.isBlank()) strings.createPin else strings.changePin,
-            strings = strings,
-            requireConfirmation = true,
-            onDismiss = { showCreate = false },
-            onSubmit = { pin ->
-                scope.launch { container.settingsRepository.setParentalPin(pin) }
-                unlocked = true
-                showCreate = false
-                true
-            },
-        )
     }
 }
 

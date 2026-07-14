@@ -1,13 +1,13 @@
 package com.smartvision.svplayer.ui.settings
 
 import com.smartvision.svplayer.domain.model.PlayerSettings
+import com.smartvision.svplayer.domain.parental.ParentalKeywordPolicy
+import java.util.Locale
 
 fun PlayerSettings.parentalKeywordsList(): List<String> =
-    parentalKeywords
-        .split(',', ';', '\n', '\r', '|')
-        .map { it.trim().lowercase() }
-        .filter { it.length >= 2 }
-        .distinct()
+    ParentalKeywordPolicy.normalizedForMatching(
+        parentalKeywordValues.ifEmpty { ParentalKeywordPolicy.parseLegacy(parentalKeywords) },
+    )
 
 fun PlayerSettings.allowsContent(vararg values: String?): Boolean {
     if (!parentalControlEnabled) return true
@@ -16,6 +16,6 @@ fun PlayerSettings.allowsContent(vararg values: String?): Boolean {
     val haystack = values
         .filterNotNull()
         .joinToString(" ")
-        .lowercase()
+        .lowercase(Locale.ROOT)
     return keywords.none { keyword -> haystack.contains(keyword) }
 }

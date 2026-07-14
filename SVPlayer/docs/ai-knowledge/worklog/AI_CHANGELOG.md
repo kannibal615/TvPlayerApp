@@ -1,5 +1,28 @@
 # AI Changelog
 
+## 2026-07-14 - Actions mots-cles Controle parental
+
+- Corrige l'interception de OK par la carte parente qui bloquait Add, Edit et Delete.
+- Rend l'ajout/modification/suppression immediatement visibles dans l'etat UI; Edit conserve son dialogue pre-rempli et Delete utilise `TvConfirmationDialog` avant mutation.
+- Compacte la grille pour trois cards par ligne des `420 dp`, quatre au-dessus de `720 dp`, avec replis etroits a deux/une colonne.
+- Validation: 4 tests `ParentalControlViewModelTest` reussis, puis `:app:compileReleaseKotlin` reussi en 1 min 4 s.
+
+## 2026-07-14 - Correctifs visuels et interactions Controle parental
+
+- Aligne le titre, les titres de sections, icones et toggle sur les dimensions d'Info compte; retire la hauteur fixe des cartes Activation/PIN et separe le titre Mots-cles des controles.
+- Rend le premier OK/clic effectif pour Activation, Change PIN et ouverture du clavier, puis ajoute les clics explicites Edit/Supprimer.
+- Renforce le scroll de la zone droite et la visibilite basse de Resultats, sans modifier header ni menu gauche.
+- Validation: `:app:compileReleaseKotlin` termine avec code de sortie `0`; aucune verification visuelle TV/AVD executee.
+
+## 2026-07-14 - Refonte Controle parental et resultats Room
+
+- Remplace uniquement le panneau droit de Profile par les cartes Activation, Code PIN, Mots-cles et Resultats, avec grille adaptative quatre/deux/une colonnes et scroll local.
+- Ajoute `ParentalControlViewModel`, la navigation TV a deux niveaux, la restauration de focus apres suppression, la saisie clavier seulement apres OK et le changement PIN via `NumericPinDialog`.
+- Persiste la liste ordonnee en JSON DataStore avec migration de l'ancienne chaine, normalisation et compatibilite du champ historique.
+- Ajoute des requetes Room sans migration de schema pour compteurs exacts, dossiers groupes et elements Live/Films/Series/episodes caches pagines par `40`; OFF retourne immediatement zero.
+- Centralise le filtrage categorie/titre/description/genre et retire la note du filtre Films.
+- Validation: 11 tests unitaires release cibles reussis; compilation release executee apres mise a jour finale.
+
 ## 2026-07-14 - Popups compacts de gestion des profils
 
 - Recompose le formulaire partage picker/Info compte en popup TV responsive avec nom et avatars alignes, zone centrale scrollable et footer fixe.

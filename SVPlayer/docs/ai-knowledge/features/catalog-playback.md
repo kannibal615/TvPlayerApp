@@ -1,6 +1,6 @@
 # Catalogue, Playlist et Lecture
 
-Derniere mise a jour: 2026-07-13.
+Derniere mise a jour: 2026-07-14.
 
 `SyncStatus.SyncSectionProgress` publie maintenant le message d'etape, le total connu et la phase `FILTERING` pour les profils Kids. Les cartes Home affichent profil Kids, duree ecoulee, compteurs et etape reelle; un appel reseau au total inconnu conserve son libelle au lieu de simuler une progression lineaire.
 
@@ -46,6 +46,13 @@ Clarification stockage/performance:
 - La synchronisation reseau complete est separee du chargement local et depend de `SyncFrequencyPolicy`: `A chaque demarrage` force une synchro a chaque ouverture, `24h`/`48h` ne resynchronisent que si la derniere synchro est obsolete, `Manuelle`/`Jamais` evitent la synchro automatique.
 - Recommandation d'optimisation: ne remettre aucun prechauffage Room dans le splash; preferer une frequence `24h` ou `48h` pour eviter les telechargements reseau inutiles tout en gardant les catalogues frais.
 - Les index Room sur `categoryId`, tri par numero/titre/nom et `episodes.seriesId` supportent le chargement pagine local.
+
+## Controle parental local
+
+- `ParentalKeywordPolicy` est la regle canonique de normalisation: espaces nettoyes, ordre preserve, doublons insensibles a la casse refuses. `PlayerSettings.parentalKeywordValues` lit la nouvelle liste JSON DataStore; l'ancienne chaine separee reste disponible et est migree automatiquement pour compatibilite.
+- Live TV, Films, Series et episodes utilisent les champs disponibles categorie, titre/nom, description et genre. Films ne filtre plus sur la note. Quand le controle est desactive, aucun resultat potentiel n'est expose.
+- `RoomParentalCatalogRepository` interroge directement `categories`, `live_streams`, `movies`, `series` et les seuls `episodes` deja caches. Il groupe les dossiers par section/categorie, deduplique les correspondances multiples via `EXISTS`, utilise des cles stables `type:id`, calcule les compteurs exacts et pagine les deux listes par lots de `40`. Aucune table, migration Room ou requete reseau n'est ajoutee.
+- Le calcul est relance sur activation, mots-cles, profil actif et `CatalogRepository.catalogRevision`. `collectLatest` annule le calcul devenu obsolete; une erreur garde le dernier resultat valide et expose l'action Reessayer.
 
 Depuis le 2026-07-10, la synchronisation manuelle depuis Info compte publie une progression par section Live TV / Films / Series dans `SyncStatus`: phase, pourcentage et nombre d'elements importes. Les appels reseau Xtream restent hors transaction Room; seules les remplacements locaux par section sont transactionnels, avec progression emise apres chaque lot importe. Cette separation evite de verrouiller les lectures locales pendant les reponses lentes du fournisseur.
 

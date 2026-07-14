@@ -10,6 +10,7 @@ import com.smartvision.svplayer.data.local.dao.CategoryDao
 import com.smartvision.svplayer.data.local.dao.FavoriteDao
 import com.smartvision.svplayer.data.local.dao.MediaCenterDao
 import com.smartvision.svplayer.data.local.dao.MediaDao
+import com.smartvision.svplayer.data.local.dao.ParentalFilterDao
 import com.smartvision.svplayer.data.local.dao.KidsFilterDao
 import com.smartvision.svplayer.data.local.dao.ProfileDao
 import com.smartvision.svplayer.data.local.dao.ProgressDao
@@ -78,6 +79,7 @@ abstract class SVDatabase : RoomDatabase() {
     abstract fun youtubeDao(): YoutubeDao
     abstract fun mediaCenterDao(): MediaCenterDao
     abstract fun kidsFilterDao(): KidsFilterDao
+    abstract fun parentalFilterDao(): ParentalFilterDao
 
     companion object {
         fun build(context: Context): SVDatabase =

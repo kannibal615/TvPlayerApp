@@ -211,4 +211,5 @@ data class PlayerSettings(
     val parentalControlEnabled: Boolean = false,
     val parentalPin: String = "",
     val parentalKeywords: String = "adults; porn; xxx",
+    val parentalKeywordValues: List<String> = listOf("adults", "porn", "xxx"),
 )

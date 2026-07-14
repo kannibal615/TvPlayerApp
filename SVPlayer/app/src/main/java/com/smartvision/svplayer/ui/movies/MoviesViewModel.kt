@@ -437,7 +437,7 @@ class MoviesViewModel(
     private suspend fun favoriteMovies(query: String = ""): List<MovieItemUi> =
         catalogRepository.getMoviesByIds(favoriteIds.toList())
             .filter { movie ->
-                playerSettings.allowsContent(movie.title, movie.rating, movie.categoryName)
+                playerSettings.allowsContent(movie.title, movie.plot, movie.genre, movie.categoryName)
             }
             .sortedBy { it.title }
             .mapIndexed { index, movie ->
@@ -482,7 +482,7 @@ class MoviesViewModel(
                     catalogRepository.getMoviesPage(categoryId, startOffset, MovieItemsPageSize)
                 }
                 val visiblePage = page
-                    .filter { movie -> playerSettings.allowsContent(movie.title, movie.rating, categoryLabel) }
+                    .filter { movie -> playerSettings.allowsContent(movie.title, movie.plot, movie.genre, categoryLabel) }
                     .mapIndexed { index, movie ->
                         movie.toUiMovie(
                             index = startOffset + index,

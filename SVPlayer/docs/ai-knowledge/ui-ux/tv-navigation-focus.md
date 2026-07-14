@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-07-13.
+Derniere mise a jour: 2026-07-14.
 
 ## Profils Kids et dialogues
 
@@ -38,6 +38,7 @@ Le focus global est derive des settings utilisateur:
 - Le header principal affiche aussi une date/heure non focusable a droite (`HH:mm:ss` puis `dd/MM/yyyy`), separee des boutons globaux par un trait vertical discret.
 - Les formulaires doivent permettre Haut/Bas entre champs.
 - Les popups doivent etre navigables au D-pad.
+- Controle parental utilise un focus a deux niveaux: Activation/Code PIN, puis Mots-cles, puis Resultats. Le handler OK d'une carte ne doit consommer l'evenement que si la carte elle-meme est focalisee; il ne doit jamais intercepter Add/Edit/Delete d'un enfant. Le premier OK/clic sur Activation applique le toggle, sur Code PIN ouvre `NumericPinDialog`, et sur Mots-cles focalise la saisie puis ouvre le clavier. Add cree la card, Edit ouvre son dialogue et Delete ouvre une confirmation TV avant suppression. Back revient d'abord a la carte, puis au bouton Controle parental du menu gauche, avant la sortie normale de Profile.
 
 ## 4. Workflow technique
 
@@ -54,6 +55,7 @@ Fichiers centraux:
 
 Attention:
 - Un `FocusRequester` peut crasher si demande de focus avant initialisation ou apres disparition du composable.
+- Dans Controle parental, le focus d'une carte declenche `LazyListState.animateScrollToItem()` dans la seule zone droite. Cette `LazyColumn` garde un padding bas afin de rendre la section Resultats entierement visible; ses deux listes internes scrollent et paginent pres de leur fin. Resultats entre sur le premier dossier disponible, sinon le premier element. Apres suppression d'un mot-cle, le focus cible le suivant, le precedent, ou le champ si la liste devient vide.
 - Ne pas affecter `left`/`right`/`up`/`down` dans `focusProperties` vers un `FocusRequester` porte par un item `LazyColumn`/`LazyVerticalGrid` qui peut ne pas etre compose. Preferer la recherche spatiale Compose ou un routage explicite par evenement avec `runCatching`.
 - Sur Home, D-pad bas depuis Live TV / Movies / Series doit cibler le premier item de la prochaine ligne disponible; D-pad bas depuis Continue watching cible le premier item `Trending movies`; D-pad bas depuis `Trending movies` cible le premier item `Trending series`.
 - Sur Home, ce routage D-pad bas/haut annule le job vertical precedent, remet la `LazyRow` cible a l'index `0`, execute un unique `ScrollState.animateScrollTo()` vers une position calculee, puis demande le focus sur le premier item apres la fin du scroll. Ne pas reutiliser `BringIntoViewRequester` pour ces transitions verticales.
