@@ -98,7 +98,6 @@ import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.update.AppUpdateUiState
-import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import java.util.UUID
 import java.util.Date
 import kotlinx.coroutines.delay
@@ -125,7 +124,6 @@ fun SettingsScreen(
     notificationBadgeCount: Int,
     updateState: AppUpdateUiState,
     onCheckForUpdate: () -> Unit,
-    onSyncCatalog: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
@@ -208,16 +206,7 @@ fun SettingsScreen(
             networkSnapshot = networkSnapshot,
             updateState = updateState,
             onCheckForUpdate = onCheckForUpdate,
-            onSyncCatalog = onSyncCatalog,
             onSetLanguage = { value -> scope.launch { container.settingsRepository.setLanguage(value) } },
-            onSetSyncFrequency = { value -> scope.launch { container.settingsRepository.setSyncFrequency(value) } },
-            onSetAutostartEnabled = { value -> scope.launch { container.settingsRepository.setAutostartEnabled(value) } },
-            onSetBackgroundSyncEnabled = { value ->
-                scope.launch {
-                    container.settingsRepository.setBackgroundSyncEnabled(value)
-                    BackgroundSyncScheduler.applyPeriodicSync(context, value)
-                }
-            },
             onSetFocusStyle = { value -> scope.launch { container.settingsRepository.setFocusStyle(value) } },
             onSetFocusColor = { value -> scope.launch { container.settingsRepository.setFocusColor(value) } },
             onSetFocusEffect = { value -> scope.launch { container.settingsRepository.setFocusEffect(value) } },
@@ -286,11 +275,7 @@ private fun SettingsMenuLayout(
     networkSnapshot: NetworkActivitySnapshot,
     updateState: AppUpdateUiState,
     onCheckForUpdate: () -> Unit,
-    onSyncCatalog: () -> Unit,
     onSetLanguage: (String) -> Unit,
-    onSetSyncFrequency: (String) -> Unit,
-    onSetAutostartEnabled: (Boolean) -> Unit,
-    onSetBackgroundSyncEnabled: (Boolean) -> Unit,
     onSetFocusStyle: (String) -> Unit,
     onSetFocusColor: (String) -> Unit,
     onSetFocusEffect: (String) -> Unit,
@@ -312,11 +297,11 @@ private fun SettingsMenuLayout(
 
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(18.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         LazyColumn(
             modifier = Modifier
-                .width(292.dp)
+                .width(250.dp)
                 .fillMaxHeight()
                 .background(Color(0xD9091424), RoundedCornerShape(8.dp))
                 .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
@@ -410,16 +395,6 @@ private fun SettingsMenuLayout(
                         ),
                         selected = if (settings.retryEnabled) "enabled" else "disabled",
                         onSelected = { value -> onSetRetry(value == "enabled") },
-                    )
-                }
-                SettingsSection.Sync -> {
-                    SynchronizationPreferencesContent(
-                        settings = settings,
-                        activeAccount = activeAccount,
-                        strings = strings,
-                        onSetAutostartEnabled = onSetAutostartEnabled,
-                        onSetBackgroundSyncEnabled = onSetBackgroundSyncEnabled,
-                        onSetSyncFrequency = onSetSyncFrequency,
                     )
                 }
                 SettingsSection.Network -> {
@@ -589,7 +564,6 @@ private enum class SettingsSection(
 ) {
     License(Icons.Default.Verified),
     Preferences(Icons.Default.Settings),
-    Sync(Icons.Default.CloudSync),
     Network(Icons.Default.CloudSync),
     Tmdb(Icons.Default.Info),
     Personalization(Icons.Default.Settings),
@@ -600,7 +574,6 @@ private enum class SettingsSection(
 private fun SettingsSection.label(strings: SmartVisionStrings): String = when (this) {
     SettingsSection.License -> "Licence SmartVision"
     SettingsSection.Preferences -> strings.generalPreferences
-    SettingsSection.Sync -> strings.sync
     SettingsSection.Network -> strings.networkActivity
     SettingsSection.Tmdb -> strings.tmdbAttribution
     SettingsSection.Personalization -> strings.personalization

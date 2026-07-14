@@ -1,5 +1,13 @@
 # AI Changelog
 
+## 2026-07-14 - Refonte Synchronisation Profil et proportions Settings
+
+- Retire le menu/panneau Synchronisation legacy de Settings et son callback de navigation devenu inutile; les reglages restent exclusivement dans Profile.
+- Aligne Settings sur Profile/Notifications avec menu gauche `250 dp`, espacement `16 dp` et panneau droit flexible.
+- Recompose uniquement la colonne droite Profile > Synchronisation en cartes `Options generales`, `Frequence` et `Resume de synchronisation`, avec toggles compacts, grille cinq frequences et valeurs du profil actif.
+- Route explicitement le D-pad entre menu, toggles et choix de frequence; le serveur M3U est reduit a son host afin de ne pas exposer l'URL complete.
+- Validation: `:app:compileReleaseKotlin --no-daemon --max-workers=1 --console=plain` reussi en 3 min 37 s apres retrait d'un import Compose interne inutile.
+
 ## 2026-07-14 - Refonte Notifications, Synchronisation Profil et nettoyage Profile
 
 - Ajoute le contrat type `app_update` / `playlist_added` / `important_info`, les payloads playlist chiffres, l'historique par `seen_at` et la purge durable `purged_at` avec action admin `PURGER` auditee.

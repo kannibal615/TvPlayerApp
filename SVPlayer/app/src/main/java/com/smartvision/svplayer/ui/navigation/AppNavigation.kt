@@ -890,7 +890,6 @@ fun AppNavigation(
                 notificationBadgeCount = notificationBadgeCount,
                 updateState = appUpdateState,
                 onCheckForUpdate = { appUpdateViewModel.checkForUpdate(revealDialog = true) },
-                onSyncCatalog = launchSyncCatalog,
             )
         }
         composable(AppRoute.Notifications.route) {

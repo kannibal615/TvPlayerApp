@@ -374,7 +374,12 @@ private fun ProfileScreen(
     val homeTabFocusRequester = remember { FocusRequester() }
     val xtreamSectionFocusRequester = remember { FocusRequester() }
     val parentalSectionFocusRequester = remember { FocusRequester() }
+    val syncSectionFocusRequester = remember { FocusRequester() }
+    val syncFirstControlFocusRequester = remember { FocusRequester() }
     val deviceCatalogFocusRequester = remember { FocusRequester() }
+    val activePlaylistProfile = state.playlistProfiles.firstOrNull { it.id == state.activePlaylistProfileId }
+        ?: state.playlistProfiles.firstOrNull()
+    val resolvedActivePlaylistProfile = activePlaylistProfile?.let(container.accountManager::resolvedProfile)
 
     LaunchedEffect(selectedSection) {
         parentalViewModel.setVisible(selectedSection == ProfileSection.Parental)
@@ -469,6 +474,7 @@ private fun ProfileScreen(
                             focusRequester = when (section) {
                                 ProfileSection.Xtream -> xtreamSectionFocusRequester
                                 ProfileSection.Parental -> parentalSectionFocusRequester
+                                ProfileSection.Sync -> syncSectionFocusRequester
                                 else -> null
                             },
                             modifier = Modifier
@@ -487,6 +493,20 @@ private fun ProfileScreen(
                                     },
                                 )
                                 .then(if (section == ProfileSection.Xtream) Modifier.focusProperties { up = homeTabFocusRequester } else Modifier)
+                                .then(
+                                    if (section == ProfileSection.Sync) {
+                                        Modifier.onPreviewKeyEvent { event ->
+                                            if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight) {
+                                                runCatching { syncFirstControlFocusRequester.requestFocus() }
+                                                true
+                                            } else {
+                                                false
+                                            }
+                                        }
+                                    } else {
+                                        Modifier
+                                    },
+                                )
                                 .fillMaxWidth()
                                 .height(46.dp),
                         )
@@ -556,8 +576,18 @@ private fun ProfileScreen(
                     ) {
                         SynchronizationPreferencesContent(
                             settings = parentalSettings,
-                            activeAccount = state.activeXtreamAccount,
+                            activeProfileName = activePlaylistProfile?.name ?: strings.none,
+                            activeServer = when (resolvedActivePlaylistProfile?.source) {
+                                PlaylistSource.M3u -> resolvedActivePlaylistProfile.m3uUrl.safeServerHost(strings.notConfigured)
+                                PlaylistSource.Xtream -> resolvedActivePlaylistProfile.xtreamHost.ifBlank { strings.notConfigured }
+                                null -> strings.notConfigured
+                            },
+                            lastSynchronization = activePlaylistProfile?.lastSyncAt
+                                ?.let { it.asProfileDate() }
+                                ?: strings.syncNever,
                             strings = strings,
+                            firstControlFocusRequester = syncFirstControlFocusRequester,
+                            menuFocusRequester = syncSectionFocusRequester,
                             onSetAutostartEnabled = { value ->
                                 scope.launch { container.settingsRepository.setAutostartEnabled(value) }
                             },
@@ -3580,6 +3610,12 @@ private fun Long?.asProfileDate(): String =
     this?.let { timestamp ->
         SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(timestamp))
     } ?: "Jamais"
+
+private fun String.safeServerHost(fallback: String): String =
+    runCatching { java.net.URI(trim()).host }
+        .getOrNull()
+        ?.takeIf { it.isNotBlank() }
+        ?: fallback
 
 internal fun activationBaseUrl(): String =
     BuildConfig.ACTIVATION_BASE_URL.ifBlank { "https://smartvisions.net/" }
