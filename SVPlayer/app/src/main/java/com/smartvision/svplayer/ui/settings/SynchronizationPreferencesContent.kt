@@ -69,8 +69,8 @@ internal fun SynchronizationPreferencesContent(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(250.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .height(210.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         SyncSectionCard(
             title = strings.syncGeneralOptions,
@@ -177,14 +177,14 @@ internal fun SynchronizationPreferencesContent(
         }
     }
 
-    Spacer(Modifier.height(14.dp))
+    Spacer(Modifier.height(10.dp))
 
     SyncSectionCard(
         title = strings.syncSummary,
         icon = Icons.Default.Sync,
         modifier = Modifier
             .fillMaxWidth()
-            .height(174.dp),
+            .height(150.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(26.dp)) {
             SyncSummaryItem(
