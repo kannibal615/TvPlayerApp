@@ -27,6 +27,8 @@ import com.smartvision.svplayer.data.local.entity.MediaFileEntity
 import com.smartvision.svplayer.data.local.entity.MediaFolderEntity
 import com.smartvision.svplayer.data.local.entity.MovieEntity
 import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
+import com.smartvision.svplayer.data.local.entity.ParentalFilterSnapshotEntity
+import com.smartvision.svplayer.data.local.entity.ParentalHiddenItemEntity
 import com.smartvision.svplayer.data.local.entity.ProfileEntity
 import com.smartvision.svplayer.data.local.entity.RecordingJobEntity
 import com.smartvision.svplayer.data.local.entity.SeriesEntity
@@ -65,8 +67,10 @@ import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
         RecordingJobEntity::class,
         KidsCategoryDecisionEntity::class,
         KidsItemDecisionEntity::class,
+        ParentalFilterSnapshotEntity::class,
+        ParentalHiddenItemEntity::class,
     ],
-    version = 16,
+    version = 17,
     exportSchema = true,
 )
 abstract class SVDatabase : RoomDatabase() {
@@ -100,6 +104,7 @@ abstract class SVDatabase : RoomDatabase() {
                     Migration13To14(context),
                     Migration14To15,
                     Migration15To16,
+                    Migration16To17,
                 )
                 .build()
 
@@ -678,6 +683,31 @@ abstract class SVDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_kids_item_decisions_ruleVersion " +
                         "ON kids_item_decisions(ruleVersion)",
+                )
+            }
+        }
+
+        private val Migration16To17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS parental_filter_snapshots (" +
+                        "profileId TEXT NOT NULL PRIMARY KEY, keywordFingerprint TEXT NOT NULL, " +
+                        "catalogLastSync INTEGER NOT NULL, generatedAt INTEGER NOT NULL)",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS parental_hidden_items (" +
+                        "profileId TEXT NOT NULL, section TEXT NOT NULL, folderId TEXT NOT NULL, " +
+                        "folderName TEXT NOT NULL, contentType TEXT NOT NULL, contentId TEXT NOT NULL, " +
+                        "title TEXT NOT NULL, imageUrl TEXT, secondaryLabel TEXT NOT NULL, duration TEXT, " +
+                        "PRIMARY KEY(profileId, contentType, contentId))",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_parental_hidden_items_profileId_section_folderId " +
+                        "ON parental_hidden_items(profileId, section, folderId)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_parental_hidden_items_profileId_title " +
+                        "ON parental_hidden_items(profileId, title)",
                 )
             }
         }

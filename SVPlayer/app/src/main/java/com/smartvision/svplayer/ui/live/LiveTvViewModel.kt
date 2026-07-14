@@ -641,6 +641,15 @@ class LiveTvViewModel(
             val local = localById[id]
             if (local != null) {
                 val categoryLabel = local.categoryName.ifBlank { progress.subtitle ?: "Historique" }
+                if (!playerSettings.allowsContent(
+                        local.name,
+                        local.categoryName,
+                        progress.title,
+                        progress.subtitle,
+                    )
+                ) {
+                    return@mapIndexedNotNull null
+                }
                 return@mapIndexedNotNull local.toUiChannel(
                     index = index,
                     categoryLabel = categoryLabel,

@@ -384,14 +384,12 @@ private fun SeriesDetailScreen(
     val favoriteFocusRequester = remember { FocusRequester() }
     val retryFocusRequester = remember { FocusRequester() }
     val currentTabFocusRequester = remember { FocusRequester() }
-    val listState = rememberLazyListState()
     LaunchedEffect(state.loading, state.errorMessage, state.firstEpisode?.episodeId) {
         if (state.loading) {
             delay(80)
             runCatching { currentTabFocusRequester.requestFocus() }
             return@LaunchedEffect
         }
-        listState.scrollToItem(0)
         delay(120)
         runCatching {
             when {
@@ -436,20 +434,18 @@ private fun SeriesDetailScreen(
                 .padding(top = DetailDimens.HeaderTop),
         )
 
-        LazyColumn(
-            state = listState,
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = DetailDimens.ScreenPadding)
                 .padding(top = 82.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(28.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(28.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
                     SeriesHeroInfo(
                         state = state,
                         onWatchEpisode = { state.firstEpisode?.episodeId?.let(onWatchEpisode) },
@@ -465,14 +461,11 @@ private fun SeriesDetailScreen(
                     SeriesCoverFrame(
                         imageUrl = state.displayCoverUrl,
                         title = state.displayTitle,
-                        modifier = Modifier
-                            .width(330.dp)
-                            .aspectRatio(0.68f),
+                        showTitle = false,
+                        modifier = Modifier.width(190.dp).aspectRatio(0.68f),
                     )
-                }
             }
-            item {
-                Row(
+            Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(28.dp),
                     verticalAlignment = Alignment.Top,
@@ -491,28 +484,8 @@ private fun SeriesDetailScreen(
                         onEpisode = { episode -> onWatchEpisode(episode.episodeId) },
                         modifier = Modifier
                             .weight(1f)
-                            .height(300.dp),
+                            .height(190.dp),
                     )
-                }
-            }
-            item {
-                DetailVideoSection(videos = state.tmdbMetadata?.videos.orEmpty())
-            }
-            item {
-                DetailPeopleSection(title = "Cast", people = state.tmdbMetadata?.castMembers.orEmpty())
-            }
-            item {
-                DetailPeopleSection(title = "Creators", people = state.tmdbMetadata?.creators.orEmpty())
-            }
-            item {
-                DetailUserRatingSection(
-                    contentKey = "series:${state.seriesId}",
-                    tmdbRating = state.displayRating,
-                    voteCount = state.tmdbMetadata?.voteCount,
-                )
-            }
-            item {
-                DetailRecommendationsSection(recommendations = state.tmdbMetadata?.recommendations.orEmpty())
             }
         }
     }
@@ -856,6 +829,7 @@ private fun DetailEpisodeRow(
 private fun SeriesCoverFrame(
     imageUrl: String?,
     title: String,
+    showTitle: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(8.dp)
@@ -881,22 +855,22 @@ private fun SeriesCoverFrame(
                 modifier = Modifier.size(54.dp),
             )
         }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.74f)))),
-        )
-        Text(
-            text = title,
-            color = Color.White,
-            style = DetailBodyStyle,
-            fontWeight = FontWeight.Black,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(12.dp),
-        )
+        if (showTitle) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.74f)))),
+            )
+            Text(
+                text = title,
+                color = Color.White,
+                style = DetailBodyStyle,
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
+            )
+        }
     }
 }
 

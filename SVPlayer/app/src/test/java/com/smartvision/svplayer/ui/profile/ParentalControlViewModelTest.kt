@@ -150,7 +150,13 @@ private class FakeParentalCatalogRepository(
         return listOf(ParentalHiddenFolder("movies:adult", "movies", "adult", "Adult", 1))
     }
 
-    override suspend fun items(profileId: String, keywords: List<String>, offset: Int, limit: Int): List<ParentalHiddenItem> {
+    override suspend fun items(
+        profileId: String,
+        keywords: List<String>,
+        folder: ParentalHiddenFolder,
+        offset: Int,
+        limit: Int,
+    ): List<ParentalHiddenItem> {
         delayedResponse()
         return listOf(
             ParentalHiddenItem(
@@ -165,6 +171,10 @@ private class FakeParentalCatalogRepository(
             ),
         )
     }
+
+    override suspend fun itemCount(profileId: String, keywords: List<String>, folder: ParentalHiddenFolder): Int = 1
+    override suspend fun hiddenStableKeys(profileId: String, keywords: List<String>): Set<String> = setOf("movie:1")
+    override suspend fun deleteProfileSnapshot(profileId: String) = Unit
 
     private suspend fun delayedResponse() {
         if (fail) error("query failed")

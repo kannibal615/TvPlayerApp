@@ -599,8 +599,7 @@ private fun MovieList(
                         title = movie.title,
                         subtitle = listOfNotNull(
                             movie.year,
-                            movie.containerExtension.takeIf { it.isNotBlank() }?.uppercase(),
-                            movie.categoryLabel,
+                            movie.duration,
                             movie.director?.takeIf { it.isNotBlank() },
                         ).joinToString(" | ").ifBlank { movie.subtitle },
                         genre = movie.genre,

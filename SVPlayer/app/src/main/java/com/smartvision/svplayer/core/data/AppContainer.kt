@@ -327,7 +327,7 @@ class AppContainer(context: Context) {
     )
     val settingsRepository: SettingsRepository =
         DefaultSettingsRepository(appContext, appContext.settingsDataStore, database, profilePinManager, accountManager)
-    val parentalCatalogRepository = RoomParentalCatalogRepository(database.parentalFilterDao())
+    val parentalCatalogRepository = RoomParentalCatalogRepository(database)
 
     val homeContentRepository = HomeContentRepository(
         catalogRepository = catalogRepository,

@@ -20,6 +20,8 @@ import com.smartvision.svplayer.ui.settings.allowsContent
 import com.smartvision.svplayer.ui.catalog.AllCategoryPolicy
 import java.util.Locale
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -317,8 +319,17 @@ class MoviesViewModel(
     private fun observeHistory() {
         viewModelScope.launch {
             userContentRepository.observeHistory(UserContentType.Movie).collect { progress ->
-                historyProgress = progress.map { userContentRepository.enrichProgress(it) }
+                val enrichedProgress = progress.map { userContentRepository.enrichProgress(it) }
                     .distinctBy { it.contentId }
+                val moviesById = catalogRepository
+                    .getMoviesByIds(enrichedProgress.mapNotNull { it.contentId.toIntOrNull() })
+                    .associateBy { it.streamId }
+                historyProgress = enrichedProgress.filter { item ->
+                    val movie = item.contentId.toIntOrNull()?.let(moviesById::get)
+                    movie?.let {
+                        playerSettings.allowsContent(it.title, it.plot, it.genre, it.categoryName)
+                    } ?: playerSettings.allowsContent(item.title, item.subtitle)
+                }
                 historyCategorySignals = userContentRepository.resolveCategorySignals(historyProgress)
                 _uiState.update { state ->
                     val historyMovies = historyMovies(state.contentSearchQuery)
@@ -532,27 +543,35 @@ class MoviesViewModel(
         tmdbMetadataJob?.cancel()
         if (movies.isEmpty()) return
         tmdbMetadataJob = viewModelScope.launch {
-            val enrichedById = movies.take(CachedTmdbMovieEnhanceLimit).mapNotNull { movie ->
-                val metadata = tmdbRepository.getCachedMovieMetadata(movie.streamId, playerSettings.language)
-                    ?: return@mapNotNull null
-                movie.streamId to movie.copy(
-                    title = metadata.title.nonBlank() ?: movie.title,
-                    posterUrl = metadata.posterUrl.nonBlank() ?: movie.posterUrl,
-                    backdropUrl = metadata.backdropUrl.nonBlank() ?: movie.backdropUrl,
-                    genre = metadata.genres.nonBlank() ?: movie.genre,
-                    rating = metadata.voteAverage?.takeIf { it > 0.0 }?.formatRating() ?: movie.rating,
-                    year = metadata.releaseDate?.take(4)?.takeIf { it.all(Char::isDigit) } ?: movie.year,
-                    duration = metadata.runtimeMinutes?.takeIf { it > 0 }?.let(::formatMinutes) ?: movie.duration,
-                    plot = metadata.overview.nonBlank() ?: movie.plot,
-                    director = metadata.director.nonBlank() ?: movie.director,
-                    cast = metadata.cast.nonBlank() ?: movie.cast,
-                )
-            }.toMap()
-            if (enrichedById.isEmpty()) return@launch
-            _uiState.update { state ->
-                state.copy(
-                    movies = state.movies.map { movie -> enrichedById[movie.streamId] ?: movie },
-                )
+            movies.take(CachedTmdbMovieEnhanceLimit).chunked(TmdbEnrichmentConcurrency).forEach { batch ->
+                val enrichedById = batch.map { movie ->
+                    async {
+                        val metadata = tmdbRepository.enrichMovie(
+                            contentId = movie.streamId,
+                            title = movie.title,
+                            year = movie.year,
+                            language = playerSettings.language,
+                            includeAdult = !playerSettings.parentalControlEnabled,
+                        ) ?: return@async null
+                        movie.streamId to movie.copy(
+                            title = metadata.title.nonBlank() ?: movie.title,
+                            posterUrl = metadata.posterUrl.nonBlank() ?: movie.posterUrl,
+                            backdropUrl = metadata.backdropUrl.nonBlank() ?: movie.backdropUrl,
+                            genre = metadata.genres.nonBlank() ?: movie.genre,
+                            rating = metadata.voteAverage?.takeIf { it > 0.0 }?.formatRating() ?: movie.rating,
+                            year = metadata.releaseDate?.take(4)?.takeIf { it.all(Char::isDigit) } ?: movie.year,
+                            duration = metadata.runtimeMinutes?.takeIf { it > 0 }?.let(::formatMinutes) ?: movie.duration,
+                            plot = metadata.overview.nonBlank() ?: movie.plot,
+                            director = metadata.director.nonBlank() ?: movie.director,
+                            cast = metadata.cast.nonBlank() ?: movie.cast,
+                        )
+                    }
+                }.awaitAll().filterNotNull().toMap()
+                if (enrichedById.isNotEmpty()) {
+                    _uiState.update { state ->
+                        state.copy(movies = state.movies.map { movie -> enrichedById[movie.streamId] ?: movie })
+                    }
+                }
             }
         }
     }
@@ -585,7 +604,8 @@ private data class PageLoadResult<T>(
 )
 
 private const val MovieItemsPageSize = 72
-private const val CachedTmdbMovieEnhanceLimit = 24
+private const val CachedTmdbMovieEnhanceLimit = 12
+private const val TmdbEnrichmentConcurrency = 2
 private const val InitialCategoryLimit = 20
 private const val FavoriteMovieCategoryId = "__favorites_movies__"
 private const val HistoryMovieCategoryId = "__history_movies__"

@@ -404,6 +404,8 @@ fun ParentalControlPanel(
                                     firstFocusRequester = firstFolderRequester,
                                     canFocus = enteredSection == ParentalPanelSection.Results,
                                     onLoadMore = viewModel::loadMoreFolders,
+                                    onFolder = viewModel::selectFolder,
+                                    rightFocusRequester = firstItemRequester,
                                     modifier = Modifier.weight(0.88f),
                                 )
                                 HiddenItemsList(
@@ -412,6 +414,7 @@ fun ParentalControlPanel(
                                     firstFocusRequester = firstItemRequester,
                                     canFocus = enteredSection == ParentalPanelSection.Results,
                                     onLoadMore = viewModel::loadMoreItems,
+                                    leftFocusRequester = firstFolderRequester,
                                     modifier = Modifier.weight(1.42f),
                                 )
                             }
@@ -744,6 +747,8 @@ private fun HiddenFoldersList(
     firstFocusRequester: FocusRequester,
     canFocus: Boolean,
     onLoadMore: () -> Unit,
+    onFolder: (com.smartvision.svplayer.domain.parental.ParentalHiddenFolder) -> Unit,
+    rightFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     ResultListFrame(strings.parentalHiddenFolders, Icons.Default.Folder, modifier) {
@@ -756,6 +761,9 @@ private fun HiddenFoldersList(
                     ResultFocusRow(
                         canFocus = canFocus,
                         focusRequester = if (index == 0) firstFocusRequester else null,
+                        selected = folder.stableKey == state.selectedFolderKey,
+                        onClick = { onFolder(folder) },
+                        onRight = { runCatching { rightFocusRequester.requestFocus() } },
                     ) {
                         Icon(Icons.Default.Folder, null, tint = SmartVisionColors.TextSecondary, modifier = Modifier.size(17.dp))
                         Spacer(Modifier.width(7.dp))
@@ -778,6 +786,7 @@ private fun HiddenItemsList(
     firstFocusRequester: FocusRequester,
     canFocus: Boolean,
     onLoadMore: () -> Unit,
+    leftFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     ResultListFrame(strings.parentalHiddenItems, Icons.Default.Movie, modifier) {
@@ -790,6 +799,7 @@ private fun HiddenItemsList(
                     ResultFocusRow(
                         canFocus = canFocus,
                         focusRequester = if (index == 0) firstFocusRequester else null,
+                        onLeft = { runCatching { leftFocusRequester.requestFocus() } },
                     ) {
                         if (!item.imageUrl.isNullOrBlank()) {
                             AsyncImage(
@@ -850,6 +860,10 @@ private fun ResultListFrame(
 private fun ResultFocusRow(
     canFocus: Boolean,
     focusRequester: FocusRequester?,
+    selected: Boolean = false,
+    onClick: (() -> Unit)? = null,
+    onLeft: (() -> Unit)? = null,
+    onRight: (() -> Unit)? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
@@ -859,11 +873,25 @@ private fun ResultFocusRow(
             .fillMaxWidth()
             .height(42.dp)
             .clip(RoundedCornerShape(6.dp))
-            .background(if (focused) focusStyle.background else Color.Transparent)
-            .border(if (focused) focusStyle.borderWidth else 0.dp, if (focused) focusStyle.accent else Color.Transparent, RoundedCornerShape(6.dp))
+            .background(if (focused || selected) focusStyle.background else Color.Transparent)
+            .border(
+                if (focused) focusStyle.borderWidth else if (selected) 1.dp else 0.dp,
+                if (focused) focusStyle.accent else if (selected) focusStyle.selectedAccent else Color.Transparent,
+                RoundedCornerShape(6.dp),
+            )
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .focusProperties { this.canFocus = canFocus }
             .onFocusChanged { focused = it.isFocused }
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when {
+                    event.key == Key.DirectionLeft && onLeft != null -> { onLeft(); true }
+                    event.key == Key.DirectionRight && onRight != null -> { onRight(); true }
+                    event.isConfirmationKey() && onClick != null -> { onClick(); true }
+                    else -> false
+                }
+            }
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .focusable()
             .padding(horizontal = 7.dp),
         verticalAlignment = Alignment.CenterVertically,

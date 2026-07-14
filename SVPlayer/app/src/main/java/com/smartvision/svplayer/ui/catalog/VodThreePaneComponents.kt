@@ -158,6 +158,7 @@ fun VodContentRow(
     onFocused: () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    ratingFirst: Boolean = false,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -282,21 +283,27 @@ fun VodContentRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                genre?.takeIf { it.isNotBlank() }?.let {
-                    VodLineBadge(text = it.substringBefore(",").trim().ifBlank { it })
-                }
-                rating?.takeIf { it.isNotBlank() }?.let {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("\u2605", color = Color(0xFFFFD54F), style = CatalogMetaStyle, maxLines = 1)
-                        Spacer(Modifier.width(3.dp))
-                        Text(
-                            text = it,
-                            color = SmartVisionColors.TextPrimary,
-                            style = CatalogMetaStyle,
-                            maxLines = 1,
-                        )
+                val ratingContent: @Composable () -> Unit = {
+                    rating?.takeIf { it.isNotBlank() }?.let {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("\u2605", color = Color(0xFFFFD54F), style = CatalogMetaStyle, maxLines = 1)
+                            Spacer(Modifier.width(3.dp))
+                            Text(
+                                text = it,
+                                color = SmartVisionColors.TextPrimary,
+                                style = CatalogMetaStyle,
+                                maxLines = 1,
+                            )
+                        }
                     }
                 }
+                val genreContent: @Composable () -> Unit = {
+                    genre?.takeIf { it.isNotBlank() }?.let {
+                        VodLineBadge(text = it.substringBefore(",").trim().ifBlank { it })
+                    }
+                }
+                if (ratingFirst) ratingContent() else genreContent()
+                if (ratingFirst) genreContent() else ratingContent()
                 Text(
                     text = subtitle,
                     color = SmartVisionColors.TextSecondary,
@@ -738,6 +745,8 @@ fun VodPreviewPanel(
                             modifier = Modifier
                                 .width(104.dp)
                                 .aspectRatio(2f / 3f),
+                            showTitle = isSeriesPreview,
+                            showBadge = isSeriesPreview,
                         )
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -749,6 +758,18 @@ fun VodPreviewPanel(
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
                             )
+                            if (!isSeriesPreview) {
+                                Spacer(Modifier.height(8.dp))
+                                CatalogActionButton(
+                                    text = "Play",
+                                    icon = Icons.Default.PlayArrow,
+                                    onClick = onPlay,
+                                    primary = true,
+                                    modifier = Modifier
+                                        .width(112.dp)
+                                        .height(36.dp),
+                                )
+                            }
                             Spacer(Modifier.height(6.dp))
                             Text(
                                 text = listOfNotNull(content.year, content.durationLabel, content.rating?.let { "\u2605 $it" })
@@ -784,6 +805,11 @@ fun VodPreviewPanel(
             }
 
             if (isSeriesPreview) {
+                content.plot?.takeIf { it.isNotBlank() }?.let { plot ->
+                    item(key = "${content.id}-series-plot") {
+                        PreviewInfoLine(label = "Resume", value = plot)
+                    }
+                }
                 item(key = "${content.id}-season-selector") {
                     SeriesSeasonSelector(
                         seasons = availableSeasons,

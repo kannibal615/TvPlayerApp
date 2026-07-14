@@ -1,7 +1,9 @@
 package com.smartvision.svplayer.data.parental
 
+import androidx.room.withTransaction
 import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.sqlite.db.SupportSQLiteQuery
+import com.smartvision.svplayer.data.local.SVDatabase
 import com.smartvision.svplayer.data.local.dao.ParentalFilterDao
 import com.smartvision.svplayer.domain.parental.ParentalCatalogRepository
 import com.smartvision.svplayer.domain.parental.ParentalFilterCounts
@@ -12,17 +14,24 @@ import com.smartvision.svplayer.domain.parental.ParentalKeywordPolicy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.security.MessageDigest
 
 class RoomParentalCatalogRepository(
-    private val dao: ParentalFilterDao,
+    private val database: SVDatabase,
 ) : ParentalCatalogRepository {
+    private val dao: ParentalFilterDao = database.parentalFilterDao()
+    private val refreshMutex = Mutex()
+
     override suspend fun counts(profileId: String, keywords: List<String>): ParentalFilterCounts = withContext(Dispatchers.IO) {
         val normalized = ParentalKeywordPolicy.normalizedForMatching(keywords)
         if (normalized.isEmpty()) return@withContext ParentalFilterCounts()
+        ensureSnapshot(profileId, normalized)
         coroutineScope {
-            val folderCount = async { dao.countHiddenFolders(ParentalFilterQueryBuilder.folderCount(profileId, normalized)) }
-            val itemCount = async { dao.countHiddenItems(ParentalFilterQueryBuilder.itemCount(profileId, normalized)) }
+            val folderCount = async { dao.countSnapshotFolders(profileId) }
+            val itemCount = async { dao.countSnapshotItems(profileId) }
             ParentalFilterCounts(folders = folderCount.await(), items = itemCount.await())
         }
     }
@@ -35,7 +44,8 @@ class RoomParentalCatalogRepository(
     ): List<ParentalHiddenFolder> = withContext(Dispatchers.IO) {
         val normalized = ParentalKeywordPolicy.normalizedForMatching(keywords)
         if (normalized.isEmpty()) return@withContext emptyList()
-        dao.loadHiddenFolders(ParentalFilterQueryBuilder.folders(profileId, normalized, offset, limit)).map { row ->
+        ensureSnapshot(profileId, normalized)
+        dao.loadSnapshotFolders(profileId, offset.coerceAtLeast(0), limit.coerceIn(1, 100)).map { row ->
             ParentalHiddenFolder(
                 stableKey = "${row.section}:${row.folderId}",
                 section = row.section,
@@ -49,12 +59,20 @@ class RoomParentalCatalogRepository(
     override suspend fun items(
         profileId: String,
         keywords: List<String>,
+        folder: ParentalHiddenFolder,
         offset: Int,
         limit: Int,
     ): List<ParentalHiddenItem> = withContext(Dispatchers.IO) {
         val normalized = ParentalKeywordPolicy.normalizedForMatching(keywords)
         if (normalized.isEmpty()) return@withContext emptyList()
-        dao.loadHiddenItems(ParentalFilterQueryBuilder.items(profileId, normalized, offset, limit)).map { row ->
+        ensureSnapshot(profileId, normalized)
+        dao.loadSnapshotItems(
+            profileId = profileId,
+            section = folder.section,
+            folderId = folder.folderId,
+            offset = offset.coerceAtLeast(0),
+            limit = limit.coerceIn(1, 100),
+        ).map { row ->
             val type = when (row.contentType) {
                 "channel" -> ParentalHiddenContentType.Channel
                 "movie" -> ParentalHiddenContentType.Movie
@@ -73,9 +91,77 @@ class RoomParentalCatalogRepository(
             )
         }
     }
+
+    override suspend fun itemCount(
+        profileId: String,
+        keywords: List<String>,
+        folder: ParentalHiddenFolder,
+    ): Int = withContext(Dispatchers.IO) {
+        val normalized = ParentalKeywordPolicy.normalizedForMatching(keywords)
+        if (normalized.isEmpty()) return@withContext 0
+        ensureSnapshot(profileId, normalized)
+        dao.countSnapshotItems(profileId, folder.section, folder.folderId)
+    }
+
+    override suspend fun hiddenStableKeys(profileId: String, keywords: List<String>): Set<String> = withContext(Dispatchers.IO) {
+        val normalized = ParentalKeywordPolicy.normalizedForMatching(keywords)
+        if (normalized.isEmpty()) return@withContext emptySet()
+        ensureSnapshot(profileId, normalized)
+        dao.loadSnapshotStableKeys(profileId).toSet()
+    }
+
+    override suspend fun deleteProfileSnapshot(profileId: String) = withContext(Dispatchers.IO) {
+        database.withTransaction {
+            dao.deleteItemsByProfile(profileId)
+            dao.deleteSnapshotByProfile(profileId)
+        }
+    }
+
+    private suspend fun ensureSnapshot(profileId: String, normalizedKeywords: List<String>) {
+        val fingerprint = normalizedKeywords.fingerprint()
+        val catalogLastSync = database.syncStateDao().get(profileId)?.lastSync ?: 0L
+        val current = dao.getSnapshot(profileId)
+        if (current?.keywordFingerprint == fingerprint && current.catalogLastSync == catalogLastSync) return
+
+        refreshMutex.withLock {
+            val latest = dao.getSnapshot(profileId)
+            if (latest?.keywordFingerprint == fingerprint && latest.catalogLastSync == catalogLastSync) return@withLock
+            val statement = ParentalFilterQueryBuilder.materialize(profileId, normalizedKeywords)
+            database.withTransaction {
+                dao.deleteItemsByProfile(profileId)
+                database.openHelper.writableDatabase.execSQL(statement.sql, statement.args)
+                database.openHelper.writableDatabase.execSQL(
+                    "INSERT OR REPLACE INTO parental_filter_snapshots " +
+                        "(profileId, keywordFingerprint, catalogLastSync, generatedAt) VALUES (?, ?, ?, ?)",
+                    arrayOf(profileId, fingerprint, catalogLastSync, System.currentTimeMillis()),
+                )
+            }
+        }
+    }
+}
+
+private fun List<String>.fingerprint(): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+        .digest(joinToString("\u0000").toByteArray(Charsets.UTF_8))
+    return digest.joinToString("") { byte -> "%02x".format(byte) }
 }
 
 internal object ParentalFilterQueryBuilder {
+    internal data class SqlStatement(val sql: String, val args: Array<Any>)
+
+    fun materialize(profileId: String, keywords: List<String>): SqlStatement {
+        require(keywords.isNotEmpty())
+        val statement = statement(
+            profileId = profileId,
+            keywords = keywords,
+            select = "INSERT OR REPLACE INTO parental_hidden_items " +
+                "(profileId, section, folderId, folderName, contentType, contentId, title, imageUrl, secondaryLabel, duration) " +
+                "SELECT ?, section, folderId, folderName, contentType, contentId, title, imageUrl, secondaryLabel, duration FROM hidden",
+            trailingArgs = arrayOf(profileId),
+        )
+        return SqlStatement(statement.first, statement.second)
+    }
+
     fun folderCount(profileId: String, keywords: List<String>): SupportSQLiteQuery =
         query(profileId, keywords, "SELECT COUNT(*) FROM (SELECT section, folderId FROM hidden GROUP BY section, folderId)")
 
@@ -108,6 +194,16 @@ internal object ParentalFilterQueryBuilder {
         select: String,
         vararg trailingArgs: Any,
     ): SupportSQLiteQuery {
+        val statement = statement(profileId, keywords, select, trailingArgs)
+        return SimpleSQLiteQuery(statement.first, statement.second)
+    }
+
+    private fun statement(
+        profileId: String,
+        keywords: List<String>,
+        select: String,
+        trailingArgs: Array<out Any>,
+    ): Pair<String, Array<Any>> {
         require(keywords.isNotEmpty())
         val values = keywords.joinToString(",") { "(?)" }
         val sql = """
@@ -170,6 +266,6 @@ internal object ParentalFilterQueryBuilder {
             repeat(4) { add(profileId) }
             addAll(trailingArgs)
         }
-        return SimpleSQLiteQuery(sql, args.toTypedArray())
+        return sql to args.toTypedArray()
     }
 }

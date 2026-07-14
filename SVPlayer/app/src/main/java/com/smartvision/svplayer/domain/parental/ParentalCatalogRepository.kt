@@ -34,5 +34,14 @@ data class ParentalHiddenItem(
 interface ParentalCatalogRepository {
     suspend fun counts(profileId: String, keywords: List<String>): ParentalFilterCounts
     suspend fun folders(profileId: String, keywords: List<String>, offset: Int, limit: Int): List<ParentalHiddenFolder>
-    suspend fun items(profileId: String, keywords: List<String>, offset: Int, limit: Int): List<ParentalHiddenItem>
+    suspend fun items(
+        profileId: String,
+        keywords: List<String>,
+        folder: ParentalHiddenFolder,
+        offset: Int,
+        limit: Int,
+    ): List<ParentalHiddenItem>
+    suspend fun itemCount(profileId: String, keywords: List<String>, folder: ParentalHiddenFolder): Int
+    suspend fun hiddenStableKeys(profileId: String, keywords: List<String>): Set<String>
+    suspend fun deleteProfileSnapshot(profileId: String)
 }

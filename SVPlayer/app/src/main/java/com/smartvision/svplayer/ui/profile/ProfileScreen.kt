@@ -279,6 +279,7 @@ fun ProfileRoute(
                     runCatching { container.activationRepository.clearPlaylistConfig(deletedProfile) }
                 }
                 container.catalogRepository.deleteProfileData(profileId)
+                container.parentalCatalogRepository.deleteProfileSnapshot(profileId)
                 container.accountManager.deleteProfile(profileId)
                 container.xtreamRepository.clearCaches()
                 container.catalogRepository.clearCatalogForProfileSwitch()

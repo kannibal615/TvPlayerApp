@@ -97,6 +97,7 @@ fun HomeScreen(
                 homeSlidesRepository = container.homeSlidesRepository,
                 homeContentRepository = container.homeContentRepository,
                 accountManager = container.accountManager,
+                settingsRepository = container.settingsRepository,
             )
         },
     )

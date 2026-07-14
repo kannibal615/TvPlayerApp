@@ -17,7 +17,10 @@ import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.domain.model.PlaybackKind
+import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.repository.CatalogRepository
+import com.smartvision.svplayer.domain.repository.SettingsRepository
+import com.smartvision.svplayer.ui.settings.allowsContent
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -51,6 +54,7 @@ class HomeViewModel(
     private val homeSlidesRepository: HomeSlidesRepository,
     private val homeContentRepository: HomeContentRepository,
     private val accountManager: XtreamAccountManager,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
     private val cachedContinueWatching = userContentRepository
         .getCachedRecentProgressSnapshot(limit = ContinueWatchingSnapshotLimit)
@@ -74,14 +78,17 @@ class HomeViewModel(
     private var trendingRefreshJob: Job? = null
     private val trendingPreviewPrepareJobs = mutableMapOf<String, Job>()
     private val trendingPreviewPrepareSemaphore = Semaphore(TrendingPreviewPrepareConcurrency)
-    private val continueWatching = userContentRepository.observeRecentProgress(limit = ContinueWatchingSnapshotLimit)
-        .map { progress ->
+    private val continueWatching = combine(
+        userContentRepository.observeRecentProgress(limit = ContinueWatchingSnapshotLimit),
+        settingsRepository.settings,
+    ) { progress, settings ->
             // PERF_DIAG: measures why Continue watching can appear after Home is already visible.
             val startedAt = SystemClock.elapsedRealtime()
             val recent = progress
                 .filter { it.positionMs > 5_000L }
                 .filterNot { HomeTrendingPolicy.containsAdultMarker(it.title, it.subtitle) }
                 .map { userContentRepository.enrichProgress(it) }
+                .filter { it.isAllowedByParentalControl(settings, catalogRepository) }
                 .distinctBy(::historyGroupingKey)
                 .take(10)
             val items = recent.mapNotNull { item ->
@@ -100,12 +107,6 @@ class HomeViewModel(
                 ),
             )
             items
-        }
-        .onStart {
-            if (cachedContinueWatching.isNotEmpty()) {
-                continueWatchingLoading.value = false
-                emit(cachedContinueWatching)
-            }
         }
 
     val uiState: StateFlow<HomeUiState> = combine(
@@ -128,11 +129,11 @@ class HomeViewModel(
         started = SharingStarted.WhileSubscribed(5_000),
         // PERF_FIX: first Home composition should not be empty when startup/repositories already hold caches.
         initialValue = HomeUiState(
-            continueWatching = cachedContinueWatching,
+            continueWatching = emptyList(),
             trendingMovies = cachedTrending?.movies.orEmpty(),
             trendingSeries = cachedTrending?.series.orEmpty(),
             slides = slides.value,
-            continueWatchingLoading = cachedContinueWatching.isEmpty(),
+            continueWatchingLoading = true,
             trendingLoading = cachedTrending == null,
         ),
     )
@@ -323,6 +324,38 @@ class HomeViewModel(
                 "hasPreview" to prepared.previewAvailable,
             ),
         )
+    }
+}
+
+private suspend fun PlaybackProgressEntity.isAllowedByParentalControl(
+    settings: PlayerSettings,
+    catalogRepository: CatalogRepository,
+): Boolean {
+    if (!settings.parentalControlEnabled) return true
+    val id = contentId.toIntOrNull() ?: return settings.allowsContent(title, subtitle)
+    return when (contentType) {
+        UserContentType.Live -> catalogRepository.getLiveChannelById(id)?.let { channel ->
+            settings.allowsContent(channel.name, channel.categoryName, title, subtitle)
+        } ?: settings.allowsContent(title, subtitle)
+        UserContentType.Movie -> catalogRepository.getMovieById(id)?.let { movie ->
+            settings.allowsContent(movie.title, movie.plot, movie.genre, movie.categoryName, title, subtitle)
+        } ?: settings.allowsContent(title, subtitle)
+        UserContentType.Episode -> {
+            val episode = catalogRepository.getEpisodeById(id)
+            val seriesId = episode?.seriesId ?: parentContentId?.toIntOrNull()
+            val series = seriesId?.let { catalogRepository.getSeriesByIds(listOf(it)).firstOrNull() }
+            settings.allowsContent(
+                episode?.title,
+                episode?.plot,
+                series?.title,
+                series?.plot,
+                series?.genre,
+                series?.categoryName,
+                title,
+                subtitle,
+            )
+        }
+        else -> settings.allowsContent(title, subtitle)
     }
 }
 

@@ -761,6 +761,8 @@ fun CatalogPosterFrame(
     title: String,
     badge: String,
     modifier: Modifier = Modifier,
+    showTitle: Boolean = true,
+    showBadge: Boolean = true,
 ) {
     val shape = RoundedCornerShape(MediaCatalogDimens.ItemRadius)
     Box(
@@ -811,25 +813,29 @@ fun CatalogPosterFrame(
                 ),
         )
 
-        CatalogBadge(
-            text = badge,
-            color = SmartVisionColors.Primary,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(8.dp),
-        )
+        if (showBadge && badge.isNotBlank()) {
+            CatalogBadge(
+                text = badge,
+                color = SmartVisionColors.Primary,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(8.dp),
+            )
+        }
 
-        Text(
-            text = title,
-            color = Color.White,
-            style = CatalogItemTitleStyle,
-            fontWeight = FontWeight.Black,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(10.dp),
-        )
+        if (showTitle) {
+            Text(
+                text = title,
+                color = Color.White,
+                style = CatalogItemTitleStyle,
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(10.dp),
+            )
+        }
     }
 }
 

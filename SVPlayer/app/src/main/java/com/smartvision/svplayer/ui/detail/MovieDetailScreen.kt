@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -55,6 +58,7 @@ import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.data.tmdb.TmdbMovieMetadata
+import com.smartvision.svplayer.data.tmdb.TmdbPersonCredit
 import com.smartvision.svplayer.data.tmdb.TmdbRepository
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
@@ -333,9 +337,7 @@ private fun MovieDetailScreen(
 ) {
     val playFocusRequester = androidx.compose.runtime.remember { FocusRequester() }
     val currentTabFocusRequester = androidx.compose.runtime.remember { FocusRequester() }
-    val listState = rememberLazyListState()
     LaunchedEffect(state.movieId) {
-        listState.scrollToItem(0)
         delay(120)
         runCatching { playFocusRequester.requestFocus() }
     }
@@ -365,56 +367,28 @@ private fun MovieDetailScreen(
                 .padding(top = DetailDimens.HeaderTop),
         )
 
-        LazyColumn(
-            state = listState,
+        Row(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = DetailDimens.ScreenPadding)
-                .padding(top = 86.dp, bottom = 30.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+                .padding(top = 86.dp, bottom = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(34.dp),
+            verticalAlignment = Alignment.Top,
         ) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(34.dp),
-                ) {
-                    MovieDetailInfo(
-                        state = state,
-                        onWatchMovie = onWatchMovie,
-                        onRetry = onRetry,
-                        onFavorite = onFavorite,
-                        playFocusRequester = playFocusRequester,
-                        headerFocusRequester = currentTabFocusRequester,
-                        modifier = Modifier.width(720.dp),
-                    )
-                    Spacer(Modifier.weight(1f))
-                    MoviePosterPanel(
-                        state = state,
-                        modifier = Modifier
-                            .width(330.dp)
-                            .align(Alignment.Top),
-                    )
-                }
-            }
-            item {
-                DetailVideoSection(videos = state.tmdbMetadata?.videos.orEmpty())
-            }
-            item {
-                DetailPeopleSection(title = "Cast", people = state.tmdbMetadata?.castMembers.orEmpty())
-            }
-            item {
-                DetailPeopleSection(title = "Director", people = state.tmdbMetadata?.directors.orEmpty())
-            }
-            item {
-                DetailUserRatingSection(
-                    contentKey = "movie:${state.movieId}",
-                    tmdbRating = state.displayRating,
-                    voteCount = state.tmdbMetadata?.voteCount,
-                )
-            }
-            item {
-                DetailRecommendationsSection(recommendations = state.tmdbMetadata?.recommendations.orEmpty())
-            }
+            MovieDetailInfo(
+                state = state,
+                onWatchMovie = onWatchMovie,
+                onRetry = onRetry,
+                onFavorite = onFavorite,
+                playFocusRequester = playFocusRequester,
+                headerFocusRequester = currentTabFocusRequester,
+                modifier = Modifier.width(720.dp),
+            )
+            Spacer(Modifier.weight(1f))
+            MoviePosterPanel(
+                state = state,
+                modifier = Modifier.width(300.dp),
+            )
         }
     }
 }
@@ -512,7 +486,12 @@ private fun MovieDetailInfo(
             )
         }
 
-        MovieMetaPanel(state = state)
+        MovieCastStrip(
+            people = state.tmdbMetadata?.castMembers.orEmpty(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(132.dp),
+        )
     }
 }
 
@@ -545,32 +524,12 @@ private fun MoviePosterPanel(
                 modifier = Modifier.size(88.dp),
             )
         }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)),
-                    ),
-                ),
-        )
-        Text(
-            text = state.displayTitle,
-            color = Color.White,
-            style = DetailTitleStyle,
-            fontWeight = FontWeight.Black,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(18.dp),
-        )
     }
 }
 
 @Composable
-private fun MovieMetaPanel(
-    state: MovieDetailUiState,
+private fun MovieCastStrip(
+    people: List<TmdbPersonCredit>,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -581,33 +540,37 @@ private fun MovieMetaPanel(
             .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.13f)), RoundedCornerShape(9.dp))
             .padding(16.dp),
     ) {
-        Text("Details", color = SmartVisionColors.TextPrimary, style = DetailTitleStyle)
-        Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DetailBadge(text = state.categoryLabel)
-            if (state.isTmdbEnriched) {
-                DetailBadge(text = "TMDB", color = Color(0xFF18253A))
+        Text("Cast", color = SmartVisionColors.TextPrimary, style = DetailTitleStyle)
+        Spacer(Modifier.height(8.dp))
+        if (people.isEmpty()) {
+            Text("Actor photos unavailable", color = SmartVisionColors.TextSecondary, style = DetailMetaStyle)
+        } else {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(end = 12.dp),
+            ) {
+                items(people.take(10), key = { "${it.name}:${it.role.orEmpty()}" }) { person ->
+                    Column(modifier = Modifier.width(74.dp)) {
+                        AsyncImage(
+                            model = person.profileUrl,
+                            contentDescription = person.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(width = 74.dp, height = 70.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color.Black.copy(alpha = 0.35f)),
+                        )
+                        Spacer(Modifier.height(3.dp))
+                        Text(
+                            person.name,
+                            color = SmartVisionColors.TextPrimary,
+                            style = DetailMetaStyle,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
-            state.displayDirector?.let { DetailBadge(text = it, color = Color(0xFF18253A)) }
-            state.tmdbMetadata?.certification.nonBlank()?.let { DetailBadge(text = it, color = Color(0xFF18253A)) }
-        }
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = state.displayCast ?: "Catalogue Xtream VOD",
-            color = SmartVisionColors.TextSecondary,
-            style = DetailBodyStyle,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        state.tmdbMetadata?.providersSummary.nonBlank()?.let { providers ->
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Providers: $providers",
-                color = SmartVisionColors.TextSecondary,
-                style = DetailMetaStyle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
         }
     }
 }

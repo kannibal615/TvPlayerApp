@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.outlined.WbSunny
@@ -104,12 +105,14 @@ internal fun VodFullscreenControlsOverlay(
     onPlayPrevious: () -> Unit,
     onSeekBack: () -> Unit,
     onPlayPause: () -> Unit,
+    onRestart: () -> Unit,
     onSeekForward: () -> Unit,
     onPlayNext: () -> Unit,
     onExitFullscreen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val previousFocusRequester = remember { FocusRequester() }
+    val restartFocusRequester = remember { FocusRequester() }
     val seekBackFocusRequester = remember { FocusRequester() }
     val seekForwardFocusRequester = remember { FocusRequester() }
     val nextFocusRequester = remember { FocusRequester() }
@@ -220,7 +223,7 @@ internal fun VodFullscreenControlsOverlay(
                 contentDescription = "Brightness",
                 focusRequester = brightnessFocusRequester,
                 leftFocusRequester = exitFocusRequester,
-                rightFocusRequester = previousFocusRequester,
+                rightFocusRequester = restartFocusRequester,
                 upFocusRequester = progressFocusRequester,
                 onClick = onOpenBrightness,
                 hitSize = controlHitSize,
@@ -232,10 +235,28 @@ internal fun VodFullscreenControlsOverlay(
         }
 
         VodFocusIconButton(
+            icon = Icons.Default.RestartAlt,
+            contentDescription = "Restart from beginning",
+            focusRequester = restartFocusRequester,
+            leftFocusRequester = brightnessFocusRequester,
+            rightFocusRequester = if (hasPrevious) previousFocusRequester else seekBackFocusRequester,
+            upFocusRequester = progressFocusRequester,
+            onClick = onRestart,
+            hitSize = controlHitSize,
+            iconSize = normalIconSize,
+            forceFocused = focusedControlIndex == 7,
+            onFocused = { onFocusedControlChange(7) },
+            modifier = Modifier.offset(
+                x = maxWidth * 0.263f - controlHitSize / 2f,
+                y = controlsTop,
+            ),
+        )
+
+        VodFocusIconButton(
             icon = Icons.Default.SkipPrevious,
             contentDescription = "Previous",
             focusRequester = previousFocusRequester,
-            leftFocusRequester = brightnessFocusRequester,
+            leftFocusRequester = restartFocusRequester,
             rightFocusRequester = seekBackFocusRequester,
             upFocusRequester = progressFocusRequester,
             onClick = onPlayPrevious,
@@ -253,7 +274,7 @@ internal fun VodFullscreenControlsOverlay(
             icon = Icons.Default.Replay10,
             contentDescription = "Back 10 seconds",
             focusRequester = seekBackFocusRequester,
-            leftFocusRequester = previousFocusRequester,
+            leftFocusRequester = if (hasPrevious) previousFocusRequester else restartFocusRequester,
             rightFocusRequester = playFocusRequester,
             upFocusRequester = progressFocusRequester,
             onClick = onSeekBack,

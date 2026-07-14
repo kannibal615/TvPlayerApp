@@ -347,9 +347,9 @@ fun SeriesScreen(
                                 "CONTENT_OPENED",
                                 series.toBehaviorContent(),
                             )
-                            val episodeId = viewModel.activateSeries(series)
-                            if (episodeId != null) {
-                                onWatchEpisode(episodeId, series.seriesId)
+                            val openDetails = viewModel.activateSeries(series)
+                            if (openDetails) {
+                                onOpenSeriesDetails(series.seriesId)
                             }
                         }
                     },
@@ -624,11 +624,14 @@ private fun SeriesList(
                         title = series.title,
                         subtitle = listOfNotNull(
                             series.releaseDate?.take(4),
-                            series.sideLabel().takeIf { it.isNotBlank() },
-                            series.categoryLabel,
+                            series.episodeRunTime?.let { "${it}m/ep" },
                             series.createdBy?.takeIf { it.isNotBlank() },
                         ).joinToString(" | ").ifBlank { series.subtitle },
-                        genre = series.genre,
+                        genre = series.genre
+                            ?.substringBefore('/')
+                            ?.substringBefore(',')
+                            ?.trim()
+                            ?.takeIf(String::isNotEmpty),
                         rating = series.rating,
                         sideLabel = series.sideLabel(),
                         imageUrl = series.backdropUrl ?: series.coverUrl,
@@ -646,6 +649,7 @@ private fun SeriesList(
                         onRight = { onEnterPreview(series) },
                         onFocused = { onSeriesFocused(series) },
                         onClick = { onSeriesClick(series) },
+                        ratingFirst = true,
                     )
                 }
             }

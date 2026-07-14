@@ -1,6 +1,6 @@
 # Android Architecture, Build et Release
 
-Derniere mise a jour: 2026-07-13.
+Derniere mise a jour: 2026-07-14.
 
 ## Persistance profils v15
 
@@ -14,6 +14,11 @@ Derniere mise a jour: 2026-07-13.
 
 - Room v16 ajoute les tables partagees `kids_category_decisions` et `kids_item_decisions` ainsi que les index source/type/categorie/decision/version.
 - La migration `15 -> 16` ne modifie pas les tables catalogue existantes. Le schema exporte est `app/schemas/com.smartvision.svplayer.data.local.SVDatabase/16.json`.
+
+## Snapshot parental v17
+
+- Room v17 ajoute `parental_filter_snapshots` et `parental_hidden_items` pour conserver les resultats filtres par profil entre les ouvertures d'ecran et les redemarrages de l'application.
+- La migration `16 -> 17` ne modifie pas les catalogues. Un snapshot est invalide uniquement si son empreinte de mots-cles ou le `sync_state.lastSync` du profil change. Le schema exporte est `app/schemas/com.smartvision.svplayer.data.local.SVDatabase/17.json`.
 
 ## 1. Objectif
 

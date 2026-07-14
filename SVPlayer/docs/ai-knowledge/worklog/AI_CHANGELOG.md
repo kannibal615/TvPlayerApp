@@ -1,5 +1,14 @@
 # AI Changelog
 
+## 2026-07-14 - Controle parental persistant, catalogues VOD et reprise player
+
+- Ajoute le snapshot Room v17 des resultats parentaux, invalide uniquement apres changement de profil/mots-cles ou synchronisation; le clic dossier pilote maintenant les elements masques de droite.
+- Applique le filtrage parental aux historiques Live/Films/Series et a Home > Continue watching avec les metadonnees catalogue locales.
+- Enrichit de facon bornee les premieres lignes Films/Series via le cache/integration TMDB existants; adapte la preview Film et le second OK Serie.
+- Simplifie les fiches Film/Serie pour tenir sans scroll global: casting photo final pour Film, quatre episodes visibles et scroll interne pour Serie.
+- Ajoute le dialogue prioritaire Reprendre/Recommencer et le bouton de redemarrage dans l'overlay VOD.
+- Validation: compilation Kotlin release, tests unitaires release cibles, assemblage release local et campagne AVD Android TV (Room 16->17, D-pad, panneaux parentaux, fiches, prompt/overlay) reussis; le flux episode fournisseur de test etait indisponible.
+
 ## 2026-07-14 - Refonte Synchronisation Profil et proportions Settings
 
 - Retire le menu/panneau Synchronisation legacy de Settings et son callback de navigation devenu inutile; les reglages restent exclusivement dans Profile.

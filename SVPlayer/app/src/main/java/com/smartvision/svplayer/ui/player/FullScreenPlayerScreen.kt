@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -176,6 +177,8 @@ enum class FullScreenContentKind {
 
 private const val MinimumLiveHistoryMs = 5_000L
 private const val PlayerReleaseDelayMs = 80L
+private const val ResumePromptMinimumPositionMs = 1_000L
+private const val NextEpisodeResumeGuardMs = 15_000L
 
 internal val LiveAspectModes = listOf(
     LiveAspectMode("Auto", AspectRatioFrameLayout.RESIZE_MODE_FIT),
@@ -206,6 +209,8 @@ data class FullScreenPlayback(
     val seasonNumber: Int? = null,
     val episodeNumber: Int? = null,
     val resumePositionMs: Long = 0L,
+    val resumeDurationMs: Long = 0L,
+    val resumeCheckComplete: Boolean = true,
     val epgPrograms: List<FullScreenEpgProgram> = emptyList(),
 )
 
@@ -249,6 +254,11 @@ private enum class PlayerOverlayMenu {
     Settings,
 }
 
+private enum class ResumePlaybackDecision {
+    Resume,
+    Restart,
+}
+
 internal data class LiveAspectMode(
     val label: String,
     val resizeMode: Int,
@@ -270,7 +280,11 @@ class FullScreenPlayerViewModel(
     private val userContentRepository: UserContentRepository,
     private val buildPlaybackRequest: BuildPlaybackRequestUseCase,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(resolvePlayback(contentId, kind, xtreamRepository, epgRepository))
+    private val _uiState = MutableStateFlow(
+        resolvePlayback(contentId, kind, xtreamRepository, epgRepository).copy(
+            resumeCheckComplete = kind == FullScreenContentKind.Live,
+        ),
+    )
     val uiState: StateFlow<FullScreenPlayback> = _uiState
     private val saveProgressMutex = Mutex()
 
@@ -298,6 +312,10 @@ class FullScreenPlayerViewModel(
             } else if (kind == FullScreenContentKind.Movie || kind == FullScreenContentKind.Episode) {
                 refreshVodPlaybackFromLocalCatalog()
             }
+            _uiState.value = _uiState.value.copy(
+                resumeDurationMs = stored?.durationMs ?: 0L,
+                resumeCheckComplete = true,
+            )
         }
     }
 
@@ -748,6 +766,7 @@ private fun FullScreenPlayerScreen(
     var adjacentNavigationPending by remember(playback.streamId) { mutableStateOf(false) }
     var nextEpisodeCountdown by remember { mutableStateOf<Int?>(null) }
     var nextEpisodeDismissed by remember(playback.streamId) { mutableStateOf(false) }
+    var resumeDecision by remember(playback.streamId) { mutableStateOf<ResumePlaybackDecision?>(null) }
     var adGateActive by remember(playback.streamId) { mutableStateOf(false) }
     var adStarted by remember(playback.streamId) { mutableStateOf(false) }
     var activeAdRequestId by remember(playback.streamId) { mutableStateOf<String?>(null) }
@@ -765,6 +784,10 @@ private fun FullScreenPlayerScreen(
         container.userContentRepository.observeFavoriteIds(playback.contentType)
     }.collectAsStateWithLifecycle(emptySet())
     val isFavorite = playback.streamId in favoriteIds
+    val resumePromptVisible = playback.resumeCheckComplete &&
+        playback.contentType in setOf(UserContentType.Movie, UserContentType.Episode) &&
+        playback.resumePositionMs > ResumePromptMinimumPositionMs &&
+        resumeDecision == null
 
     val playerView = remember {
         PlayerView(context).apply {
@@ -826,7 +849,21 @@ private fun FullScreenPlayerScreen(
     }
 
     fun prepareContentWithoutAd() {
-        prepareMedia(MediaItem.fromUri(playback.url))
+        val shouldResume = resumeDecision != ResumePlaybackDecision.Restart
+        prepareMedia(MediaItem.fromUri(playback.url), resumeContent = shouldResume)
+        val remainingAtResume = playback.resumeDurationMs - playback.resumePositionMs
+        if (shouldResume && playback.resumeDurationMs > 0L && remainingAtResume <= NextEpisodeResumeGuardMs) {
+            nextEpisodeDismissed = true
+        }
+    }
+
+    fun restartFromBeginning() {
+        nextEpisodeCountdown = null
+        nextEpisodeDismissed = false
+        player.seekTo(0L)
+        player.playWhenReady = true
+        positionMs = 0L
+        showOverlay(requestPlayFocus = true)
     }
 
     fun refreshStalledPlayback() {
@@ -1189,6 +1226,7 @@ private fun FullScreenPlayerScreen(
         fun moveLiveFocus(direction: Int) {
             val enabled = buildList {
                 add(0)
+                add(7)
                 if (playback.previousItem != null) add(1)
                 if (liveSeekable) add(2)
                 add(3)
@@ -1340,6 +1378,7 @@ private fun FullScreenPlayerScreen(
                     4 -> seekVodBy(10_000L)
                     5 -> playAdjacent(playback.nextItem)
                     6 -> exitPlayer("vod_exit_fullscreen_key")
+                    7 -> restartFromBeginning()
                 }
                 if (!adjacentNavigationPending) showOverlay(requestPlayFocus = false)
                 true
@@ -1352,7 +1391,8 @@ private fun FullScreenPlayerScreen(
         handleBack("back_handler")
     }
 
-    LaunchedEffect(playback.url, playback.resumePositionMs, contentKind) {
+    LaunchedEffect(playback.url, playback.resumePositionMs, playback.resumeCheckComplete, resumeDecision, contentKind) {
+        if (!playback.resumeCheckComplete || resumePromptVisible) return@LaunchedEffect
         adGateActive = false
         adStarted = false
         activeAdRequestId = null
@@ -1804,7 +1844,7 @@ private fun FullScreenPlayerScreen(
             )
         }
 
-        if (buffering && !adGateActive) {
+        if (buffering && !adGateActive && !resumePromptVisible) {
             CircularProgressIndicator(
                 color = SmartVisionColors.Primary,
                 strokeWidth = 3.dp,
@@ -1950,6 +1990,7 @@ private fun FullScreenPlayerScreen(
                         if (player.isPlaying) player.pause() else player.play()
                         showOverlay()
                     },
+                    onRestart = ::restartFromBeginning,
                     onSeekForward = {
                         seekVodBy(10_000L)
                         showOverlay()
@@ -2153,6 +2194,92 @@ private fun FullScreenPlayerScreen(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(end = 68.dp, bottom = 216.dp),
+                )
+            }
+        }
+
+        if (resumePromptVisible) {
+            ResumePlaybackDialog(
+                positionMs = playback.resumePositionMs,
+                durationMs = playback.resumeDurationMs,
+                title = strings?.resumePlaybackQuestion ?: "Resume playback?",
+                messageTemplate = strings?.resumePlaybackMessage ?: "Continue from %s, or restart from the beginning.",
+                resumeLabel = strings?.resumePlayback ?: "Resume",
+                restartLabel = strings?.restartPlayback ?: "Restart",
+                onResume = {
+                    resumeDecision = ResumePlaybackDecision.Resume
+                    overlayVisible = false
+                },
+                onRestart = {
+                    resumeDecision = ResumePlaybackDecision.Restart
+                    overlayVisible = false
+                },
+                onDismiss = onBack,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ResumePlaybackDialog(
+    positionMs: Long,
+    durationMs: Long,
+    title: String,
+    messageTemplate: String,
+    resumeLabel: String,
+    restartLabel: String,
+    onResume: () -> Unit,
+    onRestart: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val resumeFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        delay(100)
+        runCatching { resumeFocusRequester.requestFocus() }
+    }
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .width(520.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color(0xF2071120))
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), RoundedCornerShape(14.dp))
+                .padding(24.dp),
+        ) {
+            Text(
+                text = title,
+                color = Color.White,
+                style = PlayerTitleStyle.copy(fontSize = 26.sp, lineHeight = 32.sp),
+                fontWeight = FontWeight.Black,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = String.format(
+                    messageTemplate,
+                    if (durationMs > 0L) {
+                        "${positionMs.formatPlaybackTime()} / ${durationMs.formatPlaybackTime()}"
+                    } else {
+                        positionMs.formatPlaybackTime()
+                    },
+                ),
+                color = Color.White.copy(alpha = 0.72f),
+                style = PlayerMetaStyle.copy(fontSize = 15.sp, lineHeight = 20.sp),
+            )
+            Spacer(Modifier.height(20.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                TvButton(
+                    text = resumeLabel,
+                    onClick = onResume,
+                    focusRequester = resumeFocusRequester,
+                    variant = TvButtonVariant.Primary,
+                    modifier = Modifier.weight(1f).height(44.dp),
+                )
+                TvButton(
+                    text = restartLabel,
+                    onClick = onRestart,
+                    leadingIcon = Icons.Default.RestartAlt,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier.weight(1f).height(44.dp),
                 )
             }
         }

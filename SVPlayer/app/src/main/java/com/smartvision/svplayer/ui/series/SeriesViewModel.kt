@@ -276,14 +276,14 @@ class SeriesViewModel(
         _uiState.update { it.copy(focusedSeriesId = series.seriesId) }
     }
 
-    fun activateSeries(series: SeriesItemUi): Int? {
+    fun activateSeries(series: SeriesItemUi): Boolean {
         val state = _uiState.value
         if (state.selectedSeriesId == series.seriesId) {
             _uiState.update { it.copy(focusedSeriesId = series.seriesId, errorMessage = null) }
-            return state.selectedPreviewEpisode?.episodeId
+            return true
         }
         selectSeries(series)
-        return null
+        return false
     }
 
     fun selectSeries(series: SeriesItemUi) {
@@ -381,8 +381,24 @@ class SeriesViewModel(
     private fun observeHistory() {
         viewModelScope.launch {
             userContentRepository.observeHistory(UserContentType.Episode).collect { progress ->
-                historyProgress = progress.map { userContentRepository.enrichProgress(it) }
+                val enrichedProgress = progress.map { userContentRepository.enrichProgress(it) }
                     .distinctBy { it.parentContentId ?: it.contentId }
+                val seriesById = catalogRepository
+                    .getSeriesByIds(enrichedProgress.mapNotNull { it.parentContentId?.toIntOrNull() })
+                    .associateBy { it.seriesId }
+                historyProgress = enrichedProgress.filter { item ->
+                    val series = item.parentContentId?.toIntOrNull()?.let(seriesById::get)
+                    series?.let {
+                        playerSettings.allowsContent(
+                            it.title,
+                            it.plot,
+                            it.genre,
+                            it.categoryName,
+                            item.title,
+                            item.subtitle,
+                        )
+                    } ?: playerSettings.allowsContent(item.title, item.subtitle)
+                }
                 historyCategorySignals = userContentRepository.resolveCategorySignals(historyProgress)
                 _uiState.update { state ->
                     val history = historySeries(state.contentSearchQuery)
@@ -611,10 +627,16 @@ class SeriesViewModel(
     private fun loadVisibleMetadata(series: List<SeriesItemUi>) {
         metadataJob?.cancel()
         metadataJob = viewModelScope.launch {
-            series.take(20).chunked(4).forEach { batch ->
+            series.take(VisibleTmdbSeriesEnhanceLimit).chunked(TmdbEnrichmentConcurrency).forEach { batch ->
                 val metadata = batch.map { item ->
                     async {
-                        val tmdb = tmdbRepository.getCachedSeriesMetadata(item.seriesId, playerSettings.language)
+                        val tmdb = tmdbRepository.enrichSeries(
+                            contentId = item.seriesId,
+                            title = item.title,
+                            year = item.releaseDate,
+                            language = playerSettings.language,
+                            includeAdult = !playerSettings.parentalControlEnabled,
+                        )
                         val episodes = runCatching {
                             catalogRepository.getSeriesEpisodes(item.seriesId)
                         }.getOrDefault(emptyList())
@@ -759,6 +781,8 @@ private data class CachedSeriesMetadata(
 )
 
 private const val SeriesItemsPageSize = 72
+private const val VisibleTmdbSeriesEnhanceLimit = 12
+private const val TmdbEnrichmentConcurrency = 2
 private const val InitialCategoryLimit = 20
 private const val FavoriteSeriesCategoryId = "__favorites_series__"
 private const val HistorySeriesCategoryId = "__history_series__"

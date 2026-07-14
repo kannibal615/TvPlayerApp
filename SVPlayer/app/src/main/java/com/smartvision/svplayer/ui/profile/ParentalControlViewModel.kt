@@ -41,6 +41,8 @@ data class ParentalControlUiState(
     val counts: ParentalFilterCounts = ParentalFilterCounts(),
     val folders: List<ParentalHiddenFolder> = emptyList(),
     val items: List<ParentalHiddenItem> = emptyList(),
+    val selectedFolderKey: String? = null,
+    val selectedFolderItemCount: Int = 0,
     val foldersLoading: Boolean = false,
     val itemsLoading: Boolean = false,
     val resultsLoading: Boolean = false,
@@ -161,18 +163,53 @@ class ParentalControlViewModel(
     fun loadMoreItems() {
         val state = _uiState.value
         if (!state.enabled || state.itemsLoading || !state.hasMoreItems) return
+        val folder = state.folders.firstOrNull { it.stableKey == state.selectedFolderKey } ?: return
         val profileId = activeProfileIdProvider()
         viewModelScope.launch {
             _uiState.update { it.copy(itemsLoading = true) }
             runCatching {
-                parentalCatalogRepository.items(profileId, state.keywords, state.items.size, ResultsPageSize)
+                parentalCatalogRepository.items(profileId, state.keywords, folder, state.items.size, ResultsPageSize)
             }.onSuccess { page ->
                 _uiState.update {
                     val merged = (it.items + page).distinctBy(ParentalHiddenItem::stableKey)
                     it.copy(
                         items = merged,
                         itemsLoading = false,
-                        hasMoreItems = merged.size < it.counts.items,
+                        hasMoreItems = merged.size < it.selectedFolderItemCount,
+                    )
+                }
+            }.onFailure {
+                _uiState.update { it.copy(itemsLoading = false, resultsError = true) }
+            }
+        }
+    }
+
+    fun selectFolder(folder: ParentalHiddenFolder) {
+        val state = _uiState.value
+        if (!state.enabled || state.selectedFolderKey == folder.stableKey && state.items.isNotEmpty()) return
+        val profileId = activeProfileIdProvider()
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    selectedFolderKey = folder.stableKey,
+                    selectedFolderItemCount = folder.hiddenCount,
+                    items = emptyList(),
+                    itemsLoading = true,
+                    hasMoreItems = false,
+                    resultsError = false,
+                )
+            }
+            runCatching {
+                val count = parentalCatalogRepository.itemCount(profileId, state.keywords, folder)
+                val items = parentalCatalogRepository.items(profileId, state.keywords, folder, 0, ResultsPageSize)
+                count to items
+            }.onSuccess { (count, items) ->
+                _uiState.update {
+                    if (it.selectedFolderKey != folder.stableKey) it else it.copy(
+                        selectedFolderItemCount = count,
+                        items = items,
+                        itemsLoading = false,
+                        hasMoreItems = items.size < count,
                     )
                 }
             }.onFailure {
@@ -225,6 +262,8 @@ class ParentalControlViewModel(
                             counts = ParentalFilterCounts(),
                             folders = emptyList(),
                             items = emptyList(),
+                            selectedFolderKey = null,
+                            selectedFolderItemCount = 0,
                             resultsLoading = false,
                             resultsError = false,
                             hasMoreFolders = false,
@@ -245,19 +284,24 @@ class ParentalControlViewModel(
             kotlinx.coroutines.coroutineScope {
                 val counts = async { parentalCatalogRepository.counts(profileId, keywords) }
                 val folders = async { parentalCatalogRepository.folders(profileId, keywords, 0, ResultsPageSize) }
-                val items = async { parentalCatalogRepository.items(profileId, keywords, 0, ResultsPageSize) }
-                Triple(counts.await(), folders.await(), items.await())
+                counts.await() to folders.await()
             }
-        }.onSuccess { (counts, folders, items) ->
+        }.onSuccess { (counts, folders) ->
+            val selectedFolder = folders.firstOrNull()
+            val items = selectedFolder?.let {
+                parentalCatalogRepository.items(profileId, keywords, it, 0, ResultsPageSize)
+            }.orEmpty()
             _uiState.update {
                 it.copy(
                     counts = counts,
                     folders = folders,
                     items = items,
+                    selectedFolderKey = selectedFolder?.stableKey,
+                    selectedFolderItemCount = selectedFolder?.hiddenCount ?: 0,
                     resultsLoading = false,
                     resultsError = false,
                     hasMoreFolders = folders.size < counts.folders,
-                    hasMoreItems = items.size < counts.items,
+                    hasMoreItems = items.size < (selectedFolder?.hiddenCount ?: 0),
                 )
             }
         }.onFailure {
