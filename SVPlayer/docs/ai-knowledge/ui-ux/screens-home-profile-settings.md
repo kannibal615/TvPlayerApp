@@ -1,6 +1,6 @@
 # Ecrans Home, Catalogues, Profile, Settings et YouTube
 
-Derniere mise a jour: 2026-07-13.
+Derniere mise a jour: 2026-07-14.
 
 ## Profils ADMIN, NORMAL et KIDS
 
@@ -9,6 +9,7 @@ Derniere mise a jour: 2026-07-13.
 - Si l'administrateur est verrouille, les deux cartes d'ajout utilisent le PIN parental avant d'ouvrir le formulaire. Les profils verrouilles utilisent le meme dialogue.
 - Le formulaire partage les identifiants ADMIN par defaut, masque alors les champs, valide les credentials custom avant sauvegarde et utilise scroll/IME/bring-into-view pour la TV.
 - Le header affiche l'avatar actif. En mode Kids, il garde uniquement Home, Live TV, Movies, Series, YouTube et l'avatar a droite.
+- Les photos de profil utilisent des PNG circulaires transparents pilotes uniquement par `avatarId` et `ProfileType`. ADMIN utilise `admin`; KIDS choisit un avatar `kid_*` aleatoire a la creation; NORMAL utilise le set `classic_*`. Les anciens IDs couleur restent compatibles via un mapping vers les nouveaux PNG, sans dependance au nom affiche.
 - Le Home Kids conserve hero, cards et carrousels; seuls les assets `kids_home_hero`, `kids_live_tv_bg`, `kids_movies_bg`, `kids_series_bg` et les donnees filtrees changent.
 
 ## 1. Objectif

@@ -1,5 +1,11 @@
 # AI Changelog
 
+## 2026-07-14 - Nouveaux avatars de profils
+
+- Remplace les avatars generiques par 17 PNG circulaires transparents: 1 ADMIN, 8 KIDS et 8 CLASSIC non humains.
+- Centralise le rendu `painterResource` par `avatarId` / `ProfileType` dans le picker et les selecteurs existants, avec fallback par type et alias pour les anciens IDs.
+- Fixe `avatar_admin` pour ADMIN, choisit aleatoirement un avatar Kids lors d'une creation sans avatar et attribue un avatar Classic aux profils NORMAL.
+
 ## 2026-07-13 - Demarrage unifie et picker de profils dynamique
 
 - Unifie la preview Android et Compose autour du meme visuel, avec etats `LogoOnly`, `Loading` retarde et fondu croise vers l'application.

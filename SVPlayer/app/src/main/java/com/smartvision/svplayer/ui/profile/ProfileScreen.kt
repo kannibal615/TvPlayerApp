@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -112,11 +113,13 @@ import com.smartvision.svplayer.core.config.CredentialsMode
 import com.smartvision.svplayer.core.config.ProfileType
 import com.smartvision.svplayer.core.config.PlaylistProfileStatus
 import com.smartvision.svplayer.core.config.PlaylistSource
+import com.smartvision.svplayer.core.config.AdminProfileAvatarId
 import com.smartvision.svplayer.core.config.ProfileAvatarPresetIds
 import com.smartvision.svplayer.core.config.KidsProfileAvatarPresetIds
 import com.smartvision.svplayer.core.config.XtreamAccount
 import com.smartvision.svplayer.core.config.XtreamAccountManager
-import com.smartvision.svplayer.core.config.profileAvatarIdForName
+import com.smartvision.svplayer.core.config.canonicalProfileAvatarId
+import com.smartvision.svplayer.core.config.defaultProfileAvatarId
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.data.xtream.XtreamCredentialsValidationResult
 import com.smartvision.svplayer.core.ui.viewModelFactory
@@ -960,6 +963,7 @@ private fun XtreamPanel(
     profileAvatarToEdit?.let { profile ->
         ProfileAvatarPickerDialog(
             initialAvatarId = profile.avatarId,
+            profileType = profile.type,
             onDismiss = { profileAvatarToEdit = null },
             onSave = { avatarId ->
                 profileAvatarToEdit = null
@@ -1247,33 +1251,11 @@ fun PlaylistProfileAvatar(
     profile: PlaylistProfile,
     modifier: Modifier = Modifier,
 ) {
-    val spec = remember(profile.avatarId, profile.avatarColorHex) { avatarSpec(profile.avatarId, profile.avatarColorHex) }
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(Brush.linearGradient(listOf(spec.primary, spec.secondary)))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)), RoundedCornerShape(6.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Canvas(modifier = Modifier.matchParentSize()) {
-            drawCircle(
-                color = Color.White.copy(alpha = 0.18f),
-                radius = size.minDimension * 0.32f,
-                center = Offset(size.width * 0.78f, size.height * 0.20f),
-            )
-            drawCircle(
-                color = Color.Black.copy(alpha = 0.16f),
-                radius = size.minDimension * 0.40f,
-                center = Offset(size.width * 0.10f, size.height * 0.92f),
-            )
-        }
-        Text(
-            text = profile.name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-            color = Color.White,
-            style = SmartVisionType.TitleS,
-            fontWeight = FontWeight.Bold,
-        )
-    }
+    ProfileAvatarImage(
+        avatarId = profile.avatarId,
+        profileType = profile.type,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -2302,9 +2284,10 @@ fun PlaylistProfileEditorDialog(
     var name by remember(initial?.id) { mutableStateOf(initial?.name ?: "") }
     var avatarId by remember(initial?.id) {
         mutableStateOf(
-            initial?.avatarId?.ifBlank { null }
-                ?: if (profileType == ProfileType.KIDS) KidsProfileAvatarPresetIds.first()
-                else profileAvatarIdForName(initial?.name ?: "profile"),
+            initial?.avatarId
+                ?.takeIf { it.isNotBlank() }
+                ?.let { canonicalProfileAvatarId(it, profileType) }
+                ?: defaultProfileAvatarId(profileType, initial?.id?.takeIf { it.isNotBlank() }),
         )
     }
     var source by remember(initial?.id) {
@@ -2392,12 +2375,16 @@ fun PlaylistProfileEditorDialog(
             Text("Photo de profil", color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                val avatarPresets = if (profileType == ProfileType.KIDS) KidsProfileAvatarPresetIds else ProfileAvatarPresetIds
+                val avatarPresets = when (profileType) {
+                    ProfileType.ADMIN -> listOf(AdminProfileAvatarId)
+                    ProfileType.KIDS -> KidsProfileAvatarPresetIds
+                    ProfileType.NORMAL -> ProfileAvatarPresetIds
+                }
                 avatarPresets.forEach { presetId ->
                     ProfileAvatarPresetButton(
                         avatarId = presetId,
+                        profileType = profileType,
                         selected = avatarId == presetId,
-                        label = name.ifBlank { "?" },
                         onClick = { avatarId = presetId },
                     )
                 }
@@ -2508,13 +2495,19 @@ fun PlaylistProfileEditorDialog(
 @Composable
 private fun ProfileAvatarPickerDialog(
     initialAvatarId: String,
+    profileType: ProfileType,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
 ) {
     var selectedAvatarId by remember(initialAvatarId) {
-        mutableStateOf(initialAvatarId.ifBlank { ProfileAvatarPresetIds.first() })
+        mutableStateOf(canonicalProfileAvatarId(initialAvatarId, profileType))
     }
     val saveFocusRequester = remember { FocusRequester() }
+    val avatarPresets = when (profileType) {
+        ProfileType.ADMIN -> listOf(AdminProfileAvatarId)
+        ProfileType.KIDS -> KidsProfileAvatarPresetIds
+        ProfileType.NORMAL -> ProfileAvatarPresetIds
+    }
 
     TvDialogSurface(
         title = "Modifier la photo de profil",
@@ -2523,13 +2516,13 @@ private fun ProfileAvatarPickerDialog(
         icon = Icons.Default.Person,
     ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ProfileAvatarPresetIds.chunked(5).forEach { row ->
+                avatarPresets.chunked(5).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                         row.forEach { presetId ->
                             ProfileAvatarPresetButton(
                                 avatarId = presetId,
+                                profileType = profileType,
                                 selected = selectedAvatarId == presetId,
-                                label = "",
                                 onClick = {
                                     selectedAvatarId = presetId
                                     runCatching { saveFocusRequester.requestFocus() }
@@ -2562,18 +2555,16 @@ private fun ProfileAvatarPickerDialog(
 @Composable
 private fun ProfileAvatarPresetButton(
     avatarId: String,
+    profileType: ProfileType,
     selected: Boolean,
-    label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier.size(48.dp),
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     var focused by remember { mutableStateOf(false) }
-    val spec = remember(avatarId) { avatarSpec(avatarId, "") }
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(7.dp))
-            .background(Brush.linearGradient(listOf(spec.primary, spec.secondary)))
+            .clip(CircleShape)
             .border(
                 BorderStroke(
                     if (focused || selected) 2.dp else 1.dp,
@@ -2583,22 +2574,19 @@ private fun ProfileAvatarPresetButton(
                         else -> Color.White.copy(alpha = 0.20f)
                     },
                 ),
-                RoundedCornerShape(7.dp),
+                CircleShape,
             )
             .onFocusChanged { focused = it.isFocused }
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .focusable(interactionSource = interactionSource),
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(modifier = Modifier.matchParentSize()) {
-            drawCircle(Color.White.copy(alpha = 0.18f), radius = size.minDimension * 0.32f, center = Offset(size.width * 0.78f, size.height * 0.20f))
-            drawCircle(Color.Black.copy(alpha = 0.16f), radius = size.minDimension * 0.40f, center = Offset(size.width * 0.10f, size.height * 0.92f))
-        }
-        Text(
-            text = label.trim().firstOrNull()?.uppercaseChar()?.toString().orEmpty(),
-            color = Color.White,
-            style = SmartVisionType.Label,
-            fontWeight = FontWeight.Bold,
+        ProfileAvatarImage(
+            avatarId = avatarId,
+            profileType = profileType,
+            modifier = Modifier
+                .matchParentSize()
+                .padding(3.dp),
         )
     }
 }
@@ -4443,34 +4431,6 @@ private fun PlaylistProfileStatus.displayLabel(): String =
         PlaylistProfileStatus.Error -> "Erreur"
         PlaylistProfileStatus.NotConfigured -> "Non configure"
     }
-
-private data class ProfileAvatarSpec(
-    val primary: Color,
-    val secondary: Color,
-)
-
-private fun avatarSpec(avatarId: String, fallbackColorHex: String): ProfileAvatarSpec {
-    val fallback = runCatching { Color(android.graphics.Color.parseColor(fallbackColorHex)) }
-        .getOrDefault(SmartVisionColors.Primary)
-    return when (avatarId) {
-        "aurora" -> ProfileAvatarSpec(Color(0xFF00D4FF), Color(0xFF1439D6))
-        "ocean" -> ProfileAvatarSpec(Color(0xFF0077B6), Color(0xFF00B4D8))
-        "sunset" -> ProfileAvatarSpec(Color(0xFFFF7A1A), Color(0xFFD7263D))
-        "emerald" -> ProfileAvatarSpec(Color(0xFF00A86B), Color(0xFF073B3A))
-        "violet" -> ProfileAvatarSpec(Color(0xFF7B3FF2), Color(0xFF2B0A5B))
-        "coral" -> ProfileAvatarSpec(Color(0xFFFF5E5B), Color(0xFF7A1E3A))
-        "steel" -> ProfileAvatarSpec(Color(0xFF64748B), Color(0xFF0F172A))
-        "gold" -> ProfileAvatarSpec(Color(0xFFFFB703), Color(0xFF8A5A00))
-        "rose" -> ProfileAvatarSpec(Color(0xFFFF4D8D), Color(0xFF7F1D5A))
-        "midnight" -> ProfileAvatarSpec(Color(0xFF1D4ED8), Color(0xFF020617))
-        "kids_sky" -> ProfileAvatarSpec(Color(0xFF38BDF8), Color(0xFF4F46E5))
-        "kids_star" -> ProfileAvatarSpec(Color(0xFFFBBF24), Color(0xFFF97316))
-        "kids_mint" -> ProfileAvatarSpec(Color(0xFF34D399), Color(0xFF0EA5E9))
-        "kids_coral" -> ProfileAvatarSpec(Color(0xFFFB7185), Color(0xFFA855F7))
-        "kids_sun" -> ProfileAvatarSpec(Color(0xFFFDE047), Color(0xFFEC4899))
-        else -> ProfileAvatarSpec(fallback, fallback.copy(alpha = 0.72f))
-    }
-}
 
 private fun String.looksLikeHttpUrl(): Boolean {
     val value = trim()

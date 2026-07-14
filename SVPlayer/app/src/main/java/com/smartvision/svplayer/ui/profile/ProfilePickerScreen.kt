@@ -145,7 +145,7 @@ fun ProfilePickerScreen(
         val screenWidth = maxWidth
         val screenHeight = maxHeight
         val cardWidth = (screenWidth * 0.158f).coerceIn(148.dp, 205.dp)
-        val cardHeight = (screenHeight * 0.385f).coerceIn(205.dp, 285.dp)
+        val cardHeight = (screenHeight * 0.345f).coerceIn(185.dp, 255.dp)
         val avatarSize = (cardWidth * 0.63f).coerceIn(84.dp, 130.dp)
         val itemGap = (screenWidth * 0.016f).coerceIn(15.dp, 28.dp)
         val pickerItemCount = orderedProfiles.size + 2

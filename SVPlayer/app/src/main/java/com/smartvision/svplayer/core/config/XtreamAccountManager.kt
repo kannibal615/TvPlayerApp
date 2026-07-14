@@ -235,12 +235,20 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
         } else {
             profile.credentialsMode
         }
+        val requestedAvatarId = profile.avatarId.ifBlank { existing?.avatarId.orEmpty() }
         val normalized = profile.copy(
             id = id,
             name = profile.name.trim(),
             type = normalizedType,
             credentialsMode = normalizedCredentialsMode,
-            avatarId = profile.avatarId.ifBlank { profileAvatarIdForName(profile.name.ifBlank { id }) },
+            avatarId = if (requestedAvatarId.isBlank()) {
+                defaultProfileAvatarId(
+                    type = normalizedType,
+                    stableKey = id.takeIf { existing != null || normalizedType != ProfileType.KIDS },
+                )
+            } else {
+                canonicalProfileAvatarId(requestedAvatarId, normalizedType)
+            },
             avatarColorHex = profile.avatarColorHex.ifBlank { avatarColorForName(profile.name.ifBlank { id }) },
             xtreamHost = if (normalizedCredentialsMode == CredentialsMode.CUSTOM) profile.xtreamHost.trim().trimEnd('/') else "",
             xtreamUsername = if (normalizedCredentialsMode == CredentialsMode.CUSTOM) profile.xtreamUsername.trim() else "",
@@ -322,7 +330,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
                 id = existing?.id.orEmpty(),
                 name = WebPlaylistProfileName,
                 source = source,
-                avatarId = existing?.avatarId ?: profileAvatarIdForName(WebPlaylistProfileName),
+                avatarId = existing?.avatarId ?: defaultProfileAvatarId(ProfileType.NORMAL, WebPlaylistProfileName),
                 avatarColorHex = existing?.avatarColorHex ?: avatarColorForName(WebPlaylistProfileName),
                 xtreamHost = normalizedHost,
                 xtreamUsername = normalizedUsername,
@@ -442,7 +450,7 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             source = source,
             type = ProfileType.ADMIN,
             credentialsMode = CredentialsMode.CUSTOM,
-            avatarId = profileAvatarIdForName("Profil principal"),
+            avatarId = AdminProfileAvatarId,
             avatarColorHex = avatarColorForName("Profil principal"),
             xtreamHost = activeAccount?.host.orEmpty(),
             xtreamUsername = activeAccount?.username.orEmpty(),
@@ -570,19 +578,23 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             val credentials = stored ?: legacy.also {
                 if (it.hasValues()) credentialsStore.put(profileId, it)
             }
+            val profileType = ProfileType.fromStorage(
+                item.optString("profile_type"),
+                fallback = if (index == 0) ProfileType.ADMIN else ProfileType.NORMAL,
+            )
             PlaylistProfile(
                 id = profileId,
                 name = item.optString("name"),
                 source = PlaylistSource.fromStorage(item.optString("source")),
-                type = ProfileType.fromStorage(
-                    item.optString("profile_type"),
-                    fallback = if (index == 0) ProfileType.ADMIN else ProfileType.NORMAL,
-                ),
+                type = profileType,
                 credentialsMode = CredentialsMode.fromStorage(item.optString("credentials_mode")),
                 isLocked = item.optBoolean("is_locked", false),
-                avatarId = item.optString("avatar_id").ifBlank {
-                    profileAvatarIdForName(item.optString("name").ifBlank { item.getString("id") })
-                },
+                avatarId = canonicalProfileAvatarId(
+                    avatarId = item.optString("avatar_id").ifBlank {
+                        defaultProfileAvatarId(profileType, profileId)
+                    },
+                    type = profileType,
+                ),
                 avatarColorHex = item.optString("avatar_color_hex").ifBlank {
                     avatarColorForName(item.optString("name").ifBlank { item.getString("id") })
                 },
@@ -610,7 +622,15 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
                         .put("profile_type", profile.type.storageValue)
                         .put("credentials_mode", profile.credentialsMode.storageValue)
                         .put("is_locked", profile.isLocked)
-                        .put("avatar_id", profile.avatarId.ifBlank { profileAvatarIdForName(profile.name) })
+                        .put(
+                            "avatar_id",
+                            canonicalProfileAvatarId(
+                                avatarId = profile.avatarId.ifBlank {
+                                    defaultProfileAvatarId(profile.type, profile.id)
+                                },
+                                type = profile.type,
+                            ),
+                        )
                         .put("avatar_color_hex", profile.avatarColorHex.ifBlank { avatarColorForName(profile.name) })
                         .put("created_at", profile.createdAt)
                         .put("updated_at", profile.updatedAt)
