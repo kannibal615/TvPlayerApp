@@ -29,7 +29,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -248,7 +247,7 @@ fun ProfilePickerScreen(
                         enabled = !selectionInProgress,
                         locked = !multiProfileAccess.allowed || adminProfile?.isLocked == true,
                         label = strings.addKidsProfile,
-                        kids = true,
+                        avatarDrawableResId = R.drawable.avatar_action_add_kids,
                         cardWidth = cardWidth,
                         cardHeight = cardHeight,
                         avatarSize = avatarSize,
@@ -269,7 +268,7 @@ fun ProfilePickerScreen(
                         enabled = !selectionInProgress,
                         locked = !multiProfileAccess.allowed || adminProfile?.isLocked == true,
                         label = strings.addProfile,
-                        kids = false,
+                        avatarDrawableResId = R.drawable.avatar_action_add_profile,
                         cardWidth = cardWidth,
                         cardHeight = cardHeight,
                         avatarSize = avatarSize,
@@ -399,7 +398,7 @@ private fun ProfilePickerCard(
             modifier = Modifier
                 .width(cardWidth)
                 .height(cardHeight)
-                .shadow(if (focused || selected) 24.dp else 5.dp, shape, ambientColor = borderColor, spotColor = borderColor)
+                .shadow(if (focused || selected) 24.dp else 2.dp, shape, ambientColor = borderColor, spotColor = borderColor)
                 .clip(shape)
                 .background(
                     Brush.verticalGradient(
@@ -481,10 +480,10 @@ private fun ProfilePickerCard(
 @Composable
 private fun ProfileName(name: String, focused: Boolean) {
     val fontSize = when {
-        name.length > 42 -> 13.sp
-        name.length > 28 -> 15.sp
-        name.length > 18 -> 17.sp
-        else -> 20.sp
+        name.length > 25 -> 12.sp
+        name.length > 19 -> 14.sp
+        name.length > 14 -> 16.sp
+        else -> 18.sp
     }
     Text(
         text = name,
@@ -544,7 +543,7 @@ private fun AddProfileCard(
     enabled: Boolean,
     locked: Boolean,
     label: String,
-    kids: Boolean,
+    avatarDrawableResId: Int,
     cardWidth: androidx.compose.ui.unit.Dp,
     cardHeight: androidx.compose.ui.unit.Dp,
     avatarSize: androidx.compose.ui.unit.Dp,
@@ -571,7 +570,7 @@ private fun AddProfileCard(
                 alpha = reveal.value
                 translationY = (1f - reveal.value) * 12.dp.toPx()
             }
-            .shadow(if (focused) 24.dp else 5.dp, shape, ambientColor = Color(0xFF168BFF), spotColor = Color(0xFF168BFF))
+            .shadow(if (focused) 24.dp else 2.dp, shape, ambientColor = Color(0xFF168BFF), spotColor = Color(0xFF168BFF))
             .clip(shape)
             .background(Brush.verticalGradient(listOf(Color(0xFF14233F).copy(alpha = 0.87f), Color(0xFF071329).copy(alpha = 0.97f))))
             .border(BorderStroke(if (focused) 2.5.dp else 1.5.dp, if (focused) Color(0xFF61A8FF) else Color(0xFF53698D).copy(alpha = 0.72f)), shape)
@@ -583,52 +582,33 @@ private fun AddProfileCard(
             .clickable(enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick)
             .focusable(enabled = enabled, interactionSource = interactionSource)
             .padding(horizontal = 14.dp, vertical = 14.dp),
-        contentAlignment = Alignment.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxSize(),
+        ) {
             Box(
                 modifier = Modifier
-                    .size(avatarSize)
-                    .clip(CircleShape)
-                    .background(Color(0xFF0A2E70).copy(alpha = 0.42f))
-                    .border(1.dp, Color(0xFF1F70DD), CircleShape),
+                    .fillMaxWidth()
+                    .weight(1f),
                 contentAlignment = Alignment.Center,
             ) {
-                if (kids) {
-                    Image(
-                        painter = painterResource(R.drawable.kids_home_hero),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.PersonAdd,
-                        contentDescription = null,
-                        tint = Color(0xFF19D8FF),
-                        modifier = Modifier.size(50.dp),
-                    )
-                }
+                Image(
+                    painter = painterResource(avatarDrawableResId),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(avatarSize),
+                )
                 if (locked) {
                     Icon(
                         imageVector = Icons.Default.Lock,
                         contentDescription = null,
                         tint = Color.White,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).size(24.dp),
+                        modifier = Modifier.align(Alignment.TopEnd).size(21.dp),
                     )
                 }
             }
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = label,
-                color = if (focused) Color.White else Color(0xFFE8EEFA),
-                fontSize = 17.sp,
-                lineHeight = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                maxLines = 3,
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-            )
+            ProfileName(label, focused)
         }
     }
 }

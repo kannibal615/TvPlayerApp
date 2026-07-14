@@ -84,8 +84,8 @@ private fun StartupLoadingOverlay(
 ) {
     BoxWithConstraints(modifier = modifier) {
         val progressWidth = maxWidth * 0.30f
-        val progressHeight = (maxHeight * 0.008f).coerceAtLeast(MinimumProgressHeight)
-        val progressTopOffset = maxHeight * 0.775f
+        val progressHeight = (maxHeight * 0.010f).coerceAtLeast(MinimumProgressHeight)
+        val progressTopOffset = maxHeight * 0.65f
 
         Column(
             modifier = Modifier

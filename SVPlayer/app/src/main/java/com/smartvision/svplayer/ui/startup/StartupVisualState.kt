@@ -1,6 +1,6 @@
 package com.smartvision.svplayer.ui.startup
 
-const val StartupLoadingRevealDelayMillis = 700L
+const val StartupLoadingRevealDelayMillis = 450L
 const val StartupMinimumLogoOnlyMillis = 450L
 
 enum class StartupVisualPhase {

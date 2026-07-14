@@ -5,6 +5,8 @@
 - Remplace les avatars generiques par 17 PNG circulaires transparents: 1 ADMIN, 8 KIDS et 8 CLASSIC non humains.
 - Centralise le rendu `painterResource` par `avatarId` / `ProfileType` dans le picker et les selecteurs existants, avec fallback par type et alias pour les anciens IDs.
 - Fixe `avatar_admin` pour ADMIN, choisit aleatoirement un avatar Kids lors d'une creation sans avatar et attribue un avatar Classic aux profils NORMAL.
+- Aligne les cartes d'action du picker sur les cartes profil: meme zone avatar, meme composant de libelle et meme position verticale.
+- Ajoute deux PNG dedies aux actions `Add kids profile` et `Add profile`, generes depuis les references fournies puis normalises en transparence 512x512.
 
 ## 2026-07-13 - Demarrage unifie et picker de profils dynamique
 
