@@ -220,6 +220,7 @@ function handle_admin_action(PDO $pdo, string $action): void
         case 'send_notification': admin_send_notification($pdo); break;
         case 'set_notification_status': admin_set_notification_status($pdo); break;
         case 'delete_notification': admin_delete_notification($pdo); break;
+        case 'purge_notification_history': admin_purge_notification_history($pdo); break;
         case 'set_contact_message_status': admin_set_contact_message_status($pdo); break;
         case 'set_user_status': admin_set_user_status($pdo); break;
         case 'set_device_status': admin_set_device_status($pdo); break;
@@ -907,9 +908,9 @@ function admin_send_notification(PDO $pdo): void
 
     $statement = $pdo->prepare(
         "INSERT INTO app_notifications
-            (title, message, target_scope, target_value, priority, status, created_by, expires_at, created_at, updated_at)
+            (title, message, notification_type, target_scope, target_value, priority, status, created_by, expires_at, created_at, updated_at)
          VALUES
-            (:title, :message, :target_scope, :target_value, :priority, 'active', :created_by, :expires_at, NOW(), NOW())"
+            (:title, :message, 'important_info', :target_scope, :target_value, :priority, 'active', :created_by, :expires_at, NOW(), NOW())"
     );
     $statement->execute([
         'title' => $title,
@@ -946,9 +947,32 @@ function admin_delete_notification(PDO $pdo): void
 {
     ensure_app_notifications_table($pdo);
     $notificationId = admin_positive_int($_POST['notification_id'] ?? null);
-    $pdo->prepare('DELETE FROM app_notifications WHERE id = :id')->execute(['id' => $notificationId]);
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare('DELETE FROM app_notification_receipts WHERE notification_id = :id')->execute(['id' => $notificationId]);
+        $pdo->prepare('DELETE FROM app_notifications WHERE id = :id')->execute(['id' => $notificationId]);
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $exception;
+    }
     audit_admin_action($pdo, 'notification_deleted', 'app_notification', (string) $notificationId);
     set_admin_flash('success', 'Notification supprimee.');
+}
+
+function admin_purge_notification_history(PDO $pdo): void
+{
+    ensure_app_notifications_table($pdo);
+    if (strtoupper(trim((string) ($_POST['confirmation'] ?? ''))) !== 'PURGER') {
+        throw new InvalidArgumentException('Saisissez PURGER pour confirmer.');
+    }
+    $statement = $pdo->prepare(
+        'UPDATE app_notification_receipts SET purged_at = NOW() WHERE seen_at IS NOT NULL AND purged_at IS NULL'
+    );
+    $statement->execute();
+    $purged = $statement->rowCount();
+    audit_admin_action($pdo, 'notification_history_purged', 'app_notification_receipt', 'all', ['purged' => $purged]);
+    set_admin_flash('success', $purged . ' historique(s) de notification purge(s).');
 }
 
 function admin_set_contact_message_status(PDO $pdo): void
@@ -1828,7 +1852,7 @@ function admin_load_notifications(PDO $pdo): array
 {
     ensure_app_notifications_table($pdo);
     return $pdo->query(
-        "SELECT id, title, message, target_scope, target_value, priority, status, created_by, expires_at, created_at, updated_at
+        "SELECT id, title, message, notification_type, target_scope, target_value, priority, status, created_by, expires_at, created_at, updated_at
          FROM app_notifications
          ORDER BY id DESC
          LIMIT 80"
@@ -2726,7 +2750,7 @@ function render_admin_dashboard(
 
         <?php if ($page === 'notifications'): ?>
         <section class="admin-panel" id="notifications"><div class="admin-panel-heading"><div><h2>Envoyer une notification</h2><p>Pour les cibles multiples, separez les IDs, codes appareil, emails ou IDs client par virgule, espace ou point-virgule.</p></div></div><form method="post" class="notification-form"><input type="hidden" name="redirect_page" value="notifications"><input type="hidden" name="action" value="send_notification"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><label class="notification-title">Titre<input name="title" maxlength="120" required placeholder="Maintenance, information, promotion..."></label><label>Priorite<select name="priority"><option value="normal">Normale</option><option value="important">Importante</option><option value="urgent">Urgente</option></select></label><label>Ciblage<select name="target_scope" data-notification-scope><option value="all">Tous les utilisateurs</option><option value="devices">Appareil(s)</option><option value="users">Client(s)</option></select></label><label>Expiration<input name="expires_at" type="date"></label><label class="notification-targets">Cibles<input name="target_value" placeholder="device_id, code public, email ou id client"></label><label class="notification-message">Message<textarea name="message" maxlength="1200" required placeholder="Message visible dans l'application TV"></textarea></label><div class="notification-submit"><button class="admin-button primary" type="submit">Envoyer la notification</button></div></form></section>
-        <section class="admin-panel" id="notifications-list"><div class="admin-panel-heading"><div><h2>Notifications recentes</h2><p><?= count($notifications) ?> notification(s)</p></div></div><div class="admin-table-wrap"><table><thead><tr><th>Message</th><th>Ciblage</th><th>Priorite</th><th>Statut</th><th>Dates</th><th>Actions</th></tr></thead><tbody>
+        <section class="admin-panel" id="notifications-list"><div class="admin-panel-heading"><div><h2>Notifications recentes</h2><p><?= count($notifications) ?> notification(s)</p></div><form method="post" class="purge-form" data-confirm="Purger l historique consulte de toutes les TV ?"><input type="hidden" name="redirect_page" value="notifications"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="purge_notification_history"><input name="confirmation" placeholder="PURGER" aria-label="Confirmation purge historique"><button class="admin-button danger" type="submit">Purger les historiques</button></form></div><div class="admin-table-wrap"><table><thead><tr><th>Message</th><th>Ciblage</th><th>Priorite</th><th>Statut</th><th>Dates</th><th>Actions</th></tr></thead><tbody>
         <?php if ($notifications === []): ?><tr><td colspan="6" class="admin-empty">Aucune notification.</td></tr><?php endif; ?>
         <?php foreach ($notifications as $notification): ?><tr><td><strong><?= admin_escape($notification['title']) ?></strong><small><?= admin_escape(smartvision_text_substr((string) $notification['message'], 0, 180)) ?></small></td><td><span class="admin-state <?= admin_escape($notification['target_scope']) ?>"><?= admin_escape($notification['target_scope']) ?></span><small><?= admin_escape($notification['target_value'] ?: 'Tous') ?></small></td><td><span class="admin-state <?= admin_escape($notification['priority']) ?>"><?= admin_escape($notification['priority']) ?></span></td><td><span class="admin-state <?= admin_escape($notification['status']) ?>"><?= admin_escape($notification['status']) ?></span></td><td><?= admin_escape($notification['created_at']) ?><small>Expire: <?= admin_escape($notification['expires_at'] ?: '-') ?></small></td><td class="admin-actions"><form method="post"><input type="hidden" name="redirect_page" value="notifications"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="set_notification_status"><input type="hidden" name="notification_id" value="<?= (int) $notification['id'] ?>"><input type="hidden" name="status" value="<?= $notification['status'] === 'active' ? 'disabled' : 'active' ?>"><button class="admin-button compact secondary" type="submit"><?= $notification['status'] === 'active' ? 'Desactiver' : 'Reactiver' ?></button></form><form method="post" data-confirm="Supprimer cette notification ?"><input type="hidden" name="redirect_page" value="notifications"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="delete_notification"><input type="hidden" name="notification_id" value="<?= (int) $notification['id'] ?>"><button class="admin-button compact danger" type="submit">Supprimer</button></form></td></tr><?php endforeach; ?>
         </tbody></table></div></section>

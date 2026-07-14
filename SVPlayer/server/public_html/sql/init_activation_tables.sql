@@ -563,6 +563,9 @@ CREATE TABLE IF NOT EXISTS app_notifications (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(120) NOT NULL,
     message TEXT NOT NULL,
+    notification_type VARCHAR(32) NOT NULL DEFAULT 'important_info',
+    source_version_code INT NULL,
+    payload_ciphertext MEDIUMTEXT NULL,
     target_scope ENUM('all', 'devices', 'users') NOT NULL DEFAULT 'all',
     target_value TEXT NULL,
     priority ENUM('normal', 'important', 'urgent') NOT NULL DEFAULT 'normal',
@@ -581,6 +584,7 @@ CREATE TABLE IF NOT EXISTS app_notification_receipts (
     notification_id BIGINT NOT NULL,
     device_id VARCHAR(100) NOT NULL,
     seen_at DATETIME NOT NULL,
+    purged_at DATETIME NULL,
     PRIMARY KEY (notification_id, device_id),
     INDEX (device_id),
     INDEX (seen_at)

@@ -151,7 +151,14 @@ try {
         $hasXtreamInput,
         $m3uUrl !== null,
         $epgProvided,
-        'xtream_qr'
+        'xtream_qr',
+        [
+            'xtream_host' => $hasXtreamInput ? $host : null,
+            'xtream_username' => $hasXtreamInput ? $username : null,
+            'xtream_password' => $hasXtreamInput ? $password : null,
+            'm3u_url' => $m3uUrl,
+            'epg_url' => $epgProvided ? $epgUrl : null,
+        ]
     );
 
     json_response([

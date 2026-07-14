@@ -1,6 +1,6 @@
 # Backend, Admin, API et Deploiement
 
-Derniere mise a jour: 2026-07-13.
+Derniere mise a jour: 2026-07-14.
 
 ## 1. Objectif
 
@@ -17,7 +17,7 @@ Le script de deploiement upload les fichiers explicitement. Tout nouveau fichier
 - Site public: decouverte, telechargement, achat/activation.
 - Account: achat/prolongation, configuration Xtream, verification email.
 - Activate/Xtream: parcours QR depuis TV.
-- Playlist: page publique `/playlist/` pour envoyer par code TV des identifiants Xtream, un lien M3U ou une URL EPG vers la TV, sans passage obligatoire par le panel admin. Chaque envoi cree une notification d'information ciblee sur l'appareil, sans contenu sensible.
+- Playlist: page publique `/playlist/` pour envoyer par code TV des identifiants Xtream, un lien M3U ou une URL EPG vers la TV, sans passage obligatoire par le panel admin. Chaque envoi cree une notification `playlist_added` ciblee; son payload sensible est chiffre en base et n'est dechiffre que pour la TV ciblee munie de son `device_token`.
 - Admin: gestion fonctionnalites, consentement, pubs, codes, notifications, diagnostics.
 - Admin Diagnostics centralise maintenant Synthese, AutoSync, Anomalies App, Info Serveur et Journal dans `server/public_html/admin/index.php`.
 - Admin ajoute `Bibliotheque privee` pour activer/desactiver le proxy provider, gerer les sous-dossiers TV prives (nom, recherche/theme, ordre, actif, suppression), vider le cache, lancer la sync `removed` et consulter le monitoring provider.
@@ -97,6 +97,8 @@ Endpoints importants:
   - Verifie en prod le 2026-07-07 via routes extensionless avec User-Agent Android-like: `libraries`, `categories`, `items` et `providers/health` retournent 200; si la bibliotheque est desactivee, `items` retourne `error=provider_disabled`.
 - `api/notifications.php`
   - Optimisation 2026-07-05: la jointure appareil -> commande -> utilisateur n'est executee que si des notifications ciblees `users` existent dans les candidates actives. Les notifications `all` / `devices` evitent cette jointure pour reduire les risques de timeout socket sur l'app.
+  - Contrat 2026-07-14: accepte `device_token` et `app_version_code`, retourne `type`, `seen_at` et `details`; conserve une reponse minimale pour les anciennes APK. Les types stables sont `app_update`, `playlist_added`, `important_info`. Les updates deja installees sont masquees.
+  - Les recus suivent `non lu -> vu/historique -> purge`. `purged_at` est un tombstone: une ligne purgee ne redevient jamais non lue. Les lignes vues restent consultables apres expiration jusqu'a purge.
 - `api/home_slides.php`
 - `api/commerce.php`
 - `api/gammal-webhook.php`
@@ -122,6 +124,7 @@ Tables/settings a surveiller:
 - defaults `app_feature_access` ajoutes le 2026-07-07 pour `private_media`, `private_media_eporner`, `private_media_native_playback`; la configuration detaillee est stockee en JSON dans `app_settings.private_media_config`.
 - `app_consent_receipts`;
 - `app_notifications`;
+- `app_notifications.notification_type`, `source_version_code`, `payload_ciphertext` et `app_notification_receipts.purged_at` portent le contrat type, version, payload chiffre et purge durable.
 - `ads_settings`;
 - `ads_events`;
 - `app_behavior_events`.
@@ -168,6 +171,7 @@ Lire ce fichier si la demande concerne:
 - deploy;
 - cPanel;
 - notifications;
+- l'action admin de purge globale exige le texte `PURGER`, est protegee par CSRF, ne touche qu'aux recus deja vus et audite le nombre de recus purges. La suppression d'une notification source supprime aussi ses recus.
 - app_update;
 - app_config;
 - `app_trending_config` dans `app_settings`: expose via `api/app_config.php` les parametres Home Trends (`require_landscape_image`, `use_rating_filter`, `minimum_rating`, `candidate_limit`, `section_limit`; `exclude_adult` reste actif dans l'admin).

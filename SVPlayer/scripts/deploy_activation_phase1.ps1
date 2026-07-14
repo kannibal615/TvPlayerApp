@@ -826,8 +826,8 @@ try {
     $message = '__MESSAGE__';
     $statement = $pdo->prepare(
         "INSERT INTO app_notifications
-            (title, message, target_scope, target_value, priority, status, created_by, expires_at)
-         SELECT :title, :message, 'all', NULL, 'important', 'active', 'deploy_script', DATE_ADD(NOW(), INTERVAL 45 DAY)
+            (title, message, notification_type, source_version_code, target_scope, target_value, priority, status, created_by, expires_at)
+         SELECT :title, :message, 'app_update', :version_code, 'all', NULL, 'important', 'active', 'deploy_script', DATE_ADD(NOW(), INTERVAL 45 DAY)
          WHERE NOT EXISTS (
              SELECT 1 FROM app_notifications
              WHERE title = :title_check
@@ -839,6 +839,7 @@ try {
     $statement->execute([
         'title' => $title,
         'message' => $message,
+        'version_code' => __VERSION_CODE__,
         'title_check' => $title,
         'message_check' => $message,
     ]);
@@ -852,6 +853,7 @@ try {
     $content = $content.Replace('__TOKEN__', (Escape-PhpString $Token))
     $content = $content.Replace('__TITLE__', (Escape-PhpString $title))
     $content = $content.Replace('__MESSAGE__', (Escape-PhpString $message))
+    $content = $content.Replace('__VERSION_CODE__', $VersionCode.ToString([System.Globalization.CultureInfo]::InvariantCulture))
     Write-Utf8NoBomFile -Path $OutputPath -Content $content
 }
 

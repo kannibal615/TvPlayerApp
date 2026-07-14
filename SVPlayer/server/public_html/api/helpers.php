@@ -134,12 +134,43 @@ function request_country_code(): ?string
 
 function request_ip_hash(): ?string
 {
+    $ip = request_client_ip();
+
+    return $ip === '' ? null : hash('sha256', $ip);
+}
+
+function request_client_ip(): string
+{
     $ip = trim((string) ($_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? ''));
     if (str_contains($ip, ',')) {
         $ip = trim(explode(',', $ip)[0]);
     }
 
-    return $ip === '' ? null : hash('sha256', $ip);
+    return filter_var($ip, FILTER_VALIDATE_IP) === false ? '' : $ip;
+}
+
+function request_client_label(): string
+{
+    $userAgent = (string) ($_SERVER['HTTP_USER_AGENT'] ?? '');
+    $platform = match (true) {
+        str_contains($userAgent, 'Windows NT 10.0') => 'Windows 10/11',
+        str_contains($userAgent, 'Windows') => 'Windows',
+        str_contains($userAgent, 'Android') => 'Android',
+        preg_match('/iPhone|iPad|iPod/i', $userAgent) === 1 => 'iOS/iPadOS',
+        str_contains($userAgent, 'Macintosh') => 'macOS',
+        str_contains($userAgent, 'Linux') => 'Linux',
+        default => 'Appareil inconnu',
+    };
+    $browser = match (true) {
+        preg_match('/Edg\//i', $userAgent) === 1 => 'Microsoft Edge',
+        preg_match('/OPR\//i', $userAgent) === 1 => 'Opera',
+        preg_match('/Chrome\//i', $userAgent) === 1 => 'Google Chrome',
+        preg_match('/Firefox\//i', $userAgent) === 1 => 'Mozilla Firefox',
+        preg_match('/Safari\//i', $userAgent) === 1 => 'Safari',
+        default => 'Navigateur inconnu',
+    };
+
+    return $platform . ' · ' . $browser;
 }
 
 function clean_optional_text(mixed $value, int $maxLength): ?string
@@ -287,7 +318,8 @@ function create_playlist_push_notification(
     bool $xtreamUpdated,
     bool $m3uUpdated,
     bool $epgUpdated,
-    string $source = 'playlist'
+    string $source = 'playlist',
+    array $receivedConfig = []
 ): void {
     if (!$xtreamUpdated && !$m3uUpdated && !$epgUpdated) {
         return;
@@ -317,15 +349,29 @@ function create_playlist_push_notification(
         . implode(', ', $parts)
         . '. Ouvrez Info compte sur la TV pour verifier les donnees, puis synchronisez le catalogue si les identifiants Xtream ont change.';
 
+    $details = [
+        'xtream_host' => clean_optional_text($receivedConfig['xtream_host'] ?? null, 500),
+        'xtream_username' => clean_optional_text($receivedConfig['xtream_username'] ?? null, 180),
+        'xtream_password' => clean_optional_text($receivedConfig['xtream_password'] ?? null, 255),
+        'm3u_url' => clean_optional_text($receivedConfig['m3u_url'] ?? null, 2000),
+        'epg_url' => clean_optional_text($receivedConfig['epg_url'] ?? null, 2000),
+        'submitted_at' => gmdate('Y-m-d H:i:s'),
+        'ip_address' => request_client_ip(),
+        'country_code' => request_country_code(),
+        'sender_device' => request_client_label(),
+        'source' => clean_optional_text($source, 40),
+    ];
+
     $statement = $pdo->prepare(
         "INSERT INTO app_notifications
-            (title, message, target_scope, target_value, priority, status, created_by, expires_at, created_at, updated_at)
+            (title, message, notification_type, payload_ciphertext, target_scope, target_value, priority, status, created_by, expires_at, created_at, updated_at)
          VALUES
-            (:title, :message, 'devices', :target_value, 'normal', 'active', :created_by, DATE_ADD(NOW(), INTERVAL 14 DAY), NOW(), NOW())"
+            (:title, :message, 'playlist_added', :payload_ciphertext, 'devices', :target_value, 'normal', 'active', :created_by, DATE_ADD(NOW(), INTERVAL 14 DAY), NOW(), NOW())"
     );
     $statement->execute([
         'title' => 'Configuration playlist recue',
         'message' => $message,
+        'payload_ciphertext' => encrypt_playlist_config($details),
         'target_value' => implode(',', $targetValues),
         'created_by' => 'system_' . clean_optional_text($source, 40),
     ]);
@@ -573,6 +619,9 @@ function ensure_app_notifications_table(PDO $pdo): void
             id BIGINT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(120) NOT NULL,
             message TEXT NOT NULL,
+            notification_type VARCHAR(32) NOT NULL DEFAULT 'important_info',
+            source_version_code INT NULL,
+            payload_ciphertext MEDIUMTEXT NULL,
             target_scope ENUM('all', 'devices', 'users') NOT NULL DEFAULT 'all',
             target_value TEXT NULL,
             priority ENUM('normal', 'important', 'urgent') NOT NULL DEFAULT 'normal',
@@ -592,11 +641,16 @@ function ensure_app_notifications_table(PDO $pdo): void
             notification_id BIGINT NOT NULL,
             device_id VARCHAR(100) NOT NULL,
             seen_at DATETIME NOT NULL,
+            purged_at DATETIME NULL,
             PRIMARY KEY (notification_id, device_id),
             INDEX (device_id),
             INDEX (seen_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
+    $pdo->exec("ALTER TABLE app_notifications ADD COLUMN IF NOT EXISTS notification_type VARCHAR(32) NOT NULL DEFAULT 'important_info' AFTER message");
+    $pdo->exec("ALTER TABLE app_notifications ADD COLUMN IF NOT EXISTS source_version_code INT NULL AFTER notification_type");
+    $pdo->exec("ALTER TABLE app_notifications ADD COLUMN IF NOT EXISTS payload_ciphertext MEDIUMTEXT NULL AFTER source_version_code");
+    $pdo->exec("ALTER TABLE app_notification_receipts ADD COLUMN IF NOT EXISTS purged_at DATETIME NULL AFTER seen_at");
 }
 
 function ensure_app_consent_receipts_table(PDO $pdo): void

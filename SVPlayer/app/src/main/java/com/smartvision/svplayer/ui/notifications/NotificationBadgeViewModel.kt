@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.data.notifications.AppNotification
 import com.smartvision.svplayer.data.notifications.NotificationsRepository
+import com.smartvision.svplayer.data.notifications.NotificationType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,13 +32,6 @@ class NotificationBadgeViewModel(
     fun refresh() {
         viewModelScope.launch {
             refreshOnce()
-        }
-    }
-
-    fun clearUnread() {
-        state.update { it.copy(unreadCount = 0, hasUnread = false) }
-        viewModelScope.launch {
-            runCatching { repository.markSeen() }
         }
     }
 
@@ -74,7 +68,7 @@ data class NotificationBadgeUiState(
 )
 
 private fun AppNotification.isInstalledUpdateNotification(): Boolean {
-    val isUpdate = title.contains("update", ignoreCase = true) ||
+    val isUpdate = type == NotificationType.AppUpdate || title.contains("update", ignoreCase = true) ||
         title.contains("mise a jour", ignoreCase = true) ||
         message.contains("install the update", ignoreCase = true) ||
         message.contains("installer la mise a jour", ignoreCase = true)
@@ -84,5 +78,5 @@ private fun AppNotification.isInstalledUpdateNotification(): Boolean {
 }
 
 private fun AppNotification.isPlaylistConfigurationNotification(): Boolean =
-    title.contains("Configuration playlist", ignoreCase = true) ||
+    type == NotificationType.PlaylistAdded || title.contains("Configuration playlist", ignoreCase = true) ||
         message.contains("Configuration recue depuis SmartVision Playlist", ignoreCase = true)

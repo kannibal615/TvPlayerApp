@@ -145,7 +145,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     $hasXtreamInput,
                     $m3uUrl !== null,
                     $postedConfigType === 'epg',
-                    'playlist_page'
+                    'playlist_page',
+                    [
+                        'xtream_host' => $hasXtreamInput ? $host : null,
+                        'xtream_username' => $hasXtreamInput ? $username : null,
+                        'xtream_password' => $hasXtreamInput ? $password : null,
+                        'm3u_url' => $m3uUrl,
+                        'epg_url' => $postedConfigType === 'epg' ? $epgUrl : null,
+                    ]
                 );
 
                 $message = 'Configuration envoyee. Ouvrez ou actualisez SmartVision sur la TV.';

@@ -212,6 +212,8 @@ class ActivationRepository(
         )
     }
 
+    suspend fun getDeviceToken(): String = dataStore.data.first()[DEVICE_TOKEN].orEmpty()
+
     suspend fun clearPlaylistConfig(profile: PlaylistProfile): Boolean {
         val preferences = dataStore.data.first()
         val deviceId = preferences[DEVICE_ID].orEmpty()

@@ -1,5 +1,13 @@
 # AI Changelog
 
+## 2026-07-14 - Refonte Notifications, Synchronisation Profil et nettoyage Profile
+
+- Ajoute le contrat type `app_update` / `playlist_added` / `important_info`, les payloads playlist chiffres, l'historique par `seen_at` et la purge durable `purged_at` avec action admin `PURGER` auditee.
+- Recompose Notifications en deux colonnes TV avec filtres, badges non lus, dialogues typés, marquage individuel et restauration du focus apres consultation.
+- Retire l'ancien Controle parental de Settings et partage les reglages Synchronisation entre Settings et Profile, ou l'entree est placee entre Controle parental et Historique.
+- Supprime neuf composables Profile sans reference et extrait `ProfileViewModel`, ses etats et son assemblage UI dans `ProfileViewModel.kt`.
+- Validation intermediaire: PHP lint OK; `:app:compileReleaseKotlin` OK apres extraction. Tests Notifications et installation debug documentes a la fin de l'intervention.
+
 ## 2026-07-14 - Actions mots-cles Controle parental
 
 - Corrige l'interception de OK par la carte parente qui bloquait Add, Edit et Delete.

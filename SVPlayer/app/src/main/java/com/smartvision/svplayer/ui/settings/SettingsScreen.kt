@@ -87,7 +87,6 @@ import com.smartvision.svplayer.data.network.NetworkActivityStatus
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
-import com.smartvision.svplayer.ui.components.NumericPinDialog
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.components.TvDialogSurface
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
@@ -127,8 +126,6 @@ fun SettingsScreen(
     updateState: AppUpdateUiState,
     onCheckForUpdate: () -> Unit,
     onSyncCatalog: () -> Unit,
-    parentalControlAllowed: Boolean = true,
-    onLockedFeature: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
@@ -231,13 +228,7 @@ fun SettingsScreen(
             onSetVideoRatio = { value -> scope.launch { container.settingsRepository.setVideoRatio(value) } },
             onSetAnimations = { value -> scope.launch { container.settingsRepository.setAnimationsEnabled(value) } },
             onSetRetry = { value -> scope.launch { container.settingsRepository.setRetryEnabled(value) } },
-            onSetParentalEnabled = { value -> scope.launch { container.settingsRepository.setParentalControlEnabled(value) } },
-            onSetParentalPin = { value -> scope.launch { container.settingsRepository.setParentalPin(value) } },
-            onVerifyParentalPin = container.settingsRepository::verifyParentalPin,
-            onSetParentalKeywords = { value -> scope.launch { container.settingsRepository.setParentalKeywords(value) } },
             onClearLocalData = { showClearLocalDataConfirmation = true },
-            parentalControlAllowed = parentalControlAllowed,
-            onLockedFeature = onLockedFeature,
             licenseState = licenseState,
             onRefreshLicense = licenseViewModel::refresh,
             onShowLicenseQr = licenseViewModel::showLicenseQr,
@@ -310,13 +301,7 @@ private fun SettingsMenuLayout(
     onSetVideoRatio: (String) -> Unit,
     onSetAnimations: (Boolean) -> Unit,
     onSetRetry: (Boolean) -> Unit,
-    onSetParentalEnabled: (Boolean) -> Unit,
-    onSetParentalPin: (String) -> Unit,
-    onVerifyParentalPin: (String) -> Boolean,
-    onSetParentalKeywords: (String) -> Unit,
     onClearLocalData: () -> Unit,
-    parentalControlAllowed: Boolean,
-    onLockedFeature: () -> Unit,
     licenseState: com.smartvision.svplayer.ui.profile.ProfileUiState,
     onRefreshLicense: () -> Unit,
     onShowLicenseQr: () -> Unit,
@@ -324,38 +309,6 @@ private fun SettingsMenuLayout(
     lastUpdateLabel: String,
     modifier: Modifier = Modifier,
 ) {
-    var parentalUnlocked by remember { mutableStateOf(false) }
-    var showCreatePinDialog by remember { mutableStateOf(false) }
-    var showUnlockPinDialog by remember { mutableStateOf(false) }
-    var showChangePinDialog by remember { mutableStateOf(false) }
-    var pendingParentalEnabled by remember { mutableStateOf<Boolean?>(null) }
-    var pinMessage by remember { mutableStateOf<String?>(null) }
-
-    fun openParentalSection() {
-        if (!parentalControlAllowed) {
-            onLockedFeature()
-            return
-        }
-        pinMessage = null
-        if (settings.parentalPin.isBlank()) {
-            showCreatePinDialog = true
-        } else if (!parentalUnlocked) {
-            showUnlockPinDialog = true
-        } else {
-            onSectionSelected(SettingsSection.Parental)
-        }
-    }
-
-    fun applyParentalToggle(value: Boolean) {
-        pendingParentalEnabled = value
-        showUnlockPinDialog = true
-    }
-
-    LaunchedEffect(parentalControlAllowed, settings.parentalPin) {
-        if (!parentalControlAllowed || settings.parentalPin.isBlank()) {
-            parentalUnlocked = false
-        }
-    }
 
     Row(
         modifier = modifier,
@@ -371,20 +324,13 @@ private fun SettingsMenuLayout(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             items(SettingsSection.entries, key = { it.name }) { section ->
-                val isParental = section == SettingsSection.Parental
                 Box(modifier = Modifier.fillMaxWidth()) {
                     TvButton(
                         text = section.label(strings),
                         leadingIcon = section.icon,
                         selected = selectedSection == section,
                         variant = if (selectedSection == section) TvButtonVariant.Primary else TvButtonVariant.Text,
-                        onClick = {
-                            if (isParental) {
-                                openParentalSection()
-                            } else {
-                                onSectionSelected(section)
-                            }
-                        },
+                        onClick = { onSectionSelected(section) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp)
@@ -409,32 +355,8 @@ private fun SettingsMenuLayout(
                                     Modifier
                                 },
                             )
-                            .then(if (section == SettingsSection.License) Modifier.focusRequester(firstMenuFocusRequester) else Modifier)
-                            .alpha(if (isParental && !parentalControlAllowed) 0.28f else 1f),
+                            .then(if (section == SettingsSection.License) Modifier.focusRequester(firstMenuFocusRequester) else Modifier),
                     )
-                    if (isParental) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .offset(x = (-10).dp)
-                                .size(11.dp)
-                                .background(
-                                    if (settings.parentalControlEnabled) Color(0xFF20D878) else Color(0xFFFF4B4B),
-                                    RoundedCornerShape(50),
-                                )
-                                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.72f)), RoundedCornerShape(50)),
-                        )
-                        if (!parentalControlAllowed) {
-                            Image(
-                                painter = painterResource(R.drawable.premium_crown),
-                                contentDescription = "Premium",
-                                modifier = Modifier
-                                    .align(Alignment.CenterEnd)
-                                    .offset(x = (-30).dp)
-                                    .size(22.dp),
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -491,33 +413,14 @@ private fun SettingsMenuLayout(
                     )
                 }
                 SettingsSection.Sync -> {
-                    SettingsChoice(
-                        label = strings.launchOnStartup,
-                        values = listOf(
-                            SettingsOption("enabled", strings.enabled),
-                            SettingsOption("disabled", strings.disabled),
-                        ),
-                        selected = if (settings.autostartEnabled) "enabled" else "disabled",
-                        onSelected = { value -> onSetAutostartEnabled(value == "enabled") },
+                    SynchronizationPreferencesContent(
+                        settings = settings,
+                        activeAccount = activeAccount,
+                        strings = strings,
+                        onSetAutostartEnabled = onSetAutostartEnabled,
+                        onSetBackgroundSyncEnabled = onSetBackgroundSyncEnabled,
+                        onSetSyncFrequency = onSetSyncFrequency,
                     )
-                    SettingsChoice(
-                        label = strings.backgroundSync,
-                        values = listOf(
-                            SettingsOption("enabled", strings.enabled),
-                            SettingsOption("disabled", strings.disabled),
-                        ),
-                        selected = if (settings.backgroundSyncEnabled) "enabled" else "disabled",
-                        onSelected = { value -> onSetBackgroundSyncEnabled(value == "enabled") },
-                    )
-                    SettingsChoice(
-                        label = strings.automaticSync,
-                        values = syncFrequencyOptions(strings),
-                        selected = settings.syncFrequency,
-                        onSelected = onSetSyncFrequency,
-                    )
-                    SettingsInfoRow(strings.currentFrequency, settings.syncFrequency.localizedSyncFrequency(strings))
-                    SettingsInfoRow(strings.activeAccount, activeAccount?.let { "${it.name} - ${it.username}" } ?: strings.none)
-                    SettingsInfoRow(strings.activeServer, activeAccount?.host ?: strings.notConfigured)
                 }
                 SettingsSection.Network -> {
                     NetworkActivityPanel(
@@ -676,169 +579,8 @@ private fun SettingsMenuLayout(
                             .height(44.dp),
                     )
                 }
-                SettingsSection.Parental -> {
-                    val keywordsFocusRequester = remember { FocusRequester() }
-                    when {
-                        !parentalControlAllowed -> {
-                            Text(
-                                text = strings.lockedPremiumFeature,
-                                color = SmartVisionColors.TextSecondary,
-                                style = SmartVisionType.Body,
-                            )
-                            Spacer(Modifier.height(14.dp))
-                            TvButton(
-                                text = "Premium",
-                                onClick = onLockedFeature,
-                                variant = TvButtonVariant.Primary,
-                                modifier = Modifier.height(44.dp),
-                            )
-                        }
-
-                        !parentalUnlocked -> {
-                            Text(
-                                text = strings.unlockParentalControl,
-                                color = SmartVisionColors.TextSecondary,
-                                style = SmartVisionType.Body,
-                            )
-                            Spacer(Modifier.height(14.dp))
-                            TvButton(
-                                text = if (settings.parentalPin.isBlank()) strings.createPin else strings.enterPin,
-                                onClick = {
-                                    if (settings.parentalPin.isBlank()) showCreatePinDialog = true else showUnlockPinDialog = true
-                                },
-                                variant = TvButtonVariant.Primary,
-                                modifier = Modifier.height(44.dp),
-                            )
-                        }
-
-                        else -> {
-                            Text(strings.parentalControl, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Label)
-                            Spacer(Modifier.height(7.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                TvButton(
-                                    text = strings.enabled,
-                                    onClick = { applyParentalToggle(true) },
-                                    selected = settings.parentalControlEnabled,
-                                    variant = if (settings.parentalControlEnabled) TvButtonVariant.Success else TvButtonVariant.Secondary,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(42.dp),
-                                )
-                                TvButton(
-                                    text = strings.disabled,
-                                    onClick = { applyParentalToggle(false) },
-                                    selected = !settings.parentalControlEnabled,
-                                    variant = if (settings.parentalControlEnabled) TvButtonVariant.Secondary else TvButtonVariant.Danger,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(42.dp),
-                                )
-                            }
-                            Spacer(Modifier.height(18.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(strings.pinCode, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
-                                Spacer(Modifier.width(12.dp))
-                                Text(
-                                    if (settings.parentalPin.isBlank()) strings.notConfigured else "****",
-                                    color = SmartVisionColors.TextPrimary,
-                                    style = SmartVisionType.Caption,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                                Spacer(Modifier.weight(1f))
-                                Spacer(Modifier.width(12.dp))
-                                TvButton(
-                                    text = strings.changePin,
-                                    onClick = { showChangePinDialog = true },
-                                    variant = TvButtonVariant.Secondary,
-                                    modifier = Modifier.height(40.dp),
-                                )
-                            }
-                            Spacer(Modifier.height(12.dp))
-                            SettingsTextField(
-                                label = strings.hiddenKeywords,
-                                value = settings.parentalKeywords,
-                                onValueChange = onSetParentalKeywords,
-                                focusRequester = keywordsFocusRequester,
-                            )
-                            TvButton(
-                                text = strings.apply,
-                                onClick = onSyncCatalog,
-                                variant = TvButtonVariant.Primary,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(44.dp),
-                            )
-                            Spacer(Modifier.height(12.dp))
-                            Text(
-                                text = strings.parentalHelp,
-                                color = SmartVisionColors.TextSecondary,
-                                style = SmartVisionType.Caption,
-                            )
-                            pinMessage?.let { message ->
-                                Spacer(Modifier.height(8.dp))
-                                Text(message, color = SmartVisionColors.CyanAccent, style = SmartVisionType.Caption)
-                            }
-                        }
-                    }
-                }
             }
         }
-    }
-
-    if (showCreatePinDialog) {
-        ParentalCreatePinDialog(
-            strings = strings,
-            onDismiss = { showCreatePinDialog = false },
-            onCreate = { pin ->
-                onSetParentalPin(pin)
-                parentalUnlocked = true
-                showCreatePinDialog = false
-                onSectionSelected(SettingsSection.Parental)
-                pinMessage = null
-            },
-        )
-    }
-
-    if (showUnlockPinDialog) {
-        ParentalPinDialog(
-            title = strings.enterPin,
-            strings = strings,
-            onDismiss = {
-                showUnlockPinDialog = false
-                pendingParentalEnabled = null
-            },
-            onSubmit = { pin ->
-                if (onVerifyParentalPin(pin)) {
-                    parentalUnlocked = true
-                    showUnlockPinDialog = false
-                    val pending = pendingParentalEnabled
-                    pendingParentalEnabled = null
-                    if (pending != null) {
-                        onSetParentalEnabled(pending)
-                    } else {
-                        onSectionSelected(SettingsSection.Parental)
-                    }
-                    pinMessage = null
-                    true
-                } else {
-                    pinMessage = strings.pinIncorrect
-                    false
-                }
-            },
-        )
-    }
-
-    if (showChangePinDialog) {
-        ParentalCreatePinDialog(
-            strings = strings,
-            title = strings.changePin,
-            onDismiss = { showChangePinDialog = false },
-            onCreate = { pin ->
-                onSetParentalPin(pin)
-                showChangePinDialog = false
-                pinMessage = strings.changePin
-            },
-        )
     }
 }
 
@@ -852,7 +594,6 @@ private enum class SettingsSection(
     Tmdb(Icons.Default.Info),
     Personalization(Icons.Default.Settings),
     Updates(Icons.Default.Refresh),
-    Parental(Icons.Default.Person),
     Data(Icons.Default.Delete),
 }
 
@@ -864,7 +605,6 @@ private fun SettingsSection.label(strings: SmartVisionStrings): String = when (t
     SettingsSection.Tmdb -> strings.tmdbAttribution
     SettingsSection.Personalization -> strings.personalization
     SettingsSection.Updates -> strings.updates
-    SettingsSection.Parental -> strings.parentalControl
     SettingsSection.Data -> strings.localData
 }
 
@@ -962,18 +702,6 @@ private fun FocusPreviewRoleCard(
 }
 
 private fun settingsOptions(vararg values: String): List<SettingsOption> = values.map { SettingsOption(it) }
-
-private fun syncFrequencyOptions(strings: SmartVisionStrings): List<SettingsOption> = listOf(
-    SettingsOption("24h", strings.sync24h),
-    SettingsOption("48h", strings.sync48h),
-    SettingsOption("A chaque demarrage", strings.syncOnStartup),
-    SettingsOption("Manuelle", strings.syncManual),
-    SettingsOption("Jamais", strings.syncNever),
-)
-
-private fun String.localizedSyncFrequency(strings: SmartVisionStrings): String {
-    return syncFrequencyOptions(strings).firstOrNull { it.value == this }?.label ?: this
-}
 
 private fun Context.smartVisionLastUpdateLabel(): String {
     return runCatching {
@@ -1437,37 +1165,6 @@ private fun AccountEditorDialog(
                 )
             }
     }
-}
-
-@Composable
-private fun ParentalPinDialog(
-    title: String,
-    strings: SmartVisionStrings,
-    onDismiss: () -> Unit,
-    onSubmit: (String) -> Boolean,
-) {
-    NumericPinDialog(
-        title = title,
-        strings = strings,
-        onDismiss = onDismiss,
-        onSubmit = onSubmit,
-    )
-}
-
-@Composable
-private fun ParentalCreatePinDialog(
-    strings: SmartVisionStrings,
-    title: String = strings.createPin,
-    onDismiss: () -> Unit,
-    onCreate: (String) -> Unit,
-) {
-    NumericPinDialog(
-        title = title,
-        strings = strings,
-        requireConfirmation = true,
-        onDismiss = onDismiss,
-        onSubmit = { pin -> onCreate(pin); true },
-    )
 }
 
 @Composable

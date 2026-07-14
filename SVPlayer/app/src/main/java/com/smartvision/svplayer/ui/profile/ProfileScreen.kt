@@ -101,9 +101,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
@@ -120,7 +118,6 @@ import com.smartvision.svplayer.core.config.AdminProfileAvatarId
 import com.smartvision.svplayer.core.config.ProfileAvatarPresetIds
 import com.smartvision.svplayer.core.config.KidsProfileAvatarPresetIds
 import com.smartvision.svplayer.core.config.XtreamAccount
-import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.core.config.canonicalProfileAvatarId
 import com.smartvision.svplayer.core.config.defaultProfileAvatarId
 import com.smartvision.svplayer.core.data.LocalAppContainer
@@ -128,13 +125,8 @@ import com.smartvision.svplayer.data.xtream.XtreamCredentialsValidationResult
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.activation.ActivationException
 import com.smartvision.svplayer.data.activation.ActivationRepository
-import com.smartvision.svplayer.data.activation.StoredActivationState
-import com.smartvision.svplayer.data.monetization.MonetizationStatus
-import com.smartvision.svplayer.data.monetization.monetizationStatus
-import com.smartvision.svplayer.data.repository.emptyAccountProfile
 import com.smartvision.svplayer.domain.model.AccountProfile
 import com.smartvision.svplayer.domain.model.SyncStatus
-import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
@@ -149,15 +141,12 @@ import com.smartvision.svplayer.ui.home.HomeVisualBackground
 import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
+import com.smartvision.svplayer.ui.settings.SynchronizationPreferencesContent
+import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -372,6 +361,7 @@ private fun ProfileScreen(
 ) {
     BackHandler(onBack = onBack)
     val container = LocalAppContainer.current
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val parentalSettings by container.settingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = com.smartvision.svplayer.domain.model.PlayerSettings(),
@@ -559,6 +549,29 @@ private fun ProfileScreen(
                         onExitToMenu = { runCatching { parentalSectionFocusRequester.requestFocus() } },
                         modifier = Modifier.fillMaxSize(),
                     )
+                    ProfileSection.Sync -> ProfilePanel(
+                        title = strings.sync,
+                        icon = Icons.Default.CloudSync,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        SynchronizationPreferencesContent(
+                            settings = parentalSettings,
+                            activeAccount = state.activeXtreamAccount,
+                            strings = strings,
+                            onSetAutostartEnabled = { value ->
+                                scope.launch { container.settingsRepository.setAutostartEnabled(value) }
+                            },
+                            onSetBackgroundSyncEnabled = { value ->
+                                scope.launch {
+                                    container.settingsRepository.setBackgroundSyncEnabled(value)
+                                    BackgroundSyncScheduler.applyPeriodicSync(context, value)
+                                }
+                            },
+                            onSetSyncFrequency = { value ->
+                                scope.launch { container.settingsRepository.setSyncFrequency(value) }
+                            },
+                        )
+                    }
                     ProfileSection.History -> ProfileHistoryPanel(state = state, modifier = Modifier.fillMaxWidth())
                     ProfileSection.Help -> ProfileHelpPanel(modifier = Modifier.fillMaxWidth())
                     ProfileSection.SettingsShortcut -> Unit
@@ -630,45 +643,6 @@ private fun ProfileScreen(
                 pendingFocusSection = ProfileSection.Xtream
             },
         )
-    }
-}
-
-@Composable
-private fun ProfileTopBar(
-    modeLabel: String,
-    modeColor: Color,
-    onBack: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(48.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        TvButton(
-            text = "Retour",
-            onClick = onBack,
-            leadingIcon = Icons.Default.ArrowBack,
-            variant = TvButtonVariant.Secondary,
-            contentPadding = PaddingValues(horizontal = 18.dp),
-            modifier = Modifier.height(42.dp),
-        )
-        Spacer(Modifier.width(18.dp))
-        Icon(
-            imageVector = Icons.Default.Person,
-            contentDescription = null,
-            tint = SmartVisionColors.CyanAccent,
-            modifier = Modifier.size(40.dp),
-        )
-        Spacer(Modifier.width(10.dp))
-        Text(
-            text = "Info compte",
-            color = SmartVisionColors.TextPrimary,
-            style = SmartVisionType.TitleL,
-            fontWeight = FontWeight.Bold,
-        )
-        Spacer(Modifier.weight(1f))
-        StatusPill(modeLabel, modeColor)
     }
 }
 
@@ -751,6 +725,7 @@ private enum class ProfileSection(
 ) {
     Xtream("Info compte", Icons.Default.Person),
     Parental("Controle parental", Icons.Default.Lock),
+    Sync("Synchronisation", Icons.Default.CloudSync),
     History("Historique", Icons.Default.History),
     Help("Aide", Icons.Default.HelpOutline),
     SettingsShortcut("Parametres", Icons.Default.Settings),
@@ -1600,54 +1575,6 @@ private fun AccountInfoLine(
 }
 
 @Composable
-private fun ProfileActionButton(
-    text: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    var focused by remember { mutableStateOf(false) }
-    val borderColor = if (focused) SmartVisionColors.CyanAccent else SmartVisionColors.Border.copy(alpha = 0.76f)
-    val background = SmartVisionColors.SurfaceElevated.copy(alpha = if (enabled) 0.86f else 0.42f)
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(7.dp))
-            .background(background)
-            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(7.dp))
-            .onFocusChanged { focused = it.isFocused }
-            .clickable(
-                enabled = enabled,
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-            )
-            .focusable(enabled = enabled, interactionSource = interactionSource)
-            .padding(horizontal = 18.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(25.dp),
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = text,
-                color = if (enabled) Color.White else Color.White.copy(alpha = 0.42f),
-                style = SmartVisionType.Label,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@Composable
 private fun ProfileIconTileButton(
     icon: ImageVector,
     contentDescription: String,
@@ -2132,75 +2059,6 @@ private fun SyncStatus.errorMessageOrDefault(): String =
     (this as? SyncStatus.Error)?.message ?: "Synchronisation impossible."
 
 @Composable
-private fun XtreamConnectedAccountSection(
-    account: XtreamAccount?,
-    showDetails: Boolean,
-    onToggleDetails: () -> Unit,
-    onEdit: (XtreamAccount) -> Unit,
-    onDelete: (XtreamAccount) -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(7.dp))
-            .background(SmartVisionColors.Surface.copy(alpha = 0.64f))
-            .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.82f)), RoundedCornerShape(7.dp))
-            .padding(12.dp),
-    ) {
-        Text(
-            text = "Compte Xtream connecte",
-            color = SmartVisionColors.TextPrimary,
-            style = SmartVisionType.Label,
-            fontWeight = FontWeight.Bold,
-        )
-        Spacer(Modifier.height(9.dp))
-        if (account == null) {
-            Text(
-                text = "Aucun compte Xtream local n'est configure.",
-                color = SmartVisionColors.TextSecondary,
-                style = SmartVisionType.Caption,
-            )
-        } else {
-            if (showDetails) {
-                ProfileInfoRow("URL", account.host.ifBlank { "Non configure" })
-                ProfileInfoRow("Username", account.username.ifBlank { "Non configure" })
-                ProfileInfoRow("Password", account.password.ifBlank { "Non configure" })
-                Spacer(Modifier.height(8.dp))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                TvButton(
-                    text = if (showDetails) "Masquer" else "Voir",
-                    onClick = onToggleDetails,
-                    leadingIcon = Icons.Default.Visibility,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(40.dp),
-                )
-                TvButton(
-                    text = "Modifier",
-                    onClick = { onEdit(account) },
-                    leadingIcon = Icons.Default.Edit,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(40.dp),
-                )
-                TvButton(
-                    text = "Supprimer",
-                    onClick = { onDelete(account) },
-                    leadingIcon = Icons.Default.Delete,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(40.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun PlaylistProfileEditorDialog(
     initial: PlaylistProfile?,
     createType: ProfileType? = null,
@@ -2612,95 +2470,6 @@ private fun ProfileAvatarPresetButton(
 }
 
 @Composable
-private fun PlaylistProfileDetailDialog(
-    profile: PlaylistProfile,
-    active: Boolean,
-    counts: AccountProfile,
-    onDismiss: () -> Unit,
-    onActivate: () -> Unit,
-    onEdit: () -> Unit,
-    onSynchronize: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .width(620.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF0A1425))
-                .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.82f)), RoundedCornerShape(8.dp))
-                .padding(22.dp),
-        ) {
-            Text(profile.name, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
-            ProfileInfoRow("Statut", if (active) "Actif" else profile.status.displayLabel())
-            ProfileInfoRow("Type de source", profile.source.displayLabel())
-            if (profile.source == PlaylistSource.Xtream) {
-                ProfileInfoRow("Compte Xtream", if (profile.isConfigured) "Configure" else "Non configure")
-                ProfileInfoRow("URL serveur", profile.xtreamHost.ifBlank { "Non configure" })
-                ProfileInfoRow("Username", profile.xtreamUsername.ifBlank { "Non configure" })
-                ProfileInfoRow("Password", if (profile.xtreamPassword.isBlank()) "Non configure" else "********")
-            } else {
-                ProfileInfoRow("Lien M3U", profile.m3uUrl.ifBlank { "Non configure" })
-            }
-            ProfileInfoRow("URL EPG", profile.epgUrl.ifBlank { "Non configure" })
-            ProfileInfoRow("Derniere synchronisation", profile.lastSyncAt.asProfileDate())
-            if (active) {
-                ProfileInfoRow("Chaines / Films / Series", "${counts.liveCount} / ${counts.movieCount} / ${counts.seriesCount}")
-            }
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                TvButton(
-                    text = "Definir actif",
-                    onClick = onActivate,
-                    enabled = !active,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp),
-                )
-                TvButton(
-                    text = "Modifier",
-                    onClick = onEdit,
-                    leadingIcon = Icons.Default.Edit,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp),
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                TvButton(
-                    text = "Synchroniser",
-                    onClick = onSynchronize,
-                    leadingIcon = Icons.Default.CloudSync,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp),
-                )
-                TvButton(
-                    text = "Supprimer",
-                    onClick = onDelete,
-                    leadingIcon = Icons.Default.Delete,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp),
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            TvButton(
-                text = "Retour",
-                onClick = onDismiss,
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier.height(42.dp),
-            )
-        }
-    }
-}
-
-@Composable
 private fun ConfirmPlaylistProfileDeleteDialog(
     profile: PlaylistProfile,
     strings: SmartVisionStrings,
@@ -2716,113 +2485,6 @@ private fun ConfirmPlaylistProfileDeleteDialog(
         onDismiss = onDismiss,
         onConfirm = onConfirm,
     )
-}
-
-@Composable
-private fun XtreamAccountEditorDialog(
-    initial: XtreamAccount,
-    onDismiss: () -> Unit,
-    onSave: (XtreamAccount) -> Unit,
-) {
-    var name by remember(initial.id) { mutableStateOf(initial.name) }
-    var host by remember(initial.id) { mutableStateOf(initial.host) }
-    var username by remember(initial.id) { mutableStateOf(initial.username) }
-    var password by remember(initial.id) { mutableStateOf(initial.password) }
-    var error by remember { mutableStateOf<String?>(null) }
-    val nameFocusRequester = remember { FocusRequester() }
-    val hostFocusRequester = remember { FocusRequester() }
-    val usernameFocusRequester = remember { FocusRequester() }
-    val passwordFocusRequester = remember { FocusRequester() }
-    val saveFocusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        delay(ProfileFocusRequestDelayMillis)
-        runCatching { nameFocusRequester.requestFocus() }
-    }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .width(600.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF0A1425))
-                .border(BorderStroke(1.dp, SmartVisionColors.CyanAccent), RoundedCornerShape(8.dp))
-                .padding(22.dp),
-        ) {
-            Text(
-                text = "Modifier le compte Xtream",
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.TitleS,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(14.dp))
-            ProfileEditTextField(
-                label = "Nom",
-                value = name,
-                onValueChange = { name = it },
-                focusRequester = nameFocusRequester,
-                nextFocusRequester = hostFocusRequester,
-            )
-            ProfileEditTextField(
-                label = "URL",
-                value = host,
-                onValueChange = { host = it },
-                focusRequester = hostFocusRequester,
-                previousFocusRequester = nameFocusRequester,
-                nextFocusRequester = usernameFocusRequester,
-            )
-            ProfileEditTextField(
-                label = "Username",
-                value = username,
-                onValueChange = { username = it },
-                focusRequester = usernameFocusRequester,
-                previousFocusRequester = hostFocusRequester,
-                nextFocusRequester = passwordFocusRequester,
-            )
-            ProfileEditTextField(
-                label = "Password",
-                value = password,
-                onValueChange = { password = it },
-                focusRequester = passwordFocusRequester,
-                previousFocusRequester = usernameFocusRequester,
-                nextFocusRequester = saveFocusRequester,
-                password = false,
-            )
-            error?.let {
-                Spacer(Modifier.height(6.dp))
-                Text(it, color = SmartVisionColors.Error, style = SmartVisionType.Caption)
-            }
-            Spacer(Modifier.height(14.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TvButton(
-                    text = "Annuler",
-                    onClick = onDismiss,
-                    variant = TvButtonVariant.Secondary,
-                    modifier = Modifier.height(42.dp),
-                )
-                Spacer(Modifier.width(10.dp))
-                TvButton(
-                    text = "Enregistrer",
-                    onClick = {
-                        if (host.isBlank() || username.isBlank() || password.isBlank()) {
-                            error = "URL, username et password sont obligatoires."
-                        } else {
-                            onSave(
-                                initial.copy(
-                                    name = name,
-                                    host = host,
-                                    username = username,
-                                    password = password,
-                                ),
-                            )
-                        }
-                    },
-                    focusRequester = saveFocusRequester,
-                    modifier = Modifier.height(42.dp),
-                )
-            }
-        }
-    }
 }
 
 @Composable
@@ -2934,60 +2596,6 @@ private fun ProfileEditTextField(
         },
     )
     Spacer(Modifier.height(10.dp))
-}
-
-@Composable
-private fun ConversionPanel(
-    usageMode: UsageMode,
-    modifier: Modifier = Modifier,
-) {
-    ProfilePanel(
-        title = "Mode d'utilisation",
-        icon = Icons.Default.CreditCard,
-        modifier = modifier,
-    ) {
-        UsageStep(
-            title = "1. Essai gratuit",
-            text = "7 jours sans publicite pour tester l'application avec vos propres identifiants.",
-            active = usageMode == UsageMode.Trial,
-            color = SmartVisionColors.CyanAccent,
-        )
-        UsageStep(
-            title = "2. Premium",
-            text = "Licence 1 mois, 12 mois ou a vie, sans publicite pendant toute la duree achetee.",
-            active = usageMode == UsageMode.Premium,
-            color = SmartVisionColors.Success,
-        )
-        UsageStep(
-            title = "3. Gratuit avec pubs",
-            text = "Apres l'essai, l'utilisateur peut continuer gratuitement avec publicites ou acheter une licence.",
-            active = usageMode == UsageMode.FreeAds,
-            color = SmartVisionColors.Warning,
-        )
-        Spacer(Modifier.height(14.dp))
-        Text(
-            text = "SmartVision ne fournit aucune chaine, film ou serie. Les contenus viennent uniquement du compte Xtream configure par l'utilisateur.",
-            color = SmartVisionColors.TextSecondary,
-            style = SmartVisionType.Caption,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun DevicePanel(
-    state: ProfileUiState,
-    syncStatus: SyncStatus = SyncStatus.Idle,
-    modifier: Modifier = Modifier,
-) {
-    ProfilePanel(
-        title = "Appareil et catalogue",
-        icon = Icons.Default.Devices,
-        modifier = modifier,
-    ) {
-        DeviceCatalogContent(state, syncStatus)
-    }
 }
 
 @Composable
@@ -3121,30 +2729,6 @@ private fun DeviceCatalogSyncHeaderStatus(syncStatus: SyncStatus) {
 }
 
 @Composable
-private fun XtreamSummaryPanel(
-    state: ProfileUiState,
-    modifier: Modifier = Modifier,
-) {
-    ProfilePanel(
-        title = "Info compte",
-        icon = Icons.Default.CloudSync,
-        modifier = modifier,
-    ) {
-        ProfileMetric(
-            "Compte",
-            if (state.hasXtream) "Configure" else "Absent",
-            Modifier.fillMaxWidth(),
-            if (state.hasXtream) SmartVisionColors.Success else SmartVisionColors.Warning,
-        )
-        Spacer(Modifier.height(12.dp))
-        ProfileInfoRow("Serveur", state.xtreamHost.ifBlank { "Non configure" })
-        ProfileInfoRow("Utilisateur", state.xtreamUsername.ifBlank { "Non configure" })
-        ProfileInfoRow("Expiration", state.xtreamExpiresAt.ifBlank { "A synchroniser" })
-        ProfileInfoRow("Connexions", state.xtreamConnections.ifBlank { "Non disponible" })
-    }
-}
-
-@Composable
 private fun ProfileHistoryPanel(
     state: ProfileUiState,
     modifier: Modifier = Modifier,
@@ -3266,60 +2850,6 @@ private fun ProfileInfoRow(label: String, value: String, modifier: Modifier = Mo
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-@Composable
-private fun ProfileXtreamAccountRow(
-    account: XtreamAccount,
-    active: Boolean,
-    onSelect: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(7.dp))
-            .background(if (active) SmartVisionColors.PrimaryDark.copy(alpha = 0.54f) else SmartVisionColors.Surface.copy(alpha = 0.62f))
-            .border(
-                BorderStroke(1.dp, if (active) SmartVisionColors.CyanAccent else SmartVisionColors.Border),
-                RoundedCornerShape(7.dp),
-            )
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = account.name.ifBlank { "Compte Xtream" },
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.Label,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-            )
-            Text(
-                text = "${account.host}  •  ${account.username.masked()}",
-                color = SmartVisionColors.TextSecondary,
-                style = SmartVisionType.Caption,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        TvButton(
-            text = if (active) "Actif" else "Utiliser",
-            onClick = onSelect,
-            selected = active,
-            enabled = !active,
-            variant = if (active) TvButtonVariant.Primary else TvButtonVariant.Secondary,
-            modifier = Modifier.height(38.dp),
-        )
-        Spacer(Modifier.width(7.dp))
-        TvButton(
-            text = "Supprimer",
-            onClick = onDelete,
-            leadingIcon = Icons.Default.Delete,
-            variant = TvButtonVariant.Secondary,
-            modifier = Modifier.height(38.dp),
         )
     }
 }
@@ -4003,423 +3533,7 @@ private fun PremiumCloseButton(
     }
 }
 
-class ProfileViewModel(
-    private val activationRepository: ActivationRepository,
-    private val accountManager: XtreamAccountManager,
-    catalogRepository: CatalogRepository,
-) : ViewModel() {
-    private val transient = MutableStateFlow(ProfileTransientState())
-
-    private val legacyPlaylistState = combine(
-        accountManager.accounts,
-        accountManager.activeAccountId,
-        accountManager.epgUrl,
-        accountManager.m3uUrl,
-        accountManager.activePlaylistSource,
-    ) { accounts, activeAccountId, epgUrl, m3uUrl, activePlaylistSource ->
-        ProfilePlaylistState(
-            accounts = accounts,
-            activeAccountId = activeAccountId.orEmpty(),
-            epgUrl = epgUrl,
-            m3uUrl = m3uUrl,
-            activePlaylistSource = activePlaylistSource,
-            playlistProfiles = emptyList(),
-            activePlaylistProfileId = "",
-        )
-    }
-
-    private val playlistState = combine(
-        legacyPlaylistState,
-        accountManager.profiles,
-        accountManager.activeProfileId,
-    ) { playlist, profiles, activeProfileId ->
-        playlist.copy(
-            playlistProfiles = profiles,
-            activePlaylistProfileId = activeProfileId.orEmpty(),
-        )
-    }
-
-    private val baseState = combine(
-        activationRepository.localState,
-        playlistState,
-        catalogRepository.observeAccount(),
-    ) { activation, playlist, account ->
-        ProfileBaseState(
-            activation = activation,
-            accounts = playlist.accounts,
-            activeAccountId = playlist.activeAccountId,
-            account = account,
-            epgUrl = playlist.epgUrl,
-            m3uUrl = playlist.m3uUrl,
-            activePlaylistSource = playlist.activePlaylistSource,
-            playlistProfiles = playlist.playlistProfiles,
-            activePlaylistProfileId = playlist.activePlaylistProfileId,
-        )
-    }
-
-    val uiState = combine(
-        baseState,
-        transient,
-    ) { base, transient ->
-        val activation = base.activation
-        val accounts = base.accounts
-        val account = base.account
-        val activeAccountId = base.activeAccountId
-        val activeAccount = accounts.firstOrNull { it.id == activeAccountId } ?: accounts.firstOrNull()
-        runCatching {
-            buildProfileState(
-                activation,
-                accounts,
-                activeAccountId,
-                activeAccount,
-                account,
-                base.epgUrl,
-                base.m3uUrl,
-                base.activePlaylistSource,
-                base.playlistProfiles,
-                base.activePlaylistProfileId,
-                transient,
-            )
-        }.getOrElse {
-            ProfileUiState(
-                deviceId = activation.deviceId,
-                refreshing = transient.refreshing,
-                licenseCode = transient.licenseCode,
-                submittingLicense = transient.submittingLicense,
-                errorMessage = "Impossible d'afficher toutes les informations du compte. Actualisez le statut.",
-                qrDialog = transient.qrDialog,
-            )
-        }
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5_000),
-        ProfileUiState(),
-    )
-
-    init {
-        refresh()
-    }
-
-    fun refresh() {
-        viewModelScope.launch {
-            transient.update { it.copy(refreshing = true, errorMessage = null) }
-            try {
-                runCatching {
-                    activationRepository.getOrCreateDeviceId()
-                    activationRepository.checkStatus()
-                }.onFailure { error ->
-                    transient.update {
-                        it.copy(errorMessage = error.userMessage("Impossible de verifier le compte."))
-                    }
-                }
-            } finally {
-                transient.update { it.copy(refreshing = false) }
-            }
-        }
-    }
-
-    fun showLicenseQr() {
-        viewModelScope.launch {
-            val device = activationRepository.currentDisplayDevice()
-            transient.update {
-                it.copy(
-                    qrDialog = ProfileQrState(
-                        title = "Acheter ou prolonger la licence",
-                        subtitle = "Scannez ce QR code avec votre telephone pour choisir une licence SmartVision. Le portail associera l'achat a cet appareil.",
-                        url = "${activationBaseUrl()}account/?source=tv&intent=license&${tvDeviceQuery(device.publicDeviceCode, device.deviceId)}&plan=year_1",
-                        allowsLicenseEntry = true,
-                    ),
-                )
-            }
-        }
-    }
-
-    fun updateLicenseCode(value: String) {
-        transient.update {
-            it.copy(
-                licenseCode = value.replace(Regex("[\\s-]+"), "").uppercase().take(10),
-                errorMessage = null,
-            )
-        }
-    }
-
-    fun activateLicense() {
-        val code = transient.value.licenseCode
-        if (!Regex("^[A-Z0-9]{10}$").matches(code)) {
-            transient.update {
-                it.copy(errorMessage = "Le code licence doit contenir exactement 10 caracteres.")
-            }
-            return
-        }
-        viewModelScope.launch {
-            transient.update { it.copy(submittingLicense = true, errorMessage = null) }
-            runCatching { activationRepository.activateLicense(code) }
-                .onSuccess {
-                    transient.update {
-                        it.copy(
-                            submittingLicense = false,
-                            licenseCode = "",
-                            qrDialog = null,
-                            errorMessage = null,
-                        )
-                    }
-                }
-                .onFailure { error ->
-                    transient.update {
-                        it.copy(
-                            submittingLicense = false,
-                            errorMessage = error.userMessage("Activation de la licence impossible."),
-                        )
-                    }
-                }
-        }
-    }
-
-    fun showXtreamSetupQr() {
-        transient.update {
-            it.copy(
-                qrDialog = ProfileQrState(
-                    title = "Configuration Xtream",
-                    subtitle = "Generation d'un lien securise pour renseigner ou remplacer les identifiants Xtream de cette TV.",
-                    url = "",
-                    loading = true,
-                ),
-            )
-        }
-        viewModelScope.launch {
-            runCatching { activationRepository.createPlaylistSetupSession() }
-                .onSuccess { session ->
-                    transient.update {
-                        it.copy(
-                            qrDialog = ProfileQrState(
-                                title = "Configurer Xtream sur telephone",
-                                subtitle = "Scannez le QR code, saisissez host, utilisateur et mot de passe. La TV recevra les identifiants chiffres automatiquement.",
-                                url = session.qrUrl,
-                                code = session.shortCode,
-                            ),
-                        )
-                    }
-                }
-                .onFailure { error ->
-                    transient.update {
-                        it.copy(
-                            qrDialog = ProfileQrState(
-                                title = "Configuration Xtream",
-                                subtitle = "Le lien de configuration n'a pas pu etre genere.",
-                                url = "",
-                                error = error.userMessage("Lien de configuration indisponible."),
-                            ),
-                        )
-                    }
-                }
-        }
-    }
-
-    fun showXtreamShopQr() {
-        viewModelScope.launch {
-            val device = activationRepository.currentDisplayDevice()
-            transient.update {
-                it.copy(
-                    qrDialog = ProfileQrState(
-                        title = "Acheter ou prolonger Xtream",
-                        subtitle = "Scannez ce QR code pour continuer sur le portail. Le parcours Xtream sera finalise sur mobile, pas avec la telecommande.",
-                        url = "${activationBaseUrl()}account/?source=tv&intent=xtream&${tvDeviceQuery(device.publicDeviceCode, device.deviceId)}",
-                    ),
-                )
-            }
-        }
-    }
-
-    fun dismissQr() {
-        transient.update { it.copy(qrDialog = null, errorMessage = null) }
-    }
-
-    fun saveEpgUrl(url: String) {
-        accountManager.updateEpgUrl(url)
-    }
-
-    fun saveM3uUrl(url: String) {
-        accountManager.updateM3uUrl(url)
-    }
-
-    fun selectPlaylistSource(source: PlaylistSource) {
-        accountManager.selectPlaylistSource(source)
-    }
-}
-
-private data class ProfileBaseState(
-    val activation: StoredActivationState,
-    val accounts: List<XtreamAccount>,
-    val activeAccountId: String,
-    val account: AccountProfile,
-    val epgUrl: String,
-    val m3uUrl: String,
-    val activePlaylistSource: PlaylistSource,
-    val playlistProfiles: List<PlaylistProfile>,
-    val activePlaylistProfileId: String,
-)
-
-private data class ProfilePlaylistState(
-    val accounts: List<XtreamAccount>,
-    val activeAccountId: String,
-    val epgUrl: String,
-    val m3uUrl: String,
-    val activePlaylistSource: PlaylistSource,
-    val playlistProfiles: List<PlaylistProfile>,
-    val activePlaylistProfileId: String,
-)
-
-data class ProfileUiState(
-    val deviceId: String = "",
-    val publicDeviceCode: String = "",
-    val activationStatusLabel: String = "Verification",
-    val licenseExpiresAt: String = "",
-    val usageMode: UsageMode = UsageMode.Unknown,
-    val xtreamHost: String = "",
-    val xtreamUsername: String = "",
-    val epgUrl: String = "",
-    val m3uUrl: String = "",
-    val activePlaylistSource: PlaylistSource = PlaylistSource.Xtream,
-    val playlistProfiles: List<PlaylistProfile> = emptyList(),
-    val activePlaylistProfileId: String = "",
-    val xtreamExpiresAt: String = "",
-    val xtreamConnections: String = "",
-    val hasXtream: Boolean = false,
-    val xtreamAccounts: List<XtreamAccount> = emptyList(),
-    val activeXtreamAccountId: String = "",
-    val account: AccountProfile = emptyAccountProfile(),
-    val refreshing: Boolean = false,
-    val licenseCode: String = "",
-    val submittingLicense: Boolean = false,
-    val errorMessage: String? = null,
-    val qrDialog: ProfileQrState? = null,
-) {
-    val tvCode: String = publicDeviceCode.ifBlank { "Generation..." }
-    val activeXtreamAccount: XtreamAccount?
-        get() = xtreamAccounts.firstOrNull { it.id == activeXtreamAccountId } ?: xtreamAccounts.firstOrNull()
-}
-
-data class ProfileQrState(
-    val title: String,
-    val subtitle: String,
-    val url: String,
-    val code: String? = null,
-    val loading: Boolean = false,
-    val error: String? = null,
-    val allowsLicenseEntry: Boolean = false,
-)
-
-private data class ProfileTransientState(
-    val refreshing: Boolean = false,
-    val licenseCode: String = "",
-    val submittingLicense: Boolean = false,
-    val errorMessage: String? = null,
-    val qrDialog: ProfileQrState? = null,
-)
-
-enum class UsageMode(
-    val label: String,
-    val description: String,
-    val renewalHint: String,
-    val primaryCta: String,
-    val color: Color,
-) {
-    Trial(
-        label = "ESSAI GRATUIT",
-        description = "Essai gratuit 7 jours sans publicite",
-        renewalHint = "Acheter une licence avant la fin de l'essai pour rester sans publicite.",
-        primaryCta = "Passer Premium",
-        color = SmartVisionColors.CyanAccent,
-    ),
-    Premium(
-        label = "PREMIUM",
-        description = "Licence SmartVision payante active",
-        renewalHint = "Prolongez depuis le portail si la licence approche de l'expiration.",
-        primaryCta = "Prolonger",
-        color = SmartVisionColors.Success,
-    ),
-    FreeAds(
-        label = "GRATUIT AVEC PUBS",
-        description = "Acces gratuit finance par la publicite",
-        renewalHint = "Acheter une licence supprime les publicites.",
-        primaryCta = "Supprimer les pubs",
-        color = SmartVisionColors.Warning,
-    ),
-    Unknown(
-        label = "COMPTE",
-        description = "Statut de compte en verification",
-        renewalHint = "Actualisez le statut si les informations semblent incorrectes.",
-        primaryCta = "Acheter licence",
-        color = SmartVisionColors.TextSecondary,
-    ),
-}
-
-private fun buildProfileState(
-    activation: StoredActivationState,
-    accounts: List<XtreamAccount>,
-    activeAccountId: String,
-    activeAccount: XtreamAccount?,
-    account: AccountProfile,
-    epgUrl: String,
-    m3uUrl: String,
-    activePlaylistSource: PlaylistSource,
-    playlistProfiles: List<PlaylistProfile>,
-    activePlaylistProfileId: String,
-    transient: ProfileTransientState,
-): ProfileUiState {
-    val usageMode = when (activation.monetizationStatus()) {
-        MonetizationStatus.TRIAL_ACTIVE -> UsageMode.Trial
-        MonetizationStatus.PREMIUM_ACTIVE -> UsageMode.Premium
-        MonetizationStatus.FREE_WITH_ADS -> UsageMode.FreeAds
-        MonetizationStatus.TRIAL_EXPIRED,
-        MonetizationStatus.LICENSE_EXPIRED,
-        null,
-        -> UsageMode.Unknown
-    }
-    val activationStatusLabel = when (activation.monetizationStatus()) {
-        MonetizationStatus.TRIAL_ACTIVE -> "Essai gratuit actif"
-        MonetizationStatus.PREMIUM_ACTIVE -> "Premium actif"
-        MonetizationStatus.FREE_WITH_ADS -> "Gratuit avec pubs"
-        MonetizationStatus.TRIAL_EXPIRED -> "Essai expire"
-        MonetizationStatus.LICENSE_EXPIRED -> "Licence expiree"
-        null -> "Verification"
-    }
-    val hasXtream = activeAccount != null
-    val xtreamUsername = account.usernameMasked.takeIf { it.isNotBlank() }
-        ?: activeAccount?.username?.masked().orEmpty()
-    val connections = if (account.activeConnections != null || account.maxConnections != null) {
-        "${account.activeConnections ?: 0}/${account.maxConnections ?: 0}"
-    } else {
-        ""
-    }
-    return ProfileUiState(
-        deviceId = activation.deviceId,
-        publicDeviceCode = activation.publicDeviceCode,
-        activationStatusLabel = activationStatusLabel,
-        licenseExpiresAt = activation.expiresAt.orEmpty(),
-        usageMode = usageMode,
-        xtreamHost = account.host.ifBlank { activeAccount?.host.orEmpty() },
-        xtreamUsername = xtreamUsername,
-        epgUrl = epgUrl.ifBlank { activeAccount?.epgUrl.orEmpty() },
-        m3uUrl = m3uUrl,
-        activePlaylistSource = activePlaylistSource,
-        playlistProfiles = playlistProfiles,
-        activePlaylistProfileId = activePlaylistProfileId,
-        xtreamExpiresAt = account.expirationDate.orEmpty(),
-        xtreamConnections = connections,
-        hasXtream = hasXtream,
-        xtreamAccounts = accounts,
-        activeXtreamAccountId = activeAccountId,
-        account = account,
-        refreshing = transient.refreshing,
-        licenseCode = transient.licenseCode,
-        submittingLicense = transient.submittingLicense,
-        errorMessage = transient.errorMessage,
-        qrDialog = transient.qrDialog,
-    )
-}
-
-private fun String.masked(): String =
+internal fun String.masked(): String =
     when {
         length <= 2 -> "***"
         length <= 5 -> take(1) + "***"
@@ -4467,31 +3581,31 @@ private fun Long?.asProfileDate(): String =
         SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(timestamp))
     } ?: "Jamais"
 
-private fun activationBaseUrl(): String =
+internal fun activationBaseUrl(): String =
     BuildConfig.ACTIVATION_BASE_URL.ifBlank { "https://smartvisions.net/" }
         .trim()
         .trimEnd('/') + "/"
 
-private data class ProfileDeviceDisplay(
+internal data class ProfileDeviceDisplay(
     val deviceId: String,
     val publicDeviceCode: String,
 )
 
-private suspend fun ActivationRepository.currentDisplayDevice(): ProfileDeviceDisplay {
+internal suspend fun ActivationRepository.currentDisplayDevice(): ProfileDeviceDisplay {
     val state = localState.first()
     val publicCode = state.publicDeviceCode.ifBlank { getOrCreateLocalPublicCode() }
     val deviceId = state.deviceId.ifBlank { getOrCreateDeviceId() }
     return ProfileDeviceDisplay(deviceId = deviceId, publicDeviceCode = publicCode)
 }
 
-private fun tvDeviceQuery(publicDeviceCode: String, deviceId: String): String =
+internal fun tvDeviceQuery(publicDeviceCode: String, deviceId: String): String =
     if (publicDeviceCode.isNotBlank()) {
         "device=$publicDeviceCode"
     } else {
         "device_id=$deviceId"
     }
 
-private fun Throwable.userMessage(defaultMessage: String): String =
+internal fun Throwable.userMessage(defaultMessage: String): String =
     when (this) {
         is ActivationException -> message ?: defaultMessage
         else -> defaultMessage

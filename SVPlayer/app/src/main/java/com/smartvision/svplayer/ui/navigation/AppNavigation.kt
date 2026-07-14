@@ -639,9 +639,8 @@ fun AppNavigation(
         },
     )
     val notificationBadgeState by notificationBadgeViewModel.uiState.collectAsStateWithLifecycle()
-    val updateNotificationCount = if (appUpdateState.update != null) 1 else 0
-    val hasNewNotifications = notificationBadgeState.hasUnread || updateNotificationCount > 0
-    val notificationBadgeCount = notificationBadgeState.unreadCount + updateNotificationCount
+    val hasNewNotifications = notificationBadgeState.hasUnread
+    val notificationBadgeCount = notificationBadgeState.unreadCount
 
     CompositionLocalProvider(LocalTvFocusStyle provides focusStyle) {
     val routeAllowedForProfile = currentRoute.isAllowedFor(profilePermissions)
@@ -892,8 +891,6 @@ fun AppNavigation(
                 updateState = appUpdateState,
                 onCheckForUpdate = { appUpdateViewModel.checkForUpdate(revealDialog = true) },
                 onSyncCatalog = launchSyncCatalog,
-                parentalControlAllowed = parentalControlAllowed && profilePermissions.canManageParentalPin,
-                onLockedFeature = { showLicensePurchaseQr = true },
             )
         }
         composable(AppRoute.Notifications.route) {
@@ -913,8 +910,7 @@ fun AppNavigation(
                     homeHeaderFocusRequest += 1
                     navController.popBackStack()
                 },
-                onNotificationsSeen = notificationBadgeViewModel::clearUnread,
-                updateNotification = appUpdateState.update,
+                onNotificationsChanged = notificationBadgeViewModel::refresh,
                 onOpenUpdate = {
                     appUpdateViewModel.openFromNotification()
                 },

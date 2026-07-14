@@ -1,5 +1,6 @@
 package com.smartvision.svplayer.data.notifications
 
+import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.data.activation.ActivationException
 import com.smartvision.svplayer.data.activation.ActivationRepository
 import kotlinx.coroutines.flow.first
@@ -13,13 +14,13 @@ class NotificationsRepository(
         val response = api.getNotifications(
             deviceId = access.deviceId,
             publicDeviceCode = access.publicDeviceCode,
+            deviceToken = access.deviceToken,
+            appVersionCode = BuildConfig.VERSION_CODE,
         )
         if (!response.success) {
             throw ActivationException(response.error ?: "Notifications indisponibles.")
         }
-        return NotificationsSnapshot(
-            unreadCount = response.unreadCount.coerceAtLeast(0),
-            notifications = response.notifications.map {
+        val notifications = response.notifications.map {
                 AppNotification(
                     id = it.id,
                     title = it.title,
@@ -28,8 +29,29 @@ class NotificationsRepository(
                     createdAt = it.createdAt,
                     expiresAt = it.expiresAt,
                     seen = it.seen,
+                    seenAt = it.seenAt,
+                    type = NotificationType.fromWire(it.type),
+                    sourceVersionCode = it.sourceVersionCode,
+                    details = it.details?.let { details ->
+                        NotificationDetails(
+                            xtreamHost = details.xtreamHost,
+                            xtreamUsername = details.xtreamUsername,
+                            xtreamPassword = details.xtreamPassword,
+                            m3uUrl = details.m3uUrl,
+                            epgUrl = details.epgUrl,
+                            submittedAt = details.submittedAt,
+                            ipAddress = details.ipAddress,
+                            countryCode = details.countryCode,
+                            senderDevice = details.senderDevice,
+                            source = details.source,
+                        )
+                    },
                 )
-            },
+            }
+        val visibleNotifications = excludeInstalledAppUpdates(notifications, BuildConfig.VERSION_CODE)
+        return NotificationsSnapshot(
+            unreadCount = visibleNotifications.count { !it.seen },
+            notifications = visibleNotifications,
         )
     }
 
@@ -39,6 +61,8 @@ class NotificationsRepository(
             MarkNotificationsSeenRequest(
                 deviceId = access.deviceId,
                 publicDeviceCode = access.publicDeviceCode,
+                deviceToken = access.deviceToken,
+                appVersionCode = BuildConfig.VERSION_CODE,
                 notificationIds = notificationIds,
             )
         )
@@ -58,8 +82,17 @@ class NotificationsRepository(
         return NotificationDeviceAccess(
             deviceId = state.deviceId.ifBlank { createdDeviceId },
             publicDeviceCode = state.publicDeviceCode,
+            deviceToken = activationRepository.getDeviceToken(),
         )
     }
+}
+
+internal fun excludeInstalledAppUpdates(
+    notifications: List<AppNotification>,
+    installedVersionCode: Int,
+): List<AppNotification> = notifications.filterNot { notification ->
+    notification.type == NotificationType.AppUpdate &&
+        notification.sourceVersionCode?.let { it <= installedVersionCode } == true
 }
 
 data class NotificationsSnapshot(
@@ -75,9 +108,38 @@ data class AppNotification(
     val createdAt: String,
     val expiresAt: String?,
     val seen: Boolean,
+    val seenAt: String?,
+    val type: NotificationType,
+    val sourceVersionCode: Int?,
+    val details: NotificationDetails?,
+)
+
+enum class NotificationType(val wireValue: String) {
+    AppUpdate("app_update"),
+    PlaylistAdded("playlist_added"),
+    ImportantInfo("important_info");
+
+    companion object {
+        fun fromWire(value: String?): NotificationType =
+            entries.firstOrNull { it.wireValue == value } ?: ImportantInfo
+    }
+}
+
+data class NotificationDetails(
+    val xtreamHost: String?,
+    val xtreamUsername: String?,
+    val xtreamPassword: String?,
+    val m3uUrl: String?,
+    val epgUrl: String?,
+    val submittedAt: String?,
+    val ipAddress: String?,
+    val countryCode: String?,
+    val senderDevice: String?,
+    val source: String?,
 )
 
 private data class NotificationDeviceAccess(
     val deviceId: String,
     val publicDeviceCode: String,
+    val deviceToken: String,
 )
