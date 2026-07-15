@@ -1,0 +1,12 @@
+interface:
+  display_name: Audit Android TV
+  short_description: Audite navigation, interface et performances TV
+  default_prompt: Utilise $audit-android-tv pour auditer mon application Android TV
+    et produire un backlog de corrections.
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true

@@ -1,0 +1,15 @@
+﻿{
+    "label":  "00-home-initial",
+    "captured_at":  "2026-07-15T00:32:58.6622392+02:00",
+    "serial":  "192.168.1.33:5555",
+    "package":  "com.smartvision.svplayer",
+    "pid":  "17906",
+    "keys":  [
+
+             ],
+    "focus":  [
+                  "  mCurrentFocus=Window{7cb4423 u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}",
+                  "  mFocusedApp=AppWindowToken{869c453 token=Token{f654c42 ActivityRecord{421528d u0 com.smartvision.svplayer/.MainActivity t8653}}}"
+              ],
+    "uiautomator":  "skipped-fire-os-limitation"
+}

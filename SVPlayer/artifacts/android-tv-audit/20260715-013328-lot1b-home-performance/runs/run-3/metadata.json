@@ -1,0 +1,10 @@
+{
+  "run": 3,
+  "host_start": "2026-07-15T02:08:13+02:00",
+  "host_end": "2026-07-15T02:08:45+02:00",
+  "key_count": 18,
+  "cadence_ms": 600,
+  "perfetto": false,
+  "perfetto_status": "blocked by Fire OS perfetto CLI output/config permissions before traversal",
+  "supplementary_trace": "atrace"
+}

@@ -1,0 +1,209 @@
+﻿--------- beginning of main
+07-15 02:06:43.980 17906 17920 I vision.svplaye: Background concurrent copying GC freed 207686(6MB) AllocSpace objects, 1(20KB) LOS objects, 20% free, 22MB/28MB, paused 217us total 268.739ms
+07-15 02:06:45.554 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205776(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 22MB/28MB, paused 210us total 267.265ms
+07-15 02:06:47.140 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204972(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 22MB/28MB, paused 237us total 263.825ms
+07-15 02:06:48.725 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205206(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 22MB/28MB, paused 226us total 263.017ms
+07-15 02:06:50.351 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201701(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 22MB/28MB, paused 262us total 288.787ms
+07-15 02:06:51.967 17906 17920 I vision.svplaye: Background concurrent copying GC freed 208201(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 22MB/28MB, paused 201us total 267.096ms
+07-15 02:06:52.489 17906 17906 I SVHomeFocus: scroll start target=continue_watching from=13 to=296 max=752
+07-15 02:06:52.489 17906 17906 I SVHomeFocus: requestRowFocus target=continue_watching rowAlreadyAtFirst
+07-15 02:06:52.489 17906 17906 I SVHomeFocus: requestRowFocus target=continue_watching rowScrolledToFirst
+07-15 02:06:52.880 17906 17906 I SVHomeFocus: scroll end target=continue_watching value=296
+07-15 02:06:52.921 17906 17906 I SVHomeFocus: focus requested target=continue_watching
+07-15 02:06:52.964 17906 17906 I SVHomeFocus: focused row=Continue watching index=0 id=live:1389624
+07-15 02:06:53.565 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204766(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 22MB/28MB, paused 184us total 269.057ms
+07-15 02:06:53.600 17906 17906 I ExoPlayerImpl: Init 16f9189 [AndroidXMedia3/1.6.1] [sheldonp, AFTSSS, Amazon, 28]
+07-15 02:06:54.158 17906 27546 I OMXClient: IOmx service obtained
+07-15 02:06:54.173 17906 27544 I MediaCodec: [OMX.MTK.VIDEO.DECODER.AVC] setting surface generation to 18335780
+07-15 02:06:54.173 17906 27544 I MediaCodecLogger: [ASAP] HW.video.avc P2 + 20059067
+07-15 02:06:54.174 17906 27544 I MediaCodecLogger: HW.video.avc Adaptive Streaming max w:1280 h:720, screen size:FHD
+07-15 02:06:54.178 17906 27546 I ACodec  : Call prepareForAdaptivePlayback. maxWidth 1280, maxHeight 720.
+07-15 02:06:54.178 17906 27546 I ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] prepareForAdaptivePlayback failed w/ err -1010
+07-15 02:06:54.180 17906 27546 I ACodec  : codec does not support config priority (err -1010)
+07-15 02:06:54.208 17906 27544 I MediaCodecLogger: [ASAP] HW.video.avc P2 - 20059102
+07-15 02:06:54.210 17906 27533 I MediaCodecLogger: [ASAP] HW.video.avc P3 + 20059104
+07-15 02:06:54.239 17906 27546 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 8 failed: -22
+07-15 02:06:54.239 17906 27546 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 7 failed: -22
+07-15 02:06:54.241 17906 27544 I MediaCodecLogger: [ASAP] HW.video.avc P3 - 20059135
+07-15 02:06:54.244 17906 27546 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:06:54.248 17906 27555 I OMXClient: IOmx service obtained
+07-15 02:06:54.249 17906 27546 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:06:54.252 17906 27555 I MediaCodecLogger: [ASAP] SW.audio.mp4a P2 + 20059146
+07-15 02:06:54.253 17906 27555 I ACodec  : codec does not support config priority (err -2147483648)
+07-15 02:06:54.253 17906 27555 I ACodec  : codec does not support config operating rate (err -2147483648)
+07-15 02:06:54.254 17906 27555 I MediaCodecLogger: [ASAP] SW.audio.mp4a P2 - 20059148
+07-15 02:06:54.255 17906 27533 I MediaCodecLogger: [ASAP] SW.audio.mp4a P3 + 20059149
+07-15 02:06:54.266 17906 27555 I MediaCodecLogger: [ASAP] SW.audio.mp4a P3 - 20059160
+07-15 02:06:54.270 17906 17906 I ExoPlayerImpl: Release 16f9189 [AndroidXMedia3/1.6.1] [sheldonp, AFTSSS, Amazon, 28] [media3.common, media3.exoplayer, media3.decoder, media3.ui, media3.datasource, media3.extractor]
+07-15 02:06:54.270 17906 27544 I MediaCodecLogger: [ASAP] HW.video.avc Got First Input Frame 20059164 pts:1000000000000
+07-15 02:06:54.270 17906 27546 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:06:54.319 17906 27546 W AHierarchicalStateMachine: Warning message AMessage(what = 'omx ', target = 121) = {
+07-15 02:06:54.319 17906 27546 W AHierarchicalStateMachine:   int32_t type = 0
+07-15 02:06:54.319 17906 27546 W AHierarchicalStateMachine:   int32_t generation = 1
+07-15 02:06:54.319 17906 27546 W AHierarchicalStateMachine:   int32_t event = 3
+07-15 02:06:54.319 17906 27546 W AHierarchicalStateMachine:   int32_t data1 = 1
+07-15 02:06:54.319 17906 27546 W AHierarchicalStateMachine:   int32_t data2 = 117440527
+07-15 02:06:54.319 17906 27546 W AHierarchicalStateMachine: } unhandled in root state.
+07-15 02:06:54.320 17906 27546 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 15 failed: -22
+07-15 02:06:54.320 17906 27546 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 14 failed: -22
+07-15 02:06:54.363 17906 27533 I MediaCodecLogger: 17906.HW.video.avc.ASAP-P2Ms = 35
+07-15 02:06:54.363 17906 27533 I MediaCodecLogger: 17906.HW.video.avc.ASAP-P3Ms = 31
+07-15 02:06:54.363 17906 27533 I MediaCodecLogger: 17906.HW.video.avc.FirstFrameReadyMs = -20059164
+07-15 02:06:54.353 17906 17906 W ExoPlayer:Playb: type=1400 audit(0.0:58953): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=10500 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-15 02:06:54.364 17906 27533 E libc    : Access denied finding property "media.metrics.enabled"
+07-15 02:06:54.371 17906 27533 E libc    : Access denied finding property "media.metrics.enabled"
+07-15 02:06:54.363 17906 17906 W ExoPlayer:Playb: type=1400 audit(0.0:58954): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=10500 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-15 02:06:54.377 17906 17906 I SVHomeFocus: focused row=Continue watching index=1 id=episode:1397289
+07-15 02:06:54.873 17906 17920 I vision.svplaye: Background concurrent copying GC freed 165490(5MB) AllocSpace objects, 19(1056KB) LOS objects, 20% free, 22MB/28MB, paused 204us total 269.177ms
+07-15 02:06:55.901 17906 17906 I SVHomeFocus: focused row=Continue watching index=0 id=live:1389624
+07-15 02:06:56.350 17906 17920 I vision.svplaye: Background concurrent copying GC freed 208291(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 22MB/28MB, paused 892us total 269.182ms
+07-15 02:06:56.520 17906 17906 I ExoPlayerImpl: Init 8a590dd [AndroidXMedia3/1.6.1] [sheldonp, AFTSSS, Amazon, 28]
+07-15 02:06:56.728 17906 27576 I OMXClient: IOmx service obtained
+07-15 02:06:56.749 17906 27575 I MediaCodec: [OMX.MTK.VIDEO.DECODER.AVC] setting surface generation to 18335781
+07-15 02:06:56.750 17906 27575 I MediaCodecLogger: [ASAP] HW.video.avc P2 + 20061644
+07-15 02:06:56.750 17906 27575 I MediaCodecLogger: HW.video.avc Adaptive Streaming max w:1280 h:720, screen size:FHD
+07-15 02:06:56.751 17906 27576 I ACodec  : Call prepareForAdaptivePlayback. maxWidth 1280, maxHeight 720.
+07-15 02:06:56.751 17906 27576 I ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] prepareForAdaptivePlayback failed w/ err -1010
+07-15 02:06:56.753 17906 27576 I ACodec  : codec does not support config priority (err -1010)
+07-15 02:06:56.756 17906 27575 I MediaCodecLogger: [ASAP] HW.video.avc P2 - 20061650
+07-15 02:06:56.757 17906 27571 I MediaCodecLogger: [ASAP] HW.video.avc P3 + 20061651
+07-15 02:06:56.786 17906 27576 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 8 failed: -22
+07-15 02:06:56.786 17906 27576 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 7 failed: -22
+07-15 02:06:56.788 17906 27575 I MediaCodecLogger: [ASAP] HW.video.avc P3 - 20061682
+07-15 02:06:56.796 17906 27576 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:06:56.800 17906 27576 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:06:56.816 17906 27584 I OMXClient: IOmx service obtained
+07-15 02:06:56.819 17906 27584 I MediaCodecLogger: [ASAP] SW.audio.mp4a P2 + 20061713
+07-15 02:06:56.820 17906 27584 I ACodec  : codec does not support config priority (err -2147483648)
+07-15 02:06:56.821 17906 27584 I ACodec  : codec does not support config operating rate (err -2147483648)
+07-15 02:06:56.821 17906 27584 I MediaCodecLogger: [ASAP] SW.audio.mp4a P2 - 20061715
+07-15 02:06:56.822 17906 27571 I MediaCodecLogger: [ASAP] SW.audio.mp4a P3 + 20061716
+07-15 02:06:56.830 17906 27584 I MediaCodecLogger: [ASAP] SW.audio.mp4a P3 - 20061724
+07-15 02:06:56.837 17906 27575 I MediaCodecLogger: [ASAP] HW.video.avc Got First Input Frame 20061731 pts:1000000000000
+07-15 02:06:56.838 17906 27576 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:06:56.850 17906 27584 I MediaCodecLogger: [ASAP] SW.audio.mp4a Got First Input Frame 20061744 pts:1000000020000
+07-15 02:06:56.855 17906 27576 W AHierarchicalStateMachine: Warning message AMessage(what = 'omxI') = {
+07-15 02:06:56.855 17906 27576 W AHierarchicalStateMachine:   int32_t type = 0
+07-15 02:06:56.855 17906 27576 W AHierarchicalStateMachine:   int32_t event = 3
+07-15 02:06:56.855 17906 27576 W AHierarchicalStateMachine:   int32_t data1 = 1
+07-15 02:06:56.855 17906 27576 W AHierarchicalStateMachine:   int32_t data2 = 117440527
+07-15 02:06:56.855 17906 27576 W AHierarchicalStateMachine: } unhandled in root state.
+07-15 02:06:56.862 17906 27576 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 15 failed: -22
+07-15 02:06:56.862 17906 27576 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 14 failed: -22
+07-15 02:06:56.868 17906 27576 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:06:56.870 17906 27576 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:06:56.871 17906 27584 I MediaCodecLogger: updatePTSTime [SW.audio.mp4a] First PTS after Flush or reset = 1000000020000
+07-15 02:06:56.873 17906 27576 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:06:56.877 17906 27576 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:06:56.877 17906 27584 I MediaCodecLogger: [ASAP] SW.audio.mp4a Got First Frame Ready 20061765(21)
+07-15 02:06:56.880 17906 27576 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:06:56.888 17906 27576 I chatty  : uid=10247(com.smartvision.svplayer) identical 2 lines
+07-15 02:06:56.892 17906 27576 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:06:56.894 17906 27571 I android.media.AudioTrack: AUDIOINFO: audio_input: format: 2 sample_rate: 48000 channels: 2 AudioAttributes: AudioAttributes: usage=USAGE_MEDIA content=CONTENT_TYPE_MUSIC flags=0x200 tags= bundle=null
+07-15 02:06:56.919 17906 27575 I MediaCodecLogger: updateFormatChanged width = 1280 height = 720
+07-15 02:06:56.920 17906 27575 I MediaCodecLogger: updatePTSTime [HW.video.avc] First PTS after Flush or reset = 1000000000000
+07-15 02:06:56.920 17906 27575 I MediaCodecLogger: [ASAP] HW.video.avc Got First Frame Ready 20061814(83)
+07-15 02:06:56.928 17906 27576 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:06:56.936 17906 27576 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:06:57.648 17906 17920 I vision.svplaye: Background concurrent copying GC freed 155900(5MB) AllocSpace objects, 2(56KB) LOS objects, 20% free, 23MB/29MB, paused 379us total 262.290ms
+07-15 02:06:57.852 17906 17906 I SVHomeFocus: scroll start target=trending_movies from=431 to=632 max=752
+07-15 02:06:57.852 17906 17906 I SVHomeFocus: requestRowFocus target=trending_movies rowAlreadyAtFirst
+07-15 02:06:57.853 17906 17906 I SVHomeFocus: requestRowFocus target=trending_movies rowScrolledToFirst
+07-15 02:06:58.246 17906 17906 I SVHomeFocus: scroll end target=trending_movies value=632
+07-15 02:06:58.308 17906 17906 I SVHomeFocus: focus requested target=trending_movies
+07-15 02:06:58.375 17906 27571 I MediaCodecLogger: Flushing: 17906.HW.video.avc.framerate = 50.000 fps
+07-15 02:06:58.376 17906 17906 I ExoPlayerImpl: Release 8a590dd [AndroidXMedia3/1.6.1] [sheldonp, AFTSSS, Amazon, 28] [media3.common, media3.exoplayer, media3.decoder, media3.ui, media3.datasource, media3.extractor]
+07-15 02:06:58.403 17906 17906 W ExoPlayer:Audio: type=1400 audit(0.0:58956): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=10500 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-15 02:06:58.410 17906 27599 E libc    : Access denied finding property "media.metrics.enabled"
+07-15 02:06:58.438 17906 27571 I MediaCodecLogger: 17906.HW.video.avc.ASAP-P2Ms = 6
+07-15 02:06:58.438 17906 27571 I MediaCodecLogger: 17906.HW.video.avc.ASAP-P3Ms = 31
+07-15 02:06:58.438 17906 27571 I MediaCodecLogger: 17906.HW.video.avc.FirstFrameReadyMs = 83
+07-15 02:06:58.433 17906 17906 W ExoPlayer:Playb: type=1400 audit(0.0:58957): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=10500 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-15 02:06:58.440 17906 27571 E libc    : Access denied finding property "media.metrics.enabled"
+07-15 02:06:58.446 17906 27571 E libc    : Access denied finding property "media.metrics.enabled"
+07-15 02:06:58.433 17906 17906 W ExoPlayer:Playb: type=1400 audit(0.0:58958): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=10500 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-15 02:06:59.393 17906 17920 I vision.svplaye: Background concurrent copying GC freed 193106(6MB) AllocSpace objects, 15(1020KB) LOS objects, 20% free, 23MB/29MB, paused 225us total 292.037ms
+07-15 02:07:00.752 17906 17920 I vision.svplaye: Background concurrent copying GC freed 207478(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 23MB/29MB, paused 212us total 288.726ms
+07-15 02:07:02.103 17906 17920 I vision.svplaye: Background concurrent copying GC freed 206391(6MB) AllocSpace objects, 9(300KB) LOS objects, 20% free, 22MB/28MB, paused 159us total 269.537ms
+07-15 02:07:02.894 17906 17906 I SVHomeFocus: scroll start target=trending_series from=752 to=752 max=752
+07-15 02:07:02.894 17906 17906 I SVHomeFocus: requestRowFocus target=trending_series rowAlreadyAtFirst
+07-15 02:07:02.894 17906 17906 I SVHomeFocus: requestRowFocus target=trending_series rowScrolledToFirst
+07-15 02:07:02.922 17906 17906 I SVHomeFocus: scroll end target=trending_series value=752
+07-15 02:07:02.953 17906 17906 I SVHomeFocus: focus requested target=trending_series
+07-15 02:07:03.424 17906 17920 I vision.svplaye: Background concurrent copying GC freed 210718(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 22MB/28MB, paused 156us total 260.156ms
+07-15 02:07:04.769 17906 17920 I vision.svplaye: Background concurrent copying GC freed 207903(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 22MB/28MB, paused 252us total 273.034ms
+07-15 02:07:06.119 17906 17920 I vision.svplaye: Background concurrent copying GC freed 206740(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 22MB/28MB, paused 219us total 274.716ms
+07-15 02:07:07.454 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204790(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 22MB/28MB, paused 221us total 287.355ms
+07-15 02:07:07.922 17906 17906 I SVHomeFocus: scroll start target=trending_movies from=752 to=632 max=752
+07-15 02:07:07.922 17906 17906 I SVHomeFocus: requestRowFocus target=trending_movies rowAlreadyAtFirst
+07-15 02:07:07.922 17906 17906 I SVHomeFocus: requestRowFocus target=trending_movies rowScrolledToFirst
+07-15 02:07:08.265 17906 17906 I SVHomeFocus: scroll end target=trending_movies value=632
+07-15 02:07:08.298 17906 17906 I SVHomeFocus: focus requested target=trending_movies
+07-15 02:07:08.793 17906 17920 I vision.svplaye: Background concurrent copying GC freed 208542(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 22MB/28MB, paused 169us total 268.090ms
+07-15 02:07:09.609 17906 17906 I SVHomeFocus: scroll start target=continue_watching from=752 to=296 max=752
+07-15 02:07:09.609 17906 17906 I SVHomeFocus: requestRowFocus target=continue_watching rowAlreadyAtFirst
+07-15 02:07:09.609 17906 17906 I SVHomeFocus: requestRowFocus target=continue_watching rowScrolledToFirst
+07-15 02:07:10.000 17906 17906 I SVHomeFocus: scroll end target=continue_watching value=296
+07-15 02:07:10.042 17906 17906 I SVHomeFocus: focus requested target=continue_watching
+07-15 02:07:10.088 17906 17906 I SVHomeFocus: focused row=Continue watching index=0 id=live:1389624
+07-15 02:07:10.159 17906 17920 I vision.svplaye: Background concurrent copying GC freed 207344(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 22MB/28MB, paused 189us total 269.936ms
+07-15 02:07:10.719 17906 17906 I ExoPlayerImpl: Init 1a80800 [AndroidXMedia3/1.6.1] [sheldonp, AFTSSS, Amazon, 28]
+07-15 02:07:10.929 17906 27678 I OMXClient: IOmx service obtained
+07-15 02:07:10.936 17906 27677 I MediaCodec: [OMX.MTK.VIDEO.DECODER.AVC] setting surface generation to 18335782
+07-15 02:07:10.937 17906 27677 I MediaCodecLogger: [ASAP] HW.video.avc P2 + 20075831
+07-15 02:07:10.937 17906 27677 I MediaCodecLogger: HW.video.avc Adaptive Streaming max w:1280 h:720, screen size:FHD
+07-15 02:07:10.938 17906 27678 I ACodec  : Call prepareForAdaptivePlayback. maxWidth 1280, maxHeight 720.
+07-15 02:07:10.938 17906 27678 I ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] prepareForAdaptivePlayback failed w/ err -1010
+07-15 02:07:10.940 17906 27678 I ACodec  : codec does not support config priority (err -1010)
+07-15 02:07:10.942 17906 27677 I MediaCodecLogger: [ASAP] HW.video.avc P2 - 20075836
+07-15 02:07:10.947 17906 27674 I MediaCodecLogger: [ASAP] HW.video.avc P3 + 20075841
+07-15 02:07:10.971 17906 27678 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 8 failed: -22
+07-15 02:07:10.971 17906 27678 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 7 failed: -22
+07-15 02:07:10.973 17906 27677 I MediaCodecLogger: [ASAP] HW.video.avc P3 - 20075867
+07-15 02:07:10.980 17906 27678 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:07:10.983 17906 27678 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:07:10.983 17906 27686 I OMXClient: IOmx service obtained
+07-15 02:07:10.987 17906 27686 I MediaCodecLogger: [ASAP] SW.audio.mp4a P2 + 20075881
+07-15 02:07:10.988 17906 27686 I ACodec  : codec does not support config priority (err -2147483648)
+07-15 02:07:10.988 17906 27686 I ACodec  : codec does not support config operating rate (err -2147483648)
+07-15 02:07:10.989 17906 27686 I MediaCodecLogger: [ASAP] SW.audio.mp4a P2 - 20075883
+07-15 02:07:10.990 17906 27674 I MediaCodecLogger: [ASAP] SW.audio.mp4a P3 + 20075884
+07-15 02:07:11.001 17906 27686 I MediaCodecLogger: [ASAP] SW.audio.mp4a P3 - 20075895
+07-15 02:07:11.004 17906 27686 I MediaCodecLogger: [ASAP] SW.audio.mp4a Got First Input Frame 20075898 pts:1000000009333
+07-15 02:07:11.017 17906 27686 I MediaCodecLogger: updatePTSTime [SW.audio.mp4a] First PTS after Flush or reset = 1000000009333
+07-15 02:07:11.017 17906 27686 I MediaCodecLogger: [ASAP] SW.audio.mp4a Got First Frame Ready 20075911(13)
+07-15 02:07:11.019 17906 27678 W AHierarchicalStateMachine: Warning message AMessage(what = 'omxI') = {
+07-15 02:07:11.019 17906 27678 W AHierarchicalStateMachine:   int32_t type = 0
+07-15 02:07:11.019 17906 27678 W AHierarchicalStateMachine:   int32_t event = 3
+07-15 02:07:11.019 17906 27678 W AHierarchicalStateMachine:   int32_t data1 = 1
+07-15 02:07:11.019 17906 27678 W AHierarchicalStateMachine:   int32_t data2 = 117440527
+07-15 02:07:11.019 17906 27678 W AHierarchicalStateMachine: } unhandled in root state.
+07-15 02:07:11.026 17906 27677 I MediaCodecLogger: [ASAP] HW.video.avc Got First Input Frame 20075920 pts:1000000000000
+07-15 02:07:11.027 17906 27678 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 15 failed: -22
+07-15 02:07:11.027 17906 27678 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 14 failed: -22
+07-15 02:07:11.031 17906 27678 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:07:11.036 17906 27678 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:07:11.038 17906 27674 I android.media.AudioTrack: AUDIOINFO: audio_input: format: 2 sample_rate: 48000 channels: 2 AudioAttributes: AudioAttributes: usage=USAGE_MEDIA content=CONTENT_TYPE_MUSIC flags=0x200 tags= bundle=null
+07-15 02:07:11.047 17906 27678 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:07:11.070 17906 27678 I chatty  : uid=10247(com.smartvision.svplayer) identical 6 lines
+07-15 02:07:11.072 17906 27678 W MapperHal: buffer descriptor with invalid usage bits 0x2000
+07-15 02:07:11.101 17906 27677 I MediaCodecLogger: updateFormatChanged width = 1280 height = 720
+07-15 02:07:11.102 17906 27677 I MediaCodecLogger: updatePTSTime [HW.video.avc] First PTS after Flush or reset = 1000000000000
+07-15 02:07:11.102 17906 27677 I MediaCodecLogger: [ASAP] HW.video.avc Got First Frame Ready 20075996(76)
+07-15 02:07:11.395 17906 17906 I SVHomeFocus: scroll start target=categories from=427 to=0 max=752
+07-15 02:07:11.459 17906 17920 I vision.svplaye: Background concurrent copying GC freed 162639(5MB) AllocSpace objects, 2(56KB) LOS objects, 20% free, 23MB/29MB, paused 711us total 329.561ms
+07-15 02:07:11.780 17906 17906 I SVHomeFocus: scroll end target=categories value=0
+07-15 02:07:11.827 17906 17906 I SVHomeFocus: focus requested target=categories
+07-15 02:07:11.873 17906 27674 I MediaCodecLogger: Flushing: 17906.HW.video.avc.framerate = 50.000 fps
+07-15 02:07:11.874 17906 17906 I ExoPlayerImpl: Release 1a80800 [AndroidXMedia3/1.6.1] [sheldonp, AFTSSS, Amazon, 28] [media3.common, media3.exoplayer, media3.decoder, media3.ui, media3.datasource, media3.extractor]
+07-15 02:07:11.903 17906 17906 W ExoPlayer:Audio: type=1400 audit(0.0:58960): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=10500 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-15 02:07:11.908 17906 27700 E libc    : Access denied finding property "media.metrics.enabled"
+07-15 02:07:11.934 17906 27674 I MediaCodecLogger: 17906.HW.video.avc.ASAP-P2Ms = 5
+07-15 02:07:11.934 17906 27674 I MediaCodecLogger: 17906.HW.video.avc.ASAP-P3Ms = 26
+07-15 02:07:11.934 17906 27674 I MediaCodecLogger: 17906.HW.video.avc.FirstFrameReadyMs = 76
+07-15 02:07:11.935 17906 27674 E libc    : Access denied finding property "media.metrics.enabled"
+07-15 02:07:11.923 17906 17906 W ExoPlayer:Playb: type=1400 audit(0.0:58961): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=10500 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-15 02:07:11.933 17906 17906 W ExoPlayer:Playb: type=1400 audit(0.0:58962): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=10500 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-15 02:07:11.944 17906 27674 E libc    : Access denied finding property "media.metrics.enabled"
+07-15 02:07:13.195 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203642(6MB) AllocSpace objects, 12(816KB) LOS objects, 20% free, 23MB/29MB, paused 178us total 277.372ms
+07-15 02:07:14.791 17906 17920 I vision.svplaye: Background concurrent copying GC freed 209396(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 22MB/28MB, paused 449us total 262.258ms

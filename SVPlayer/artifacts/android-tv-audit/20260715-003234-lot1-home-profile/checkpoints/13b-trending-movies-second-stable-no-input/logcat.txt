@@ -1,0 +1,501 @@
+﻿--------- beginning of main
+07-15 00:44:46.115 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.145 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.156 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.157 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.158 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.158 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.158 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.165 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.194 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.209 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.211 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.211 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.211 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.211 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.215 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.245 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.263 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.265 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.265 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.265 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.265 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.266 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.267 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.268 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.268 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.268 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.268 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.295 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.315 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.317 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.318 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.318 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.320 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.320 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.345 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.365 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.370 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.372 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.372 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.372 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.372 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.396 17906 23459 I MediaCodecLogger: 17906.HW.video.avc Dropped 430 frames
+07-15 00:44:46.396 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.407 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.424 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.426 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.426 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.426 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.426 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.447 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.457 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.478 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.479 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.479 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.480 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.480 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.500 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.507 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.531 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.533 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.533 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.533 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.533 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.549 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.559 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.585 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.587 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.587 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.587 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.587 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.599 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.608 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.638 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.640 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.640 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.640 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.640 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.649 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.659 17906 23460 I chatty  : uid=10247(com.smartvision.svplayer) identical 1 line
+07-15 00:44:46.690 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.692 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.693 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.693 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.694 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.694 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.710 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.739 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.746 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.748 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.748 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.748 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.748 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.760 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.812 17906 23460 I chatty  : uid=10247(com.smartvision.svplayer) identical 2 lines
+07-15 00:44:46.841 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.855 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.856 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.856 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.856 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.856 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.862 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.892 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.914 17906 23459 I MediaCodecLogger: 17906.HW.video.avc.bitrateInKbps = 140
+07-15 00:44:46.915 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.945 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.964 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.965 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.965 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.965 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.965 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.967 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.969 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:46.969 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:46.969 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:46.969 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:46.971 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:46.975 17906 17920 I vision.svplaye: Background concurrent copying GC freed 182401(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 185us total 222.838ms
+07-15 00:44:46.997 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.046 17906 23460 I chatty  : uid=10247(com.smartvision.svplayer) identical 2 lines
+07-15 00:44:47.056 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.063 17906 17906 W RenderThread: type=1400 audit(0.0:53769): avc: denied { open } for path="/dev/__properties__/u:object_r:vendor_default_prop:s0" dev="tmpfs" ino=10686 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:vendor_default_prop:s0 tclass=file permissive=0
+07-15 00:44:47.072 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.072 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 3 lines
+07-15 00:44:47.072 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.063 17906 17906 W RenderThread: type=1400 audit(0.0:53770): avc: denied { open } for path="/dev/__properties__/u:object_r:vendor_default_prop:s0" dev="tmpfs" ino=10686 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:vendor_default_prop:s0 tclass=file permissive=0
+07-15 00:44:47.072 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.072 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.063 17906 17906 W RenderThread: type=1400 audit(0.0:53771): avc: denied { open } for path="/dev/__properties__/u:object_r:vendor_default_prop:s0" dev="tmpfs" ino=10686 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:vendor_default_prop:s0 tclass=file permissive=0
+07-15 00:44:47.072 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.072 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 3 lines
+07-15 00:44:47.072 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.063 17906 17906 W RenderThread: type=1400 audit(0.0:53772): avc: denied { open } for path="/dev/__properties__/u:object_r:vendor_default_prop:s0" dev="tmpfs" ino=10686 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:vendor_default_prop:s0 tclass=file permissive=0
+07-15 00:44:47.063 17906 17906 W RenderThread: type=1400 audit(0.0:53773): avc: denied { open } for path="/dev/__properties__/u:object_r:vendor_default_prop:s0" dev="tmpfs" ino=10686 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:vendor_default_prop:s0 tclass=file permissive=0
+07-15 00:44:47.072 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.073 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 4 lines
+07-15 00:44:47.073 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.073 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:47.073 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:47.097 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.106 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.125 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.127 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:47.127 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.127 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:47.128 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:47.148 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.158 17906 23460 I chatty  : uid=10247(com.smartvision.svplayer) identical 1 line
+07-15 00:44:47.198 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.200 17906 23468 I MediaCodecLogger: 17906.SW.audio.mp4a.bitrateInKbps = 121
+07-15 00:44:47.209 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.233 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.234 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:47.234 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.234 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:47.235 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:47.249 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.258 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.287 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.289 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:47.289 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.290 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:47.290 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:47.299 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.309 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.340 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.341 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:47.342 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.342 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:47.342 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:47.350 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.360 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.391 17906 23459 I MediaCodecLogger: 17906.HW.video.avc Dropped 440 frames
+07-15 00:44:47.391 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.394 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.395 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:47.395 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.395 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:47.395 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:47.413 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.442 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.447 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.449 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:47.449 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.449 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:47.449 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:47.463 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.514 17906 23460 I chatty  : uid=10247(com.smartvision.svplayer) identical 2 lines
+07-15 00:44:47.548 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.555 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.556 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:47.556 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.556 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:47.556 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:47.558 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.558 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.560 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:47.560 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.560 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:47.560 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:47.598 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.648 17906 23460 I chatty  : uid=10247(com.smartvision.svplayer) identical 2 lines
+07-15 00:44:47.657 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.662 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.664 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:47.664 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.664 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:47.664 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:47.698 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.708 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.717 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.720 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:47.720 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.720 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:47.720 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:47.749 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.790 17906 23460 I chatty  : uid=10247(com.smartvision.svplayer) identical 2 lines
+07-15 00:44:47.811 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.824 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.825 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:47.826 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.826 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:47.826 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:47.842 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.861 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.878 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.880 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:47.880 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.880 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:47.880 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:47.883 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.884 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.885 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:47.885 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.885 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:47.885 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:47.913 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.964 17906 23460 I chatty  : uid=10247(com.smartvision.svplayer) identical 2 lines
+07-15 00:44:47.984 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:47.987 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.988 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:47.988 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:47.988 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:47.988 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.014 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.024 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.040 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.042 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.042 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.042 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.042 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.064 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.074 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.116 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.125 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.143 17906 17906 W RenderThread: type=1400 audit(0.0:54089): avc: denied { open } for path="/dev/__properties__/u:object_r:vendor_default_prop:s0" dev="tmpfs" ino=10686 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:vendor_default_prop:s0 tclass=file permissive=0
+07-15 00:44:48.143 17906 17906 I chatty  : uid=10247(com.smartvision.svplayer) identical 3 lines
+07-15 00:44:48.143 17906 17906 W RenderThread: type=1400 audit(0.0:54093): avc: denied { open } for path="/dev/__properties__/u:object_r:vendor_default_prop:s0" dev="tmpfs" ino=10686 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:vendor_default_prop:s0 tclass=file permissive=0
+07-15 00:44:48.148 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.149 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.149 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.149 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.149 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.166 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.175 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.202 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.203 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.204 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.204 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.204 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.217 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.226 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.258 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.260 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.260 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.260 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.260 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.267 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.278 17906 23460 I chatty  : uid=10247(com.smartvision.svplayer) identical 1 line
+07-15 00:44:48.308 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.311 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.313 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.313 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.313 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.313 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.328 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.357 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.366 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.367 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.367 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.368 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.368 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.378 17906 23459 I MediaCodecLogger: 17906.HW.video.avc Dropped 450 frames
+07-15 00:44:48.378 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.408 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.428 17906 23460 I chatty  : uid=10247(com.smartvision.svplayer) identical 1 line
+07-15 00:44:48.458 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.475 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.476 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.476 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.476 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.476 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.478 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.478 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.480 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.480 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.480 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.480 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.518 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.527 17906 23460 I chatty  : uid=10247(com.smartvision.svplayer) identical 1 line
+07-15 00:44:48.558 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.577 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.584 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.585 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.585 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.585 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.585 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.592 17906 17906 I SVHomeFocus: scroll start target=trending_movies from=427 to=632 max=752
+07-15 00:44:48.592 17906 17906 I SVHomeFocus: requestRowFocus target=trending_movies rowAlreadyAtFirst
+07-15 00:44:48.592 17906 17906 I SVHomeFocus: requestRowFocus target=trending_movies rowScrolledToFirst
+07-15 00:44:48.608 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.627 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.637 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.640 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.640 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.640 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.640 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.660 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.710 17906 23460 I chatty  : uid=10247(com.smartvision.svplayer) identical 2 lines
+07-15 00:44:48.730 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.747 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.748 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.748 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.748 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.748 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.761 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.781 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.806 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.808 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.808 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.808 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.808 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.813 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.832 17906 23460 I chatty  : uid=10247(com.smartvision.svplayer) identical 1 line
+07-15 00:44:48.863 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.869 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.871 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.871 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.871 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.871 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.883 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.913 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.925 17906 17920 I vision.svplaye: Background concurrent copying GC freed 178113(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 188us total 216.867ms
+07-15 00:44:48.932 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.934 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.934 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.934 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.934 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.934 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.937 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.938 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.938 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.938 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.938 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:48.964 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.983 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:48.994 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.996 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:48.996 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:48.997 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:48.997 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:49.000 17906 17906 I SVHomeFocus: scroll end target=trending_movies value=632
+07-15 00:44:49.016 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:49.026 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:49.056 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:49.058 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:49.058 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:49.058 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:49.058 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:49.063 17906 17906 I SVHomeFocus: focus requested target=trending_movies
+07-15 00:44:49.067 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:49.077 17906 23460 I chatty  : uid=10247(com.smartvision.svplayer) identical 1 line
+07-15 00:44:49.108 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:49.118 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:49.120 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:44:49.120 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:44:49.120 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:44:49.120 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:44:49.130 17906 23460 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:44:49.131 17906 17906 I ExoPlayerImpl: Release 3509d5 [AndroidXMedia3/1.6.1] [sheldonp, AFTSSS, Amazon, 28] [media3.common, media3.exoplayer, media3.decoder, media3.ui, media3.datasource, media3.extractor]
+07-15 00:44:49.138 17906 23457 I MediaCodecLogger: Flushing: 17906.HW.video.avc.framerate = 50.000 fps
+07-15 00:44:49.212 17906 23532 E libc    : Access denied finding property "media.metrics.enabled"
+07-15 00:44:49.203 17906 17906 W ExoPlayer:Audio: type=1400 audit(0.0:54429): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=10500 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-15 00:44:49.231 17906 23457 I MediaCodecLogger: 17906.HW.video.avc.TotalVideoPlaybackTimeMs = 102920
+07-15 00:44:49.231 17906 23457 I MediaCodecLogger: 17906.HW.video.avc.StreamAvgFramerate = 50.000
+07-15 00:44:49.231 17906 23457 I MediaCodecLogger: 17906.HW.video.avc.videoResolution.HD = 102920
+07-15 00:44:49.231 17906 23457 I MediaCodecLogger: 17906.HW.video.avc.StreamFramerate = 49.896
+07-15 00:44:49.231 17906 23457 I MediaCodecLogger: 17906.HW.video.avc.AspectRatio = 1.778
+07-15 00:44:49.231 17906 23457 I MediaCodecLogger: 17906.HW.video.avc.OneConsecutiveFramesDropped = 457
+07-15 00:44:49.231 17906 23457 I MediaCodecLogger: 17906.HW.video.avc.TotalFramesDropped = 457
+07-15 00:44:49.232 17906 23457 I MediaCodecLogger: 17906.HW.video.avc.MaxConsecutiveFramesDropped = 1
+07-15 00:44:49.232 17906 23457 I MediaCodecLogger: 17906.HW.video.avc.ASAP-P5Ms = 74
+07-15 00:44:49.232 17906 23457 I MediaCodecLogger: 17906.HW.video.avc.ASAP-P2Ms = 23
+07-15 00:44:49.232 17906 23457 I MediaCodecLogger: 17906.HW.video.avc.ASAP-P3Ms = 32
+07-15 00:44:49.232 17906 23457 I MediaCodecLogger: 17906.HW.video.avc.FirstFrameReadyMs = 71
+07-15 00:44:49.232 17906 23457 I MediaCodecLogger: 17906.HW.video.avc.StreamAvgBitrateInKbps = 125
+07-15 00:44:49.233 17906 23457 E libc    : Access denied finding property "media.metrics.enabled"
+07-15 00:44:49.223 17906 17906 W ExoPlayer:Playb: type=1400 audit(0.0:54430): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=10500 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-15 00:44:49.239 17906 23457 I MediaCodecLogger: 17906.SW.audio.mp4a.TotalAudioPlaybackTimeMs = 103125
+07-15 00:44:49.239 17906 23457 I MediaCodecLogger: 17906.SW.audio.mp4a.StreamAvgBitrateInKbps = 121
+07-15 00:44:49.233 17906 17906 W ExoPlayer:Playb: type=1400 audit(0.0:54431): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=10500 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-15 00:44:49.240 17906 23457 E libc    : Access denied finding property "media.metrics.enabled"
+07-15 00:44:50.423 17906 17920 I vision.svplaye: Background concurrent copying GC freed 185267(6MB) AllocSpace objects, 12(816KB) LOS objects, 22% free, 20MB/26MB, paused 239us total 226.670ms
+07-15 00:44:51.724 17906 17920 I vision.svplaye: Background concurrent copying GC freed 208534(6MB) AllocSpace objects, 9(300KB) LOS objects, 23% free, 19MB/25MB, paused 169us total 226.556ms
+07-15 00:44:53.039 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203472(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 219us total 221.529ms
+07-15 00:44:54.346 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202279(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 199us total 212.596ms
+07-15 00:44:55.654 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201632(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 179us total 232.980ms
+07-15 00:44:56.972 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202694(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 212us total 246.120ms
+07-15 00:44:58.306 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204882(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 243us total 224.386ms
+07-15 00:44:59.597 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203202(6MB) AllocSpace objects, 1(20KB) LOS objects, 23% free, 19MB/25MB, paused 211us total 211.170ms
+07-15 00:45:00.873 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203470(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 191us total 210.878ms
+07-15 00:45:02.178 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203361(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 180us total 224.096ms
+07-15 00:45:03.460 17906 17920 I vision.svplaye: Background concurrent copying GC freed 207110(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 214us total 221.340ms
+07-15 00:45:04.748 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202646(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 806us total 211.669ms
+07-15 00:45:06.028 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202612(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 181us total 210.347ms
+07-15 00:45:07.317 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203895(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 331us total 223.098ms
+07-15 00:45:08.619 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204550(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 210us total 220.588ms
+07-15 00:45:09.912 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205516(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 209us total 215.816ms
+07-15 00:45:11.192 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203081(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 172us total 216.188ms
+07-15 00:45:12.492 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205374(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 175us total 216.969ms
+07-15 00:45:13.782 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204223(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 204us total 222.949ms
+07-15 00:45:15.076 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204467(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 213us total 218.376ms
+07-15 00:45:16.355 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204987(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 207us total 212.297ms
+07-15 00:45:17.727 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205347(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 202us total 259.414ms
+07-15 00:45:19.038 17906 17920 I vision.svplaye: Background concurrent copying GC freed 197985(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 198us total 227.758ms
+07-15 00:45:20.367 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204178(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 180us total 236.944ms
+07-15 00:45:21.689 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203447(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 187us total 215.449ms
+07-15 00:45:22.996 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203037(6MB) AllocSpace objects, 1(20KB) LOS objects, 23% free, 19MB/25MB, paused 190us total 222.190ms
+07-15 00:45:24.283 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205050(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 246us total 216.227ms
+07-15 00:45:25.576 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204929(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 204us total 211.855ms
+07-15 00:45:26.859 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203992(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 202us total 216.736ms
+07-15 00:45:28.163 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204054(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 175us total 226.809ms
+07-15 00:45:29.457 17906 17920 I vision.svplaye: Background concurrent copying GC freed 207348(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 159us total 216.181ms
+07-15 00:45:30.754 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203495(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 179us total 228.115ms
+07-15 00:45:32.033 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205369(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 208us total 209.750ms
+07-15 00:45:33.328 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205305(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 164us total 213.602ms
+07-15 00:45:34.610 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203862(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 170us total 211.457ms
+07-15 00:45:35.893 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202232(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 190us total 211.037ms
+07-15 00:45:37.202 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204582(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 183us total 221.358ms
+07-15 00:45:38.507 17906 17920 I vision.svplaye: Background concurrent copying GC freed 207333(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 160us total 223.358ms
+07-15 00:45:39.779 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204293(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 198us total 213.195ms
+07-15 00:45:41.072 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205496(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 155us total 212.034ms
+07-15 00:45:42.368 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202400(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 170us total 219.118ms
+07-15 00:45:43.649 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203045(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 258us total 211.426ms
+07-15 00:45:44.951 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204837(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 186us total 220.868ms
+07-15 00:45:46.252 17906 17920 I vision.svplaye: Background concurrent copying GC freed 207088(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 167us total 224.038ms
+07-15 00:45:47.546 17906 17920 I vision.svplaye: Background concurrent copying GC freed 206906(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 179us total 215.371ms
+07-15 00:45:48.831 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205270(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 248us total 216.621ms
+07-15 00:45:50.127 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203395(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 180us total 212.266ms
+07-15 00:45:51.424 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205565(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 156us total 213.983ms
+07-15 00:45:52.720 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203378(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 243us total 227.970ms
+07-15 00:45:54.006 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205984(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 256us total 215.761ms
+07-15 00:45:55.304 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205696(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 160us total 220.357ms
+07-15 00:45:56.610 17906 17920 I vision.svplaye: Background concurrent copying GC freed 207484(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 197us total 225.450ms
+07-15 00:45:57.906 17906 17920 I vision.svplaye: Background concurrent copying GC freed 206325(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 174us total 223.152ms
+07-15 00:45:59.219 17906 17920 I vision.svplaye: Background concurrent copying GC freed 207369(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 168us total 227.150ms
+07-15 00:46:00.507 17906 17920 I vision.svplaye: Background concurrent copying GC freed 206889(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 183us total 215.734ms
+07-15 00:46:01.802 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204944(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 157us total 214.801ms
+07-15 00:46:03.089 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203913(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 235us total 216.413ms
+07-15 00:46:04.385 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205236(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 204us total 215.287ms
+07-15 00:46:05.686 17906 17920 I vision.svplaye: Background concurrent copying GC freed 206220(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 173us total 220.974ms
+07-15 00:46:06.985 17906 17920 I vision.svplaye: Background concurrent copying GC freed 207301(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 202us total 217.913ms
+07-15 00:46:08.277 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203586(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 402us total 227.038ms
+07-15 00:46:09.574 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201355(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 207us total 217.758ms
+07-15 00:46:10.855 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204358(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 219us total 211.766ms
+07-15 00:46:12.183 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203612(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 187us total 237.895ms
+07-15 00:46:13.494 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204085(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 221us total 230.716ms
+07-15 00:46:14.828 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205361(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 219us total 236.655ms
+07-15 00:46:16.112 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203117(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 187us total 211.895ms
+07-15 00:46:17.423 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200443(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 155us total 220.368ms
+07-15 00:46:18.753 17906 17920 I vision.svplaye: Background concurrent copying GC freed 206271(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 218us total 245.318ms
+07-15 00:46:20.082 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203778(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 174us total 254.069ms
+07-15 00:46:21.394 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205192(6MB) AllocSpace objects, 1(20KB) LOS objects, 23% free, 19MB/25MB, paused 158us total 221.576ms
+07-15 00:46:22.677 17906 17920 I vision.svplaye: Background concurrent copying GC freed 206562(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 189us total 212.249ms
+07-15 00:46:23.970 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202702(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 150us total 216.687ms
+07-15 00:46:25.268 17906 17920 I vision.svplaye: Background concurrent copying GC freed 206236(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 190us total 213.542ms
+07-15 00:46:26.560 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203494(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 283us total 215.194ms
+07-15 00:46:27.849 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203531(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 215us total 223.693ms
+07-15 00:46:29.141 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205201(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 206us total 222.428ms
+07-15 00:46:30.433 17906 17920 I vision.svplaye: Background concurrent copying GC freed 205123(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 228us total 219.893ms
+07-15 00:46:31.735 17906 17920 I vision.svplaye: Background concurrent copying GC freed 206308(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 180us total 219.742ms
+07-15 00:46:33.034 17906 17920 I vision.svplaye: Background concurrent copying GC freed 206277(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 188us total 221.754ms
+07-15 00:46:34.340 17906 17920 I vision.svplaye: Background concurrent copying GC freed 207222(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 209us total 224.757ms
+07-15 00:46:35.659 17906 17920 I vision.svplaye: Background concurrent copying GC freed 206375(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 153us total 242.057ms
+07-15 00:46:36.959 17906 17920 I vision.svplaye: Background concurrent copying GC freed 207950(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 217us total 233.064ms
+07-15 00:46:38.251 17906 17920 I vision.svplaye: Background concurrent copying GC freed 206536(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 184us total 222.545ms
+07-15 00:46:39.515 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202016(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 238us total 212.091ms
+07-15 00:46:40.828 17906 17920 I vision.svplaye: Background concurrent copying GC freed 207014(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 240us total 224.942ms
+07-15 00:46:42.122 17906 17920 I vision.svplaye: Background concurrent copying GC freed 206698(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 163us total 213.997ms
+07-15 00:46:43.441 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203594(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 284us total 241.484ms
+07-15 00:46:44.758 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203679(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 159us total 226.316ms

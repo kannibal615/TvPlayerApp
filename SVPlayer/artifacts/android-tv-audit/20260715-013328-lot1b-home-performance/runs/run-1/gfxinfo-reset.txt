@@ -1,0 +1,67 @@
+﻿Applications Graphics Acceleration Info:
+Uptime: 18907108 Realtime: 18907108
+
+** Graphics info for pid 17906 [com.smartvision.svplayer] **
+
+Stats since: 7207405436506ns
+Total frames rendered: 423038
+Janky frames: 422425 (99.86%)
+50th percentile: 29ms
+90th percentile: 89ms
+95th percentile: 93ms
+99th percentile: 105ms
+Number Missed Vsync: 149152
+Number High input latency: 269230
+Number Slow UI thread: 153751
+Number Slow bitmap uploads: 25
+Number Slow issue draw commands: 152690
+Number Frame deadline missed: 153770
+Total HWC Composed Frames: 422758
+Average Duration: 100.509590ms
+Average Duration of CPU: 55.360607ms
+Average Duration of GPU: 23.548035ms
+Average Duration of HWC Composition: 15.495667ms
+Total GPU Composed Frames: 224
+Average Duration: 68.556534ms
+Average Duration of CPU: 27.139584ms
+Average Duration of GPU: 4.041372ms
+Average Duration of GPU Composition: 7.582195ms
+HISTOGRAM: 5ms=71 6ms=17 7ms=14 8ms=131 9ms=34 10ms=19 11ms=11 12ms=6 13ms=9 14ms=94 15ms=163 16ms=55 17ms=67 18ms=69 19ms=138 20ms=184 21ms=98 22ms=47 23ms=150 24ms=184 25ms=177 26ms=31376 27ms=53438 28ms=82795 29ms=70589 30ms=2178 31ms=1312 32ms=1410 34ms=608 36ms=341 38ms=261 40ms=395 42ms=1619 44ms=2720 46ms=2022 48ms=12739 53ms=2682 57ms=1351 61ms=4233 65ms=14167 69ms=5378 73ms=10615 77ms=22175 81ms=19368 85ms=21321 89ms=25394 93ms=17810 97ms=6287 101ms=2135 105ms=968 109ms=599 113ms=602 117ms=560 121ms=575 125ms=516 129ms=294 133ms=121 150ms=205 200ms=36 250ms=12 300ms=9 350ms=11 400ms=13 450ms=10 500ms=4 550ms=8 600ms=3 650ms=3 700ms=4 750ms=2 800ms=2 850ms=0 900ms=2 950ms=2 1000ms=1 1050ms=1 1100ms=1 1150ms=1 1200ms=0 1250ms=1 1300ms=1 1350ms=0 1400ms=1 1450ms=3 1500ms=2 1550ms=2 1600ms=0 1650ms=1 1700ms=0 1750ms=3 1800ms=0 1850ms=0 1900ms=1 1950ms=0 2000ms=0 2050ms=0 2100ms=1 2150ms=0 2200ms=0 2250ms=0 2300ms=0 2350ms=0 2400ms=0 2450ms=0 2500ms=0 2550ms=0 2600ms=0 2650ms=0 2700ms=0 2750ms=0 2800ms=0 2850ms=0 2900ms=0 2950ms=0 3000ms=0 3050ms=0 3100ms=0 3150ms=0 3200ms=0 3250ms=0 3300ms=0 3350ms=0 3400ms=0 3450ms=0 3500ms=0 3550ms=0 3600ms=0 3650ms=0 3700ms=0 3750ms=0 3800ms=0 3850ms=0 3900ms=0 3950ms=0 4000ms=0 4050ms=0 4100ms=0 4150ms=0 4200ms=0 4250ms=0 4300ms=0 4350ms=0 4400ms=0 4450ms=0 4500ms=0 4550ms=0 4600ms=0 4650ms=0 4700ms=0 4750ms=0 4800ms=0 4850ms=0 4900ms=0 4950ms=0
+Font Cache (CPU):
+  Size: 41.20 kB 
+  Glyph Count: 71 
+CPU Caches:
+GPU Caches:
+  Other:
+    Buffer Object: 63.00 KB (2 entries)
+  Image:
+    Texture: 31.02 MB (27 entries)
+  Scratch:
+    Texture: 3.00 MB (2 entries)
+    Buffer Object: 96.03 KB (4 entries)
+Other Caches:
+                         Current / Maximum
+  VectorDrawableAtlas    0.00 kB /   0.00 KB (entries = 0)
+  Layers Total           0.00 KB (numLayers = 0)
+Total GPU memory usage:
+  35838964 bytes, 34.18 MB (19.09 MB is purgeable)
+
+
+Pipeline=Skia (OpenGL)
+
+Layout Cache Info:
+  Usage: 2687/5000 entries
+  Hit ratio: 1275777/1288497 (0.990128)
+Profile data in ms:
+
+	com.smartvision.svplayer/com.smartvision.svplayer.MainActivity/android.view.ViewRootImpl@837c8b5 (visibility=0)
+View hierarchy:
+
+  com.smartvision.svplayer/com.smartvision.svplayer.MainActivity/android.view.ViewRootImpl@837c8b5
+  11 views, 9,94 kB of display lists
+
+
+Total ViewRootImpl: 1
+Total Views:        11
+Total DisplayList:  9,94 kB
+

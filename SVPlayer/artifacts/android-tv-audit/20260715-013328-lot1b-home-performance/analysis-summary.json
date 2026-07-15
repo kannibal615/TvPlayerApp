@@ -1,0 +1,55 @@
+{
+  "run_id": "20260715-013328-lot1b-home-performance",
+  "display": {
+    "resolution": "1920x1080",
+    "refresh_hz": 59.94,
+    "frame_budget_ms": 16.68
+  },
+  "sequence": {
+    "key_count": 18,
+    "cadence_ms": 600,
+    "repetitions": 3,
+    "start_and_end_focus": "Home header tab"
+  },
+  "gfxinfo": [
+    {"run": 1, "frames": 868, "janky_frames": 868, "janky_percent": 100.0, "p50_ms": 81, "p90_ms": 97, "p95_ms": 101, "p99_ms": 150, "slow_ui_thread": 816, "slow_draw": 815, "deadline_missed": 816},
+    {"run": 2, "frames": 884, "janky_frames": 884, "janky_percent": 100.0, "p50_ms": 81, "p90_ms": 97, "p95_ms": 109, "p99_ms": 150, "slow_ui_thread": 835, "slow_draw": 834, "deadline_missed": 835},
+    {"run": 3, "frames": 888, "janky_frames": 888, "janky_percent": 100.0, "p50_ms": 81, "p90_ms": 97, "p95_ms": 109, "p99_ms": 150, "slow_ui_thread": 843, "slow_draw": 842, "deadline_missed": 843}
+  ],
+  "atrace_run_3": {
+    "main_do_frame": {"count": 744, "p50_ms": 31.98, "p95_ms": 38.98, "max_ms": 75.69, "over_budget": 744},
+    "render_thread_draw_frame": {"count": 744, "p50_ms": 34.22, "p95_ms": 38.25, "max_ms": 61.50, "over_budget": 712},
+    "main_thread_off_cpu": {"p95_ms": 11.25, "max_ms": 17.70, "over_50_ms": 0},
+    "render_thread_off_cpu": {"p95_ms": 23.22, "max_ms": 27.43, "over_50_ms": 0},
+    "concurrent_gc_slices": {"count": 18, "p50_ms": 275.14, "p95_ms": 500.73, "thread": "GC thread"},
+    "compose_trace_sections_present": false
+  },
+  "gc": [
+    {"run": 1, "cycles_in_run_window": 20, "average_total_ms": 287.9},
+    {"run": 2, "cycles_in_run_window": 21, "average_total_ms": 275.2},
+    {"run": 3, "cycles_in_run_window": 22, "average_total_ms": 297.7}
+  ],
+  "memory_kb": {
+    "initial_total_pss": 173462,
+    "final_total_pss": 181577,
+    "delta_total_pss": 8115,
+    "initial_swap_pss": 30387,
+    "final_swap_pss": 43917,
+    "delta_swap_pss": 13530,
+    "java_heap_delta": -384,
+    "native_heap_delta": -4656,
+    "graphics_delta": 0,
+    "views_initial_final": "491/491",
+    "activities_initial_final": "1/1"
+  },
+  "perfetto": {
+    "captured": false,
+    "reason": "Fire OS Perfetto CLI rejected accessible config/output paths; all attempts failed before input traversal",
+    "fallback": "system atrace on run 3"
+  },
+  "classification": {
+    "LOT1-PERF-001": "confirmed",
+    "gc_causality": "not established",
+    "memory_leak": "not established"
+  }
+}

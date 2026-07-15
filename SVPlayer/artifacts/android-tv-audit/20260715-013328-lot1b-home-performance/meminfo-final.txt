@@ -1,0 +1,64 @@
+﻿Applications Memory Usage (in Kilobytes):
+Uptime: 20322960 Realtime: 20322960
+
+** MEMINFO in pid 17906 [com.smartvision.svplayer] **
+                   Pss  Private  Private  SwapPss     Heap     Heap     Heap
+                 Total    Dirty    Clean    Dirty     Size    Alloc     Free
+                ------   ------   ------   ------   ------   ------   ------
+  Native Heap    26492    13912      164    41258   161280   115008    46271
+  Dalvik Heap    24780    23936      820      290    29557    23413     6144
+ Dalvik Other    10609    10568       40     1688                           
+        Stack       32       32        0      228                           
+       Ashmem        5        0        0        0                           
+    Other dev       36        4       28        0                           
+     .so mmap     6530      192     3596       54                           
+    .apk mmap      228        0        0        0                           
+    .ttf mmap      188        0      188        0                           
+    .dex mmap    16286        0    14472        4                           
+    .oat mmap     2260        0      572        0                           
+    .art mmap     2287     1468      108      127                           
+   Other mmap       60       24       24        0                           
+   EGL mtrack    12884    12884        0        0                           
+    GL mtrack    34250    34250        0        0                           
+      Unknown      733      684       24      268                           
+        TOTAL   181577    97954    20036    43917   190837   138421    52415
+ 
+ App Summary
+                       Pss(KB)
+                        ------
+           Java Heap:    25512
+         Native Heap:    13912
+                Code:    19020
+               Stack:       32
+            Graphics:    47134
+       Private Other:    12380
+              System:    63587
+ 
+               TOTAL:   181577       TOTAL SWAP PSS:    43917
+ 
+ Objects
+               Views:      491         ViewRootImpl:        1
+         AppContexts:        6           Activities:        1
+              Assets:        4        AssetManagers:        0
+       Local Binders:       18        Proxy Binders:       38
+       Parcel memory:       13         Parcel count:       54
+    Death Recipients:        1      OpenSSL Sockets:        1
+            WebViews:        0
+ 
+ SQL
+         MEMORY_USED:     1315
+  PAGECACHE_OVERFLOW:       78          MALLOC_SIZE:      117
+ 
+ DATABASES
+      pgsz     dbsz   Lookaside(b)          cache  Dbname
+         4   848488             77   2158/1454/13  /data/user/0/com.smartvision.svplayer/databases/svplayer.db
+         4       16                         0/0/0    (attached) temp
+         4   848488            109   6712/1145/21  /data/user/0/com.smartvision.svplayer/databases/svplayer.db (2)
+         4   848488            109   6241/1037/11  /data/user/0/com.smartvision.svplayer/databases/svplayer.db (3)
+         4   848488            109    8413/376/25  /data/user/0/com.smartvision.svplayer/databases/svplayer.db (1)
+         4      104            104     355/259/25  /data/user/0/com.smartvision.svplayer/no_backup/androidx.work.workdb
+         4        8                         0/0/0    (attached) temp
+         4      104            106        62/43/9  /data/user/0/com.smartvision.svplayer/no_backup/androidx.work.workdb (1)
+ 
+ Asset Allocations
+    : 3K

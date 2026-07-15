@@ -1,0 +1,438 @@
+﻿--------- beginning of main
+07-15 00:47:49.850 17906 17920 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 11 lines
+07-15 00:48:04.134 17906 17920 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-15 00:48:17.096 17906 17920 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-15 00:48:18.297 17906 17932 I chatty  : uid=10247(com.smartvision.svplayer) Profile Saver expire 2 lines
+07-15 00:48:30.165 17906 17920 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-15 00:48:43.083 17906 17920 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-15 00:48:56.102 17906 17920 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 12 lines
+07-15 00:49:11.634 17906 17920 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-15 00:49:24.627 17906 17920 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-15 00:49:37.604 17906 17920 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-15 00:49:50.541 17906 17920 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 6 lines
+07-15 00:49:56.198 17906 17906 I chatty  : uid=10247(com.smartvision.svplayer) expire 10 lines
+07-15 00:49:57.413 17906 24091 I chatty  : uid=10247(com.smartvision.svplayer) expire 65 lines
+07-15 00:49:57.426 17906 24090 I chatty  : uid=10247(com.smartvision.svplayer) expire 13 lines
+07-15 00:49:57.434 17906 24086 I chatty  : uid=10247(com.smartvision.svplayer) expire 3 lines
+07-15 00:49:57.477 17906 24099 I chatty  : uid=10247(com.smartvision.svplayer) expire 9 lines
+07-15 00:49:57.753 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread expire 980 lines
+07-15 00:49:58.556 17906 24091 I chatty  : uid=10247(com.smartvision.svplayer) expire 135 lines
+07-15 00:49:58.625 17906 17920 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 2 lines
+07-15 00:49:58.773 17906 17906 I chatty  : uid=10247(com.smartvision.svplayer) expire 30 lines
+07-15 00:50:01.257 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread expire 760 lines
+07-15 00:50:01.261 17906 24091 I chatty  : uid=10247(com.smartvision.svplayer) expire 145 lines
+07-15 00:50:02.543 17906 24099 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-15 00:50:02.552 17906 24090 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-15 00:50:02.575 17906 17920 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 3 lines
+07-15 00:50:04.160 17906 24091 I chatty  : uid=10247(com.smartvision.svplayer) expire 140 lines
+07-15 00:50:04.161 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread expire 717 lines
+07-15 00:50:05.073 17906 17906 I chatty  : uid=10247(com.smartvision.svplayer) expire 15 lines
+07-15 00:50:06.186 17906 24090 I chatty  : uid=10247(com.smartvision.svplayer) expire 4 lines
+07-15 00:50:07.338 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread expire 402 lines
+07-15 00:50:07.339 17906 24091 I chatty  : uid=10247(com.smartvision.svplayer) expire 37 lines
+07-15 00:50:07.564 17906 24099 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-15 00:50:08.133 17906 17906 I chatty  : uid=10247(com.smartvision.svplayer) expire 5 lines
+07-15 00:50:08.251 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread expire 340 lines
+07-15 00:50:08.265 17906 24091 I chatty  : uid=10247(com.smartvision.svplayer) expire 29 lines
+07-15 00:50:08.635 17906 17920 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 1 line
+07-15 00:50:08.954 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread expire 182 lines
+07-15 00:50:08.992 17906 24091 I chatty  : uid=10247(com.smartvision.svplayer) expire 18 lines
+07-15 00:50:09.052 17906 24090 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-15 00:50:09.163 17906 17906 I chatty  : uid=10247(com.smartvision.svplayer) expire 5 lines
+07-15 00:50:09.437 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread expire 16 lines
+07-15 00:50:09.437 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.437 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:09.438 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:09.440 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.449 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.489 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.490 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 11 lines
+07-15 00:50:09.490 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.490 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.490 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.490 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 3 lines
+07-15 00:50:09.490 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.490 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:09.490 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:09.492 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.494 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:09.494 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.494 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:09.495 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:09.500 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.541 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.544 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.545 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:09.546 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.546 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:09.546 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:09.551 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.590 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.598 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.599 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:09.600 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.600 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:09.600 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:09.602 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.602 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.603 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:09.604 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.604 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:09.604 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:09.641 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.651 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.652 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.654 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:09.654 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.654 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:09.654 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:09.691 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.701 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.707 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.708 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:09.709 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.709 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:09.709 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:09.742 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.752 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.762 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.763 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:09.763 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.763 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:09.764 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:09.792 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.801 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.815 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.816 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 9 lines
+07-15 00:50:09.816 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.816 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.817 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 5 lines
+07-15 00:50:09.817 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.817 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:09.817 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:09.833 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.853 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.869 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.870 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:09.870 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.871 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:09.871 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:09.877 17906 17906 I SVHomeFocus: scroll start target=categories from=427 to=0 max=752
+07-15 00:50:09.883 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.902 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.923 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.925 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:09.925 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.925 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:09.925 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:09.933 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.952 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:09.977 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.979 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:09.979 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:09.979 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:09.980 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:09.983 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.003 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.031 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.032 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:10.032 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.032 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:10.032 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:10.034 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.035 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.036 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:10.037 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.037 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:10.037 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:10.053 17906 24090 I MediaCodecLogger: 17906.HW.video.avc Dropped 50 frames
+07-15 00:50:10.054 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.077 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.078 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:10.078 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.078 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:10.079 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:10.084 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.104 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.122 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.124 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:10.124 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.124 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:10.124 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:10.134 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.154 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.168 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.170 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:10.170 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.170 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:10.170 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:10.184 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.203 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.214 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.203 17906 17906 W RenderThread: type=1400 audit(0.0:58258): avc: denied { open } for path="/dev/__properties__/u:object_r:vendor_default_prop:s0" dev="tmpfs" ino=10686 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:vendor_default_prop:s0 tclass=file permissive=0
+07-15 00:50:10.203 17906 17906 I chatty  : uid=10247(com.smartvision.svplayer) identical 2 lines
+07-15 00:50:10.203 17906 17906 W RenderThread: type=1400 audit(0.0:58261): avc: denied { open } for path="/dev/__properties__/u:object_r:vendor_default_prop:s0" dev="tmpfs" ino=10686 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:vendor_default_prop:s0 tclass=file permissive=0
+07-15 00:50:10.214 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.215 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 7 lines
+07-15 00:50:10.215 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.203 17906 17906 W RenderThread: type=1400 audit(0.0:58262): avc: denied { open } for path="/dev/__properties__/u:object_r:vendor_default_prop:s0" dev="tmpfs" ino=10686 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:vendor_default_prop:s0 tclass=file permissive=0
+07-15 00:50:10.215 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.215 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 6 lines
+07-15 00:50:10.216 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.216 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:10.216 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:10.236 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.256 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.262 17906 17906 I SVHomeFocus: scroll end target=categories value=0
+07-15 00:50:10.286 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.306 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.308 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.310 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:10.310 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.310 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:10.310 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:10.315 17906 17906 I SVHomeFocus: focus requested target=categories
+07-15 00:50:10.337 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.357 17906 24091 E FrameEvents: updateAcquireFence: Did not find frame.
+07-15 00:50:10.367 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.368 17906 17957 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread identical 16 lines
+07-15 00:50:10.368 17906 17957 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-15 00:50:10.368 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-15 00:50:10.368 17906 17957 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-15 00:50:10.375 17906 24086 I MediaCodecLogger: Flushing: 17906.HW.video.avc.framerate = 50.000 fps
+07-15 00:50:10.381 17906 17906 I ExoPlayerImpl: Release 9a025ec [AndroidXMedia3/1.6.1] [sheldonp, AFTSSS, Amazon, 28] [media3.common, media3.exoplayer, media3.decoder, media3.ui, media3.datasource, media3.extractor]
+07-15 00:50:10.415 17906 24129 E libc    : Access denied finding property "media.metrics.enabled"
+07-15 00:50:10.436 17906 24086 I MediaCodecLogger: 17906.HW.video.avc.TotalVideoPlaybackTimeMs = 12900
+07-15 00:50:10.436 17906 24086 I MediaCodecLogger: 17906.HW.video.avc.StreamAvgFramerate = 50.000
+07-15 00:50:10.436 17906 24086 I MediaCodecLogger: 17906.HW.video.avc.videoResolution.HD = 12900
+07-15 00:50:10.436 17906 24086 I MediaCodecLogger: 17906.HW.video.avc.StreamFramerate = 49.896
+07-15 00:50:10.436 17906 24086 I MediaCodecLogger: 17906.HW.video.avc.AspectRatio = 1.778
+07-15 00:50:10.436 17906 24086 I MediaCodecLogger: 17906.HW.video.avc.OneConsecutiveFramesDropped = 53
+07-15 00:50:10.436 17906 24086 I MediaCodecLogger: 17906.HW.video.avc.TotalFramesDropped = 53
+07-15 00:50:10.437 17906 24086 I MediaCodecLogger: 17906.HW.video.avc.MaxConsecutiveFramesDropped = 1
+07-15 00:50:10.437 17906 24086 I MediaCodecLogger: 17906.HW.video.avc.ASAP-P5Ms = 94
+07-15 00:50:10.437 17906 24086 I MediaCodecLogger: 17906.HW.video.avc.ASAP-P2Ms = 7
+07-15 00:50:10.437 17906 24086 I MediaCodecLogger: 17906.HW.video.avc.ASAP-P3Ms = 36
+07-15 00:50:10.437 17906 24086 I MediaCodecLogger: 17906.HW.video.avc.FirstFrameReadyMs = 91
+07-15 00:50:10.437 17906 24086 I MediaCodecLogger: 17906.HW.video.avc.StreamAvgBitrateInKbps = 141
+07-15 00:50:10.439 17906 24086 E libc    : Access denied finding property "media.metrics.enabled"
+07-15 00:50:10.447 17906 24086 I MediaCodecLogger: 17906.SW.audio.mp4a.TotalAudioPlaybackTimeMs = 13098
+07-15 00:50:10.447 17906 24086 I MediaCodecLogger: 17906.SW.audio.mp4a.StreamAvgBitrateInKbps = 125
+07-15 00:50:10.451 17906 24086 E libc    : Access denied finding property "media.metrics.enabled"
+07-15 00:50:10.498 17906 17920 I vision.svplaye: Background concurrent copying GC freed 173693(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 365us total 225.481ms
+07-15 00:50:12.068 17906 17920 I vision.svplaye: Background concurrent copying GC freed 187381(6MB) AllocSpace objects, 13(884KB) LOS objects, 23% free, 19MB/25MB, paused 145us total 213.813ms
+07-15 00:50:13.660 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204439(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 208us total 222.715ms
+07-15 00:50:15.238 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200908(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 186us total 209.719ms
+07-15 00:50:16.827 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198351(6MB) AllocSpace objects, 9(300KB) LOS objects, 23% free, 19MB/25MB, paused 173us total 225.897ms
+07-15 00:50:18.406 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201035(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 171us total 208.127ms
+07-15 00:50:19.992 17906 17920 I vision.svplaye: Background concurrent copying GC freed 197898(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 175us total 221.344ms
+07-15 00:50:21.577 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200877(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 187us total 211.258ms
+07-15 00:50:23.141 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199371(6MB) AllocSpace objects, 1(20KB) LOS objects, 23% free, 19MB/25MB, paused 210us total 209.206ms
+07-15 00:50:24.732 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198896(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 157us total 216.409ms
+07-15 00:50:26.329 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202741(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 175us total 209.828ms
+07-15 00:50:27.939 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202420(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 245us total 225.119ms
+07-15 00:50:29.522 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199245(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 148us total 208.995ms
+07-15 00:50:31.134 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202831(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 147us total 222.794ms
+07-15 00:50:32.694 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201264(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 237us total 207.441ms
+07-15 00:50:34.279 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198472(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 175us total 206.511ms
+07-15 00:50:35.855 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198989(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 212us total 212.490ms
+07-15 00:50:37.446 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198648(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 145us total 215.540ms
+07-15 00:50:39.037 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202765(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 236us total 206.954ms
+07-15 00:50:40.416 17906 17932 I vision.svplaye: Waiting for a blocking GC ProfileSaver
+07-15 00:50:40.631 17906 17920 I vision.svplaye: Background concurrent copying GC freed 197444(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 167us total 230.842ms
+07-15 00:50:40.631 17906 17932 I vision.svplaye: WaitForGcToComplete blocked ProfileSaver on HeapTrim for 214.855ms
+07-15 00:50:42.241 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204990(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 164us total 232.499ms
+07-15 00:50:43.806 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200783(6MB) AllocSpace objects, 1(20KB) LOS objects, 23% free, 19MB/25MB, paused 194us total 204.171ms
+07-15 00:50:45.409 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200914(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 144us total 214.533ms
+07-15 00:50:47.005 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203390(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 166us total 207.231ms
+07-15 00:50:48.598 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200786(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 146us total 205.713ms
+07-15 00:50:50.166 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199039(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 210us total 203.796ms
+07-15 00:50:51.764 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199671(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 144us total 212.201ms
+07-15 00:50:53.358 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202696(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 156us total 206.810ms
+07-15 00:50:54.928 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198387(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 192us total 210.365ms
+07-15 00:50:56.502 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199326(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 154us total 214.600ms
+07-15 00:50:58.097 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199609(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 309us total 220.997ms
+07-15 00:50:59.700 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200878(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 166us total 225.642ms
+07-15 00:51:01.287 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202836(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 173us total 211.402ms
+07-15 00:51:02.883 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200395(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 158us total 214.334ms
+07-15 00:51:04.482 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203050(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 224us total 209.793ms
+07-15 00:51:06.080 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201160(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 156us total 213.040ms
+07-15 00:51:07.685 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202050(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 151us total 218.945ms
+07-15 00:51:09.290 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201782(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 1.058ms total 218.748ms
+07-15 00:51:10.895 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201994(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 149us total 223.451ms
+07-15 00:51:12.453 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201615(6MB) AllocSpace objects, 1(20KB) LOS objects, 23% free, 19MB/25MB, paused 175us total 208.682ms
+07-15 00:51:14.024 17906 17920 I vision.svplaye: Background concurrent copying GC freed 197031(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 219us total 213.841ms
+07-15 00:51:15.604 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198763(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 197us total 205.875ms
+07-15 00:51:17.185 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199680(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 246us total 217.966ms
+07-15 00:51:18.771 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200677(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 176us total 212.310ms
+07-15 00:51:20.362 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198714(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 265us total 211.805ms
+07-15 00:51:21.973 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203403(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 225us total 221.413ms
+07-15 00:51:23.559 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201590(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 149us total 210.007ms
+07-15 00:51:25.122 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198846(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 185us total 206.089ms
+07-15 00:51:26.687 17906 17920 I vision.svplaye: Background concurrent copying GC freed 196308(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 196us total 206.559ms
+07-15 00:51:28.254 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199052(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 140us total 204.881ms
+07-15 00:51:29.821 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198232(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 187us total 213.100ms
+07-15 00:51:31.411 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198921(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 196us total 211.142ms
+07-15 00:51:32.979 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199121(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 248us total 215.591ms
+07-15 00:51:34.569 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199314(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 227us total 214.071ms
+07-15 00:51:36.163 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201224(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 166us total 213.863ms
+07-15 00:51:37.795 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202238(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 294us total 243.426ms
+07-15 00:51:39.406 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202193(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 199us total 232.523ms
+07-15 00:51:40.931 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198661(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 201us total 216.129ms
+07-15 00:51:42.515 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203459(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 193us total 226.332ms
+07-15 00:51:44.078 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201531(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 182us total 225.979ms
+07-15 00:51:45.651 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202923(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 211us total 218.786ms
+07-15 00:51:47.222 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201118(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 202us total 228.653ms
+07-15 00:51:48.782 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201261(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 191us total 216.784ms
+07-15 00:51:50.330 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201003(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 183us total 225.475ms
+07-15 00:51:51.882 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198850(6MB) AllocSpace objects, 1(20KB) LOS objects, 23% free, 19MB/25MB, paused 177us total 225.015ms
+07-15 00:51:53.429 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202031(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 174us total 203.503ms
+07-15 00:51:54.992 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200770(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 149us total 204.712ms
+07-15 00:51:56.541 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201505(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 226us total 206.982ms
+07-15 00:51:58.100 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199264(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 198us total 208.619ms
+07-15 00:51:59.661 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200473(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 149us total 211.314ms
+07-15 00:52:01.204 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201652(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 150us total 206.274ms
+07-15 00:52:02.782 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198867(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 186us total 230.232ms
+07-15 00:52:04.324 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200410(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 179us total 211.490ms
+07-15 00:52:05.887 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201495(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 152us total 227.163ms
+07-15 00:52:07.461 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202371(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 216us total 215.891ms
+07-15 00:52:09.006 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201256(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 191us total 209.735ms
+07-15 00:52:10.533 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198528(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 189us total 211.863ms
+07-15 00:52:12.084 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199186(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 176us total 206.339ms
+07-15 00:52:13.660 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200550(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 194us total 217.491ms
+07-15 00:52:15.193 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201061(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 360us total 205.613ms
+07-15 00:52:16.754 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199348(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 195us total 209.881ms
+07-15 00:52:18.326 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200462(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 196us total 219.563ms
+07-15 00:52:19.888 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202035(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 147us total 215.563ms
+07-15 00:52:21.447 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201800(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 148us total 206.853ms
+07-15 00:52:23.025 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201487(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 145us total 217.317ms
+07-15 00:52:24.554 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199976(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 150us total 211.384ms
+07-15 00:52:26.127 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202091(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 164us total 215.632ms
+07-15 00:52:27.714 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202121(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 172us total 233.249ms
+07-15 00:52:29.267 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202007(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 208us total 216.612ms
+07-15 00:52:30.823 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201323(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 173us total 206.885ms
+07-15 00:52:32.369 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200515(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 171us total 212.520ms
+07-15 00:52:33.921 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199436(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 186us total 206.056ms
+07-15 00:52:35.485 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200410(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 176us total 206.990ms
+07-15 00:52:37.058 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202499(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 185us total 210.348ms
+07-15 00:52:38.592 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198641(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 205us total 211.624ms
+07-15 00:52:40.153 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201178(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 149us total 210.017ms
+07-15 00:52:41.693 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199709(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 150us total 218.836ms
+07-15 00:52:43.260 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202066(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 149us total 218.477ms
+07-15 00:52:44.829 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202086(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 172us total 220.137ms
+07-15 00:52:46.397 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201871(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 149us total 219.182ms
+07-15 00:52:47.966 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202696(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 186us total 217.175ms
+07-15 00:52:49.525 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200979(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 152us total 213.940ms
+07-15 00:52:51.106 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202124(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 195us total 225.250ms
+07-15 00:52:52.632 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201169(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 185us total 209.469ms
+07-15 00:52:54.316 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199213(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 229us total 329.757ms
+07-15 00:52:55.882 17906 17920 I vision.svplaye: Background concurrent copying GC freed 217489(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 225us total 214.364ms
+07-15 00:52:57.444 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200961(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 158us total 217.548ms
+07-15 00:52:59.031 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203169(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 219us total 230.501ms
+07-15 00:53:00.576 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201796(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 195us total 207.279ms
+07-15 00:53:02.138 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200960(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 152us total 207.694ms
+07-15 00:53:03.716 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201855(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 151us total 221.092ms
+07-15 00:53:05.265 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201220(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 202us total 225.988ms
+07-15 00:53:06.815 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199967(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 174us total 214.236ms
+07-15 00:53:08.353 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198307(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 235us total 208.423ms
+07-15 00:53:09.908 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199619(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 187us total 211.934ms
+07-15 00:53:11.443 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199688(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 160us total 205.535ms
+07-15 00:53:13.015 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199240(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 197us total 222.409ms
+07-15 00:53:14.585 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202015(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 175us total 223.554ms
+07-15 00:53:16.138 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202538(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 211us total 207.426ms
+07-15 00:53:17.702 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198667(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 163us total 226.171ms
+07-15 00:53:19.263 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202452(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 286us total 228.607ms
+07-15 00:53:20.807 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200854(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 173us total 207.520ms
+07-15 00:53:22.383 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200793(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 168us total 218.716ms
+07-15 00:53:23.956 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202235(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 152us total 221.651ms
+07-15 00:53:25.519 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201711(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 145us total 214.479ms
+07-15 00:53:27.061 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201636(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 153us total 209.735ms
+07-15 00:53:28.627 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198174(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 147us total 218.570ms
+07-15 00:53:30.205 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202179(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 1.846ms total 223.060ms
+07-15 00:53:31.770 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202545(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 186us total 213.885ms
+07-15 00:53:33.337 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200984(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 247us total 213.188ms
+07-15 00:53:34.907 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201100(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 183us total 218.522ms
+07-15 00:53:36.477 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201636(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 150us total 223.858ms
+07-15 00:53:38.069 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202777(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 164us total 233.236ms
+07-15 00:53:39.618 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202431(6MB) AllocSpace objects, 1(20KB) LOS objects, 23% free, 19MB/25MB, paused 194us total 206.529ms
+07-15 00:53:41.201 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201348(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 195us total 224.108ms
+07-15 00:53:42.735 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200160(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 230us total 216.182ms
+07-15 00:53:44.302 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201226(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 222us total 218.199ms
+07-15 00:53:45.875 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201884(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 223us total 223.057ms
+07-15 00:53:47.443 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203402(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 165us total 217.521ms
+07-15 00:53:49.005 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200280(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 192us total 211.063ms
+07-15 00:53:50.574 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201450(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 150us total 214.994ms
+07-15 00:53:52.152 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201954(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 180us total 222.175ms
+07-15 00:53:53.724 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202656(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 352us total 218.628ms
+07-15 00:53:55.289 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201866(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 217us total 213.935ms
+07-15 00:53:56.839 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200702(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 203us total 219.351ms
+07-15 00:53:58.389 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199333(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 222us total 210.001ms
+07-15 00:53:59.936 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199304(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 244us total 211.366ms
+07-15 00:54:01.506 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200368(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 173us total 220.807ms
+07-15 00:54:03.067 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200585(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 197us total 213.226ms
+07-15 00:54:04.632 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201530(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 197us total 209.702ms
+07-15 00:54:06.169 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200600(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 160us total 206.670ms
+07-15 00:54:07.745 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198932(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 181us total 223.681ms
+07-15 00:54:09.305 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201624(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 180us total 214.224ms
+07-15 00:54:10.871 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201348(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 156us total 212.217ms
+07-15 00:54:12.457 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201769(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 153us total 223.044ms
+07-15 00:54:14.024 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202154(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 229us total 219.369ms
+07-15 00:54:15.564 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201530(6MB) AllocSpace objects, 1(20KB) LOS objects, 23% free, 19MB/25MB, paused 349us total 210.709ms
+07-15 00:54:17.135 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199010(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 267us total 220.174ms
+07-15 00:54:18.710 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202112(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 256us total 222.181ms
+07-15 00:54:20.274 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200737(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 259us total 217.635ms
+07-15 00:54:21.831 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202671(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 212us total 205.084ms
+07-15 00:54:23.387 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199680(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 179us total 218.382ms
+07-15 00:54:24.947 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199728(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 227us total 217.255ms
+07-15 00:54:26.503 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200807(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 183us total 208.948ms
+07-15 00:54:28.076 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201788(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 148us total 214.593ms
+07-15 00:54:29.621 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201213(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 174us total 211.291ms
+07-15 00:54:31.182 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199118(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 174us total 212.741ms
+07-15 00:54:32.751 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200398(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 167us total 215.720ms
+07-15 00:54:34.312 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202053(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 147us total 208.953ms
+07-15 00:54:35.887 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201226(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 207us total 226.079ms
+07-15 00:54:37.452 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202997(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 199us total 206.849ms
+07-15 00:54:39.003 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200872(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 186us total 209.379ms
+07-15 00:54:40.569 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198972(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 184us total 216.755ms
+07-15 00:54:42.101 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198441(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 237us total 212.914ms
+07-15 00:54:43.660 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200077(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 145us total 211.290ms
+07-15 00:54:45.232 17906 17920 I vision.svplaye: Background concurrent copying GC freed 203082(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 152us total 212.275ms
+07-15 00:54:46.799 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201814(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 158us total 210.492ms
+07-15 00:54:48.370 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201701(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 160us total 211.065ms
+07-15 00:54:49.946 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202732(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 228us total 211.701ms
+07-15 00:54:51.527 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201313(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 167us total 227.796ms
+07-15 00:54:53.055 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201684(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 184us total 212.746ms
+07-15 00:54:54.629 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199537(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 177us total 223.739ms
+07-15 00:54:56.194 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201823(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 199us total 219.874ms
+07-15 00:54:57.743 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200649(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 147us total 215.002ms
+07-15 00:54:59.305 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202638(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 161us total 209.563ms
+07-15 00:55:00.858 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201326(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 134us total 212.664ms
+07-15 00:55:02.416 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198445(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 230us total 220.631ms
+07-15 00:55:03.966 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201850(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 183us total 203.865ms
+07-15 00:55:05.512 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199858(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 158us total 210.790ms
+07-15 00:55:07.077 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200645(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 182us total 218.765ms
+07-15 00:55:08.635 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200153(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 181us total 211.899ms
+07-15 00:55:10.201 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201770(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 195us total 210.123ms
+07-15 00:55:11.756 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201930(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 512us total 206.890ms
+07-15 00:55:13.330 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202498(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 161us total 214.248ms
+07-15 00:55:14.873 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201184(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 160us total 214.863ms
+07-15 00:55:16.429 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199038(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 183us total 212.526ms
+07-15 00:55:17.970 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198406(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 206us total 217.926ms
+07-15 00:55:19.525 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200204(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 195us total 212.517ms
+07-15 00:55:21.086 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200419(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 149us total 214.380ms
+07-15 00:55:22.652 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202171(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 153us total 215.378ms
+07-15 00:55:24.231 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202953(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 179us total 223.167ms
+07-15 00:55:25.754 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199544(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 168us total 210.487ms
+07-15 00:55:27.318 17906 17920 I vision.svplaye: Background concurrent copying GC freed 199618(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 188us total 210.814ms
+07-15 00:55:28.886 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201493(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 163us total 217.930ms
+07-15 00:55:30.450 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202299(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 190us total 215.575ms
+07-15 00:55:32.014 17906 17920 I vision.svplaye: Background concurrent copying GC freed 202038(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 149us total 214.017ms
+07-15 00:55:33.549 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200955(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 201us total 205.302ms
+07-15 00:55:35.107 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198419(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 154us total 211.585ms
+07-15 00:55:36.673 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201807(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 170us total 209.874ms
+07-15 00:55:38.217 17906 17920 I vision.svplaye: Background concurrent copying GC freed 201111(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 283us total 208.006ms
+07-15 00:55:39.775 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198959(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 185us total 212.836ms
+07-15 00:55:41.344 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200351(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 144us total 218.055ms
+07-15 00:55:42.862 17906 17920 I vision.svplaye: Background concurrent copying GC freed 198027(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 265us total 224.805ms
+07-15 00:55:44.448 17906 17920 I vision.svplaye: Background concurrent copying GC freed 204162(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 217us total 219.269ms
+07-15 00:55:46.015 17906 17920 I vision.svplaye: Background concurrent copying GC freed 200336(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 170us total 225.250ms
