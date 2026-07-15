@@ -1,5 +1,21 @@
 # AI Changelog
 
+## 2026-07-15 - Separation Info profil et Gerer les profils
+
+- Conserve `profile` pour la consultation/activation/synchronisation et ajoute `profile/manage` pour creation, modification, verrouillage et suppression, avec shell ADMIN partage et menu TV complet.
+- Reutilise `XtreamAccountManager`, `PlaylistProfileEditorDialog`, le PIN, `CatalogRepository` et les flows legacy; focus, selection detail et profil actif restent independants.
+- Ajoute Room 17 -> 18 pour persister les exclusions Kids Live/Films/Series de la derniere synchronisation reussie et les combiner sans doublon avec le snapshot parental actif.
+- Mutualise la decision de synchronisation necessaire entre Home et Info profil via `SyncFrequencyPolicy`.
+- Validation: `testReleaseUnitTest` 102/102, `compileReleaseKotlin`, `assembleRelease`, `git diff --check` et installation signee `adb install -r` reussis. Fire TV: Room 17 -> 18, Info profil, compteurs, D-pad vers Synchroniser et route Gerer les profils verifies sans crash/ANR; CRUD persistant non execute pour ne pas toucher au PIN/profils reels.
+
+## 2026-07-15 - Controle parental par profil et nettoyage des ecrans TV
+
+- Ajoute un scope parental DataStore: activation globale plus profils explicitement desactives; l'etat consomme par Home/catalogues/details devient effectif pour le profil actif, avec compatibilite ON par defaut pour les profils existants et futurs.
+- Recompose Activation en pleine largeur avec cards avatar/nom/toggle, deplace `Change PIN` dans le header et cable le D-pad entre global, profils et menu.
+- Retire `Toutes` de Notifications, corrige le retour vers l'icone header et empeche l'etat vide de recevoir le focus.
+- Le retrait temporaire Historique/Aide/Parametres a ete remplace par le shell Profile complet lors de la separation Info/Gestion.
+- Validation: 22 tests unitaires release parentaux/notifications et compilation Kotlin release reussis.
+
 ## 2026-07-14 - Controle parental persistant, catalogues VOD et reprise player
 
 - Ajoute le snapshot Room v17 des resultats parentaux, invalide uniquement apres changement de profil/mots-cles ou synchronisation; le clic dossier pilote maintenant les elements masques de droite.

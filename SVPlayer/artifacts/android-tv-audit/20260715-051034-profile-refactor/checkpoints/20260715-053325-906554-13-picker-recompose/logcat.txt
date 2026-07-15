@@ -1,0 +1,55 @@
+--------- beginning of main
+07-15 05:31:52.128  8271  8271 W ActivityThread: handleWindowVisibility: no activity for token android.os.BinderProxy@ffbf7ff
+07-15 05:31:52.826  8271  8271 I SVStartup: onCreate: MainActivity launcher with system splash theme
+07-15 05:31:52.886  8271  8271 I PerfStatsManager: start attempting to update service remote
+07-15 05:31:53.167  8271  8271 W vision.svplaye: Accessing hidden method Landroid/graphics/Canvas;->drawPatch(Landroid/graphics/NinePatch;Landroid/graphics/Rect;Landroid/graphics/Paint;)V (dark greylist, linking)
+07-15 05:31:53.167  8271  8271 W vision.svplaye: Accessing hidden method Landroid/graphics/Canvas;->drawPatch(Landroid/graphics/NinePatch;Landroid/graphics/RectF;Landroid/graphics/Paint;)V (dark greylist, linking)
+07-15 05:31:53.169  8271  8271 W vision.svplaye: Accessing hidden method Landroid/graphics/Paint;->getTextBounds(Ljava/lang/CharSequence;IILandroid/graphics/Rect;)V (dark greylist, linking)
+07-15 05:31:53.590  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->getScaleX()F (dark greylist, linking)
+07-15 05:31:53.591  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setClipToOutline(Z)Z (dark greylist, linking)
+07-15 05:31:53.591  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setClipToOutline(Z)Z (dark greylist, linking)
+07-15 05:31:53.591  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setLayerType(I)Z (dark greylist, linking)
+07-15 05:31:53.591  8271  8271 I chatty  : uid=10247(com.smartvision.svplayer) identical 1 line
+07-15 05:31:53.591  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setLayerType(I)Z (dark greylist, linking)
+07-15 05:31:53.592  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->getMatrix(Landroid/graphics/Matrix;)V (dark greylist, linking)
+07-15 05:31:53.593  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setAlpha(F)Z (dark greylist, linking)
+07-15 05:31:53.594  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setCameraDistance(F)Z (dark greylist, linking)
+07-15 05:31:53.594  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setLayerPaint(Landroid/graphics/Paint;)Z (dark greylist, linking)
+07-15 05:31:53.595  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setOutline(Landroid/graphics/Outline;)Z (dark greylist, linking)
+07-15 05:31:53.595  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setPivotX(F)Z (dark greylist, linking)
+07-15 05:31:53.595  8271  8271 I chatty  : uid=10247(com.smartvision.svplayer) identical 1 line
+07-15 05:31:53.595  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setPivotX(F)Z (dark greylist, linking)
+07-15 05:31:53.595  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setRotationX(F)Z (dark greylist, linking)
+07-15 05:31:53.595  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setRotationY(F)Z (dark greylist, linking)
+07-15 05:31:53.595  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setRotation(F)Z (dark greylist, linking)
+07-15 05:31:53.596  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setScaleX(F)Z (dark greylist, linking)
+07-15 05:31:53.596  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setScaleY(F)Z (dark greylist, linking)
+07-15 05:31:53.596  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setElevation(F)Z (dark greylist, linking)
+07-15 05:31:53.596  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setTranslationX(F)Z (dark greylist, linking)
+07-15 05:31:53.596  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setTranslationY(F)Z (dark greylist, linking)
+07-15 05:31:53.598  8271  8271 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->getScaleX()F (dark greylist, linking)
+07-15 05:31:53.608  8271  8518 I ConfigStore: android::hardware::configstore::V1_0::ISurfaceFlingerConfigs::hasWideColorDisplay retrieved: 0
+07-15 05:31:53.608  8271  8518 I ConfigStore: android::hardware::configstore::V1_0::ISurfaceFlingerConfigs::hasHDRDisplay retrieved: 0
+07-15 05:31:53.608  8271  8518 I OpenGLRenderer: Initialized EGL, version 1.4
+07-15 05:31:53.637  8271  8271 I Choreographer: Skipped 37 frames!  The application may be doing too much work on its main thread.
+07-15 05:31:53.670  8271  8518 E ion     : ioctl c0044901 failed with code -1: Invalid argument
+07-15 05:31:53.672  8271  8518 I ConfigStore: android::hardware::configstore::V1_0::ISurfaceFlingerConfigs::vsyncEventPhaseOffsetNs retrieved: 1000000 (default)
+07-15 05:31:53.673  8271  8518 I ConfigStore: android::hardware::configstore::V1_0::ISurfaceFlingerConfigs::vsyncSfEventPhaseOffsetNs retrieved: 1000000 (default)
+07-15 05:31:53.819  8271  8518 I OpenGLRenderer: Davey! duration=790ms; Flags=0, IntendedVsync=32357913357658, Vsync=32358530641608, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=32358531337928, AnimationStart=32358531370543, PerformTraversalsStart=32358533097620, DrawStart=32358542299236, SyncQueued=32358558148928, SyncStart=32358567070389, IssueDrawCommandsStart=32358567170851, SwapBuffers=32358711899005, FrameCompleted=32358713010466, DequeueBufferDuration=0, QueueBufferDuration=537000, 
+07-15 05:31:54.122  8271  8271 I SVStartup: startup stage: Initializing
+07-15 05:31:54.123  8271  8271 I SVStartup: startup stage: CheckingActivation
+07-15 05:31:54.127  8271  8271 I SVStartup: startup stage: PreparingHome
+07-15 05:31:54.128  8271  8271 I SVStartup: startup stage: Starting
+07-15 05:31:54.133  8271  8271 I SVStartup: startup complete: rendering AppNavigation
+07-15 05:31:55.014  8271  8518 I OpenGLRenderer: Davey! duration=1077ms; Flags=1, IntendedVsync=32358830947353, Vsync=32359014464203, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=32359030790390, AnimationStart=32359030824774, PerformTraversalsStart=32359238606466, DrawStart=32359827963005, SyncQueued=32359901010543, SyncStart=32359901106236, IssueDrawCommandsStart=32359901465082, SwapBuffers=32359907431390, FrameCompleted=32359908417005, DequeueBufferDuration=399000, QueueBufferDuration=386000, 
+07-15 05:31:55.050  8271  8271 I SVStartup: state localReady=true checking=false activated=true playableSource=true route=home
+07-15 05:31:55.127  8271  8271 I Choreographer: Skipped 47 frames!  The application may be doing too much work on its main thread.
+07-15 05:31:55.169  8271  8518 I ConfigStore: android::hardware::configstore::V1_0::ISurfaceFlingerConfigs::vsyncEventPhaseOffsetNs retrieved: 1000000 (default)
+07-15 05:31:55.169  8271  8518 I ConfigStore: android::hardware::configstore::V1_0::ISurfaceFlingerConfigs::vsyncSfEventPhaseOffsetNs retrieved: 1000000 (default)
+07-15 05:31:55.170  8271  8518 I OpenGLRenderer: Davey! duration=832ms; Flags=0, IntendedVsync=32359231398263, Vsync=32360015515713, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=32360021217313, AnimationStart=32360021246159, PerformTraversalsStart=32360060499851, DrawStart=32360060681697, SyncQueued=32360060748467, SyncStart=32360060834236, IssueDrawCommandsStart=32360060983697, SwapBuffers=32360062170620, FrameCompleted=32360063940467, DequeueBufferDuration=288000, QueueBufferDuration=444000, 
+07-15 05:31:55.655  8271  8271 I SmartVisionAds: Passage en FREE_WITH_ADS
+07-15 05:31:55.655  8271  8271 I SmartVisionAds: Statut monetisation actuel: FREE_WITH_ADS
+07-15 05:31:56.122  8271  8276 I vision.svplaye: JIT allocated 70KB for stack maps of void com.smartvision.svplayer.ui.navigation.AppNavigationKt.AppNavigation(androidx.navigation.NavHostController, androidx.compose.runtime.Composer, int, int)
+07-15 05:32:09.641  8271  8348 I WM-WorkerWrapper: Worker result SUCCESS for Work [ id=fc5f4d3c-1918-4f53-9ec9-fe5e9d9a24b5, tags={ com.smartvision.svplayer.startup.PlaylistSyncWorker } ]
+07-15 05:33:12.341  8271  8342 I WM-WorkerWrapper: Worker result SUCCESS for Work [ id=cb7c1496-266b-47a8-81f5-b91f7dad83de, tags={ com.smartvision.svplayer.data.playlist.EpgSyncWorker } ]
+07-15 05:33:22.397  8271  8281 I vision.svplaye: Background concurrent copying GC freed 33892(1908KB) AllocSpace objects, 4(144KB) LOS objects, 50% free, 3MB/7MB, paused 146us total 106.336ms

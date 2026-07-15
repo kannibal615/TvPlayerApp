@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-07-14.
+Derniere mise a jour: 2026-07-15.
 
 ## Profils Kids et dialogues
 
@@ -12,6 +12,8 @@ Derniere mise a jour: 2026-07-14.
 - La rangee d'avatars est horizontale et scrollable au focus; ADMIN accepte son avatar dedie et tous les avatars CLASSIC.
 - La selection de profil garde une validation visuelle courte sur la carte puis active le profil et purge les caches memoire. Le picker ne lance aucune synchronisation reseau; Home en reste proprietaire apres son rendu.
 - Sur une carte de profil reelle, Bas cible le crayon discret et Haut retourne a la carte. La fermeture du PIN ou du formulaire redemande le focus a la cible d'origine avec un `FocusRequester` stable.
+- Dans `Info profil`, Droite depuis le menu entre sur `Changer de profil`; Bas relie cette action a `Synchroniser ce profil`, Haut fait le chemin inverse et Gauche revient au menu. Le focus d'une carte du selecteur ne change jamais le profil actif: seul OK appelle l'activation.
+- Dans `Gerer les profils`, Gauche/Droite parcourt la `LazyRow`; Bas ou OK sur un profil selectionne la cible d'administration puis focalise `Modifier`. Haut depuis les actions retourne a la carte. Actif, selection detail et focus sont trois etats independants, et toute fermeture de dialogue redemande la carte d'origine ou son voisin apres suppression.
 
 ## 1. Objectif
 
@@ -38,7 +40,7 @@ Le focus global est derive des settings utilisateur:
 - Le header principal affiche aussi une date/heure non focusable a droite (`HH:mm:ss` puis `dd/MM/yyyy`), separee des boutons globaux par un trait vertical discret.
 - Les formulaires doivent permettre Haut/Bas entre champs.
 - Les popups doivent etre navigables au D-pad.
-- Controle parental utilise un focus a deux niveaux: Activation/Code PIN, puis Mots-cles, puis Resultats. Le handler OK d'une carte ne doit consommer l'evenement que si la carte elle-meme est focalisee; il ne doit jamais intercepter Add/Edit/Delete d'un enfant. Le premier OK/clic sur Activation applique le toggle, sur Code PIN ouvre `NumericPinDialog`, et sur Mots-cles focalise la saisie puis ouvre le clavier. Add cree la card, Edit ouvre son dialogue et Delete ouvre une confirmation TV avant suppression. Back revient d'abord a la carte, puis au bouton Controle parental du menu gauche, avant la sortie normale de Profile.
+- Controle parental utilise un focus a deux niveaux: Activation, puis Mots-cles, puis Resultats. `Change PIN` est le seul bouton du header droit. OK sur Activation entre dans la section sans changer l'etat; le toggle global applique ON/OFF, puis Bas entre dans la rangee horizontale des toggles profils. Haut revient au toggle global puis au bouton PIN; Gauche/Droite parcourt les profils. Les toggles profils restent visibles mais non focusables quand le global est OFF. Back revient d'abord a la carte, puis au bouton Controle parental du menu gauche.
 
 ## 4. Workflow technique
 
@@ -68,12 +70,12 @@ Attention:
 - Depuis le 2026-07-06, `MainActivity.dispatchKeyEvent()` intercepte uniquement `KEYCODE_SETTINGS`, `KEYCODE_MENU` et `KEYCODE_MEDIA_TOP_MENU`: `ACTION_DOWN` est consomme sans action, `ACTION_UP` demande l'ouverture de Settings via `RemoteSettingsNavigation`, puis toutes les autres touches retournent a `super.dispatchKeyEvent(event)`.
 - Les handlers D-pad doivent tenir compte des surfaces visibles.
 - Depuis le 2026-07-10, le retour du player restaure explicitement la ligne de contenu source: Live TV attend que la chaine soit composee avant de la focaliser et neutralise le focus initial Categories; Movies et Series transportent respectivement le `streamId` ou `seriesId`, scrollent la liste vers l'item puis demandent son focus. Le retour Settings -> Home cible l'icone Settings du header; Profile et Notifications utilisent le meme contrat avec leur controle d'origine.
-- Notifications initialise le focus sur `Toutes`. Haut/Bas parcourt les categories, Droite entre dans la liste ou l'etat vide, Gauche revient a la categorie selectionnee et Haut depuis la premiere carte atteint `Actualiser`. Apres ouverture, le focus vise la carte suivante, la precedente si necessaire, ou la categorie lorsque la liste devient vide.
+- Notifications initialise le focus sur `Mises a jour`. Haut depuis cette premiere entree cible explicitement l'icone Notifications du header et Bas revient a la categorie selectionnee. Droite entre dans la liste seulement si elle contient une notification; l'etat vide est informatif et non focusable. Gauche revient a la categorie selectionnee et Haut depuis la premiere carte atteint `Actualiser`. Apres ouverture, le focus vise la carte suivante, la precedente si necessaire, ou la categorie lorsque la liste devient vide.
 - Le hero Home est strictement informatif: texte et pagination uniquement, sans CTA ni cible focusable. L'espace header/hero est de `20.dp` et tout retour cible vers le header remet le scroll Home en haut afin d'eviter une bordure hero masquee.
 - Les trois cards Xtream Home gardent une taille stable au focus (`focusedScale = 1f`): leur cadre/glow commun exprime le focus sans recouvrir ni deplacer les autres elements.
 - La navigation horizontale Continue watching/Tendances laisse `LazyRow` faire la revelation minimale du prochain enfant. Ne pas reintroduire un `animateScrollToItem(index)` a chaque changement de focus: il entrait en concurrence avec le mouvement D-pad et l'animation de largeur premium.
 - `tvFocusTarget` ne doit creer l'animation infinie de balayage que lorsque `TvFocusEffect.GoldSweep` est actif. Les styles Frame/Neon ne doivent pas conserver une infinite transition par composant.
-- Le popup manuel Info compte > Synchroniser bloque Back/D-pad uniquement pendant `SyncStatus.Running`; a la fin ou en erreur, le focus va sur `Retour`.
+- `Info profil` desactive son bouton pendant `SyncStatus.Running`; le repository reste l'unique arbitre anti-double lancement. Back ferme d'abord les dialogues, puis `profile/manage` revient a `profile` et `profile` revient a Home sur l'avatar.
 - Depuis le 2026-07-05, dans Live TV, D-pad gauche depuis une chaine revient explicitement vers le dossier ouvert/selectionne avec `runCatching` pour proteger les `FocusRequester`. La liste chaines ancre le focus autour de la 3e ligne via `LazyListState.animateScrollToItem(index - 2)` quand possible, avec marge haute pour eviter le clipping.
 - Depuis le 2026-07-05, le header Apercu Live TV porte les actions `Regarder`, `Favori` et `Supprimer` en boutons carres icon-only. D-pad droite depuis une chaine cible ces actions d'apercu; les lignes EPG sous le mini-player sont elles-memes focusables et OK ouvre/ferme le detail en rideau.
 - Depuis le 2026-07-06, `ui/home/TvHeader.kt` accepte un `FocusRequester` pour l'onglet courant et une cible D-pad bas vers le contenu. Live TV branche l'onglet `Live TV` et la categorie selectionnee: D-pad haut depuis la premiere ligne/action de contenu remonte vers l'onglet actif, et D-pad bas depuis le header revient uniquement aux categories. Les actions du header Apercu et les lignes EPG routent D-pad gauche vers la chaine selectionnee, avec fallback sur la premiere chaine composee.

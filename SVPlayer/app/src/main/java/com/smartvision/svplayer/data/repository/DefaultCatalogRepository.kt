@@ -221,7 +221,7 @@ class DefaultCatalogRepository(
     override fun observeAccount(): Flow<AccountProfile> =
         accountManager.activeProfileId.flatMapLatest {
             val profileId = activeProfileId()
-            combine(
+            val account = combine(
                 profileDao.observe(profileId),
                 accountManager.profiles,
                 mediaDao.observeLiveStreamCount(profileId),
@@ -240,6 +240,17 @@ class DefaultCatalogRepository(
                     liveCount = liveCount,
                     movieCount = movieCount,
                     seriesCount = seriesCount,
+                )
+            }
+            combine(account, syncStateDao.observe(profileId)) { profile, syncState ->
+                profile.copy(
+                    catalogSyncStatus = syncState?.status,
+                    catalogSyncMessage = syncState?.message,
+                    kidsExcludedCount = listOfNotNull(
+                        syncState?.kidsExcludedLive,
+                        syncState?.kidsExcludedMovies,
+                        syncState?.kidsExcludedSeries,
+                    ).sum(),
                 )
             }
         }
@@ -1020,6 +1031,9 @@ class DefaultCatalogRepository(
                     lastSync = now,
                     status = "success",
                     message = "Synchronisation terminee",
+                    kidsExcludedLive = liveExcluded ?: 0,
+                    kidsExcludedMovies = moviesExcluded ?: 0,
+                    kidsExcludedSeries = seriesExcluded ?: 0,
                 ),
             )
             logSyncMemory(stage = "after_room_write", live = liveItems, movies = movieItems, series = seriesItems)
@@ -1046,13 +1060,17 @@ class DefaultCatalogRepository(
             } else if (!seriesCompleted && seriesPhase != SyncStatus.SyncSectionPhase.WAITING) {
                 seriesPhase = SyncStatus.SyncSectionPhase.ERROR
             }
+            val previousSyncState = syncStateDao.get(profileId)
             syncStateDao.upsert(
                 SyncStateEntity(
                     profileId = profileId,
                     id = "catalog",
-                    lastSync = syncStateDao.get(profileId)?.lastSync,
+                    lastSync = previousSyncState?.lastSync,
                     status = "error",
                     message = "Erreur reseau",
+                    kidsExcludedLive = previousSyncState?.kidsExcludedLive ?: 0,
+                    kidsExcludedMovies = previousSyncState?.kidsExcludedMovies ?: 0,
+                    kidsExcludedSeries = previousSyncState?.kidsExcludedSeries ?: 0,
                 ),
             )
             _syncStatus.value = SyncStatus.Error(
@@ -1922,6 +1940,7 @@ class DefaultCatalogRepository(
                     lastSync = now,
                     status = "success",
                     message = "Synchronisation M3U terminee",
+                    kidsExcludedLive = kidsImport?.metrics?.rejectedItems ?: 0,
                 ),
             )
             accountManager.markProfileSynced(profileId, now)
@@ -1946,6 +1965,19 @@ class DefaultCatalogRepository(
             syncWork.complete("Catalog ready")
             Result.success(Unit)
         } catch (error: Exception) {
+            val previousSyncState = syncStateDao.get(profile.id)
+            syncStateDao.upsert(
+                SyncStateEntity(
+                    profileId = profile.id,
+                    id = "catalog",
+                    lastSync = previousSyncState?.lastSync,
+                    status = "error",
+                    message = "Synchronisation M3U indisponible",
+                    kidsExcludedLive = previousSyncState?.kidsExcludedLive ?: 0,
+                    kidsExcludedMovies = previousSyncState?.kidsExcludedMovies ?: 0,
+                    kidsExcludedSeries = previousSyncState?.kidsExcludedSeries ?: 0,
+                ),
+            )
             _syncStatus.value = SyncStatus.Error(
                 "Synchronisation M3U indisponible",
                 catalogProgress = SyncStatus.CatalogProgress(

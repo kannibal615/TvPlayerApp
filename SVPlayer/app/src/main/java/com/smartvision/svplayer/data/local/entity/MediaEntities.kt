@@ -2,6 +2,7 @@ package com.smartvision.svplayer.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.Index
+import androidx.room.ColumnInfo
 
 @Entity(
     tableName = "live_streams",
@@ -281,4 +282,7 @@ data class SyncStateEntity(
     val lastSync: Long?,
     val status: String,
     val message: String?,
+    @ColumnInfo(defaultValue = "0") val kidsExcludedLive: Int = 0,
+    @ColumnInfo(defaultValue = "0") val kidsExcludedMovies: Int = 0,
+    @ColumnInfo(defaultValue = "0") val kidsExcludedSeries: Int = 0,
 )

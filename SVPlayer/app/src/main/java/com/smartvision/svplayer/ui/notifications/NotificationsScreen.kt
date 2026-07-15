@@ -164,12 +164,11 @@ private fun NotificationsScreen(
     modifier: Modifier = Modifier,
 ) {
     BackHandler(onBack = onBack)
-    var selectedSection by remember { mutableStateOf(NotificationSection.All) }
+    var selectedSection by remember { mutableStateOf(NotificationSection.Updates) }
     var dialogNotification by remember { mutableStateOf<AppNotification?>(null) }
     val headerFocusRequester = remember { FocusRequester() }
     val refreshFocusRequester = remember { FocusRequester() }
     val firstCardFocusRequester = remember { FocusRequester() }
-    val emptyFocusRequester = remember { FocusRequester() }
     val sectionRequesters = remember { NotificationSection.entries.associateWith { FocusRequester() } }
     val notificationRequesters = remember { mutableMapOf<Long, FocusRequester>() }
     var openedNotificationId by remember { mutableStateOf<Long?>(null) }
@@ -182,7 +181,7 @@ private fun NotificationsScreen(
     LaunchedEffect(Unit) {
         withFrameNanos { }
         delay(90)
-        runCatching { sectionRequesters.getValue(NotificationSection.All).requestFocus() }
+        runCatching { sectionRequesters.getValue(NotificationSection.Updates).requestFocus() }
     }
 
     LaunchedEffect(visibleNotifications.map { it.id }, dialogNotification) {
@@ -223,7 +222,7 @@ private fun NotificationsScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
-            currentTabFocusRequester = headerFocusRequester,
+            notificationsFocusRequester = headerFocusRequester,
             contentDownFocusRequester = sectionRequesters.getValue(selectedSection),
             onContentDown = { runCatching { sectionRequesters.getValue(selectedSection).requestFocus() } },
             modifier = Modifier.fillMaxWidth(),
@@ -251,9 +250,8 @@ private fun NotificationsScreen(
                         focusRequester = sectionRequesters.getValue(section),
                         onClick = { selectedSection = section },
                         onMoveRight = {
-                            runCatching {
-                                if (visibleNotifications.isEmpty()) emptyFocusRequester.requestFocus()
-                                else firstCardFocusRequester.requestFocus()
+                            if (visibleNotifications.isNotEmpty()) {
+                                runCatching { firstCardFocusRequester.requestFocus() }
                             }
                         },
                         onMoveUpFromFirst = if (index == 0) ({ runCatching { headerFocusRequester.requestFocus() } }) else null,
@@ -285,7 +283,7 @@ private fun NotificationsScreen(
                         focusRequester = refreshFocusRequester,
                         variant = TvButtonVariant.Primary,
                         modifier = Modifier.height(38.dp).focusProperties {
-                            down = if (visibleNotifications.isEmpty()) emptyFocusRequester else firstCardFocusRequester
+                            if (visibleNotifications.isNotEmpty()) down = firstCardFocusRequester
                             left = sectionRequesters.getValue(selectedSection)
                         },
                     )
@@ -298,15 +296,9 @@ private fun NotificationsScreen(
                     )
                     state.errorMessage != null && state.notifications.isEmpty() -> NotificationEmptyState(
                         message = state.errorMessage,
-                        focusRequester = emptyFocusRequester,
-                        leftFocusRequester = sectionRequesters.getValue(selectedSection),
-                        onClick = onRefresh,
                     )
                     visibleNotifications.isEmpty() -> NotificationEmptyState(
                         message = strings.noNotifications,
-                        focusRequester = emptyFocusRequester,
-                        leftFocusRequester = sectionRequesters.getValue(selectedSection),
-                        onClick = onRefresh,
                     )
                     else -> LazyColumn(
                         contentPadding = PaddingValues(bottom = 8.dp),
@@ -434,22 +426,10 @@ private fun NotificationCard(
 @Composable
 private fun NotificationEmptyState(
     message: String?,
-    focusRequester: FocusRequester,
-    leftFocusRequester: FocusRequester,
-    onClick: () -> Unit,
 ) {
-    val focusState = rememberTvFocusState()
-    val focusStyle = LocalTvFocusStyle.current
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .focusRequester(focusRequester)
-            .focusProperties { left = leftFocusRequester }
-            .tvFocusTarget(state = focusState, pressed = pressed, glowColor = focusStyle.accent, cornerRadius = 8.dp)
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .focusable(interactionSource = interactionSource)
             .padding(top = 110.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -520,14 +500,12 @@ private fun DetailRow(label: String, value: String?) {
 }
 
 internal enum class NotificationSection(val icon: ImageVector) {
-    All(Icons.Default.Notifications),
     Updates(Icons.Default.SystemUpdateAlt),
     Playlists(Icons.Default.PlaylistAdd),
     Important(Icons.Default.WarningAmber),
     History(Icons.Default.History);
 
     fun label(strings: SmartVisionStrings): String = when (this) {
-        All -> strings.allNotifications
         Updates -> strings.applicationUpdates
         Playlists -> strings.playlistAddedNotifications
         Important -> strings.importantInformation
@@ -538,7 +516,6 @@ internal enum class NotificationSection(val icon: ImageVector) {
 internal fun filterNotifications(items: List<AppNotification>, section: NotificationSection): List<AppNotification> =
     items.filter { notification ->
         when (section) {
-            NotificationSection.All -> !notification.seen
             NotificationSection.Updates -> !notification.seen && notification.type == NotificationType.AppUpdate
             NotificationSection.Playlists -> !notification.seen && notification.type == NotificationType.PlaylistAdded
             NotificationSection.Important -> !notification.seen && notification.type == NotificationType.ImportantInfo
@@ -547,7 +524,6 @@ internal fun filterNotifications(items: List<AppNotification>, section: Notifica
     }
 
 internal fun notificationCounts(items: List<AppNotification>): Map<NotificationSection, Int> = mapOf(
-    NotificationSection.All to items.count { !it.seen },
     NotificationSection.Updates to items.count { !it.seen && it.type == NotificationType.AppUpdate },
     NotificationSection.Playlists to items.count { !it.seen && it.type == NotificationType.PlaylistAdded },
     NotificationSection.Important to items.count { !it.seen && it.type == NotificationType.ImportantInfo },

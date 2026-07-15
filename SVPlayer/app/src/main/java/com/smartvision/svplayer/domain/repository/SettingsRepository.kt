@@ -1,10 +1,12 @@
 package com.smartvision.svplayer.domain.repository
 
 import com.smartvision.svplayer.domain.model.PlayerSettings
+import com.smartvision.svplayer.domain.model.ParentalControlScope
 import kotlinx.coroutines.flow.Flow
 
 interface SettingsRepository {
     val settings: Flow<PlayerSettings>
+    val parentalControlScope: Flow<ParentalControlScope>
 
     suspend fun setDisplaySize(value: String)
     suspend fun setLanguage(value: String)
@@ -23,6 +25,7 @@ interface SettingsRepository {
     suspend fun setBufferMode(value: String)
     suspend fun setRetryEnabled(value: Boolean)
     suspend fun setParentalControlEnabled(value: Boolean)
+    suspend fun setParentalControlEnabledForProfile(profileId: String, enabled: Boolean)
     suspend fun setParentalPin(value: String)
     fun verifyParentalPin(value: String): Boolean
     suspend fun setParentalKeywords(value: String)

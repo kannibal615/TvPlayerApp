@@ -316,7 +316,31 @@ data class ProfileUiState(
     val tvCode: String = publicDeviceCode.ifBlank { "Generation..." }
     val activeXtreamAccount: XtreamAccount?
         get() = xtreamAccounts.firstOrNull { it.id == activeXtreamAccountId } ?: xtreamAccounts.firstOrNull()
+    val overview: ProfileOverviewUiState
+        get() = ProfileOverviewUiState(
+            activeProfile = playlistProfiles.firstOrNull { it.id == activePlaylistProfileId },
+            account = account,
+            refreshing = refreshing,
+            errorMessage = errorMessage,
+        )
+    val administration: ProfileAdministrationUiState
+        get() = ProfileAdministrationUiState(
+            profiles = playlistProfiles,
+            activeProfileId = activePlaylistProfileId,
+        )
 }
+
+data class ProfileOverviewUiState(
+    val activeProfile: PlaylistProfile?,
+    val account: AccountProfile,
+    val refreshing: Boolean,
+    val errorMessage: String?,
+)
+
+data class ProfileAdministrationUiState(
+    val profiles: List<PlaylistProfile>,
+    val activeProfileId: String,
+)
 
 data class ProfileQrState(
     val title: String,
@@ -437,4 +461,3 @@ private fun buildProfileState(
         qrDialog = transient.qrDialog,
     )
 }
-

@@ -11,11 +11,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -39,7 +38,6 @@ import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Security
@@ -94,7 +92,6 @@ import java.util.Locale
 
 private enum class ParentalPanelSection {
     Activation,
-    Pin,
     Keywords,
     Results,
 }
@@ -111,11 +108,10 @@ fun ParentalControlPanel(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val activationSectionRequester = remember { FocusRequester() }
-    val pinSectionRequester = remember { FocusRequester() }
     val keywordsSectionRequester = remember { FocusRequester() }
     val resultsSectionRequester = remember { FocusRequester() }
     val toggleRequester = remember { FocusRequester() }
-    val pinButtonRequester = remember { FocusRequester() }
+    val changePinRequester = remember { FocusRequester() }
     val keywordInputRequester = remember { FocusRequester() }
     val addRequester = remember { FocusRequester() }
     val firstFolderRequester = remember { FocusRequester() }
@@ -129,6 +125,9 @@ fun ParentalControlPanel(
     var keywordEditRequest by remember { mutableIntStateOf(0) }
     var panelHasFocus by remember { mutableStateOf(false) }
     val editRequesters = remember(state.keywords.size) { List(state.keywords.size) { FocusRequester() } }
+    val profileToggleRequesters = remember(state.profiles.map { it.id }) {
+        state.profiles.associate { it.id to FocusRequester() }
+    }
 
     BackHandler(enabled = panelHasFocus) {
         if (enteredSection == null) {
@@ -141,7 +140,6 @@ fun ParentalControlPanel(
                 runCatching {
                     when (section) {
                         ParentalPanelSection.Activation -> activationSectionRequester.requestFocus()
-                        ParentalPanelSection.Pin -> pinSectionRequester.requestFocus()
                         ParentalPanelSection.Keywords -> keywordsSectionRequester.requestFocus()
                         ParentalPanelSection.Results -> resultsSectionRequester.requestFocus()
                         null -> Unit
@@ -161,7 +159,6 @@ fun ParentalControlPanel(
         runCatching {
             when (enteredSection) {
                 ParentalPanelSection.Activation -> toggleRequester.requestFocus()
-                ParentalPanelSection.Pin -> pinButtonRequester.requestFocus()
                 ParentalPanelSection.Keywords -> keywordInputRequester.requestFocus()
                 ParentalPanelSection.Results -> when {
                     state.resultsError -> retryRequester.requestFocus()
@@ -171,6 +168,13 @@ fun ParentalControlPanel(
                 }
                 null -> Unit
             }
+        }
+    }
+
+    LaunchedEffect(state.enabled, enteredSection) {
+        if (!state.enabled && enteredSection == ParentalPanelSection.Activation) {
+            delay(45)
+            runCatching { toggleRequester.requestFocus() }
         }
     }
 
@@ -199,10 +203,20 @@ fun ParentalControlPanel(
             .border(1.dp, SmartVisionColors.Border, RoundedCornerShape(8.dp))
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Lock, null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(26.dp))
             Spacer(Modifier.width(9.dp))
             Text(strings.parentalControl, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.weight(1f))
+            TvButton(
+                text = strings.changePin,
+                onClick = { showPinDialog = true },
+                focusRequester = changePinRequester,
+                modifier = Modifier
+                    .widthIn(min = 128.dp)
+                    .height(38.dp)
+                    .focusProperties { down = toggleRequester },
+            )
         }
         Spacer(Modifier.height(10.dp))
 
@@ -212,51 +226,51 @@ fun ParentalControlPanel(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item(key = "parental-top-row") {
-                Row(
-                    Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    ParentalSectionFrame(
-                        title = strings.parentalActivation,
-                        icon = Icons.Default.Security,
-                        focusedRequester = activationSectionRequester,
-                        entered = enteredSection == ParentalPanelSection.Activation,
-                        onEnter = {
-                            enteredSection = ParentalPanelSection.Activation
-                            viewModel.setEnabled(!state.enabled)
-                        },
-                        onFocused = { scope.launch { listState.animateScrollToItem(0) } },
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                    ) {
+            item(key = "parental-activation") {
+                ParentalSectionFrame(
+                    title = strings.parentalActivation,
+                    icon = Icons.Default.Security,
+                    focusedRequester = activationSectionRequester,
+                    entered = enteredSection == ParentalPanelSection.Activation,
+                    onEnter = { enteredSection = ParentalPanelSection.Activation },
+                    onFocused = { scope.launch { listState.animateScrollToItem(0) } },
+                    modifier = Modifier.fillMaxWidth(),
+                    headerTrailing = {
                         CompactParentalToggle(
                             checked = state.enabled,
                             onToggle = { viewModel.setEnabled(!state.enabled) },
                             focusRequester = toggleRequester,
                             canFocus = enteredSection == ParentalPanelSection.Activation,
+                            upFocusRequester = changePinRequester,
+                            downFocusRequester = if (state.enabled) {
+                                state.profiles.firstOrNull()?.id?.let(profileToggleRequesters::get)
+                            } else {
+                                null
+                            },
                         )
-                    }
-                    ParentalSectionFrame(
-                        title = strings.pinCode,
-                        icon = Icons.Default.Key,
-                        focusedRequester = pinSectionRequester,
-                        entered = enteredSection == ParentalPanelSection.Pin,
-                        onEnter = {
-                            enteredSection = ParentalPanelSection.Pin
-                            showPinDialog = true
-                        },
-                        onFocused = { scope.launch { listState.animateScrollToItem(0) } },
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                    ) {
-                        TvButton(
-                            text = strings.changePin,
-                            onClick = { showPinDialog = true },
-                            focusRequester = pinButtonRequester,
-                            modifier = Modifier
-                                .widthIn(min = 128.dp)
-                                .height(38.dp)
-                                .focusProperties { canFocus = enteredSection == ParentalPanelSection.Pin },
-                        )
+                    },
+                    contentBelowHeader = true,
+                ) {
+                    if (state.profiles.isNotEmpty()) {
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth().height(116.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            itemsIndexed(state.profiles, key = { _, profile -> profile.id }) { index, profile ->
+                                ParentalProfileCard(
+                                    profile = profile,
+                                    globalEnabled = state.enabled,
+                                    focusRequester = profileToggleRequesters.getValue(profile.id),
+                                    upFocusRequester = toggleRequester,
+                                    leftFocusRequester = state.profiles.getOrNull(index - 1)?.id
+                                        ?.let(profileToggleRequesters::get) ?: toggleRequester,
+                                    rightFocusRequester = state.profiles.getOrNull(index + 1)?.id
+                                        ?.let(profileToggleRequesters::get),
+                                    canFocus = enteredSection == ParentalPanelSection.Activation,
+                                    onToggle = { viewModel.setProfileEnabled(profile.id, !profile.enabled) },
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -554,11 +568,17 @@ private fun CompactParentalToggle(
     onToggle: () -> Unit,
     focusRequester: FocusRequester,
     canFocus: Boolean,
+    enabled: Boolean = true,
+    upFocusRequester: FocusRequester? = null,
+    downFocusRequester: FocusRequester? = null,
+    leftFocusRequester: FocusRequester? = null,
+    rightFocusRequester: FocusRequester? = null,
 ) {
     var focused by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
     val focusStyle = LocalTvFocusStyle.current
-    val color = if (checked) Color(0xFF16C96B) else Color(0xFFE15454)
+    val color = (if (checked) Color(0xFF16C96B) else Color(0xFFE15454))
+        .copy(alpha = if (enabled) 1f else 0.42f)
     Row(
         modifier = Modifier
             .width(54.dp)
@@ -567,10 +587,16 @@ private fun CompactParentalToggle(
             .background(color)
             .border(if (focused) focusStyle.borderWidth else 1.dp, if (focused) focusStyle.accent else Color.White.copy(alpha = 0.24f), RoundedCornerShape(50))
             .focusRequester(focusRequester)
-            .focusProperties { this.canFocus = canFocus }
+            .focusProperties {
+                this.canFocus = canFocus && enabled
+                upFocusRequester?.let { up = it }
+                downFocusRequester?.let { down = it }
+                leftFocusRequester?.let { left = it }
+                rightFocusRequester?.let { right = it }
+            }
             .onFocusChanged { focused = it.isFocused }
             .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown && event.isConfirmationKey()) {
+                if (enabled && event.type == KeyEventType.KeyDown && event.isConfirmationKey()) {
                     onToggle()
                     true
                 } else false
@@ -578,14 +604,63 @@ private fun CompactParentalToggle(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
+                enabled = enabled,
                 onClick = onToggle,
             )
-            .focusable(interactionSource = interactionSource)
+            .focusable(enabled = enabled, interactionSource = interactionSource)
             .padding(horizontal = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = if (checked) Arrangement.End else Arrangement.Start,
     ) {
         Text(if (checked) "ON" else "OFF", color = Color.White, style = SmartVisionType.Caption, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun ParentalProfileCard(
+    profile: ParentalProfileUiState,
+    globalEnabled: Boolean,
+    focusRequester: FocusRequester,
+    upFocusRequester: FocusRequester,
+    leftFocusRequester: FocusRequester,
+    rightFocusRequester: FocusRequester?,
+    canFocus: Boolean,
+    onToggle: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .width(154.dp)
+            .height(110.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xC30B192B))
+            .border(1.dp, SmartVisionColors.Border, RoundedCornerShape(8.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        ProfileAvatarImage(
+            avatarId = profile.avatarId,
+            profileType = profile.type,
+            modifier = Modifier.size(42.dp),
+        )
+        Text(
+            text = profile.name,
+            color = if (globalEnabled) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+            style = SmartVisionType.Caption,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        CompactParentalToggle(
+            checked = profile.enabled,
+            onToggle = onToggle,
+            focusRequester = focusRequester,
+            canFocus = canFocus,
+            enabled = globalEnabled,
+            upFocusRequester = upFocusRequester,
+            leftFocusRequester = leftFocusRequester,
+            rightFocusRequester = rightFocusRequester,
+        )
     }
 }
 

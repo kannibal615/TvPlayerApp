@@ -2,6 +2,9 @@ package com.smartvision.svplayer.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.smartvision.svplayer.core.config.PlaylistProfile
+import com.smartvision.svplayer.core.config.ProfileType
+import com.smartvision.svplayer.domain.model.ParentalControlScope
 import com.smartvision.svplayer.domain.parental.ParentalCatalogRepository
 import com.smartvision.svplayer.domain.parental.ParentalFilterCounts
 import com.smartvision.svplayer.domain.parental.ParentalHiddenFolder
@@ -49,6 +52,15 @@ data class ParentalControlUiState(
     val resultsError: Boolean = false,
     val hasMoreFolders: Boolean = false,
     val hasMoreItems: Boolean = false,
+    val profiles: List<ParentalProfileUiState> = emptyList(),
+)
+
+data class ParentalProfileUiState(
+    val id: String,
+    val name: String,
+    val type: ProfileType,
+    val avatarId: String,
+    val enabled: Boolean,
 )
 
 class ParentalControlViewModel(
@@ -56,6 +68,7 @@ class ParentalControlViewModel(
     private val parentalCatalogRepository: ParentalCatalogRepository,
     private val activeProfileId: StateFlow<String?>,
     private val activeProfileIdProvider: () -> String,
+    profiles: StateFlow<List<PlaylistProfile>>,
     catalogRevision: StateFlow<Long>,
 ) : ViewModel() {
     private val visible = MutableStateFlow(false)
@@ -64,7 +77,7 @@ class ParentalControlViewModel(
     val uiState: StateFlow<ParentalControlUiState> = _uiState.asStateFlow()
 
     init {
-        observeSource(settingsRepository, catalogRevision)
+        observeSource(settingsRepository, profiles, catalogRevision)
     }
 
     fun setVisible(value: Boolean) {
@@ -124,6 +137,10 @@ class ParentalControlViewModel(
 
     fun setEnabled(value: Boolean) {
         viewModelScope.launch { settingsRepository.setParentalControlEnabled(value) }
+    }
+
+    fun setProfileEnabled(profileId: String, value: Boolean) {
+        viewModelScope.launch { settingsRepository.setParentalControlEnabledForProfile(profileId, value) }
     }
 
     fun setPin(value: String) {
@@ -236,27 +253,47 @@ class ParentalControlViewModel(
         }
     }
 
-    private fun observeSource(settingsRepository: SettingsRepository, catalogRevision: StateFlow<Long>) {
+    private fun observeSource(
+        settingsRepository: SettingsRepository,
+        profiles: StateFlow<List<PlaylistProfile>>,
+        catalogRevision: StateFlow<Long>,
+    ) {
         viewModelScope.launch {
             combine(
                 settingsRepository.settings,
+                settingsRepository.parentalControlScope,
+                profiles,
                 activeProfileId,
                 catalogRevision,
-                visible,
-                refreshNonce,
-            ) { settings, profileId, revision, isVisible, nonce ->
-                RefreshKey(settings, profileId.orEmpty(), revision, isVisible, nonce)
+            ) { settings, scope, availableProfiles, profileId, revision ->
+                SourceKey(settings, scope, availableProfiles, profileId.orEmpty(), revision)
+            }.combine(visible) { source, isVisible ->
+                source to isVisible
+            }.combine(refreshNonce) { (source, isVisible), nonce ->
+                RefreshKey(source, isVisible, nonce)
             }.collectLatest { key ->
-                val keywords = key.settings.parentalKeywordValues
+                val keywords = key.source.settings.parentalKeywordValues
+                val profileStates = key.source.profiles
+                    .sortedWith(compareBy<PlaylistProfile> { it.type != ProfileType.ADMIN }.thenBy { it.createdAt })
+                    .map { profile ->
+                        ParentalProfileUiState(
+                            id = profile.id,
+                            name = profile.name,
+                            type = profile.type,
+                            avatarId = profile.avatarId,
+                            enabled = profile.id !in key.source.scope.disabledProfileIds,
+                        )
+                    }
                 _uiState.update {
                     it.copy(
-                        enabled = key.settings.parentalControlEnabled,
-                        pinConfigured = key.settings.parentalPin.isNotBlank(),
+                        enabled = key.source.scope.enabled,
+                        pinConfigured = key.source.settings.parentalPin.isNotBlank(),
                         keywords = keywords,
                         keywordError = null,
+                        profiles = profileStates,
                     )
                 }
-                if (!key.visible || !key.settings.parentalControlEnabled || keywords.isEmpty()) {
+                if (!key.visible || !key.source.scope.enabled || keywords.isEmpty()) {
                     _uiState.update {
                         it.copy(
                             counts = ParentalFilterCounts(),
@@ -273,7 +310,7 @@ class ParentalControlViewModel(
                     return@collectLatest
                 }
                 delay(150)
-                refreshResults(key.profileId.ifBlank(activeProfileIdProvider), keywords)
+                refreshResults(key.source.profileId.ifBlank(activeProfileIdProvider), keywords)
             }
         }
     }
@@ -309,10 +346,16 @@ class ParentalControlViewModel(
         }
     }
 
-    private data class RefreshKey(
+    private data class SourceKey(
         val settings: com.smartvision.svplayer.domain.model.PlayerSettings,
+        val scope: ParentalControlScope,
+        val profiles: List<PlaylistProfile>,
         val profileId: String,
         val catalogRevision: Long,
+    )
+
+    private data class RefreshKey(
+        val source: SourceKey,
         val visible: Boolean,
         val nonce: Long,
     )

@@ -14,4 +14,17 @@ object SyncFrequencyPolicy {
             "Manuelle", "Jamais" -> SyncSchedulePolicy()
             else -> SyncSchedulePolicy(repeatHours = 24L)
         }
+
+    fun isSynchronizationDue(
+        value: String,
+        lastSyncAt: Long?,
+        hasLocalCatalog: Boolean,
+        nowMs: Long = System.currentTimeMillis(),
+    ): Boolean {
+        if (!hasLocalCatalog || lastSyncAt == null) return true
+        val policy = from(value)
+        if (policy.runOnStartup) return true
+        val repeatHours = policy.repeatHours ?: return false
+        return nowMs - lastSyncAt >= java.util.concurrent.TimeUnit.HOURS.toMillis(repeatHours)
+    }
 }

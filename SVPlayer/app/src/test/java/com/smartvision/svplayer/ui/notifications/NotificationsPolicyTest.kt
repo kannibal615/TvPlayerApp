@@ -24,10 +24,10 @@ class NotificationsPolicyTest {
             notification(4, NotificationType.PlaylistAdded, seen = true),
         )
 
-        assertEquals(listOf(1L, 2L, 3L), filterNotifications(items, NotificationSection.All).map { it.id })
+        assertEquals(listOf(1L), filterNotifications(items, NotificationSection.Updates).map { it.id })
         assertEquals(listOf(2L), filterNotifications(items, NotificationSection.Playlists).map { it.id })
         assertEquals(listOf(4L), filterNotifications(items, NotificationSection.History).map { it.id })
-        assertEquals(3, notificationCounts(items)[NotificationSection.All])
+        assertEquals(1, notificationCounts(items)[NotificationSection.Updates])
         assertEquals(1, notificationCounts(items)[NotificationSection.Playlists])
     }
 

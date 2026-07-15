@@ -104,6 +104,9 @@ data class AccountProfile(
     val liveCount: Int,
     val movieCount: Int,
     val seriesCount: Int,
+    val catalogSyncStatus: String? = null,
+    val catalogSyncMessage: String? = null,
+    val kidsExcludedCount: Int = 0,
 )
 
 data class PlaybackRequest(
@@ -213,3 +216,13 @@ data class PlayerSettings(
     val parentalKeywords: String = "adults; porn; xxx",
     val parentalKeywordValues: List<String> = listOf("adults", "porn", "xxx"),
 )
+
+data class ParentalControlScope(
+    val enabled: Boolean = false,
+    val disabledProfileIds: Set<String> = emptySet(),
+) {
+    fun isEnabledFor(profileId: String?): Boolean {
+        val normalizedProfileId = profileId.orEmpty()
+        return enabled && normalizedProfileId.isNotBlank() && normalizedProfileId !in disabledProfileIds
+    }
+}

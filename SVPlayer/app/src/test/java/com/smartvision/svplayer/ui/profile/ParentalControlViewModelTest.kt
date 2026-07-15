@@ -1,5 +1,9 @@
 package com.smartvision.svplayer.ui.profile
 
+import com.smartvision.svplayer.core.config.PlaylistProfile
+import com.smartvision.svplayer.core.config.PlaylistSource
+import com.smartvision.svplayer.core.config.ProfileType
+import com.smartvision.svplayer.domain.model.ParentalControlScope
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.parental.ParentalCatalogRepository
 import com.smartvision.svplayer.domain.parental.ParentalFilterCounts
@@ -110,17 +114,62 @@ class ParentalControlViewModelTest {
         advanceUntilIdle()
     }
 
+    @Test
+    fun `admin can disable one profile without disabling global preview`() = runTest(dispatcher) {
+        val settings = FakeSettingsRepository(enabledSettings())
+        val profiles = MutableStateFlow(listOf(profile("admin", ProfileType.ADMIN), profile("normal", ProfileType.NORMAL)))
+        val viewModel = createViewModel(settings, FakeParentalCatalogRepository(), profiles = profiles)
+
+        viewModel.setVisible(true)
+        advanceUntilIdle()
+        viewModel.setProfileEnabled("admin", false)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.enabled)
+        assertFalse(viewModel.uiState.value.profiles.first { it.id == "admin" }.enabled)
+        assertTrue(viewModel.uiState.value.profiles.first { it.id == "normal" }.enabled)
+        assertEquals(1, viewModel.uiState.value.counts.items)
+    }
+
+    @Test
+    fun `new profiles are enabled by default while global control is active`() = runTest(dispatcher) {
+        val settings = FakeSettingsRepository(enabledSettings())
+        val profiles = MutableStateFlow(listOf(profile("admin", ProfileType.ADMIN)))
+        val viewModel = createViewModel(settings, FakeParentalCatalogRepository(), profiles = profiles)
+
+        viewModel.setVisible(true)
+        viewModel.setProfileEnabled("admin", false)
+        advanceUntilIdle()
+        profiles.value = profiles.value + profile("new-profile", ProfileType.NORMAL)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.profiles.first { it.id == "admin" }.enabled)
+        assertTrue(viewModel.uiState.value.profiles.first { it.id == "new-profile" }.enabled)
+    }
+
     private fun createViewModel(
         settings: FakeSettingsRepository,
         repository: FakeParentalCatalogRepository,
         profileId: MutableStateFlow<String?> = MutableStateFlow("profile-a"),
         revision: MutableStateFlow<Long> = MutableStateFlow(0L),
+        profiles: MutableStateFlow<List<PlaylistProfile>> = MutableStateFlow(listOf(profile("profile-a", ProfileType.ADMIN))),
     ) = ParentalControlViewModel(
         settingsRepository = settings,
         parentalCatalogRepository = repository,
         activeProfileId = profileId,
         activeProfileIdProvider = { profileId.value ?: "default" },
+        profiles = profiles,
         catalogRevision = revision,
+    )
+
+    private fun profile(id: String, type: ProfileType) = PlaylistProfile(
+        id = id,
+        name = id,
+        source = PlaylistSource.Xtream,
+        type = type,
+        xtreamHost = "https://example.com",
+        xtreamUsername = "user",
+        xtreamPassword = "password",
     )
 
     private fun enabledSettings() = PlayerSettings(
@@ -191,10 +240,21 @@ private class FakeParentalCatalogRepository(
 
 private class FakeSettingsRepository(initial: PlayerSettings) : SettingsRepository {
     private val mutableSettings = MutableStateFlow(initial)
+    private val mutableParentalScope = MutableStateFlow(ParentalControlScope(enabled = initial.parentalControlEnabled))
     override val settings: Flow<PlayerSettings> = mutableSettings
+    override val parentalControlScope: Flow<ParentalControlScope> = mutableParentalScope
 
     override suspend fun setParentalControlEnabled(value: Boolean) {
         mutableSettings.value = mutableSettings.value.copy(parentalControlEnabled = value)
+        mutableParentalScope.value = mutableParentalScope.value.copy(enabled = value)
+    }
+
+    override suspend fun setParentalControlEnabledForProfile(profileId: String, enabled: Boolean) {
+        mutableParentalScope.value = mutableParentalScope.value.copy(
+            disabledProfileIds = mutableParentalScope.value.disabledProfileIds.toMutableSet().apply {
+                if (enabled) remove(profileId) else add(profileId)
+            },
+        )
     }
 
     override suspend fun setParentalPin(value: String) {
@@ -210,7 +270,10 @@ private class FakeSettingsRepository(initial: PlayerSettings) : SettingsReposito
         )
     }
 
-    override suspend fun resetParentalControl() = Unit
+    override suspend fun resetParentalControl() {
+        mutableParentalScope.value = ParentalControlScope()
+        mutableSettings.value = PlayerSettings()
+    }
     override suspend fun setDisplaySize(value: String) = Unit
     override suspend fun setLanguage(value: String) = Unit
     override suspend fun setSyncFrequency(value: String) = Unit

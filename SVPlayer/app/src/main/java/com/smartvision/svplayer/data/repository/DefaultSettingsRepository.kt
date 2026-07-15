@@ -10,6 +10,7 @@ import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.data.local.SVDatabase
 import com.smartvision.svplayer.core.profile.ProfilePinManager
 import com.smartvision.svplayer.domain.model.PlayerSettings
+import com.smartvision.svplayer.domain.model.ParentalControlScope
 import com.smartvision.svplayer.domain.parental.ParentalKeywordPolicy
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.startup.StartupStateStore
@@ -46,12 +47,17 @@ class DefaultSettingsRepository(
         }
     }
 
+    override val parentalControlScope: Flow<ParentalControlScope> = dataStore.data.map { preferences ->
+        preferences.toParentalControlScope()
+    }
+
     override val settings: Flow<PlayerSettings> =
         combine(dataStore.data, accountManager.activeProfileId) { preferences, profileId ->
             val parentalKeywordValues = ParentalKeywordPolicy.parseJsonOrLegacy(
                 json = preferences[PARENTAL_KEYWORDS_JSON],
                 legacy = preferences[PARENTAL_KEYWORDS],
             )
+            val parentalScope = preferences.toParentalControlScope()
             PlayerSettings(
                 displaySize = preferences[DISPLAY_SIZE] ?: "Normal",
                 language = preferences[LANGUAGE] ?: "English",
@@ -69,7 +75,7 @@ class DefaultSettingsRepository(
                 videoRatio = preferences[profileStringKey(VIDEO_RATIO_KEY, profileId)] ?: preferences[VIDEO_RATIO] ?: "Fit",
                 bufferMode = preferences[profileStringKey(BUFFER_MODE_KEY, profileId)] ?: preferences[BUFFER_MODE] ?: "Standard",
                 retryEnabled = preferences[profileBooleanKey(RETRY_KEY, profileId)] ?: preferences[RETRY] ?: true,
-                parentalControlEnabled = preferences[PARENTAL_CONTROL_ENABLED] ?: false,
+                parentalControlEnabled = parentalScope.isEnabledFor(profileId),
                 parentalPin = if (profilePinManager.hasPin() || preferences[PARENTAL_PIN].orEmpty().isNotBlank()) {
                     CONFIGURED_PIN_MARKER
                 } else {
@@ -150,6 +156,16 @@ class DefaultSettingsRepository(
         dataStore.edit { it[PARENTAL_CONTROL_ENABLED] = value }
     }
 
+    override suspend fun setParentalControlEnabledForProfile(profileId: String, enabled: Boolean) {
+        val normalizedProfileId = profileId.trim()
+        if (normalizedProfileId.isBlank()) return
+        dataStore.edit { preferences ->
+            val disabledIds = parseParentalDisabledProfileIds(preferences[PARENTAL_DISABLED_PROFILE_IDS]).toMutableSet()
+            if (enabled) disabledIds.remove(normalizedProfileId) else disabledIds.add(normalizedProfileId)
+            preferences[PARENTAL_DISABLED_PROFILE_IDS] = serializeParentalDisabledProfileIds(disabledIds)
+        }
+    }
+
     override suspend fun setParentalPin(value: String) {
         profilePinManager.setPin(value)
         dataStore.edit { it[PARENTAL_PIN] = CONFIGURED_PIN_MARKER }
@@ -177,6 +193,7 @@ class DefaultSettingsRepository(
             it[PARENTAL_PIN] = ""
             it[PARENTAL_KEYWORDS] = ParentalKeywordPolicy.legacyValue(ParentalKeywordPolicy.DefaultKeywords)
             it[PARENTAL_KEYWORDS_JSON] = ParentalKeywordPolicy.serialize(ParentalKeywordPolicy.DefaultKeywords)
+            it[PARENTAL_DISABLED_PROFILE_IDS] = ""
         }
     }
 
@@ -205,6 +222,7 @@ class DefaultSettingsRepository(
         val PARENTAL_PIN = stringPreferencesKey("parental_pin")
         val PARENTAL_KEYWORDS = stringPreferencesKey("parental_keywords")
         val PARENTAL_KEYWORDS_JSON = stringPreferencesKey("parental_keywords_json")
+        val PARENTAL_DISABLED_PROFILE_IDS = stringPreferencesKey("parental_disabled_profile_ids")
         const val CONFIGURED_PIN_MARKER = "configured"
         const val VIDEO_RATIO_KEY = "video_ratio"
         const val BUFFER_MODE_KEY = "buffer_mode"
@@ -216,4 +234,32 @@ class DefaultSettingsRepository(
 
     private fun profileBooleanKey(base: String, profileId: String?) =
         booleanPreferencesKey("${base}_${profileId.orEmpty().ifBlank { "default" }}")
+
+    private fun Preferences.toParentalControlScope() = ParentalControlScope(
+        enabled = this[PARENTAL_CONTROL_ENABLED] ?: false,
+        disabledProfileIds = parseParentalDisabledProfileIds(this[PARENTAL_DISABLED_PROFILE_IDS]),
+    )
 }
+
+internal fun parseParentalDisabledProfileIds(raw: String?): Set<String> {
+    if (raw.isNullOrEmpty()) return emptySet()
+    return runCatching {
+        buildSet {
+            var cursor = 0
+            while (cursor < raw.length) {
+                val separator = raw.indexOf(':', cursor)
+                require(separator > cursor)
+                val length = raw.substring(cursor, separator).toInt()
+                val valueStart = separator + 1
+                val valueEnd = valueStart + length
+                require(length >= 0 && valueEnd <= raw.length)
+                raw.substring(valueStart, valueEnd).trim().takeIf(String::isNotBlank)?.let(::add)
+                cursor = valueEnd
+            }
+        }
+    }.getOrDefault(emptySet())
+}
+
+internal fun serializeParentalDisabledProfileIds(profileIds: Set<String>): String =
+    profileIds.map(String::trim).filter(String::isNotBlank).distinct().sorted()
+        .joinToString(separator = "") { value -> "${value.length}:$value" }

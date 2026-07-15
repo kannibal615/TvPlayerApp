@@ -30,4 +30,23 @@ class SyncFrequencyPolicyTest {
             assertFalse(policy.runOnStartup)
         }
     }
+
+    @Test
+    fun `missing catalog or last success requires synchronization`() {
+        assertTrue(SyncFrequencyPolicy.isSynchronizationDue("Manuelle", lastSyncAt = 100L, hasLocalCatalog = false, nowMs = 200L))
+        assertTrue(SyncFrequencyPolicy.isSynchronizationDue("Manuelle", lastSyncAt = null, hasLocalCatalog = true, nowMs = 200L))
+    }
+
+    @Test
+    fun `periodic policy uses the last successful synchronization timestamp`() {
+        val hour = 60L * 60L * 1000L
+        assertFalse(SyncFrequencyPolicy.isSynchronizationDue("24h", lastSyncAt = 10L * hour, hasLocalCatalog = true, nowMs = 33L * hour))
+        assertTrue(SyncFrequencyPolicy.isSynchronizationDue("24h", lastSyncAt = 10L * hour, hasLocalCatalog = true, nowMs = 34L * hour))
+    }
+
+    @Test
+    fun `startup policy is due while manual policy preserves a populated catalog`() {
+        assertTrue(SyncFrequencyPolicy.isSynchronizationDue("A chaque demarrage", 100L, true, 200L))
+        assertFalse(SyncFrequencyPolicy.isSynchronizationDue("Manuelle", 100L, true, 200L))
+    }
 }

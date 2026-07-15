@@ -46,8 +46,6 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.HelpOutline
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -57,7 +55,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material.icons.filled.Verified
@@ -126,6 +123,7 @@ import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.activation.ActivationException
 import com.smartvision.svplayer.data.activation.ActivationRepository
 import com.smartvision.svplayer.domain.model.AccountProfile
+import com.smartvision.svplayer.domain.model.ParentalControlScope
 import com.smartvision.svplayer.domain.model.SyncStatus
 import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
 import com.smartvision.svplayer.ui.components.TvButton
@@ -143,6 +141,7 @@ import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.settings.SynchronizationPreferencesContent
 import com.smartvision.svplayer.startup.BackgroundSyncScheduler
+import com.smartvision.svplayer.sync.SyncFrequencyPolicy
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
@@ -170,7 +169,9 @@ fun ProfileRoute(
     onLockedFeature: () -> Unit,
     onSyncCatalog: suspend () -> Result<Unit>,
     onActivationChanged: () -> Unit,
-    onActiveProfileChanged: () -> Unit,
+    startDestination: ProfileAreaDestination = ProfileAreaDestination.INFO,
+    onOpenInfo: () -> Unit,
+    onOpenManage: () -> Unit,
 ) {
     val container = LocalAppContainer.current
     val context = LocalContext.current
@@ -192,6 +193,7 @@ fun ProfileRoute(
                 parentalCatalogRepository = container.parentalCatalogRepository,
                 activeProfileId = container.accountManager.activeProfileId,
                 activeProfileIdProvider = container.accountManager::activeProfileIdOrDefault,
+                profiles = container.accountManager.profiles,
                 catalogRevision = container.catalogRepository.catalogRevision,
             )
         },
@@ -199,8 +201,53 @@ fun ProfileRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val parentalState by parentalViewModel.uiState.collectAsStateWithLifecycle()
     val syncStatus by container.catalogRepository.syncStatus.collectAsStateWithLifecycle()
+    val catalogRevision by container.catalogRepository.catalogRevision.collectAsStateWithLifecycle()
+    val profileSettings by container.settingsRepository.settings.collectAsStateWithLifecycle(
+        initialValue = com.smartvision.svplayer.domain.model.PlayerSettings(),
+    )
+    val parentalControlScope by container.settingsRepository.parentalControlScope.collectAsStateWithLifecycle(
+        initialValue = ParentalControlScope(),
+    )
     val privacyOptionsRequired by container.privacyConsentManager.privacyOptionsRequired
         .collectAsStateWithLifecycle()
+    var parentalHiddenCount by remember { mutableStateOf<Int?>(null) }
+    var parentalHiddenLoading by remember { mutableStateOf(false) }
+    var parentalHiddenError by remember { mutableStateOf(false) }
+    var synchronizationDue by remember { mutableStateOf(true) }
+
+    LaunchedEffect(
+        state.activePlaylistProfileId,
+        catalogRevision,
+        profileSettings.parentalKeywordValues,
+        parentalControlScope,
+        state.account.catalogSyncStatus,
+    ) {
+        val profileId = state.activePlaylistProfileId
+        if (profileId.isBlank()) {
+            parentalHiddenCount = 0
+            parentalHiddenLoading = false
+            parentalHiddenError = false
+            synchronizationDue = true
+            return@LaunchedEffect
+        }
+        parentalHiddenLoading = parentalControlScope.isEnabledFor(profileId)
+        parentalHiddenError = false
+        parentalHiddenCount = if (parentalControlScope.isEnabledFor(profileId)) {
+            runCatching {
+                container.parentalCatalogRepository.counts(profileId, profileSettings.parentalKeywordValues).items
+            }.onFailure { parentalHiddenError = true }.getOrNull()
+        } else {
+            0
+        }
+        parentalHiddenLoading = false
+        val hasLocalCatalog = container.catalogRepository.hasLocalCatalogForActiveProfile()
+        val activeProfile = state.playlistProfiles.firstOrNull { it.id == profileId }
+        synchronizationDue = SyncFrequencyPolicy.isSynchronizationDue(
+            value = profileSettings.syncFrequency,
+            lastSyncAt = activeProfile?.lastSyncAt,
+            hasLocalCatalog = hasLocalCatalog,
+        )
+    }
 
     LaunchedEffect(state.usageMode) {
         if (state.usageMode == UsageMode.Premium) {
@@ -217,11 +264,22 @@ fun ProfileRoute(
         }
     }
 
-    ProfileScreen(
+    ProfileAreaScreen(
         strings = strings,
+        startDestination = startDestination,
         state = state,
         syncStatus = syncStatus,
+        settings = profileSettings,
+        parentalControlScope = parentalControlScope,
+        parentalHiddenCount = parentalHiddenCount,
+        parentalHiddenLoading = parentalHiddenLoading,
+        parentalHiddenError = parentalHiddenError,
+        syncDue = synchronizationDue,
+        parentalState = parentalState,
+        parentalViewModel = parentalViewModel,
         onBack = onBack,
+        onOpenInfo = onOpenInfo,
+        onOpenManage = onOpenManage,
         onSettings = onSettings,
         currentRoute = currentRoute,
         tabs = tabs,
@@ -234,25 +292,13 @@ fun ProfileRoute(
         notificationBadgeCount = notificationBadgeCount,
         multiProfileAccess = multiProfileAccess,
         onLockedFeature = onLockedFeature,
-        onRefresh = viewModel::refresh,
-        onSyncCatalog = onSyncCatalog,
-        onShowLicenseQr = viewModel::showLicenseQr,
-        onLicenseCodeChange = viewModel::updateLicenseCode,
-        onActivateLicense = viewModel::activateLicense,
-        onShowPrivacyOptions = {
-            activity?.let {
-                scope.launch { container.privacyConsentManager.showPrivacyOptions(it) }
-            }
-        },
-        privacyOptionsRequired = privacyOptionsRequired,
-        onShowXtreamSetupQr = viewModel::showXtreamSetupQr,
-        onSaveEpgUrl = viewModel::saveEpgUrl,
-        onSaveM3uUrl = viewModel::saveM3uUrl,
-        onSelectPlaylistSource = viewModel::selectPlaylistSource,
-        onSavePlaylistProfile = { profile ->
+        pinConfigured = container.profilePinManager.hasPin(),
+        onVerifyPin = container.profilePinManager::verifyPin,
+        onSetParentalPin = { pin -> scope.launch { container.settingsRepository.setParentalPin(pin) } },
+        onSaveProfile = { profile ->
             val wasFirstProfile = container.accountManager.profiles.value.isEmpty()
             val wasActiveProfile = profile.id.isNotBlank() && profile.id == container.accountManager.activeProfileId.value
-            val profileId = container.accountManager.upsertProfile(profile)
+            val savedProfileId = container.accountManager.upsertProfile(profile)
             if (wasFirstProfile || wasActiveProfile) {
                 container.xtreamRepository.clearCaches()
                 scope.launch {
@@ -262,16 +308,30 @@ fun ProfileRoute(
                     }
                 }
             }
+            savedProfileId
         },
-        onSelectPlaylistProfile = { profileId ->
+        onActivateProfile = { profileId ->
             container.accountManager.activateProfile(profileId)
             container.xtreamRepository.clearCaches()
             scope.launch {
                 container.catalogRepository.clearCatalogForProfileSwitch()
-                onActiveProfileChanged()
+                val hasLocalCatalog = container.catalogRepository.hasLocalCatalogForActiveProfile()
+                val target = container.accountManager.profiles.value.firstOrNull { it.id == profileId }
+                val currentSettings = container.settingsRepository.settings.first()
+                if (target != null && SyncFrequencyPolicy.isSynchronizationDue(
+                        value = currentSettings.syncFrequency,
+                        lastSyncAt = target.lastSyncAt,
+                        hasLocalCatalog = hasLocalCatalog,
+                    )
+                ) {
+                    container.catalogRepository.synchronize(profileId)
+                    container.accountManager.resolvedProfile(target).epgUrl.takeIf { it.isNotBlank() }?.let { epgUrl ->
+                        container.epgRepository.synchronize(epgUrl)
+                    }
+                }
             }
         },
-        onDeletePlaylistProfile = { profileId ->
+        onDeleteProfile = { profileId ->
             val profileToDelete = container.accountManager.profiles.value.firstOrNull { it.id == profileId }
             val wasActiveProfile = profileId == container.accountManager.activeProfileId.value
             scope.launch {
@@ -290,34 +350,26 @@ fun ProfileRoute(
                 }
             }
         },
-        onSynchronizePlaylistProfile = { profileId ->
+        onSynchronizeProfile = { profileId ->
             scope.launch {
                 val target = container.accountManager.profiles.value.firstOrNull { it.id == profileId }
                     ?: return@launch
-                container.catalogRepository.synchronize(profileId).getOrThrow()
-                val resolved = container.accountManager.resolvedProfile(target)
-                resolved.epgUrl.takeIf { it.isNotBlank() }?.let { epgUrl ->
-                    container.epgRepository.synchronize(epgUrl)
+                container.catalogRepository.synchronize(profileId).onSuccess {
+                    val resolved = container.accountManager.resolvedProfile(target)
+                    resolved.epgUrl.takeIf { it.isNotBlank() }?.let { epgUrl ->
+                        container.epgRepository.synchronize(epgUrl)
+                    }
                 }
             }
         },
-        onSaveXtreamAccount = { account ->
-            val accountId = container.accountManager.upsert(account)
-            container.accountManager.select(accountId)
-            container.accountManager.selectPlaylistSource(PlaylistSource.Xtream)
-            container.xtreamRepository.clearCaches()
-            scope.launch { onSyncCatalog() }
-        },
-        onDeleteXtreamAccount = { accountId ->
-            container.accountManager.delete(accountId)
-            container.xtreamRepository.clearCaches()
-            if (container.accountManager.accounts.value.isNotEmpty()) {
-                scope.launch { onSyncCatalog() }
+        onSetAutostartEnabled = { value -> scope.launch { container.settingsRepository.setAutostartEnabled(value) } },
+        onSetBackgroundSyncEnabled = { value ->
+            scope.launch {
+                container.settingsRepository.setBackgroundSyncEnabled(value)
+                BackgroundSyncScheduler.applyPeriodicSync(context, value)
             }
         },
-        onDismissQr = viewModel::dismissQr,
-        parentalState = parentalState,
-        parentalViewModel = parentalViewModel,
+        onSetSyncFrequency = { value -> scope.launch { container.settingsRepository.setSyncFrequency(value) } },
     )
 }
 
@@ -366,6 +418,9 @@ private fun ProfileScreen(
     val scope = rememberCoroutineScope()
     val parentalSettings by container.settingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = com.smartvision.svplayer.domain.model.PlayerSettings(),
+    )
+    val parentalControlScope by container.settingsRepository.parentalControlScope.collectAsStateWithLifecycle(
+        initialValue = ParentalControlScope(),
     )
     var selectedSection by remember { mutableStateOf(ProfileSection.Xtream) }
     var showXtreamSyncDialog by remember { mutableStateOf(false) }
@@ -460,9 +515,7 @@ private fun ProfileScreen(
                             selected = selectedSection == section,
                             variant = if (selectedSection == section) TvButtonVariant.Primary else TvButtonVariant.Text,
                             onClick = {
-                                if (section == ProfileSection.SettingsShortcut) {
-                                    onSettings()
-                                } else if (section == ProfileSection.Parental) {
+                                if (section == ProfileSection.Parental) {
                                     if (parentalSettings.parentalPin.isBlank()) {
                                         showParentalCreateDialog = true
                                     } else {
@@ -518,7 +571,7 @@ private fun ProfileScreen(
                                     .padding(end = 12.dp)
                                     .size(11.dp)
                                     .background(
-                                        if (parentalSettings.parentalControlEnabled) Color(0xFF20D878) else Color(0xFFFF4B4B),
+                                        if (parentalControlScope.enabled) Color(0xFF20D878) else Color(0xFFFF4B4B),
                                         RoundedCornerShape(50),
                                     )
                                     .border(1.dp, Color.White.copy(alpha = 0.72f), RoundedCornerShape(50)),
@@ -603,9 +656,6 @@ private fun ProfileScreen(
                             },
                         )
                     }
-                    ProfileSection.History -> ProfileHistoryPanel(state = state, modifier = Modifier.fillMaxWidth())
-                    ProfileSection.Help -> ProfileHelpPanel(modifier = Modifier.fillMaxWidth())
-                    ProfileSection.SettingsShortcut -> Unit
                 }
             }
         }
@@ -757,9 +807,6 @@ private enum class ProfileSection(
     Xtream("Info compte", Icons.Default.Person),
     Parental("Controle parental", Icons.Default.Lock),
     Sync("Synchronisation", Icons.Default.CloudSync),
-    History("Historique", Icons.Default.History),
-    Help("Aide", Icons.Default.HelpOutline),
-    SettingsShortcut("Parametres", Icons.Default.Settings),
 }
 
 @Composable
@@ -2756,47 +2803,6 @@ private fun DeviceCatalogSyncHeaderStatus(syncStatus: SyncStatus) {
             )
         }
         else -> Unit
-    }
-}
-
-@Composable
-private fun ProfileHistoryPanel(
-    state: ProfileUiState,
-    modifier: Modifier = Modifier,
-) {
-    ProfilePanel(
-        title = "Historique",
-        icon = Icons.Default.History,
-        modifier = modifier,
-    ) {
-        ProfileInfoRow("Premiere activation", state.account.lastSync ?: "Non disponible")
-        ProfileInfoRow("Derniere synchronisation", state.account.lastSync ?: "Jamais")
-        ProfileInfoRow("Compte actif", state.xtreamUsername.ifBlank { "Non configure" })
-        Text(
-            text = "Les reprises de lecture, favoris et historiques de contenu restent accessibles depuis les sections Live TV, Films et Series.",
-            color = SmartVisionColors.TextSecondary,
-            style = SmartVisionType.Body,
-        )
-    }
-}
-
-@Composable
-private fun ProfileHelpPanel(
-    modifier: Modifier = Modifier,
-) {
-    ProfilePanel(
-        title = "Aide",
-        icon = Icons.Default.HelpOutline,
-        modifier = modifier,
-    ) {
-        ProfileInfoRow("Activation", "Scannez le QR code depuis la TV ou saisissez un code licence.")
-        ProfileInfoRow("Xtream", "Configurez vos propres identifiants depuis le portail SmartVision.")
-        ProfileInfoRow("Support", "support@smartvisions.net")
-        Text(
-            text = "SmartVision est un lecteur IPTV. L'application ne vend, ne fournit et n'heberge aucun contenu TV, film ou serie.",
-            color = SmartVisionColors.TextSecondary,
-            style = SmartVisionType.Body,
-        )
     }
 }
 

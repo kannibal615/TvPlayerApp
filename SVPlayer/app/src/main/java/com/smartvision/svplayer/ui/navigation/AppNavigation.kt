@@ -62,6 +62,7 @@ import com.smartvision.svplayer.domain.access.PremiumFeatureGate
 import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
 import com.smartvision.svplayer.domain.access.PremiumFeatureGateState
 import com.smartvision.svplayer.domain.model.PlayerSettings
+import com.smartvision.svplayer.domain.model.ParentalControlScope
 import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import com.smartvision.svplayer.sync.CatalogSyncScheduler
 import com.smartvision.svplayer.ui.activation.ActivationScreen
@@ -137,6 +138,9 @@ fun AppNavigation(
     val appConfigState by appConfigViewModel.uiState.collectAsStateWithLifecycle()
     val playerSettings by container.settingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = PlayerSettings(),
+    )
+    val parentalControlScope by container.settingsRepository.parentalControlScope.collectAsStateWithLifecycle(
+        initialValue = ParentalControlScope(),
     )
     val strings = smartVisionStrings(playerSettings.language)
     val focusStyle = remember(
@@ -363,11 +367,11 @@ fun AppNavigation(
         scope.launch { syncCatalog() }
         Unit
     }
-    LaunchedEffect(activationState.activated, appConfigState.loading, parentalControlAllowed, playerSettings.parentalControlEnabled, playerSettings.parentalPin, playerSettings.parentalKeywords) {
+    LaunchedEffect(activationState.activated, appConfigState.loading, parentalControlAllowed, parentalControlScope.enabled, playerSettings.parentalPin, playerSettings.parentalKeywords) {
         if (!appConfigState.loading &&
             activationState.activated &&
             !parentalControlAllowed &&
-            (playerSettings.parentalControlEnabled || playerSettings.parentalPin.isNotBlank() || playerSettings.parentalKeywords != "adults; porn; xxx")
+            (parentalControlScope.enabled || playerSettings.parentalPin.isNotBlank() || playerSettings.parentalKeywords != "adults; porn; xxx")
         ) {
             container.settingsRepository.resetParentalControl()
             container.xtreamRepository.clearCaches()
@@ -717,12 +721,34 @@ fun AppNavigation(
                 },
                 onSyncCatalog = syncCatalog,
                 onActivationChanged = activationViewModel::checkNow,
-                onActiveProfileChanged = {
-                    navController.navigate(AppRoute.Home.route) {
-                        popUpTo(AppRoute.Home.route) { inclusive = true }
-                        launchSingleTop = true
-                    }
+                startDestination = com.smartvision.svplayer.ui.profile.ProfileAreaDestination.INFO,
+                onOpenInfo = {},
+                onOpenManage = { navController.navigateSingleTop(AppRoute.ManageProfiles.route) },
+            )
+        }
+        composable(AppRoute.ManageProfiles.route) {
+            ProfileRoute(
+                strings = strings,
+                onBack = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                onSettings = { navController.navigateSingleTop(AppRoute.Settings.route) },
+                currentRoute = currentRoute,
+                tabs = tabs,
+                onNavigate = navigateFromHeader,
+                onSync = launchSyncCatalog,
+                onNotifications = { navController.navigateSingleTop(AppRoute.Notifications.route) },
+                onLicenseKey = { showLicensePurchaseQr = true },
+                showLicenseKey = activationState.shouldShowLicenseKey,
+                hasNewNotifications = hasNewNotifications,
+                notificationBadgeCount = notificationBadgeCount,
+                multiProfileAccess = multiProfileGate,
+                onLockedFeature = {
+                    if (multiProfileGate.shouldShowUpgradePrompt) showLicensePurchaseQr = true
                 },
+                onSyncCatalog = syncCatalog,
+                onActivationChanged = activationViewModel::checkNow,
+                startDestination = com.smartvision.svplayer.ui.profile.ProfileAreaDestination.MANAGE,
+                onOpenInfo = { navController.navigateSingleTop(AppRoute.Profile.route) },
+                onOpenManage = {},
             )
         }
         composable(AppRoute.Live.route) {
@@ -1410,6 +1436,7 @@ private enum class AppRoute(val route: String) {
     Youtube("youtube"),
     Settings("settings"),
     Profile("profile"),
+    ManageProfiles("profile/manage"),
     Notifications("notifications"),
 }
 
