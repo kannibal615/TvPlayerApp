@@ -75,6 +75,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.smartvision.svplayer.core.config.CredentialsMode
 import com.smartvision.svplayer.core.config.PlaylistProfile
 import com.smartvision.svplayer.core.config.PlaylistSource
@@ -389,12 +390,16 @@ private fun ProfileInfoContent(
     val syncing = syncStatus is SyncStatus.Running
     val scrollState = rememberScrollState()
 
-    Column(modifier.verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier.verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Icon(Icons.Default.Person, null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(28.dp))
         Text(strings.profileInfo, style = SmartVisionType.TitleM, color = SmartVisionColors.TextPrimary)
+        }
+        
         if (activeProfile == null) {
             AreaPanel(strings.activeProfile, Icons.Default.Person, Modifier.fillMaxWidth()) {
                 Text(strings.noProfilesAvailable, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Body)
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(10.dp))
                 TvButton(
                     text = strings.openManageProfiles,
                     onClick = onOpenManage,
@@ -406,11 +411,11 @@ private fun ProfileInfoContent(
         }
         AreaPanel(strings.activeProfile, Icons.Default.Person, Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                PlaylistProfileAvatar(activeProfile, Modifier.size(72.dp))
-                Spacer(Modifier.width(16.dp))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(strings.activeProfile, color = SmartVisionColors.CyanAccent, style = SmartVisionType.Body)
-                    Text(activeProfile.name, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
+                PlaylistProfileAvatar(activeProfile, Modifier.size(50.dp))
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    // Text(strings.activeProfile, color = SmartVisionColors.CyanAccent, style = SmartVisionType.Body)
+                    Text(activeProfile.name, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.SemiBold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         StatusBadge(strings.active, Color(0xFF159B57))
                         Text(activeProfile.source.displayName(strings), color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
@@ -420,7 +425,7 @@ private fun ProfileInfoContent(
                     text = strings.changeProfile,
                     onClick = { showPicker = true },
                     focusRequester = changeRequester,
-                    modifier = Modifier.width(225.dp).height(48.dp).focusProperties {
+                    modifier = Modifier.width(160.dp).height(40.dp).focusProperties {
                         left = menuRequester
                         down = syncRequester
                     },
@@ -460,9 +465,9 @@ private fun ProfileInfoContent(
         }
         AreaPanel(strings.sync, Icons.Default.CloudSync, Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(strings.lastSynchronization, color = SmartVisionColors.CyanAccent, style = SmartVisionType.Caption)
-                    Text(activeProfile.lastSyncAt?.asProfileAreaDate() ?: strings.syncNever, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS)
+                    Text(activeProfile.lastSyncAt?.asProfileAreaDate() ?: strings.syncNever, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Caption, fontSize = 18.sp)
                     val status = when {
                         syncing -> strings.synchronizationInProgress
                         syncStatus is SyncStatus.Error || state.account.catalogSyncStatus == "error" -> strings.synchronizationError
@@ -486,7 +491,7 @@ private fun ProfileInfoContent(
                     onClick = { onSynchronizeProfile(activeProfile.id) },
                     enabled = !syncing && activeProfile.isConfigured,
                     focusRequester = syncRequester,
-                    modifier = Modifier.width(245.dp).height(48.dp).focusProperties {
+                    modifier = Modifier.width(160.dp).height(40.dp).focusProperties {
                         left = menuRequester
                         up = changeRequester
                     },
@@ -546,7 +551,7 @@ private fun ProfileActivationDialog(
     com.smartvision.svplayer.ui.components.TvDialogSurface(
         title = strings.changeProfile,
         onDismiss = onDismiss,
-        width = 760.dp,
+        width = 500.dp,
     ) {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(4.dp)) {
             items(profiles, key = { it.id }) { profile ->
@@ -555,13 +560,13 @@ private fun ProfileActivationDialog(
                     active = profile.id == activeProfileId,
                     strings = strings,
                     onClick = { onActivate(profile) },
-                    modifier = Modifier.width(170.dp).height(150.dp)
+                    modifier = Modifier.width(130.dp).height(150.dp)
                         .then(if (profile.id == profiles.firstOrNull()?.id) Modifier.focusRequester(firstRequester) else Modifier),
                 )
             }
         }
         Spacer(Modifier.height(14.dp))
-        TvButton(strings.cancel, onDismiss, variant = TvButtonVariant.Secondary, modifier = Modifier.align(Alignment.End).height(44.dp))
+        TvButton(strings.cancel, onDismiss, variant = TvButtonVariant.Secondary, modifier = Modifier.align(Alignment.End).height(35.dp))
     }
 }
 
@@ -635,7 +640,7 @@ private fun ManageProfilesContent(
                             scope.launch { delay(ProfileAreaFocusDelay); editRequester.requestFocus() }
                         },
                         modifier = Modifier
-                            .width(175.dp).height(155.dp)
+                            .width(120.dp).height(150.dp)
                             .focusRequester(requester)
                             .onFocusChanged {
                                 if (it.isFocused) {
@@ -874,15 +879,15 @@ private fun AddProfileCard(label: String, icon: ImageVector, onClick: () -> Unit
 private fun CatalogMetric(label: String, value: Int?, icon: ImageVector, accent: Color, modifier: Modifier, unavailable: Boolean = false) {
     Column(
         modifier.background(SmartVisionColors.Surface, RoundedCornerShape(8.dp))
-            .border(1.dp, SmartVisionColors.Border, RoundedCornerShape(8.dp)).padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(7.dp),
+            .border(1.dp, SmartVisionColors.Border, RoundedCornerShape(8.dp)).padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            Icon(icon, null, tint = accent, modifier = Modifier.size(20.dp))
+            Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
             Text(label, color = accent, style = SmartVisionType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (value == null && !unavailable) CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = accent)
-        else Text(if (unavailable) "--" else "%,d".format(value ?: 0), color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
+        else Text(if (unavailable) "--" else "%,d".format(value ?: 0), color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold, fontSize = 18.sp,)
     }
 }
 
@@ -890,14 +895,14 @@ private fun CatalogMetric(label: String, value: Int?, icon: ImageVector, accent:
 private fun AreaPanel(title: String, icon: ImageVector, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = modifier.background(Color(0xD9091424), RoundedCornerShape(8.dp))
-            .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp)).padding(16.dp),
+            .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp)).padding(10.dp),
     ) {
         if (title.isNotBlank()) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 Icon(icon, null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(23.dp))
                 Text(title, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.SemiBold)
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
         }
         content()
     }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -84,7 +85,7 @@ fun TvDialogSurface(
         ) {
             Column(
                 modifier = modifier
-                    .width(width)
+                    .widthIn(max = width)
                     .clip(shape)
                     .background(
                         Brush.verticalGradient(
@@ -95,7 +96,7 @@ fun TvDialogSurface(
                         ),
                     )
                     .border(BorderStroke(1.5.dp, accent.copy(alpha = 0.78f)), shape)
-                    .padding(horizontal = 28.dp, vertical = 26.dp),
+                    .padding(horizontal = 28.dp, vertical = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
                 Row(
@@ -127,7 +128,7 @@ fun TvDialogSurface(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(16.dp))
                 content()
             }
         }

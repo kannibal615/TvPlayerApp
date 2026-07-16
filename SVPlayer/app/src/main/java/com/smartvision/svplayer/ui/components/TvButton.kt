@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
@@ -146,6 +147,7 @@ fun TvButton(
             .focusable(enabled = enabled, interactionSource = interactionSource)
             .padding(contentPadding),
         verticalAlignment = Alignment.CenterVertically,
+        // horizontalArrangement = Arrangement.Center,
     ) {
         when {
             leadingContent != null -> {
