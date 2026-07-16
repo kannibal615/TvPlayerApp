@@ -27,8 +27,8 @@ import com.smartvision.svplayer.ui.theme.SmartVisionType
 
 @Composable
 internal fun TvSectionCard(
-    title: String,
-    icon: ImageVector,
+    title: String? = null,
+    icon: ImageVector? = null,
     modifier: Modifier = Modifier,
     backgroundColor: Color = Color(0xB8081628),
     borderColor: Color = SmartVisionColors.Border.copy(alpha = 0.86f),
@@ -46,26 +46,28 @@ internal fun TvSectionCard(
             )
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = SmartVisionColors.CyanAccent,
-                modifier = Modifier.size(23.dp),
-            )
-            Spacer(Modifier.width(9.dp))
-            Text(
-                text = title,
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.Label,
-                fontWeight = FontWeight.Bold,
-            )
-            if (headerTrailing != null) {
-                Spacer(Modifier.weight(1f))
-                headerTrailing()
+        if (!title.isNullOrBlank() && icon != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = SmartVisionColors.CyanAccent,
+                    modifier = Modifier.size(23.dp),
+                )
+                Spacer(Modifier.width(9.dp))
+                Text(
+                    text = title,
+                    color = SmartVisionColors.TextPrimary,
+                    style = SmartVisionType.Label,
+                    fontWeight = FontWeight.Bold,
+                )
+                if (headerTrailing != null) {
+                    Spacer(Modifier.weight(1f))
+                    headerTrailing()
+                }
             }
+            Spacer(Modifier.size(12.dp))
         }
-        Spacer(Modifier.size(12.dp))
         content()
     }
 }

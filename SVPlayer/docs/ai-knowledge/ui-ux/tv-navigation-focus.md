@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-07-16.
+Derniere mise a jour: 2026-07-17.
 
 ## Profils Kids et dialogues
 
@@ -154,6 +154,7 @@ Backend indirect:
 
 - Tout element actionnable doit rester focusable.
 - Info compte doit donner le focus initial au menu `Licence SmartVision`; le panneau `Info compte` reutilise le header principal et ses boutons globaux.
+- Les titres principaux Profile et Settings restent hors du cadre droit; ce changement de composition ne modifie aucun `FocusRequester`, ordre D-pad, toggle ou controle actionnable. Les sections sans en-tete conservent leurs cadres comme cibles visuelles non focusables.
 - Settings reutilise aussi le header principal; son focus initial cible le premier item du menu. Back depuis Settings ou Info compte doit naviguer vers Home et demander le focus sur l'onglet Home du header, pas revenir au dernier ecran catalogue.
 - Dans Info compte, le contenu `Appareil et catalogue` integre en bas de `Info compte` est une cible focusable non cliquable pour permettre le scroll D-pad; le menu gauche dedie n'existe plus.
 - Dans Profile > Synchronisation, DPAD droite depuis l'entree menu cible le toggle de demarrage. Les toggles routent gauche vers le menu et droite vers la rangee de frequence correspondante; la grille `24h / 48h / A chaque demarrage / Manuel / Jamais` utilise des cibles explicites pour eviter les sorties de panneau.

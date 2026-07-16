@@ -1,5 +1,12 @@
 # AI Changelog
 
+## 2026-07-17 - Titres externes Profile et Settings
+
+- Rend l'en-tete de `TvSectionCard` optionnel sans modifier le style des sections qui le conservent.
+- Place les titres principaux des panneaux Profile et Settings au-dessus de leur cadre de contenu et retire les en-tetes internes de Manage Profiles.
+- Supprime les titres et cadres imbriques de Licence SmartVision dans Settings tout en preservant le rendu autonome de `LicensePanel` dans ses autres usages.
+- Stabilise le scroll Home apres le focus initial ou le retour depuis son bouton de header pour empecher `bringIntoView` de masquer le bord superieur du hero.
+
 ## 2026-07-16 - Header principal partage et navigation Profile
 
 - Centralise le shell du header principal a `34 dp / 18 dp` avec un espace contenu de `14 dp`, puis l'applique a Home, Live TV, Films, Series, Media, YouTube, Notifications, Profile et Settings sans dupliquer `TvHeader`.

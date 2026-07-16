@@ -360,17 +360,14 @@ private fun SettingsMenuLayout(
             contentFocusable = selectedSection == SettingsSection.Network,
         ) {
             when (selectedSection) {
-                SettingsSection.License -> TvSectionCard(
-                    title = selectedSection.label(strings),
-                    icon = Icons.Default.Verified,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
+                SettingsSection.License -> {
                     LicensePanel(
                         state = licenseState,
                         onRefresh = onRefreshLicense,
                         onShowLicenseQr = onShowLicenseQr,
                         onShowPrivacyOptions = {},
                         privacyOptionsRequired = false,
+                        embedded = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -881,10 +878,7 @@ private fun SettingsPanel(
     val scope = rememberCoroutineScope()
     val scrollStep = 116
     Column(
-        modifier = modifier
-            .background(Color(0xE60A1424), RoundedCornerShape(8.dp))
-            .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
-            .padding(10.dp),
+        modifier = modifier,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, contentDescription = null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(23.dp))
@@ -899,45 +893,54 @@ private fun SettingsPanel(
             trailing?.invoke()
         }
         Spacer(Modifier.height(8.dp))
-        val contentModifier = if (contentFocusable) {
-            Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .onPreviewKeyEvent { event ->
-                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                    when (event.key) {
-                        Key.DirectionDown -> {
-                            scope.launch {
-                                scrollState.animateScrollTo(
-                                    (scrollState.value + scrollStep).coerceAtMost(scrollState.maxValue),
-                                )
-                            }
-                            true
-                        }
-                        Key.DirectionUp -> {
-                            scope.launch {
-                                scrollState.animateScrollTo(
-                                    (scrollState.value - scrollStep).coerceAtLeast(0),
-                                )
-                            }
-                            true
-                        }
-                        else -> false
-                    }
-                }
-                .focusable()
-                .verticalScroll(scrollState)
-        } else {
-            Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(scrollState)
-        }
         Column(
-            modifier = contentModifier,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .background(Color(0xE60A1424), RoundedCornerShape(8.dp))
+                .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
+                .padding(10.dp),
         ) {
-            content()
-            Spacer(Modifier.height(12.dp))
+            val contentModifier = if (contentFocusable) {
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                        when (event.key) {
+                            Key.DirectionDown -> {
+                                scope.launch {
+                                    scrollState.animateScrollTo(
+                                        (scrollState.value + scrollStep).coerceAtMost(scrollState.maxValue),
+                                    )
+                                }
+                                true
+                            }
+                            Key.DirectionUp -> {
+                                scope.launch {
+                                    scrollState.animateScrollTo(
+                                        (scrollState.value - scrollStep).coerceAtLeast(0),
+                                    )
+                                }
+                                true
+                            }
+                            else -> false
+                        }
+                    }
+                    .focusable()
+                    .verticalScroll(scrollState)
+            } else {
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(scrollState)
+            }
+            Column(
+                modifier = contentModifier,
+            ) {
+                content()
+                Spacer(Modifier.height(12.dp))
+            }
         }
     }
 }

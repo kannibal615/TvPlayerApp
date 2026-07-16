@@ -750,16 +750,10 @@ internal fun LicensePanel(
     onShowLicenseQr: () -> Unit,
     onShowPrivacyOptions: () -> Unit,
     privacyOptionsRequired: Boolean,
+    embedded: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    ProfilePanel(
-        title = "Licence SmartVision",
-        icon = Icons.Default.Verified,
-        modifier = modifier,
-        trailingContent = {
-            StatusPill(state.usageMode.label, state.usageMode.color)
-        },
-    ) {
+    val content: @Composable ColumnScope.() -> Unit = {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             ProfileMetric("Statut", state.activationStatusLabel, Modifier.weight(1f), state.usageMode.color)
             ProfileMetric("Expiration", state.licenseExpiresAt.ifBlank { "Non disponible" }, Modifier.weight(1f))
@@ -813,6 +807,19 @@ internal fun LicensePanel(
                 )
             }
         }
+    }
+    if (embedded) {
+        Column(modifier = modifier, content = content)
+    } else {
+        ProfilePanel(
+            title = "Licence SmartVision",
+            icon = Icons.Default.Verified,
+            modifier = modifier,
+            trailingContent = {
+                StatusPill(state.usageMode.label, state.usageMode.color)
+            },
+            content = content,
+        )
     }
 }
 

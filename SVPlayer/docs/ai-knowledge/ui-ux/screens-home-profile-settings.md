@@ -1,6 +1,6 @@
 # Ecrans Home, Catalogues, Profile, Settings et YouTube
 
-Derniere mise a jour: 2026-07-16.
+Derniere mise a jour: 2026-07-17.
 
 ## Profils ADMIN, NORMAL et KIDS
 
@@ -21,6 +21,7 @@ Cartographier les principaux ecrans utilisateur et les chemins de code pour orie
 Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header principal expose Home, Live TV, Movies, Series et YouTube, les actions globales, puis la date/heure non focusable a droite sur deux lignes (`HH:mm:ss`, `dd/MM/yyyy`). Le bouton licence apparait selon le statut. Les ecrans de contenu affichent un QR Xtream si aucun compte n'est configure. Si un compte Xtream existe mais que la verification rapide echoue, Home reste accessible et les entrees Live TV / Movies / Series sont bloquees par popup et overlay. Pendant une verification Xtream en cours, la navigation catalogue peut rester temporairement protegee si aucun etat connecte valide n'est deja connu, mais Home et le header ne doivent afficher les warnings/overlays "Connexion indisponible" qu'apres un echec Xtream confirme.
 
 Tous les ecrans principaux reutilisent le meme `ui/home/TvHeader.kt` et le meme shell exterieur: `34 dp` de marge horizontale, `18 dp` de marge verticale et `14 dp` entre header et contenu. Home garde son hero dans le flux sous ce shell et remet son scroll vertical a zero lors d'un retour cible vers le header.
+Apres attribution du focus initial ou rafraichissement depuis le bouton Home du header, Home restabilise aussi le scroll a zero au frame suivant afin que le `bringIntoView` automatique de la premiere card ne tronque pas le bord superieur du hero.
 
 ## 3. Workflow utilisateur
 
@@ -60,6 +61,7 @@ Tous les ecrans principaux reutilisent le meme `ui/home/TvHeader.kt` et le meme 
 - Live TV affiche un badge bleu `E` a droite des lignes de chaines qui ont des programmes EPG locaux, y compris dans le dossier Historique quand la chaine existe encore en Room. Les dossiers Live TV avec EPG affichent leur compteur dans un cadre bleu au lieu d'ajouter un badge EPG separe. Le panneau details EPG sous le mini-player est focusable et scrollable au D-pad.
 - Settings commence par `Licence SmartVision` et reutilise son panneau complet (statut, expiration, actualisation, QR et saisie licence), puis experience video, activite reseau, attribution TMDB, personnalisation, mises a jour et donnees locales. `Controle parental` et `Synchronisation` ne sont plus visibles dans cette liste. Son layout partage les proportions Profile/Notifications: menu gauche fixe `250 dp`, espacement `16 dp`, panneau droit flexible.
 - Les colonnes droites Profile et Settings partagent le langage visuel de Synchronisation: titre principal `TitleS`, sous-cards avec icone `23 dp`, titre `Label` gras, padding `16 x 14 dp`, coins `8 dp` et espacement `10 dp`. Settings regroupe ses controles dans des sections logiques sans changer leur ordre ni leur comportement.
+- Le titre principal et son icone sont places au-dessus du cadre de contenu dans toutes les destinations Profile et Settings. `TvSectionCard` peut omettre entierement son en-tete; Manage Profiles l'utilise pour ses deux zones et Licence SmartVision conserve uniquement le titre principal Settings, sans shell imbrique de `LicensePanel`.
 - Le clic `Controle parental` dans le shell profil ouvre immediatement `NumericPinDialog`: verification du PIN existant ou creation avec confirmation s'il n'est pas configure. Toutes les saisies PIN utilisent ce composant.
 - Le panneau parental actif est pilote par `ParentalControlViewModel`. L'activation globale et une liste DataStore des profils explicitement desactives produisent l'etat parental effectif du profil actif; Admin est ciblable, les installations existantes et nouveaux profils sont ON par defaut, OFF global conserve la selection et le reset efface aussi les exclusions. L'apercu de resultats reste disponible a l'Admin meme si son propre toggle est OFF. Les mots-cles sont ordonnes et normalises; les resultats restent un snapshot Room v17 persistant avec pagination par lots de `40`.
 - Home > `Continue watching` et les dossiers `Historique` Live/Films/Series reappliquent le filtre parental avec les metadonnees catalogue locales avant de rendre une card.

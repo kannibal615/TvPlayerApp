@@ -54,7 +54,7 @@ android {
         applicationId = "com.smartvision.svplayer"
         minSdk = 23
         targetSdk = 36
-        versionCode = 175
+        versionCode = 176
         versionName = "0.1.120"
         manifestPlaceholders["profileableByShell"] = "false"
 

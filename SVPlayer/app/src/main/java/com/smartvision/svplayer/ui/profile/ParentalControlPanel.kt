@@ -196,18 +196,10 @@ fun ParentalControlPanel(
 
     Column(
         modifier = modifier
-            .onFocusChanged { panelHasFocus = it.hasFocus }
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(Color(0xEA0B1526), Color(0xF207101E)),
-                ),
-            )
-            .border(1.dp, SmartVisionColors.Border, RoundedCornerShape(8.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .onFocusChanged { panelHasFocus = it.hasFocus },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Default.Lock, null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(26.dp))
+            Icon(Icons.Default.Lock, null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(23.dp))
             Spacer(Modifier.width(9.dp))
             Text(strings.parentalControl, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
@@ -221,15 +213,28 @@ fun ParentalControlPanel(
                     .focusProperties { down = toggleRequester },
             )
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
 
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .clip(RoundedCornerShape(8.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0xEA0B1526), Color(0xF207101E)),
+                    ),
+                )
+                .border(1.dp, SmartVisionColors.Border, RoundedCornerShape(8.dp))
+                .padding(horizontal = 14.dp, vertical = 10.dp),
         ) {
-            item(key = "parental-activation") {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                item(key = "parental-activation") {
                 ParentalSectionFrame(
                     title = strings.parentalActivation,
                     icon = Icons.Default.Security,
@@ -284,7 +289,7 @@ fun ParentalControlPanel(
                 }
             }
 
-            item(key = "parental-keywords") {
+                item(key = "parental-keywords") {
                 ParentalSectionFrame(
                     title = strings.parentalFilterKeywords,
                     icon = Icons.AutoMirrored.Filled.List,
@@ -362,7 +367,7 @@ fun ParentalControlPanel(
                 }
             }
 
-            item(key = "parental-results") {
+                item(key = "parental-results") {
                 ParentalSectionFrame(
                     title = strings.parentalFilterResults,
                     icon = Icons.Default.FilterAlt,
@@ -445,6 +450,7 @@ fun ParentalControlPanel(
                 }
             }
         }
+    }
     }
 
     if (showPinDialog) {

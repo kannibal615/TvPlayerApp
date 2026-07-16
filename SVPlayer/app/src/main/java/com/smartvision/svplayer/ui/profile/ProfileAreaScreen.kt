@@ -271,7 +271,7 @@ internal fun ProfileAreaScreen(
 
             when (selectedDestination) {
                 ProfileAreaDestination.INFO -> AreaPanel(
-                    title = "",
+                    title = strings.profileInfo,
                     icon = Icons.Default.Person,
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                 ) {
@@ -294,7 +294,7 @@ internal fun ProfileAreaScreen(
                     )
                 }
                 ProfileAreaDestination.MANAGE -> AreaPanel(
-                    title = "",
+                    title = strings.manageProfiles,
                     icon = Icons.Default.Groups,
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                 ) {
@@ -325,20 +325,22 @@ internal fun ProfileAreaScreen(
                 ProfileAreaDestination.SYNCHRONIZATION -> AreaPanel(
                     title = strings.sync,
                     icon = Icons.Default.CloudSync,
-                    modifier = Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
                 ) {
-                    SynchronizationPreferencesContent(
-                        settings = settings,
-                        activeProfileName = activeProfile?.name ?: strings.none,
-                        activeServer = activeProfile?.source?.displayName(strings) ?: strings.notConfigured,
-                        lastSynchronization = activeProfile?.lastSyncAt?.asProfileAreaDate() ?: strings.syncNever,
-                        strings = strings,
-                        firstControlFocusRequester = syncFirstRequester,
-                        menuFocusRequester = menuRequesters.getValue(ProfileAreaDestination.SYNCHRONIZATION),
-                        onSetAutostartEnabled = onSetAutostartEnabled,
-                        onSetBackgroundSyncEnabled = onSetBackgroundSyncEnabled,
-                        onSetSyncFrequency = onSetSyncFrequency,
-                    )
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                        SynchronizationPreferencesContent(
+                            settings = settings,
+                            activeProfileName = activeProfile?.name ?: strings.none,
+                            activeServer = activeProfile?.source?.displayName(strings) ?: strings.notConfigured,
+                            lastSynchronization = activeProfile?.lastSyncAt?.asProfileAreaDate() ?: strings.syncNever,
+                            strings = strings,
+                            firstControlFocusRequester = syncFirstRequester,
+                            menuFocusRequester = menuRequesters.getValue(ProfileAreaDestination.SYNCHRONIZATION),
+                            onSetAutostartEnabled = onSetAutostartEnabled,
+                            onSetBackgroundSyncEnabled = onSetBackgroundSyncEnabled,
+                            onSetSyncFrequency = onSetSyncFrequency,
+                        )
+                    }
                 }
                 ProfileAreaDestination.HELP -> PlaceholderArea(
                     strings.help,
@@ -405,11 +407,6 @@ private fun ProfileInfoContent(
     val scrollState = rememberScrollState()
 
     Column(modifier.verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            Icon(Icons.Default.Person, null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(23.dp))
-            Text(strings.profileInfo, style = SmartVisionType.TitleS, color = SmartVisionColors.TextPrimary, fontWeight = FontWeight.SemiBold)
-        }
-        
         if (activeProfile == null) {
             TvSectionCard(strings.activeProfile, Icons.Default.Person, Modifier.fillMaxWidth()) {
                 Text(strings.noProfilesAvailable, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Body)
@@ -635,11 +632,7 @@ private fun ManageProfilesContent(
     }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            Icon(Icons.Default.Groups, null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(23.dp))
-            Text(strings.manageProfiles, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.SemiBold)
-        }
-        TvSectionCard(strings.manageProfiles, Icons.Default.Groups, Modifier.fillMaxWidth()) {
+        TvSectionCard(modifier = Modifier.fillMaxWidth()) {
             LazyRow(
                 state = profileListState,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -714,7 +707,7 @@ private fun ManageProfilesContent(
                 }
             }
         }
-        TvSectionCard(strings.profileInfo, Icons.Default.Person, Modifier.fillMaxWidth().weight(1f)) {
+        TvSectionCard(modifier = Modifier.fillMaxWidth().weight(1f)) {
             if (detailsProfile == null) {
                 Text(strings.noProfilesAvailable, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Body)
             } else Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
@@ -920,8 +913,7 @@ private fun CatalogMetric(label: String, value: Int?, icon: ImageVector, accent:
 @Composable
 private fun AreaPanel(title: String, icon: ImageVector, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
-        modifier = modifier.background(Color(0xD9091424), RoundedCornerShape(8.dp))
-            .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp)).padding(10.dp),
+        modifier = modifier,
     ) {
         if (title.isNotBlank()) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -930,7 +922,16 @@ private fun AreaPanel(title: String, icon: ImageVector, modifier: Modifier = Mod
             }
             Spacer(Modifier.height(8.dp))
         }
-        content()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .background(Color(0xD9091424), RoundedCornerShape(8.dp))
+                .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
+                .padding(10.dp),
+        ) {
+            content()
+        }
     }
 }
 

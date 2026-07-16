@@ -394,6 +394,8 @@ fun HomeScreen(
             scrollState.animateScrollTo(0)
             withFrameNanos { }
             runCatching { liveFocusRequester.requestFocus() }
+            withFrameNanos { }
+            if (scrollState.value != 0) scrollState.scrollTo(0)
             PerformanceDiagnosticRecorder.record(
                 sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
                 event = "home_header_refresh_focus_restored",
@@ -408,9 +410,12 @@ fun HomeScreen(
         )
         playStartupChimeOnHome(context)
         viewModel.refreshSlides()
+        scrollState.scrollTo(0)
         withFrameNanos { }
         delay(80)
         runCatching { liveFocusRequester.requestFocus() }
+        withFrameNanos { }
+        if (scrollState.value != 0) scrollState.scrollTo(0)
         viewModel.refreshTrending(forceRefresh = false)
         PerformanceDiagnosticRecorder.record(
             sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
@@ -559,7 +564,7 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier
