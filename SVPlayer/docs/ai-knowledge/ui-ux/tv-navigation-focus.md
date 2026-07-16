@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-07-15.
+Derniere mise a jour: 2026-07-16.
 
 ## Profils Kids et dialogues
 
@@ -14,6 +14,7 @@ Derniere mise a jour: 2026-07-15.
 - Sur une carte de profil reelle, Bas cible le crayon discret et Haut retourne a la carte. La fermeture du PIN ou du formulaire redemande le focus a la cible d'origine avec un `FocusRequester` stable.
 - Dans `Info profil`, Droite depuis le menu entre sur `Changer de profil`; Bas relie cette action a `Synchroniser ce profil`, Haut fait le chemin inverse et Gauche revient au menu. Le focus d'une carte du selecteur ne change jamais le profil actif: seul OK appelle l'activation.
 - Dans `Gerer les profils`, Gauche/Droite parcourt la `LazyRow`; Bas ou OK sur un profil selectionne la cible d'administration puis focalise `Modifier`. Haut depuis les actions retourne a la carte. Actif, selection detail et focus sont trois etats independants, et toute fermeture de dialogue redemande la carte d'origine ou son voisin apres suppression.
+- Dans `Controle parental`, Droite depuis le menu cible Activation; Droite ou OK entre dans la section et focalise le toggle global. OK/Enter modifie les toggles global et par profil, et Gauche depuis le global revient au cadre Activation puis au menu.
 
 ## 1. Objectif
 

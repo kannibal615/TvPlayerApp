@@ -2,6 +2,7 @@ package com.smartvision.svplayer.ui.profile
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
@@ -28,21 +29,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChildCare
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.HelpOutline
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
@@ -76,6 +73,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
+import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.config.CredentialsMode
 import com.smartvision.svplayer.core.config.PlaylistProfile
 import com.smartvision.svplayer.core.config.PlaylistSource
@@ -150,6 +149,7 @@ internal fun ProfileAreaScreen(
     val infoChangeRequester = remember { FocusRequester() }
     val infoSyncRequester = remember { FocusRequester() }
     val manageFirstCardRequester = remember { FocusRequester() }
+    val parentalFirstRequester = remember { FocusRequester() }
     val syncFirstRequester = remember { FocusRequester() }
     val activeProfile = state.playlistProfiles.firstOrNull { it.id == state.activePlaylistProfileId }
         ?: state.playlistProfiles.firstOrNull()
@@ -228,7 +228,6 @@ internal fun ProfileAreaScreen(
                                     ProfileAreaDestination.PARENTAL -> {
                                         if (pinConfigured) showParentalPin = true else showParentalPinCreation = true
                                     }
-                                    ProfileAreaDestination.SETTINGS -> onSettings()
                                     else -> selectedDestination = destination
                                 }
                             },
@@ -241,7 +240,7 @@ internal fun ProfileAreaScreen(
                                     right = when (destination) {
                                         ProfileAreaDestination.INFO -> infoChangeRequester
                                         ProfileAreaDestination.MANAGE -> manageFirstCardRequester
-                                        ProfileAreaDestination.PARENTAL -> FocusRequester.Default
+                                    ProfileAreaDestination.PARENTAL -> parentalFirstRequester
                                         ProfileAreaDestination.SYNCHRONIZATION -> syncFirstRequester
                                         else -> FocusRequester.Default
                                     }
@@ -263,42 +262,55 @@ internal fun ProfileAreaScreen(
             }
 
             when (selectedDestination) {
-                ProfileAreaDestination.INFO -> ProfileInfoContent(
-                    strings = strings,
-                    state = state,
-                    syncStatus = syncStatus,
-                    parentalHiddenCount = parentalHiddenCount,
-                    parentalHiddenLoading = parentalHiddenLoading,
-                    parentalHiddenError = parentalHiddenError,
-                    syncDue = syncDue,
-                    menuRequester = menuRequesters.getValue(ProfileAreaDestination.INFO),
-                    changeRequester = infoChangeRequester,
-                    syncRequester = infoSyncRequester,
-                    onActivateProfile = onActivateProfile,
-                    onVerifyPin = onVerifyPin,
-                    onOpenManage = onOpenManage,
-                    onSynchronizeProfile = onSynchronizeProfile,
+                ProfileAreaDestination.INFO -> AreaPanel(
+                    title = "",
+                    icon = Icons.Default.Person,
                     modifier = Modifier.weight(1f).fillMaxHeight(),
-                )
-                ProfileAreaDestination.MANAGE -> ManageProfilesContent(
-                    strings = strings,
-                    profiles = state.playlistProfiles,
-                    activeProfileId = state.activePlaylistProfileId,
-                    parentalControlScope = parentalControlScope,
-                    multiProfileAccess = multiProfileAccess,
-                    pinConfigured = pinConfigured,
-                    menuRequester = menuRequesters.getValue(ProfileAreaDestination.MANAGE),
-                    firstCardRequester = manageFirstCardRequester,
-                    onVerifyPin = onVerifyPin,
-                    onLockedFeature = onLockedFeature,
-                    onSaveProfile = onSaveProfile,
-                    onDeleteProfile = onDeleteProfile,
+                ) {
+                    ProfileInfoContent(
+                        strings = strings,
+                        state = state,
+                        syncStatus = syncStatus,
+                        parentalHiddenCount = parentalHiddenCount,
+                        parentalHiddenLoading = parentalHiddenLoading,
+                        parentalHiddenError = parentalHiddenError,
+                        syncDue = syncDue,
+                        menuRequester = menuRequesters.getValue(ProfileAreaDestination.INFO),
+                        changeRequester = infoChangeRequester,
+                        syncRequester = infoSyncRequester,
+                        onActivateProfile = onActivateProfile,
+                        onVerifyPin = onVerifyPin,
+                        onOpenManage = onOpenManage,
+                        onSynchronizeProfile = onSynchronizeProfile,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                ProfileAreaDestination.MANAGE -> AreaPanel(
+                    title = "",
+                    icon = Icons.Default.Groups,
                     modifier = Modifier.weight(1f).fillMaxHeight(),
-                )
+                ) {
+                    ManageProfilesContent(
+                        strings = strings,
+                        profiles = state.playlistProfiles,
+                        activeProfileId = state.activePlaylistProfileId,
+                        parentalControlScope = parentalControlScope,
+                        multiProfileAccess = multiProfileAccess,
+                        pinConfigured = pinConfigured,
+                        menuRequester = menuRequesters.getValue(ProfileAreaDestination.MANAGE),
+                        firstCardRequester = manageFirstCardRequester,
+                        onVerifyPin = onVerifyPin,
+                        onLockedFeature = onLockedFeature,
+                        onSaveProfile = onSaveProfile,
+                        onDeleteProfile = onDeleteProfile,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
                 ProfileAreaDestination.PARENTAL -> ParentalControlPanel(
                     strings = strings,
                     state = parentalState,
                     viewModel = parentalViewModel,
+                    initialFocusRequester = parentalFirstRequester,
                     onExitToMenu = { menuRequesters[ProfileAreaDestination.PARENTAL]?.requestFocus() },
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                 )
@@ -320,17 +332,11 @@ internal fun ProfileAreaScreen(
                         onSetSyncFrequency = onSetSyncFrequency,
                     )
                 }
-                ProfileAreaDestination.HISTORY -> PlaceholderArea(
-                    strings.history,
-                    Icons.Default.History,
-                    Modifier.weight(1f).fillMaxHeight(),
-                )
                 ProfileAreaDestination.HELP -> PlaceholderArea(
                     strings.help,
                     Icons.Default.HelpOutline,
                     Modifier.weight(1f).fillMaxHeight(),
                 )
-                ProfileAreaDestination.SETTINGS -> Spacer(Modifier.weight(1f))
             }
         }
     }
@@ -467,7 +473,7 @@ private fun ProfileInfoContent(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(strings.lastSynchronization, color = SmartVisionColors.CyanAccent, style = SmartVisionType.Caption)
-                    Text(activeProfile.lastSyncAt?.asProfileAreaDate() ?: strings.syncNever, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Caption, fontSize = 18.sp)
+                    Text(activeProfile.lastSyncAt?.asProfileAreaDate() ?: strings.syncNever, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Caption, fontSize = 20.sp)
                     val status = when {
                         syncing -> strings.synchronizationInProgress
                         syncStatus is SyncStatus.Error || state.account.catalogSyncStatus == "error" -> strings.synchronizationError
@@ -603,6 +609,8 @@ private fun ManageProfilesContent(
     val editRequester = remember { FocusRequester() }
     val lockRequester = remember { FocusRequester() }
     val deleteRequester = remember { FocusRequester() }
+    val addKidsRequester = remember { FocusRequester() }
+    val addStandardRequester = remember { FocusRequester() }
     val detailsId = ProfileManagementPolicy.detailsProfileId(focusedProfileId, selectedProfileId, activeProfileId, profileIds)
     val detailsProfile = profiles.firstOrNull { it.id == detailsId }
     val adminProfile = profiles.firstOrNull { it.type == ProfileType.ADMIN }
@@ -664,7 +672,7 @@ private fun ManageProfilesContent(
                 item(key = "add:kids") {
                     AddProfileCard(
                         strings.addKidsProfile,
-                        Icons.Default.ChildCare,
+                        R.drawable.avatar_action_add_kids,
                         onClick = {
                             if (!multiProfileAccess.allowed) onLockedFeature() else {
                                 editorProfile = null
@@ -672,12 +680,18 @@ private fun ManageProfilesContent(
                                 showEditor = true
                             }
                         },
+                        modifier = Modifier
+                            .focusRequester(if (profiles.isEmpty()) firstCardRequester else addKidsRequester)
+                            .focusProperties {
+                                if (profiles.isEmpty()) left = menuRequester
+                                right = addStandardRequester
+                            },
                     )
                 }
                 item(key = "add:standard") {
                     AddProfileCard(
                         strings.addProfile,
-                        Icons.Default.Add,
+                        R.drawable.avatar_action_add_profile,
                         onClick = {
                             if (!multiProfileAccess.allowed) onLockedFeature() else {
                                 editorProfile = null
@@ -685,6 +699,9 @@ private fun ManageProfilesContent(
                                 showEditor = true
                             }
                         },
+                        modifier = Modifier
+                            .focusRequester(addStandardRequester)
+                            .focusProperties { left = if (profiles.isEmpty()) firstCardRequester else addKidsRequester },
                     )
                 }
             }
@@ -693,10 +710,11 @@ private fun ManageProfilesContent(
             if (detailsProfile == null) {
                 Text(strings.noProfilesAvailable, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Body)
             } else Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                PlaylistProfileAvatar(detailsProfile, Modifier.size(82.dp))
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Text(detailsProfile.name, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        PlaylistProfileAvatar(detailsProfile, Modifier.size(58.dp))
+                        Text(detailsProfile.name, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
+                    }
                     DetailLine(strings.profileType, detailsProfile.type.displayName(strings))
                     DetailLine(strings.profileSource, detailsProfile.source.displayName(strings, detailsProfile.credentialsMode))
                     DetailLine(strings.parentalControl, if (parentalControlScope.isEnabledFor(detailsProfile.id)) strings.active else strings.inactive)
@@ -855,10 +873,10 @@ private fun ProfileCard(
 }
 
 @Composable
-private fun AddProfileCard(label: String, icon: ImageVector, onClick: () -> Unit) {
+private fun AddProfileCard(label: String, avatarDrawableRes: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     var focused by remember { mutableStateOf(false) }
     Box(
-        modifier = Modifier.width(175.dp).height(155.dp)
+        modifier = modifier.width(120.dp).height(150.dp)
             .background(if (focused) Color(0xFF344050) else SmartVisionColors.Surface, RoundedCornerShape(10.dp))
             .border(BorderStroke(if (focused) 2.dp else 1.dp, if (focused) Color.White else SmartVisionColors.Border), RoundedCornerShape(10.dp))
             .onFocusChanged { focused = it.isFocused }
@@ -869,7 +887,7 @@ private fun AddProfileCard(label: String, icon: ImageVector, onClick: () -> Unit
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(icon, null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(52.dp))
+            Image(painter = painterResource(avatarDrawableRes), contentDescription = null, modifier = Modifier.size(66.dp))
             Text(label, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Body, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold, maxLines = 2)
         }
     }
@@ -933,9 +951,7 @@ private fun ProfileAreaDestination.label(strings: SmartVisionStrings): String = 
     ProfileAreaDestination.MANAGE -> strings.manageProfiles
     ProfileAreaDestination.PARENTAL -> strings.parentalControl
     ProfileAreaDestination.SYNCHRONIZATION -> strings.sync
-    ProfileAreaDestination.HISTORY -> strings.history
     ProfileAreaDestination.HELP -> strings.help
-    ProfileAreaDestination.SETTINGS -> strings.settings
 }
 
 private fun ProfileAreaDestination.icon(): ImageVector = when (this) {
@@ -943,9 +959,7 @@ private fun ProfileAreaDestination.icon(): ImageVector = when (this) {
     ProfileAreaDestination.MANAGE -> Icons.Default.Groups
     ProfileAreaDestination.PARENTAL -> Icons.Default.Security
     ProfileAreaDestination.SYNCHRONIZATION -> Icons.Default.CloudSync
-    ProfileAreaDestination.HISTORY -> Icons.Default.History
     ProfileAreaDestination.HELP -> Icons.Default.HelpOutline
-    ProfileAreaDestination.SETTINGS -> Icons.Default.Settings
 }
 
 private fun PlaylistSource.displayName(strings: SmartVisionStrings, mode: CredentialsMode = CredentialsMode.CUSTOM): String =

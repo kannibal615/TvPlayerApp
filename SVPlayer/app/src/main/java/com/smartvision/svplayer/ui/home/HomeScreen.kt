@@ -128,6 +128,10 @@ fun HomeScreen(
     val seriesTrendRowState = rememberHomeRowState(state.trendingSeries)
     val homeCategories = remember(strings) { homeCategories(strings) }
 
+    LaunchedEffect(activeProfileId) {
+        previewController.stop()
+    }
+
     // PERF_DIAG: Home lifecycle and visible section counts for the splash-to-home handoff.
     DisposableEffect(Unit) {
         PerformanceDiagnosticRecorder.recordMemory(
@@ -548,6 +552,7 @@ fun HomeScreen(
                 strings = strings,
                 remoteSlides = state.slides,
                 kidsMode = kidsMode,
+                profileKey = activeProfileId.orEmpty(),
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -933,15 +938,24 @@ private const val HomeFocusLogTag = "SVHomeFocus"
 private suspend fun shouldRequestPostHomeCatalogSync(
     container: com.smartvision.svplayer.core.data.AppContainer,
 ): Boolean {
+    if (container.catalogRepository.syncStatus.value is SyncStatus.Running) return false
     val source = container.accountManager.activePlaylistSource.value
     if (source == PlaylistSource.Xtream && !container.accountManager.current().isConfigured) return false
     if (source == PlaylistSource.M3u && container.accountManager.m3uUrl.value.isBlank()) return false
     val hasLocalCatalog = container.catalogRepository.hasLocalCatalogForActiveProfile()
     val settings = container.settingsRepository.settings.first()
     val lastSync = container.syncStateDao.get(container.accountManager.activeProfileIdOrDefault())?.lastSync
+    val policy = SyncFrequencyPolicy.from(settings.syncFrequency)
+    val allowStartupRun = if (policy.runOnStartup) {
+        container.claimStartupSyncPolicyEvaluation()
+    } else {
+        container.claimStartupSyncPolicyEvaluation()
+        false
+    }
     return SyncFrequencyPolicy.isSynchronizationDue(
         value = settings.syncFrequency,
         lastSyncAt = lastSync,
         hasLocalCatalog = hasLocalCatalog,
+        allowRunOnStartup = allowStartupRun,
     )
 }

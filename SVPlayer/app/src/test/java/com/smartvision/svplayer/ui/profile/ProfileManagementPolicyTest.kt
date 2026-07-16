@@ -14,12 +14,16 @@ class ProfileManagementPolicyTest {
                 ProfileAreaDestination.MANAGE,
                 ProfileAreaDestination.PARENTAL,
                 ProfileAreaDestination.SYNCHRONIZATION,
-                ProfileAreaDestination.HISTORY,
                 ProfileAreaDestination.HELP,
-                ProfileAreaDestination.SETTINGS,
             ),
             ProfileManagementPolicy.destinations,
         )
+    }
+
+    @Test
+    fun `manage focus starts on first profile or kids action when empty`() {
+        assertEquals("profile:admin", ProfileManagementPolicy.firstManageFocusTarget(listOf("admin", "kids")))
+        assertEquals("add:kids", ProfileManagementPolicy.firstManageFocusTarget(emptyList()))
     }
 
     @Test

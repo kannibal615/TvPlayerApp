@@ -1,5 +1,12 @@
 # AI Changelog
 
+## 2026-07-16 - Profils TV, focus parental et isolation Home
+
+- Aligne les panneaux droits Info/Gestion sur Synchronisation, retire Historique/Parametres du menu Profile, reutilise les avatars d'ajout du picker et compacte le detail profil.
+- Cable le D-pad menu -> Gestion/Activation et rend les toggles parentaux global/par profil focusables et actionnables au OK/Enter.
+- Unifie l'activation de profil, isole Continue watching/tendances/previews par `profileId`, ajoute le fallback hero et evite le spinner Hidden items sur chaque reouverture.
+- Consomme `A chaque demarrage` une seule fois par process; les changements de profil utilisent catalogue absent ou echeance 24h/48h sans resync a chaque retour Home.
+
 ## 2026-07-15 - Separation Info profil et Gerer les profils
 
 - Conserve `profile` pour la consultation/activation/synchronisation et ajoute `profile/manage` pour creation, modification, verrouillage et suppression, avec shell ADMIN partage et menu TV complet.

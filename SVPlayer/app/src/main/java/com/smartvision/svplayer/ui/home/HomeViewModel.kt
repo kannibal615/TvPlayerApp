@@ -60,7 +60,8 @@ class HomeViewModel(
         .getCachedRecentProgressSnapshot(limit = ContinueWatchingSnapshotLimit)
         ?.toContinueItems()
         .orEmpty()
-    private val cachedTrending = homeContentRepository.getLastCachedTrendingSnapshot()
+    private val initialProfileId = accountManager.activeProfileIdOrDefault()
+    private val cachedTrending = homeContentRepository.getLastCachedTrendingSnapshot(initialProfileId)
     private val trendingMovies = MutableStateFlow(cachedTrending?.movies.orEmpty())
     private val trendingSeries = MutableStateFlow(cachedTrending?.series.orEmpty())
     private val slides = MutableStateFlow(homeSlidesRepository.getCachedSlides().orEmpty())
@@ -164,6 +165,7 @@ class HomeViewModel(
                 trendingRefreshJob?.cancel()
                 trendingPreviewPrepareJobs.values.forEach { job -> job.cancel() }
                 trendingPreviewPrepareJobs.clear()
+                continueWatchingLoading.value = true
                 trendingMovies.value = emptyList()
                 trendingSeries.value = emptyList()
                 trendingLoading.value = true

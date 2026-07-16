@@ -1,6 +1,6 @@
 # Catalogue, Playlist et Lecture
 
-Derniere mise a jour: 2026-07-14.
+Derniere mise a jour: 2026-07-16.
 
 `SyncStatus.SyncSectionProgress` publie maintenant le message d'etape, le total connu et la phase `FILTERING` pour les profils Kids. Les cartes Home affichent profil Kids, duree ecoulee, compteurs et etape reelle; un appel reseau au total inconnu conserve son libelle au lieu de simuler une progression lineaire.
 
@@ -30,7 +30,7 @@ Depuis le 2026-06-30, la navigation Home / Live TV / Movies / Series ne doit plu
 
 Depuis le 2026-07-01, les ecrans Live TV / Movies / Series ne doivent plus ouvrir un snapshot complet du catalogue. Le startup Compose de `MainActivity` prechauffe uniquement les categories/counts, puis les ViewModels catalogue chargent les contenus par pages depuis Room avec `LIMIT/OFFSET`. La RAM ne doit pas contenir tout le catalogue pour ouvrir un ecran.
 
-Home charge ses donnees legeres hors splash: slides, historique recent limite a `10` et tendances films/series `10 + 10` depuis Room. `HomeViewModel` initialise `HomeUiState` avec les caches disponibles puis rafraichit les donnees locales apres le premier rendu si necessaire. Ne pas reutiliser les snapshots complets Movies / Series pour initialiser Home.
+Home charge ses donnees legeres hors splash: slides, historique recent limite a `10` et tendances films/series `10 + 10` depuis Room. Les snapshots memoire sont valides par `profileId`; au changement de profil, l'ancien contenu et le player preview sont arretes avant la nouvelle emission Room.
 
 Depuis le 2026-07-03, le startup Compose de `MainActivity` ne lance aucune synchronisation et ne charge plus le catalogue pendant le splash. Il lit seulement l'activation locale, efface toute demande startup residuelle et rend `AppNavigation` / Home immediatement apres le splash. La decision de synchronisation automatique est prise par Home apres son premier rendu: seule une vraie `Synchronize` peut bloquer la telecommande.
 
@@ -43,7 +43,7 @@ Clarification stockage/performance:
 - Le cache memoire applicatif est uniquement en RAM; il peut garder de petites pages deja ouvertes, mais ne doit pas garder tout le catalogue pour l'ouverture d'ecran.
 - Le chargement local post-startup ne doit pas bloquer Home ni la telecommande. Les ecrans Live TV / Movies / Series lisent d'abord `20` categories Room maximum, puis completent discretement la liste complete de categories dans leur ViewModel.
 - Apres une vraie reouverture ou un process tue par Android, l'UI doit relire Room, mais uniquement par petits jeux de donnees pagines.
-- La synchronisation reseau complete est separee du chargement local et depend de `SyncFrequencyPolicy`: `A chaque demarrage` force une synchro a chaque ouverture, `24h`/`48h` ne resynchronisent que si la derniere synchro est obsolete, `Manuelle`/`Jamais` evitent la synchro automatique.
+- La synchronisation reseau complete est separee du chargement local et depend de `SyncFrequencyPolicy`: `A chaque demarrage` est consomme une seule fois par instance d'application, pas a chaque retour Home; `24h`/`48h` utilisent le dernier `sync_state` reussi et `Manuelle`/`Jamais` evitent la synchro automatique sauf catalogue absent.
 - Recommandation d'optimisation: ne remettre aucun prechauffage Room dans le splash; preferer une frequence `24h` ou `48h` pour eviter les telechargements reseau inutiles tout en gardant les catalogues frais.
 - Les index Room sur `categoryId`, tri par numero/titre/nom et `episodes.seriesId` supportent le chargement pagine local.
 
@@ -67,7 +67,7 @@ Depuis le 2026-07-01, l'URL EPG XMLTV est telechargee dans un cache local borne 
 
 Depuis le 2026-07-03, le splash ne verifie plus le lien M3U, ne synchronise plus et ne precharge plus Home/Live TV. Les ecrans Movies et Series affichent toujours un etat vide explicite quand M3U est actif, au lieu d'une erreur Xtream. Live TV reconnait un lien M3U comme source jouable meme sans compte Xtream local.
 
-Depuis le 2026-07-09, `XtreamAccountManager` porte des profils playlist locaux. Le profil actif reste expose aux repositories via les flows historiques `current()`, `m3uUrl`, `epgUrl` et `activePlaylistSource`, mais `PlaylistProfile` reste la source de verite des identifiants: les anciens flows Xtream/M3U ne creent un profil que lorsqu'aucun profil n'existe encore et ne recopient plus `_accounts` dans un profil existant. Depuis la migration Room `12 -> 13`, les tables IPTV locales portent `profileId`: categories, Live, Films, Series, episodes, sync_state, favoris, progression/historique, tendances Home, cache preview Home et mapping Xtream -> TMDB. Le changement de profil ne vide plus le catalogue Room; il invalide les caches memoire et publie `CatalogRepository.catalogRevision`. Si le profil actif possede deja un `sync_state` reussi et du contenu local, aucune resynchronisation reseau n'est lancee; sinon la synchro catalogue existante est utilisee.
+Depuis le 2026-07-09, `XtreamAccountManager` porte des profils playlist locaux et `PlaylistProfile` reste la source de verite des identifiants. Le pipeline d'activation partage invalide seulement les caches memoire et publie `catalogRevision`; Room reste isole par `profileId`. Un profil deja synchronise ne relance le reseau que lorsque 24h/48h est reellement echu.
 
 Depuis le 2026-07-10, les caches de snapshot catalogue et les caches Xtream repository sont explicitement scopes par profil actif. Une synchronisation capture `profileId`, credentials et host au demarrage de la sync, ecrit Room pour ce profil uniquement, puis ne marque le profil synchronise que si le profil actif n'a pas change entre-temps. Les appels Xtream API peuvent recevoir un host override interne afin qu'une sync deja lancee ne bascule pas silencieusement vers le nouveau profil. Les URLs preview/player Movies/Series sont reconstruites depuis le `PlaybackRequest` issu du catalogue Room actif; ne pas reutiliser une URL deja construite par un autre profil.
 

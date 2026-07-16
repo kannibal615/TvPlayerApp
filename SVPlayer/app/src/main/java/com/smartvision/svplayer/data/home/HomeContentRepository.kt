@@ -76,9 +76,11 @@ class HomeContentRepository(
     @Volatile
     private var cachedTrending: CachedHomeTrending? = null
     @Volatile
-    private var previewCacheCleanedForLastSync: Long? = null
+    private var previewCacheCleanedForKey: Pair<String, Long>? = null
 
-    fun getLastCachedTrendingSnapshot(): HomeTrendingSnapshot? = cachedTrending?.snapshot
+    fun getLastCachedTrendingSnapshot(profileId: String): HomeTrendingSnapshot? = cachedTrending
+        ?.takeIf { it.key.profileId == profileId }
+        ?.snapshot
 
     suspend fun getCachedTrending(): HomeTrendingSnapshot? {
         val key = currentCacheKey()
@@ -373,9 +375,11 @@ class HomeContentRepository(
     }
 
     private suspend fun cleanPreviewCacheIfNeeded(lastSync: Long) {
-        if (previewCacheCleanedForLastSync == lastSync) return
-        mediaDao.deleteStaleHomeTrendingPreviewCache(accountManager.activeProfileIdOrDefault(), lastSync)
-        previewCacheCleanedForLastSync = lastSync
+        val profileId = accountManager.activeProfileIdOrDefault()
+        val key = profileId to lastSync
+        if (previewCacheCleanedForKey == key) return
+        mediaDao.deleteStaleHomeTrendingPreviewCache(profileId, lastSync)
+        previewCacheCleanedForKey = key
     }
 
     private suspend fun buildMoviePreviewCache(

@@ -172,6 +172,7 @@ fun ProfileRoute(
     startDestination: ProfileAreaDestination = ProfileAreaDestination.INFO,
     onOpenInfo: () -> Unit,
     onOpenManage: () -> Unit,
+    onActivateProfileForSession: (String) -> Unit,
 ) {
     val container = LocalAppContainer.current
     val context = LocalContext.current
@@ -230,14 +231,25 @@ fun ProfileRoute(
             synchronizationDue = true
             return@LaunchedEffect
         }
-        parentalHiddenLoading = parentalControlScope.isEnabledFor(profileId)
+        val hiddenItemsCacheKey = ProfileHiddenItemsCacheKey(
+            profileId = profileId,
+            catalogRevision = catalogRevision,
+            keywords = profileSettings.parentalKeywordValues,
+            enabled = parentalControlScope.enabled,
+            disabledProfileIds = parentalControlScope.disabledProfileIds,
+        )
+        val cachedHiddenCount = ProfileHiddenItemsCache.get(hiddenItemsCacheKey)
+        parentalHiddenCount = cachedHiddenCount
+        parentalHiddenLoading = parentalControlScope.isEnabledFor(profileId) && cachedHiddenCount == null
         parentalHiddenError = false
         parentalHiddenCount = if (parentalControlScope.isEnabledFor(profileId)) {
             runCatching {
                 container.parentalCatalogRepository.counts(profileId, profileSettings.parentalKeywordValues).items
-            }.onFailure { parentalHiddenError = true }.getOrNull()
+            }.onFailure { parentalHiddenError = true }.getOrNull()?.also { count ->
+                ProfileHiddenItemsCache.put(hiddenItemsCacheKey, count)
+            } ?: cachedHiddenCount
         } else {
-            0
+            0.also { ProfileHiddenItemsCache.put(hiddenItemsCacheKey, it) }
         }
         parentalHiddenLoading = false
         val hasLocalCatalog = container.catalogRepository.hasLocalCatalogForActiveProfile()
@@ -246,6 +258,7 @@ fun ProfileRoute(
             value = profileSettings.syncFrequency,
             lastSyncAt = activeProfile?.lastSyncAt,
             hasLocalCatalog = hasLocalCatalog,
+            allowRunOnStartup = false,
         )
     }
 
@@ -311,25 +324,7 @@ fun ProfileRoute(
             savedProfileId
         },
         onActivateProfile = { profileId ->
-            container.accountManager.activateProfile(profileId)
-            container.xtreamRepository.clearCaches()
-            scope.launch {
-                container.catalogRepository.clearCatalogForProfileSwitch()
-                val hasLocalCatalog = container.catalogRepository.hasLocalCatalogForActiveProfile()
-                val target = container.accountManager.profiles.value.firstOrNull { it.id == profileId }
-                val currentSettings = container.settingsRepository.settings.first()
-                if (target != null && SyncFrequencyPolicy.isSynchronizationDue(
-                        value = currentSettings.syncFrequency,
-                        lastSyncAt = target.lastSyncAt,
-                        hasLocalCatalog = hasLocalCatalog,
-                    )
-                ) {
-                    container.catalogRepository.synchronize(profileId)
-                    container.accountManager.resolvedProfile(target).epgUrl.takeIf { it.isNotBlank() }?.let { epgUrl ->
-                        container.epgRepository.synchronize(epgUrl)
-                    }
-                }
-            }
+            onActivateProfileForSession(profileId)
         },
         onDeleteProfile = { profileId ->
             val profileToDelete = container.accountManager.profiles.value.firstOrNull { it.id == profileId }
@@ -371,6 +366,27 @@ fun ProfileRoute(
         },
         onSetSyncFrequency = { value -> scope.launch { container.settingsRepository.setSyncFrequency(value) } },
     )
+}
+
+private data class ProfileHiddenItemsCacheKey(
+    val profileId: String,
+    val catalogRevision: Long,
+    val keywords: List<String>,
+    val enabled: Boolean,
+    val disabledProfileIds: Set<String>,
+)
+
+private object ProfileHiddenItemsCache {
+    private val values = LinkedHashMap<ProfileHiddenItemsCacheKey, Int>()
+
+    @Synchronized
+    fun get(key: ProfileHiddenItemsCacheKey): Int? = values[key]
+
+    @Synchronized
+    fun put(key: ProfileHiddenItemsCacheKey, value: Int) {
+        values[key] = value
+        while (values.size > 16) values.remove(values.keys.first())
+    }
 }
 
 @Composable

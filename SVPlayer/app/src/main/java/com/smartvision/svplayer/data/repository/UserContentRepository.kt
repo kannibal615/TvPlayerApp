@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
 
 object UserContentType {
@@ -41,6 +42,7 @@ class UserContentRepository(
     fun observeRecentProgress(limit: Int = 12): Flow<List<PlaybackProgressEntity>> =
         accountManager.activeProfileId.flatMapLatest {
             progressDao.observeRecent(profileIdFor(UserContentType.Movie), limit)
+                .onStart { emit(emptyList()) }
         }
 
     fun getCachedRecentProgressSnapshot(limit: Int = 60): List<PlaybackProgressEntity>? =

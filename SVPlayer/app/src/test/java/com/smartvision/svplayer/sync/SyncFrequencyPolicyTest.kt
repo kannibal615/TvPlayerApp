@@ -47,6 +47,20 @@ class SyncFrequencyPolicyTest {
     @Test
     fun `startup policy is due while manual policy preserves a populated catalog`() {
         assertTrue(SyncFrequencyPolicy.isSynchronizationDue("A chaque demarrage", 100L, true, 200L))
+        assertFalse(SyncFrequencyPolicy.isSynchronizationDue("A chaque demarrage", 100L, true, 200L, allowRunOnStartup = false))
         assertFalse(SyncFrequencyPolicy.isSynchronizationDue("Manuelle", 100L, true, 200L))
+    }
+
+    @Test
+    fun `missing catalog stays due even after startup policy was consumed`() {
+        assertTrue(
+            SyncFrequencyPolicy.isSynchronizationDue(
+                "A chaque demarrage",
+                lastSyncAt = 100L,
+                hasLocalCatalog = false,
+                nowMs = 200L,
+                allowRunOnStartup = false,
+            ),
+        )
     }
 }

@@ -86,6 +86,7 @@ private val Context.appConfigDataStore by preferencesDataStore(name = "smartvisi
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
     private val _startupCatalogWork = MutableStateFlow(StartupCatalogWorkRequest.None)
+    private var startupSyncPolicyEvaluated = false
     @Volatile
     var startupActivationState: StoredActivationState? = null
         private set
@@ -359,6 +360,13 @@ class AppContainer(context: Context) {
         if (_startupCatalogWork.value.requestedAtMs == requestedAtMs) {
             _startupCatalogWork.value = StartupCatalogWorkRequest.None
         }
+    }
+
+    @Synchronized
+    fun claimStartupSyncPolicyEvaluation(): Boolean {
+        if (startupSyncPolicyEvaluated) return false
+        startupSyncPolicyEvaluated = true
+        return true
     }
 
     fun cacheStartupActivationState(state: StoredActivationState?) {

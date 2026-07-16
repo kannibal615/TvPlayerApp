@@ -5,9 +5,7 @@ enum class ProfileAreaDestination {
     MANAGE,
     PARENTAL,
     SYNCHRONIZATION,
-    HISTORY,
     HELP,
-    SETTINGS,
 }
 
 enum class ProfileInfoAction {
@@ -21,10 +19,11 @@ object ProfileManagementPolicy {
         ProfileAreaDestination.MANAGE,
         ProfileAreaDestination.PARENTAL,
         ProfileAreaDestination.SYNCHRONIZATION,
-        ProfileAreaDestination.HISTORY,
         ProfileAreaDestination.HELP,
-        ProfileAreaDestination.SETTINGS,
     )
+
+    fun firstManageFocusTarget(profileIds: List<String>): String =
+        profileIds.firstOrNull()?.let { "profile:$it" } ?: "add:kids"
 
     val infoActions: Set<ProfileInfoAction> = setOf(
         ProfileInfoAction.CHANGE_PROFILE,

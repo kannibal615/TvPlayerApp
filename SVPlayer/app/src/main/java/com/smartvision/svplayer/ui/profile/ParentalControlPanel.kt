@@ -104,10 +104,12 @@ fun ParentalControlPanel(
     viewModel: ParentalControlViewModel,
     onExitToMenu: () -> Unit,
     modifier: Modifier = Modifier,
+    initialFocusRequester: FocusRequester? = null,
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    val activationSectionRequester = remember { FocusRequester() }
+    val ownedActivationSectionRequester = remember { FocusRequester() }
+    val activationSectionRequester = initialFocusRequester ?: ownedActivationSectionRequester
     val keywordsSectionRequester = remember { FocusRequester() }
     val resultsSectionRequester = remember { FocusRequester() }
     val toggleRequester = remember { FocusRequester() }
@@ -246,6 +248,13 @@ fun ParentalControlPanel(
                                 state.profiles.firstOrNull()?.id?.let(profileToggleRequesters::get)
                             } else {
                                 null
+                            },
+                            onExitLeft = {
+                                enteredSection = null
+                                scope.launch {
+                                    delay(40)
+                                    runCatching { activationSectionRequester.requestFocus() }
+                                }
                             },
                         )
                     },
@@ -531,7 +540,9 @@ private fun ParentalSectionFrame(
                 if (it.isFocused) onFocused()
             }
             .onPreviewKeyEvent { event ->
-                if (focused && event.type == KeyEventType.KeyDown && event.isConfirmationKey()) {
+                if (focused && event.type == KeyEventType.KeyDown &&
+                    (event.isConfirmationKey() || event.key == Key.DirectionRight)
+                ) {
                     onEnter()
                     true
                 } else {
@@ -573,6 +584,7 @@ private fun CompactParentalToggle(
     downFocusRequester: FocusRequester? = null,
     leftFocusRequester: FocusRequester? = null,
     rightFocusRequester: FocusRequester? = null,
+    onExitLeft: (() -> Unit)? = null,
 ) {
     var focused by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
@@ -596,7 +608,10 @@ private fun CompactParentalToggle(
             }
             .onFocusChanged { focused = it.isFocused }
             .onPreviewKeyEvent { event ->
-                if (enabled && event.type == KeyEventType.KeyDown && event.isConfirmationKey()) {
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft && onExitLeft != null) {
+                    onExitLeft()
+                    true
+                } else if (enabled && event.type == KeyEventType.KeyDown && event.isConfirmationKey()) {
                     onToggle()
                     true
                 } else false
@@ -656,7 +671,7 @@ private fun ParentalProfileCard(
             onToggle = onToggle,
             focusRequester = focusRequester,
             canFocus = canFocus,
-            enabled = globalEnabled,
+            enabled = true,
             upFocusRequester = upFocusRequester,
             leftFocusRequester = leftFocusRequester,
             rightFocusRequester = rightFocusRequester,

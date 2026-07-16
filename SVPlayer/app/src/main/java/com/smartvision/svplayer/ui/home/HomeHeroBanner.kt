@@ -44,6 +44,7 @@ fun HomeHeroBanner(
     strings: SmartVisionStrings,
     remoteSlides: List<HomeSlide>,
     kidsMode: Boolean = false,
+    profileKey: String = "",
     modifier: Modifier = Modifier,
 ) {
     val fallbackSlides = remember(strings) { defaultHomeHeroSlides(strings) }
@@ -59,11 +60,11 @@ fun HomeHeroBanner(
             ?.mapIndexed { index, slide -> slide.toHeroSlide(index, fallbackSlides) }
             ?: fallbackSlides
     }
-    var slideIndex by remember { mutableIntStateOf(0) }
+    var slideIndex by remember(profileKey, kidsMode) { mutableIntStateOf(0) }
     val slide = slides[slideIndex.coerceIn(slides.indices)]
     val shape = RoundedCornerShape(SmartVisionDimensions.HomePanelRadius)
 
-    LaunchedEffect(slides.size) {
+    LaunchedEffect(profileKey, kidsMode, slides.size) {
         if (slideIndex !in slides.indices) slideIndex = 0
     }
     LaunchedEffect(slideIndex, slides.size) {
@@ -83,6 +84,9 @@ fun HomeHeroBanner(
                 model = slide.imageUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
+                placeholder = painterResource(slide.imageRes),
+                error = painterResource(slide.imageRes),
+                fallback = painterResource(slide.imageRes),
                 modifier = Modifier.fillMaxSize(),
             )
         } else {

@@ -65,6 +65,7 @@ import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.model.ParentalControlScope
 import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import com.smartvision.svplayer.sync.CatalogSyncScheduler
+import com.smartvision.svplayer.sync.SyncFrequencyPolicy
 import com.smartvision.svplayer.ui.activation.ActivationScreen
 import com.smartvision.svplayer.ui.activation.ActivationViewModel
 import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
@@ -106,6 +107,7 @@ import com.smartvision.svplayer.ui.update.AppUpdateViewModel
 import com.smartvision.svplayer.ui.youtube.YoutubeScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -442,6 +444,32 @@ fun AppNavigation(
     var lastXtreamProfileId by remember { mutableStateOf<String?>(null) }
     var lastM3uProfileSignature by remember { mutableStateOf<String?>(null) }
     var lastM3uProfileId by remember { mutableStateOf<String?>(null) }
+    val activateProfileForSession: (String) -> Unit = activateProfileForSession@{ profileId ->
+        if (container.accountManager.activeProfileId.value == profileId) return@activateProfileForSession
+        container.accountManager.activateProfile(profileId)
+        container.xtreamRepository.clearCaches()
+        container.homeContentRepository.invalidateTrending()
+        scope.launch {
+            container.catalogRepository.clearCatalogForProfileSwitch()
+            val target = container.accountManager.profiles.value.firstOrNull { it.id == profileId }
+            val hasLocalCatalog = container.catalogRepository.hasLocalCatalogForActiveProfile()
+            val currentSettings = container.settingsRepository.settings.first()
+            val lastSuccessfulSync = container.syncStateDao.get(profileId)?.lastSync ?: target?.lastSyncAt
+            if (target != null && SyncFrequencyPolicy.isSynchronizationDue(
+                    value = currentSettings.syncFrequency,
+                    lastSyncAt = lastSuccessfulSync,
+                    hasLocalCatalog = hasLocalCatalog,
+                    allowRunOnStartup = false,
+                )
+            ) {
+                container.catalogRepository.synchronize(profileId).onSuccess {
+                    container.accountManager.resolvedProfile(target).epgUrl.takeIf { it.isNotBlank() }?.let { epgUrl ->
+                        container.epgRepository.synchronize(epgUrl)
+                    }
+                }
+            }
+        }
+    }
     LaunchedEffect(activationState.activationType, xtreamAccountSignature) {
         if (activationState.activationType == "trial_pending_xtream" && xtreamAccounts.isNotEmpty()) {
             runCatching { container.activationRepository.finalizeTrialAfterPlaylistConfigured() }
@@ -523,9 +551,7 @@ fun AppNavigation(
                 scope.launch {
                     profileSelectionLoadingId = profileId
                     runCatching {
-                        container.accountManager.activateProfile(profileId)
-                        container.xtreamRepository.clearCaches()
-                        container.catalogRepository.clearCatalogForProfileSwitch()
+                        activateProfileForSession(profileId)
                     }.onSuccess {
                         delay(160)
                         profilePickerCompleted = true
@@ -570,8 +596,7 @@ fun AppNavigation(
             val firstAccountCheck = previousSignature == null
             val sameProfileSourceChanged = accountChanged && previousProfileId == activeProfileId
             val shouldVerifyXtream = accountChanged || firstAccountCheck
-            val shouldSyncCatalog = accountChanged &&
-                (sameProfileSourceChanged || !container.catalogRepository.hasLocalCatalogForActiveProfile())
+            val shouldSyncCatalog = accountChanged && sameProfileSourceChanged
             val startupAlreadyHandled = firstAccountCheck && container.xtreamConnectionManager.hasFreshConnectedState()
             if (shouldVerifyXtream && !startupAlreadyHandled) {
                 val connection = container.xtreamConnectionManager.verifyQuick("startup")
@@ -597,8 +622,7 @@ fun AppNavigation(
             lastM3uProfileId = activeProfileId
             val sourceChanged = previousSignature != null && previousSignature != m3uProfileSignature
             val sameProfileSourceChanged = sourceChanged && previousProfileId == activeProfileId
-            val shouldSyncCatalog = sourceChanged &&
-                (sameProfileSourceChanged || !container.catalogRepository.hasLocalCatalogForActiveProfile())
+            val shouldSyncCatalog = sourceChanged && sameProfileSourceChanged
             if (shouldSyncCatalog) {
                 runCatching {
                     container.xtreamRepository.clearCaches()
@@ -724,6 +748,7 @@ fun AppNavigation(
                 startDestination = com.smartvision.svplayer.ui.profile.ProfileAreaDestination.INFO,
                 onOpenInfo = {},
                 onOpenManage = { navController.navigateSingleTop(AppRoute.ManageProfiles.route) },
+                onActivateProfileForSession = activateProfileForSession,
             )
         }
         composable(AppRoute.ManageProfiles.route) {
@@ -749,6 +774,7 @@ fun AppNavigation(
                 startDestination = com.smartvision.svplayer.ui.profile.ProfileAreaDestination.MANAGE,
                 onOpenInfo = { navController.navigateSingleTop(AppRoute.Profile.route) },
                 onOpenManage = {},
+                onActivateProfileForSession = activateProfileForSession,
             )
         }
         composable(AppRoute.Live.route) {

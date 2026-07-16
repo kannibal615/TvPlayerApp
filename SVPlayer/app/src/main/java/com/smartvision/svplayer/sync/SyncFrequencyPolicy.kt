@@ -20,10 +20,11 @@ object SyncFrequencyPolicy {
         lastSyncAt: Long?,
         hasLocalCatalog: Boolean,
         nowMs: Long = System.currentTimeMillis(),
+        allowRunOnStartup: Boolean = true,
     ): Boolean {
         if (!hasLocalCatalog || lastSyncAt == null) return true
         val policy = from(value)
-        if (policy.runOnStartup) return true
+        if (policy.runOnStartup) return allowRunOnStartup
         val repeatHours = policy.repeatHours ?: return false
         return nowMs - lastSyncAt >= java.util.concurrent.TimeUnit.HOURS.toMillis(repeatHours)
     }
