@@ -512,7 +512,10 @@ fun HomeScreen(
                 ),
             )
             .padding(horizontal = SmartVisionDimensions.HomeScreenPadding)
-            .padding(top = SmartVisionDimensions.HomeHeaderTopPadding),
+            .padding(
+                top = SmartVisionDimensions.HomeHeaderTopPadding,
+                bottom = SmartVisionDimensions.AppScreenVerticalPadding,
+            ),
     ) {
         TvHeader(
             currentRoute = currentRoute,

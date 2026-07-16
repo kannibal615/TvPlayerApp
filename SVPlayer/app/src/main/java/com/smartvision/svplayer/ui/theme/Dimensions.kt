@@ -3,6 +3,10 @@ package com.smartvision.svplayer.ui.theme
 import androidx.compose.ui.unit.dp
 
 object SmartVisionDimensions {
+    val AppScreenHorizontalPadding = 34.dp
+    val AppScreenVerticalPadding = 18.dp
+    val AppHeaderContentSpacing = 14.dp
+
     val ScreenPadding = 64.dp
     val SectionSpacing = 24.dp
     val InternalSpacing = 16.dp
@@ -25,10 +29,10 @@ object SmartVisionDimensions {
     const val FocusScale = 1.06f
     const val FocusAnimationMillis = 150
 
-    val HomeScreenPadding = 32.dp
-    val HomeHeaderTopPadding = 4.dp
+    val HomeScreenPadding = AppScreenHorizontalPadding
+    val HomeHeaderTopPadding = AppScreenVerticalPadding
     val HomeHeaderHeight = 44.dp
-    val HomeHeaderToHeroSpacing = 20.dp
+    val HomeHeaderToHeroSpacing = AppHeaderContentSpacing
     val HomeHeroHeight = 132.dp
     val HomeCategoryHeight = 170.dp
     val HomeContentCardWidth = 112.dp

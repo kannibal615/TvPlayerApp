@@ -1030,11 +1030,11 @@ fun CatalogError(
 }
 
 object MediaCatalogDimens {
-    val ScreenPadding = 14.dp
-    val TopPadding = 4.dp
-    val BottomPadding = 16.dp
+    val ScreenPadding = SmartVisionDimensions.AppScreenHorizontalPadding
+    val TopPadding = SmartVisionDimensions.AppScreenVerticalPadding
+    val BottomPadding = SmartVisionDimensions.AppScreenVerticalPadding
     val HeaderHeight = 44.dp
-    val HeaderGap = 16.dp
+    val HeaderGap = SmartVisionDimensions.AppHeaderContentSpacing
     val PanelGap = 8.dp
     val PanelPadding = 8.dp
     val PanelHeaderHeight = 30.dp

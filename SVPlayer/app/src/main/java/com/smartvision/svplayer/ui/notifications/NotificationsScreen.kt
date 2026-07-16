@@ -83,6 +83,7 @@ import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -208,7 +209,10 @@ private fun NotificationsScreen(
                     radius = 1550f,
                 ),
             )
-            .padding(horizontal = 34.dp, vertical = 18.dp),
+            .padding(
+                horizontal = SmartVisionDimensions.AppScreenHorizontalPadding,
+                vertical = SmartVisionDimensions.AppScreenVerticalPadding,
+            ),
     ) {
         TvHeader(
             currentRoute = currentRoute,
@@ -227,7 +231,7 @@ private fun NotificationsScreen(
             onContentDown = { runCatching { sectionRequesters.getValue(selectedSection).requestFocus() } },
             modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(SmartVisionDimensions.AppHeaderContentSpacing))
         Row(
             modifier = Modifier.fillMaxWidth().weight(1f),
             horizontalArrangement = Arrangement.spacedBy(16.dp),

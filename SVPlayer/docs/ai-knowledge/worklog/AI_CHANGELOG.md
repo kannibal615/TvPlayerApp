@@ -1,5 +1,11 @@
 # AI Changelog
 
+## 2026-07-16 - Header principal partage et navigation Profile
+
+- Centralise le shell du header principal a `34 dp / 18 dp` avec un espace contenu de `14 dp`, puis l'applique a Home, Live TV, Films, Series, Media, YouTube, Notifications, Profile et Settings sans dupliquer `TvHeader`.
+- Maintient le hero Home sous le header dans la zone scrollable bornee et conserve le reset du scroll lors des retours vers le header.
+- Corrige Synchronisation -> Info profil en mettant a jour la destination Compose locale avant le callback de navigation, sans modifier le PIN ni le routage D-pad.
+
 ## 2026-07-16 - Uniformisation visuelle Profile et Settings
 
 - Extrait le style des sections Synchronisation dans une primitive Compose commune: icone `23 dp`, titre `Label`, padding `16 x 14 dp`, bordure et coins `8 dp`.

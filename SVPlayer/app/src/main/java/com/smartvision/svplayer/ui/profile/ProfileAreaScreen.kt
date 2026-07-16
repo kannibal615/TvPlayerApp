@@ -93,6 +93,7 @@ import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.settings.SynchronizationPreferencesContent
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -181,7 +182,10 @@ internal fun ProfileAreaScreen(
                     radius = 1550f,
                 ),
             )
-            .padding(horizontal = 34.dp, vertical = 18.dp),
+            .padding(
+                horizontal = SmartVisionDimensions.AppScreenHorizontalPadding,
+                vertical = SmartVisionDimensions.AppScreenVerticalPadding,
+            ),
     ) {
         TvHeader(
             currentRoute = currentRoute,
@@ -200,7 +204,7 @@ internal fun ProfileAreaScreen(
             onContentDown = { menuRequesters[startDestination]?.requestFocus() },
             modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(SmartVisionDimensions.AppHeaderContentSpacing))
         Row(
             modifier = Modifier.fillMaxWidth().weight(1f),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -224,7 +228,10 @@ internal fun ProfileAreaScreen(
                             variant = if (selected) TvButtonVariant.Primary else TvButtonVariant.Text,
                             onClick = {
                                 when (destination) {
-                                    ProfileAreaDestination.INFO -> onOpenInfo()
+                                    ProfileAreaDestination.INFO -> {
+                                        selectedDestination = destination
+                                        onOpenInfo()
+                                    }
                                     ProfileAreaDestination.MANAGE -> onOpenManage()
                                     ProfileAreaDestination.PARENTAL -> {
                                         if (pinConfigured) showParentalPin = true else showParentalPinCreation = true

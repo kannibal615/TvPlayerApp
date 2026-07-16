@@ -97,6 +97,7 @@ import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.update.AppUpdateUiState
 import java.util.UUID
@@ -174,7 +175,10 @@ fun SettingsScreen(
                     radius = 1500f,
                 ),
             )
-            .padding(horizontal = 34.dp, vertical = 18.dp),
+            .padding(
+                horizontal = SmartVisionDimensions.AppScreenHorizontalPadding,
+                vertical = SmartVisionDimensions.AppScreenVerticalPadding,
+            ),
     ) {
         TvHeader(
             currentRoute = currentRoute,
@@ -194,7 +198,7 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(SmartVisionDimensions.AppHeaderContentSpacing))
 
         SettingsMenuLayout(
             selectedSection = selectedSection,
