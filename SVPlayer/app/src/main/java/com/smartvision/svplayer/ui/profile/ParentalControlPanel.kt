@@ -82,6 +82,7 @@ import com.smartvision.svplayer.ui.components.NumericPinDialog
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
+import com.smartvision.svplayer.ui.components.TvSectionCard
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -203,7 +204,7 @@ fun ParentalControlPanel(
                 ),
             )
             .border(1.dp, SmartVisionColors.Border, RoundedCornerShape(8.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Lock, null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(26.dp))
@@ -215,8 +216,8 @@ fun ParentalControlPanel(
                 onClick = { showPinDialog = true },
                 focusRequester = changePinRequester,
                 modifier = Modifier
-                    .widthIn(min = 128.dp)
-                    .height(38.dp)
+                    .widthIn(min = 120.dp)
+                    .height(32.dp)
                     .focusProperties { down = toggleRequester },
             )
         }
@@ -225,7 +226,7 @@ fun ParentalControlPanel(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 14.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item(key = "parental-activation") {
@@ -258,7 +259,6 @@ fun ParentalControlPanel(
                             },
                         )
                     },
-                    contentBelowHeader = true,
                 ) {
                     if (state.profiles.isNotEmpty()) {
                         LazyRow(
@@ -296,7 +296,6 @@ fun ParentalControlPanel(
                     },
                     onFocused = { scope.launch { listState.animateScrollToItem(1) } },
                     modifier = Modifier.fillMaxWidth(),
-                    contentBelowHeader = true,
                 ) {
                     Column(Modifier.fillMaxWidth()) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -522,18 +521,15 @@ private fun ParentalSectionFrame(
     onFocused: () -> Unit,
     modifier: Modifier = Modifier,
     headerTrailing: (@Composable RowScope.() -> Unit)? = null,
-    contentBelowHeader: Boolean = headerTrailing != null,
     content: @Composable () -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
     val focusStyle = LocalTvFocusStyle.current
     val interactionSource = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(8.dp)
-    Column(
+    TvSectionCard(
+        title = title,
+        icon = icon,
         modifier = modifier
-            .clip(shape)
-            .background(if (focused || entered) focusStyle.background else Color(0xB307101E))
-            .border(if (focused || entered) focusStyle.borderWidth else 1.dp, if (focused || entered) focusStyle.accent else SmartVisionColors.Border, shape)
             .focusRequester(focusedRequester)
             .onFocusChanged {
                 focused = it.isFocused
@@ -555,21 +551,13 @@ private fun ParentalSectionFrame(
                 onClick = onEnter,
             )
             .focusProperties { canFocus = !entered }
-            .focusable()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .focusable(),
+        backgroundColor = if (focused || entered) focusStyle.background else Color(0xB8081628),
+        borderColor = if (focused || entered) focusStyle.accent else SmartVisionColors.Border.copy(alpha = 0.86f),
+        borderWidth = if (focused || entered) focusStyle.borderWidth else 1.dp,
+        headerTrailing = headerTrailing,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(title, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Label, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.weight(1f))
-            headerTrailing?.invoke(this)
-            if (!contentBelowHeader) content()
-        }
-        if (contentBelowHeader) {
-            Spacer(Modifier.height(8.dp))
-            content()
-        }
+        content()
     }
 }
 
@@ -644,7 +632,7 @@ private fun ParentalProfileCard(
 ) {
     Column(
         modifier = Modifier
-            .width(154.dp)
+            .width(130.dp)
             .height(110.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(Color(0xC30B192B))

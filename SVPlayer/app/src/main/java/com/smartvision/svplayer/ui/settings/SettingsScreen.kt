@@ -87,6 +87,7 @@ import com.smartvision.svplayer.data.network.NetworkActivityStatus
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.components.TvSectionCard
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.components.TvDialogSurface
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
@@ -348,54 +349,69 @@ private fun SettingsMenuLayout(
 
         SettingsPanel(
             title = selectedSection.label(strings),
+            icon = selectedSection.icon,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
             contentFocusable = selectedSection == SettingsSection.Network,
         ) {
             when (selectedSection) {
-                SettingsSection.License -> LicensePanel(
-                    state = licenseState,
-                    onRefresh = onRefreshLicense,
-                    onShowLicenseQr = onShowLicenseQr,
-                    onShowPrivacyOptions = {},
-                    privacyOptionsRequired = false,
+                SettingsSection.License -> TvSectionCard(
+                    title = selectedSection.label(strings),
+                    icon = Icons.Default.Verified,
                     modifier = Modifier.fillMaxWidth(),
-                )
+                ) {
+                    LicensePanel(
+                        state = licenseState,
+                        onRefresh = onRefreshLicense,
+                        onShowLicenseQr = onShowLicenseQr,
+                        onShowPrivacyOptions = {},
+                        privacyOptionsRequired = false,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 SettingsSection.Preferences -> {
-                    SettingsChoice(
-                        label = strings.language,
-                        values = listOf(
-                            SettingsOption("English", strings.english),
-                            SettingsOption("Francais", strings.french),
-                        ),
-                        selected = settings.language,
-                        onSelected = onSetLanguage,
-                    )
-                    SettingsChoice(
-                        label = strings.videoFormat,
-                        values = settingsOptions("Fit", "Fill", "Zoom"),
-                        selected = settings.videoRatio,
-                        onSelected = onSetVideoRatio,
-                    )
-                    SettingsChoice(
-                        label = strings.animations,
-                        values = listOf(
-                            SettingsOption("enabled", strings.enabled),
-                            SettingsOption("reduced", strings.reduced),
-                        ),
-                        selected = if (settings.animationsEnabled) "enabled" else "reduced",
-                        onSelected = { value -> onSetAnimations(value == "enabled") },
-                    )
-                    SettingsChoice(
-                        label = strings.automaticReconnect,
-                        values = listOf(
-                            SettingsOption("enabled", strings.enabled),
-                            SettingsOption("disabled", strings.disabled),
-                        ),
-                        selected = if (settings.retryEnabled) "enabled" else "disabled",
-                        onSelected = { value -> onSetRetry(value == "enabled") },
-                    )
+                    TvSectionCard(strings.language, Icons.Default.Settings, Modifier.fillMaxWidth()) {
+                        SettingsChoice(
+                            label = strings.language,
+                            values = listOf(
+                                SettingsOption("English", strings.english),
+                                SettingsOption("Francais", strings.french),
+                            ),
+                            selected = settings.language,
+                            onSelected = onSetLanguage,
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    TvSectionCard(strings.videoFormat, Icons.Default.Settings, Modifier.fillMaxWidth()) {
+                        SettingsChoice(
+                            label = strings.videoFormat,
+                            values = settingsOptions("Fit", "Fill", "Zoom"),
+                            selected = settings.videoRatio,
+                            onSelected = onSetVideoRatio,
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    TvSectionCard(strings.animations, Icons.Default.Settings, Modifier.fillMaxWidth()) {
+                        SettingsChoice(
+                            label = strings.animations,
+                            values = listOf(
+                                SettingsOption("enabled", strings.enabled),
+                                SettingsOption("reduced", strings.reduced),
+                            ),
+                            selected = if (settings.animationsEnabled) "enabled" else "reduced",
+                            onSelected = { value -> onSetAnimations(value == "enabled") },
+                        )
+                        SettingsChoice(
+                            label = strings.automaticReconnect,
+                            values = listOf(
+                                SettingsOption("enabled", strings.enabled),
+                                SettingsOption("disabled", strings.disabled),
+                            ),
+                            selected = if (settings.retryEnabled) "enabled" else "disabled",
+                            onSelected = { value -> onSetRetry(value == "enabled") },
+                        )
+                    }
                 }
                 SettingsSection.Network -> {
                     NetworkActivityPanel(
@@ -404,39 +420,43 @@ private fun SettingsMenuLayout(
                     )
                 }
                 SettingsSection.Tmdb -> {
-                    Text(
-                        text = strings.tmdbAttributionSubtitle,
-                        color = SmartVisionColors.TextSecondary,
-                        style = SmartVisionType.Body,
-                    )
-                    Spacer(Modifier.height(14.dp))
-                    SettingsInfoRow(
-                        label = strings.tmdbTokenStatus,
-                        value = if (BuildConfig.TMDB_READ_ACCESS_TOKEN.isNotBlank()) strings.active else strings.notConfigured,
-                    )
-                    SettingsInfoRow(strings.language, settings.language)
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = strings.tmdbAttributionBody,
-                        color = SmartVisionColors.TextSecondary,
-                        style = SmartVisionType.Body,
-                    )
+                    TvSectionCard(strings.tmdbTokenStatus, Icons.Default.Settings, Modifier.fillMaxWidth()) {
+                        Text(
+                            text = strings.tmdbAttributionSubtitle,
+                            color = SmartVisionColors.TextSecondary,
+                            style = SmartVisionType.Body,
+                        )
+                        Spacer(Modifier.height(14.dp))
+                        SettingsInfoRow(
+                            label = strings.tmdbTokenStatus,
+                            value = if (BuildConfig.TMDB_READ_ACCESS_TOKEN.isNotBlank()) strings.active else strings.notConfigured,
+                        )
+                        SettingsInfoRow(strings.language, settings.language)
+                    }
                     Spacer(Modifier.height(10.dp))
-                    Text(
-                        text = strings.tmdbProvidersBody,
-                        color = SmartVisionColors.TextSecondary,
-                        style = SmartVisionType.Body,
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        text = strings.tmdbLicenseNote,
-                        color = SmartVisionColors.TextSecondary,
-                        style = SmartVisionType.Caption,
-                    )
+                    TvSectionCard(strings.tmdbAttribution, Icons.Default.Info, Modifier.fillMaxWidth()) {
+                        Text(
+                            text = strings.tmdbAttributionBody,
+                            color = SmartVisionColors.TextSecondary,
+                            style = SmartVisionType.Body,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = strings.tmdbProvidersBody,
+                            color = SmartVisionColors.TextSecondary,
+                            style = SmartVisionType.Body,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = strings.tmdbLicenseNote,
+                            color = SmartVisionColors.TextSecondary,
+                            style = SmartVisionType.Caption,
+                        )
+                    }
                 }
                 SettingsSection.Personalization -> {
-                    PersonalizationSectionTitle(strings.focusStyle)
-                    SettingsChoice(
+                    TvSectionCard(strings.focusStyle, Icons.Default.Settings, Modifier.fillMaxWidth()) {
+                        SettingsChoice(
                         label = strings.focusStyle,
                         values = listOf(
                             SettingsOption(TvFocusStyles.Default.key, strings.focusDefault),
@@ -446,7 +466,7 @@ private fun SettingsMenuLayout(
                         selected = settings.focusStyle,
                         onSelected = onSetFocusStyle,
                     )
-                    SettingsChoice(
+                        SettingsChoice(
                         label = strings.focusColor,
                         values = listOf(
                             SettingsOption("White", strings.focusWhite),
@@ -456,7 +476,7 @@ private fun SettingsMenuLayout(
                         selected = settings.focusColor,
                         onSelected = onSetFocusColor,
                     )
-                    SettingsChoice(
+                        SettingsChoice(
                         label = strings.focusEffect,
                         values = listOf(
                             SettingsOption("Frame", strings.focusFrame),
@@ -466,7 +486,7 @@ private fun SettingsMenuLayout(
                         selected = settings.focusEffect,
                         onSelected = onSetFocusEffect,
                     )
-                    SettingsChoice(
+                        SettingsChoice(
                         label = strings.focusBackground,
                         values = listOf(
                             SettingsOption("BlueTransparent", strings.focusBackgroundBlue),
@@ -476,83 +496,79 @@ private fun SettingsMenuLayout(
                         selected = settings.focusBackground,
                         onSelected = onSetFocusBackground,
                     )
-                    Spacer(Modifier.height(12.dp))
-                    PersonalizationSectionTitle(strings.focusSelectedElement)
-                    SettingsChoice(
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    TvSectionCard(strings.focusSelectedElement, Icons.Default.CheckCircle, Modifier.fillMaxWidth()) {
+                        SettingsChoice(
                         label = strings.focusSelectedElement,
                         values = focusRoleColorOptions(strings),
                         selected = settings.focusSelectedColor,
                         onSelected = onSetFocusSelectedColor,
                     )
-                    SettingsChoice(
+                        SettingsChoice(
                         label = strings.focusActiveElement,
                         values = focusRoleColorOptions(strings),
                         selected = settings.focusActiveColor,
                         onSelected = onSetFocusActiveColor,
                     )
-                    SettingsChoice(
+                        SettingsChoice(
                         label = strings.focusParentElement,
                         values = focusRoleColorOptions(strings),
                         selected = settings.focusParentColor,
                         onSelected = onSetFocusParentColor,
                     )
-                    Spacer(Modifier.height(12.dp))
-                    FocusStatePreview(strings = strings)
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    TvSectionCard(strings.focusLivePreview, Icons.Default.Info, Modifier.fillMaxWidth()) {
+                        FocusStatePreview(strings = strings)
+                    }
                 }
                 SettingsSection.Updates -> {
-                    SettingsInfoRow(strings.installedVersion, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
-                    SettingsInfoRow(strings.lastUpdate, lastUpdateLabel)
-                    SettingsInfoRow(strings.portal, BuildConfig.ACTIVATION_BASE_URL.removeSuffix("/"))
-                    Spacer(Modifier.height(14.dp))
-                    TvButton(
-                        text = if (updateState.checking) strings.checking else strings.checkForUpdate,
-                        leadingIcon = Icons.Default.Refresh,
-                        onClick = onCheckForUpdate,
-                        enabled = !updateState.checking && !updateState.installing,
-                        variant = TvButtonVariant.Secondary,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(44.dp),
-                    )
-                    updateState.errorMessage?.let { message ->
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = message,
-                            color = SmartVisionColors.Error,
-                            style = SmartVisionType.Caption,
-                            maxLines = 2,
-                        )
+                    TvSectionCard(strings.installedVersion, Icons.Default.Info, Modifier.fillMaxWidth()) {
+                        SettingsInfoRow(strings.installedVersion, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                        SettingsInfoRow(strings.lastUpdate, lastUpdateLabel)
+                        SettingsInfoRow(strings.portal, BuildConfig.ACTIVATION_BASE_URL.removeSuffix("/"))
                     }
-                    if (updateState.checkedOnce && updateState.update == null && updateState.errorMessage == null && !updateState.checking) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = strings.appUpToDate,
-                            color = SmartVisionColors.TextSecondary,
-                            style = SmartVisionType.Caption,
-                            maxLines = 1,
+                    Spacer(Modifier.height(10.dp))
+                    TvSectionCard(strings.checkForUpdate, Icons.Default.Refresh, Modifier.fillMaxWidth()) {
+                        TvButton(
+                            text = if (updateState.checking) strings.checking else strings.checkForUpdate,
+                            leadingIcon = Icons.Default.Refresh,
+                            onClick = onCheckForUpdate,
+                            enabled = !updateState.checking && !updateState.installing,
+                            variant = TvButtonVariant.Secondary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(44.dp),
                         )
+                        updateState.errorMessage?.let { message ->
+                            Spacer(Modifier.height(8.dp))
+                            Text(text = message, color = SmartVisionColors.Error, style = SmartVisionType.Caption, maxLines = 2)
+                        }
+                        if (updateState.checkedOnce && updateState.update == null && updateState.errorMessage == null && !updateState.checking) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(text = strings.appUpToDate, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1)
+                        }
                     }
                 }
                 SettingsSection.Data -> {
-                    SettingsInfoRow(strings.bufferMode, settings.bufferMode)
-                    SettingsInfoRow(strings.localXtreamAccounts, accountsCount.toString())
-                    SettingsInfoRow(strings.activeAccount, activeAccount?.name ?: strings.none)
+                    TvSectionCard(strings.localData, Icons.Default.Info, Modifier.fillMaxWidth()) {
+                        SettingsInfoRow(strings.bufferMode, settings.bufferMode)
+                        SettingsInfoRow(strings.localXtreamAccounts, accountsCount.toString())
+                        SettingsInfoRow(strings.activeAccount, activeAccount?.name ?: strings.none)
+                        Spacer(Modifier.height(10.dp))
+                        Text(text = strings.localCredentialsInfo, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Body)
+                    }
                     Spacer(Modifier.height(10.dp))
-                    Text(
-                        text = strings.localCredentialsInfo,
-                        color = SmartVisionColors.TextSecondary,
-                        style = SmartVisionType.Body,
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    TvButton(
-                        text = strings.clearLocalData,
-                        leadingIcon = Icons.Default.Delete,
-                        onClick = onClearLocalData,
-                        variant = TvButtonVariant.Danger,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(44.dp),
-                    )
+                    TvSectionCard(strings.clearLocalData, Icons.Default.Delete, Modifier.fillMaxWidth()) {
+                        TvButton(
+                            text = strings.clearLocalData,
+                            leadingIcon = Icons.Default.Delete,
+                            onClick = onClearLocalData,
+                            variant = TvButtonVariant.Danger,
+                            modifier = Modifier.fillMaxWidth().height(44.dp),
+                        )
+                    }
                 }
             }
         }
@@ -694,40 +710,42 @@ private fun NetworkActivityPanel(
     snapshot: NetworkActivitySnapshot,
     strings: SmartVisionStrings,
 ) {
-    Text(
-        text = strings.networkActivitySubtitle,
-        color = SmartVisionColors.TextSecondary,
-        style = SmartVisionType.Body,
-    )
-    Spacer(Modifier.height(14.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        NetworkMetricCard(strings.networkActive, snapshot.activeCount.toString(), Modifier.weight(1f))
-        NetworkMetricCard(strings.networkThroughput, snapshot.bytesPerSecond.formatByteRate(), Modifier.weight(1f))
-        NetworkMetricCard(strings.networkErrors, snapshot.errorCount.toString(), Modifier.weight(1f))
+    TvSectionCard(strings.networkActivity, Icons.Default.CloudSync, Modifier.fillMaxWidth()) {
+        Text(
+            text = strings.networkActivitySubtitle,
+            color = SmartVisionColors.TextSecondary,
+            style = SmartVisionType.Body,
+        )
+        Spacer(Modifier.height(14.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            NetworkMetricCard(strings.networkActive, snapshot.activeCount.toString(), Modifier.weight(1f))
+            NetworkMetricCard(strings.networkThroughput, snapshot.bytesPerSecond.formatByteRate(), Modifier.weight(1f))
+            NetworkMetricCard(strings.networkErrors, snapshot.errorCount.toString(), Modifier.weight(1f))
+        }
     }
-    Spacer(Modifier.height(18.dp))
+    Spacer(Modifier.height(10.dp))
 
-    Text(strings.networkActive, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Label, fontWeight = FontWeight.Bold)
-    Spacer(Modifier.height(8.dp))
-    if (snapshot.active.isEmpty()) {
-        Text(strings.networkNoActivity, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
-    } else {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            snapshot.active.take(NetworkActivityVisibleLimit).forEach { item ->
-                NetworkActivityRow(item = item, strings = strings)
+    TvSectionCard(strings.networkActive, Icons.Default.CloudSync, Modifier.fillMaxWidth()) {
+        if (snapshot.active.isEmpty()) {
+            Text(strings.networkNoActivity, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                snapshot.active.take(NetworkActivityVisibleLimit).forEach { item ->
+                    NetworkActivityRow(item = item, strings = strings)
+                }
             }
         }
     }
 
-    Spacer(Modifier.height(18.dp))
-    Text(strings.networkRecent, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Label, fontWeight = FontWeight.Bold)
-    Spacer(Modifier.height(8.dp))
-    if (snapshot.recent.isEmpty()) {
-        Text(strings.networkNoActivity, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
-    } else {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            snapshot.recent.take(NetworkActivityVisibleLimit).forEach { item ->
-                NetworkActivityRow(item = item, strings = strings)
+    Spacer(Modifier.height(10.dp))
+    TvSectionCard(strings.networkRecent, Icons.Default.Refresh, Modifier.fillMaxWidth()) {
+        if (snapshot.recent.isEmpty()) {
+            Text(strings.networkNoActivity, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                snapshot.recent.take(NetworkActivityVisibleLimit).forEach { item ->
+                    NetworkActivityRow(item = item, strings = strings)
+                }
             }
         }
     }
@@ -849,6 +867,7 @@ private fun NetworkProgressBar(percent: Int, color: Color) {
 @Composable
 private fun SettingsPanel(
     title: String,
+    icon: ImageVector,
     modifier: Modifier,
     trailing: @Composable (() -> Unit)? = null,
     contentFocusable: Boolean = false,
@@ -861,9 +880,11 @@ private fun SettingsPanel(
         modifier = modifier
             .background(Color(0xE60A1424), RoundedCornerShape(8.dp))
             .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
-            .padding(20.dp),
+            .padding(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(23.dp))
+            Spacer(Modifier.width(9.dp))
             Text(
                 text = title,
                 color = SmartVisionColors.TextPrimary,
@@ -873,7 +894,7 @@ private fun SettingsPanel(
             Spacer(Modifier.weight(1f))
             trailing?.invoke()
         }
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(8.dp))
         val contentModifier = if (contentFocusable) {
             Modifier
                 .fillMaxWidth()

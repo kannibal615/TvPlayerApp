@@ -1,5 +1,11 @@
 # AI Changelog
 
+## 2026-07-16 - Uniformisation visuelle Profile et Settings
+
+- Extrait le style des sections Synchronisation dans une primitive Compose commune: icone `23 dp`, titre `Label`, padding `16 x 14 dp`, bordure et coins `8 dp`.
+- Aligne Info profil, Gestion des profils et Controle parental, puis decoupe chaque destination Settings en groupes logiques encadres sans changer l'ordre ni les controles.
+- Conserve les proportions `250 dp / 16 dp`, la navigation D-pad, les toggles, dialogues et zones scrollables existantes.
+
 ## 2026-07-16 - Profils TV, focus parental et isolation Home
 
 - Aligne les panneaux droits Info/Gestion sur Synchronisation, retire Historique/Parametres du menu Profile, reutilise les avatars d'ajout du picker et compacte le detail profil.

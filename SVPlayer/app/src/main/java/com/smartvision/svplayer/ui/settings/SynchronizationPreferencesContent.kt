@@ -9,7 +9,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -43,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.components.TvSectionCard
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
@@ -72,7 +72,7 @@ internal fun SynchronizationPreferencesContent(
             .height(210.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        SyncSectionCard(
+        TvSectionCard(
             title = strings.syncGeneralOptions,
             icon = Icons.Default.Settings,
             modifier = Modifier
@@ -106,7 +106,7 @@ internal fun SynchronizationPreferencesContent(
             )
         }
 
-        SyncSectionCard(
+        TvSectionCard(
             title = strings.syncFrequencyTitle,
             icon = Icons.Default.Schedule,
             modifier = Modifier
@@ -179,7 +179,7 @@ internal fun SynchronizationPreferencesContent(
 
     Spacer(Modifier.height(10.dp))
 
-    SyncSectionCard(
+    TvSectionCard(
         title = strings.syncSummary,
         icon = Icons.Default.Sync,
         modifier = Modifier
@@ -216,30 +216,6 @@ internal fun SynchronizationPreferencesContent(
                 modifier = Modifier.weight(1f),
             )
         }
-    }
-}
-
-@Composable
-private fun SyncSectionCard(
-    title: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xB8081628))
-            .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.86f)), RoundedCornerShape(8.dp))
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(23.dp))
-            Spacer(Modifier.width(9.dp))
-            Text(title, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Label, fontWeight = FontWeight.Bold)
-        }
-        Spacer(Modifier.height(12.dp))
-        content()
     }
 }
 

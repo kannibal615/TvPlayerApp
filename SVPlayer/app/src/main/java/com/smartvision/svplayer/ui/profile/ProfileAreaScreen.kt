@@ -87,6 +87,7 @@ import com.smartvision.svplayer.ui.components.NumericPinDialog
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
+import com.smartvision.svplayer.ui.components.TvSectionCard
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
@@ -397,13 +398,13 @@ private fun ProfileInfoContent(
     val scrollState = rememberScrollState()
 
     Column(modifier.verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(Icons.Default.Person, null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(28.dp))
-        Text(strings.profileInfo, style = SmartVisionType.TitleM, color = SmartVisionColors.TextPrimary)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Icon(Icons.Default.Person, null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(23.dp))
+            Text(strings.profileInfo, style = SmartVisionType.TitleS, color = SmartVisionColors.TextPrimary, fontWeight = FontWeight.SemiBold)
         }
         
         if (activeProfile == null) {
-            AreaPanel(strings.activeProfile, Icons.Default.Person, Modifier.fillMaxWidth()) {
+            TvSectionCard(strings.activeProfile, Icons.Default.Person, Modifier.fillMaxWidth()) {
                 Text(strings.noProfilesAvailable, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Body)
                 Spacer(Modifier.height(10.dp))
                 TvButton(
@@ -415,7 +416,7 @@ private fun ProfileInfoContent(
             }
             return@Column
         }
-        AreaPanel(strings.activeProfile, Icons.Default.Person, Modifier.fillMaxWidth()) {
+        TvSectionCard(strings.activeProfile, Icons.Default.Person, Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 PlaylistProfileAvatar(activeProfile, Modifier.size(50.dp))
                 Spacer(Modifier.width(14.dp))
@@ -438,7 +439,7 @@ private fun ProfileInfoContent(
                 )
             }
         }
-        AreaPanel(strings.catalog, Icons.Default.PlaylistPlay, Modifier.fillMaxWidth()) {
+        TvSectionCard(strings.catalog, Icons.Default.PlaylistPlay, Modifier.fillMaxWidth()) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 CatalogMetric(strings.liveTv, state.account.liveCount, Icons.Default.LiveTv, SmartVisionColors.CyanAccent, Modifier.weight(1f))
                 CatalogMetric(strings.movies, state.account.movieCount, Icons.Default.Movie, Color(0xFFFFB340), Modifier.weight(1f))
@@ -469,11 +470,11 @@ private fun ProfileInfoContent(
                 )
             }
         }
-        AreaPanel(strings.sync, Icons.Default.CloudSync, Modifier.fillMaxWidth()) {
+        TvSectionCard(strings.sync, Icons.Default.CloudSync, Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(strings.lastSynchronization, color = SmartVisionColors.CyanAccent, style = SmartVisionType.Caption)
-                    Text(activeProfile.lastSyncAt?.asProfileAreaDate() ?: strings.syncNever, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Caption, fontSize = 20.sp)
+                    Text(activeProfile.lastSyncAt?.asProfileAreaDate() ?: strings.syncNever, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Body)
                     val status = when {
                         syncing -> strings.synchronizationInProgress
                         syncStatus is SyncStatus.Error || state.account.catalogSyncStatus == "error" -> strings.synchronizationError
@@ -627,11 +628,11 @@ private fun ManageProfilesContent(
     }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(Icons.Default.Groups, null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(28.dp))
-            Text(strings.manageProfiles, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleM)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Icon(Icons.Default.Groups, null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(23.dp))
+            Text(strings.manageProfiles, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.SemiBold)
         }
-        AreaPanel("", Icons.Default.Groups, Modifier.fillMaxWidth()) {
+        TvSectionCard(strings.manageProfiles, Icons.Default.Groups, Modifier.fillMaxWidth()) {
             LazyRow(
                 state = profileListState,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -706,7 +707,7 @@ private fun ManageProfilesContent(
                 }
             }
         }
-        AreaPanel("", Icons.Default.Person, Modifier.fillMaxWidth().weight(1f)) {
+        TvSectionCard(strings.profileInfo, Icons.Default.Person, Modifier.fillMaxWidth().weight(1f)) {
             if (detailsProfile == null) {
                 Text(strings.noProfilesAvailable, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Body)
             } else Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
