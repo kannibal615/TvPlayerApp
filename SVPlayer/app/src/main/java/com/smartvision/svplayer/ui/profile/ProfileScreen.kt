@@ -272,9 +272,6 @@ fun ProfileRoute(
         container.xtreamRepository.clearCaches()
         container.catalogRepository.invalidateLocalCatalogCache()
         container.synchronizeCatalog().getOrThrow()
-        container.accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let { epgUrl ->
-            container.epgRepository.synchronize(epgUrl)
-        }
     }
 
     ProfileAreaScreen(
@@ -349,12 +346,7 @@ fun ProfileRoute(
             scope.launch {
                 val target = container.accountManager.profiles.value.firstOrNull { it.id == profileId }
                     ?: return@launch
-                container.catalogRepository.synchronize(profileId).onSuccess {
-                    val resolved = container.accountManager.resolvedProfile(target)
-                    resolved.epgUrl.takeIf { it.isNotBlank() }?.let { epgUrl ->
-                        container.epgRepository.synchronize(epgUrl)
-                    }
-                }
+                container.catalogRepository.synchronize(profileId)
             }
         },
         onSetAutostartEnabled = { value -> scope.launch { container.settingsRepository.setAutostartEnabled(value) } },

@@ -818,6 +818,9 @@ function admin_purge_devices(PDO $pdo): void
 
     $pdo->beginTransaction();
     $pdo->exec('DELETE FROM device_playlist_configs');
+    $pdo->exec('DELETE FROM device_playlist_profiles');
+    $pdo->exec('DELETE FROM device_profile_registry');
+    $pdo->exec('DELETE FROM playlist_lookup_attempts');
     $pdo->exec('DELETE FROM activation_session_tokens');
     $pdo->exec('DELETE FROM activation_sessions');
     $pdo->exec('DELETE FROM device_activations');

@@ -10,7 +10,10 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.config.PlaylistProfile
 import com.smartvision.svplayer.core.config.PlaylistSource
+import com.smartvision.svplayer.core.config.ProfileType
+import com.smartvision.svplayer.core.config.WebPlaylistDelivery
 import com.smartvision.svplayer.core.config.XtreamAccountManager
+import com.smartvision.svplayer.data.playlist.EpgRepository
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -22,6 +25,7 @@ class ActivationRepository(
     private val api: ActivationApiService,
     private val dataStore: DataStore<Preferences>,
     private val accountManager: XtreamAccountManager,
+    private val epgRepository: EpgRepository,
 ) {
     val localState: Flow<StoredActivationState> =
         dataStore.data.map { preferences ->
@@ -259,7 +263,7 @@ class ActivationRepository(
 
         val resolved = persistStatusResponse(response, "Statut activation indisponible.")
 
-        response.playlistConfig?.let(::importPlaylistConfig)
+        response.playlistConfig?.let { importPlaylistConfig(it) }
 
         return resolved
     }
@@ -357,7 +361,57 @@ class ActivationRepository(
         )
     }
 
-    private fun importPlaylistConfig(playlist: PlaylistConfigResponse) {
+    suspend fun publishProfileInventory(profiles: List<PlaylistProfile>) {
+        val preferences = dataStore.data.first()
+        val deviceId = preferences[DEVICE_ID].orEmpty()
+        val deviceToken = preferences[DEVICE_TOKEN].orEmpty()
+        if (deviceId.isBlank() || deviceToken.isBlank()) return
+        val response = api.syncDeviceProfiles(
+            DeviceProfilesRequest(
+                deviceId = deviceId,
+                deviceToken = deviceToken,
+                profiles = profiles
+                    .filter { it.type != ProfileType.KIDS }
+                    .map { profile ->
+                        DeviceProfileSummary(
+                            profileId = profile.id,
+                            name = profile.name,
+                            type = profile.type.storageValue,
+                        )
+                    },
+            ),
+        )
+        if (!response.success) throw ActivationException(response.error ?: "Publication des profils refusee.")
+    }
+
+    private suspend fun importPlaylistConfig(playlist: PlaylistConfigResponse) {
+        val configId = playlist.configId.orEmpty()
+        if (configId.isNotBlank() && dataStore.data.first()[LAST_PLAYLIST_CONFIG_ID] == configId) return
+        val targetedDelivery = playlist.targetProfileIds.isNotEmpty() || !playlist.newProfileName.isNullOrBlank()
+        if (targetedDelivery) {
+            val appliedIds = accountManager.applyWebPlaylistDelivery(
+                WebPlaylistDelivery(
+                    targetProfileIds = playlist.targetProfileIds,
+                    newProfileName = playlist.newProfileName.orEmpty(),
+                    providedFields = playlist.providedFields.toSet(),
+                    xtreamHost = playlist.host.orEmpty(),
+                    xtreamUsername = playlist.username.orEmpty(),
+                    xtreamPassword = playlist.password.orEmpty(),
+                    m3uUrl = playlist.m3uUrl.orEmpty(),
+                    epgUrl = playlist.epgUrl.orEmpty(),
+                ),
+            )
+            appliedIds.mapNotNull { id ->
+                accountManager.profiles.value.firstOrNull { it.id == id }
+                    ?.let(accountManager::resolvedProfile)
+                    ?.epgUrl
+                    ?.takeIf { it.isNotBlank() }
+            }.distinct().forEach { epgUrl ->
+                epgRepository.synchronizeIfStale(epgUrl, EPG_IMPORT_REFRESH_MIN_AGE_MS)
+            }
+            if (configId.isNotBlank()) dataStore.edit { it[LAST_PLAYLIST_CONFIG_ID] = configId }
+            return
+        }
         val importedProfileId = accountManager.upsertWebPlaylistProfile(
             sourceHint = playlist.sourceHint(),
             xtreamHost = playlist.host.orEmpty(),
@@ -367,13 +421,17 @@ class ActivationRepository(
             epgUrl = playlist.epgUrl.orEmpty(),
             epgProvided = "epg" in playlist.providedFields || playlist.providedFields.isEmpty(),
         )
-        if (importedProfileId != null) return
+        if (importedProfileId != null) {
+            if (configId.isNotBlank()) dataStore.edit { it[LAST_PLAYLIST_CONFIG_ID] = configId }
+            return
+        }
 
         playlist.epgUrl?.trim()?.takeIf { it.isNotBlank() }?.let(accountManager::updateEpgUrl)
         playlist.m3uUrl?.trim()?.takeIf { it.isNotBlank() }?.let {
             accountManager.updateM3uUrl(it)
             accountManager.selectPlaylistSource(PlaylistSource.M3u)
         }
+        if (configId.isNotBlank()) dataStore.edit { it[LAST_PLAYLIST_CONFIG_ID] = configId }
     }
 
     private suspend fun ensureRegisteredDeviceId(): String {
@@ -415,6 +473,8 @@ class ActivationRepository(
         val PUBLIC_DEVICE_CODE = stringPreferencesKey("activation_public_device_code")
         val FREE_WITH_ADS_STATUS = stringPreferencesKey("activation_free_with_ads_status")
         val PLAYLIST_CONFIGURED = booleanPreferencesKey("activation_playlist_configured")
+        val LAST_PLAYLIST_CONFIG_ID = stringPreferencesKey("activation_last_playlist_config_id")
+        const val EPG_IMPORT_REFRESH_MIN_AGE_MS = 60 * 60 * 1_000L
     }
 }
 

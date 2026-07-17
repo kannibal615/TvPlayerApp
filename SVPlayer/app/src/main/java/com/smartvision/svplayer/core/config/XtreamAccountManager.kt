@@ -4,6 +4,7 @@ import android.content.Context
 import com.smartvision.svplayer.core.profile.ProfileCredentialsStore
 import com.smartvision.svplayer.core.profile.StoredProfileCredentials
 import java.util.UUID
+import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -346,6 +347,72 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
     }
 
     @Synchronized
+    fun applyWebPlaylistDelivery(delivery: WebPlaylistDelivery): List<String> {
+        val appliedIds = mutableListOf<String>()
+        val xtreamProvided = "xtream" in delivery.providedFields
+        val m3uProvided = "m3u" in delivery.providedFields
+        val epgProvided = "epg" in delivery.providedFields
+
+        delivery.targetProfileIds.distinct().forEach { targetId ->
+            val existing = _profiles.value.firstOrNull { it.id == targetId && isEligibleWebPlaylistTarget(it) }
+                ?: return@forEach
+            val resolved = resolvedProfile(existing)
+            val source = when {
+                xtreamProvided -> PlaylistSource.Xtream
+                m3uProvided -> PlaylistSource.M3u
+                else -> resolved.source
+            }
+            val updated = existing.copy(
+                source = source,
+                credentialsMode = CredentialsMode.CUSTOM,
+                xtreamHost = if (xtreamProvided) delivery.xtreamHost else resolved.xtreamHost,
+                xtreamUsername = if (xtreamProvided) delivery.xtreamUsername else resolved.xtreamUsername,
+                xtreamPassword = if (xtreamProvided) delivery.xtreamPassword else resolved.xtreamPassword,
+                m3uUrl = if (m3uProvided) delivery.m3uUrl else resolved.m3uUrl,
+                epgUrl = if (epgProvided) delivery.epgUrl else resolved.epgUrl,
+                lastSyncAt = if (
+                    source != resolved.source ||
+                    (xtreamProvided && (
+                        delivery.xtreamHost.trim().trimEnd('/') != resolved.xtreamHost.trim().trimEnd('/') ||
+                            delivery.xtreamUsername.trim() != resolved.xtreamUsername.trim() ||
+                            delivery.xtreamPassword.trim() != resolved.xtreamPassword.trim()
+                        )) ||
+                    (m3uProvided && delivery.m3uUrl.trim() != resolved.m3uUrl.trim())
+                ) null else existing.lastSyncAt,
+            )
+            appliedIds += upsertProfile(updated)
+        }
+
+        val requestedNewName = delivery.newProfileName.trim()
+        if (requestedNewName.isNotBlank() && (xtreamProvided || m3uProvided)) {
+            val uniqueName = uniqueWebProfileName(requestedNewName)
+            val source = if (m3uProvided && !xtreamProvided) PlaylistSource.M3u else PlaylistSource.Xtream
+            appliedIds += upsertProfile(
+                PlaylistProfile(
+                    id = "",
+                    name = uniqueName,
+                    source = source,
+                    type = ProfileType.NORMAL,
+                    credentialsMode = CredentialsMode.CUSTOM,
+                    avatarId = defaultProfileAvatarId(ProfileType.NORMAL, uniqueName),
+                    avatarColorHex = avatarColorForName(uniqueName),
+                    xtreamHost = delivery.xtreamHost,
+                    xtreamUsername = delivery.xtreamUsername,
+                    xtreamPassword = delivery.xtreamPassword,
+                    m3uUrl = delivery.m3uUrl,
+                    epgUrl = if (epgProvided) delivery.epgUrl else "",
+                    lastSyncAt = null,
+                ),
+            )
+        }
+        return appliedIds
+    }
+
+    private fun uniqueWebProfileName(requestedName: String): String {
+        return uniqueProfileName(requestedName, _profiles.value.map { it.name }, WebPlaylistProfileName)
+    }
+
+    @Synchronized
     fun activateProfile(profileId: String) {
         val profile = _profiles.value.firstOrNull { it.id == profileId }
             ?: throw IllegalArgumentException("Profil introuvable.")
@@ -658,6 +725,28 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             PlaylistSource.Xtream -> current().isConfigured
             PlaylistSource.M3u -> _m3uUrl.value.isNotBlank()
         }
+}
+
+data class WebPlaylistDelivery(
+    val targetProfileIds: List<String>,
+    val newProfileName: String,
+    val providedFields: Set<String>,
+    val xtreamHost: String,
+    val xtreamUsername: String,
+    val xtreamPassword: String,
+    val m3uUrl: String,
+    val epgUrl: String,
+)
+
+internal fun isEligibleWebPlaylistTarget(profile: PlaylistProfile): Boolean = profile.type != ProfileType.KIDS
+
+internal fun uniqueProfileName(requestedName: String, existingNames: List<String>, fallback: String): String {
+    val base = requestedName.trim().ifBlank { fallback }
+    val names = existingNames.map { it.lowercase(Locale.ROOT) }.toSet()
+    if (base.lowercase(Locale.ROOT) !in names) return base
+    var suffix = 2
+    while ("$base ($suffix)".lowercase(Locale.ROOT) in names) suffix++
+    return "$base ($suffix)"
 }
 
 private fun PlaylistProfile.toStoredCredentials(): StoredProfileCredentials = StoredProfileCredentials(

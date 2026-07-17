@@ -1,5 +1,7 @@
 # Activation, Licence, Essai et Xtream
 
+Depuis le 2026-07-17, la page publique Playlist peut cibler plusieurs profils existants Admin/Normal et creer en meme temps un profil Normal. La TV publie uniquement l'inventaire non sensible id/nom/type avec son `device_token`; Kids est exclu cote app et serveur. Les livraisons portent un `config_id` idempotent, conservent le profil actif et rendent autonome un profil qui partageait les identifiants Admin avant de lui appliquer une configuration ciblee.
+
 Derniere mise a jour: 2026-07-10.
 
 ## 1. Objectif

@@ -220,6 +220,31 @@ CREATE TABLE IF NOT EXISTS device_playlist_configs (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS device_profile_registry (
+    device_id VARCHAR(100) NOT NULL PRIMARY KEY,
+    capability_version INT UNSIGNED NOT NULL DEFAULT 1,
+    synced_at DATETIME NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS device_playlist_profiles (
+    device_id VARCHAR(100) NOT NULL,
+    profile_id VARCHAR(100) NOT NULL,
+    profile_name VARCHAR(60) NOT NULL,
+    profile_type ENUM('admin', 'normal') NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (device_id, profile_id),
+    INDEX idx_device_playlist_profiles_type (device_id, profile_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS playlist_lookup_attempts (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    ip_hash CHAR(64) NOT NULL,
+    attempted_at DATETIME NOT NULL,
+    INDEX idx_playlist_lookup_rate (ip_hash, attempted_at),
+    INDEX idx_playlist_lookup_cleanup (attempted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS app_settings (
     id INT AUTO_INCREMENT PRIMARY KEY,
     setting_key VARCHAR(100) NOT NULL UNIQUE,

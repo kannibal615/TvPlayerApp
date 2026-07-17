@@ -93,6 +93,8 @@ try {
     $config = is_string($existingPayload) && $existingPayload !== ''
         ? (decrypt_playlist_config($existingPayload) ?? [])
         : [];
+    unset($config['target_profile_ids'], $config['new_profile_name']);
+    $config['config_id'] = generate_uuid_v4();
     if ($hasXtreamInput) {
         $config['host'] = $host;
         $config['username'] = $username;

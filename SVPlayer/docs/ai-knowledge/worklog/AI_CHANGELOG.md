@@ -1,11 +1,18 @@
 # AI Changelog
 
+## 2026-07-17 - EPG courant/futur et Playlist multi-profils
+
+- Scope les caches EPG par URL, respecte les offsets XMLTV, retire les emissions terminees et centralise le refresh EPG stale-aware apres toutes les synchronisations catalogue.
+- Ajoute le registre serveur non sensible des profils, le ciblage Admin/Normal multi-selection, l'import idempotent par `config_id` et la conversion autonome des profils partageant les identifiants Admin.
+- Recompose `/playlist/` avec validation du code au sixieme caractere, cartes de profils, creation combinee, champs Xtream sur une ligne et responsive mobile; Kids reste refuse cote serveur et TV.
+- Ajoute les endpoints, tables SQL et uploads de deploiement associes; publie la release production `0.1.120 (177)` avec migration SQL, manifeste, endpoint de mise a jour et APK verifies publiquement.
+
 ## 2026-07-17 - Titres externes Profile et Settings
 
 - Rend l'en-tete de `TvSectionCard` optionnel sans modifier le style des sections qui le conservent.
 - Place les titres principaux des panneaux Profile et Settings au-dessus de leur cadre de contenu et retire les en-tetes internes de Manage Profiles.
 - Supprime les titres et cadres imbriques de Licence SmartVision dans Settings tout en preservant le rendu autonome de `LicensePanel` dans ses autres usages.
-- Stabilise le scroll Home apres le focus initial ou le retour depuis son bouton de header pour empecher `bringIntoView` de masquer le bord superieur du hero.
+- Stabilise le scroll Home apres le focus initial ou le retour depuis son bouton de header et place le spacer avant le hero dans la zone scrollable pour absorber `bringIntoView`; le meme espacement est utilise avant/apres le hero et integre aux positions de scroll des lignes suivantes.
 
 ## 2026-07-16 - Header principal partage et navigation Profile
 

@@ -1,6 +1,6 @@
 # Backend, Admin, API et Deploiement
 
-Derniere mise a jour: 2026-07-14.
+Derniere mise a jour: 2026-07-17.
 
 ## 1. Objectif
 
@@ -17,7 +17,7 @@ Le script de deploiement upload les fichiers explicitement. Tout nouveau fichier
 - Site public: decouverte, telechargement, achat/activation.
 - Account: achat/prolongation, configuration Xtream, verification email.
 - Activate/Xtream: parcours QR depuis TV.
-- Playlist: page publique `/playlist/` pour envoyer par code TV des identifiants Xtream, un lien M3U ou une URL EPG vers la TV, sans passage obligatoire par le panel admin. Chaque envoi cree une notification `playlist_added` ciblee; son payload sensible est chiffre en base et n'est dechiffre que pour la TV ciblee munie de son `device_token`.
+- Playlist: page publique `/playlist/` pour valider le code au sixieme caractere, lire l'inventaire non sensible Admin/Normal, cibler plusieurs profils et/ou creer un profil Normal. `api/device_profiles.php` remplace l'inventaire avec un `device_token`; `api/playlist_targets.php` expose seulement id/nom/type et limite les recherches par hash IP. Chaque envoi cree une notification `playlist_added`; le payload chiffre contient `config_id`, cibles et configuration, puis n'est dechiffre que pour la TV ciblee.
 - Admin: gestion fonctionnalites, consentement, pubs, codes, notifications, diagnostics.
 - Admin Diagnostics centralise maintenant Synthese, AutoSync, Anomalies App, Info Serveur et Journal dans `server/public_html/admin/index.php`.
 - Admin ajoute `Bibliotheque privee` pour activer/desactiver le proxy provider, gerer les sous-dossiers TV prives (nom, recherche/theme, ordre, actif, suppression), vider le cache, lancer la sync `removed` et consulter le monitoring provider.

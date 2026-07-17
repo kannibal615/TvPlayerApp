@@ -23,6 +23,9 @@ interface ActivationApiService {
         @Query("device_token") deviceToken: String?,
     ): DeviceStatusResponse
 
+    @POST("api/device_profiles.php")
+    suspend fun syncDeviceProfiles(@Body request: DeviceProfilesRequest): DeviceProfilesResponse
+
     @POST("api/create_playlist_setup_session.php")
     suspend fun createPlaylistSetupSession(
         @Body request: PlaylistSetupSessionRequest,
@@ -155,4 +158,26 @@ data class PlaylistConfigResponse(
     @SerializedName("m3u_url") val m3uUrl: String? = null,
     @SerializedName("source") val source: String? = null,
     @SerializedName("provided_fields") val providedFields: List<String> = emptyList(),
+    @SerializedName("config_id") val configId: String? = null,
+    @SerializedName("target_profile_ids") val targetProfileIds: List<String> = emptyList(),
+    @SerializedName("new_profile_name") val newProfileName: String? = null,
+)
+
+data class DeviceProfilesRequest(
+    @SerializedName("device_id") val deviceId: String,
+    @SerializedName("device_token") val deviceToken: String,
+    @SerializedName("capability_version") val capabilityVersion: Int = 1,
+    @SerializedName("profiles") val profiles: List<DeviceProfileSummary>,
+)
+
+data class DeviceProfileSummary(
+    @SerializedName("profile_id") val profileId: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("type") val type: String,
+)
+
+data class DeviceProfilesResponse(
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("profile_count") val profileCount: Int = 0,
+    @SerializedName("error") val error: String? = null,
 )

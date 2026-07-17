@@ -11,7 +11,9 @@ import com.smartvision.svplayer.startup.StartupStateStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
 
 class SVPlayerApplication : Application() {
     val appContainer: AppContainer by lazy { AppContainer(this) }
@@ -28,6 +30,13 @@ class SVPlayerApplication : Application() {
                 container.anomalyReporter.flushPendingAsync()
                 container.anomalyReporter.reportPreviousProcessExitAsync()
                 container.deviceDiagnosticsReporter.syncLatestAsync()
+                startupScope.launch {
+                    container.accountManager.profiles
+                        .collectLatest { profiles ->
+                            delay(ProfileInventoryDebounceMillis)
+                            runCatching { container.activationRepository.publishProfileInventory(profiles) }
+                        }
+                }
                 BackgroundSyncScheduler.applyPeriodicSync(
                     this@SVPlayerApplication,
                     StartupStateStore(this@SVPlayerApplication).isBackgroundSyncEnabled(),
@@ -39,5 +48,6 @@ class SVPlayerApplication : Application() {
 
     private companion object {
         const val DeferredStartupDiagnosticsDelayMillis = 1_200L
+        const val ProfileInventoryDebounceMillis = 500L
     }
 }

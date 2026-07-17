@@ -174,7 +174,11 @@ fun HomeScreen(
     }
 
     val categoryScrollPx = 0
-    val continueScrollPx = with(density) { (SmartVisionDimensions.HomeHeroHeight + 16.dp).roundToPx() }
+    val homeHeroBlockHeight =
+        SmartVisionDimensions.HomeHeaderToHeroSpacing +
+            SmartVisionDimensions.HomeHeroHeight +
+            SmartVisionDimensions.HomeHeaderToHeroSpacing
+    val continueScrollPx = with(density) { homeHeroBlockHeight.roundToPx() }
         .coerceAtLeast(0)
     val movieTrendScrollPx = with(density) {
         val continueBlockHeight = if (hasContinueWatching) {
@@ -182,7 +186,7 @@ fun HomeScreen(
         } else {
             0.dp
         }
-        (SmartVisionDimensions.HomeHeroHeight + 16.dp + continueBlockHeight).roundToPx()
+        (homeHeroBlockHeight + continueBlockHeight).roundToPx()
     }.coerceAtLeast(0)
     val seriesTrendScrollPx = with(density) {
         val continueBlockHeight = if (hasContinueWatching) {
@@ -191,8 +195,7 @@ fun HomeScreen(
             0.dp
         }
         (
-            SmartVisionDimensions.HomeHeroHeight +
-                16.dp +
+            homeHeroBlockHeight +
                 continueBlockHeight +
                 SmartVisionDimensions.HomeContentRowHeight +
                 SmartVisionDimensions.HomeContentSectionSpacing
@@ -548,14 +551,14 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Spacer(Modifier.height(SmartVisionDimensions.HomeHeaderToHeroSpacing))
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
                 .verticalScroll(scrollState)
         ) {
+            Spacer(Modifier.height(SmartVisionDimensions.HomeHeaderToHeroSpacing))
+
             HomeHeroBanner(
                 strings = strings,
                 remoteSlides = state.slides,
@@ -564,7 +567,7 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(SmartVisionDimensions.HomeHeaderToHeroSpacing))
 
             Row(
                 modifier = Modifier

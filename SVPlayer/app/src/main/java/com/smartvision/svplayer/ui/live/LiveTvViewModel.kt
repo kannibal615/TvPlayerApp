@@ -120,6 +120,7 @@ class LiveTvViewModel(
     private val userContentRepository: UserContentRepository,
     private val settingsRepository: SettingsRepository,
     private val epgRepository: EpgRepository,
+    private val epgUrlProvider: () -> String,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(LiveTvUiState())
     val uiState: StateFlow<LiveTvUiState> = _uiState.asStateFlow()
@@ -284,7 +285,7 @@ class LiveTvViewModel(
                 do {
                     val page = catalogRepository.getAllLiveChannelsPage(offset, EpgCategoryScanPageSize)
                     page.forEach { stream ->
-                        if (epgRepository.hasPrograms(stream.epgChannelId, stream.name)) {
+                        if (epgRepository.hasPrograms(epgUrlProvider(), stream.epgChannelId, stream.name)) {
                             stream.categoryId?.let(ids::add)
                         }
                     }
@@ -388,6 +389,7 @@ class LiveTvViewModel(
                 categoryLabel = local.categoryName.ifBlank { _uiState.value.selectedCategory?.label ?: "Live TV" },
                 xtreamRepository = xtreamRepository,
                 epgRepository = epgRepository,
+                epgUrl = epgUrlProvider(),
                 favoriteIds = favoriteIds,
             )
             _uiState.update { state ->
@@ -417,6 +419,7 @@ class LiveTvViewModel(
                 categoryLabel = local.categoryName.ifBlank { _uiState.value.selectedCategory?.label ?: channel.genre },
                 xtreamRepository = xtreamRepository,
                 epgRepository = epgRepository,
+                epgUrl = epgUrl,
                 favoriteIds = favoriteIds,
             )
             _uiState.update { state ->
@@ -655,6 +658,7 @@ class LiveTvViewModel(
                     categoryLabel = categoryLabel,
                     xtreamRepository = xtreamRepository,
                     epgRepository = epgRepository,
+                    epgUrl = epgUrlProvider(),
                     favoriteIds = favoriteIds,
                 )
             }
@@ -697,6 +701,7 @@ class LiveTvViewModel(
                     categoryLabel = stream.categoryName.ifBlank { "Favoris" },
                     xtreamRepository = xtreamRepository,
                     epgRepository = epgRepository,
+                    epgUrl = epgUrlProvider(),
                     favoriteIds = favoriteIds,
                 )
             }
@@ -762,6 +767,7 @@ class LiveTvViewModel(
                             categoryLabel = stream.categoryName.ifBlank { categoryLabel },
                             xtreamRepository = xtreamRepository,
                             epgRepository = epgRepository,
+                            epgUrl = epgUrlProvider(),
                             favoriteIds = favoriteIds,
                         )
                     }
@@ -923,10 +929,11 @@ private fun LocalLiveChannel.toUiChannel(
     categoryLabel: String,
     xtreamRepository: XtreamRepository,
     epgRepository: EpgRepository,
+    epgUrl: String,
     favoriteIds: Set<Int>,
 ): LiveTvChannel {
     val displayName = name.cleanedChannelName()
-    val epgPrograms = epgRepository.loadPrograms(epgChannelId, name).map {
+    val epgPrograms = epgRepository.loadPrograms(epgUrl, epgChannelId, name).map {
         LiveTvProgram(
             title = it.title,
             timeRange = it.timeRange,

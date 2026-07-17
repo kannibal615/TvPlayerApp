@@ -2,6 +2,8 @@
 
 Derniere mise a jour: 2026-07-16.
 
+Depuis le 2026-07-17, l'EPG XMLTV est cache par URL afin d'isoler les profils. Le parseur respecte l'offset XMLTV, rejette les programmes termines ou sans horaire exploitable et conserve au plus le programme courant puis les programmes futurs. La lecture refiltre avec l'heure courante: la preview Live TV ne montre donc plus d'emission terminee. Toute synchronisation catalogue reussie declenche au meme endroit un rafraichissement EPG stale-aware non bloquant; le Worker reseau horaire et le refresh au clic chaine restent actifs, sans double telechargement M3U.
+
 `SyncStatus.SyncSectionProgress` publie maintenant le message d'etape, le total connu et la phase `FILTERING` pour les profils Kids. Les cartes Home affichent profil Kids, duree ecoulee, compteurs et etape reelle; un appel reseau au total inconnu conserve son libelle au lieu de simuler une progression lineaire.
 
 ## Catalogue Kids

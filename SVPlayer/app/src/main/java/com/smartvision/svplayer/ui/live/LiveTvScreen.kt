@@ -230,6 +230,7 @@ fun LiveTvScreen(
                 userContentRepository = container.userContentRepository,
                 settingsRepository = container.settingsRepository,
                 epgRepository = container.epgRepository,
+                epgUrlProvider = { container.accountManager.epgUrl.value },
             )
         },
     )

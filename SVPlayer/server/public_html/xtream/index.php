@@ -72,6 +72,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 'host' => $host,
                 'username' => $username,
                 'password' => $password,
+                'source' => 'xtream',
+                'provided_fields' => ['xtream', ...($epgUrl !== null ? ['epg'] : [])],
+                'config_id' => generate_uuid_v4(),
             ];
             if ($epgUrl !== null) {
                 $config['epg_url'] = $epgUrl;

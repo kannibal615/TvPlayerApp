@@ -276,12 +276,13 @@ class FullScreenPlayerViewModel(
     private val kind: FullScreenContentKind,
     private val xtreamRepository: XtreamRepository,
     private val epgRepository: EpgRepository,
+    private val epgUrlProvider: () -> String,
     private val catalogRepository: CatalogRepository,
     private val userContentRepository: UserContentRepository,
     private val buildPlaybackRequest: BuildPlaybackRequestUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
-        resolvePlayback(contentId, kind, xtreamRepository, epgRepository).copy(
+        resolvePlayback(contentId, kind, xtreamRepository, epgRepository, epgUrlProvider()).copy(
             resumeCheckComplete = kind == FullScreenContentKind.Live,
         ),
     )
@@ -346,9 +347,10 @@ class FullScreenPlayerViewModel(
         kind: FullScreenContentKind,
         xtreamRepository: XtreamRepository,
         epgRepository: EpgRepository,
+        epgUrl: String,
     ): FullScreenPlayback =
         when (kind) {
-            FullScreenContentKind.Live -> resolveLive(contentId, xtreamRepository, epgRepository)
+            FullScreenContentKind.Live -> resolveLive(contentId, xtreamRepository, epgRepository, epgUrl)
             FullScreenContentKind.Movie -> resolveMovie(contentId, xtreamRepository)
             FullScreenContentKind.Episode -> resolveEpisode(contentId, xtreamRepository)
             FullScreenContentKind.LocalMedia -> error("Local media playback uses LocalMediaPlayerRoute.")
@@ -358,13 +360,14 @@ class FullScreenPlayerViewModel(
         streamId: Int,
         xtreamRepository: XtreamRepository,
         epgRepository: EpgRepository,
+        epgUrl: String,
     ): FullScreenPlayback =
         xtreamRepository.getCachedLiveStream(streamId)?.let { stream ->
             val categoryName = xtreamRepository.getCachedCategories()
                 .firstOrNull { it.id == stream.categoryId }
                 ?.name
                 ?: "Live TV"
-            val epgPrograms = epgRepository.loadPrograms(stream.epgChannelId, stream.name).toFullScreenPrograms()
+            val epgPrograms = epgRepository.loadPrograms(epgUrl, stream.epgChannelId, stream.name).toFullScreenPrograms()
             val previous = xtreamRepository.getCachedPreviousLiveStream(streamId)
             val next = xtreamRepository.getCachedNextLiveStream(streamId)
             FullScreenPlayback(
@@ -412,7 +415,7 @@ class FullScreenPlayerViewModel(
         val current = catalogRepository.getLiveChannelById(contentId) ?: return
         val previous = catalogRepository.getPreviousLiveChannel(contentId)
         val next = catalogRepository.getNextLiveChannel(contentId)
-        val epgPrograms = epgRepository.loadPrograms(current.epgChannelId, current.name).toFullScreenPrograms()
+        val epgPrograms = epgRepository.loadPrograms(epgUrlProvider(), current.epgChannelId, current.name).toFullScreenPrograms()
         _uiState.value = current.toFullScreenPlayback(
             previous = previous,
             next = next,
@@ -595,6 +598,7 @@ fun FullScreenPlayerRoute(
                 kind = kind,
                 xtreamRepository = container.xtreamRepository,
                 epgRepository = container.epgRepository,
+                epgUrlProvider = { container.accountManager.epgUrl.value },
                 catalogRepository = container.catalogRepository,
                 userContentRepository = container.userContentRepository,
                 buildPlaybackRequest = container.buildPlaybackRequest,

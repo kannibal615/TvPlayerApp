@@ -146,7 +146,7 @@ class DefaultCatalogRepository(
                 if (!source.hasConfiguredCatalog(m3uUrl, accounts.isNotEmpty())) return@combine emptyList()
                 val names = categories.associate { it.id to it.name }
                 val imageBaseHost = imageBaseHost()
-                streams.map { it.toDomain(names[it.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository) }
+                streams.map { it.toDomain(names[it.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository, accountManager.epgUrl.value) }
             }
         }
 
@@ -364,7 +364,7 @@ class DefaultCatalogRepository(
                 offset = safeOffset,
                 limit = safeLimit,
                 items = streams.map { stream ->
-                    stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository)
+                    stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository, accountManager.epgUrl.value)
                 },
             )
         }
@@ -385,7 +385,7 @@ class DefaultCatalogRepository(
                 ?.let { mediaDao.searchLiveStreamsByCategoryPage(profileId, it, pattern, safeLimit, safeOffset) }
                 ?: mediaDao.searchLiveStreamsPage(profileId, pattern, safeLimit, safeOffset)
             streams.map { stream ->
-                stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository)
+                stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository, accountManager.epgUrl.value)
             }
         }
 
@@ -411,7 +411,7 @@ class DefaultCatalogRepository(
         } ?: mediaDao.getLiveStreamsByCategoriesPage(profileId, categoryIds, safeLimit, safeOffset)
         val imageBaseHost = imageBaseHost()
         streams.map { stream ->
-            stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository)
+            stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository, accountManager.epgUrl.value)
         }
     }
 
@@ -423,7 +423,7 @@ class DefaultCatalogRepository(
             val imageBaseHost = imageBaseHost()
             mediaDao.getLiveStream(profileId, streamId)
                 ?.let { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost) }
-                ?.withEpg(epgRepository)
+                ?.withEpg(epgRepository, accountManager.epgUrl.value)
         }
 
     override suspend fun getPreviousLiveChannel(streamId: Int): LiveChannel? =
@@ -435,7 +435,7 @@ class DefaultCatalogRepository(
             val imageBaseHost = imageBaseHost()
             mediaDao.getPreviousLiveStream(profileId, current.categoryId, current.number, current.name, current.streamId)
                 ?.let { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost) }
-                ?.withEpg(epgRepository)
+                ?.withEpg(epgRepository, accountManager.epgUrl.value)
         }
 
     override suspend fun getNextLiveChannel(streamId: Int): LiveChannel? =
@@ -447,7 +447,7 @@ class DefaultCatalogRepository(
             val imageBaseHost = imageBaseHost()
             mediaDao.getNextLiveStream(profileId, current.categoryId, current.number, current.name, current.streamId)
                 ?.let { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost) }
-                ?.withEpg(epgRepository)
+                ?.withEpg(epgRepository, accountManager.epgUrl.value)
         }
 
     override suspend fun getMoviesPage(categoryId: String?, offset: Int, limit: Int): List<Movie> =
@@ -577,7 +577,7 @@ class DefaultCatalogRepository(
             val imageBaseHost = imageBaseHost()
             mediaDao.getLiveStreamsByIds(profileId, distinctIds)
                 .sortedBy { order[it.streamId] ?: Int.MAX_VALUE }
-                .map { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository) }
+                .map { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost).withEpg(epgRepository, accountManager.epgUrl.value) }
         }
 
     override suspend fun getMoviesByIds(streamIds: List<Int>): List<Movie> =
@@ -1050,6 +1050,7 @@ class DefaultCatalogRepository(
             syncWork.update(currentItems = liveItems + movieItems + seriesItems, progressPercent = 100)
             syncWork.complete("Catalog ready")
             logSyncMemory(stage = "xtream_sync_success", live = liveItems, movies = movieItems, series = seriesItems)
+            refreshEpgAfterCatalogSync(resolvedProfile?.epgUrl.orEmpty())
             Result.success(Unit)
         } catch (error: Exception) {
             logSyncMemory(stage = "xtream_sync_error_${error.javaClass.simpleName}")
@@ -1932,7 +1933,6 @@ class DefaultCatalogRepository(
             categoryDao.deleteByType(profileId, MediaSection.Series.storageName)
             mediaDao.clearMovies(profileId)
             mediaDao.clearSeries(profileId)
-            epgUrl.takeIf { it.isNotBlank() }?.let { epgRepository.synchronize(it) }
             syncStateDao.upsert(
                 SyncStateEntity(
                     profileId = profileId,
@@ -1963,6 +1963,7 @@ class DefaultCatalogRepository(
             liveWork.complete("Live TV ready")
             syncWork.update(progressPercent = 100, currentItems = importedChannelCount)
             syncWork.complete("Catalog ready")
+            refreshEpgAfterCatalogSync(epgUrl)
             Result.success(Unit)
         } catch (error: Exception) {
             val previousSyncState = syncStateDao.get(profile.id)
@@ -1990,6 +1991,13 @@ class DefaultCatalogRepository(
             liveWork.fail(errorMessage)
             syncWork.fail(errorMessage)
             Result.failure(error)
+        }
+    }
+
+    private suspend fun refreshEpgAfterCatalogSync(epgUrl: String) {
+        if (epgUrl.isBlank()) return
+        epgRepository.synchronizeIfStale(epgUrl, EpgCatalogRefreshMinAgeMs).onFailure { error ->
+            Log.w("SVEpgMemory", "EPG unavailable after catalog sync: ${error.javaClass.simpleName}")
         }
     }
 }
@@ -2207,6 +2215,7 @@ private fun String.toSqlLikeContainsPattern(): String =
     }
 
 private const val SyncInsertBatchSize = 500
+private const val EpgCatalogRefreshMinAgeMs = 60 * 60 * 1_000L
 private const val CatalogPageMaxLimit = 500
 private const val GlobalSeriesFetchTimeoutMs = 120_000L
 private const val CategorySeriesFetchTimeoutMs = 60_000L
@@ -2214,14 +2223,9 @@ private const val SyncMemoryTag = "SVSyncMemory"
 private const val TrendingMovieType = "movie"
 private const val TrendingSeriesType = "series"
 
-private fun LiveChannel.withEpg(epgRepository: EpgRepository): LiveChannel {
-    val programs = epgRepository.loadPrograms(epgChannelId, name)
-    val now = System.currentTimeMillis()
-    val current = programs.firstOrNull { program ->
-        val start = program.startMillis
-        val stop = program.stopMillis
-        start != null && stop != null && now in start..stop
-    } ?: programs.firstOrNull()
+private fun LiveChannel.withEpg(epgRepository: EpgRepository, epgUrl: String): LiveChannel {
+    val programs = epgRepository.loadPrograms(epgUrl, epgChannelId, name)
+    val current = programs.firstOrNull()
     return if (current == null) {
         this
     } else {

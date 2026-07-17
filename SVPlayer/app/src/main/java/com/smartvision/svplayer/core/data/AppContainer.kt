@@ -198,6 +198,7 @@ class AppContainer(context: Context) {
         api = activationApi,
         dataStore = appContext.activationDataStore,
         accountManager = accountManager,
+        epgRepository = epgRepository,
     )
 
     val adConfigProvider = RemoteAdConfigProvider(adConfigApi)

@@ -345,11 +345,6 @@ fun AppNavigation(
                     container.xtreamRepository.clearCaches()
                     container.catalogRepository.invalidateLocalCatalogCache()
                     container.synchronizeCatalog().getOrThrow()
-                    container.accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let {
-                        container.epgRepository.synchronize(it).onFailure { error ->
-                            Log.w("SVEpgMemory", "EPG indisponible apres synchro catalogue: ${error.javaClass.simpleName}")
-                        }
-                    }
                 }
             }
         } else {
@@ -357,11 +352,6 @@ fun AppNavigation(
                 container.xtreamRepository.clearCaches()
                 container.catalogRepository.invalidateLocalCatalogCache()
                 container.synchronizeCatalog().getOrThrow()
-                container.accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let {
-                    container.epgRepository.synchronize(it).onFailure { error ->
-                        Log.w("SVEpgMemory", "EPG indisponible apres synchro catalogue: ${error.javaClass.simpleName}")
-                    }
-                }
             }
         }
     }
@@ -462,11 +452,7 @@ fun AppNavigation(
                     allowRunOnStartup = false,
                 )
             ) {
-                container.catalogRepository.synchronize(profileId).onSuccess {
-                    container.accountManager.resolvedProfile(target).epgUrl.takeIf { it.isNotBlank() }?.let { epgUrl ->
-                        container.epgRepository.synchronize(epgUrl)
-                    }
-                }
+                container.catalogRepository.synchronize(profileId)
             }
         }
     }
@@ -628,9 +614,6 @@ fun AppNavigation(
                     container.xtreamRepository.clearCaches()
                     container.catalogRepository.invalidateLocalCatalogCache()
                     container.synchronizeCatalog().getOrThrow()
-                    container.accountManager.epgUrl.value.takeIf { it.isNotBlank() }?.let { epgUrl ->
-                        container.epgRepository.synchronize(epgUrl)
-                    }
                 }
             }
         }
