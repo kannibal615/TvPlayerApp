@@ -16,12 +16,14 @@ import com.smartvision.svplayer.data.mock.HomePreviewMode
 import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
+import com.smartvision.svplayer.data.tmdb.TmdbMatcher
 import com.smartvision.svplayer.domain.model.PlaybackKind
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -60,6 +62,7 @@ class HomeViewModel(
         .getCachedRecentProgressSnapshot(limit = ContinueWatchingSnapshotLimit)
         ?.toContinueItems()
         .orEmpty()
+    private val continueWatchingColdStartAtMs = SystemClock.elapsedRealtime()
     private val initialProfileId = accountManager.activeProfileIdOrDefault()
     private val cachedTrending = homeContentRepository.getLastCachedTrendingSnapshot(initialProfileId)
     private val trendingMovies = MutableStateFlow(cachedTrending?.movies.orEmpty())
@@ -94,6 +97,9 @@ class HomeViewModel(
                 .take(10)
             val items = recent.mapNotNull { item ->
                 toContinueItemWithPreview(item, catalogRepository)
+            }
+            if (cachedContinueWatching.isEmpty()) {
+                awaitMinimumHomeLoading(continueWatchingColdStartAtMs)
             }
             continueWatchingLoading.value = false
             PerformanceDiagnosticRecorder.recordDuration(
@@ -130,11 +136,11 @@ class HomeViewModel(
         started = SharingStarted.WhileSubscribed(5_000),
         // PERF_FIX: first Home composition should not be empty when startup/repositories already hold caches.
         initialValue = HomeUiState(
-            continueWatching = emptyList(),
+            continueWatching = cachedContinueWatching,
             trendingMovies = cachedTrending?.movies.orEmpty(),
             trendingSeries = cachedTrending?.series.orEmpty(),
             slides = slides.value,
-            continueWatchingLoading = true,
+            continueWatchingLoading = cachedContinueWatching.isEmpty(),
             trendingLoading = cachedTrending == null,
         ),
     )
@@ -245,11 +251,13 @@ class HomeViewModel(
                 }
                 .getOrNull()
             if (snapshot == null) {
+                awaitMinimumHomeLoading(startedAt)
                 trendingLoading.value = false
                 return@launch
             }
             trendingMovies.value = snapshot.movies
             trendingSeries.value = snapshot.series
+            awaitMinimumHomeLoading(startedAt)
             trendingLoading.value = false
             PerformanceDiagnosticRecorder.recordDuration(
                 sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
@@ -391,7 +399,7 @@ private fun toContinueItem(progress: PlaybackProgressEntity): ContinueItem? {
         UserContentType.Episode -> HomeVisualStyle.Series
         else -> HomeVisualStyle.Mystery
     }
-    val title = progress.title?.cleanHistoryTitle() ?: when (progress.contentType) {
+    val title = progress.title?.cleanHomeTitle() ?: when (progress.contentType) {
         UserContentType.Live -> "Chaine $id"
         UserContentType.Movie -> "Film $id"
         UserContentType.Episode -> "Episode $id"
@@ -413,6 +421,7 @@ private fun toContinueItem(progress: PlaybackProgressEntity): ContinueItem? {
         progress = ratio.coerceIn(0f, 1f),
         visualStyle = visualStyle,
         imageUrl = imageUrl,
+        secondaryLabel = progress.episodeBadge(),
         mediaType = when (progress.contentType) {
             UserContentType.Live -> "LIVE"
             UserContentType.Movie -> "FILM"
@@ -477,9 +486,28 @@ private fun Long.formatRemaining(): String {
     return if (hours > 0L) "${hours}h ${remainingMinutes}min" else "${minutes}min"
 }
 
-private fun String.cleanHistoryTitle(): String =
-    replace(Regex("\\s+"), " ")
+private fun String.cleanHomeTitle(): String =
+    TmdbMatcher.cleanDisplayTitle(this)
+        .replace(Regex("\\s+"), " ")
         .replace(" FHD", "", ignoreCase = true)
         .replace(" HD", "", ignoreCase = true)
         .replace(" 4K", "", ignoreCase = true)
         .trim()
+
+private fun PlaybackProgressEntity.episodeBadge(): String? {
+    if (contentType != UserContentType.Episode) return null
+    val source = listOfNotNull(subtitle, title).joinToString(" ")
+    val match = EpisodeBadgeRegex.find(source) ?: return null
+    val season = match.groupValues.getOrNull(1)?.toIntOrNull() ?: return null
+    val episode = match.groupValues.getOrNull(2)?.toIntOrNull() ?: return null
+    return "S${season.toString().padStart(2, '0')} E${episode.toString().padStart(2, '0')}"
+}
+
+private suspend fun awaitMinimumHomeLoading(startedAtMs: Long) {
+    val remainingMs = MinimumHomeSkeletonMillis - (SystemClock.elapsedRealtime() - startedAtMs)
+    if (remainingMs > 0L) delay(remainingMs)
+}
+
+private val EpisodeBadgeRegex =
+    Regex("""(?i)\bS(?:aison)?\s*0*(\d{1,3})\s*[-_. ]*E(?:pisode)?\s*0*(\d{1,3})\b""")
+private const val MinimumHomeSkeletonMillis = 650L

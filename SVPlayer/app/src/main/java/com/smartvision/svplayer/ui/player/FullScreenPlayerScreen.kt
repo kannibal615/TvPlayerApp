@@ -1145,6 +1145,13 @@ private fun FullScreenPlayerScreen(
                     runCatching { settingsButtonFocusRequester.requestFocus() }
                 }
             }
+            playback.contentType == UserContentType.Live && overlayVisible -> {
+                overlayVisible = false
+                brightnessMode = false
+                liveProgressFocused = false
+                focusPlayWhenOverlayShows = false
+                playerView.post { runCatching { playerView.requestFocus() } }
+            }
             else -> exitPlayer(source)
         }
     }
@@ -1271,7 +1278,6 @@ private fun FullScreenPlayerScreen(
         fun moveLiveFocus(direction: Int) {
             val enabled = buildList {
                 add(0)
-                add(7)
                 if (playback.previousItem != null) add(1)
                 if (liveSeekable) add(2)
                 add(3)

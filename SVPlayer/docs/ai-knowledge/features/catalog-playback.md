@@ -2,6 +2,13 @@
 
 Derniere mise a jour: 2026-07-17.
 
+## Presentation Films et Series - 2026-07-17
+
+- Les lignes centrales conservent leur hauteur `56 dp` et utilisent un titre `15 sp`.
+- Le sous-titre Film ne duplique plus le genre et se termine par l'annee sur quatre chiffres lorsqu'elle est connue.
+- Le sous-titre Serie retire createur/realisateur, place la duree avant l'annee et utilise le cover catalogue si le backdrop TMDB manque.
+- Le casting Film est une rangee D-pad sans cadre global. Photo et nom forment une cible unique; les portraits mesurent `94 x 110 dp`.
+
 Les colonnes centrales Live TV, Movies et Series utilisent une recherche compacte: un bouton carre ouvre le champ et le clavier TV uniquement apres validation. Leur filtre partage le visuel `FilterList` de la colonne Categories Live et le titre indique le nombre d'elements du dossier actif. Les lignes Movies affichent note, genre, annee et duree; leur matching TMDB retire d'abord les prefixes fournisseur courts (`EX -`, `VOD -`, etc.) et l'annee entre parentheses, puis isole chaque echec d'enrichissement afin que les lignes suivantes continuent. Les lignes Series enrichissent progressivement backdrop paysage, saisons et episodes sans attendre un clic. Si Room ne contient pas encore les episodes d'une serie, leur comptage Xtream est charge en arriere-plan avec concurrence bornee. Le poster final du mini-player Series n'utilise plus le cover portrait comme fallback paysage.
 
 La fiche Movie formate la duree en `xh xxm`, masque le badge d'extension conteneur et agrandit le casting informatif non focusable avec portraits `2:3` et noms, sans ajouter de scroll global.

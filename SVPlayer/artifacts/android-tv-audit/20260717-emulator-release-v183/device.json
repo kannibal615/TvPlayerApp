@@ -1,0 +1,19 @@
+{
+  "serial": "emulator-5554",
+  "state": "device",
+  "connect_output": "",
+  "captured_at": "2026-07-17T08:55:53.587982+00:00",
+  "manufacturer": "unknown",
+  "model": "sdk_google_atv_x86",
+  "device": "generic_x86",
+  "android_version": "8.1.0",
+  "sdk": "27",
+  "build_fingerprint": "google/sdk_google_atv_x86/generic_x86:8.1.0/OSM1.180201.036/6695058:userdebug/test-keys",
+  "display_size": "Physical size: 1280x720",
+  "display_density": "Physical density: 213",
+  "package": "com.smartvision.svplayer",
+  "perfetto_available": false,
+  "simpleperf_available": true,
+  "versionName": "0.1.120",
+  "versionCode": "183"
+}

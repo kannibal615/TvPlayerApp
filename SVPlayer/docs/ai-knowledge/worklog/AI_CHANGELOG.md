@@ -1,5 +1,9 @@
 # AI Changelog
 
+- 2026-07-17: Home affiche des skeletons a froid, nettoie les titres Continue/Tendances, utilise les backdrops TMDB 16:9 et les metadonnees Film/Serie, ouvre les fiches depuis Tendances et remplace le `TextureView` du mini-player partage par un `SurfaceView`; les cartes grandissent de 20% apres la premiere image et reduisent alors leur overlay au titre.
+- 2026-07-17: Continue Watching distingue Live/Film/Serie sans badge de type ni texte secondaire, conserve une barre de progression basse pour VOD et ajoute le badge `Sxx Exx` des episodes.
+- 2026-07-17: le Back du lecteur Live masque d'abord l'overlay puis quitte au second appui, et l'index de focus fantome entre luminosite et chaine precedente est supprime.
+- 2026-07-17: casting Film focusable et agrandi, lignes Films/Series simplifiees avec annee finale, fallback d'image Series, titres plus grands et recherche TMDB basee sur le meilleur score global avec revalidation des mappings faibles.
 - 2026-07-17: correction definitive du matching TMDB des lignes Films: suppression prioritaire des prefixes fournisseur et annees entre parentheses, fallback d'annee extrait du titre au lieu du timestamp Xtream, et isolation des erreurs par item comme sur Series.
 - 2026-07-17: suppression complete de Network Activity et de son instrumentation; Preferences/Personnalisation passent en grille compacte et appliquent format video, animations reduites, profils buffer, reconnexion et horloge configurable.
 - 2026-07-17: correction de la course categories/pages Live TV qui laissait `ALL` en skeleton; les jobs categories et chaines sont separes et toute annulation remet les loaders a zero avant relance.

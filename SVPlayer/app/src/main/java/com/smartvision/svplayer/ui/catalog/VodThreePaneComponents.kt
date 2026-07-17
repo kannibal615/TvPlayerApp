@@ -279,7 +279,7 @@ fun VodContentRow(
                 Text(
                     text = title,
                     color = SmartVisionColors.TextPrimary,
-                    style = CatalogItemTitleStyle,
+                    style = CatalogItemTitleStyle.copy(fontSize = 15.sp, lineHeight = 18.sp),
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

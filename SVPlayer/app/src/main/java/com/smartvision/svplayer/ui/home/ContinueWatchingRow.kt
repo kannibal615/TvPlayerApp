@@ -205,7 +205,7 @@ fun ContinueWatchingRow(
             state = rowState,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(SmartVisionDimensions.HomeContentCardHeight),
+                .height(SmartVisionDimensions.HomeContentFocusedCardHeight),
             contentPadding = PaddingValues(horizontal = SmartVisionDimensions.HomeRowEdgePadding),
             horizontalArrangement = Arrangement.spacedBy(SmartVisionDimensions.HomeContentCardSpacing),
             verticalAlignment = Alignment.CenterVertically,

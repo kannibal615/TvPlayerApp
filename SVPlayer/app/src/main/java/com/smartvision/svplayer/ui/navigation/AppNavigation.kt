@@ -711,6 +711,13 @@ fun AppNavigation(
                         navController.navigateFromContinueItem(item)
                     }
                 },
+                onTrendingContentClick = { item ->
+                    if (xtreamCatalogBlocked) {
+                        showXtreamConnectionDialog = true
+                    } else {
+                        navController.navigateFromTrendingItem(item)
+                    }
+                },
             )
         }
         composable(AppRoute.Profile.route) {
@@ -1416,6 +1423,16 @@ private fun String.isAllowedFor(permissions: ProfilePermissions): Boolean {
         AppRoute.Media.route -> permissions.canAccessMedia
         AppRoute.Profile.route -> permissions.canManageProfiles
         else -> true
+    }
+}
+
+private fun NavHostController.navigateFromTrendingItem(item: ContinueItem) {
+    val parts = item.id.split(":", limit = 2)
+    if (parts.size != 2) return
+    val id = parts[1].toIntOrNull() ?: return
+    when (parts[0]) {
+        "movie" -> navigate("movie_detail/$id")
+        "series" -> navigate("series_detail/$id")
     }
 }
 

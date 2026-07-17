@@ -1,0 +1,25 @@
+{
+  "label": "home-loaded",
+  "captured_at": "2026-07-17T08:57:42.220544+00:00",
+  "serial": "emulator-5554",
+  "package": "com.smartvision.svplayer",
+  "pid": "7476",
+  "keys": [],
+  "settle_ms": 4500,
+  "capture_elapsed_ms": 6698.5,
+  "focus": [
+    "mCurrentFocus=Window{f835f7f u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}",
+    "mFocusedApp=AppWindowToken{2f97b6d token=Token{e1f3d31 ActivityRecord{25fc5d8 u0 com.smartvision.svplayer/.MainActivity t213}}}",
+    "mResumedActivity: ActivityRecord{25fc5d8 u0 com.smartvision.svplayer/.MainActivity t213}"
+  ],
+  "ui_dump_status": "UI hierchary dumped to: /data/local/tmp/codex-ui-2504.xml",
+  "files": [
+    "activity.txt",
+    "gfxinfo-framestats.txt",
+    "logcat.txt",
+    "screenshot.png",
+    "ui-dump-status.txt",
+    "ui.xml",
+    "window.txt"
+  ]
+}

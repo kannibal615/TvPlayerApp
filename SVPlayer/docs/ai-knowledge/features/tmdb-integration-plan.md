@@ -2,6 +2,12 @@
 
 Derniere mise a jour: 2026-07-17.
 
+## Matching et consommation Home - 2026-07-17
+
+- Films et Series retiennent le meilleur score global parmi tous les titres nettoyes et variantes avec/sans annee au lieu du premier resultat acceptable.
+- Les mappings persistants sous `85` de confiance sont recherches a nouveau; un echec de revalidation conserve le mapping existant.
+- Tendances Home consomme le backdrop 16:9 et la duree TMDB prepares sans rendre le demarrage Home dependant du reseau; Xtream/local reste le fallback non bloquant.
+
 Etat UI du 2026-07-17:
 - les listes Films et Series utilisent le backdrop TMDB paysage en priorite;
 - le matching Films essaie en priorite un titre sans prefixe fournisseur court ni annee entre parentheses; le fallback affiche aussi ce titre nettoye et une erreur sur un film n'annule plus l'enrichissement des suivants;

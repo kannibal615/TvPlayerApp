@@ -631,9 +631,8 @@ private fun SeriesList(
                     VodContentRow(
                         title = series.title,
                         subtitle = listOfNotNull(
-                            series.releaseDate?.take(4),
                             series.episodeRunTime?.let { "${it}m/ep" },
-                            series.createdBy?.takeIf { it.isNotBlank() },
+                            series.releaseDate?.take(4),
                         ).joinToString(" | ").ifBlank { series.subtitle },
                         genre = series.genre
                             ?.substringBefore('/')
@@ -643,7 +642,7 @@ private fun SeriesList(
                         rating = series.rating,
                         sideLabel = series.listSideLabel(),
                         titleSideLabel = series.seasonsCount?.let { "$it $seasonsLabel" },
-                        imageUrl = series.backdropUrl,
+                        imageUrl = series.backdropUrl ?: series.coverUrl,
                         fallbackText = series.title.take(2).uppercase(),
                         selected = series.seriesId == state.selectedSeriesId,
                         focusRequester = when {

@@ -13,6 +13,7 @@ import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import com.smartvision.svplayer.data.models.XtreamSeriesEpisode
 import com.smartvision.svplayer.data.remote.XtreamUrlFactory
 import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.data.tmdb.TmdbMatcher
 import com.smartvision.svplayer.data.tmdb.TmdbRepository
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.model.TrendingCatalogItem
@@ -47,12 +48,13 @@ data class HomeTrendingPreparedPreview(
     fun applyTo(item: ContinueItem): ContinueItem =
         item.copy(
             previewImageUrl = backdropUrl.takeIf { backdropAvailable },
-            remaining = durationLabel ?: sampleLabel ?: item.remaining,
+            remaining = durationLabel ?: item.remaining,
             previewUrl = previewUrl,
             previewYoutubeKey = null,
             previewStartPositionMs = previewStartPositionMs,
             previewFallbackStartPositionMs = previewFallbackStartPositionMs,
-            previewDurationLabel = durationLabel ?: sampleLabel,
+            previewDurationLabel = durationLabel,
+            secondaryLabel = sampleLabel ?: item.secondaryLabel,
             previewDurationMs = durationMs,
             previewPrepared = true,
             previewBackdropAvailable = backdropAvailable && !backdropUrl.isNullOrBlank(),
@@ -402,13 +404,17 @@ class HomeContentRepository(
             language = settings.language,
             includeAdult = !settings.parentalControlEnabled,
         )
-        val firstEpisode = xtreamRepository.getSeriesEpisodes(contentId)
+        val episodes = xtreamRepository.getSeriesEpisodes(contentId)
             .sortedWith(compareBy<XtreamSeriesEpisode> { it.seasonNumber }.thenBy { it.episodeNumber })
+        val firstEpisode = episodes
             .firstOrNull()
         val durationMs = tmdb?.episodeRunTimeMinutes?.takeIf { it > 0 }?.times(60_000L)
             ?: details.episodeRunTime.parseDurationMs()
             ?: firstEpisode?.duration.parseDurationMs()
-        val sampleLabel = firstEpisode?.let { "S${it.seasonNumber} E${it.episodeNumber}" }
+        val seasonsCount = episodes.map { it.seasonNumber }.filter { it > 0 }.distinct().size
+        val sampleLabel = episodes.takeIf { it.isNotEmpty() }?.let {
+            "${seasonsCount.coerceAtLeast(1)}S ${it.size.toString().padStart(2, '0')}E"
+        }
         val posterUrl = tmdb?.posterUrl ?: details.coverUrl ?: fallbackPosterUrl
         val backdropUrl = tmdb?.backdropUrl ?: details.backdropUrl?.takeIf { it.isNotBlank() }
         return HomeTrendingPreviewCacheEntity(
@@ -424,7 +430,7 @@ class HomeContentRepository(
             previewExtension = firstEpisode?.containerExtension,
             trailerKey = null,
             previewStartPositionMs = durationMs.previewStartAt(PreviewStartRatio),
-            sampleLabel = durationMs?.formatDurationLabel() ?: sampleLabel,
+            sampleLabel = sampleLabel,
             backdropState = if (!backdropUrl.isNullOrBlank()) BackdropAvailable else BackdropMissing,
             previewState = if (firstEpisode != null) PreviewAvailable else PreviewUnavailable,
             preparedAt = System.currentTimeMillis(),
@@ -460,8 +466,13 @@ class HomeContentRepository(
     }
 
     private fun HomeTrendingPreviewCacheEntity.hasReusableXtreamPreviewCache(): Boolean =
-        previewKind == PreviewKindMovie || previewKind == PreviewKindEpisode ||
-            (previewKind == PreviewKindNone && previewContentId == null && previewExtension == null)
+        (previewKind == PreviewKindMovie || previewKind == PreviewKindEpisode ||
+            (previewKind == PreviewKindNone && previewContentId == null && previewExtension == null)) &&
+            (
+                contentType != TrendingSeriesType ||
+                    previewKind == PreviewKindNone ||
+                    sampleLabel?.matches(Regex("\\d+S \\d+E")) == true
+                )
 
     private fun TrendingCatalogItem.toMovieTrendItem(): ContinueItem? {
         // PERF_DIAG: per-candidate details are intentionally data-only; URLs/secrets are not written.
@@ -482,14 +493,14 @@ class HomeContentRepository(
         )
         return ContinueItem(
             id = "movie:$contentId",
-            title = title.cleanHistoryTitle(),
+            title = title.cleanHomeTitle(),
             meta = categoryName.takeIf { it.isNotBlank() } ?: mediaTypeLabel,
             remaining = rating?.let { "$it/10" } ?: year?.take(4).orEmpty(),
             progress = 0f,
             visualStyle = HomeVisualStyle.Cinema,
             imageUrl = posterUrl,
             previewImageUrl = null,
-            ratingLabel = rating?.let { "$it/10" },
+            ratingLabel = rating.toStarRatingLabel(),
             mediaType = "FILM",
             previewUrl = null,
             previewMode = HomePreviewMode.None,
@@ -515,14 +526,14 @@ class HomeContentRepository(
         )
         return ContinueItem(
             id = "series:$contentId",
-            title = title.cleanHistoryTitle(),
+            title = title.cleanHomeTitle(),
             meta = categoryName.takeIf { it.isNotBlank() } ?: mediaTypeLabel,
             remaining = year?.take(4) ?: rating?.let { "$it/10" }.orEmpty(),
             progress = 0f,
             visualStyle = HomeVisualStyle.Series,
             imageUrl = posterUrl,
             previewImageUrl = null,
-            ratingLabel = rating?.let { "$it/10" },
+            ratingLabel = rating.toStarRatingLabel(),
             mediaType = "SERIE",
             previewUrl = null,
             previewMode = HomePreviewMode.None,
@@ -549,12 +560,23 @@ private data class HomeTrendingCacheKey(
     val lastSync: Long,
 )
 
-private fun String.cleanHistoryTitle(): String =
-    replace(Regex("\\s+"), " ")
+private fun String.cleanHomeTitle(): String =
+    TmdbMatcher.cleanDisplayTitle(this)
+        .replace(Regex("\\s+"), " ")
         .replace(" FHD", "", ignoreCase = true)
         .replace(" HD", "", ignoreCase = true)
         .replace(" 4K", "", ignoreCase = true)
         .trim()
+
+private fun String?.toStarRatingLabel(): String? =
+    this
+        ?.trim()
+        ?.substringBefore('/')
+        ?.replace(',', '.')
+        ?.trimEnd('0')
+        ?.trimEnd('.')
+        ?.takeIf { it.isNotBlank() && it != "0" }
+        ?.let { "$it*" }
 
 private fun String?.parseDurationMs(): Long? {
     val value = this?.trim()?.lowercase()?.takeIf { it.isNotBlank() } ?: return null

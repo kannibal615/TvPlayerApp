@@ -603,9 +603,8 @@ private fun MovieList(
                     val itemFocusRequester = remember(movie.streamId) { FocusRequester() }
                     VodContentRow(
                         title = movie.title,
-                        subtitle = listOfNotNull(movie.year, movie.genre)
-                            .joinToString(" | ")
-                            .ifBlank { movie.categoryLabel },
+                        subtitle = movie.year?.take(4)?.takeIf { it.all(Char::isDigit) }
+                            ?: movie.categoryLabel,
                         genre = movie.genre
                             ?.substringBefore('/')
                             ?.substringBefore(',')

@@ -580,7 +580,7 @@ class MoviesViewModel(
                             null
                         } ?: return@async null
                         val enrichedMovie = movie.copy(
-                            title = metadata.title.nonBlank() ?: movie.title,
+                            title = metadata.title.nonBlank()?.cleanTitle() ?: movie.title,
                             posterUrl = metadata.posterUrl.nonBlank() ?: movie.posterUrl,
                             backdropUrl = metadata.backdropUrl.nonBlank() ?: movie.backdropUrl,
                             genre = metadata.genres.nonBlank() ?: movie.genre,

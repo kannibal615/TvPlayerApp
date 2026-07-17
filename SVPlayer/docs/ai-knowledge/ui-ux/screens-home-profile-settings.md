@@ -2,6 +2,14 @@
 
 Derniere mise a jour: 2026-07-17.
 
+## Cartes Home et preview partagee - 2026-07-17
+
+- Un chargement a froid de Continue/Tendances conserve son skeleton au moins `650 ms`; un snapshot memoire s'affiche directement.
+- Continue n'affiche que l'identite nettoyee, la progression VOD en bas et `Sxx Exx` pour un episode. Les badges de type, dossiers, temps restant et `Direct` sont absents.
+- Tendances utilise le backdrop TMDB prepare, un badge noir `X*`, la duree Film ou `xS xxE`, et ouvre la fiche Film/Serie.
+- Le poster reste visible jusqu'a la premiere image decodee. La carte passe alors a `1.2x` et ne garde qu'un titre sur une ligne et un gradient bas court.
+- Le controleur conserve un seul player partage. Sa vue Android utilise `surface_view` pour eviter le chemin `TextureView` acquire-fence/pertes d'images; verifier le clipping et l'ordre des overlays sur chaque cible.
+
 ## Profils ADMIN, NORMAL et KIDS
 
 - `PlaylistProfile` porte `ProfileType`, `CredentialsMode` et `isLocked`; l'ID historique est conserve lors de la migration du premier profil vers `ADMIN`.

@@ -83,6 +83,7 @@ fun HomeScreen(
     xtreamCatalogNavigationBlocked: Boolean,
     onXtreamBlocked: () -> Unit,
     onContentClick: (ContinueItem) -> Unit,
+    onTrendingContentClick: (ContinueItem) -> Unit,
     modifier: Modifier = Modifier,
     headerFocusRequest: Int = 0,
     headerFocusTarget: HomeHeaderFocusTarget = HomeHeaderFocusTarget.CurrentTab,
@@ -128,9 +129,9 @@ fun HomeScreen(
     val hasContinueWatching = state.continueWatching.isNotEmpty()
     val hasMovieTrends = state.trendingMovies.isNotEmpty()
     val hasSeriesTrends = state.trendingSeries.isNotEmpty()
-    val showContinueSkeleton = state.continueWatchingLoading && !hasContinueWatching
-    val showMovieTrendSkeleton = state.trendingLoading && !hasMovieTrends
-    val showSeriesTrendSkeleton = state.trendingLoading && !hasSeriesTrends
+    val showContinueSkeleton = state.continueWatchingLoading
+    val showMovieTrendSkeleton = state.trendingLoading
+    val showSeriesTrendSkeleton = state.trendingLoading
     val continueRowState = rememberHomeRowState(state.continueWatching)
     val movieTrendRowState = rememberHomeRowState(state.trendingMovies)
     val seriesTrendRowState = rememberHomeRowState(state.trendingSeries)
@@ -626,7 +627,13 @@ fun HomeScreen(
 
             Spacer(Modifier.height(SmartVisionDimensions.HomeContentSectionSpacing))
 
-            if (hasContinueWatching) {
+            if (showContinueSkeleton) {
+                HomeSkeletonRow(
+                    title = strings.continueWatching,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(SmartVisionDimensions.HomeContentSectionSpacing))
+            } else if (hasContinueWatching) {
                 ContinueWatchingRow(
                     title = strings.continueWatching,
                     items = state.continueWatching,
@@ -649,20 +656,19 @@ fun HomeScreen(
                         .fillMaxWidth(),
                 )
                 Spacer(Modifier.height(SmartVisionDimensions.HomeContentSectionSpacing))
-            } else if (showContinueSkeleton) {
-                HomeSkeletonRow(
-                    title = strings.continueWatching,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(SmartVisionDimensions.HomeContentSectionSpacing))
             }
 
-            if (hasMovieTrends) {
+            if (showMovieTrendSkeleton) {
+                HomeSkeletonRow(
+                    title = strings.trendingMovies,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else if (hasMovieTrends) {
                 TrendingContentRow(
                     title = strings.trendingMovies,
                     items = state.trendingMovies,
                     previewController = previewController,
-                    onItemClick = onContentClick,
+                    onItemClick = onTrendingContentClick,
                     onPrepareItems = viewModel::prefetchTrendingPreviews,
                     lazyListState = movieTrendRowState,
                     firstItemFocusRequester = movieTrendFirstFocusRequester,
@@ -685,23 +691,23 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth(),
                 )
-            } else if (showMovieTrendSkeleton) {
-                HomeSkeletonRow(
-                    title = strings.trendingMovies,
-                    modifier = Modifier.fillMaxWidth(),
-                )
             }
 
             if ((hasMovieTrends || showMovieTrendSkeleton) && (hasSeriesTrends || showSeriesTrendSkeleton)) {
                 Spacer(Modifier.height(SmartVisionDimensions.HomeContentSectionSpacing))
             }
 
-            if (hasSeriesTrends) {
+            if (showSeriesTrendSkeleton) {
+                HomeSkeletonRow(
+                    title = strings.trendingSeries,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else if (hasSeriesTrends) {
                 TrendingContentRow(
                     title = strings.trendingSeries,
                     items = state.trendingSeries,
                     previewController = previewController,
-                    onItemClick = onContentClick,
+                    onItemClick = onTrendingContentClick,
                     onPrepareItems = viewModel::prefetchTrendingPreviews,
                     lazyListState = seriesTrendRowState,
                     firstItemFocusRequester = seriesTrendFirstFocusRequester,
@@ -711,11 +717,6 @@ fun HomeScreen(
                     onBlockedClick = onXtreamBlocked,
                     modifier = Modifier
                         .fillMaxWidth(),
-                )
-            } else if (showSeriesTrendSkeleton) {
-                HomeSkeletonRow(
-                    title = strings.trendingSeries,
-                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 

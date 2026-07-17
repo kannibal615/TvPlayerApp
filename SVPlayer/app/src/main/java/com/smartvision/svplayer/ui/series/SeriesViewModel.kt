@@ -9,6 +9,7 @@ import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.data.tmdb.TmdbMatcher
 import com.smartvision.svplayer.data.tmdb.TmdbRepository
 import com.smartvision.svplayer.domain.model.Category
 import com.smartvision.svplayer.domain.model.CategoryHistorySignal
@@ -514,7 +515,7 @@ class SeriesViewModel(
                 SeriesItemUi(
                     seriesId = seriesId,
                     number = (index + 1).toString().padStart(3, '0'),
-                    title = title,
+                    title = title.cleanTitle(),
                     coverUrl = progress.imageUrl,
                     categoryLabel = "Historique",
                     plot = null,
@@ -648,7 +649,7 @@ class SeriesViewModel(
                             seasons = tmdb?.seasonsCount
                                 ?: episodeSeasonNumbers.filter { it > 0 }.distinct().size,
                             episodes = episodeCount,
-                            title = tmdb?.name.nonBlank(),
+                            title = tmdb?.name.nonBlank()?.cleanTitle(),
                             coverUrl = tmdb?.posterUrl.nonBlank(),
                             backdropUrl = tmdb?.backdropUrl.nonBlank(),
                             plot = tmdb?.overview.nonBlank(),
@@ -951,7 +952,8 @@ private fun XtreamSeriesEpisode.toUiEpisode(xtreamRepository: XtreamRepository):
     )
 
 private fun String.cleanTitle(): String =
-    replace(Regex("\\s+"), " ")
+    TmdbMatcher.cleanDisplayTitle(this)
+        .replace(Regex("\\s+"), " ")
         .replace(" FHD", "", ignoreCase = true)
         .replace(" HD", "", ignoreCase = true)
         .replace(" 4K", "", ignoreCase = true)

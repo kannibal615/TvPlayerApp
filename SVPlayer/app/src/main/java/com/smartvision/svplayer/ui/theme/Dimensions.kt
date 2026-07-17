@@ -44,10 +44,11 @@ object SmartVisionDimensions {
     // complete 16:9 cards visible without clipping the focused edge.
     val HomeContentCardHeight = 94.5.dp
     val HomeContentPreviewCardWidth = HomeContentCardHeight * (16f / 9f)
-    // 24 dp section-title line + 6 dp title/card gap + the 94.5 dp card.
-    // Keeping the row height equal to its visible content makes the following
-    // section start exactly HomeContentSectionSpacing below the card.
-    val HomeContentRowHeight = HomeContentCardHeight + 30.dp
+    // The shared mini-player grows by 20% only after its first decoded frame.
+    // The row viewport reserves that size so Compose never clips the focused
+    // card while the unfocused cards keep their compact five-across footprint.
+    val HomeContentFocusedCardHeight = HomeContentCardHeight * 1.2f
+    val HomeContentRowHeight = HomeContentFocusedCardHeight + 30.dp
     // LazyRow clips drawing at its viewport edges. Keep enough inset for the
     // focused card scale + shadow while preserving five complete 16:9 cards.
     val HomeRowEdgePadding = 20.dp

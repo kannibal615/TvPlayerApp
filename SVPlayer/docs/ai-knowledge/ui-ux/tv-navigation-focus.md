@@ -2,6 +2,12 @@
 
 Derniere mise a jour: 2026-07-17.
 
+## Back plein ecran Live et controles - 2026-07-17
+
+- Overlay Live principal visible: le premier Back le masque et redonne le focus a la surface player; le second quitte vers la liste des chaines.
+- Overlay principal deja masque: Back quitte immediatement. Les etats secondaires EPG/settings/luminosite/episodes se ferment toujours avant le player.
+- Les indices de focus Live correspondent uniquement aux controles rendus `0..6`; l'index `7` ne doit pas etre retabli car il cree un arret D-pad invisible entre luminosite et chaine precedente.
+
 Le header principal boucle horizontalement entre son premier onglet et sa derniere action visible, dans les deux sens; en profil Kids, l'avatar est la derniere action. Home applique la meme boucle aux trois cards Categories ainsi qu'aux rangees Continue Watching et Tendances, avec scroll vers la carte opposee avant la demande de focus.
 
 Les recherches Live TV, Movies et Series sont repliees en bouton carre icon-only. OK les transforme en champ, demande le focus de saisie et ouvre le clavier; Back ou la perte de focus referme le champ. Le filtre adjacent reprend le bouton `FilterList` carre utilise par Categories Live TV.

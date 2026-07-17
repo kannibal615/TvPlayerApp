@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -183,7 +184,7 @@ fun TrendingContentRow(
             state = rowState,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(SmartVisionDimensions.HomeContentCardHeight),
+                .height(SmartVisionDimensions.HomeContentFocusedCardHeight),
             contentPadding = PaddingValues(horizontal = SmartVisionDimensions.HomeRowEdgePadding),
             horizontalArrangement = Arrangement.spacedBy(SmartVisionDimensions.HomeContentCardSpacing),
             verticalAlignment = Alignment.CenterVertically,
@@ -268,11 +269,11 @@ private fun TrendingPreviewCard(
         label = "trendingCardBorder",
     )
     val previewUrl = item.previewUrl
-    val displayedPosterUrl = item.imageUrl
-    val metadata = listOfNotNull(
-        item.previewDurationLabel?.takeIf { it.isNotBlank() },
-        item.ratingLabel?.takeIf { it.isNotBlank() },
-    ).distinct()
+    val displayedPosterUrl = item.previewImageUrl ?: item.imageUrl
+    val firstFramePreviewId by previewController.firstFramePreviewId.collectAsStateWithLifecycle()
+    val videoVisible = firstFramePreviewId == item.id
+    val detailLabel = if (item.mediaType == "SERIE") item.secondaryLabel else item.previewDurationLabel
+    var compactTitle by remember(item.id) { mutableStateOf(false) }
 
     LaunchedEffect(focusState.isFocused) {
         onFocusChanged(focusState.isFocused)
@@ -324,7 +325,7 @@ private fun TrendingPreviewCard(
                 state = focusState,
                 focusRequester = focusRequester,
                 pressed = pressed,
-                focusedScale = HomeCardFocusedScale,
+                focusedScale = if (videoVisible) HomeCardVideoFocusedScale else HomeCardFocusedScale,
                 glowColor = SmartVisionColors.Primary,
                 cornerRadius = SmartVisionDimensions.HomeContentRadius,
             )
@@ -354,56 +355,85 @@ private fun TrendingPreviewCard(
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        if (enablePreview) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black),
-            )
-        }
         HomePreviewSurface(
             controller = previewController,
             previewId = item.id,
             modifier = Modifier.fillMaxSize(),
         )
         Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.34f)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.88f),
-                            ),
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .fillMaxHeight(if (videoVisible) 0.28f else 0.62f)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Transparent,
+                            Color.Black.copy(alpha = if (videoVisible) 0.80f else 0.94f),
                         ),
                     ),
-            )
-            Column(
+                ),
+        )
+        if (!videoVisible && !item.ratingLabel.isNullOrBlank()) {
+            Box(
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .padding(horizontal = 9.dp, vertical = 7.dp),
+                    .align(Alignment.TopEnd)
+                    .padding(7.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Black.copy(alpha = 0.84f))
+                    .padding(horizontal = 6.dp, vertical = 3.dp),
             ) {
                 Text(
-                    text = item.title,
+                    text = item.ratingLabel,
                     color = Color.White,
-                    style = SmartVisionType.Caption.copy(fontSize = 12.sp, lineHeight = 14.sp),
+                    style = SmartVisionType.Caption.copy(fontSize = 10.sp, lineHeight = 12.sp),
                     fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 1,
                 )
-                if (metadata.isNotEmpty()) {
+            }
+        }
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(horizontal = 9.dp, vertical = 7.dp),
+        ) {
+            if (!videoVisible) {
+                detailLabel?.takeIf { it.isNotBlank() }?.let { label ->
                     Text(
-                        text = metadata.joinToString(" • "),
-                        color = Color.White.copy(alpha = 0.78f),
-                        style = SmartVisionType.Caption.copy(fontSize = 10.sp, lineHeight = 12.sp),
+                        text = label,
+                        color = Color.White.copy(alpha = 0.86f),
+                        style = SmartVisionType.Caption.copy(fontSize = 9.sp, lineHeight = 11.sp),
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.align(Alignment.End),
                     )
                 }
             }
+            Text(
+                text = item.title,
+                color = Color.White,
+                style = SmartVisionType.Caption.copy(
+                    fontSize = when {
+                        videoVisible -> 11.sp
+                        compactTitle -> 12.sp
+                        else -> 15.sp
+                    },
+                    lineHeight = when {
+                        videoVisible -> 13.sp
+                        compactTitle -> 14.sp
+                        else -> 17.sp
+                    },
+                ),
+                fontWeight = FontWeight.Bold,
+                maxLines = if (videoVisible) 1 else 2,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = { result ->
+                    if (!videoVisible && result.hasVisualOverflow) compactTitle = true
+                },
+            )
+        }
         if (blocked) {
             Box(
                 modifier = Modifier
@@ -706,6 +736,7 @@ private object UnsupportedTrendingPreviewCache {
 
 private const val TrendingFocusStabilityMillis = 550L
 private const val HomeCardFocusedScale = 1.04f
+private const val HomeCardVideoFocusedScale = 1.2f
 private const val TrendingVideoPrepareDelayMillis = 900L
 private const val TrendingVideoCrossfadeMillis = 650L
 private const val TrendingPrefetchAhead = 3

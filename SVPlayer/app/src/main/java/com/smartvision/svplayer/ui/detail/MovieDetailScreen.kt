@@ -3,6 +3,7 @@ package com.smartvision.svplayer.ui.detail
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +64,8 @@ import com.smartvision.svplayer.data.tmdb.TmdbPersonCredit
 import com.smartvision.svplayer.data.tmdb.TmdbRepository
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
+import com.smartvision.svplayer.ui.focus.rememberTvFocusState
+import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -490,7 +494,7 @@ private fun MovieDetailInfo(
             people = state.tmdbMetadata?.castMembers.orEmpty(),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(174.dp),
+                .height(194.dp),
         )
     }
 }
@@ -535,11 +539,6 @@ private fun MovieCastStrip(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .focusProperties { canFocus = false }
-            .clip(RoundedCornerShape(9.dp))
-            .background(Color(0x98101A2B))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.13f)), RoundedCornerShape(9.dp))
-            .padding(10.dp),
     ) {
         Text("Cast", color = SmartVisionColors.TextPrimary, style = DetailTitleStyle)
         Spacer(Modifier.height(8.dp))
@@ -549,17 +548,35 @@ private fun MovieCastStrip(
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(end = 12.dp),
-                modifier = Modifier.focusProperties { canFocus = false },
             ) {
                 items(people.take(10), key = { "${it.name}:${it.role.orEmpty()}" }) { person ->
-                    Column(modifier = Modifier.width(78.dp)) {
+                    val focusState = rememberTvFocusState()
+                    Column(
+                        modifier = Modifier
+                            .width(94.dp)
+                            .tvFocusTarget(
+                                state = focusState,
+                                focusedScale = 1.06f,
+                                glowColor = SmartVisionColors.Primary,
+                                cornerRadius = 6.dp,
+                            )
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                if (focusState.isFocused) {
+                                    SmartVisionColors.Primary.copy(alpha = 0.20f)
+                                } else {
+                                    Color.Transparent
+                                },
+                            )
+                            .focusable(),
+                    ) {
                         AsyncImage(
                             model = person.profileUrl,
                             contentDescription = person.name,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
-                                .width(78.dp)
-                                .height(92.dp)
+                                .width(94.dp)
+                                .height(110.dp)
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(Color.Black.copy(alpha = 0.35f)),
                         )

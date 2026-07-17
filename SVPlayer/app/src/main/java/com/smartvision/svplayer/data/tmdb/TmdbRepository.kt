@@ -131,11 +131,14 @@ class TmdbRepository(
         language: String,
         includeAdult: Boolean,
     ): TmdbResolvedMatch? {
-        mediaDao.getTmdbContentMapping(activeProfileId(), "movie", contentId)?.tmdbId?.let { tmdbId ->
-            return TmdbResolvedMatch(tmdbId = tmdbId, confidence = 100)
+        val existing = mediaDao.getTmdbContentMapping(activeProfileId(), "movie", contentId)
+        existing?.tmdbId?.takeIf { existing.confidence >= StrongMappingConfidence }?.let { tmdbId ->
+            return TmdbResolvedMatch(tmdbId = tmdbId, confidence = existing.confidence)
         }
         val queryYear = TmdbMatcher.extractYear(year, title)
-        val best = bestMovieMatch(title, queryYear, language, includeAdult) ?: return null
+        val best = bestMovieMatch(title, queryYear, language, includeAdult)
+            ?: existing?.tmdbId?.let { TmdbResolvedMatch(tmdbId = it, confidence = existing.confidence) }
+            ?: return null
         persistMapping(
             contentType = "movie",
             contentId = contentId,
@@ -158,11 +161,14 @@ class TmdbRepository(
         language: String,
         includeAdult: Boolean,
     ): TmdbResolvedMatch? {
-        mediaDao.getTmdbContentMapping(activeProfileId(), "series", contentId)?.tmdbId?.let { tmdbId ->
-            return TmdbResolvedMatch(tmdbId = tmdbId, confidence = 100)
+        val existing = mediaDao.getTmdbContentMapping(activeProfileId(), "series", contentId)
+        existing?.tmdbId?.takeIf { existing.confidence >= StrongMappingConfidence }?.let { tmdbId ->
+            return TmdbResolvedMatch(tmdbId = tmdbId, confidence = existing.confidence)
         }
         val queryYear = TmdbMatcher.extractYear(year, title)
-        val best = bestSeriesMatch(title, queryYear, language, includeAdult) ?: return null
+        val best = bestSeriesMatch(title, queryYear, language, includeAdult)
+            ?: existing?.tmdbId?.let { TmdbResolvedMatch(tmdbId = it, confidence = existing.confidence) }
+            ?: return null
         persistMapping(
             contentType = "series",
             contentId = contentId,
@@ -185,9 +191,10 @@ class TmdbRepository(
         includeAdult: Boolean,
     ): TmdbResolvedMatch? {
         val years = listOf(year?.toIntOrNull(), null).distinct()
-        return TmdbMatcher.searchTitleCandidates(title).firstNotNullOfOrNull { queryTitle ->
-            years.firstNotNullOfOrNull { searchYear ->
-                runCatching {
+        var best: TmdbResolvedMatch? = null
+        for (queryTitle in TmdbMatcher.searchTitleCandidates(title)) {
+            for (searchYear in years) {
+                val candidate = runCatching {
                     api.searchMovies(
                         query = queryTitle,
                         language = language,
@@ -209,8 +216,13 @@ class TmdbRepository(
                         )
                     }
                     .maxByOrNull { it.confidence }
+                if (candidate != null && (best == null || candidate.confidence > best.confidence)) {
+                    best = candidate
+                    if (candidate.confidence >= 100) return candidate
+                }
             }
         }
+        return best
     }
 
     private suspend fun bestSeriesMatch(
@@ -220,9 +232,10 @@ class TmdbRepository(
         includeAdult: Boolean,
     ): TmdbResolvedMatch? {
         val years = listOf(year?.toIntOrNull(), null).distinct()
-        return TmdbMatcher.searchTitleCandidates(title).firstNotNullOfOrNull { queryTitle ->
-            years.firstNotNullOfOrNull { searchYear ->
-                runCatching {
+        var best: TmdbResolvedMatch? = null
+        for (queryTitle in TmdbMatcher.searchTitleCandidates(title)) {
+            for (searchYear in years) {
+                val candidate = runCatching {
                     api.searchSeries(
                         query = queryTitle,
                         language = language,
@@ -244,8 +257,13 @@ class TmdbRepository(
                         )
                     }
                     .maxByOrNull { it.confidence }
+                if (candidate != null && (best == null || candidate.confidence > best.confidence)) {
+                    best = candidate
+                    if (candidate.confidence >= 100) return candidate
+                }
             }
         }
+        return best
     }
 
     private suspend fun persistMapping(
@@ -577,3 +595,4 @@ private fun String.regionCode(): String =
 private const val MetadataFreshMs = 7L * 24L * 60L * 60L * 1_000L
 private const val MetadataRetentionMs = 90L * 24L * 60L * 60L * 1_000L
 private const val CleanupIntervalMs = 24L * 60L * 60L * 1_000L
+private const val StrongMappingConfidence = 85

@@ -124,8 +124,10 @@ fun ContentProgressCard(
         item.previewMode != HomePreviewMode.None
     val previewPosterUrl = item.previewImageUrl ?: item.imageUrl
     val activePreviewId by previewController.activePreviewId.collectAsStateWithLifecycle()
+    val firstFramePreviewId by previewController.firstFramePreviewId.collectAsStateWithLifecycle()
     val showPreview = activePreviewId == item.id
-    val trendPreviewVisible = showPreview && item.previewMode == HomePreviewMode.TrendSegments
+    val videoVisible = firstFramePreviewId == item.id
+    var compactTitle by remember(item.id) { mutableStateOf(false) }
 
     LaunchedEffect(focusState.isFocused) {
         onFocusChanged(focusState.isFocused)
@@ -207,7 +209,7 @@ fun ContentProgressCard(
                 state = focusState,
                 focusRequester = focusRequester,
                 pressed = pressed,
-                focusedScale = 1.04f,
+                focusedScale = if (videoVisible) HomeCardVideoFocusedScale else 1.04f,
                 glowColor = SmartVisionColors.Primary,
                 cornerRadius = SmartVisionDimensions.HomeContentRadius,
             )
@@ -251,7 +253,7 @@ fun ContentProgressCard(
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        if (!trendPreviewVisible) {
+        if (!videoVisible) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -270,59 +272,89 @@ fun ContentProgressCard(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f)),
+                            colorStops = arrayOf(
+                                0f to Color.Transparent,
+                                0.45f to Color.Transparent,
+                                1f to Color.Black.copy(alpha = 0.92f),
+                            ),
                         ),
                     ),
             )
-            MediaTypeBadge(
-                text = item.mediaType,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(7.dp),
-            )
+            if (!isLive && item.mediaType == "SERIE" && !item.secondaryLabel.isNullOrBlank()) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(7.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color.Black.copy(alpha = 0.82f))
+                        .padding(horizontal = 6.dp, vertical = 3.dp),
+                ) {
+                    Text(
+                        text = item.secondaryLabel,
+                        color = Color.White,
+                        style = SmartVisionType.Caption.copy(fontSize = 9.sp, lineHeight = 11.sp),
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                }
+            }
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                    .padding(start = 8.dp, end = 8.dp, bottom = if (isLive) 8.dp else 5.dp),
             ) {
                 Text(
                     text = item.title,
                     color = Color.White,
                     style = SmartVisionType.Caption.copy(
-                        fontSize = if (isLive) 14.sp else 11.sp,
-                        lineHeight = if (isLive) 17.sp else 14.sp,
+                        fontSize = when {
+                            isLive -> 14.sp
+                            compactTitle -> 12.sp
+                            else -> 15.sp
+                        },
+                        lineHeight = when {
+                            isLive -> 17.sp
+                            compactTitle -> 14.sp
+                            else -> 17.sp
+                        },
                     ),
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
+                    onTextLayout = { result ->
+                        if (!isLive && result.hasVisualOverflow) compactTitle = true
+                    },
                 )
                 if (!isLive) {
                     Spacer(Modifier.height(4.dp))
                     ProgressBar(progress = item.progress)
                 }
-                Spacer(Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = item.meta,
-                        color = SmartVisionColors.TextSecondary,
-                        style = SmartVisionType.Caption.copy(fontSize = 10.sp, lineHeight = 13.sp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        text = item.remaining,
-                        color = SmartVisionColors.TextSecondary,
-                        style = SmartVisionType.Caption.copy(fontSize = 10.sp, lineHeight = 13.sp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
             }
+        } else {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .height(34.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.82f)),
+                        ),
+                    ),
+            )
+            Text(
+                text = item.title,
+                color = Color.White,
+                style = SmartVisionType.Caption.copy(fontSize = 11.sp, lineHeight = 13.sp),
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+            )
         }
         if (blocked) {
             Box(
@@ -352,6 +384,8 @@ fun ContentProgressCard(
         }
     }
 }
+
+private const val HomeCardVideoFocusedScale = 1.2f
 
 @Composable
 private fun MediaTypeBadge(
