@@ -8,6 +8,7 @@ import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.repository.XtreamRepository
+import com.smartvision.svplayer.data.tmdb.TmdbMatcher
 import com.smartvision.svplayer.data.tmdb.TmdbRepository
 import com.smartvision.svplayer.domain.model.Category
 import com.smartvision.svplayer.domain.model.CategoryHistorySignal
@@ -563,14 +564,20 @@ class MoviesViewModel(
             movies.distinctBy { it.streamId }.chunked(TmdbMetadataUpdateBatchSize).forEach { batch ->
                 batch.map { movie ->
                     async {
-                        val metadata = tmdbEnrichmentSemaphore.withPermit {
-                            tmdbRepository.enrichMovie(
-                                contentId = movie.streamId,
-                                title = movie.title,
-                                year = movie.year,
-                                language = playerSettings.language,
-                                includeAdult = !playerSettings.parentalControlEnabled,
-                            )
+                        val metadata = try {
+                            tmdbEnrichmentSemaphore.withPermit {
+                                tmdbRepository.enrichMovie(
+                                    contentId = movie.streamId,
+                                    title = movie.title,
+                                    year = movie.year,
+                                    language = playerSettings.language,
+                                    includeAdult = !playerSettings.parentalControlEnabled,
+                                )
+                            }
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (_: Exception) {
+                            null
                         } ?: return@async null
                         val enrichedMovie = movie.copy(
                             title = metadata.title.nonBlank() ?: movie.title,
@@ -710,7 +717,7 @@ private fun Movie.toUiMovie(
         containerExtension = containerExtension,
         genre = genre?.takeIf { it.isNotBlank() },
         rating = rating?.takeIf { it.isNotBlank() },
-        year = year?.take(4)?.takeIf { it.all(Char::isDigit) },
+        year = TmdbMatcher.extractYear(year, title),
         duration = duration?.takeIf { it.isNotBlank() },
         plot = plot?.takeIf { it.isNotBlank() },
         streamUrl = xtreamRepository.buildMovieStreamUrl(streamId, containerExtension),
@@ -732,7 +739,7 @@ private fun XtreamMovieStream.toUiMovie(
         containerExtension = containerExtension,
         genre = null,
         rating = rating?.takeIf { it.isNotBlank() },
-        year = added?.take(4)?.takeIf { it.all(Char::isDigit) },
+        year = TmdbMatcher.extractYear(added, title),
         duration = null,
         plot = null,
         streamUrl = xtreamRepository.buildMovieStreamUrl(this),
@@ -760,7 +767,7 @@ private fun formatDurationMs(durationMs: Long): String =
     formatMinutes((durationMs / 60_000L).toInt().coerceAtLeast(1))
 
 private fun String.cleanTitle(): String =
-    replace(Regex("\\s+"), " ")
+    TmdbMatcher.cleanDisplayTitle(this)
         .replace(" FHD", "", ignoreCase = true)
         .replace(" HD", "", ignoreCase = true)
         .replace(" 4K", "", ignoreCase = true)

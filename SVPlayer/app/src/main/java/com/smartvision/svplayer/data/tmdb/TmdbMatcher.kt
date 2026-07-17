@@ -11,6 +11,8 @@ object TmdbMatcher {
         """\b(4k|uhd|fhd|hd|hdr|dv|webrip|web-dl|bluray|brrip|x264|x265|h264|h265|hevc|multi|vostfr|vf|truefrench)\b""",
         RegexOption.IGNORE_CASE,
     )
+    private val catalogPrefixRegex = Regex("""^\s*([A-Z0-9]{2,6})\s*[-:|]\s+(.+)$""")
+    private val parenthesizedYearRegex = Regex("""\s*\((?:19|20)\d{2}\)\s*""")
     private val punctuationRegex = Regex("""[^a-z0-9]+""")
 
     fun extractYear(vararg values: String?): String? =
@@ -25,6 +27,28 @@ object TmdbMatcher {
             .replace(punctuationRegex, " ")
             .replace(Regex("""\s+"""), " ")
             .trim()
+
+    fun cleanDisplayTitle(value: String): String =
+        stripCatalogPrefix(value)
+            .replace(parenthesizedYearRegex, " ")
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+
+    fun searchTitleCandidates(value: String): List<String> {
+        val fullTitle = cleanTitle(value)
+        val withoutCatalogPrefix = stripCatalogPrefix(value)
+            .takeIf { it != value }
+            ?.let(::cleanTitle)
+            ?.takeIf(String::isNotBlank)
+        return listOfNotNull(withoutCatalogPrefix, fullTitle.takeIf(String::isNotBlank)).distinct()
+    }
+
+    private fun stripCatalogPrefix(value: String): String =
+        catalogPrefixRegex
+            .matchEntire(value)
+            ?.groupValues
+            ?.getOrNull(2)
+            ?: value
 
     fun scoreMovie(
         queryTitle: String,

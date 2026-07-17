@@ -184,32 +184,32 @@ class TmdbRepository(
         language: String,
         includeAdult: Boolean,
     ): TmdbResolvedMatch? {
-        val query = TmdbMatcher.cleanTitle(title).ifBlank { title }
         val years = listOf(year?.toIntOrNull(), null).distinct()
-        return years.firstNotNullOfOrNull { searchYear ->
-            val result = runCatching {
-                api.searchMovies(
-                    query = query,
-                    language = language,
-                    includeAdult = includeAdult,
-                    primaryReleaseYear = searchYear,
-                ).results.orEmpty()
-            }.getOrElse { emptyList() }
-                .mapNotNull { candidate ->
-                    val id = candidate.id ?: return@mapNotNull null
-                    val confidence = TmdbMatcher.scoreMovie(title, year, candidate, includeAdult)
-                    if (confidence < TmdbMatcher.MinimumConfidence) return@mapNotNull null
-                    TmdbResolvedMatch(
-                        tmdbId = id,
-                        confidence = confidence,
-                        title = candidate.title,
-                        originalTitle = candidate.originalTitle,
-                        year = TmdbMatcher.extractYear(candidate.releaseDate),
-                        adult = candidate.adult == true,
-                    )
-                }
-                .maxByOrNull { it.confidence }
-            result
+        return TmdbMatcher.searchTitleCandidates(title).firstNotNullOfOrNull { queryTitle ->
+            years.firstNotNullOfOrNull { searchYear ->
+                runCatching {
+                    api.searchMovies(
+                        query = queryTitle,
+                        language = language,
+                        includeAdult = includeAdult,
+                        primaryReleaseYear = searchYear,
+                    ).results.orEmpty()
+                }.getOrElse { emptyList() }
+                    .mapNotNull { candidate ->
+                        val id = candidate.id ?: return@mapNotNull null
+                        val confidence = TmdbMatcher.scoreMovie(queryTitle, year, candidate, includeAdult)
+                        if (confidence < TmdbMatcher.MinimumConfidence) return@mapNotNull null
+                        TmdbResolvedMatch(
+                            tmdbId = id,
+                            confidence = confidence,
+                            title = candidate.title,
+                            originalTitle = candidate.originalTitle,
+                            year = TmdbMatcher.extractYear(candidate.releaseDate),
+                            adult = candidate.adult == true,
+                        )
+                    }
+                    .maxByOrNull { it.confidence }
+            }
         }
     }
 
@@ -219,32 +219,32 @@ class TmdbRepository(
         language: String,
         includeAdult: Boolean,
     ): TmdbResolvedMatch? {
-        val query = TmdbMatcher.cleanTitle(title).ifBlank { title }
         val years = listOf(year?.toIntOrNull(), null).distinct()
-        return years.firstNotNullOfOrNull { searchYear ->
-            val result = runCatching {
-                api.searchSeries(
-                    query = query,
-                    language = language,
-                    includeAdult = includeAdult,
-                    firstAirDateYear = searchYear,
-                ).results.orEmpty()
-            }.getOrElse { emptyList() }
-                .mapNotNull { candidate ->
-                    val id = candidate.id ?: return@mapNotNull null
-                    val confidence = TmdbMatcher.scoreSeries(title, year, candidate, includeAdult)
-                    if (confidence < TmdbMatcher.MinimumConfidence) return@mapNotNull null
-                    TmdbResolvedMatch(
-                        tmdbId = id,
-                        confidence = confidence,
-                        title = candidate.name,
-                        originalTitle = candidate.originalName,
-                        year = TmdbMatcher.extractYear(candidate.firstAirDate),
-                        adult = candidate.adult == true,
-                    )
-                }
-                .maxByOrNull { it.confidence }
-            result
+        return TmdbMatcher.searchTitleCandidates(title).firstNotNullOfOrNull { queryTitle ->
+            years.firstNotNullOfOrNull { searchYear ->
+                runCatching {
+                    api.searchSeries(
+                        query = queryTitle,
+                        language = language,
+                        includeAdult = includeAdult,
+                        firstAirDateYear = searchYear,
+                    ).results.orEmpty()
+                }.getOrElse { emptyList() }
+                    .mapNotNull { candidate ->
+                        val id = candidate.id ?: return@mapNotNull null
+                        val confidence = TmdbMatcher.scoreSeries(queryTitle, year, candidate, includeAdult)
+                        if (confidence < TmdbMatcher.MinimumConfidence) return@mapNotNull null
+                        TmdbResolvedMatch(
+                            tmdbId = id,
+                            confidence = confidence,
+                            title = candidate.name,
+                            originalTitle = candidate.originalName,
+                            year = TmdbMatcher.extractYear(candidate.firstAirDate),
+                            adult = candidate.adult == true,
+                        )
+                    }
+                    .maxByOrNull { it.confidence }
+            }
         }
     }
 

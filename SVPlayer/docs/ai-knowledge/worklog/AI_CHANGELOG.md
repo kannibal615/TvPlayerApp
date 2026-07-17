@@ -1,5 +1,6 @@
 # AI Changelog
 
+- 2026-07-17: correction definitive du matching TMDB des lignes Films: suppression prioritaire des prefixes fournisseur et annees entre parentheses, fallback d'annee extrait du titre au lieu du timestamp Xtream, et isolation des erreurs par item comme sur Series.
 - 2026-07-17: suppression complete de Network Activity et de son instrumentation; Preferences/Personnalisation passent en grille compacte et appliquent format video, animations reduites, profils buffer, reconnexion et horloge configurable.
 - 2026-07-17: correction de la course categories/pages Live TV qui laissait `ALL` en skeleton; les jobs categories et chaines sont separes et toute annulation remet les loaders a zero avant relance.
 - 2026-07-17: DPAD Haut/Bas zappe maintenant la chaine Live avec l'overlay principal visible ou masque, sans masquer l'overlay avec Bas; les panneaux secondaires conservent leur navigation.
