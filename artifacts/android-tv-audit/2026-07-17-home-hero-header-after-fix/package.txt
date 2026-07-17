@@ -1,0 +1,192 @@
+Activity Resolver Table:
+  Non-Data Actions:
+      android.intent.action.MAIN:
+        10670fa com.smartvision.svplayer/.MainActivity filter 182910e
+          Action: "android.intent.action.MAIN"
+          Category: "android.intent.category.LEANBACK_LAUNCHER"
+        10670fa com.smartvision.svplayer/.MainActivity filter b9e372f
+          Action: "android.intent.action.MAIN"
+          Category: "android.intent.category.LAUNCHER"
+
+Receiver Resolver Table:
+  Non-Data Actions:
+      android.intent.action.BATTERY_OKAY:
+        18676ab com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy filter cff1df8
+          Action: "android.intent.action.BATTERY_OKAY"
+          Action: "android.intent.action.BATTERY_LOW"
+      android.intent.action.ACTION_POWER_DISCONNECTED:
+        1aad108 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy filter 5d9215b
+          Action: "android.intent.action.ACTION_POWER_CONNECTED"
+          Action: "android.intent.action.ACTION_POWER_DISCONNECTED"
+      android.intent.action.QUICKBOOT_POWERON:
+        59ba0a1 com.smartvision.svplayer/.startup.BootReceiver filter 80cd655
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.LOCKED_BOOT_COMPLETED"
+          Action: "android.intent.action.MY_PACKAGE_REPLACED"
+          Action: "android.intent.action.QUICKBOOT_POWERON"
+      androidx.profileinstaller.action.SAVE_PROFILE:
+        bbaa2c6 com.smartvision.svplayer/androidx.profileinstaller.ProfileInstallReceiver filter c33b410
+          Action: "androidx.profileinstaller.action.SAVE_PROFILE"
+      android.intent.action.DEVICE_STORAGE_LOW:
+        733d287 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy filter 99182d1
+          Action: "android.intent.action.DEVICE_STORAGE_LOW"
+          Action: "android.intent.action.DEVICE_STORAGE_OK"
+      android.net.conn.CONNECTIVITY_CHANGE:
+        69ff5b4 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy filter 7769136
+          Action: "android.net.conn.CONNECTIVITY_CHANGE"
+      android.intent.action.LOCKED_BOOT_COMPLETED:
+        59ba0a1 com.smartvision.svplayer/.startup.BootReceiver filter 80cd655
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.LOCKED_BOOT_COMPLETED"
+          Action: "android.intent.action.MY_PACKAGE_REPLACED"
+          Action: "android.intent.action.QUICKBOOT_POWERON"
+      android.intent.action.DEVICE_STORAGE_OK:
+        733d287 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy filter 99182d1
+          Action: "android.intent.action.DEVICE_STORAGE_LOW"
+          Action: "android.intent.action.DEVICE_STORAGE_OK"
+      androidx.profileinstaller.action.INSTALL_PROFILE:
+        bbaa2c6 com.smartvision.svplayer/androidx.profileinstaller.ProfileInstallReceiver filter 2928ac2
+          Action: "androidx.profileinstaller.action.INSTALL_PROFILE"
+      android.intent.action.BATTERY_LOW:
+        18676ab com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy filter cff1df8
+          Action: "android.intent.action.BATTERY_OKAY"
+          Action: "android.intent.action.BATTERY_LOW"
+      android.intent.action.TIMEZONE_CHANGED:
+        92e2552 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.RescheduleReceiver filter 37e7837
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.TIME_SET"
+          Action: "android.intent.action.TIMEZONE_CHANGED"
+      android.intent.action.TIME_SET:
+        92e2552 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.RescheduleReceiver filter 37e7837
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.TIME_SET"
+          Action: "android.intent.action.TIMEZONE_CHANGED"
+      androidx.profileinstaller.action.SKIP_FILE:
+        bbaa2c6 com.smartvision.svplayer/androidx.profileinstaller.ProfileInstallReceiver filter 2b860d3
+          Action: "androidx.profileinstaller.action.SKIP_FILE"
+      androidx.profileinstaller.action.BENCHMARK_OPERATION:
+        bbaa2c6 com.smartvision.svplayer/androidx.profileinstaller.ProfileInstallReceiver filter 740bb09
+          Action: "androidx.profileinstaller.action.BENCHMARK_OPERATION"
+      android.intent.action.BOOT_COMPLETED:
+        59ba0a1 com.smartvision.svplayer/.startup.BootReceiver filter 80cd655
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.LOCKED_BOOT_COMPLETED"
+          Action: "android.intent.action.MY_PACKAGE_REPLACED"
+          Action: "android.intent.action.QUICKBOOT_POWERON"
+        92e2552 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.RescheduleReceiver filter 37e7837
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.TIME_SET"
+          Action: "android.intent.action.TIMEZONE_CHANGED"
+      android.intent.action.USER_PRESENT:
+        7711023 com.smartvision.svplayer/.startup.UserPresentReceiver filter 183586a
+          Action: "android.intent.action.USER_PRESENT"
+      android.intent.action.ACTION_POWER_CONNECTED:
+        1aad108 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy filter 5d9215b
+          Action: "android.intent.action.ACTION_POWER_CONNECTED"
+          Action: "android.intent.action.ACTION_POWER_DISCONNECTED"
+      androidx.work.diagnostics.REQUEST_DIAGNOSTICS:
+        c20b920 com.smartvision.svplayer/androidx.work.impl.diagnostics.DiagnosticsReceiver filter 7da7b0d
+          Action: "androidx.work.diagnostics.REQUEST_DIAGNOSTICS"
+      android.intent.action.MY_PACKAGE_REPLACED:
+        59ba0a1 com.smartvision.svplayer/.startup.BootReceiver filter 80cd655
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.LOCKED_BOOT_COMPLETED"
+          Action: "android.intent.action.MY_PACKAGE_REPLACED"
+          Action: "android.intent.action.QUICKBOOT_POWERON"
+      androidx.work.impl.background.systemalarm.UpdateProxies:
+        116c2d9 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxyUpdateReceiver filter 70421a4
+          Action: "androidx.work.impl.background.systemalarm.UpdateProxies"
+
+Permissions:
+  Permission [com.smartvision.svplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION] (2cb2f10):
+    sourcePackage=com.smartvision.svplayer
+    uid=10247 gids=null type=0 prot=signature
+    perm=Permission{2e5449e com.smartvision.svplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION}
+    packageSetting=PackageSetting{ba2040e com.smartvision.svplayer/10247}
+
+Registered ContentProviders:
+  com.smartvision.svplayer/androidx.core.content.FileProvider:
+    Provider{6ba8b7f com.smartvision.svplayer/androidx.core.content.FileProvider}
+  com.smartvision.svplayer/androidx.startup.InitializationProvider:
+    Provider{728474c com.smartvision.svplayer/androidx.startup.InitializationProvider}
+
+ContentProvider Authorities:
+  [com.smartvision.svplayer.androidx-startup]:
+    Provider{728474c com.smartvision.svplayer/androidx.startup.InitializationProvider}
+      applicationInfo=ApplicationInfo{2a7b395 com.smartvision.svplayer}
+  [com.smartvision.svplayer.fileprovider]:
+    Provider{6ba8b7f com.smartvision.svplayer/androidx.core.content.FileProvider}
+      applicationInfo=ApplicationInfo{2a7b395 com.smartvision.svplayer}
+
+Key Set Manager:
+  [com.smartvision.svplayer]
+      Signing KeySets: 93
+
+Packages:
+  Package [com.smartvision.svplayer] (ba2040e):
+    userId=10247
+    pkg=Package{45d0caa com.smartvision.svplayer}
+    codePath=/data/app/com.smartvision.svplayer-E1Yb8XRI_EmgWwyWGiBqSw==
+    resourcePath=/data/app/com.smartvision.svplayer-E1Yb8XRI_EmgWwyWGiBqSw==
+    legacyNativeLibraryDir=/data/app/com.smartvision.svplayer-E1Yb8XRI_EmgWwyWGiBqSw==/lib
+    primaryCpuAbi=armeabi-v7a
+    secondaryCpuAbi=null
+    versionCode=180 minSdk=23 targetSdk=36
+    versionName=0.1.120
+    splits=[base]
+    apkSigningVersion=2
+    applicationInfo=ApplicationInfo{2a7b395 com.smartvision.svplayer}
+    flags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]
+    privateFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION PARTIALLY_DIRECT_BOOT_AWARE ]
+    dataDir=/data/user/0/com.smartvision.svplayer
+    supportsScreens=[small, medium, large, xlarge, resizeable, anyDensity]
+    timeStamp=2026-07-17 05:04:20
+    firstInstallTime=2026-06-24 18:23:27
+    lastUpdateTime=2026-07-17 05:04:22
+    signatures=PackageSignatures{b377e4b version:2, signatures:[2264628b], past signatures:[]}
+    installPermissionsFixed=true
+    pkgFlags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]
+    declared permissions:
+      com.smartvision.svplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: prot=signature, INSTALLED
+    requested permissions:
+      android.permission.INTERNET
+      android.permission.ACCESS_NETWORK_STATE
+      android.permission.POST_NOTIFICATIONS
+      android.permission.REQUEST_INSTALL_PACKAGES
+      android.permission.RECEIVE_BOOT_COMPLETED
+      android.permission.FOREGROUND_SERVICE
+      android.permission.FOREGROUND_SERVICE_DATA_SYNC
+      android.permission.WAKE_LOCK
+      com.smartvision.svplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+    install permissions:
+      android.permission.FOREGROUND_SERVICE: granted=true
+      android.permission.RECEIVE_BOOT_COMPLETED: granted=true
+      android.permission.INTERNET: granted=true
+      com.smartvision.svplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: granted=true
+      android.permission.ACCESS_NETWORK_STATE: granted=true
+      android.permission.WAKE_LOCK: granted=true
+    User 0: ceDataInode=-4294902339 installed=true hidden=false suspended=false stopped=false notLaunched=false enabled=0 instant=false virtual=false
+      lastDisabledCaller: com.android.packageinstaller
+      gids=[3003]
+      runtime permissions:
+      enabledComponents:
+        androidx.work.impl.background.systemalarm.RescheduleReceiver
+        androidx.work.impl.background.systemjob.SystemJobService
+
+Package Changes:
+  Sequence number=58
+  User 0:
+    seq=39, package=com.amazon.tv.settings.v2
+    seq=45, package=com.smartvision.svplayer
+    seq=57, package=com.amazon.ceviche
+
+
+Dexopt state:
+  [com.smartvision.svplayer]
+    path: /data/app/com.smartvision.svplayer-E1Yb8XRI_EmgWwyWGiBqSw==/base.apk
+      arm: [status=speed-profile] [reason=install]
+
+
+Compiler stats:
+  [com.smartvision.svplayer]
+     base.apk - 22059

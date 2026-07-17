@@ -57,7 +57,9 @@ fun HomeHeroBanner(
                 ),
             )
         } else remoteSlides.takeIf { it.isNotEmpty() }
-            ?.mapIndexed { index, slide -> slide.toHeroSlide(index, fallbackSlides) }
+            ?.mapIndexed { index, slide ->
+                slide.toHeroSlide(fallbackSlides[index % fallbackSlides.size])
+            }
             ?: fallbackSlides
     }
     var slideIndex by remember(profileKey, kidsMode) { mutableIntStateOf(0) }
@@ -162,13 +164,15 @@ private data class HomeHeroSlide(
     val route: String,
 )
 
-private fun HomeSlide.toHeroSlide(index: Int, fallbackSlides: List<HomeHeroSlide>): HomeHeroSlide = HomeHeroSlide(
-    imageRes = fallbackSlides[index % fallbackSlides.size].imageRes,
+private fun HomeSlide.toHeroSlide(localizedFallback: HomeHeroSlide): HomeHeroSlide = HomeHeroSlide(
+    imageRes = localizedFallback.imageRes,
     imageUrl = imageUrl.toAbsoluteAssetUrl(),
-    title = title,
-    subtitle = subtitle,
-    buttonLabel = buttonLabel,
-    route = buttonRoute,
+    // The backend currently has no locale metadata. Keep its image/route, but
+    // render the existing SmartVisionStrings copy so Home never mixes languages.
+    title = localizedFallback.title,
+    subtitle = localizedFallback.subtitle,
+    buttonLabel = localizedFallback.buttonLabel,
+    route = buttonRoute.ifBlank { localizedFallback.route },
 )
 
 private fun String.toAbsoluteAssetUrl(): String = when {

@@ -42,12 +42,15 @@ object SmartVisionDimensions {
     // complete 16:9 cards visible without clipping the focused edge.
     val HomeContentCardHeight = 94.5.dp
     val HomeContentPreviewCardWidth = HomeContentCardHeight * (16f / 9f)
-    val HomeContentRowHeight = 158.dp
+    // 24 dp section-title line + 6 dp title/card gap + the 94.5 dp card.
+    // Keeping the row height equal to its visible content makes the following
+    // section start exactly HomeContentSectionSpacing below the card.
+    val HomeContentRowHeight = HomeContentCardHeight + 30.dp
     // LazyRow clips drawing at its viewport edges. Keep enough inset for the
     // focused card scale + shadow while preserving five complete 16:9 cards.
     val HomeRowEdgePadding = 20.dp
     val HomeContentCardSpacing = 6.dp
-    val HomeContentSectionSpacing = 10.dp
+    val HomeContentSectionSpacing = HomeHeaderToHeroSpacing
     val HomePanelRadius = 8.dp
     val HomeCardRadius = 8.dp
     val HomeContentRadius = 6.dp

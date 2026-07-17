@@ -1,5 +1,7 @@
 # AI Changelog
 
+- 2026-07-17: Home neutralise la relocation verticale Compose post-focus tout en conservant la revelation horizontale native des `LazyRow`; le hero reste complet sous le header apres cinq secondes et pendant les transitions D-pad.
+- 2026-07-17: suppression du clipping tous axes du viewport Home pour rendre les halos Live TV/Series entiers, localisation du texte hero via `SmartVisionStrings`, et rythme vertical unique de `12 dp` entre categories/Continue/Tendances.
 - 2026-07-17: suppression des cadres globaux des colonnes de contenu Profile et Settings; les titres restent externes et seuls les cadres propres aux sous-sections sont conserves, sans changement de focus ni de comportement.
 
 ## 2026-07-17 - EPG courant/futur et Playlist multi-profils

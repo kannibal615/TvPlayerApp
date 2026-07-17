@@ -1,0 +1,28 @@
+{
+  "label": "home-continue-row-after-5s",
+  "captured_at": "2026-07-17T01:40:49.315935+00:00",
+  "serial": "192.168.1.33:5555",
+  "package": "com.smartvision.svplayer",
+  "pid": "30630",
+  "keys": [
+    "KEYCODE_DPAD_DOWN",
+    "KEYCODE_DPAD_DOWN"
+  ],
+  "settle_ms": 5000,
+  "capture_elapsed_ms": 27366.6,
+  "focus": [
+    "mCurrentFocus=Window{5311b u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}",
+    "mFocusedApp=AppWindowToken{713df1e token=Token{5cd3759 ActivityRecord{58e2fa0 u0 com.smartvision.svplayer/.MainActivity t8701}}}",
+    "mResumedActivity: ActivityRecord{58e2fa0 u0 com.smartvision.svplayer/.MainActivity t8701}"
+  ],
+  "ui_dump_status": "ERROR: could not get idle state.",
+  "files": [
+    "activity.txt",
+    "gfxinfo-framestats.txt",
+    "logcat.txt",
+    "screenshot.png",
+    "ui-dump-status.txt",
+    "ui.xml",
+    "window.txt"
+  ]
+}

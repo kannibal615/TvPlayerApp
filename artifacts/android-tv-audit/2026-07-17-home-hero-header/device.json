@@ -1,0 +1,19 @@
+{
+  "serial": "192.168.1.33:5555",
+  "state": "device",
+  "connect_output": "already connected to 192.168.1.33:5555",
+  "captured_at": "2026-07-17T01:37:14.967624+00:00",
+  "manufacturer": "Amazon",
+  "model": "AFTSSS",
+  "device": "sheldonp",
+  "android_version": "9",
+  "sdk": "28",
+  "build_fingerprint": "Amazon/sheldonp/sheldonp:9/PS7714.5507N/0035602662144:user/amz-p,release-keys",
+  "display_size": "Physical size: 1920x1080",
+  "display_density": "Physical density: 320",
+  "package": "com.smartvision.svplayer",
+  "perfetto_available": true,
+  "simpleperf_available": false,
+  "versionName": "0.1.120",
+  "versionCode": "179"
+}

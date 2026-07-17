@@ -104,7 +104,7 @@ fun HomeCategoryCard(
                 cornerRadius = SmartVisionDimensions.HomeCardRadius,
             )
             .shadow(
-                elevation = if (focusState.isFocused) 18.dp else 3.dp,
+                elevation = if (focusState.isFocused) 20.dp else 3.dp,
                 shape = shape,
                 ambientColor = SmartVisionColors.CardFocusGlow,
                 spotColor = SmartVisionColors.CardFocusGlow,

@@ -3,10 +3,15 @@ package com.smartvision.svplayer.ui.home
 import android.media.MediaPlayer
 import android.util.Log
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,7 +32,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -553,12 +558,11 @@ fun HomeScreen(
 
         Spacer(Modifier.height(SmartVisionDimensions.HomeHeaderContentClearance))
 
-        Column(
+        HomeVerticalScrollColumn(
+            scrollState = scrollState,
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .clipToBounds()
-                .verticalScroll(scrollState)
+                .weight(1f),
         ) {
             HomeHeroBanner(
                 strings = strings,
@@ -603,7 +607,7 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(SmartVisionDimensions.HomeContentSectionSpacing))
 
             if (hasContinueWatching) {
                 ContinueWatchingRow(
@@ -699,6 +703,34 @@ fun HomeScreen(
             }
 
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+private object HomeManualBringIntoViewSpec : BringIntoViewSpec {
+    override fun calculateScrollDistance(
+        offset: Float,
+        size: Float,
+        containerSize: Float,
+    ): Float = 0f
+}
+
+@Composable
+@OptIn(ExperimentalFoundationApi::class)
+private fun HomeVerticalScrollColumn(
+    scrollState: ScrollState,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val platformBringIntoViewSpec = LocalBringIntoViewSpec.current
+    CompositionLocalProvider(LocalBringIntoViewSpec provides HomeManualBringIntoViewSpec) {
+        Column(modifier = modifier.verticalScroll(scrollState)) {
+            val columnScope = this
+            // Restore the platform policy for the nested LazyRows so horizontal
+            // focus reveal keeps working; only the parent vertical scroll is manual.
+            CompositionLocalProvider(LocalBringIntoViewSpec provides platformBringIntoViewSpec) {
+                content(columnScope)
+            }
         }
     }
 }

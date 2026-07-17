@@ -1,0 +1,79 @@
+--------- beginning of main
+07-17 03:37:41.052 30630 30630 W ActivityThread: handleWindowVisibility: no activity for token android.os.BinderProxy@b70116f
+07-17 03:37:41.168 30630 30630 I SVStartup: onCreate: MainActivity launcher with system splash theme
+07-17 03:37:41.268 30630 30640 I vision.svplaye: NativeAlloc concurrent copying GC freed 127221(4MB) AllocSpace objects, 1(20KB) LOS objects, 44% free, 7MB/13MB, paused 153us total 118.270ms
+07-17 03:37:41.466 30630 30640 I vision.svplaye: NativeAlloc concurrent copying GC freed 5871(284KB) AllocSpace objects, 1(20KB) LOS objects, 44% free, 7MB/13MB, paused 146us total 111.663ms
+07-17 03:37:41.714 30630 30630 I SVStartup: startup stage: Initializing
+07-17 03:37:41.714 30630 30630 I SVStartup: startup stage: CheckingActivation
+07-17 03:37:41.719 30630 30630 I SVStartup: startup stage: PreparingHome
+07-17 03:37:41.719 30630 30630 I SVStartup: startup stage: Starting
+07-17 03:37:41.749 30630 30630 I SVStartup: startup complete: rendering AppNavigation
+07-17 03:37:41.994 30630 30640 I vision.svplaye: NativeAlloc concurrent copying GC freed 29195(974KB) AllocSpace objects, 0(0B) LOS objects, 44% free, 7MB/13MB, paused 142us total 119.042ms
+07-17 03:37:42.206 30630 30630 I SVStartup: state localReady=true checking=false activated=true playableSource=true route=home
+07-17 03:37:42.541 30630 30630 I SmartVisionAds: Statut monetisation actuel: FREE_WITH_ADS
+07-17 03:38:20.930 30630 30640 I vision.svplaye: NativeAlloc concurrent copying GC freed 108530(3MB) AllocSpace objects, 1(20KB) LOS objects, 43% free, 7MB/13MB, paused 624us total 127.889ms
+07-17 03:38:21.109 30630 30640 I vision.svplaye: NativeAlloc concurrent copying GC freed 2779(132KB) AllocSpace objects, 0(0B) LOS objects, 43% free, 7MB/13MB, paused 162us total 117.420ms
+07-17 03:38:21.324 30630 30640 I vision.svplaye: NativeAlloc concurrent copying GC freed 1828(115KB) AllocSpace objects, 2(68KB) LOS objects, 41% free, 8MB/14MB, paused 210us total 143.712ms
+07-17 03:38:21.536 30630 30640 I vision.svplaye: NativeAlloc concurrent copying GC freed 4399(298KB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 473us total 142.972ms
+07-17 03:38:21.756 30630 30640 I vision.svplaye: NativeAlloc concurrent copying GC freed 3614(207KB) AllocSpace objects, 0(0B) LOS objects, 39% free, 9MB/15MB, paused 3.047ms total 150.698ms
+07-17 03:38:22.156 30630 30630 I Choreographer: Skipped 94 frames!  The application may be doing too much work on its main thread.
+07-17 03:38:23.342 30630 30640 I vision.svplaye: NativeAlloc concurrent copying GC freed 96157(3MB) AllocSpace objects, 0(0B) LOS objects, 37% free, 10MB/16MB, paused 156us total 161.659ms
+07-17 03:38:25.127 30630 30640 I vision.svplaye: Background concurrent copying GC freed 178280(5MB) AllocSpace objects, 1(24KB) LOS objects, 36% free, 10MB/16MB, paused 154us total 150.387ms
+07-17 03:38:26.960 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190996(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 179us total 154.526ms
+07-17 03:38:28.783 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190424(5MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 180us total 148.360ms
+07-17 03:38:30.573 30630 30640 I vision.svplaye: Background concurrent copying GC freed 189735(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 178us total 151.285ms
+07-17 03:38:32.299 30630 30640 I vision.svplaye: Background concurrent copying GC freed 194940(6MB) AllocSpace objects, 0(0B) LOS objects, 37% free, 10MB/16MB, paused 212us total 146.096ms
+07-17 03:38:34.038 30630 30640 I vision.svplaye: Background concurrent copying GC freed 192434(5MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 174us total 151.934ms
+07-17 03:38:35.782 30630 30640 I vision.svplaye: Background concurrent copying GC freed 191689(5MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 177us total 158.268ms
+07-17 03:38:37.514 30630 30640 I vision.svplaye: Background concurrent copying GC freed 196692(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 157us total 148.979ms
+07-17 03:38:39.250 30630 30640 I vision.svplaye: Background concurrent copying GC freed 193748(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 194us total 148.565ms
+07-17 03:38:41.006 30630 30640 I vision.svplaye: Background concurrent copying GC freed 191234(6MB) AllocSpace objects, 0(0B) LOS objects, 37% free, 10MB/16MB, paused 265us total 149.988ms
+07-17 03:38:42.812 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190587(5MB) AllocSpace objects, 1(20KB) LOS objects, 36% free, 10MB/16MB, paused 179us total 146.359ms
+07-17 03:38:44.602 30630 30640 I vision.svplaye: Background concurrent copying GC freed 184902(5MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 177us total 153.835ms
+07-17 03:38:46.422 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190306(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 205us total 151.625ms
+07-17 03:38:48.264 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190977(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 234us total 163.599ms
+07-17 03:38:50.067 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190886(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 162us total 146.018ms
+07-17 03:38:51.899 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190782(5MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 180us total 151.232ms
+07-17 03:38:53.731 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190316(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 198us total 157.582ms
+07-17 03:38:55.544 30630 30640 I vision.svplaye: Background concurrent copying GC freed 191062(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 159us total 146.388ms
+07-17 03:38:57.371 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190804(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 189us total 145.820ms
+07-17 03:38:59.196 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190678(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 160us total 147.414ms
+07-17 03:39:01.019 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190683(5MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 173us total 145.039ms
+07-17 03:39:02.865 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190725(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 212us total 160.114ms
+07-17 03:39:04.678 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190680(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 162us total 155.126ms
+07-17 03:39:06.501 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190940(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 186us total 150.626ms
+07-17 03:39:08.332 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190880(5MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 172us total 157.437ms
+07-17 03:39:10.163 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190716(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 6.100ms total 163.257ms
+07-17 03:39:11.972 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190738(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 174us total 145.387ms
+07-17 03:39:13.796 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190909(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 175us total 146.573ms
+07-17 03:39:15.651 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190551(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 248us total 170.611ms
+07-17 03:39:17.452 30630 30640 I vision.svplaye: Background concurrent copying GC freed 192893(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 157us total 145.030ms
+07-17 03:39:19.283 30630 30640 I vision.svplaye: Background concurrent copying GC freed 191585(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 198us total 150.762ms
+07-17 03:39:21.102 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190769(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 314us total 146.302ms
+07-17 03:39:22.926 30630 30640 I vision.svplaye: Background concurrent copying GC freed 188352(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 151us total 152.344ms
+07-17 03:39:24.722 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190558(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 281us total 149.220ms
+07-17 03:39:26.543 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190694(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 158us total 150.557ms
+07-17 03:39:28.358 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190903(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 155us total 145.718ms
+07-17 03:39:30.194 30630 30640 I vision.svplaye: Background concurrent copying GC freed 191035(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 122us total 148.615ms
+07-17 03:39:32.028 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190788(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 246us total 154.323ms
+07-17 03:39:33.838 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190461(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 393us total 148.757ms
+07-17 03:39:35.674 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190769(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 244us total 152.217ms
+07-17 03:39:37.493 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190152(5MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 202us total 154.959ms
+07-17 03:39:39.320 30630 30640 I vision.svplaye: Background concurrent copying GC freed 189398(5MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 270us total 157.097ms
+07-17 03:39:41.132 30630 30640 I vision.svplaye: Background concurrent copying GC freed 189814(5MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 178us total 145.501ms
+07-17 03:39:42.971 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190992(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 200us total 158.415ms
+07-17 03:39:44.740 30630 30640 I vision.svplaye: Background concurrent copying GC freed 188657(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 187us total 144.717ms
+07-17 03:39:46.574 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190431(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 210us total 152.334ms
+07-17 03:39:48.401 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190592(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 183us total 155.247ms
+07-17 03:39:50.225 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190468(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 207us total 156.420ms
+07-17 03:39:51.976 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190516(6MB) AllocSpace objects, 0(0B) LOS objects, 37% free, 10MB/16MB, paused 146us total 148.481ms
+07-17 03:39:53.773 30630 30640 I vision.svplaye: Background concurrent copying GC freed 191668(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 255us total 156.361ms
+07-17 03:39:55.572 30630 30640 I vision.svplaye: Background concurrent copying GC freed 191771(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 184us total 159.470ms
+07-17 03:39:57.364 30630 30640 I vision.svplaye: Background concurrent copying GC freed 191585(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 198us total 159.826ms
+07-17 03:39:59.151 30630 30640 I vision.svplaye: Background concurrent copying GC freed 190870(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 229us total 162.846ms
+07-17 03:40:00.829 30630 30640 I vision.svplaye: Background concurrent copying GC freed 193100(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 151us total 150.975ms
+07-17 03:40:02.525 30630 30640 I vision.svplaye: Background concurrent copying GC freed 194280(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 188us total 153.233ms
+07-17 03:40:04.233 30630 30640 I vision.svplaye: Background concurrent copying GC freed 195274(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 166us total 166.839ms
+07-17 03:40:05.914 30630 30640 I vision.svplaye: Background concurrent copying GC freed 194043(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 193us total 152.917ms
+07-17 03:40:07.605 30630 30640 I vision.svplaye: Background concurrent copying GC freed 193778(5MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 157us total 154.391ms
+07-17 03:40:09.315 30630 30640 I vision.svplaye: Background concurrent copying GC freed 194226(6MB) AllocSpace objects, 0(0B) LOS objects, 36% free, 10MB/16MB, paused 294us total 159.483ms
