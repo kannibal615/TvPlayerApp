@@ -719,7 +719,7 @@ private fun ManageProfilesContent(
                     DetailLine(strings.profileType, detailsProfile.type.displayName(strings))
                     DetailLine(strings.profileSource, detailsProfile.source.displayName(strings, detailsProfile.credentialsMode))
                     DetailLine(strings.parentalControl, if (parentalControlScope.isEnabledFor(detailsProfile.id)) strings.active else strings.inactive)
-                    DetailLine(strings.catalog, if (detailsProfile.isConfigured) strings.configured else strings.notConfigured)
+                    // DetailLine(strings.catalog, if (detailsProfile.isConfigured) strings.configured else strings.notConfigured)
                 }
                 Column(Modifier.width(220.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     TvButton(
