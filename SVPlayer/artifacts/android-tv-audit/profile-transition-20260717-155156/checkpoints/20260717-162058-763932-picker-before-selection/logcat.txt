@@ -1,0 +1,331 @@
+--------- beginning of main
+07-17 16:21:23.934   216   216 E SELinux : avc:  denied  { find } for service=amazonactivitymanager pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazonactivitymanager_service:s0 tclass=service_manager permissive=0
+07-17 16:21:23.935   216   216 E SELinux : avc:  denied  { find } for service=amazonaudioservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazonaudioservice_service:s0 tclass=service_manager permissive=0
+07-17 16:21:23.936   216   216 E SELinux : avc:  denied  { find } for service=amazondevicepolicymanager pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazondevicepolicymanager_service:s0 tclass=service_manager permissive=0
+07-17 16:21:23.936   216   216 E SELinux : avc:  denied  { find } for service=amazondropbox pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazondropbox_service:s0 tclass=service_manager permissive=0
+07-17 16:21:23.937   216   216 E SELinux : avc:  denied  { find } for service=amazonemmcconsumerservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazon_emmc_consumer:s0 tclass=service_manager permissive=0
+07-17 16:21:23.937   216   216 E SELinux : avc:  denied  { find } for service=amazonfiled pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazonfiled_service:s0 tclass=service_manager permissive=0
+07-17 16:21:23.938   216   216 E SELinux : avc:  denied  { find } for service=amazoninputswitchservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazon_input_switch_service:s0 tclass=service_manager permissive=0
+07-17 16:21:23.939   216   216 E SELinux : avc:  denied  { find } for service=amazonleakrecovery pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:leakrecoveryd_service:s0 tclass=service_manager permissive=0
+07-17 16:21:23.939   216   216 E SELinux : avc:  denied  { find } for service=amazonmediacodecloggerservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazonmediacodeclogger_service:s0 tclass=service_manager permissive=0
+07-17 16:21:23.940   216   216 E SELinux : avc:  denied  { find } for service=amazonpackagemanager pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazon_package_manager_service:s0 tclass=service_manager permissive=0
+07-17 16:21:23.940   216   216 E SELinux : avc:  denied  { find } for service=amazonperfmonitor pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:perfmonitord_service:s0 tclass=service_manager permissive=0
+07-17 16:21:23.941   216   216 E SELinux : avc:  denied  { find } for service=amazonperfstats pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:perfstatsd_service:s0 tclass=service_manager permissive=0
+07-17 16:21:23.941   216   216 E SELinux : avc:  denied  { find } for service=amazonpowermanagerservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazonpowermanagerservice:s0 tclass=service_manager permissive=0
+07-17 16:21:23.941   216   216 E SELinux : avc:  denied  { find } for service=amazonprofileservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazon_profile_service:s0 tclass=service_manager permissive=0
+07-17 16:21:23.942   216   216 E SELinux : avc:  denied  { find } for service=amazonprotometricsservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazon_usage_stats:s0 tclass=service_manager permissive=0
+07-17 16:21:23.942   216   216 E SELinux : avc:  denied  { find } for service=amazonstoragemanagerservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazon_storagemanager_service:s0 tclass=service_manager permissive=0
+07-17 16:21:23.945   216   216 E SELinux : avc:  denied  { find } for service=amazonusagestatsservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazon_usage_stats:s0 tclass=service_manager permissive=0
+07-17 16:21:23.947   216   216 E SELinux : avc:  denied  { find } for service=amazonusermanagerservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazonusermanager_service:s0 tclass=service_manager permissive=0
+07-17 16:21:23.947   216   216 E SELinux : avc:  denied  { find } for service=amazonwindowmanager pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:amazonwindowmanager_service:s0 tclass=service_manager permissive=0
+07-17 16:21:23.949   216   216 E SELinux : avc:  denied  { find } for service=android.service.gatekeeper.IGateKeeperService pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:gatekeeper_service:s0 tclass=service_manager permissive=0
+07-17 16:21:24.016   531   540 I system_server: Background concurrent copying GC freed 186438(7MB) AllocSpace objects, 35(1020KB) LOS objects, 23% free, 19MB/25MB, paused 454us total 274.517ms
+07-17 16:21:24.030   216   216 E SELinux : avc:  denied  { find } for service=arcusservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:arcus_service:s0 tclass=service_manager permissive=0
+07-17 16:21:24.032   216   216 E SELinux : avc:  denied  { find } for service=areyoustillwatchingservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:still_watching_service:s0 tclass=service_manager permissive=0
+07-17 16:21:24.049   330   330 I WifiHAL : feature_set=0x801018
+--------- beginning of system
+07-17 16:21:24.056   531   552 E BatteryExternalStatsWorker: no controller energy info supplied for wifi
+07-17 16:21:24.068   531   552 E BatteryExternalStatsWorker: no controller energy info supplied for telephony
+07-17 16:21:24.050   330   330 I WifiHAL : feature_set=0x801018
+07-17 16:21:24.073   531   552 E BatteryStatsService: Power Hal not loaded
+07-17 16:21:24.224   792  1213 E BtGatt.ContextMap: Context not found for name com.amazon.device.bluetoothkeymaplib
+07-17 16:21:24.224   792  1213 E BtGatt.ContextMap: Context not found for name com.amazon.device.blepa
+07-17 16:21:24.271   216   216 E SELinux : avc:  denied  { find } for service=cirrusservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:cirrus_service:s0 tclass=service_manager permissive=0
+07-17 16:21:24.275   531  4903 E cloud_pairing_sys_service: invalid transact code 1598311760
+07-17 16:21:24.276   259  1230 E cloud_pairing_osal: onTransact(L74): op code is not supported. code = 1598311760
+07-17 16:21:24.277   216   216 E SELinux : avc:  denied  { find } for service=com.amazon.mrm.neatipc pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:com_amazon_mrm_neatipc_service:s0 tclass=service_manager permissive=0
+07-17 16:21:24.278   531  4903 E inloc_bms: InlocManagerService: code is not handle. code = 1598311760
+07-17 16:21:24.281   216   216 E SELinux : avc:  denied  { find } for service=common_time_wha.clock pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:common_time_wha_clock_service:s0 tclass=service_manager permissive=0
+07-17 16:21:24.363  1313  1313 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-67, data_rssi=-68, tx_ok=508289, tx_failed=47845, cca_idle_pct=98
+07-17 16:21:24.363  1313  1313 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=7, ss=2, bw=2
+07-17 16:21:24.654   216   216 E SELinux : avc:  denied  { find } for service=crashdetectorservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:crashreporterservice:s0 tclass=service_manager permissive=0
+07-17 16:21:24.655   216   216 E SELinux : avc:  denied  { find } for service=crashreporterservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:crashreporterservice:s0 tclass=service_manager permissive=0
+07-17 16:21:24.656   216   216 E SELinux : avc:  denied  { find } for service=crlsetmanager pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:crl_set_manager_service:s0 tclass=service_manager permissive=0
+07-17 16:21:24.702   531   540 I system_server: Background concurrent copying GC freed 240603(9MB) AllocSpace objects, 20(476KB) LOS objects, 21% free, 21MB/27MB, paused 342us total 282.534ms
+07-17 16:21:24.972   216   216 E SELinux : avc:  denied  { find } for service=deviceinfo pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:device_info_service:s0 tclass=service_manager permissive=0
+07-17 16:21:24.973   216   216 E SELinux : avc:  denied  { find } for service=devicemodelinfo pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:device_model_info:s0 tclass=service_manager permissive=0
+07-17 16:21:25.010   216   216 E SELinux : avc:  denied  { find } for service=drmprovision pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:drmprov_service:s0 tclass=service_manager permissive=0
+07-17 16:21:25.385 31528 31539 I vision.svplaye: Background concurrent copying GC freed 184953(5MB) AllocSpace objects, 1(20KB) LOS objects, 43% free, 7MB/13MB, paused 177us total 122.373ms
+07-17 16:21:25.430   216   216 E SELinux : avc:  denied  { find } for service=dynamicwarmingservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:dynamic_warming_service:s0 tclass=service_manager permissive=0
+07-17 16:21:25.433   216   216 E SELinux : avc:  denied  { find } for service=eve pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:eve_service:s0 tclass=service_manager permissive=0
+07-17 16:21:25.433   216   216 E SELinux : avc:  denied  { find } for service=eve_native pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:eve_service:s0 tclass=service_manager permissive=0
+07-17 16:21:25.435   216   216 E SELinux : avc:  denied  { find } for service=fireospowersupportservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:fireospowersupportservice:s0 tclass=service_manager permissive=0
+07-17 16:21:25.436   216   216 E SELinux : avc:  denied  { find } for service=fireosrescueparty pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:frp_service:s0 tclass=service_manager permissive=0
+07-17 16:21:25.437   216   216 E SELinux : avc:  denied  { find } for service=firetvdeeplinkhandler pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:firetv_deep_link_handler_service:s0 tclass=service_manager permissive=0
+07-17 16:21:25.447   216   216 E SELinux : avc:  denied  { find } for service=gamecontrollerservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:gamecontroller_service:s0 tclass=service_manager permissive=0
+07-17 16:21:25.488 31064 31064 W OZ-DCS:InputPreferenceManagerImpl: Connection retry 11, connecting to AmazonInputPreferenceManager
+07-17 16:21:25.490   531  3192 W ActivityManager: Unable to start service Intent { cmp=com.amazon.tv.inputpreference.service/.AmazonInputPreferenceServiceImpl } U=0: not found
+07-17 16:21:25.490 31064 31064 E OZ-DCS:InputPreferenceManagerImpl: Failed to connect to AmazonInputPreferenceManager
+07-17 16:21:25.605  2704  2750 I ArcusSyncManager/RemoteDeviceManagerArcus: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:875023860230:appConfig:aenxb37n
+07-17 16:21:25.605  2704  2750 I ArcusSyncManager/RemoteDeviceManagerArcus: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:875023860230:appConfig:aenxb37n
+07-17 16:21:25.606   531   666 I ArcusSyncManager/AmazonInputManager: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:148732287600:appConfig:aezitige
+07-17 16:21:25.606   531   666 I ArcusSyncManager/AmazonInputManager: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:148732287600:appConfig:a06u7jxn
+07-17 16:21:25.606  1762  1930 I NetworkMonitorStates: Network capabilities changed: 100, hasValidatedInternet=true, validatedNetworks: [100]
+07-17 16:21:25.607  1762  1930 I NetworkMonitorStates: checkInternetState: validatedNetworks=[100], result=Available
+07-17 16:21:25.607  1762  1930 I NetworkMonitorStates: updateInternetState: Available -> Available
+07-17 16:21:25.694   531   540 I system_server: Background concurrent copying GC freed 364262(11MB) AllocSpace objects, 28(808KB) LOS objects, 27% free, 15MB/21MB, paused 425us total 253.974ms
+07-17 16:21:25.893   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.893   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.893   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.894   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.894   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.894   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.895   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.895   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.895   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.896   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.896   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.896   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.896   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.896   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.896   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.897   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.897   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.897   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.898   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.898   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.898   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.899   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.899   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.899   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.900   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.900   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.900   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.900   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.900   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.900   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.901   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.901   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.901   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.901   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.901   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.901   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.902   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.902   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.902   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.903   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.903   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.903   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.903   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.904   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.904   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.904   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.904   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.904   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get device temperatures because of HAL error.
+07-17 16:21:25.905   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.905   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.905   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get fan speeds because of HAL error.
+07-17 16:21:25.905   217   217 W hwservicemanager: getTransport: Cannot find entry android.hardware.thermal@1.0::IThermal/default in either framework or device manifest.
+07-17 16:21:25.905   531  4903 E HardwarePropertiesManagerService-JNI: Unable to get Thermal service.
+07-17 16:21:25.905   531  4903 E HardwarePropertiesManagerService-JNI: Couldn't get CPU usages because of HAL error.
+07-17 16:21:25.922   216   216 E SELinux : avc:  denied  { find } for service=incident pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:incident_service:s0 tclass=service_manager permissive=0
+07-17 16:21:26.055   216   216 E SELinux : avc:  denied  { find } for service=installd pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:installd_service:s0 tclass=service_manager permissive=0
+07-17 16:21:26.160   216   216 E SELinux : avc:  denied  { find } for service=marketplace pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:marketplace_service:s0 tclass=service_manager permissive=0
+07-17 16:21:26.191   390   390 W mediametrics: type=1400 audit(0.0:631): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=1257 scontext=u:r:mediametrics:s0 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-17 16:21:26.198   390   390 E libc    : Access denied finding property "media.metrics.enabled"
+07-17 16:21:26.213   392  2699 I NuPlayerDriver:  NuPlayer
+07-17 16:21:26.213   392  2699 I NuPlayerDriver:   state(6), atEOS(1), looping(0), autoLoop(0)
+07-17 16:21:26.213   392  2699 I NuPlayerDriver:   mime(audio/vorbis)
+07-17 16:21:26.213   392  2699 I NuPlayerDriver:     decoder(OMX.google.vorbis.decoder)
+07-17 16:21:26.233   216   216 E SELinux : avc:  denied  { find } for service=media_codec_denylist pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:media_codec_denylist_service:s0 tclass=service_manager permissive=0
+07-17 16:21:26.379  1256  1300 I evice.messagin: Explicit concurrent copying GC freed 8539(343KB) AllocSpace objects, 3(60KB) LOS objects, 49% free, 1692KB/3MB, paused 170us total 29.833ms
+07-17 16:21:26.676  1271 23539 I .client.metric: Explicit concurrent copying GC freed 11025(511KB) AllocSpace objects, 4(80KB) LOS objects, 50% free, 2028KB/3MB, paused 178us total 40.973ms
+07-17 16:21:26.925   327   327 W IMGMemtrackHAL: hal_get_memory: memtrack cache rebuild was required
+07-17 16:21:27.082 31528 31540 I vision.svplaye: Explicit concurrent copying GC freed 164298(5MB) AllocSpace objects, 2(40KB) LOS objects, 43% free, 7MB/13MB, paused 3.842ms total 153.720ms
+07-17 16:21:27.452   327   327 W IMGMemtrackHAL: hal_get_memory: memtrack cache rebuild was required
+07-17 16:21:27.480 31049 31084 I LS:LightningDeviceActualMgr: mStopSelfRunnable.run(): selfShutdown!
+07-17 16:21:27.492 31049 31084 I LS:LightningWPServer: stopSelfResult(): true
+07-17 16:21:27.504 31049 31049 I WhisperLink: WhisperLinkPlatform - unbindSdk: app=com.amazon.storm.lightning.services;
+07-17 16:21:27.506 31049 31049 I WhisperLink: WhisperLinkPlatform - unbindSdk: done, result=true;
+07-17 16:21:27.525 31049 31049 I WhisperLink: TWhisperLinkTransport - Initiating connection to Service: amzn.reg Connection Id: 7523 Channel: binder on Device: 0006E31EE80BCEEB270F2256341625CB;
+07-17 16:21:27.527  5152  5275 I WhisperLink: TWhisperLinkTransport - Incoming connection from Device: 0006E31EE80BCEEB270F2256341625CB to Service: amzn.reg  Connection Id: 7523 Channel: binder;
+07-17 16:21:27.528  5152  5275 I WhisperLink: TWhisperLinkTransport - Connection accepted for: sid: amzn.reg UUID: 0006E31EE80BCEEB270F2256341625CB APPID: com.amazon.storm.lightning.services Device Type: 2 Connection Id: 7523 Channel: binder;
+07-17 16:21:27.548  5152 32034 I WhisperLink: RegistrarService - Trying to deRegister amzn.lightning;
+07-17 16:21:27.570 31049 31049 I WhisperLink: TWhisperLinkTransport - Closing connection for Service: amzn.reg on Device 0006E31EE80BCEEB270F2256341625CB isClient: true Connection Id: 7523 Channel: binder;
+07-17 16:21:27.572 31049 31049 I WhisperLink: WhisperLinkPlatform - unbindSdk: app=com.amazon.storm.lightning.services;
+07-17 16:21:27.574 31049 31049 I WhisperLink: WhisperLinkPlatform - unbindSdk: done, result=true;
+07-17 16:21:27.576 31049 31077 I WhisperLink: PlatformManager - Stopping.;
+07-17 16:21:27.576 31049 31077 I WhisperLink: PlatformManager - Stopping platform manager, counter=0;
+07-17 16:21:27.577 31049 31077 I WhisperLink: TTCommTransportFactory@a1f90c2  - stop();
+07-17 16:21:27.586 31049 31077 I WhisperLink: AmazonAndroidPlatform - Tearing down network state change listener;
+07-17 16:21:27.591   327   327 W IMGMemtrackHAL: hal_get_memory: memtrack cache rebuild was required
+07-17 16:21:27.594 31049 31077 I WhisperLink: AmazonAndroidPlatform - Tearing down time change listener;
+07-17 16:21:27.595  1653  3142 I TComm.MessageRouterImpl: deregisterMessageHandler - removed route; channel: 11105, handler: com.amazon.communication.ServiceSideMessageRouter$RemoteMessageHandler@275ed01
+07-17 16:21:27.596 31049 31077 I WhisperLink: PlatformManager - Stopped.;
+07-17 16:21:27.672  1653  1689 I TComm.ServiceSideGatewa: binderDied - unlinked binder; result: true
+07-17 16:21:27.672  5152 20376 W WhisperLink: TMessengerTransport - Binder died: amzn.reg;
+07-17 16:21:27.673   531 28640 I ActivityManager: Process com.amazon.storm.lightning.services (pid 31049) has died: cch+3CEM 
+07-17 16:21:27.674   274   274 I Zygote  : Process 31049 exited due to signal 9 (Killed)
+07-17 16:21:27.674   531   551 W libprocessgroup: kill(-31049, 9) failed: No such process
+07-17 16:21:27.674   531   551 I libprocessgroup: Successfully killed process cgroup uid 10095 pid 31049 in 0ms
+07-17 16:21:27.705 31064 31064 I OZ-MET:MinervaMetrics: Shutting down MinervaMetricsRecorder.
+07-17 16:21:27.709 31064 31064 I OZ-MET:MinervaMetrics: recording counter metric: CecDevice.invalidTvOnRescan count: 1
+07-17 16:21:27.715 31064 31064 I OZ-MET:MinervaMetrics: recording counter metric: CecDevice.rescanInitiated.DCS_START_CEC_SCAN count: 1
+07-17 16:21:27.717 31064 31064 I OZ-MET:MinervaMetrics: 2 metrics are emitted
+07-17 16:21:27.719 31064 31064 I OZ-MET:MinervaMetrics: 0 metrics are throttled
+07-17 16:21:27.719 31064 31064 I PeriodicKPIReporter: Shutdown was invoked.
+07-17 16:21:27.752  1762  2037 I zon.tv.launche: Explicit concurrent copying GC freed 17379(923KB) AllocSpace objects, 3(60KB) LOS objects, 16% free, 9MB/11MB, paused 267us total 295.539ms
+07-17 16:21:27.766 31064 31064 I OZ-DCS:FireTvEventsHandlerManager: unregister
+07-17 16:21:27.767 31064 31064 I OZ-DCS:DeviceControlApiService: connectivityChangeReceiver is unregistered
+07-17 16:21:27.769 31064 31064 I OZ-DCS:DeviceControlApiService: Unregistering FTV soundbar discovery listener
+07-17 16:21:27.771 31064 31064 I OZ-DCSCEC:HdmiCecAgent: Unregistering cec message listener
+07-17 16:21:27.771 31064 31064 I OZ-DCSCEC:HdmiCecAgent: Unregistering cec message listener
+07-17 16:21:27.787   274   274 I Zygote  : Process 30643 exited due to signal 9 (Killed)
+07-17 16:21:27.790   531 28640 I ActivityManager: Process com.amazon.ceviche (pid 30643) has died: cch+1CEM 
+07-17 16:21:27.797   531   551 W libprocessgroup: kill(-30643, 9) failed: No such process
+07-17 16:21:27.797   531   551 I libprocessgroup: Successfully killed process cgroup uid 10136 pid 30643 in 0ms
+07-17 16:21:28.018  1762  1922 I ImageTrimMemoryHandler: Processing trimMemory level=80, availablePriority=3, cachedPriority=3, bytesInMemoryCache=0 bytes, bytesInUse=46 KB
+07-17 16:21:28.022  1762  1762 I BuellerApplication: Received on trim from framework, level is 80
+07-17 16:21:28.025  1762  1922 I ImagePriorityLru: Releasing 0 cached items, and 0 available items, bytesInUse=46 KB, bytesOnlyInCache=0 bytes
+07-17 16:21:28.025  1762  1762 I BuellerApplication:  should trim frozen image false
+07-17 16:21:28.025  1762  1762 W BuellerApplication: TRIM_MEMORY_COMPLETE
+07-17 16:21:28.029  1762  1762 I MediaBrowseInMemoryCacheImpl: Cache size before trim: 220
+07-17 16:21:28.029  1762  1762 I MediaBrowseInMemoryCacheImpl: Cache size after trim: 220
+07-17 16:21:28.029  1762  1762 I BuellerApplication: Trim memory has completed
+07-17 16:21:28.033  1762  1762 I MediaBrowseServiceImpl: Received notice that MediaBrowseServiceImpl is to trim memory. Trim memory level: 80
+07-17 16:21:28.115   327   327 W IMGMemtrackHAL: hal_get_memory: memtrack cache rebuild was required
+07-17 16:21:28.162   800  1191 I m.amazon.tv.im: Explicit concurrent copying GC freed 9197(367KB) AllocSpace objects, 4(80KB) LOS objects, 25% free, 2MB/2MB, paused 143us total 43.235ms
+07-17 16:21:28.411  2518  2529 I ryconfigservic: Explicit concurrent copying GC freed 6664(255KB) AllocSpace objects, 3(60KB) LOS objects, 59% free, 1045KB/2MB, paused 127us total 28.930ms
+07-17 16:21:28.610  1762  1930 I NetworkMonitorStates: Network capabilities changed: 100, hasValidatedInternet=true, validatedNetworks: [100]
+07-17 16:21:28.610  1762  1930 I NetworkMonitorStates: checkInternetState: validatedNetworks=[100], result=Available
+07-17 16:21:28.610  1762  1930 I NetworkMonitorStates: updateInternetState: Available -> Available
+07-17 16:21:28.611  2704  2750 I ArcusSyncManager/RemoteDeviceManagerArcus: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:875023860230:appConfig:aenxb37n
+07-17 16:21:28.612   531   666 I ArcusSyncManager/AmazonInputManager: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:148732287600:appConfig:aezitige
+07-17 16:21:28.613   531   666 I ArcusSyncManager/AmazonInputManager: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:148732287600:appConfig:a06u7jxn
+07-17 16:21:28.613  2704  2750 I ArcusSyncManager/RemoteDeviceManagerArcus: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:875023860230:appConfig:aenxb37n
+07-17 16:21:28.617   531 28640 E SELinux : avc:  denied  { see_home_task } for  scontext=u:r:platform_app:s0:c512,c768 tcontext=u:r:system_server:s0 tclass=amazon_policies permissive=0
+07-17 16:21:28.675 31245 31497 I iaplayer.fireo: Explicit concurrent copying GC freed 8054(324KB) AllocSpace objects, 3(60KB) LOS objects, 50% free, 1650KB/3MB, paused 144us total 39.962ms
+07-17 16:21:28.847   332  2757 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 0; audio level: 0.000
+07-17 16:21:28.847   332  2757 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 1; audio level: 0.000
+07-17 16:21:28.847   332  2757 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 0; audio level: 0.000
+07-17 16:21:28.847   332  2757 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 1; audio level: 0.000
+07-17 16:21:29.008 31301 31499 I untime.ftv:smb: Explicit concurrent copying GC freed 7309(276KB) AllocSpace objects, 3(60KB) LOS objects, 49% free, 3MB/7MB, paused 151us total 88.809ms
+07-17 16:21:29.058  1762  1922 I ImageTrimMemoryHandler: Processed trimMemory level=80, bytesInMemoryCache=0 bytes, bytesInUse=46 KB
+07-17 16:21:29.160 31528 31539 I vision.svplaye: Background concurrent copying GC freed 188251(5MB) AllocSpace objects, 1(20KB) LOS objects, 43% free, 7MB/13MB, paused 188us total 122.708ms
+07-17 16:21:29.367  3840  3872 I yer.runtime.ft: Explicit concurrent copying GC freed 6915(271KB) AllocSpace objects, 3(60KB) LOS objects, 49% free, 3MB/7MB, paused 157us total 87.184ms
+07-17 16:21:29.462  1313  1313 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-66, data_rssi=-68, tx_ok=509108, tx_failed=47892, cca_idle_pct=98
+07-17 16:21:29.462  1313  1313 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=7, ss=2, bw=2
+07-17 16:21:29.673 31064 31496 I v.devicecontro: Explicit concurrent copying GC freed 1142(84KB) AllocSpace objects, 0(0B) LOS objects, 25% free, 1754KB/2MB, paused 141us total 49.555ms
+07-17 16:21:29.951  5152  5164 I nk.core.androi: Explicit concurrent copying GC freed 786(181KB) AllocSpace objects, 0(0B) LOS objects, 25% free, 1838KB/2MB, paused 139us total 34.420ms
+07-17 16:21:30.077 31245 31245 I EMP_1.0.29753.0_ExternalMediaPlayerBaseAgentService: Switching start type to [2].
+07-17 16:21:30.085 31245 31245 I EMP_1.0.29753.0_ExternalMediaPlayerBaseAgentService: Scheduling stop service after a delay of [86400000] ms.
+07-17 16:21:30.086 31245 31245 I EMP_1.0.29753.0_ExternalMediaPlayerAgentService: Starting EMP Agent as a foreground service.
+07-17 16:21:30.093 31245 31245 I EMP_1.0.29753.0_ExternalMediaPlayerAgentService: Stopping EMP Agent as a foreground service.
+07-17 16:21:30.099 31245 31245 I EMP_1.0.29753.0_ExternalMediaPlayerAgent: empty action
+07-17 16:21:30.104   531   531 W TelecomManager: Telecom Service not found.
+07-17 16:21:30.192  2357  2370 I ivitycontrolle: Explicit concurrent copying GC freed 55(32KB) AllocSpace objects, 0(0B) LOS objects, 25% free, 1177KB/1569KB, paused 122us total 20.925ms
+07-17 16:21:30.205   531   531 I NotificationService: Cannot find enqueued record for key: 0|com.amazon.alexa.externalmediaplayer.fireos|2261|null|10037
+07-17 16:21:30.438   792  1213 I droid.bluetoot: Explicit concurrent copying GC freed 8775(368KB) AllocSpace objects, 4(80KB) LOS objects, 56% free, 1191KB/2MB, paused 136us total 21.684ms
+07-17 16:21:30.528 31064 31064 E OZ-DCS:InputPreferenceManagerImpl: Max connection retries for AmazonInputPreferenceManager reached.
+07-17 16:21:30.671  2704  2723 I .rdmapplicatio: Explicit concurrent copying GC freed 6901(271KB) AllocSpace objects, 3(60KB) LOS objects, 31% free, 1114KB/1626KB, paused 173us total 20.596ms
+07-17 16:21:30.895  7327  7345 I on.device.blep: Explicit concurrent copying GC freed 6675(255KB) AllocSpace objects, 3(60KB) LOS objects, 32% free, 1046KB/1558KB, paused 133us total 16.757ms
+07-17 16:21:31.043   531  5415 I ActivityManager: Process com.amazon.tv.devicecontrol (pid 31064) has died: cch+1CEM 
+07-17 16:21:31.044   531   551 W libprocessgroup: kill(-31064, 9) failed: No such process
+07-17 16:21:31.045   531 20339 E AmazonHdmiService: Settings client binder died.
+07-17 16:21:31.046   274   274 I Zygote  : Process 31064 exited due to signal 9 (Killed)
+07-17 16:21:31.088   531   551 W libprocessgroup: kill(-31064, 9) failed: No such process
+07-17 16:21:31.088   531   551 I libprocessgroup: Successfully killed process cgroup uid 10060 pid 31064 in 44ms
+07-17 16:21:31.134   832   832 I SaleDatabase: calling notifyChange for (content://com.amazon.device.sale.provider/notification)
+07-17 16:21:31.156  3274  4726 I n.middleware.n: Explicit concurrent copying GC freed 6680(255KB) AllocSpace objects, 3(60KB) LOS objects, 25% free, 1713KB/2MB, paused 139us total 41.962ms
+07-17 16:21:31.206 31528 31539 I vision.svplaye: Background concurrent copying GC freed 189568(5MB) AllocSpace objects, 0(0B) LOS objects, 43% free, 7MB/13MB, paused 207us total 127.098ms
+07-17 16:21:31.398  3702  3727 I n.systemnotice: Explicit concurrent copying GC freed 6676(255KB) AllocSpace objects, 3(60KB) LOS objects, 59% free, 1029KB/2MB, paused 135us total 27.794ms
+07-17 16:21:31.609   531  5415 E SELinux : avc:  denied  { see_home_task } for  scontext=u:r:platform_app:s0:c512,c768 tcontext=u:r:system_server:s0 tclass=amazon_policies permissive=0
+07-17 16:21:31.613  1155  1171 I id.ext.service: Explicit concurrent copying GC freed 6810(271KB) AllocSpace objects, 3(60KB) LOS objects, 59% free, 1059KB/2MB, paused 123us total 18.599ms
+07-17 16:21:31.622  2704  2750 I ArcusSyncManager/RemoteDeviceManagerArcus: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:875023860230:appConfig:aenxb37n
+07-17 16:21:31.624   531   666 I ArcusSyncManager/AmazonInputManager: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:148732287600:appConfig:aezitige
+07-17 16:21:31.624   531   666 I ArcusSyncManager/AmazonInputManager: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:148732287600:appConfig:a06u7jxn
+07-17 16:21:31.625  1762  1930 I NetworkMonitorStates: Network capabilities changed: 100, hasValidatedInternet=true, validatedNetworks: [100]
+07-17 16:21:31.625  1762  1930 I NetworkMonitorStates: checkInternetState: validatedNetworks=[100], result=Available
+07-17 16:21:31.625  1762  1930 I NetworkMonitorStates: updateInternetState: Available -> Available
+07-17 16:21:31.625  2704  2750 I ArcusSyncManager/RemoteDeviceManagerArcus: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:875023860230:appConfig:aenxb37n
+07-17 16:21:31.888  1664  2260 I com.amazon.wha: Explicit concurrent copying GC freed 6551(239KB) AllocSpace objects, 3(60KB) LOS objects, 54% free, 1305KB/2MB, paused 128us total 23.580ms
+07-17 16:21:32.136  1653  3142 I om.amazon.tcom: Explicit concurrent copying GC freed 6915(272KB) AllocSpace objects, 3(60KB) LOS objects, 17% free, 2MB/2MB, paused 241us total 29.876ms
+07-17 16:21:32.359  1313  1313 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-66, data_rssi=-67, tx_ok=509468, tx_failed=47912, cca_idle_pct=98
+07-17 16:21:32.359  1313  1313 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=7, ss=2, bw=2
+07-17 16:21:32.387   327   327 W IMGMemtrackHAL: hal_get_memory: memtrack cache rebuild was required
+07-17 16:21:32.496  1647  1816 I .amazon.vizzin: Explicit concurrent copying GC freed 10620(475KB) AllocSpace objects, 3(60KB) LOS objects, 49% free, 4MB/9MB, paused 192us total 104.539ms
+07-17 16:21:32.790   957  1471 I com.amazon.imp: Explicit concurrent copying GC freed 552(51KB) AllocSpace objects, 0(0B) LOS objects, 24% free, 1436KB/1914KB, paused 129us total 25.834ms
+07-17 16:21:33.048   832  1731 I device.service: Explicit concurrent copying GC freed 1832(265KB) AllocSpace objects, 2(40KB) LOS objects, 49% free, 1827KB/3MB, paused 119us total 32.820ms
+07-17 16:21:33.281 31528 31539 I vision.svplaye: Background concurrent copying GC freed 190647(5MB) AllocSpace objects, 0(0B) LOS objects, 43% free, 7MB/13MB, paused 213us total 126.461ms
+07-17 16:21:33.394   327   327 W IMGMemtrackHAL: hal_get_memory: memtrack cache rebuild was required
+07-17 16:21:33.688   531  4903 I system_server: Explicit concurrent copying GC freed 90310(4MB) AllocSpace objects, 22(436KB) LOS objects, 28% free, 15MB/21MB, paused 345us total 290.462ms
+07-17 16:21:34.017   327   327 W IMGMemtrackHAL: hal_get_memory: memtrack cache rebuild was required
+07-17 16:21:34.432   327   327 I chatty  : uid=1000(system) memtrack@1.0-se identical 1 line
+07-17 16:21:34.458   327   327 W IMGMemtrackHAL: hal_get_memory: memtrack cache rebuild was required
+07-17 16:21:34.627   531 20339 E SELinux : avc:  denied  { see_home_task } for  scontext=u:r:platform_app:s0:c512,c768 tcontext=u:r:system_server:s0 tclass=amazon_policies permissive=0
+07-17 16:21:34.637  2704  2750 I ArcusSyncManager/RemoteDeviceManagerArcus: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:875023860230:appConfig:aenxb37n
+07-17 16:21:34.638   531   666 I ArcusSyncManager/AmazonInputManager: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:148732287600:appConfig:aezitige
+07-17 16:21:34.638   531   666 I ArcusSyncManager/AmazonInputManager: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:148732287600:appConfig:a06u7jxn
+07-17 16:21:34.654  1762  1930 I NetworkMonitorStates: Network capabilities changed: 100, hasValidatedInternet=true, validatedNetworks: [100]
+07-17 16:21:34.654  1762  1930 I NetworkMonitorStates: checkInternetState: validatedNetworks=[100], result=Available
+07-17 16:21:34.654  1762  1930 I NetworkMonitorStates: updateInternetState: Available -> Available
+07-17 16:21:34.655  2704  2750 I ArcusSyncManager/RemoteDeviceManagerArcus: onCapabilitiesChanged arcusId: arn:aws:remote-config:us-west-2:875023860230:appConfig:aenxb37n
+07-17 16:21:34.721   327   327 W IMGMemtrackHAL: hal_get_memory: memtrack cache rebuild was required
+07-17 16:21:35.048   327   327 W IMGMemtrackHAL: hal_get_memory: memtrack cache rebuild was required
+07-17 16:21:35.315 31528 31539 I vision.svplaye: Background concurrent copying GC freed 192111(6MB) AllocSpace objects, 0(0B) LOS objects, 43% free, 7MB/13MB, paused 174us total 119.200ms
+07-17 16:21:35.339   216   216 E SELinux : avc:  denied  { find } for service=migrationservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:migration_service:s0 tclass=service_manager permissive=0
+07-17 16:21:35.343   216   216 E SELinux : avc:  denied  { find } for service=mousemodeservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:mousemode_service:s0 tclass=service_manager permissive=0
+07-17 16:21:35.344   216   216 E SELinux : avc:  denied  { find } for service=netd pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:netd_service:s0 tclass=service_manager permissive=0
+07-17 16:21:35.458   531   636 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-17 16:21:35.492   531   636 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-17 16:21:35.497   531   637 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-17 16:21:35.911   531   540 I system_server: Background concurrent copying GC freed 121265(5MB) AllocSpace objects, 13(260KB) LOS objects, 26% free, 16MB/22MB, paused 378us total 271.460ms
+07-17 16:21:36.360  1313  1313 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-67, data_rssi=-67, tx_ok=509493, tx_failed=47922, cca_idle_pct=98
+07-17 16:21:36.360  1313  1313 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=7, ss=2, bw=2
+07-17 16:21:37.125   216   216 E SELinux : avc:  denied  { find } for service=perfanimation pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:perfanimation_service:s0 tclass=service_manager permissive=0
+07-17 16:21:37.138   216   216 E SELinux : avc:  denied  { find } for service=powermetrics pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:powermetrics_service:s0 tclass=service_manager permissive=0
+07-17 16:21:37.403 31528 31539 I vision.svplaye: Background concurrent copying GC freed 192486(5MB) AllocSpace objects, 0(0B) LOS objects, 43% free, 7MB/13MB, paused 199us total 121.374ms
+07-17 16:21:37.661   531   540 I system_server: Background concurrent copying GC freed 160218(6MB) AllocSpace objects, 16(460KB) LOS objects, 25% free, 17MB/23MB, paused 365us total 238.312ms
+07-17 16:21:37.804   531  4903 E SELinux : avc:  denied  { see_home_task } for  scontext=u:r:platform_app:s0:c512,c768 tcontext=u:r:system_server:s0 tclass=amazon_policies permissive=0
+07-17 16:21:37.825   531 20339 I ProcessStatsService: Added stats: 2026-07-17-10-38-06, over +3h1m3s880ms
+07-17 16:21:37.833   531 20339 I ProcessStatsService: Added stats: 2026-07-17-07-57-26, over +2h30m9s0ms
+07-17 16:21:37.841   531 20339 I ProcessStatsService: Added stats: 2026-07-17-04-57-11, over +3h0m15s306ms
+07-17 16:21:37.848   531 20339 I ProcessStatsService: Added stats: 2026-07-17-01-56-48, over +3h0m23s151ms
+07-17 16:21:37.858   531 20339 I ProcessStatsService: Added stats: 2026-07-16-22-56-36, over +1h0m35s526ms
+07-17 16:21:37.870   531 20339 I ProcessStatsService: Added stats: 2026-07-16-21-10-37, over +3h0m38s697ms
+07-17 16:21:37.880   531 20339 I ProcessStatsService: Added stats: 2026-07-16-20-10-22, over +1h30m45s896ms
+07-17 16:21:37.886   531 20339 I ProcessStatsService: Added stats: 2026-07-16-19-25-12, over +30m22s47ms
+07-17 16:21:38.160   531   540 I system_server: Background concurrent copying GC freed 182213(5MB) AllocSpace objects, 54(2MB) LOS objects, 25% free, 17MB/23MB, paused 344us total 244.888ms
+07-17 16:21:38.654   531 20339 I ProcessStatsService: Added stats: 2026-07-17-10-38-06, over +3h1m3s880ms
+07-17 16:21:38.863   332  2757 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 0; audio level: 0.000
+07-17 16:21:38.863   332  2757 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 1; audio level: 0.000
+07-17 16:21:38.863   332  2757 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 0; audio level: 0.000
+07-17 16:21:38.863   332  2757 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 1; audio level: 0.000
+07-17 16:21:38.887   531   540 I system_server: Background concurrent copying GC freed 297056(7MB) AllocSpace objects, 9(260KB) LOS objects, 24% free, 18MB/24MB, paused 358us total 248.757ms
+07-17 16:21:39.206   216   216 E SELinux : avc:  denied  { find } for service=runtimepersistentservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:runtimepersistent_service:s0 tclass=service_manager permissive=0
+07-17 16:21:39.231 31898 31898 W dumpsys : type=1400 audit(0.0:632): avc: denied { write } for path="pipe:[345727]" dev="pipefs" ino=345727 scontext=u:r:statsd:s0 tcontext=u:r:shell:s0 tclass=fifo_file permissive=0
+07-17 16:21:39.338   216   216 E SELinux : avc:  denied  { find } for service=thermaleventmonitor pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:thermaleventmonitor_service:s0 tclass=service_manager permissive=0
+07-17 16:21:39.473   531  4903 E UsbDeviceManager: Could not read kernel function list
+07-17 16:21:39.473   531  4903 E UsbDeviceManager: java.io.FileNotFoundException: /sys/class/android_usb/android0/functions (No such file or directory)
+07-17 16:21:39.473   531  4903 E UsbDeviceManager: 	at java.io.FileInputStream.open0(Native Method)
+07-17 16:21:39.473   531  4903 E UsbDeviceManager: 	at java.io.FileInputStream.open(FileInputStream.java:231)
+07-17 16:21:39.473   531  4903 E UsbDeviceManager: 	at java.io.FileInputStream.<init>(FileInputStream.java:165)
+07-17 16:21:39.473   531  4903 E UsbDeviceManager: 	at android.os.FileUtils.readTextFile(FileUtils.java:514)
+07-17 16:21:39.473   531  4903 E UsbDeviceManager: 	at com.android.server.usb.UsbDeviceManager$UsbHandler.dump(UsbDeviceManager.java:1332)
+07-17 16:21:39.473   531  4903 E UsbDeviceManager: 	at com.android.server.usb.UsbDeviceManager.dump(UsbDeviceManager.java:2089)
+07-17 16:21:39.473   531  4903 E UsbDeviceManager: 	at com.android.server.usb.UsbService.dump(UsbService.java:538)
+07-17 16:21:39.473   531  4903 E UsbDeviceManager: 	at android.os.Binder.doDump(Binder.java:640)
+07-17 16:21:39.473   531  4903 E UsbDeviceManager: 	at android.os.Binder.dump(Binder.java:630)
+07-17 16:21:39.473   531  4903 E UsbDeviceManager: 	at android.os.Binder.onTransact(Binder.java:580)
+07-17 16:21:39.473   531  4903 E UsbDeviceManager: 	at android.hardware.usb.IUsbManager$Stub.onTransact(IUsbManager.java:434)
+07-17 16:21:39.473   531  4903 E UsbDeviceManager: 	at android.os.Binder.execTransact(Binder.java:808)
+07-17 16:21:39.474   531  4903 E UsbDebuggingManager: Cannot read system keys
+07-17 16:21:39.474   531  4903 E UsbDebuggingManager: java.io.FileNotFoundException: /adb_keys (No such file or directory)
+07-17 16:21:39.474   531  4903 E UsbDebuggingManager: 	at java.io.FileInputStream.open0(Native Method)
+07-17 16:21:39.474   531  4903 E UsbDebuggingManager: 	at java.io.FileInputStream.open(FileInputStream.java:231)
+07-17 16:21:39.474   531  4903 E UsbDebuggingManager: 	at java.io.FileInputStream.<init>(FileInputStream.java:165)
+07-17 16:21:39.474   531  4903 E UsbDebuggingManager: 	at android.os.FileUtils.readTextFile(FileUtils.java:514)
+07-17 16:21:39.474   531  4903 E UsbDebuggingManager: 	at com.android.server.usb.UsbDebuggingManager.dump(UsbDebuggingManager.java:476)
+07-17 16:21:39.474   531  4903 E UsbDebuggingManager: 	at com.android.server.usb.UsbDeviceManager.dump(UsbDeviceManager.java:2092)
+07-17 16:21:39.474   531  4903 E UsbDebuggingManager: 	at com.android.server.usb.UsbService.dump(UsbService.java:538)
+07-17 16:21:39.474   531  4903 E UsbDebuggingManager: 	at android.os.Binder.doDump(Binder.java:640)
+07-17 16:21:39.474   531  4903 E UsbDebuggingManager: 	at android.os.Binder.dump(Binder.java:630)
+07-17 16:21:39.474   531  4903 E UsbDebuggingManager: 	at android.os.Binder.onTransact(Binder.java:580)
+07-17 16:21:39.474   531  4903 E UsbDebuggingManager: 	at android.hardware.usb.IUsbManager$Stub.onTransact(IUsbManager.java:434)
+07-17 16:21:39.474   531  4903 E UsbDebuggingManager: 	at android.os.Binder.execTransact(Binder.java:808)
+07-17 16:21:39.490   216   216 E SELinux : avc:  denied  { find } for service=voiceinputservice pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:voice_input_framework:s0 tclass=service_manager permissive=0
+07-17 16:21:39.491 31528 31539 I vision.svplaye: Background concurrent copying GC freed 191595(5MB) AllocSpace objects, 0(0B) LOS objects, 43% free, 7MB/13MB, paused 187us total 140.458ms
+07-17 16:21:39.494   216   216 E SELinux : avc:  denied  { find } for service=vold pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:vold_service:s0 tclass=service_manager permissive=0
+07-17 16:21:39.512   216   216 E SELinux : avc:  denied  { find } for service=whad_proxy_servicemanager pid=31898 uid=2000 scontext=u:r:shell:s0 tcontext=u:object_r:whad_proxy_servicemanager_service:s0 tclass=service_manager permissive=0
+07-17 16:21:39.621 31898 31898 W dumpsys : type=1400 audit(0.0:633): avc: denied { call } for scontext=u:r:shell:s0 tcontext=u:r:wificond:s0 tclass=binder permissive=0
+07-17 16:21:39.726   531   540 I system_server: Background concurrent copying GC freed 245405(7MB) AllocSpace objects, 36(1020KB) LOS objects, 22% free, 20MB/26MB, paused 341us total 321.621ms

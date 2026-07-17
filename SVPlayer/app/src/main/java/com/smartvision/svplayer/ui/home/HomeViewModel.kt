@@ -38,6 +38,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
 data class HomeUiState(
+    val profileId: String = "",
     val continueWatching: List<ContinueItem> = emptyList(),
     val trendingMovies: List<ContinueItem> = emptyList(),
     val trendingSeries: List<ContinueItem> = emptyList(),
@@ -45,12 +46,15 @@ data class HomeUiState(
     val catalogCounts: CatalogContentCounts = CatalogContentCounts(),
     val continueWatchingLoading: Boolean = false,
     val trendingLoading: Boolean = false,
+    val catalogCountsLoading: Boolean = false,
 )
 
 private data class HomeLoadingState(
+    val profileId: String,
     val continueWatching: Boolean,
     val trending: Boolean,
     val catalogCounts: CatalogContentCounts,
+    val catalogCountsLoading: Boolean,
 )
 
 class HomeViewModel(
@@ -74,18 +78,26 @@ class HomeViewModel(
     private val continueWatchingLoading = MutableStateFlow(cachedContinueWatching.isEmpty())
     private val trendingLoading = MutableStateFlow(cachedTrending == null)
     private val catalogCounts = MutableStateFlow(CatalogContentCounts())
+    private val catalogCountsLoading = MutableStateFlow(true)
+    private val contentProfileId = MutableStateFlow(initialProfileId)
     private val loadingState = combine(
         continueWatchingLoading,
         trendingLoading,
         catalogCounts,
-    ) { continueLoading, trendLoading, counts ->
+        catalogCountsLoading,
+        contentProfileId,
+    ) { continueLoading, trendLoading, counts, countsLoading, profileId ->
         HomeLoadingState(
+            profileId = profileId,
             continueWatching = continueLoading,
             trending = trendLoading,
             catalogCounts = counts,
+            catalogCountsLoading = countsLoading,
         )
     }
     private var trendingRefreshJob: Job? = null
+    private var catalogCountsRefreshJob: Job? = null
+    private var catalogCountsRequestId: Int = 0
     private val trendingPreviewPrepareJobs = mutableMapOf<String, Job>()
     private val trendingPreviewPrepareSemaphore = Semaphore(TrendingPreviewPrepareConcurrency)
     private val continueWatching = combine(
@@ -130,6 +142,7 @@ class HomeViewModel(
         loadingState,
     ) { continueItems, trendMovieItems, trendSeriesItems, homeSlides, loading ->
         HomeUiState(
+            profileId = loading.profileId,
             continueWatching = continueItems,
             trendingMovies = trendMovieItems,
             trendingSeries = trendSeriesItems,
@@ -137,18 +150,21 @@ class HomeViewModel(
             catalogCounts = loading.catalogCounts,
             continueWatchingLoading = loading.continueWatching,
             trendingLoading = loading.trending,
+            catalogCountsLoading = loading.catalogCountsLoading,
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         // PERF_FIX: first Home composition should not be empty when startup/repositories already hold caches.
         initialValue = HomeUiState(
+            profileId = initialProfileId,
             continueWatching = cachedContinueWatching,
             trendingMovies = cachedTrending?.movies.orEmpty(),
             trendingSeries = cachedTrending?.series.orEmpty(),
             slides = slides.value,
             continueWatchingLoading = cachedContinueWatching.isEmpty(),
             trendingLoading = cachedTrending == null,
+            catalogCountsLoading = true,
         ),
     )
 
@@ -177,12 +193,15 @@ class HomeViewModel(
                 if (nextProfileId == previousProfileId) return@collect
                 previousProfileId = nextProfileId
                 trendingRefreshJob?.cancel()
+                catalogCountsRefreshJob?.cancel()
                 trendingPreviewPrepareJobs.values.forEach { job -> job.cancel() }
                 trendingPreviewPrepareJobs.clear()
+                contentProfileId.value = nextProfileId
                 continueWatchingLoading.value = true
                 trendingMovies.value = emptyList()
                 trendingSeries.value = emptyList()
                 catalogCounts.value = CatalogContentCounts()
+                catalogCountsLoading.value = true
                 trendingLoading.value = true
                 refreshCatalogCounts()
                 refreshTrending(forceRefresh = false)
@@ -228,9 +247,18 @@ class HomeViewModel(
     }
 
     fun refreshCatalogCounts() {
-        viewModelScope.launch {
-            runCatching { catalogRepository.getCatalogContentCounts() }
-                .onSuccess { counts -> catalogCounts.value = counts }
+        val requestId = ++catalogCountsRequestId
+        catalogCountsRefreshJob?.cancel()
+        catalogCountsLoading.value = true
+        catalogCountsRefreshJob = viewModelScope.launch {
+            try {
+                runCatching { catalogRepository.getCatalogContentCounts() }
+                    .onSuccess { counts -> catalogCounts.value = counts }
+            } finally {
+                if (requestId == catalogCountsRequestId) {
+                    catalogCountsLoading.value = false
+                }
+            }
         }
     }
 

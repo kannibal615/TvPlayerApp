@@ -34,6 +34,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -181,8 +182,14 @@ fun AppNavigation(
     var profilePickerCompleted by remember { mutableStateOf(false) }
     var openProfilesAfterPicker by remember { mutableStateOf(false) }
     var profileSelectionLoadingId by remember { mutableStateOf<String?>(null) }
+    var homeReadyProfileId by remember { mutableStateOf<String?>(null) }
+    var homeProfileAvatarBounds by remember { mutableStateOf<Rect?>(null) }
     val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
     val playlistProfiles by container.accountManager.profiles.collectAsStateWithLifecycle()
+    val configuredPickerProfiles = remember(playlistProfiles) {
+        playlistProfiles.filter { it.isConfigured }
+    }
+    val showProfilePicker = !profilePickerCompleted && configuredPickerProfiles.isNotEmpty()
     val activeProfileId by container.accountManager.activeProfileId.collectAsStateWithLifecycle()
     val activeProfile = remember(playlistProfiles, activeProfileId) {
         playlistProfiles.firstOrNull { it.id == activeProfileId }
@@ -522,54 +529,6 @@ fun AppNavigation(
         return
     }
 
-    if (!profilePickerCompleted && playlistProfiles.any { it.isConfigured }) {
-        BackHandler {
-            showExitConfirmation = true
-        }
-        ProfilePickerScreen(
-            profiles = playlistProfiles.filter { it.isConfigured },
-            activeProfileId = activeProfileId,
-            multiProfileAccess = multiProfileGate,
-            selectionLoadingProfileId = profileSelectionLoadingId,
-            onLockedFeature = {
-                if (multiProfileGate.shouldShowUpgradePrompt) {
-                    showLicensePurchaseQr = true
-                }
-            },
-            onVerifyPin = container.settingsRepository::verifyParentalPin,
-            onSelectProfile = { profileId ->
-                scope.launch {
-                    profileSelectionLoadingId = profileId
-                    runCatching {
-                        activateProfileForSession(profileId)
-                    }.onSuccess {
-                        delay(160)
-                        profilePickerCompleted = true
-                    }
-                    profileSelectionLoadingId = null
-                }
-            },
-            onSaveProfile = { profile ->
-                val wasActiveProfile = profile.id.isNotBlank() && profile.id == container.accountManager.activeProfileId.value
-                container.accountManager.upsertProfile(profile)
-                if (wasActiveProfile) {
-                    container.xtreamRepository.clearCaches()
-                    scope.launch {
-                        container.catalogRepository.clearCatalogForProfileSwitch()
-                    }
-                }
-            },
-        )
-        if (showExitConfirmation) {
-            ExitConfirmationDialog(
-                strings = strings,
-                onDismiss = { showExitConfirmation = false },
-                onExit = { activity?.finishAffinity() },
-            )
-        }
-        return
-    }
-
     LaunchedEffect(playerSettings.syncFrequency) {
         CatalogSyncScheduler.apply(context, playerSettings.syncFrequency)
     }
@@ -700,6 +659,18 @@ fun AppNavigation(
                 notificationBadgeCount = notificationBadgeCount,
                 headerFocusRequest = homeHeaderFocusRequest,
                 headerFocusTarget = homeHeaderFocusTarget,
+                visibleToUser = !showProfilePicker,
+                onContentReady = { profileId ->
+                    homeReadyProfileId = profileId
+                },
+                onContentLoading = { profileId ->
+                    if (homeReadyProfileId == profileId) {
+                        homeReadyProfileId = null
+                    }
+                },
+                onProfileAvatarBoundsChanged = { bounds ->
+                    homeProfileAvatarBounds = bounds
+                },
                 strings = strings,
                 xtreamCatalogBlocked = xtreamCatalogVisualBlocked,
                 xtreamCatalogNavigationBlocked = xtreamCatalogBlocked,
@@ -1152,12 +1123,63 @@ fun AppNavigation(
         }
     }
 
+    if (showProfilePicker) {
+        BackHandler {
+            if (profileSelectionLoadingId == null) {
+                showExitConfirmation = true
+            }
+        }
+        ProfilePickerScreen(
+            profiles = configuredPickerProfiles,
+            activeProfileId = activeProfileId,
+            multiProfileAccess = multiProfileGate,
+            selectionLoadingProfileId = profileSelectionLoadingId,
+            homeReadyProfileId = homeReadyProfileId,
+            homeProfileAvatarBounds = homeProfileAvatarBounds,
+            onSelectionTransitionFinished = { profileId ->
+                if (profileSelectionLoadingId == profileId) {
+                    profilePickerCompleted = true
+                    profileSelectionLoadingId = null
+                }
+            },
+            onLockedFeature = {
+                if (multiProfileGate.shouldShowUpgradePrompt) {
+                    showLicensePurchaseQr = true
+                }
+            },
+            onVerifyPin = container.settingsRepository::verifyParentalPin,
+            onSelectProfile = { profileId ->
+                if (profileSelectionLoadingId == null) {
+                    profileSelectionLoadingId = profileId
+                    runCatching {
+                        activateProfileForSession(profileId)
+                    }.onFailure {
+                        profileSelectionLoadingId = null
+                    }
+                }
+            },
+            onSaveProfile = { profile ->
+                val wasActiveProfile =
+                    profile.id.isNotBlank() &&
+                        profile.id == container.accountManager.activeProfileId.value
+                container.accountManager.upsertProfile(profile)
+                if (wasActiveProfile) {
+                    container.xtreamRepository.clearCaches()
+                    scope.launch {
+                        container.catalogRepository.clearCatalogForProfileSwitch()
+                    }
+                }
+            },
+        )
+    }
+
     if (showExitConfirmation) {
         ExitConfirmationDialog(
             strings = strings,
             onDismiss = { showExitConfirmation = false },
             onChangeProfile = {
                 showExitConfirmation = false
+                profileSelectionLoadingId = null
                 profilePickerCompleted = false
             },
             onExit = { activity?.finishAffinity() },

@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -89,6 +90,10 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     headerFocusRequest: Int = 0,
     headerFocusTarget: HomeHeaderFocusTarget = HomeHeaderFocusTarget.CurrentTab,
+    visibleToUser: Boolean = true,
+    onContentReady: (String) -> Unit = {},
+    onContentLoading: (String) -> Unit = {},
+    onProfileAvatarBoundsChanged: (Rect) -> Unit = {},
 ) {
     val container = LocalAppContainer.current
     val context = LocalContext.current.applicationContext
@@ -115,6 +120,7 @@ fun HomeScreen(
     val activeProfileId by container.accountManager.activeProfileId.collectAsStateWithLifecycle()
     val kidsMode = profiles.firstOrNull { it.id == activeProfileId }?.type == ProfileType.KIDS
     var catalogWorkUiState by remember { mutableStateOf(HomeCatalogWorkUiState.Idle) }
+    var initialHomeVisibilityHandled by remember { mutableStateOf(false) }
     val catalogWorkActive = catalogWorkUiState.active
     val catalogSyncActive = catalogWorkActive && catalogWorkUiState.kind == StartupCatalogWorkKind.Synchronize
     val homeTabFocusRequester = remember { FocusRequester() }
@@ -134,6 +140,12 @@ fun HomeScreen(
     val showContinueSkeleton = state.continueWatchingLoading
     val showMovieTrendSkeleton = state.trendingLoading
     val showSeriesTrendSkeleton = state.trendingLoading
+    val homeContentReady =
+        state.profileId.isNotBlank() &&
+            state.profileId == activeProfileId &&
+            !state.continueWatchingLoading &&
+            !state.trendingLoading &&
+            !state.catalogCountsLoading
     val continueRowState = rememberHomeRowState(state.continueWatching)
     val movieTrendRowState = rememberHomeRowState(state.trendingMovies)
     val seriesTrendRowState = rememberHomeRowState(state.trendingSeries)
@@ -153,6 +165,16 @@ fun HomeScreen(
 
     LaunchedEffect(activeProfileId) {
         previewController.stop()
+    }
+
+    LaunchedEffect(homeContentReady, state.profileId) {
+        if (state.profileId.isBlank()) return@LaunchedEffect
+        if (!homeContentReady) {
+            onContentLoading(state.profileId)
+            return@LaunchedEffect
+        }
+        withFrameNanos { }
+        onContentReady(state.profileId)
     }
 
     // PERF_DIAG: Home lifecycle and visible section counts for the splash-to-home handoff.
@@ -501,24 +523,32 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) {
+        viewModel.refreshSlides()
+        viewModel.refreshTrending(forceRefresh = false)
+    }
+
+    LaunchedEffect(visibleToUser) {
+        if (!visibleToUser) return@LaunchedEffect
+        val firstVisibleEntry = !initialHomeVisibilityHandled
+        initialHomeVisibilityHandled = true
         PerformanceDiagnosticRecorder.record(
             sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
             event = "home_first_launched_effect",
         )
-        playStartupChimeOnHome(context)
-        viewModel.refreshSlides()
+        if (firstVisibleEntry) {
+            playStartupChimeOnHome(context)
+        }
         scrollState.scrollTo(0)
         withFrameNanos { }
         delay(80)
         runCatching { liveFocusRequester.requestFocus() }
         withFrameNanos { }
         if (scrollState.value != 0) scrollState.scrollTo(0)
-        viewModel.refreshTrending(forceRefresh = false)
         PerformanceDiagnosticRecorder.record(
             sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
             event = "home_initial_focus_requested",
         )
-        if (shouldRequestPostHomeCatalogSync(container)) {
+        if (firstVisibleEntry && shouldRequestPostHomeCatalogSync(container)) {
             PerformanceDiagnosticRecorder.record(
                 sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
                 event = "home_post_render_sync_requested",
@@ -644,6 +674,7 @@ fun HomeScreen(
             profileFocusRequester = profileFocusRequester,
             settingsFocusRequester = settingsFocusRequester,
             modifier = Modifier.fillMaxWidth(),
+            onProfileAvatarBoundsChanged = onProfileAvatarBoundsChanged,
         )
 
         Spacer(Modifier.height(SmartVisionDimensions.HomeHeaderContentClearance))

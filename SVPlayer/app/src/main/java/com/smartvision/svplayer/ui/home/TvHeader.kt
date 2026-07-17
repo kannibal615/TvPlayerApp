@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -41,6 +42,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -50,6 +52,8 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -68,6 +72,7 @@ import com.smartvision.svplayer.ui.components.YoutubeLogoIcon
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
+import com.smartvision.svplayer.ui.profile.ProfilePickerAvatar
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import java.text.SimpleDateFormat
@@ -114,6 +119,7 @@ fun TvHeader(
     settingsFocusRequester: FocusRequester? = null,
     contentDownFocusRequester: FocusRequester? = null,
     onContentDown: (() -> Unit)? = null,
+    onProfileAvatarBoundsChanged: (Rect) -> Unit = {},
 ) {
     val container = LocalAppContainer.current
     val profiles by container.accountManager.profiles.collectAsStateWithLifecycle()
@@ -187,6 +193,7 @@ fun TvHeader(
             downFocusRequester = contentDownFocusRequester,
             onDown = onContentDown,
             onWrapToStart = { runCatching { firstTabRequester.requestFocus() } },
+            onProfileAvatarBoundsChanged = onProfileAvatarBoundsChanged,
         )
     }
 }
@@ -212,6 +219,7 @@ fun HeaderControls(
     showClock: Boolean = true,
     showSeconds: Boolean = true,
     onWrapToStart: (() -> Unit)? = null,
+    onProfileAvatarBoundsChanged: (Rect) -> Unit = {},
 ) {
     Row(
         modifier = modifier,
@@ -248,6 +256,7 @@ fun HeaderControls(
             onDown = onDown,
             focusRequester = profileFocusRequester,
             onRight = onWrapToStart.takeIf { kidsMode },
+            onBoundsChanged = onProfileAvatarBoundsChanged,
         )
         if (!kidsMode) {
             HeaderIconButton(
@@ -274,6 +283,7 @@ private fun HeaderAvatarButton(
     onDown: (() -> Unit)?,
     focusRequester: FocusRequester?,
     onRight: (() -> Unit)? = null,
+    onBoundsChanged: (Rect) -> Unit = {},
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -293,6 +303,9 @@ private fun HeaderAvatarButton(
         Box(
             modifier = Modifier
                 .size(38.dp)
+                .onGloballyPositioned { coordinates ->
+                    onBoundsChanged(coordinates.boundsInRoot())
+                }
                 .then(if (downFocusRequester != null) Modifier.focusProperties { down = downFocusRequester } else Modifier)
                 .onPreviewKeyEvent { event ->
                     if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -316,7 +329,7 @@ private fun HeaderAvatarButton(
                     cornerRadius = 10.dp,
                 )
                 .clip(shape)
-                .background(avatarColor)
+                .background(if (profile == null) avatarColor else Color.Transparent)
                 .border(
                     BorderStroke(
                         if (focusState.isFocused) focusStyle.borderWidth else SmartVisionDimensions.PanelBorder,
@@ -328,13 +341,20 @@ private fun HeaderAvatarButton(
                 .focusable(interactionSource = interactionSource),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = initials,
-                color = Color.White,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-            )
+            if (profile != null) {
+                ProfilePickerAvatar(
+                    profile = profile,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Text(
+                    text = initials,
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }

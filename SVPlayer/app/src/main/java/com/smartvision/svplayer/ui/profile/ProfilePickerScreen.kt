@@ -1,6 +1,8 @@
 package com.smartvision.svplayer.ui.profile
 
+import android.os.SystemClock
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,16 +51,23 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.config.PlaylistProfile
@@ -68,9 +79,15 @@ import com.smartvision.svplayer.ui.components.NumericPinDialog
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import kotlinx.coroutines.delay
+import kotlin.math.PI
+import kotlin.math.roundToInt
+import kotlin.math.sin
 
 private const val AddKidsFocusKey = "action:add-kids"
 private const val AddProfileFocusKey = "action:add-profile"
+private const val ProfileCenteringDurationMs = 900
+private const val MinimumCenteredLoadingMs = 420L
+private const val HomeRevealDurationMs = 620
 
 @Composable
 fun ProfilePickerScreen(
@@ -80,6 +97,9 @@ fun ProfilePickerScreen(
     onSaveProfile: (PlaylistProfile) -> Unit,
     multiProfileAccess: PremiumFeatureGateResult,
     selectionLoadingProfileId: String?,
+    homeReadyProfileId: String?,
+    homeProfileAvatarBounds: Rect?,
+    onSelectionTransitionFinished: (String) -> Unit,
     onLockedFeature: () -> Unit,
     onVerifyPin: (String) -> Boolean,
 ) {
@@ -104,7 +124,53 @@ fun ProfilePickerScreen(
     var protectedAction by remember { mutableStateOf<PickerProtectedAction?>(null) }
     var lastFocusKey by remember { mutableStateOf(initialProfileId.orEmpty()) }
     var restoreFocusRequest by remember { mutableIntStateOf(0) }
+    var pickerRootBounds by remember { mutableStateOf<Rect?>(null) }
+    var profileCardBounds by remember { mutableStateOf<Map<String, Rect>>(emptyMap()) }
+    var centeredAtMs by remember { mutableStateOf(0L) }
+    val centeringProgress = remember { Animatable(0f) }
+    val homeRevealProgress = remember { Animatable(0f) }
+    val latestTransitionFinished by rememberUpdatedState(onSelectionTransitionFinished)
     val selectionInProgress = selectionLoadingProfileId != null
+    val selectedProfile = remember(orderedProfiles, selectionLoadingProfileId) {
+        orderedProfiles.firstOrNull { it.id == selectionLoadingProfileId }
+    }
+
+    LaunchedEffect(selectionLoadingProfileId, homeReadyProfileId) {
+        val selectedId = selectionLoadingProfileId
+        if (selectedId == null) {
+            centeringProgress.snapTo(0f)
+            homeRevealProgress.snapTo(0f)
+            centeredAtMs = 0L
+            return@LaunchedEffect
+        }
+        if (homeRevealProgress.value >= 1f) return@LaunchedEffect
+        val remainingDuration = (
+            ProfileCenteringDurationMs * (1f - centeringProgress.value)
+            ).roundToInt().coerceAtLeast(1)
+        if (centeringProgress.value < 1f) {
+            centeringProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = remainingDuration,
+                    easing = FastOutSlowInEasing,
+                ),
+            )
+        }
+        if (centeredAtMs == 0L) {
+            centeredAtMs = SystemClock.uptimeMillis()
+        }
+        if (homeReadyProfileId != selectedId) return@LaunchedEffect
+        val centeredElapsed = SystemClock.uptimeMillis() - centeredAtMs
+        delay((MinimumCenteredLoadingMs - centeredElapsed).coerceAtLeast(0L))
+        homeRevealProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = HomeRevealDurationMs,
+                easing = FastOutSlowInEasing,
+            ),
+        )
+        latestTransitionFinished(selectedId)
+    }
 
     fun performAction(action: PickerProtectedAction) {
         when (action) {
@@ -140,7 +206,13 @@ fun ProfilePickerScreen(
         requested?.let { focusRequester -> runCatching { focusRequester.requestFocus() } }
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .onGloballyPositioned { coordinates ->
+                pickerRootBounds = coordinates.boundsInRoot()
+            },
+    ) {
         val screenWidth = maxWidth
         val screenHeight = maxHeight
         val cardWidth = (screenWidth * 0.158f).coerceIn(148.dp, 205.dp)
@@ -151,12 +223,20 @@ fun ProfilePickerScreen(
         val pickerContentWidth = cardWidth * pickerItemCount + itemGap * (pickerItemCount - 1).coerceAtLeast(0)
         val pickerHorizontalPadding = ((screenWidth - pickerContentWidth) * 0.5f)
             .coerceAtLeast(screenWidth * 0.05f)
+        val revealAlpha = 1f - homeRevealProgress.value
+        val secondaryContentAlpha = if (selectionInProgress) {
+            (1f - centeringProgress.value / 0.52f).coerceIn(0f, 1f)
+        } else {
+            1f
+        }
 
         Image(
             painter = painterResource(R.drawable.startup_neon_background),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = revealAlpha },
         )
         Box(
             modifier = Modifier
@@ -167,7 +247,8 @@ fun ProfilePickerScreen(
                         radius = 1040f,
                     ),
                 )
-                .background(Color(0xFF010511).copy(alpha = 0.46f)),
+                .background(Color(0xFF010511).copy(alpha = 0.46f))
+                .graphicsLayer { alpha = revealAlpha },
         )
 
         Image(
@@ -177,7 +258,8 @@ fun ProfilePickerScreen(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(start = screenWidth * 0.038f, top = screenHeight * 0.045f)
-                .width((screenWidth * 0.15f).coerceIn(180.dp, 285.dp)),
+                .width((screenWidth * 0.15f).coerceIn(180.dp, 285.dp))
+                .graphicsLayer { alpha = secondaryContentAlpha * revealAlpha },
         )
 
         Column(
@@ -192,12 +274,14 @@ fun ProfilePickerScreen(
                 fontSize = (screenHeight.value * 0.055f).coerceIn(36f, 58f).sp,
                 lineHeight = 62.sp,
                 fontWeight = FontWeight.Bold,
+                modifier = Modifier.graphicsLayer { alpha = secondaryContentAlpha * revealAlpha },
             )
             Spacer(Modifier.height(5.dp))
             Text(
                 text = strings.chooseYourProfile,
                 color = Color(0xFFB7C4DF),
                 fontSize = (screenHeight.value * 0.026f).coerceIn(20f, 28f).sp,
+                modifier = Modifier.graphicsLayer { alpha = secondaryContentAlpha * revealAlpha },
             )
             Spacer(Modifier.height((screenHeight * 0.045f).coerceIn(22.dp, 46.dp)))
 
@@ -228,6 +312,17 @@ fun ProfilePickerScreen(
                         editDescription = strings.editProfile,
                         onCardFocused = { lastFocusKey = profile.id },
                         onEditFocused = { lastFocusKey = "edit:${profile.id}" },
+                        contentAlpha = when {
+                            !selectionInProgress -> 1f
+                            profile.id == selectionLoadingProfileId &&
+                                profileCardBounds[profile.id] != null -> 0f
+                            else -> secondaryContentAlpha
+                        },
+                        onCardBoundsChanged = { bounds ->
+                            if (profileCardBounds[profile.id] != bounds) {
+                                profileCardBounds = profileCardBounds + (profile.id to bounds)
+                            }
+                        },
                         onClick = {
                             requestAction(PickerProtectedAction.Select(profile), profile.isLocked)
                         },
@@ -253,6 +348,7 @@ fun ProfilePickerScreen(
                         avatarSize = avatarSize,
                         itemIndex = orderedProfiles.size,
                         onFocused = { lastFocusKey = AddKidsFocusKey },
+                        contentAlpha = secondaryContentAlpha * revealAlpha,
                         onClick = {
                             if (multiProfileAccess.allowed) {
                                 requestAction(PickerProtectedAction.Add(ProfileType.KIDS), adminProfile?.isLocked == true)
@@ -274,6 +370,7 @@ fun ProfilePickerScreen(
                         avatarSize = avatarSize,
                         itemIndex = orderedProfiles.size + 1,
                         onFocused = { lastFocusKey = AddProfileFocusKey },
+                        contentAlpha = secondaryContentAlpha * revealAlpha,
                         onClick = {
                             if (multiProfileAccess.allowed) {
                                 requestAction(PickerProtectedAction.Add(ProfileType.NORMAL), adminProfile?.isLocked == true)
@@ -284,6 +381,23 @@ fun ProfilePickerScreen(
                     )
                 }
             }
+        }
+
+        val transitionProfile = selectedProfile
+        val transitionStartBounds = selectionLoadingProfileId?.let(profileCardBounds::get)
+        val rootBounds = pickerRootBounds
+        if (transitionProfile != null && transitionStartBounds != null && rootBounds != null) {
+            SelectedProfileTransition(
+                profile = transitionProfile,
+                startBounds = transitionStartBounds,
+                rootBounds = rootBounds,
+                homeAvatarBounds = homeProfileAvatarBounds,
+                cardWidth = cardWidth,
+                cardHeight = cardHeight,
+                avatarSize = avatarSize,
+                centeringProgress = centeringProgress.value,
+                homeRevealProgress = homeRevealProgress.value,
+            )
         }
     }
 
@@ -356,6 +470,8 @@ private fun ProfilePickerCard(
     editDescription: String,
     onCardFocused: () -> Unit,
     onEditFocused: () -> Unit,
+    contentAlpha: Float,
+    onCardBoundsChanged: (Rect) -> Unit,
     onClick: () -> Unit,
     onEdit: () -> Unit,
 ) {
@@ -390,7 +506,7 @@ private fun ProfilePickerCard(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-                alpha = reveal.value
+                alpha = reveal.value * contentAlpha
                 translationY = (1f - reveal.value) * 12.dp.toPx()
             },
     ) {
@@ -398,6 +514,9 @@ private fun ProfilePickerCard(
             modifier = Modifier
                 .width(cardWidth)
                 .height(cardHeight)
+                .onGloballyPositioned { coordinates ->
+                    onCardBoundsChanged(coordinates.boundsInRoot())
+                }
                 .shadow(
                     if (focused || selected) 25.dp else 3.dp,
                     shape,
@@ -447,9 +566,10 @@ private fun ProfilePickerCard(
                     }
                     if (selected) {
                         CircularProgressIndicator(
-                            color = Color.White,
-                            strokeWidth = 3.dp,
-                            modifier = Modifier.size(54.dp),
+                            color = SmartVisionColors.CyanAccent,
+                            strokeWidth = 4.dp,
+                            strokeCap = StrokeCap.Round,
+                            modifier = Modifier.size(avatarSize),
                         )
                     }
                 }
@@ -481,6 +601,204 @@ private fun ProfilePickerCard(
         )
     }
 }
+
+@Composable
+private fun SelectedProfileTransition(
+    profile: PlaylistProfile,
+    startBounds: Rect,
+    rootBounds: Rect,
+    homeAvatarBounds: Rect?,
+    cardWidth: androidx.compose.ui.unit.Dp,
+    cardHeight: androidx.compose.ui.unit.Dp,
+    avatarSize: androidx.compose.ui.unit.Dp,
+    centeringProgress: Float,
+    homeRevealProgress: Float,
+) {
+    val density = LocalDensity.current
+    val cardWidthPx = with(density) { cardWidth.toPx() }
+    val cardHeightPx = with(density) { cardHeight.toPx() }
+    val avatarSizePx = with(density) { avatarSize.toPx() }
+    val cardPaddingPx = with(density) { 14.dp.toPx() }
+    val profileNameHeightPx = with(density) { 54.dp.toPx() }
+    val startLeft = startBounds.left - rootBounds.left
+    val startTop = startBounds.top - rootBounds.top
+    val centeredLeft = (rootBounds.width - cardWidthPx) / 2f
+    val centeredTop = (rootBounds.height - cardHeightPx) / 2f
+    val cardLeft = transitionLerp(startLeft, centeredLeft, centeringProgress)
+    val cardTop = transitionLerp(startTop, centeredTop, centeringProgress)
+    val cardScale = transitionLerp(1f, 1.4f, centeringProgress)
+    val shellAlpha = (1f - homeRevealProgress / 0.34f).coerceIn(0f, 1f)
+    val cardAvatarVisible = homeRevealProgress <= 0.001f
+    val loadingAlpha = (
+        (centeringProgress - 0.64f) / 0.24f
+        ).coerceIn(0f, 1f) * (1f - homeRevealProgress / 0.30f).coerceIn(0f, 1f)
+    val shape = RoundedCornerShape(20.dp)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(20f),
+    ) {
+        Box(
+            modifier = Modifier
+                .offset {
+                    IntOffset(
+                        x = cardLeft.roundToInt(),
+                        y = cardTop.roundToInt(),
+                    )
+                }
+                .width(cardWidth)
+                .height(cardHeight)
+                .graphicsLayer {
+                    scaleX = cardScale
+                    scaleY = cardScale
+                },
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = shellAlpha }
+                    .shadow(
+                        elevation = 30.dp,
+                        shape = shape,
+                        ambientColor = SmartVisionColors.CardFocusGlow,
+                        spotColor = SmartVisionColors.CardFocusGlow,
+                    )
+                    .clip(shape)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0xFF16305D).copy(alpha = 0.98f),
+                                Color(0xFF071329),
+                            ),
+                        ),
+                    )
+                    .border(
+                        BorderStroke(2.5.dp, SmartVisionColors.CyanAccent),
+                        shape,
+                    ),
+            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 14.dp, vertical = 14.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (cardAvatarVisible) {
+                        ProfilePickerAvatar(
+                            profile = profile,
+                            modifier = Modifier.size(avatarSize),
+                        )
+                    }
+                    if (loadingAlpha > 0f && cardAvatarVisible) {
+                        CircularProgressIndicator(
+                            color = SmartVisionColors.CyanAccent,
+                            strokeWidth = 4.dp,
+                            strokeCap = StrokeCap.Round,
+                            modifier = Modifier
+                                .size(avatarSize)
+                                .graphicsLayer { alpha = loadingAlpha },
+                        )
+                    }
+                }
+                Box(
+                    modifier = Modifier.graphicsLayer { alpha = shellAlpha },
+                ) {
+                    ProfileName(profile.name, focused = true)
+                }
+            }
+        }
+
+        if (homeRevealProgress > 0f) {
+            val availableAvatarHeightPx =
+                cardHeightPx - cardPaddingPx * 2f - profileNameHeightPx
+            val avatarLocalCenterY = cardPaddingPx + availableAvatarHeightPx / 2f
+            val centeredCardCenterX = rootBounds.width / 2f
+            val centeredCardCenterY = rootBounds.height / 2f
+            val flyingStartCenterX = centeredCardCenterX
+            val flyingStartCenterY = centeredCardCenterY +
+                (avatarLocalCenterY - cardHeightPx / 2f) * 1.4f
+            val fallbackTargetSizePx = with(density) { 34.dp.toPx() }
+            val targetBounds = homeAvatarBounds?.let { bounds ->
+                Rect(
+                    left = bounds.left - rootBounds.left,
+                    top = bounds.top - rootBounds.top,
+                    right = bounds.right - rootBounds.left,
+                    bottom = bounds.bottom - rootBounds.top,
+                )
+            }
+            val targetCenterX = targetBounds?.center?.x ?: rootBounds.width * 0.82f
+            val targetCenterY = targetBounds?.center?.y ?: rootBounds.height * 0.065f
+            val targetSizePx = targetBounds
+                ?.let { minOf(it.width, it.height) - with(density) { 4.dp.toPx() } }
+                ?.coerceAtLeast(fallbackTargetSizePx)
+                ?: fallbackTargetSizePx
+            val flyingStartSizePx = avatarSizePx * 1.4f
+            val pathProgress = homeRevealProgress.coerceIn(0f, 1f)
+            val arcLiftPx = sin(pathProgress * PI).toFloat() * rootBounds.height * 0.055f
+            val flyingCenterX = transitionLerp(
+                flyingStartCenterX,
+                targetCenterX,
+                pathProgress,
+            )
+            val flyingCenterY = transitionLerp(
+                flyingStartCenterY,
+                targetCenterY,
+                pathProgress,
+            ) - arcLiftPx
+            val flyingSizePx = transitionLerp(
+                flyingStartSizePx,
+                targetSizePx,
+                pathProgress,
+            )
+            val flyingSize = with(density) { flyingSizePx.toDp() }
+            val flyingLoadingAlpha =
+                (1f - pathProgress / 0.38f).coerceIn(0f, 1f)
+
+            Box(
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            x = (flyingCenterX - flyingSizePx / 2f).roundToInt(),
+                            y = (flyingCenterY - flyingSizePx / 2f).roundToInt(),
+                        )
+                    }
+                    .size(flyingSize)
+                    .shadow(
+                        elevation = transitionLerp(24f, 0f, pathProgress).dp,
+                        shape = CircleShape,
+                        ambientColor = SmartVisionColors.CardFocusGlow,
+                        spotColor = SmartVisionColors.CardFocusGlow,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                ProfilePickerAvatar(
+                    profile = profile,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                if (flyingLoadingAlpha > 0f) {
+                    CircularProgressIndicator(
+                        color = SmartVisionColors.CyanAccent,
+                        strokeWidth = 4.dp,
+                        strokeCap = StrokeCap.Round,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { alpha = flyingLoadingAlpha },
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun transitionLerp(start: Float, end: Float, fraction: Float): Float =
+    start + (end - start) * fraction.coerceIn(0f, 1f)
 
 @Composable
 private fun ProfileName(name: String, focused: Boolean) {
@@ -554,6 +872,7 @@ private fun AddProfileCard(
     avatarSize: androidx.compose.ui.unit.Dp,
     itemIndex: Int,
     onFocused: () -> Unit,
+    contentAlpha: Float,
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -572,7 +891,7 @@ private fun AddProfileCard(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-                alpha = reveal.value
+                alpha = reveal.value * contentAlpha
                 translationY = (1f - reveal.value) * 12.dp.toPx()
             }
             .shadow(
