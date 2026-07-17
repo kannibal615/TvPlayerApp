@@ -288,11 +288,7 @@ fun ContentProgressCard(
                         ),
                     ),
             )
-            val mediaBadge = when (item.mediaType) {
-                "FILM" -> "FILM"
-                "LIVE" -> "LIVE"
-                else -> null
-            }
+            val mediaBadge = mediaTypeBadgeLabel(item.mediaType)
             if (mediaBadge != null) {
                 MediaTypeBadge(
                     text = mediaBadge,
@@ -417,6 +413,9 @@ fun ContentProgressCard(
         }
     }
 }
+
+internal fun mediaTypeBadgeLabel(mediaType: String): String? =
+    mediaType.takeIf { it == "FILM" || it == "LIVE" || it == "SERIE" }
 
 private const val HomeCardVideoFocusedScale = 1.2f
 

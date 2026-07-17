@@ -91,7 +91,9 @@ import com.smartvision.svplayer.ui.player.FullScreenPlayerRoute
 import com.smartvision.svplayer.ui.player.LocalMediaPlayerRoute
 import com.smartvision.svplayer.ui.profile.ProfileRoute
 import com.smartvision.svplayer.ui.profile.ProfilePickerScreen
+import com.smartvision.svplayer.ui.profile.ProfileSelectionRequest
 import com.smartvision.svplayer.ui.profile.SmartVisionQrDialog
+import com.smartvision.svplayer.ui.profile.canCompleteProfileSelection
 import com.smartvision.svplayer.ui.series.SeriesScreen
 import com.smartvision.svplayer.ui.settings.SettingsScreen
 import com.smartvision.svplayer.ui.components.TvButton
@@ -107,6 +109,8 @@ import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.update.AppUpdateDialog
 import com.smartvision.svplayer.ui.update.AppUpdateViewModel
 import com.smartvision.svplayer.ui.youtube.YoutubeScreen
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
@@ -181,7 +185,10 @@ fun AppNavigation(
     var homeHeaderFocusTarget by remember { mutableStateOf(HomeHeaderFocusTarget.CurrentTab) }
     var profilePickerCompleted by remember { mutableStateOf(false) }
     var openProfilesAfterPicker by remember { mutableStateOf(false) }
-    var profileSelectionLoadingId by remember { mutableStateOf<String?>(null) }
+    var profileSelectionRequest by remember { mutableStateOf<ProfileSelectionRequest?>(null) }
+    var profileSelectionRequestCounter by remember { mutableStateOf(0L) }
+    var profileActivationCompletedRequestId by remember { mutableStateOf<Long?>(null) }
+    var profileSwitchSyncJob by remember { mutableStateOf<Job?>(null) }
     var homeReadyProfileId by remember { mutableStateOf<String?>(null) }
     var homeProfileAvatarBounds by remember { mutableStateOf<Rect?>(null) }
     val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
@@ -313,6 +320,8 @@ fun AppNavigation(
     }
     val onProfileAction: () -> Unit = {
         if (!profilePermissions.canManageProfiles) {
+            profileSelectionRequest = null
+            profileActivationCompletedRequestId = null
             profilePickerCompleted = false
         } else {
             navigateFromHeader(AppRoute.Profile.route)
@@ -445,27 +454,43 @@ fun AppNavigation(
     var lastXtreamProfileId by remember { mutableStateOf<String?>(null) }
     var lastM3uProfileSignature by remember { mutableStateOf<String?>(null) }
     var lastM3uProfileId by remember { mutableStateOf<String?>(null) }
-    val activateProfileForSession: (String) -> Unit = activateProfileForSession@{ profileId ->
-        if (container.accountManager.activeProfileId.value == profileId) return@activateProfileForSession
+    val startProfileActivation: (String) -> Job? = startProfileActivation@{ profileId ->
+        if (container.accountManager.activeProfileId.value == profileId) {
+            return@startProfileActivation null
+        }
+        profileSwitchSyncJob?.cancel()
         container.accountManager.activateProfile(profileId)
         container.xtreamRepository.clearCaches()
         container.homeContentRepository.invalidateTrending()
         scope.launch {
-            container.catalogRepository.clearCatalogForProfileSwitch()
-            val target = container.accountManager.profiles.value.firstOrNull { it.id == profileId }
-            val hasLocalCatalog = container.catalogRepository.hasLocalCatalogForActiveProfile()
-            val currentSettings = container.settingsRepository.settings.first()
-            val lastSuccessfulSync = container.syncStateDao.get(profileId)?.lastSync ?: target?.lastSyncAt
-            if (target != null && SyncFrequencyPolicy.isSynchronizationDue(
-                    value = currentSettings.syncFrequency,
-                    lastSyncAt = lastSuccessfulSync,
-                    hasLocalCatalog = hasLocalCatalog,
-                    allowRunOnStartup = false,
-                )
-            ) {
-                container.catalogRepository.synchronize(profileId)
+            try {
+                container.catalogRepository.clearCatalogForProfileSwitch()
+                if (container.accountManager.activeProfileId.value != profileId) return@launch
+                val target = container.accountManager.profiles.value.firstOrNull { it.id == profileId }
+                val hasLocalCatalog = container.catalogRepository.hasLocalCatalogForActiveProfile()
+                val currentSettings = container.settingsRepository.settings.first()
+                val lastSuccessfulSync = container.syncStateDao.get(profileId)?.lastSync ?: target?.lastSyncAt
+                if (
+                    target != null &&
+                    container.accountManager.activeProfileId.value == profileId &&
+                    SyncFrequencyPolicy.isSynchronizationDue(
+                        value = currentSettings.syncFrequency,
+                        lastSyncAt = lastSuccessfulSync,
+                        hasLocalCatalog = hasLocalCatalog,
+                        allowRunOnStartup = false,
+                    )
+                ) {
+                    container.catalogRepository.synchronize(profileId)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                Log.w("SVProfileSwitch", "Profile activation failed for $profileId", error)
             }
-        }
+        }.also { profileSwitchSyncJob = it }
+    }
+    val activateProfileForSession: (String) -> Unit = { profileId ->
+        startProfileActivation(profileId)
     }
     LaunchedEffect(activationState.activationType, xtreamAccountSignature) {
         if (activationState.activationType == "trial_pending_xtream" && xtreamAccounts.isNotEmpty()) {
@@ -1062,8 +1087,15 @@ fun AppNavigation(
                             popUpTo("episode_player/{episodeId}") { inclusive = true }
                         }
                     },
+                    onOpenSeriesDetails = { seriesId ->
+                        seriesReturnFocusId = seriesId
+                        episodeReturnFocusSeriesId = null
+                        navController.navigate("series_detail/$seriesId") {
+                            popUpTo("episode_player/{episodeId}") { inclusive = true }
+                        }
+                    },
                     strings = strings,
-                    )
+                )
             }
         }
         composable("series_detail/{seriesId}") { entry ->
@@ -1124,8 +1156,18 @@ fun AppNavigation(
     }
 
     if (showProfilePicker) {
+        val homeReadyRequestId = profileSelectionRequest
+            ?.takeIf { request ->
+                canCompleteProfileSelection(
+                    request = request,
+                    completedRequestId = profileActivationCompletedRequestId,
+                    activeProfileId = activeProfileId,
+                    homeReadyProfileId = homeReadyProfileId,
+                )
+            }
+            ?.requestId
         BackHandler {
-            if (profileSelectionLoadingId == null) {
+            if (profileSelectionRequest == null) {
                 showExitConfirmation = true
             }
         }
@@ -1133,13 +1175,25 @@ fun AppNavigation(
             profiles = configuredPickerProfiles,
             activeProfileId = activeProfileId,
             multiProfileAccess = multiProfileGate,
-            selectionLoadingProfileId = profileSelectionLoadingId,
-            homeReadyProfileId = homeReadyProfileId,
+            selectionRequestId = profileSelectionRequest?.requestId,
+            selectionLoadingProfileId = profileSelectionRequest?.profileId,
+            homeReadyRequestId = homeReadyRequestId,
             homeProfileAvatarBounds = homeProfileAvatarBounds,
-            onSelectionTransitionFinished = { profileId ->
-                if (profileSelectionLoadingId == profileId) {
+            onSelectionTransitionFinished = { requestId, profileId ->
+                val request = profileSelectionRequest
+                if (
+                    request?.requestId == requestId &&
+                    request.profileId == profileId &&
+                    canCompleteProfileSelection(
+                        request = request,
+                        completedRequestId = profileActivationCompletedRequestId,
+                        activeProfileId = activeProfileId,
+                        homeReadyProfileId = homeReadyProfileId,
+                    )
+                ) {
                     profilePickerCompleted = true
-                    profileSelectionLoadingId = null
+                    profileSelectionRequest = null
+                    profileActivationCompletedRequestId = null
                 }
             },
             onLockedFeature = {
@@ -1149,12 +1203,37 @@ fun AppNavigation(
             },
             onVerifyPin = container.settingsRepository::verifyParentalPin,
             onSelectProfile = { profileId ->
-                if (profileSelectionLoadingId == null) {
-                    profileSelectionLoadingId = profileId
+                if (profileSelectionRequest == null) {
+                    val request = ProfileSelectionRequest(
+                        requestId = ++profileSelectionRequestCounter,
+                        profileId = profileId,
+                    )
+                    profileSelectionRequest = request
+                    profileActivationCompletedRequestId = null
+                    if (activeProfileId != profileId) {
+                        homeReadyProfileId = null
+                    }
                     runCatching {
-                        activateProfileForSession(profileId)
+                        startProfileActivation(profileId)
+                    }.onSuccess { activationJob ->
+                        if (activationJob == null) {
+                            profileActivationCompletedRequestId = request.requestId
+                        } else {
+                            scope.launch {
+                                activationJob.join()
+                                if (
+                                    profileSelectionRequest == request &&
+                                    container.accountManager.activeProfileId.value == request.profileId
+                                ) {
+                                    profileActivationCompletedRequestId = request.requestId
+                                }
+                            }
+                        }
                     }.onFailure {
-                        profileSelectionLoadingId = null
+                        if (profileSelectionRequest == request) {
+                            profileSelectionRequest = null
+                            profileActivationCompletedRequestId = null
+                        }
                     }
                 }
             },
@@ -1179,7 +1258,8 @@ fun AppNavigation(
             onDismiss = { showExitConfirmation = false },
             onChangeProfile = {
                 showExitConfirmation = false
-                profileSelectionLoadingId = null
+                profileSelectionRequest = null
+                profileActivationCompletedRequestId = null
                 profilePickerCompleted = false
             },
             onExit = { activity?.finishAffinity() },

@@ -287,6 +287,30 @@ internal fun resolveLiveRemoteAction(
     }
 }
 
+internal enum class PlayerBackAction {
+    Ignore,
+    CloseEpisodes,
+    CloseBrightness,
+    DismissNextEpisode,
+    CloseSecondaryMenu,
+    ExitPlayer,
+}
+
+internal fun resolvePlayerBackAction(
+    adGateActive: Boolean,
+    episodesPanelVisible: Boolean,
+    brightnessMode: Boolean,
+    nextEpisodeCountdownVisible: Boolean,
+    secondaryMenuOpen: Boolean,
+): PlayerBackAction = when {
+    adGateActive -> PlayerBackAction.Ignore
+    episodesPanelVisible -> PlayerBackAction.CloseEpisodes
+    brightnessMode -> PlayerBackAction.CloseBrightness
+    nextEpisodeCountdownVisible -> PlayerBackAction.DismissNextEpisode
+    secondaryMenuOpen -> PlayerBackAction.CloseSecondaryMenu
+    else -> PlayerBackAction.ExitPlayer
+}
+
 private data class SubtitleTrackOption(
     val id: String,
     val label: String,
@@ -297,6 +321,7 @@ private data class SubtitleTrackOption(
 class FullScreenPlayerViewModel(
     private val contentId: Int,
     private val kind: FullScreenContentKind,
+    private val sessionProfileId: String,
     private val xtreamRepository: XtreamRepository,
     private val epgRepository: EpgRepository,
     private val epgUrlProvider: () -> String,
@@ -314,9 +339,21 @@ class FullScreenPlayerViewModel(
 
     init {
         viewModelScope.launch {
-            val stored = userContentRepository.getProgress(kind.storageType(), contentId)
+            val stored = userContentRepository.getProgress(
+                profileId = sessionProfileId,
+                contentType = kind.storageType(),
+                contentId = contentId,
+            )
             if (kind != FullScreenContentKind.Live && stored != null && stored.positionMs > 0L) {
                 _uiState.value = _uiState.value.copy(resumePositionMs = stored.positionMs)
+            }
+            if (
+                kind == FullScreenContentKind.Episode &&
+                catalogRepository.getEpisodeById(contentId) == null
+            ) {
+                stored?.parentContentId
+                    ?.toIntOrNull()
+                    ?.let { seriesId -> catalogRepository.getOrFetchSeriesEpisodes(seriesId) }
             }
             val localPlayback = buildPlaybackRequest(kind.playbackKind(), contentId.toString())
             if (localPlayback != null) {
@@ -352,6 +389,7 @@ class FullScreenPlayerViewModel(
         }
         saveProgressMutex.withLock {
             userContentRepository.savePlaybackProgress(
+                profileId = sessionProfileId,
                 contentType = kind.storageType(),
                 contentId = contentId,
                 positionMs = positionMs,
@@ -457,7 +495,7 @@ class FullScreenPlayerViewModel(
             }
             FullScreenContentKind.Episode -> {
                 val episode = catalogRepository.getEpisodeById(contentId) ?: return
-                val episodes = catalogRepository.getSeriesEpisodes(episode.seriesId)
+                val episodes = catalogRepository.getOrFetchSeriesEpisodes(episode.seriesId)
                     .sortedWith(compareBy<Episode> { it.seasonNumber }.thenBy { it.episodeNumber })
                 val currentIndex = episodes.indexOfFirst { it.episodeId == episode.episodeId }
                 val previous = episodes.getOrNull(currentIndex - 1)
@@ -608,6 +646,7 @@ fun FullScreenPlayerRoute(
     onPlayLive: (Int) -> Unit = {},
     onPlayMovie: (Int) -> Unit = {},
     onPlayEpisode: (Int) -> Unit = {},
+    onOpenSeriesDetails: (Int) -> Unit = {},
     recorderAccess: PremiumFeatureGateResult? = null,
     strings: SmartVisionStrings? = null,
     onRecorderLocked: () -> Unit = {},
@@ -619,6 +658,7 @@ fun FullScreenPlayerRoute(
             FullScreenPlayerViewModel(
                 contentId = streamId,
                 kind = kind,
+                sessionProfileId = container.accountManager.activeProfileIdOrDefault(),
                 xtreamRepository = container.xtreamRepository,
                 epgRepository = container.epgRepository,
                 epgUrlProvider = { container.accountManager.epgUrl.value },
@@ -651,6 +691,7 @@ fun FullScreenPlayerRoute(
         onPlayLive = onPlayLive,
         onPlayMovie = onPlayMovie,
         onPlayEpisode = onPlayEpisode,
+        onOpenSeriesDetails = onOpenSeriesDetails,
         onProgressSnapshot = viewModel::saveProgress,
         recorderAccess = recorderAccess,
         strings = strings,
@@ -747,6 +788,7 @@ private fun FullScreenPlayerScreen(
     onPlayLive: (Int) -> Unit = {},
     onPlayMovie: (Int) -> Unit = {},
     onPlayEpisode: (Int) -> Unit = {},
+    onOpenSeriesDetails: (Int) -> Unit = {},
     onProgressSnapshot: suspend (positionMs: Long, durationMs: Long) -> Boolean,
     recorderAccess: PremiumFeatureGateResult? = null,
     strings: SmartVisionStrings? = null,
@@ -792,7 +834,7 @@ private fun FullScreenPlayerScreen(
     var episodesPanelVisible by remember(playback.streamId) { mutableStateOf(false) }
     var brightnessMode by remember(playback.streamId) { mutableStateOf(false) }
     var brightnessValue by remember(playback.streamId) { mutableStateOf(50f) }
-    var vodFocusedControlIndex by remember(playback.streamId) { mutableIntStateOf(3) }
+    var vodFocusedControlIndex by remember(playback.streamId) { mutableIntStateOf(VodControlPlayPause) }
     var vodProgressFocused by remember(playback.streamId) { mutableStateOf(false) }
     var liveFocusedControlIndex by remember(playback.streamId) { mutableIntStateOf(3) }
     var liveProgressFocused by remember(playback.streamId) { mutableStateOf(false) }
@@ -860,7 +902,7 @@ private fun FullScreenPlayerScreen(
                 playback.contentType == UserContentType.Movie ||
                 playback.contentType == UserContentType.Episode
             ) {
-                vodFocusedControlIndex = 3
+                vodFocusedControlIndex = VodControlPlayPause
                 vodProgressFocused = false
             } else if (playback.contentType == UserContentType.Live) {
                 liveFocusedControlIndex = 3
@@ -1038,7 +1080,10 @@ private fun FullScreenPlayerScreen(
         }
     }
 
-    fun exitPlayer(source: String) {
+    fun exitPlayer(
+        source: String,
+        destination: (() -> Unit)? = null,
+    ) {
         if (exiting) return
         exiting = true
         val snapshotPosition = player.currentPosition.coerceAtLeast(0L)
@@ -1106,15 +1151,30 @@ private fun FullScreenPlayerScreen(
                 }
             }
             releasePlayerBeforeNavigation(source)
-            reportPlayerExitStep("before_onBack", "source=$source")
-            onBackWithCurrentContent(playback.streamId)
+            reportPlayerExitStep(
+                step = if (destination == null) "before_onBack" else "before_destination",
+                extra = "source=$source",
+            )
+            if (destination == null) {
+                onBackWithCurrentContent(playback.streamId)
+            } else {
+                destination()
+            }
         }
     }
 
     fun handleBack(source: String) {
-        when {
-            adGateActive -> Unit
-            episodesPanelVisible -> {
+        when (
+            resolvePlayerBackAction(
+                adGateActive = adGateActive,
+                episodesPanelVisible = episodesPanelVisible,
+                brightnessMode = brightnessMode,
+                nextEpisodeCountdownVisible = nextEpisodeCountdown != null,
+                secondaryMenuOpen = activeMenu != PlayerOverlayMenu.None,
+            )
+        ) {
+            PlayerBackAction.Ignore -> Unit
+            PlayerBackAction.CloseEpisodes -> {
                 episodesPanelVisible = false
                 overlayVisible = true
                 focusPlayWhenOverlayShows = false
@@ -1124,7 +1184,7 @@ private fun FullScreenPlayerScreen(
                     runCatching { episodesButtonFocusRequester.requestFocus() }
                 }
             }
-            brightnessMode -> {
+            PlayerBackAction.CloseBrightness -> {
                 brightnessMode = false
                 showOverlay(requestPlayFocus = false)
                 coroutineScope.launch {
@@ -1132,12 +1192,12 @@ private fun FullScreenPlayerScreen(
                     runCatching { brightnessButtonFocusRequester.requestFocus() }
                 }
             }
-            nextEpisodeCountdown != null -> {
+            PlayerBackAction.DismissNextEpisode -> {
                 nextEpisodeCountdown = null
                 nextEpisodeDismissed = true
                 showOverlay(requestPlayFocus = true)
             }
-            activeMenu == PlayerOverlayMenu.Epg || activeMenu == PlayerOverlayMenu.Settings -> {
+            PlayerBackAction.CloseSecondaryMenu -> {
                 activeMenu = PlayerOverlayMenu.None
                 showOverlay(requestPlayFocus = false)
                 coroutineScope.launch {
@@ -1145,14 +1205,7 @@ private fun FullScreenPlayerScreen(
                     runCatching { settingsButtonFocusRequester.requestFocus() }
                 }
             }
-            playback.contentType == UserContentType.Live && overlayVisible -> {
-                overlayVisible = false
-                brightnessMode = false
-                liveProgressFocused = false
-                focusPlayWhenOverlayShows = false
-                playerView.post { runCatching { playerView.requestFocus() } }
-            }
-            else -> exitPlayer(source)
+            PlayerBackAction.ExitPlayer -> exitPlayer(source)
         }
     }
 
@@ -1323,7 +1376,7 @@ private fun FullScreenPlayerScreen(
         if (!isVod || adGateActive || episodesPanelVisible || activeMenu != PlayerOverlayMenu.None) return false
         if (!overlayVisible) {
             if (keyCode in overlayKeyCodes) {
-                vodFocusedControlIndex = 3
+                vodFocusedControlIndex = VodControlPlayPause
                 showOverlay(requestPlayFocus = true)
                 return true
             }
@@ -1349,7 +1402,7 @@ private fun FullScreenPlayerScreen(
                 AndroidKeyEvent.KEYCODE_ENTER,
                 -> {
                     brightnessMode = false
-                    vodFocusedControlIndex = 0
+                    vodFocusedControlIndex = VodControlBrightness
                     showOverlay(requestPlayFocus = false)
                     true
                 }
@@ -1372,16 +1425,16 @@ private fun FullScreenPlayerScreen(
             }
         }
         fun moveVodFocus(direction: Int) {
-            val enabled = buildList {
-                add(0)
-                if (playback.previousItem != null) add(1)
-                if (player.isCurrentMediaItemSeekable) add(2)
-                add(3)
-                if (player.isCurrentMediaItemSeekable) add(4)
-                if (playback.nextItem != null) add(5)
-                add(6)
-            }
-            val current = enabled.indexOf(vodFocusedControlIndex).takeIf { it >= 0 } ?: enabled.indexOf(3)
+            val enabled = vodEnabledControlOrder(
+                hasPrevious = playback.previousItem != null,
+                canSeek = player.isCurrentMediaItemSeekable,
+                hasNext = playback.nextItem != null,
+                showSeriesDetails = playback.contentType == UserContentType.Episode &&
+                    playback.parentContentId != null,
+            )
+            val current = enabled.indexOf(vodFocusedControlIndex)
+                .takeIf { it >= 0 }
+                ?: enabled.indexOf(VodControlPlayPause)
             vodFocusedControlIndex = enabled[(current + direction).coerceIn(0, enabled.lastIndex)]
         }
         return when (keyCode) {
@@ -1411,14 +1464,19 @@ private fun FullScreenPlayerScreen(
             -> {
                 if (repeatCount > 0) return true
                 when (vodFocusedControlIndex) {
-                    0 -> brightnessMode = true
-                    1 -> playAdjacent(playback.previousItem)
-                    2 -> seekVodBy(-10_000L)
-                    3 -> if (player.isPlaying) player.pause() else player.play()
-                    4 -> seekVodBy(10_000L)
-                    5 -> playAdjacent(playback.nextItem)
-                    6 -> exitPlayer("vod_exit_fullscreen_key")
-                    7 -> restartFromBeginning()
+                    VodControlBrightness -> brightnessMode = true
+                    VodControlPrevious -> playAdjacent(playback.previousItem)
+                    VodControlSeekBack -> seekVodBy(-10_000L)
+                    VodControlPlayPause -> if (player.isPlaying) player.pause() else player.play()
+                    VodControlSeekForward -> seekVodBy(10_000L)
+                    VodControlNext -> playAdjacent(playback.nextItem)
+                    VodControlExit -> exitPlayer("vod_exit_fullscreen_key")
+                    VodControlRestart -> restartFromBeginning()
+                    VodControlSeriesDetails -> playback.parentContentId?.let { seriesId ->
+                        exitPlayer("vod_series_details_key") {
+                            onOpenSeriesDetails(seriesId)
+                        }
+                    }
                 }
                 if (!adjacentNavigationPending) showOverlay(requestPlayFocus = false)
                 true
@@ -1989,6 +2047,9 @@ private fun FullScreenPlayerScreen(
                     canSeek = player.isCurrentMediaItemSeekable,
                     hasPrevious = playback.previousItem != null,
                     hasNext = playback.nextItem != null,
+                    showSeriesDetails = playback.contentType == UserContentType.Episode &&
+                        playback.parentContentId != null,
+                    seriesDetailsLabel = strings?.playerSeriesDetailsLabel ?: "Series details",
                     focusedControlIndex = vodFocusedControlIndex,
                     progressFocused = vodProgressFocused,
                     onFocusedControlChange = {
@@ -2036,6 +2097,13 @@ private fun FullScreenPlayerScreen(
                         showOverlay()
                     },
                     onPlayNext = { playAdjacent(playback.nextItem) },
+                    onOpenSeriesDetails = {
+                        playback.parentContentId?.let { seriesId ->
+                            exitPlayer("vod_series_details_button") {
+                                onOpenSeriesDetails(seriesId)
+                            }
+                        }
+                    },
                     onExitFullscreen = { exitPlayer("vod_exit_fullscreen_button") },
                 )
             } else {

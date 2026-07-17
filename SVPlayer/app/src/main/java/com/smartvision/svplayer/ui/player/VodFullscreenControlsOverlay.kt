@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
@@ -57,6 +58,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import java.util.Locale
 
@@ -64,6 +66,33 @@ internal val VodProgressStart = Color(0xFF009DFF)
 internal val VodProgressEnd = Color(0xFF12C8FF)
 internal val VodTrackColor = Color(0xFF393C40).copy(alpha = 0.72f)
 internal val VodFocusBlue = Color(0xFF1687FF)
+
+internal const val VodControlBrightness = 0
+internal const val VodControlPrevious = 1
+internal const val VodControlSeekBack = 2
+internal const val VodControlPlayPause = 3
+internal const val VodControlSeekForward = 4
+internal const val VodControlNext = 5
+internal const val VodControlExit = 6
+internal const val VodControlRestart = 7
+internal const val VodControlSeriesDetails = 8
+
+internal fun vodEnabledControlOrder(
+    hasPrevious: Boolean,
+    canSeek: Boolean,
+    hasNext: Boolean,
+    showSeriesDetails: Boolean,
+): List<Int> = buildList {
+    add(VodControlBrightness)
+    add(VodControlRestart)
+    if (hasPrevious) add(VodControlPrevious)
+    if (canSeek) add(VodControlSeekBack)
+    add(VodControlPlayPause)
+    if (canSeek) add(VodControlSeekForward)
+    if (hasNext) add(VodControlNext)
+    if (showSeriesDetails) add(VodControlSeriesDetails)
+    add(VodControlExit)
+}
 
 internal fun referencePlayerGradient(): Brush = Brush.verticalGradient(
     0.00f to Color.Transparent,
@@ -89,6 +118,8 @@ internal fun VodFullscreenControlsOverlay(
     canSeek: Boolean,
     hasPrevious: Boolean,
     hasNext: Boolean,
+    showSeriesDetails: Boolean,
+    seriesDetailsLabel: String,
     focusedControlIndex: Int,
     progressFocused: Boolean,
     onFocusedControlChange: (Int) -> Unit,
@@ -108,6 +139,7 @@ internal fun VodFullscreenControlsOverlay(
     onRestart: () -> Unit,
     onSeekForward: () -> Unit,
     onPlayNext: () -> Unit,
+    onOpenSeriesDetails: () -> Unit,
     onExitFullscreen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -116,6 +148,7 @@ internal fun VodFullscreenControlsOverlay(
     val seekBackFocusRequester = remember { FocusRequester() }
     val seekForwardFocusRequester = remember { FocusRequester() }
     val nextFocusRequester = remember { FocusRequester() }
+    val seriesDetailsFocusRequester = remember { FocusRequester() }
     val exitFocusRequester = remember { FocusRequester() }
 
     BoxWithConstraints(
@@ -229,8 +262,8 @@ internal fun VodFullscreenControlsOverlay(
                 hitSize = controlHitSize,
                 iconSize = normalIconSize,
                 modifier = Modifier.offset(x = maxWidth * 0.0545f, y = controlsTop),
-                forceFocused = focusedControlIndex == 0,
-                onFocused = { onFocusedControlChange(0) },
+                forceFocused = focusedControlIndex == VodControlBrightness,
+                onFocused = { onFocusedControlChange(VodControlBrightness) },
             )
         }
 
@@ -244,8 +277,8 @@ internal fun VodFullscreenControlsOverlay(
             onClick = onRestart,
             hitSize = controlHitSize,
             iconSize = normalIconSize,
-            forceFocused = focusedControlIndex == 7,
-            onFocused = { onFocusedControlChange(7) },
+            forceFocused = focusedControlIndex == VodControlRestart,
+            onFocused = { onFocusedControlChange(VodControlRestart) },
             modifier = Modifier.offset(
                 x = maxWidth * 0.263f - controlHitSize / 2f,
                 y = controlsTop,
@@ -263,8 +296,8 @@ internal fun VodFullscreenControlsOverlay(
             enabled = hasPrevious,
             hitSize = controlHitSize,
             iconSize = normalIconSize,
-            forceFocused = focusedControlIndex == 1,
-            onFocused = { onFocusedControlChange(1) },
+            forceFocused = focusedControlIndex == VodControlPrevious,
+            onFocused = { onFocusedControlChange(VodControlPrevious) },
             modifier = Modifier.offset(
                 x = maxWidth * 0.338f - controlHitSize / 2f,
                 y = controlsTop,
@@ -280,8 +313,8 @@ internal fun VodFullscreenControlsOverlay(
             onClick = onSeekBack,
             hitSize = controlHitSize,
             iconSize = normalIconSize,
-            forceFocused = focusedControlIndex == 2,
-            onFocused = { onFocusedControlChange(2) },
+            forceFocused = focusedControlIndex == VodControlSeekBack,
+            onFocused = { onFocusedControlChange(VodControlSeekBack) },
             modifier = Modifier.offset(
                 x = maxWidth * 0.413f - controlHitSize / 2f,
                 y = controlsTop,
@@ -298,8 +331,8 @@ internal fun VodFullscreenControlsOverlay(
             hitSize = controlHitSize,
             iconSize = playIconSize,
             prominent = true,
-            forceFocused = focusedControlIndex == 3,
-            onFocused = { onFocusedControlChange(3) },
+            forceFocused = focusedControlIndex == VodControlPlayPause,
+            onFocused = { onFocusedControlChange(VodControlPlayPause) },
             modifier = Modifier.offset(
                 x = maxWidth * 0.498f - controlHitSize / 2f,
                 y = controlsTop,
@@ -316,8 +349,8 @@ internal fun VodFullscreenControlsOverlay(
             enabled = canSeek,
             hitSize = controlHitSize,
             iconSize = normalIconSize,
-            forceFocused = focusedControlIndex == 4,
-            onFocused = { onFocusedControlChange(4) },
+            forceFocused = focusedControlIndex == VodControlSeekForward,
+            onFocused = { onFocusedControlChange(VodControlSeekForward) },
             modifier = Modifier.offset(
                 x = maxWidth * 0.583f - controlHitSize / 2f,
                 y = controlsTop,
@@ -328,33 +361,54 @@ internal fun VodFullscreenControlsOverlay(
             contentDescription = "Next",
             focusRequester = nextFocusRequester,
             leftFocusRequester = seekForwardFocusRequester,
-            rightFocusRequester = exitFocusRequester,
+            rightFocusRequester = if (showSeriesDetails) seriesDetailsFocusRequester else exitFocusRequester,
             upFocusRequester = progressFocusRequester,
             onClick = onPlayNext,
             enabled = hasNext,
             hitSize = controlHitSize,
             iconSize = normalIconSize,
-            forceFocused = focusedControlIndex == 5,
-            onFocused = { onFocusedControlChange(5) },
+            forceFocused = focusedControlIndex == VodControlNext,
+            onFocused = { onFocusedControlChange(VodControlNext) },
             modifier = Modifier.offset(
                 x = maxWidth * 0.652f - controlHitSize / 2f,
                 y = controlsTop,
             ),
         )
 
+        if (showSeriesDetails) {
+            VodFocusIconButton(
+                icon = Icons.Default.Info,
+                contentDescription = seriesDetailsLabel,
+                focusRequester = seriesDetailsFocusRequester,
+                leftFocusRequester = if (hasNext) nextFocusRequester else seekForwardFocusRequester,
+                rightFocusRequester = exitFocusRequester,
+                upFocusRequester = progressFocusRequester,
+                onClick = onOpenSeriesDetails,
+                hitSize = controlHitSize,
+                iconSize = normalIconSize,
+                modifier = Modifier.offset(
+                    x = maxWidth * 0.727f - controlHitSize / 2f,
+                    y = controlsTop,
+                ),
+                forceFocused = focusedControlIndex == VodControlSeriesDetails,
+                onFocused = { onFocusedControlChange(VodControlSeriesDetails) },
+                showFocusedLabel = true,
+            )
+        }
+
         VodFocusIconButton(
             icon = Icons.Default.FullscreenExit,
             contentDescription = "Exit fullscreen",
             focusRequester = exitFocusRequester,
-            leftFocusRequester = nextFocusRequester,
+            leftFocusRequester = if (showSeriesDetails) seriesDetailsFocusRequester else nextFocusRequester,
             rightFocusRequester = brightnessFocusRequester,
             upFocusRequester = progressFocusRequester,
             onClick = onExitFullscreen,
             hitSize = controlHitSize,
             iconSize = normalIconSize,
             modifier = Modifier.offset(x = maxWidth * 0.9035f, y = controlsTop),
-            forceFocused = focusedControlIndex == 6,
-            onFocused = { onFocusedControlChange(6) },
+            forceFocused = focusedControlIndex == VodControlExit,
+            onFocused = { onFocusedControlChange(VodControlExit) },
         )
 
         errorText?.let { message ->
@@ -510,6 +564,7 @@ internal fun VodFocusIconButton(
     prominent: Boolean = false,
     enabled: Boolean = true,
     forceFocused: Boolean = false,
+    showFocusedLabel: Boolean = false,
     onFocused: () -> Unit = {},
 ) {
     var focused by remember { mutableStateOf(false) }
@@ -541,6 +596,20 @@ internal fun VodFocusIconButton(
         val displayFocused = enabled && (focused || forceFocused)
         if (displayFocused) {
             VodFocusHalo(hitSize * 1.35f)
+            if (showFocusedLabel) {
+                Text(
+                    text = contentDescription,
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = (-24).dp)
+                        .width(hitSize * 3.4f),
+                )
+            }
         }
         Icon(
             imageVector = icon,

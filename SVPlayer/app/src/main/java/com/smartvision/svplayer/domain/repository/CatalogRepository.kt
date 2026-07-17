@@ -84,6 +84,7 @@ interface CatalogRepository {
     suspend fun synchronize(profileId: String? = null): Result<Unit>
     suspend fun toggleFavorite(contentType: String, contentId: String)
     suspend fun getSeriesEpisodes(seriesId: Int): List<Episode>
+    suspend fun getOrFetchSeriesEpisodes(seriesId: Int): List<Episode>
     suspend fun getEpisodeById(episodeId: Int): Episode?
     suspend fun buildPlaybackRequest(kind: PlaybackKind, id: String): PlaybackRequest?
     suspend fun savePlaybackProgress(kind: PlaybackKind, id: String, positionMs: Long, durationMs: Long)

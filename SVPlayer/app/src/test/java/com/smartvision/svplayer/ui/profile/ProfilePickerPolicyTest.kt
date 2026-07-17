@@ -7,6 +7,7 @@ import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.config.ProfileType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ProfilePickerPolicyTest {
@@ -42,6 +43,16 @@ class ProfilePickerPolicyTest {
         val admin = profile("admin", "Gestion", ProfileType.ADMIN, 2L)
         assertEquals("admin", initialProfilePickerId(listOf(normal, admin), "missing"))
         assertEquals("normal", initialProfilePickerId(listOf(normal), "missing"))
+    }
+
+    @Test
+    fun selectionCompletesOnlyForTheMatchingRequestAndReadyProfile() {
+        val request = ProfileSelectionRequest(requestId = 42L, profileId = "walid")
+
+        assertTrue(canCompleteProfileSelection(request, 42L, "walid", "walid"))
+        assertFalse(canCompleteProfileSelection(request, 41L, "walid", "walid"))
+        assertFalse(canCompleteProfileSelection(request, 42L, "nouran", "walid"))
+        assertFalse(canCompleteProfileSelection(request, 42L, "walid", "nouran"))
     }
 
     private fun profile(

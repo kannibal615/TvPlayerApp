@@ -143,6 +143,8 @@ fun HomeScreen(
     val homeContentReady =
         state.profileId.isNotBlank() &&
             state.profileId == activeProfileId &&
+            !state.syncInProgress &&
+            state.loadedCatalogRevision == state.catalogRevision &&
             !state.continueWatchingLoading &&
             !state.trendingLoading &&
             !state.catalogCountsLoading
@@ -598,11 +600,6 @@ fun HomeScreen(
                         container.xtreamRepository.clearCaches()
                         container.catalogRepository.invalidateLocalCatalogCache()
                         container.synchronizeCatalog().getOrThrow()
-                        viewModel.refreshCatalogCounts()
-                        if (request.source == PlaylistSource.Xtream) {
-                            viewModel.loadSavedTrendingMovies(forceRefresh = true)
-                            viewModel.loadSavedTrendingSeries(forceRefresh = true)
-                        }
                     } finally {
                         statusJob.cancel()
                     }

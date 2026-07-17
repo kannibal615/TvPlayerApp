@@ -19,17 +19,23 @@ import com.smartvision.svplayer.data.repository.UserContentType
 import com.smartvision.svplayer.data.tmdb.TmdbMatcher
 import com.smartvision.svplayer.domain.model.PlaybackKind
 import com.smartvision.svplayer.domain.model.PlayerSettings
+import com.smartvision.svplayer.domain.model.SyncStatus
 import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.CatalogContentCounts
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -47,16 +53,46 @@ data class HomeUiState(
     val continueWatchingLoading: Boolean = false,
     val trendingLoading: Boolean = false,
     val catalogCountsLoading: Boolean = false,
+    val catalogRevision: Long = 0L,
+    val loadedCatalogRevision: Long = -1L,
+    val syncInProgress: Boolean = false,
 )
 
 private data class HomeLoadingState(
     val profileId: String,
+    val catalogRevision: Long,
+    val loadedCatalogRevision: Long,
+    val syncInProgress: Boolean,
     val continueWatching: Boolean,
     val trending: Boolean,
     val catalogCounts: CatalogContentCounts,
     val catalogCountsLoading: Boolean,
 )
 
+private data class HomeLoadGate(
+    val profileId: String,
+    val catalogRevision: Long,
+    val loadedCatalogRevision: Long = -1L,
+    val syncInProgress: Boolean = false,
+)
+
+private data class ScopedHomeItems<T>(
+    val token: HomeLoadToken,
+    val items: List<T>,
+)
+
+private data class ScopedCatalogCounts(
+    val token: HomeLoadToken,
+    val counts: CatalogContentCounts,
+)
+
+private data class ContinueLoadInput(
+    val token: HomeLoadToken,
+    val progress: List<PlaybackProgressEntity>,
+    val settings: PlayerSettings,
+)
+
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class HomeViewModel(
     private val userContentRepository: UserContentRepository,
     private val catalogRepository: CatalogRepository,
@@ -71,24 +107,51 @@ class HomeViewModel(
         .orEmpty()
     private val continueWatchingColdStartAtMs = SystemClock.elapsedRealtime()
     private val initialProfileId = accountManager.activeProfileIdOrDefault()
+    private val initialCatalogRevision = catalogRepository.catalogRevision.value
+    private val initialToken = HomeLoadToken(initialProfileId, initialCatalogRevision)
     private val cachedTrending = homeContentRepository.getLastCachedTrendingSnapshot(initialProfileId)
-    private val trendingMovies = MutableStateFlow(cachedTrending?.movies.orEmpty())
-    private val trendingSeries = MutableStateFlow(cachedTrending?.series.orEmpty())
+    private val trendingMovies = MutableStateFlow(
+        ScopedHomeItems(initialToken, cachedTrending?.movies.orEmpty()),
+    )
+    private val trendingSeries = MutableStateFlow(
+        ScopedHomeItems(initialToken, cachedTrending?.series.orEmpty()),
+    )
     private val slides = MutableStateFlow(homeSlidesRepository.getCachedSlides().orEmpty())
     private val continueWatchingLoading = MutableStateFlow(cachedContinueWatching.isEmpty())
     private val trendingLoading = MutableStateFlow(cachedTrending == null)
-    private val catalogCounts = MutableStateFlow(CatalogContentCounts())
+    private val catalogCounts = MutableStateFlow(
+        ScopedCatalogCounts(initialToken, CatalogContentCounts()),
+    )
     private val catalogCountsLoading = MutableStateFlow(true)
-    private val contentProfileId = MutableStateFlow(initialProfileId)
+    private val loadGate = MutableStateFlow(
+        HomeLoadGate(
+            profileId = initialProfileId,
+            catalogRevision = initialCatalogRevision,
+            syncInProgress = catalogRepository.syncStatus.value is SyncStatus.Running,
+        ),
+    )
     private val loadingState = combine(
         continueWatchingLoading,
         trendingLoading,
         catalogCounts,
         catalogCountsLoading,
-        contentProfileId,
-    ) { continueLoading, trendLoading, counts, countsLoading, profileId ->
+        loadGate,
+    ) { continueLoading, trendLoading, scopedCounts, countsLoading, gate ->
+        val counts = scopedCounts
+            .takeIf {
+                shouldApplyHomeLoadResult(
+                    token = it.token,
+                    activeProfileId = gate.profileId,
+                    catalogRevision = gate.catalogRevision,
+                )
+            }
+            ?.counts
+            ?: CatalogContentCounts()
         HomeLoadingState(
-            profileId = profileId,
+            profileId = gate.profileId,
+            catalogRevision = gate.catalogRevision,
+            loadedCatalogRevision = gate.loadedCatalogRevision,
+            syncInProgress = gate.syncInProgress,
             continueWatching = continueLoading,
             trending = trendLoading,
             catalogCounts = counts,
@@ -97,42 +160,91 @@ class HomeViewModel(
     }
     private var trendingRefreshJob: Job? = null
     private var catalogCountsRefreshJob: Job? = null
-    private var catalogCountsRequestId: Int = 0
+    private var catalogCountsLoadedToken: HomeLoadToken? = null
+    private var trendingLoadedToken: HomeLoadToken? = null
     private val trendingPreviewPrepareJobs = mutableMapOf<String, Job>()
     private val trendingPreviewPrepareSemaphore = Semaphore(TrendingPreviewPrepareConcurrency)
-    private val continueWatching = combine(
-        userContentRepository.observeRecentProgress(limit = ContinueWatchingSnapshotLimit),
-        settingsRepository.settings,
-    ) { progress, settings ->
+    private val continueWatching = accountManager.activeProfileId
+        .map { accountManager.activeProfileIdOrDefault() }
+        .distinctUntilChanged()
+        .flatMapLatest { profileId ->
+            combine(
+                userContentRepository.observeRecentProgress(
+                    profileId = profileId,
+                    limit = ContinueWatchingSnapshotLimit,
+                ),
+                settingsRepository.settings,
+                catalogRepository.catalogRevision,
+            ) { progress, settings, revision ->
+                ContinueLoadInput(
+                    token = HomeLoadToken(profileId, revision),
+                    progress = progress,
+                    settings = settings,
+                )
+            }
+                .onStart {
+                    if (accountManager.activeProfileIdOrDefault() == profileId) {
+                        continueWatchingLoading.value = true
+                    }
+                }
+                .mapLatest { input ->
             // PERF_DIAG: measures why Continue watching can appear after Home is already visible.
             val startedAt = SystemClock.elapsedRealtime()
-            val recent = progress
+            ensureCurrent(input.token)
+            val recent = input.progress
                 .filter { it.positionMs > 5_000L }
                 .filterNot { HomeTrendingPolicy.containsAdultMarker(it.title, it.subtitle) }
-                .map { userContentRepository.enrichProgress(it) }
-                .filter { it.isAllowedByParentalControl(settings, catalogRepository) }
+                .mapNotNull { progress ->
+                    ensureCurrent(input.token)
+                    try {
+                        resolveContinueWatchingProgress(
+                            progress = progress,
+                            profileId = input.token.profileId,
+                            userContentRepository = userContentRepository,
+                            catalogRepository = catalogRepository,
+                            activeProfileId = accountManager::activeProfileIdOrDefault,
+                        )
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Throwable) {
+                        null
+                    }
+                }
+                .filter { it.isAllowedByParentalControl(input.settings, catalogRepository) }
                 .distinctBy(::historyGroupingKey)
                 .take(10)
             val items = recent.mapNotNull { item ->
+                ensureCurrent(input.token)
                 toContinueItemWithPreview(item, catalogRepository)
             }
             if (cachedContinueWatching.isEmpty()) {
                 awaitMinimumHomeLoading(continueWatchingColdStartAtMs)
             }
+            ensureCurrent(input.token)
             continueWatchingLoading.value = false
             PerformanceDiagnosticRecorder.recordDuration(
                 sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
                 event = "continue_watching_flow_mapped",
                 startedAtMs = startedAt,
                 fields = mapOf(
-                    "rawItems" to progress.size,
+                    "profileId" to input.token.profileId,
+                    "catalogRevision" to input.token.catalogRevision,
+                    "rawItems" to input.progress.size,
                     "recentItems" to recent.size,
                     "mappedItems" to items.size,
                     "previewReadyItems" to items.count { !it.previewUrl.isNullOrBlank() || !it.previewYoutubeKey.isNullOrBlank() },
                 ),
             )
-            items
+            ScopedHomeItems(input.token, items)
+        }.catch { error ->
+            if (error is CancellationException) throw error
+            val token = currentHomeLoadToken()
+            if (token.profileId == profileId) {
+                continueWatchingLoading.value = false
+                emit(ScopedHomeItems(token, emptyList()))
+            }
         }
+    }
 
     val uiState: StateFlow<HomeUiState> = combine(
         continueWatching,
@@ -140,7 +252,11 @@ class HomeViewModel(
         trendingSeries,
         slides,
         loadingState,
-    ) { continueItems, trendMovieItems, trendSeriesItems, homeSlides, loading ->
+    ) { scopedContinue, scopedTrendMovies, scopedTrendSeries, homeSlides, loading ->
+        val activeToken = HomeLoadToken(loading.profileId, loading.catalogRevision)
+        val continueItems = scopedContinue.items.takeIf { scopedContinue.token == activeToken }.orEmpty()
+        val trendMovieItems = scopedTrendMovies.items.takeIf { scopedTrendMovies.token == activeToken }.orEmpty()
+        val trendSeriesItems = scopedTrendSeries.items.takeIf { scopedTrendSeries.token == activeToken }.orEmpty()
         HomeUiState(
             profileId = loading.profileId,
             continueWatching = continueItems,
@@ -151,6 +267,9 @@ class HomeViewModel(
             continueWatchingLoading = loading.continueWatching,
             trendingLoading = loading.trending,
             catalogCountsLoading = loading.catalogCountsLoading,
+            catalogRevision = loading.catalogRevision,
+            loadedCatalogRevision = loading.loadedCatalogRevision,
+            syncInProgress = loading.syncInProgress,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -165,6 +284,9 @@ class HomeViewModel(
             continueWatchingLoading = cachedContinueWatching.isEmpty(),
             trendingLoading = cachedTrending == null,
             catalogCountsLoading = true,
+            catalogRevision = initialCatalogRevision,
+            loadedCatalogRevision = -1L,
+            syncInProgress = catalogRepository.syncStatus.value is SyncStatus.Running,
         ),
     )
 
@@ -175,14 +297,17 @@ class HomeViewModel(
             event = "home_viewmodel_init",
             fields = mapOf(
                 "cachedContinueWatching" to cachedContinueWatching.size,
-                "cachedTrendingMovies" to trendingMovies.value.size,
-                "cachedTrendingSeries" to trendingSeries.value.size,
+                "cachedTrendingMovies" to trendingMovies.value.items.size,
+                "cachedTrendingSeries" to trendingSeries.value.items.size,
                 "cachedSlides" to slides.value.size,
             ),
         )
+        observeProfileChanges()
+        observeCatalogRevision()
+        observeSyncStatus()
         refreshSlides()
         refreshCatalogCounts()
-        observeProfileChanges()
+        refreshTrending(forceRefresh = false)
     }
 
     private fun observeProfileChanges() {
@@ -192,19 +317,103 @@ class HomeViewModel(
                 val nextProfileId = accountManager.activeProfileIdOrDefault()
                 if (nextProfileId == previousProfileId) return@collect
                 previousProfileId = nextProfileId
-                trendingRefreshJob?.cancel()
-                catalogCountsRefreshJob?.cancel()
-                trendingPreviewPrepareJobs.values.forEach { job -> job.cancel() }
-                trendingPreviewPrepareJobs.clear()
-                contentProfileId.value = nextProfileId
-                continueWatchingLoading.value = true
-                trendingMovies.value = emptyList()
-                trendingSeries.value = emptyList()
-                catalogCounts.value = CatalogContentCounts()
-                catalogCountsLoading.value = true
-                trendingLoading.value = true
+                val token = HomeLoadToken(nextProfileId, catalogRepository.catalogRevision.value)
+                resetHomeData(token)
                 refreshCatalogCounts()
                 refreshTrending(forceRefresh = false)
+            }
+        }
+    }
+
+    private fun observeCatalogRevision() {
+        viewModelScope.launch {
+            var previousRevision = catalogRepository.catalogRevision.value
+            catalogRepository.catalogRevision.collect { revision ->
+                if (revision == previousRevision) return@collect
+                previousRevision = revision
+                val token = HomeLoadToken(accountManager.activeProfileIdOrDefault(), revision)
+                resetHomeData(token)
+                refreshCatalogCounts()
+                refreshTrending(forceRefresh = false)
+            }
+        }
+    }
+
+    private fun observeSyncStatus() {
+        viewModelScope.launch {
+            catalogRepository.syncStatus.collect { status ->
+                loadGate.update { gate ->
+                    gate.copy(syncInProgress = status is SyncStatus.Running)
+                }
+            }
+        }
+    }
+
+    private fun resetHomeData(token: HomeLoadToken) {
+        trendingRefreshJob?.cancel()
+        catalogCountsRefreshJob?.cancel()
+        trendingPreviewPrepareJobs.values.forEach(Job::cancel)
+        trendingPreviewPrepareJobs.clear()
+        catalogCountsLoadedToken = null
+        trendingLoadedToken = null
+        loadGate.value = HomeLoadGate(
+            profileId = token.profileId,
+            catalogRevision = token.catalogRevision,
+            loadedCatalogRevision = -1L,
+            syncInProgress = catalogRepository.syncStatus.value is SyncStatus.Running,
+        )
+        continueWatchingLoading.value = true
+        trendingMovies.value = ScopedHomeItems(token, emptyList())
+        trendingSeries.value = ScopedHomeItems(token, emptyList())
+        catalogCounts.value = ScopedCatalogCounts(token, CatalogContentCounts())
+        catalogCountsLoading.value = true
+        trendingLoading.value = true
+    }
+
+    private fun currentHomeLoadToken(): HomeLoadToken =
+        HomeLoadToken(
+            profileId = accountManager.activeProfileIdOrDefault(),
+            catalogRevision = catalogRepository.catalogRevision.value,
+        )
+
+    private fun isCurrent(token: HomeLoadToken): Boolean =
+        shouldApplyHomeLoadResult(
+            token = token,
+            activeProfileId = accountManager.activeProfileIdOrDefault(),
+            catalogRevision = catalogRepository.catalogRevision.value,
+        )
+
+    private fun ensureCurrent(token: HomeLoadToken) {
+        if (!isCurrent(token)) {
+            throw CancellationException("Home load superseded by another profile or catalog revision")
+        }
+    }
+
+    private fun markCatalogCountsLoaded(token: HomeLoadToken) {
+        if (!isCurrent(token)) return
+        catalogCountsLoadedToken = token
+        markCatalogRevisionLoadedIfComplete(token)
+    }
+
+    private fun markTrendingLoaded(token: HomeLoadToken) {
+        if (!isCurrent(token)) return
+        trendingLoadedToken = token
+        markCatalogRevisionLoadedIfComplete(token)
+    }
+
+    private fun markCatalogRevisionLoadedIfComplete(token: HomeLoadToken) {
+        if (
+            !isCurrent(token) ||
+            catalogCountsLoadedToken != token ||
+            trendingLoadedToken != token
+        ) {
+            return
+        }
+        loadGate.update { gate ->
+            if (gate.profileId == token.profileId && gate.catalogRevision == token.catalogRevision) {
+                gate.copy(loadedCatalogRevision = token.catalogRevision)
+            } else {
+                gate
             }
         }
     }
@@ -247,16 +456,40 @@ class HomeViewModel(
     }
 
     fun refreshCatalogCounts() {
-        val requestId = ++catalogCountsRequestId
+        val token = currentHomeLoadToken()
         catalogCountsRefreshJob?.cancel()
+        catalogCountsLoadedToken = null
+        loadGate.update { gate ->
+            if (gate.profileId == token.profileId && gate.catalogRevision == token.catalogRevision) {
+                gate.copy(loadedCatalogRevision = -1L)
+            } else {
+                gate
+            }
+        }
+        catalogCounts.value = ScopedCatalogCounts(token, CatalogContentCounts())
         catalogCountsLoading.value = true
         catalogCountsRefreshJob = viewModelScope.launch {
             try {
-                runCatching { catalogRepository.getCatalogContentCounts() }
-                    .onSuccess { counts -> catalogCounts.value = counts }
+                val counts = catalogRepository.getCatalogContentCounts()
+                if (isCurrent(token)) {
+                    catalogCounts.value = ScopedCatalogCounts(token, counts)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                PerformanceDiagnosticRecorder.record(
+                    sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
+                    event = "home_catalog_counts_refresh_failed",
+                    fields = mapOf(
+                        "profileId" to token.profileId,
+                        "catalogRevision" to token.catalogRevision,
+                        "error" to error.javaClass.simpleName,
+                    ),
+                )
             } finally {
-                if (requestId == catalogCountsRequestId) {
+                if (isCurrent(token)) {
                     catalogCountsLoading.value = false
+                    markCatalogCountsLoaded(token)
                 }
             }
         }
@@ -264,15 +497,25 @@ class HomeViewModel(
 
     fun refreshTrending(forceRefresh: Boolean = false) {
         if (!forceRefresh && trendingRefreshJob?.isActive == true) return
+        val token = currentHomeLoadToken()
+        trendingRefreshJob?.cancel()
+        trendingLoadedToken = null
+        loadGate.update { gate ->
+            if (gate.profileId == token.profileId && gate.catalogRevision == token.catalogRevision) {
+                gate.copy(loadedCatalogRevision = -1L)
+            } else {
+                gate
+            }
+        }
         trendingRefreshJob = viewModelScope.launch {
             // PERF_DIAG: tells whether trends are consumed from startup cache or recomputed on Home.
             val startedAt = SystemClock.elapsedRealtime()
             val cached = if (forceRefresh) null else homeContentRepository.getCachedTrending()
             trendingLoading.value = cached == null
             if (cached != null) {
-                trendingMovies.value = cached.movies
-                trendingSeries.value = cached.series
-                trendingLoading.value = false
+                ensureCurrent(token)
+                trendingMovies.value = ScopedHomeItems(token, cached.movies)
+                trendingSeries.value = ScopedHomeItems(token, cached.series)
                 PerformanceDiagnosticRecorder.recordDuration(
                     sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
                     event = "home_trending_cache_hit",
@@ -282,10 +525,12 @@ class HomeViewModel(
                         "series" to cached.series.size,
                     ),
                 )
-                return@launch
-            }
-            val snapshot = runCatching { homeContentRepository.refreshTrending(forceRefresh) }
-                .onFailure { error ->
+            } else {
+                val snapshot = try {
+                    homeContentRepository.refreshTrending(forceRefresh)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Throwable) {
                     PerformanceDiagnosticRecorder.recordDuration(
                         sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
                         event = "home_trending_refresh_failed",
@@ -293,46 +538,45 @@ class HomeViewModel(
                         fields = mapOf("forceRefresh" to forceRefresh),
                         error = error,
                     )
+                    null
                 }
-                .getOrNull()
-            if (snapshot == null) {
-                awaitMinimumHomeLoading(startedAt)
-                trendingLoading.value = false
-                return@launch
+                if (snapshot != null) {
+                    ensureCurrent(token)
+                    trendingMovies.value = ScopedHomeItems(token, snapshot.movies)
+                    trendingSeries.value = ScopedHomeItems(token, snapshot.series)
+                    PerformanceDiagnosticRecorder.recordDuration(
+                        sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
+                        event = "home_trending_refreshed",
+                        startedAtMs = startedAt,
+                        fields = mapOf(
+                            "movies" to snapshot.movies.size,
+                            "series" to snapshot.series.size,
+                            "forceRefresh" to forceRefresh,
+                        ),
+                    )
+                }
             }
-            trendingMovies.value = snapshot.movies
-            trendingSeries.value = snapshot.series
             awaitMinimumHomeLoading(startedAt)
+            ensureCurrent(token)
             trendingLoading.value = false
-            PerformanceDiagnosticRecorder.recordDuration(
-                sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
-                event = "home_trending_refreshed",
-                startedAtMs = startedAt,
-                fields = mapOf(
-                    "movies" to snapshot.movies.size,
-                    "series" to snapshot.series.size,
-                    "forceRefresh" to forceRefresh,
-                ),
-            )
+            markTrendingLoaded(token)
         }
     }
 
     suspend fun loadSavedTrendingMovies(forceRefresh: Boolean = false) {
-        trendingLoading.value = true
-        runCatching {
-            trendingMovies.value = homeContentRepository.refreshTrendingMovies(forceRefresh)
-        }.also {
-            trendingLoading.value = false
-        }.getOrThrow()
+        val token = currentHomeLoadToken()
+        val items = homeContentRepository.refreshTrendingMovies(forceRefresh)
+        if (isCurrent(token)) {
+            trendingMovies.value = ScopedHomeItems(token, items)
+        }
     }
 
     suspend fun loadSavedTrendingSeries(forceRefresh: Boolean = false) {
-        trendingLoading.value = true
-        runCatching {
-            trendingSeries.value = homeContentRepository.refreshTrendingSeries(forceRefresh)
-        }.also {
-            trendingLoading.value = false
-        }.getOrThrow()
+        val token = currentHomeLoadToken()
+        val items = homeContentRepository.refreshTrendingSeries(forceRefresh)
+        if (isCurrent(token)) {
+            trendingSeries.value = ScopedHomeItems(token, items)
+        }
     }
 
     fun prefetchTrendingPreviews(items: List<ContinueItem>) {
@@ -343,6 +587,7 @@ class HomeViewModel(
         val key = item.trendingPreviewKey() ?: return
         if (isTrendingPreviewPrepared(item.id)) return
         if (trendingPreviewPrepareJobs[key.jobKey]?.isActive == true) return
+        val token = currentHomeLoadToken()
         trendingPreviewPrepareJobs[key.jobKey] = viewModelScope.launch {
             trendingPreviewPrepareSemaphore.withPermit {
                 val prepared = homeContentRepository.prepareTrendingPreview(
@@ -350,23 +595,32 @@ class HomeViewModel(
                     contentId = key.contentId,
                     fallbackPosterUrl = item.imageUrl,
                 ) ?: return@withPermit
+                ensureCurrent(token)
                 applyPreparedTrendingPreview(prepared)
             }
         }
     }
 
     private fun isTrendingPreviewPrepared(itemId: String): Boolean =
-        trendingMovies.value.any { it.id == itemId && it.previewPrepared } ||
-            trendingSeries.value.any { it.id == itemId && it.previewPrepared }
+        trendingMovies.value.items.any { it.id == itemId && it.previewPrepared } ||
+            trendingSeries.value.items.any { it.id == itemId && it.previewPrepared }
 
     private fun applyPreparedTrendingPreview(prepared: HomeTrendingPreparedPreview) {
         val itemId = "${prepared.contentType}:${prepared.contentId}"
         when (prepared.contentType) {
             TrendingMovieType -> trendingMovies.update { items ->
-                items.map { item -> if (item.id == itemId) prepared.applyTo(item) else item }
+                items.copy(
+                    items = items.items.map { item ->
+                        if (item.id == itemId) prepared.applyTo(item) else item
+                    },
+                )
             }
             TrendingSeriesType -> trendingSeries.update { items ->
-                items.map { item -> if (item.id == itemId) prepared.applyTo(item) else item }
+                items.copy(
+                    items = items.items.map { item ->
+                        if (item.id == itemId) prepared.applyTo(item) else item
+                    },
+                )
             }
         }
         PerformanceDiagnosticRecorder.record(
@@ -380,6 +634,31 @@ class HomeViewModel(
             ),
         )
     }
+}
+
+private suspend fun resolveContinueWatchingProgress(
+    progress: PlaybackProgressEntity,
+    profileId: String,
+    userContentRepository: UserContentRepository,
+    catalogRepository: CatalogRepository,
+    activeProfileId: () -> String,
+): PlaybackProgressEntity {
+    if (activeProfileId() != profileId || progress.profileId != profileId) {
+        throw CancellationException("Continue watching profile changed")
+    }
+    var enriched = userContentRepository.enrichProgress(progress)
+    if (progress.contentType != UserContentType.Episode) return enriched
+    val episodeId = progress.contentId.toIntOrNull() ?: return enriched
+    if (catalogRepository.getEpisodeById(episodeId) != null) return enriched
+    val seriesId = enriched.parentContentId?.toIntOrNull()
+        ?: progress.parentContentId?.toIntOrNull()
+        ?: return enriched
+    catalogRepository.getOrFetchSeriesEpisodes(seriesId)
+    if (activeProfileId() != profileId) {
+        throw CancellationException("Continue watching profile changed while loading episodes")
+    }
+    enriched = userContentRepository.enrichProgress(enriched)
+    return enriched
 }
 
 private suspend fun PlaybackProgressEntity.isAllowedByParentalControl(
@@ -489,9 +768,13 @@ private suspend fun toContinueItemWithPreview(
 ): ContinueItem? {
     val base = toContinueItem(progress) ?: return null
     val previewKind = progress.contentType.toPreviewPlaybackKind() ?: return base
-    val request = runCatching {
+    val request = try {
         catalogRepository.buildPlaybackRequest(previewKind, progress.contentId)
-    }.getOrNull()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Throwable) {
+        null
+    }
     val url = request?.url?.takeIf { it.isNotBlank() } ?: return base
     val previewMode = when (progress.contentType) {
         UserContentType.Live -> HomePreviewMode.LiveImmediate

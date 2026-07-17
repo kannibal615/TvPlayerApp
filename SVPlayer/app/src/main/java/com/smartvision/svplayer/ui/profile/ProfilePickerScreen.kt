@@ -96,10 +96,11 @@ fun ProfilePickerScreen(
     onSelectProfile: (String) -> Unit,
     onSaveProfile: (PlaylistProfile) -> Unit,
     multiProfileAccess: PremiumFeatureGateResult,
+    selectionRequestId: Long?,
     selectionLoadingProfileId: String?,
-    homeReadyProfileId: String?,
+    homeReadyRequestId: Long?,
     homeProfileAvatarBounds: Rect?,
-    onSelectionTransitionFinished: (String) -> Unit,
+    onSelectionTransitionFinished: (Long, String) -> Unit,
     onLockedFeature: () -> Unit,
     onVerifyPin: (String) -> Boolean,
 ) {
@@ -135,9 +136,10 @@ fun ProfilePickerScreen(
         orderedProfiles.firstOrNull { it.id == selectionLoadingProfileId }
     }
 
-    LaunchedEffect(selectionLoadingProfileId, homeReadyProfileId) {
+    LaunchedEffect(selectionRequestId, selectionLoadingProfileId, homeReadyRequestId) {
+        val requestId = selectionRequestId
         val selectedId = selectionLoadingProfileId
-        if (selectedId == null) {
+        if (requestId == null || selectedId == null) {
             centeringProgress.snapTo(0f)
             homeRevealProgress.snapTo(0f)
             centeredAtMs = 0L
@@ -159,7 +161,7 @@ fun ProfilePickerScreen(
         if (centeredAtMs == 0L) {
             centeredAtMs = SystemClock.uptimeMillis()
         }
-        if (homeReadyProfileId != selectedId) return@LaunchedEffect
+        if (homeReadyRequestId != requestId) return@LaunchedEffect
         val centeredElapsed = SystemClock.uptimeMillis() - centeredAtMs
         delay((MinimumCenteredLoadingMs - centeredElapsed).coerceAtLeast(0L))
         homeRevealProgress.animateTo(
@@ -169,7 +171,7 @@ fun ProfilePickerScreen(
                 easing = FastOutSlowInEasing,
             ),
         )
-        latestTransitionFinished(selectedId)
+        latestTransitionFinished(requestId, selectedId)
     }
 
     fun performAction(action: PickerProtectedAction) {

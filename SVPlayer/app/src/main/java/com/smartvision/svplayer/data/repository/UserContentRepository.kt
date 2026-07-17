@@ -41,9 +41,15 @@ class UserContentRepository(
 
     fun observeRecentProgress(limit: Int = 12): Flow<List<PlaybackProgressEntity>> =
         accountManager.activeProfileId.flatMapLatest {
-            progressDao.observeRecent(profileIdFor(UserContentType.Movie), limit)
-                .onStart { emit(emptyList()) }
+            observeRecentProgress(accountManager.activeProfileIdOrDefault(), limit)
         }
+
+    fun observeRecentProgress(
+        profileId: String,
+        limit: Int = 12,
+    ): Flow<List<PlaybackProgressEntity>> =
+        progressDao.observeRecent(profileId, limit)
+            .onStart { emit(emptyList()) }
 
     fun getCachedRecentProgressSnapshot(limit: Int = 60): List<PlaybackProgressEntity>? =
         recentProgressSnapshot
@@ -67,8 +73,19 @@ class UserContentRepository(
     }
 
     suspend fun getProgress(contentType: String, contentId: Int): PlaybackProgressEntity? =
+        getProgress(
+            profileId = profileIdFor(contentType),
+            contentType = contentType,
+            contentId = contentId,
+        )
+
+    suspend fun getProgress(
+        profileId: String,
+        contentType: String,
+        contentId: Int,
+    ): PlaybackProgressEntity? =
         withContext(Dispatchers.IO) {
-            progressDao.get(profileIdFor(contentType), contentType, contentId.toString())
+            progressDao.get(profileIdFor(contentType, profileId), contentType, contentId.toString())
         }
 
     suspend fun deleteProgress(contentType: String, contentId: Int) = withContext(Dispatchers.IO) {
@@ -184,16 +201,38 @@ class UserContentRepository(
         subtitle: String? = null,
         imageUrl: String? = null,
         parentContentId: Int? = null,
+    ) = savePlaybackProgress(
+        profileId = profileIdFor(contentType),
+        contentType = contentType,
+        contentId = contentId,
+        positionMs = positionMs,
+        durationMs = durationMs,
+        title = title,
+        subtitle = subtitle,
+        imageUrl = imageUrl,
+        parentContentId = parentContentId,
+    )
+
+    suspend fun savePlaybackProgress(
+        profileId: String,
+        contentType: String,
+        contentId: Int,
+        positionMs: Long,
+        durationMs: Long,
+        title: String? = null,
+        subtitle: String? = null,
+        imageUrl: String? = null,
+        parentContentId: Int? = null,
     ) = withContext(Dispatchers.IO) {
         if (contentType == UserContentType.Live && positionMs < 5_000L) {
             return@withContext
         }
         val stablePositionMs = positionMs.coerceAtLeast(0L)
         val stableDurationMs = durationMs.coerceAtLeast(0L)
-        val profileId = profileIdFor(contentType)
-        val existing = progressDao.get(profileId, contentType, contentId.toString())
+        val resolvedProfileId = profileIdFor(contentType, profileId)
+        val existing = progressDao.get(resolvedProfileId, contentType, contentId.toString())
         val candidate = PlaybackProgressEntity(
-            profileId = profileId,
+            profileId = resolvedProfileId,
             contentType = contentType,
             contentId = contentId.toString(),
             positionMs = stablePositionMs,
@@ -216,11 +255,10 @@ class UserContentRepository(
     }
 
     private fun profileIdFor(contentType: String): String =
-        if (contentType == UserContentType.LocalMedia) {
-            LocalMediaProfileId
-        } else {
-            accountManager.activeProfileIdOrDefault()
-        }
+        profileIdFor(contentType, accountManager.activeProfileIdOrDefault())
+
+    private fun profileIdFor(contentType: String, profileId: String): String =
+        progressOwnerProfileId(contentType, profileId)
 }
 
 private data class RecentProgressSnapshot(
@@ -230,6 +268,9 @@ private data class RecentProgressSnapshot(
 )
 
 private const val LocalMediaProfileId = "local_media"
+
+internal fun progressOwnerProfileId(contentType: String, sessionProfileId: String): String =
+    if (contentType == UserContentType.LocalMedia) LocalMediaProfileId else sessionProfileId
 
 private fun String?.isFallbackEpisodeTitle(contentId: Int, episodeTitle: String? = null): Boolean {
     val value = this?.trim() ?: return true

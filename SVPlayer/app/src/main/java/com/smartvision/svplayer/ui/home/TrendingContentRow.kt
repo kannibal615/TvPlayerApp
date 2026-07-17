@@ -184,7 +184,7 @@ fun TrendingContentRow(
             fontWeight = FontWeight.Bold,
             maxLines = 1,
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(2.dp))
         LazyRow(
             state = rowState,
             modifier = Modifier
@@ -695,7 +695,7 @@ private fun TrendingViewAllButton(
             tint = SmartVisionColors.TextPrimary,
             modifier = Modifier.size(20.dp),
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(2.dp))
         Text(
             text = text,
             color = SmartVisionColors.TextSecondary,

@@ -8,6 +8,7 @@ import com.smartvision.svplayer.core.config.PlaylistProfileStatus
 import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.config.ProfileType
 import com.smartvision.svplayer.core.config.XtreamAccountManager
+import com.smartvision.svplayer.core.config.XtreamCredentials
 import com.smartvision.svplayer.data.local.SVDatabase
 import com.smartvision.svplayer.data.local.dao.CategoryDao
 import com.smartvision.svplayer.data.local.dao.FavoriteDao
@@ -79,6 +80,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import kotlinx.coroutines.withTimeout
+import java.util.concurrent.ConcurrentHashMap
 
 class DefaultCatalogRepository(
     private val database: SVDatabase,
@@ -102,6 +104,7 @@ class DefaultCatalogRepository(
     override val catalogRevision: StateFlow<Long> = _catalogRevision
     private val localCatalogSnapshotCache = LocalCatalogSnapshotCache()
     private val syncMutex = Mutex()
+    private val seriesEpisodeFetchMutexes = ConcurrentHashMap<String, Mutex>()
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val kidsContentFilter = KidsContentFilter()
     private val kidsCatalogFilterEngine = KidsCatalogFilterEngine(kidsContentFilter)
@@ -1756,6 +1759,69 @@ class DefaultCatalogRepository(
 
     override suspend fun getSeriesEpisodes(seriesId: Int): List<Episode> = withContext(Dispatchers.IO) {
         mediaDao.getEpisodes(activeProfileId(), seriesId).map { it.toDomain() }
+    }
+
+    override suspend fun getOrFetchSeriesEpisodes(seriesId: Int): List<Episode> = withContext(Dispatchers.IO) {
+        val capturedProfileId = activeProfileId()
+        val capturedProfile = accountManager.profiles.value
+            .firstOrNull { it.id == capturedProfileId }
+            ?.let(accountManager::resolvedProfile)
+        val credentials = capturedProfile
+            ?.takeIf { it.source == PlaylistSource.Xtream }
+            ?.let {
+                XtreamCredentials(
+                    host = it.xtreamHost,
+                    username = it.xtreamUsername,
+                    password = it.xtreamPassword,
+                )
+            }
+        val mutexKey = "$capturedProfileId:$seriesId"
+        val mutex = synchronized(seriesEpisodeFetchMutexes) {
+            seriesEpisodeFetchMutexes.getOrPut(mutexKey) { Mutex() }
+        }
+        mutex.withLock {
+            getOrFetchProfileScopedSeriesEpisodes(
+                capturedProfileId = capturedProfileId,
+                seriesId = seriesId,
+                activeProfileId = ::activeProfileId,
+                loadLocal = { profileId, targetSeriesId ->
+                    mediaDao.getEpisodes(profileId, targetSeriesId)
+                },
+                fetchRemote = { _, targetSeriesId ->
+                    if (credentials?.isConfigured != true) {
+                        emptyList()
+                    } else {
+                        api.getSeriesInfo(
+                            username = credentials.username,
+                            password = credentials.password,
+                            seriesId = targetSeriesId,
+                            host = credentials.normalizedHost,
+                        ).episodes
+                            .orEmpty()
+                            .flatMap { (seasonKey, episodes) ->
+                                val seasonNumber = seasonKey.toIntOrNull() ?: 0
+                                episodes.mapNotNull { episode ->
+                                    episode.toEntity(
+                                        profileId = capturedProfileId,
+                                        seriesId = targetSeriesId,
+                                        seasonNumber = seasonNumber,
+                                    )
+                                }
+                            }
+                            .distinctBy { it.episodeId }
+                            .sortedWith(
+                                compareBy<com.smartvision.svplayer.data.local.entity.EpisodeEntity> { it.seasonNumber }
+                                    .thenBy { it.episodeNumber },
+                            )
+                    }
+                },
+                persist = { _, _, episodes ->
+                    if (episodes.isNotEmpty()) {
+                        mediaDao.upsertEpisodes(episodes)
+                    }
+                },
+            ).map { it.toDomain() }
+        }
     }
 
     override suspend fun getEpisodeById(episodeId: Int): Episode? = withContext(Dispatchers.IO) {
