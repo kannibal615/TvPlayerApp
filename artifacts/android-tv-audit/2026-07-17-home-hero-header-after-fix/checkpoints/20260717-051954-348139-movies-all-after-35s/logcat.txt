@@ -1,0 +1,402 @@
+--------- beginning of main
+07-17 05:12:20.316  7151  8002 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:12:20.716  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-17 05:12:22.762  7151  7850 I chatty  : uid=10247(com.smartvision.svplayer) expire 11 lines
+07-17 05:12:34.014  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 32 lines
+07-17 05:12:36.651  7151  7850 I chatty  : uid=10247(com.smartvision.svplayer) expire 2 lines
+07-17 05:12:57.008  7151  7852 I chatty  : uid=10247(com.smartvision.svplayer) expire 9 lines
+07-17 05:13:14.025  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 20 lines
+07-17 05:13:14.680  7151  7375 I chatty  : uid=10247(com.smartvision.svplayer) AmazonKeyEventL expire 9 lines
+07-17 05:13:18.151  7151  7151 I chatty  : uid=10247(com.smartvision.svplayer) expire 10 lines
+07-17 05:13:19.226  7151  8007 I chatty  : uid=10247(com.smartvision.svplayer) DefaultDispatch expire 1 line
+07-17 05:13:21.652  7151  8020 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:13:22.341  7151  8026 I chatty  : uid=10247(com.smartvision.svplayer) expire 7 lines
+07-17 05:13:22.350  7151  8025 I chatty  : uid=10247(com.smartvision.svplayer) expire 17 lines
+07-17 05:13:22.357  7151  8019 I chatty  : uid=10247(com.smartvision.svplayer) expire 11 lines
+07-17 05:13:22.397  7151  8035 I chatty  : uid=10247(com.smartvision.svplayer) expire 10 lines
+07-17 05:13:26.002  7151  8043 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:13:27.197  7151  8046 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:13:28.240  7151  8050 I chatty  : uid=10247(com.smartvision.svplayer) expire 7 lines
+07-17 05:13:28.251  7151  8049 I chatty  : uid=10247(com.smartvision.svplayer) expire 18 lines
+07-17 05:13:28.258  7151  8047 I chatty  : uid=10247(com.smartvision.svplayer) expire 9 lines
+07-17 05:13:28.290  7151  8058 I chatty  : uid=10247(com.smartvision.svplayer) expire 13 lines
+07-17 05:13:31.920  7151  8065 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:13:33.931  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 28 lines
+07-17 05:13:43.606  7151  8049 I chatty  : uid=10247(com.smartvision.svplayer) expire 11 lines
+07-17 05:13:43.662  7151  8058 I chatty  : uid=10247(com.smartvision.svplayer) expire 10 lines
+07-17 05:13:46.955  7151  8067 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:13:55.641  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 13 lines
+07-17 05:14:01.966  7151  7151 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:14:01.972  7151  8071 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:14:03.681  7151  8049 I chatty  : uid=10247(com.smartvision.svplayer) expire 3 lines
+07-17 05:14:06.452  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 13 lines
+07-17 05:14:13.924  7151  8058 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:14:16.638  7151  7165 I chatty  : uid=10247(com.smartvision.svplayer) Profile Saver expire 1 line
+07-17 05:14:16.639  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 1 line
+07-17 05:14:16.938  7151  8047 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:14:16.986  7151  7151 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:14:16.994  7151  8073 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:14:17.288  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 4 lines
+07-17 05:14:19.263  7151  8049 I chatty  : uid=10247(com.smartvision.svplayer) expire 3 lines
+07-17 05:14:19.277  7151  8058 I chatty  : uid=10247(com.smartvision.svplayer) expire 3 lines
+07-17 05:14:19.288  7151  8047 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:14:19.469  7151  8049 I chatty  : uid=10247(com.smartvision.svplayer) expire 2 lines
+07-17 05:14:20.582  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 14 lines
+07-17 05:14:24.268  7151  8049 I chatty  : uid=10247(com.smartvision.svplayer) expire 2 lines
+07-17 05:14:24.323  7151  8058 I chatty  : uid=10247(com.smartvision.svplayer) expire 2 lines
+07-17 05:14:31.752  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 17 lines
+07-17 05:14:42.388  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 17 lines
+07-17 05:14:53.337  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 16 lines
+07-17 05:15:03.839  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 9 lines
+07-17 05:15:09.478  7151  8049 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:15:09.492  7151  7151 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:15:09.492  7151  8047 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:15:09.526  7151  7151 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:15:09.530  7151  8081 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:15:09.562  7151  8047 I chatty  : uid=10247(com.smartvision.svplayer) expire 11 lines
+07-17 05:15:09.556  7151  7151 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:15:09.575  7151  8047 I chatty  : uid=10247(com.smartvision.svplayer) expire 3 lines
+07-17 05:15:09.566  7151  7151 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:15:09.863  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 2 lines
+07-17 05:15:09.972  7151  7151 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:15:10.203  7151  7175 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread expire 1 line
+07-17 05:15:10.287  7151  7151 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:15:10.609  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 1 line
+07-17 05:15:10.642  7151  8007 I chatty  : uid=10247(com.smartvision.svplayer) DefaultDispatch expire 1 line
+07-17 05:15:10.678  7151  7172 I chatty  : uid=10247(com.smartvision.svplayer) WM.task-2 expire 1 line
+07-17 05:15:11.411  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 11 lines
+07-17 05:15:22.338  7151  8201 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:15:22.342  7151  8203 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:15:22.346  7151  8199 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:15:22.350  7151  8204 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:15:22.362  7151  8205 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:15:22.811  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-17 05:15:28.200  7151  7151 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-17 05:15:33.733  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 12 lines
+07-17 05:15:44.832  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 11 lines
+07-17 05:15:57.406  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-17 05:16:09.416  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-17 05:16:16.536  7151  7165 I chatty  : uid=10247(com.smartvision.svplayer) Profile Saver expire 2 lines
+07-17 05:16:21.643  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-17 05:16:34.206  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-17 05:16:46.723  7151  7161 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 9 lines
+07-17 05:16:58.069  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210856(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 271us total 219.659ms
+07-17 05:16:59.307  7151  7161 I vision.svplaye: Background concurrent copying GC freed 206220(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 177us total 226.035ms
+07-17 05:17:00.567  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211353(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 163us total 223.554ms
+07-17 05:17:01.656  7151  7165 I vision.svplaye: Waiting for a blocking GC ProfileSaver
+07-17 05:17:01.822  7151  7161 I vision.svplaye: Background concurrent copying GC freed 212143(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 198us total 218.233ms
+07-17 05:17:01.822  7151  7165 I vision.svplaye: WaitForGcToComplete blocked ProfileSaver on HeapTrim for 166.019ms
+07-17 05:17:03.055  7151  7161 I vision.svplaye: Background concurrent copying GC freed 207276(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 149us total 211.327ms
+07-17 05:17:04.308  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210269(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 199us total 225.791ms
+07-17 05:17:05.559  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209408(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 169us total 227.758ms
+07-17 05:17:06.826  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211130(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 147us total 228.025ms
+07-17 05:17:08.078  7151  7161 I vision.svplaye: Background concurrent copying GC freed 214897(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 284us total 218.567ms
+07-17 05:17:09.326  7151  7161 I vision.svplaye: Background concurrent copying GC freed 207158(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 149us total 225.275ms
+07-17 05:17:10.576  7151  7161 I vision.svplaye: Background concurrent copying GC freed 212149(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 178us total 215.201ms
+07-17 05:17:11.831  7151  7161 I vision.svplaye: Background concurrent copying GC freed 207368(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 165us total 226.886ms
+07-17 05:17:13.086  7151  7161 I vision.svplaye: Background concurrent copying GC freed 214524(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 202us total 219.251ms
+07-17 05:17:14.319  7151  7161 I vision.svplaye: Background concurrent copying GC freed 206589(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 266us total 220.019ms
+07-17 05:17:15.571  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210690(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 165us total 214.257ms
+07-17 05:17:16.884  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209675(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 156us total 244.228ms
+07-17 05:17:18.132  7151  7161 I vision.svplaye: Background concurrent copying GC freed 206479(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 168us total 226.627ms
+07-17 05:17:19.387  7151  7161 I vision.svplaye: Background concurrent copying GC freed 206878(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 160us total 231.755ms
+07-17 05:17:20.638  7151  7161 I vision.svplaye: Background concurrent copying GC freed 212220(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 167us total 225.205ms
+07-17 05:17:21.888  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210597(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 197us total 223.469ms
+07-17 05:17:23.133  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211679(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 214us total 215.164ms
+07-17 05:17:24.374  7151  7161 I vision.svplaye: Background concurrent copying GC freed 207501(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 157us total 213.741ms
+07-17 05:17:25.609  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209495(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 189us total 212.941ms
+07-17 05:17:26.851  7151  7161 I vision.svplaye: Background concurrent copying GC freed 206691(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 163us total 216.421ms
+07-17 05:17:28.114  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210226(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 213us total 228.568ms
+07-17 05:17:29.373  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210415(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 163us total 235.053ms
+07-17 05:17:30.639  7151  7161 I vision.svplaye: Background concurrent copying GC freed 214529(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 165us total 223.506ms
+07-17 05:17:31.911  7151  7161 I vision.svplaye: Background concurrent copying GC freed 212416(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 184us total 236.984ms
+07-17 05:17:33.171  7151  7161 I vision.svplaye: Background concurrent copying GC freed 215569(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 187us total 218.654ms
+07-17 05:17:34.414  7151  7161 I vision.svplaye: Background concurrent copying GC freed 207472(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 219us total 222.661ms
+07-17 05:17:35.662  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210191(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 185us total 224.933ms
+07-17 05:17:36.899  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209169(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 188us total 212.480ms
+07-17 05:17:38.142  7151  7161 I vision.svplaye: Background concurrent copying GC freed 207015(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 157us total 212.720ms
+07-17 05:17:39.390  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210866(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 266us total 223.113ms
+07-17 05:17:40.644  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209407(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 273us total 226.948ms
+07-17 05:17:41.888  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210711(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 392us total 218.169ms
+07-17 05:17:43.143  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209343(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 191us total 223.259ms
+07-17 05:17:44.384  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211221(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 292us total 212.047ms
+07-17 05:17:45.636  7151  7161 I vision.svplaye: Background concurrent copying GC freed 208093(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 152us total 220.910ms
+07-17 05:17:46.868  7151  7161 I vision.svplaye: Background concurrent copying GC freed 208835(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 252us total 222.036ms
+07-17 05:17:48.116  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210724(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 214us total 217.031ms
+07-17 05:17:49.365  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209056(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 154us total 222.691ms
+07-17 05:17:50.624  7151  7161 I vision.svplaye: Background concurrent copying GC freed 213132(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 190us total 221.872ms
+07-17 05:17:51.874  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209317(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 187us total 222.145ms
+07-17 05:17:53.130  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210920(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 169us total 216.907ms
+07-17 05:17:54.377  7151  7161 I vision.svplaye: Background concurrent copying GC freed 208216(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 174us total 228.543ms
+07-17 05:17:55.649  7151  7161 I vision.svplaye: Background concurrent copying GC freed 213935(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 151us total 223.865ms
+07-17 05:17:56.909  7151  7161 I vision.svplaye: Background concurrent copying GC freed 212603(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 165us total 225.679ms
+07-17 05:17:58.165  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211129(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 139us total 222.421ms
+07-17 05:17:59.425  7151  7161 I vision.svplaye: Background concurrent copying GC freed 212203(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 161us total 224.291ms
+07-17 05:18:00.718  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211179(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 226us total 259.901ms
+07-17 05:18:01.980  7151  7161 I vision.svplaye: Background concurrent copying GC freed 216597(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 140us total 232.944ms
+07-17 05:18:03.261  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211115(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 337us total 247.668ms
+07-17 05:18:04.470  7151  7161 I vision.svplaye: Background concurrent copying GC freed 207749(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 170us total 218.986ms
+07-17 05:18:05.660  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211157(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 268us total 225.176ms
+07-17 05:18:06.858  7151  7161 I vision.svplaye: Background concurrent copying GC freed 215600(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 276us total 221.350ms
+07-17 05:18:08.052  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211571(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 208us total 227.479ms
+07-17 05:18:09.245  7151  7161 I vision.svplaye: Background concurrent copying GC freed 215195(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 207us total 222.598ms
+07-17 05:18:10.429  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210829(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 157us total 215.355ms
+07-17 05:18:11.617  7151  7161 I vision.svplaye: Background concurrent copying GC freed 214736(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 277us total 213.871ms
+07-17 05:18:12.807  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211527(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 221us total 215.938ms
+07-17 05:18:14.022  7151  7161 I vision.svplaye: Background concurrent copying GC freed 213014(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 361us total 219.451ms
+07-17 05:18:15.284  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211019(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 185us total 223.812ms
+07-17 05:18:16.519  7151  7161 I vision.svplaye: Background concurrent copying GC freed 207762(6MB) AllocSpace objects, 1(20KB) LOS objects, 22% free, 20MB/26MB, paused 146us total 223.666ms
+07-17 05:18:17.762  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211580(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 178us total 215.478ms
+07-17 05:18:19.016  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210219(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 195us total 223.936ms
+07-17 05:18:20.269  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210465(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 336us total 226.263ms
+07-17 05:18:21.514  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210493(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 236us total 216.985ms
+07-17 05:18:22.764  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209259(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 162us total 220.998ms
+07-17 05:18:24.024  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210905(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 178us total 223.949ms
+07-17 05:18:25.283  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211694(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 143us total 222.297ms
+07-17 05:18:26.541  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211906(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 204us total 221.920ms
+07-17 05:18:27.795  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211030(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 192us total 222.836ms
+07-17 05:18:29.055  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211509(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 204us total 228.299ms
+07-17 05:18:30.303  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210901(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 140us total 220.120ms
+07-17 05:18:31.550  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210663(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 184us total 222.020ms
+07-17 05:18:32.793  7151  7161 I vision.svplaye: Background concurrent copying GC freed 207376(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 197us total 222.698ms
+07-17 05:18:34.051  7151  7161 I vision.svplaye: Background concurrent copying GC freed 212161(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 192us total 223.452ms
+07-17 05:18:35.311  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210962(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 205us total 226.139ms
+07-17 05:18:36.570  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211776(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 145us total 220.054ms
+07-17 05:18:37.830  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211887(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 170us total 223.237ms
+07-17 05:18:39.105  7151  7161 I vision.svplaye: Background concurrent copying GC freed 212345(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 272us total 229.063ms
+07-17 05:18:40.350  7151  7161 I vision.svplaye: Background concurrent copying GC freed 213597(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 195us total 213.260ms
+07-17 05:18:41.600  7151  7161 I vision.svplaye: Background concurrent copying GC freed 207413(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 163us total 222.576ms
+07-17 05:18:42.861  7151  7161 I vision.svplaye: Background concurrent copying GC freed 214352(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 186us total 220.454ms
+07-17 05:18:44.128  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211416(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 149us total 221.572ms
+07-17 05:18:45.389  7151  7161 I vision.svplaye: Background concurrent copying GC freed 213849(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 173us total 222.148ms
+07-17 05:18:46.651  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210925(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 197us total 228.880ms
+07-17 05:18:47.890  7151  7161 I vision.svplaye: Background concurrent copying GC freed 208423(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 189us total 220.433ms
+07-17 05:18:49.147  7151  7161 I vision.svplaye: Background concurrent copying GC freed 213330(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 192us total 219.944ms
+07-17 05:18:50.394  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210424(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 189us total 215.545ms
+07-17 05:18:51.636  7151  7161 I vision.svplaye: Background concurrent copying GC freed 207337(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 148us total 214.633ms
+07-17 05:18:52.895  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210767(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 168us total 221.265ms
+07-17 05:18:54.160  7151  7161 I vision.svplaye: Background concurrent copying GC freed 212097(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 194us total 225.808ms
+07-17 05:18:55.400  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209610(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 191us total 216.973ms
+07-17 05:18:56.654  7151  7161 I vision.svplaye: Background concurrent copying GC freed 208328(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 179us total 227.586ms
+07-17 05:18:57.909  7151  7161 I vision.svplaye: Background concurrent copying GC freed 214781(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 184us total 218.961ms
+07-17 05:18:59.154  7151  7161 I vision.svplaye: Background concurrent copying GC freed 207391(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 190us total 222.603ms
+07-17 05:19:00.407  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211825(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 198us total 219.423ms
+07-17 05:19:01.655  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209818(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 215us total 215.279ms
+07-17 05:19:02.924  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211880(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 228us total 227.237ms
+07-17 05:19:04.183  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211361(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 206us total 229.748ms
+07-17 05:19:05.444  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211543(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 269us total 228.493ms
+07-17 05:19:06.715  7151  7161 I vision.svplaye: Background concurrent copying GC freed 213656(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 147us total 229.280ms
+07-17 05:19:07.963  7151  7161 I vision.svplaye: Background concurrent copying GC freed 214219(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 172us total 215.698ms
+07-17 05:19:09.199  7151  7161 I vision.svplaye: Background concurrent copying GC freed 207580(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 154us total 210.145ms
+07-17 05:19:10.449  7151  7161 I vision.svplaye: Background concurrent copying GC freed 208036(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 166us total 223.290ms
+07-17 05:19:11.717  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211925(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 157us total 224.267ms
+07-17 05:19:12.958  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211689(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 178us total 212.694ms
+07-17 05:19:14.207  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209293(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 146us total 214.145ms
+07-17 05:19:15.463  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210046(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 198us total 224.873ms
+07-17 05:19:16.722  7151  7161 I vision.svplaye: Background concurrent copying GC freed 212190(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 176us total 223.317ms
+07-17 05:19:17.976  7151  7161 I vision.svplaye: Background concurrent copying GC freed 212579(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 183us total 217.125ms
+07-17 05:19:19.226  7151  7161 I vision.svplaye: Background concurrent copying GC freed 206873(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 193us total 222.419ms
+07-17 05:19:20.471  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209232(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 160us total 218.244ms
+07-17 05:19:21.721  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209780(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 165us total 218.622ms
+07-17 05:19:22.979  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211660(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 169us total 224.086ms
+07-17 05:19:24.224  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211157(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 183us total 213.179ms
+07-17 05:19:25.479  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210242(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 167us total 221.430ms
+07-17 05:19:26.741  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210993(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 163us total 218.263ms
+07-17 05:19:28.004  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211470(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 248us total 222.732ms
+07-17 05:19:29.256  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211443(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 196us total 221.788ms
+07-17 05:19:30.510  7151  7161 I vision.svplaye: Background concurrent copying GC freed 211475(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 174us total 218.253ms
+07-17 05:19:31.763  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209059(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 197us total 229.011ms
+07-17 05:19:33.027  7151  7161 I vision.svplaye: Background concurrent copying GC freed 212021(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 216us total 228.273ms
+07-17 05:19:34.292  7151  7161 I vision.svplaye: Background concurrent copying GC freed 214277(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 150us total 219.717ms
+07-17 05:19:35.532  7151  7161 I vision.svplaye: Background concurrent copying GC freed 208738(6MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 170us total 218.253ms
+07-17 05:19:35.711  7151  7151 I ExoPlayerImpl: Init 8dd7809 [AndroidXMedia3/1.6.1] [sheldonp, AFTSSS, Amazon, 28]
+07-17 05:19:36.575  7151  7161 I vision.svplaye: Background concurrent copying GC freed 155600(5MB) AllocSpace objects, 5(164KB) LOS objects, 22% free, 21MB/27MB, paused 157us total 275.623ms
+07-17 05:19:36.802  7151  8391 I OMXClient: IOmx service obtained
+07-17 05:19:36.811  7151  8390 I MediaCodec: [OMX.MTK.VIDEO.DECODER.AVC] setting surface generation to 7322635
+07-17 05:19:36.812  7151  8390 I MediaCodecLogger: [ASAP] HW.video.avc P2 + 23019355
+07-17 05:19:36.813  7151  8390 I MediaCodecLogger: HW.video.avc Adaptive Streaming max w:1920 h:1080, screen size:FHD
+07-17 05:19:36.813  7151  8391 I ACodec  : Call prepareForAdaptivePlayback. maxWidth 1920, maxHeight 1080.
+07-17 05:19:36.813  7151  8391 I ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] prepareForAdaptivePlayback failed w/ err -1010
+07-17 05:19:36.815  7151  8391 I ACodec  : codec does not support config priority (err -1010)
+07-17 05:19:36.816  7151  8390 I MediaCodecLogger: [ASAP] HW.video.avc P2 - 23019359
+07-17 05:19:36.818  7151  8387 I MediaCodecLogger: [ASAP] HW.video.avc P3 + 23019361
+07-17 05:19:36.839  7151  8391 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 7 failed: -22
+07-17 05:19:36.841  7151  8390 I MediaCodecLogger: [ASAP] HW.video.avc P3 - 23019384
+07-17 05:19:36.851  7151  8400 I OMXClient: IOmx service obtained
+07-17 05:19:36.854  7151  8400 I MediaCodecLogger: [ASAP] SW.audio.mp4a P2 + 23019397
+07-17 05:19:36.855  7151  8400 I ACodec  : codec does not support config priority (err -2147483648)
+07-17 05:19:36.857  7151  8400 I MediaCodecLogger: [ASAP] SW.audio.mp4a P2 - 23019400
+07-17 05:19:36.861  7151  8387 I MediaCodecLogger: [ASAP] SW.audio.mp4a P3 + 23019404
+07-17 05:19:36.873  7151  8400 I MediaCodecLogger: [ASAP] SW.audio.mp4a P3 - 23019415
+07-17 05:19:36.895  7151  8391 W AHierarchicalStateMachine: Warning message AMessage(what = 'omxI') = {
+07-17 05:19:36.895  7151  8391 W AHierarchicalStateMachine:   int32_t type = 0
+07-17 05:19:36.895  7151  8391 W AHierarchicalStateMachine:   int32_t event = 3
+07-17 05:19:36.895  7151  8391 W AHierarchicalStateMachine:   int32_t data1 = 1
+07-17 05:19:36.895  7151  8391 W AHierarchicalStateMachine:   int32_t data2 = 117440527
+07-17 05:19:36.895  7151  8391 W AHierarchicalStateMachine: } unhandled in root state.
+07-17 05:19:36.900  7151  8391 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 14 failed: -22
+07-17 05:19:37.113  7151  8390 I MediaCodecLogger: [ASAP] HW.video.avc Got First Input Frame 23019656 pts:1000000046000
+07-17 05:19:37.117  7151  8400 I MediaCodecLogger: [ASAP] SW.audio.mp4a Got First Input Frame 23019660 pts:1000000000000
+07-17 05:19:37.146  7151  8400 I MediaCodecLogger: updatePTSTime [SW.audio.mp4a] First PTS after Flush or reset = 1000000000000
+07-17 05:19:37.149  7151  8400 I MediaCodecLogger: [ASAP] SW.audio.mp4a Got First Frame Ready 23019689(29)
+07-17 05:19:37.155  7151  8387 I android.media.AudioTrack: AUDIOINFO: audio_input: format: 2 sample_rate: 44100 channels: 2 AudioAttributes: AudioAttributes: usage=USAGE_MEDIA content=CONTENT_TYPE_MUSIC flags=0x200 tags= bundle=null
+07-17 05:19:37.166  7151  8390 I MediaCodecLogger: updateFormatChanged width = 1920 height = 1080
+07-17 05:19:37.167  7151  8390 I MediaCodecLogger: updatePTSTime [HW.video.avc] First PTS after Flush or reset = 1000000046000
+07-17 05:19:37.167  7151  8390 I MediaCodecLogger: [ASAP] HW.video.avc Got First Frame Ready 23019710(54)
+07-17 05:19:37.210  7151  8390 I MediaCodecLogger: Rendering first frame after starting or flushing.
+07-17 05:19:37.210  7151  8390 I MediaCodecLogger: [ASAP] HW.video.avc Got First Frame Render 23019753(97)
+07-17 05:19:37.210  7151  8390 I MediaCodecLogger: App sets Timestamps for render in SurfaceFlinger
+07-17 05:19:37.720  7151  8390 I MediaCodecLogger: 7151.HW.video.avc Resolution change from 0x0 to 1920x1080 took = 7
+07-17 05:19:37.904  7151  7161 I vision.svplaye: Background concurrent copying GC freed 164241(5MB) AllocSpace objects, 7(316KB) LOS objects, 18% free, 25MB/31MB, paused 1.708ms total 575.215ms
+07-17 05:19:38.776  7151  7161 I vision.svplaye: Background concurrent copying GC freed 81683(2MB) AllocSpace objects, 0(0B) LOS objects, 13% free, 36MB/42MB, paused 353us total 523.454ms
+07-17 05:19:39.564  7151  7161 I vision.svplaye: Background concurrent copying GC freed 116633(3MB) AllocSpace objects, 3(48KB) LOS objects, 13% free, 39MB/45MB, paused 170us total 258.216ms
+07-17 05:19:40.373  7151  8387 I MediaCodecLogger: Flushing: 7151.HW.video.avc.framerate = 25.000 fps
+07-17 05:19:40.416  7151  7151 W ExoPlayer:Audio: type=1400 audit(0.0:287073): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=169 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-17 05:19:40.419  7151  8408 E libc    : Access denied finding property "media.metrics.enabled"
+07-17 05:19:40.653  7151  7161 I vision.svplaye: Background concurrent copying GC freed 184750(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 41MB/47MB, paused 470us total 274.772ms
+07-17 05:19:40.871  7151  8400 I MediaCodecLogger: updatePTSTime [SW.audio.mp4a] First PTS after Flush or reset = 1000710135000
+07-17 05:19:40.871  7151  8400 I MediaCodecLogger: updatePTSTime Possible seek found! last pts:1000003390000 cur pts:1000710135000
+07-17 05:19:40.877  7151  8387 I android.media.AudioTrack: AUDIOINFO: audio_input: format: 2 sample_rate: 44100 channels: 2 AudioAttributes: AudioAttributes: usage=USAGE_MEDIA content=CONTENT_TYPE_MUSIC flags=0x200 tags= bundle=null
+07-17 05:19:40.893  7151  8390 I MediaCodecLogger: updatePTSTime [HW.video.avc] First PTS after Flush or reset = 1000710046000
+07-17 05:19:40.893  7151  8390 I MediaCodecLogger: updatePTSTime Possible seek found! last pts:1000003246000 cur pts:1000710046000
+07-17 05:19:40.942  7151  8390 I MediaCodecLogger: Rendering first frame after starting or flushing.
+07-17 05:19:42.137  7151  8400 I MediaCodecLogger: 7151.SW.audio.mp4a.bitrateInKbps = 199
+07-17 05:19:42.140  7151  8390 I MediaCodecLogger: 7151.HW.video.avc.bitrateInKbps = 2717
+07-17 05:19:42.228  7151  7161 I vision.svplaye: Background concurrent copying GC freed 203913(8MB) AllocSpace objects, 1(68KB) LOS objects, 12% free, 40MB/46MB, paused 194us total 271.930ms
+07-17 05:19:43.403  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209234(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 40MB/46MB, paused 174us total 245.478ms
+07-17 05:19:44.553  7151  7161 I vision.svplaye: Background concurrent copying GC freed 204999(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 40MB/46MB, paused 208us total 231.137ms
+07-17 05:19:45.754  7151  7161 I vision.svplaye: Background concurrent copying GC freed 204038(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 40MB/46MB, paused 240us total 242.766ms
+07-17 05:19:46.920  7151  7161 I vision.svplaye: Background concurrent copying GC freed 204743(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 40MB/46MB, paused 200us total 242.647ms
+07-17 05:19:47.171  7151  8400 I MediaCodecLogger: 7151.SW.audio.mp4a.bitrateInKbps = 192
+07-17 05:19:47.219  7151  8390 I MediaCodecLogger: 7151.HW.video.avc.bitrateInKbps = 2313
+07-17 05:19:48.082  7151  7161 I vision.svplaye: Background concurrent copying GC freed 205644(6MB) AllocSpace objects, 0(0B) LOS objects, 13% free, 40MB/46MB, paused 201us total 242.371ms
+07-17 05:19:49.245  7151  7161 I vision.svplaye: Background concurrent copying GC freed 202414(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 40MB/46MB, paused 194us total 252.628ms
+07-17 05:19:50.435  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209105(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 40MB/46MB, paused 199us total 258.293ms
+07-17 05:19:51.596  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210092(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 40MB/46MB, paused 186us total 245.428ms
+07-17 05:19:52.186  7151  8400 I MediaCodecLogger: 7151.SW.audio.mp4a.bitrateInKbps = 193
+07-17 05:19:52.308  7151  8390 I MediaCodecLogger: 7151.HW.video.avc.bitrateInKbps = 2543
+07-17 05:19:52.424  7151  8390 I MediaCodec: [OMX.MTK.VIDEO.DECODER.AVC] setting surface generation to 7322636
+07-17 05:19:52.429  7151  7151 I ExoPlayerImpl: Release 8dd7809 [AndroidXMedia3/1.6.1] [sheldonp, AFTSSS, Amazon, 28] [media3.common, media3.exoplayer, media3.decoder, media3.datasource, media3.ui, media3.extractor]
+07-17 05:19:52.430  7151  8387 I MediaCodecLogger: Flushing: 7151.HW.video.avc.framerate = 25.000 fps
+07-17 05:19:52.466  7151  7151 W ExoPlayer:Audio: type=1400 audit(0.0:287074): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=169 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-17 05:19:52.471  7151  8414 E libc    : Access denied finding property "media.metrics.enabled"
+07-17 05:19:52.500  7151  8387 I MediaCodecLogger: 7151.HW.video.avc.TotalVideoPlaybackTimeMs = 14960
+07-17 05:19:52.500  7151  8387 I MediaCodecLogger: 7151.HW.video.avc.StreamAvgFramerate = 25.000
+07-17 05:19:52.500  7151  8387 I MediaCodecLogger: 7151.HW.video.avc.videoResolution.FHD = 14960
+07-17 05:19:52.500  7151  8387 I MediaCodecLogger: 7151.HW.video.avc.StreamFramerate = 0.334
+07-17 05:19:52.500  7151  8387 I MediaCodecLogger: 7151.HW.video.avc.AspectRatio = 1.778
+07-17 05:19:52.500  7151  8387 I MediaCodecLogger: 7151.HW.video.avc.ASAP-P5Ms = 97
+07-17 05:19:52.500  7151  8387 I MediaCodecLogger: 7151.HW.video.avc.ASAP-P2Ms = 4
+07-17 05:19:52.500  7151  8387 I MediaCodecLogger: 7151.HW.video.avc.ASAP-P3Ms = 23
+07-17 05:19:52.500  7151  8387 I MediaCodecLogger: 7151.HW.video.avc.FirstFrameReadyMs = 54
+07-17 05:19:52.500  7151  8387 I MediaCodecLogger: 7151.HW.video.avc.StreamAvgBitrateInKbps = 2524
+07-17 05:19:52.502  7151  8387 E libc    : Access denied finding property "media.metrics.enabled"
+07-17 05:19:52.496  7151  7151 W ExoPlayer:Playb: type=1400 audit(0.0:287075): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=169 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-17 05:19:52.509  7151  8387 I MediaCodecLogger: 7151.SW.audio.mp4a.TotalAudioPlaybackTimeMs = 15186
+07-17 05:19:52.509  7151  8387 I MediaCodecLogger: 7151.SW.audio.mp4a.StreamAvgBitrateInKbps = 194
+07-17 05:19:52.506  7151  7151 W ExoPlayer:Playb: type=1400 audit(0.0:287076): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=169 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-17 05:19:52.510  7151  8387 E libc    : Access denied finding property "media.metrics.enabled"
+07-17 05:19:52.794  7151  7161 I vision.svplaye: Background concurrent copying GC freed 175231(6MB) AllocSpace objects, 283(18MB) LOS objects, 20% free, 23MB/29MB, paused 346us total 273.102ms
+07-17 05:19:53.798  7151  7161 I vision.svplaye: Background concurrent copying GC freed 212397(8MB) AllocSpace objects, 13(520KB) LOS objects, 22% free, 21MB/27MB, paused 194us total 224.776ms
+07-17 05:19:54.783  7151  7161 I vision.svplaye: Background concurrent copying GC freed 209376(6MB) AllocSpace objects, 0(0B) LOS objects, 21% free, 21MB/27MB, paused 159us total 231.857ms
+07-17 05:19:55.015  7151  7151 I ExoPlayerImpl: Init 96a7865 [AndroidXMedia3/1.6.1] [sheldonp, AFTSSS, Amazon, 28]
+07-17 05:19:55.868  7151  7161 I vision.svplaye: Background concurrent copying GC freed 176593(6MB) AllocSpace objects, 2(56KB) LOS objects, 21% free, 21MB/27MB, paused 641us total 277.466ms
+07-17 05:19:55.963  7151  8425 I OMXClient: IOmx service obtained
+07-17 05:19:55.969  7151  8424 I MediaCodec: [OMX.MTK.VIDEO.DECODER.AVC] setting surface generation to 7322637
+07-17 05:19:55.970  7151  8424 I MediaCodecLogger: [ASAP] HW.video.avc P2 + 23038513
+07-17 05:19:55.971  7151  8424 I MediaCodecLogger: HW.video.avc Adaptive Streaming max w:1920 h:1080, screen size:FHD
+07-17 05:19:55.971  7151  8425 I ACodec  : Call prepareForAdaptivePlayback. maxWidth 1920, maxHeight 1080.
+07-17 05:19:55.972  7151  8425 I ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] prepareForAdaptivePlayback failed w/ err -1010
+07-17 05:19:55.975  7151  8425 I ACodec  : codec does not support config priority (err -1010)
+07-17 05:19:55.977  7151  8424 I MediaCodecLogger: [ASAP] HW.video.avc P2 - 23038520
+07-17 05:19:55.988  7151  8420 I MediaCodecLogger: [ASAP] HW.video.avc P3 + 23038531
+07-17 05:19:56.011  7151  8425 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 7 failed: -22
+07-17 05:19:56.015  7151  8424 I MediaCodecLogger: [ASAP] HW.video.avc P3 - 23038558
+07-17 05:19:56.023  7151  8433 I OMXClient: IOmx service obtained
+07-17 05:19:56.026  7151  8433 I MediaCodecLogger: [ASAP] SW.audio.mp4a P2 + 23038568
+07-17 05:19:56.027  7151  8433 I ACodec  : codec does not support config priority (err -2147483648)
+07-17 05:19:56.028  7151  8433 I MediaCodecLogger: [ASAP] SW.audio.mp4a P2 - 23038571
+07-17 05:19:56.029  7151  8420 I MediaCodecLogger: [ASAP] SW.audio.mp4a P3 + 23038572
+07-17 05:19:56.055  7151  8433 I MediaCodecLogger: [ASAP] SW.audio.mp4a P3 - 23038597
+07-17 05:19:56.057  7151  8433 I MediaCodecLogger: [ASAP] SW.audio.mp4a Got First Input Frame 23038600 pts:1000000000000
+07-17 05:19:56.087  7151  8424 I MediaCodecLogger: [ASAP] HW.video.avc Got First Input Frame 23038630 pts:1000000046000
+07-17 05:19:56.087  7151  8433 I MediaCodecLogger: updatePTSTime [SW.audio.mp4a] First PTS after Flush or reset = 1000000000000
+07-17 05:19:56.088  7151  8433 I MediaCodecLogger: [ASAP] SW.audio.mp4a Got First Frame Ready 23038630(30)
+07-17 05:19:56.089  7151  8425 W AHierarchicalStateMachine: Warning message AMessage(what = 'omxI') = {
+07-17 05:19:56.089  7151  8425 W AHierarchicalStateMachine:   int32_t type = 0
+07-17 05:19:56.089  7151  8425 W AHierarchicalStateMachine:   int32_t event = 3
+07-17 05:19:56.089  7151  8425 W AHierarchicalStateMachine:   int32_t data1 = 1
+07-17 05:19:56.089  7151  8425 W AHierarchicalStateMachine:   int32_t data2 = 117440527
+07-17 05:19:56.089  7151  8425 W AHierarchicalStateMachine: } unhandled in root state.
+07-17 05:19:56.094  7151  8420 I android.media.AudioTrack: AUDIOINFO: audio_input: format: 2 sample_rate: 44100 channels: 2 AudioAttributes: AudioAttributes: usage=USAGE_MEDIA content=CONTENT_TYPE_MUSIC flags=0x200 tags= bundle=null
+07-17 05:19:56.102  7151  8425 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 14 failed: -22
+07-17 05:19:56.166  7151  8424 I MediaCodecLogger: updateFormatChanged width = 1920 height = 1080
+07-17 05:19:56.167  7151  8424 I MediaCodecLogger: updatePTSTime [HW.video.avc] First PTS after Flush or reset = 1000000046000
+07-17 05:19:56.167  7151  8424 I MediaCodecLogger: [ASAP] HW.video.avc Got First Frame Ready 23038710(80)
+07-17 05:19:56.172  7151  8424 I MediaCodecLogger: Rendering first frame after starting or flushing.
+07-17 05:19:56.172  7151  8424 I MediaCodecLogger: [ASAP] HW.video.avc Got First Frame Render 23038715(85)
+07-17 05:19:56.172  7151  8424 I MediaCodecLogger: App sets Timestamps for render in SurfaceFlinger
+07-17 05:19:56.690  7151  8424 I MediaCodecLogger: 7151.HW.video.avc Resolution change from 0x0 to 1920x1080 took = 10
+07-17 05:19:56.920  7151  7161 I vision.svplaye: Background concurrent copying GC freed 103438(3MB) AllocSpace objects, 8(384KB) LOS objects, 15% free, 33MB/39MB, paused 281us total 596.616ms
+07-17 05:19:57.486  7151  7161 I vision.svplaye: Background concurrent copying GC freed 69935(2MB) AllocSpace objects, 0(0B) LOS objects, 13% free, 40MB/46MB, paused 191us total 354.418ms
+07-17 05:19:57.580  7151  7151 I SVStartup: state localReady=true checking=false activated=true playableSource=true route=movie_detail/{movieId}
+07-17 05:19:58.284  7151  8442 E System  : TRACE Starting certificate trust
+07-17 05:19:58.427  7151  8424 I MediaCodec: [OMX.MTK.VIDEO.DECODER.AVC] setting surface generation to 7322638
+07-17 05:19:58.440  7151  7151 I ExoPlayerImpl: Release 96a7865 [AndroidXMedia3/1.6.1] [sheldonp, AFTSSS, Amazon, 28] [media3.common, media3.exoplayer, media3.decoder, media3.datasource, media3.ui, media3.extractor]
+07-17 05:19:58.440  7151  8420 I MediaCodecLogger: Flushing: 7151.HW.video.avc.framerate = 25.000 fps
+07-17 05:19:58.474  7151  8446 E libc    : Access denied finding property "media.metrics.enabled"
+07-17 05:19:58.466  7151  7151 W ExoPlayer:Audio: type=1400 audit(0.0:287081): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=169 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-17 05:19:58.509  7151  8420 I MediaCodecLogger: 7151.HW.video.avc.ASAP-P2Ms = 7
+07-17 05:19:58.509  7151  8420 I MediaCodecLogger: 7151.HW.video.avc.ASAP-P3Ms = 27
+07-17 05:19:58.509  7151  8420 I MediaCodecLogger: 7151.HW.video.avc.FirstFrameReadyMs = 80
+07-17 05:19:58.506  7151  7151 W ExoPlayer:Playb: type=1400 audit(0.0:287082): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=169 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-17 05:19:58.511  7151  8420 E libc    : Access denied finding property "media.metrics.enabled"
+07-17 05:19:58.521  7151  8420 E libc    : Access denied finding property "media.metrics.enabled"
+07-17 05:19:58.516  7151  7151 W ExoPlayer:Playb: type=1400 audit(0.0:287083): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=169 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-17 05:19:58.959  7151  7161 I vision.svplaye: Background concurrent copying GC freed 119059(5MB) AllocSpace objects, 287(18MB) LOS objects, 19% free, 24MB/30MB, paused 181us total 425.553ms
+07-17 05:20:01.268  7151  7161 I vision.svplaye: Background concurrent copying GC freed 250455(9MB) AllocSpace objects, 32(852KB) LOS objects, 22% free, 20MB/26MB, paused 208us total 236.040ms
+07-17 05:20:03.445  7151  7161 I vision.svplaye: Background concurrent copying GC freed 225767(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 198us total 235.143ms
+07-17 05:20:05.618  7151  7161 I vision.svplaye: Background concurrent copying GC freed 210948(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 207us total 225.698ms
+07-17 05:20:07.799  7151  7161 I vision.svplaye: Background concurrent copying GC freed 208148(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 272us total 229.791ms
+07-17 05:20:09.960  7151  7161 I vision.svplaye: Background concurrent copying GC freed 207101(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 20MB/26MB, paused 202us total 228.755ms
+07-17 05:20:10.598  7151  7151 I SVStartup: state localReady=true checking=false activated=true playableSource=true route=movies
+07-17 05:20:10.818  7151  7151 I ExoPlayerImpl: Init a9d1f33 [AndroidXMedia3/1.6.1] [sheldonp, AFTSSS, Amazon, 28]
+07-17 05:20:11.462  7151  7161 I vision.svplaye: Background concurrent copying GC freed 116590(4MB) AllocSpace objects, 3(128KB) LOS objects, 20% free, 23MB/29MB, paused 200us total 278.709ms
+07-17 05:20:11.835  7151  8478 I OMXClient: IOmx service obtained
+07-17 05:20:11.842  7151  8477 I MediaCodec: [OMX.MTK.VIDEO.DECODER.AVC] setting surface generation to 7322639
+07-17 05:20:11.842  7151  8477 I MediaCodecLogger: [ASAP] HW.video.avc P2 + 23054385
+07-17 05:20:11.843  7151  8477 I MediaCodecLogger: HW.video.avc Adaptive Streaming max w:1920 h:1080, screen size:FHD
+07-17 05:20:11.843  7151  8478 I ACodec  : Call prepareForAdaptivePlayback. maxWidth 1920, maxHeight 1080.
+07-17 05:20:11.843  7151  8478 I ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] prepareForAdaptivePlayback failed w/ err -1010
+07-17 05:20:11.845  7151  8478 I ACodec  : codec does not support config priority (err -1010)
+07-17 05:20:11.847  7151  8477 I MediaCodecLogger: [ASAP] HW.video.avc P2 - 23054389
+07-17 05:20:11.848  7151  8472 I MediaCodecLogger: [ASAP] HW.video.avc P3 + 23054391
+07-17 05:20:11.866  7151  8478 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 7 failed: -22
+07-17 05:20:11.868  7151  8477 I MediaCodecLogger: [ASAP] HW.video.avc P3 - 23054411
+07-17 05:20:11.874  7151  8486 I OMXClient: IOmx service obtained
+07-17 05:20:11.881  7151  8486 I MediaCodecLogger: [ASAP] SW.audio.mp4a P2 + 23054424
+07-17 05:20:11.882  7151  8486 I ACodec  : codec does not support config priority (err -2147483648)
+07-17 05:20:11.882  7151  8486 I MediaCodecLogger: [ASAP] SW.audio.mp4a P2 - 23054425
+07-17 05:20:11.889  7151  8472 I MediaCodecLogger: [ASAP] SW.audio.mp4a P3 + 23054431
+07-17 05:20:11.900  7151  8486 I MediaCodecLogger: [ASAP] SW.audio.mp4a P3 - 23054443
+07-17 05:20:11.905  7151  8478 W AHierarchicalStateMachine: Warning message AMessage(what = 'omxI') = {
+07-17 05:20:11.905  7151  8478 W AHierarchicalStateMachine:   int32_t type = 0
+07-17 05:20:11.905  7151  8478 W AHierarchicalStateMachine:   int32_t event = 3
+07-17 05:20:11.905  7151  8478 W AHierarchicalStateMachine:   int32_t data1 = 1
+07-17 05:20:11.905  7151  8478 W AHierarchicalStateMachine:   int32_t data2 = 117440527
+07-17 05:20:11.905  7151  8478 W AHierarchicalStateMachine: } unhandled in root state.
+07-17 05:20:11.910  7151  8478 W ACodec  : [OMX.MTK.VIDEO.DECODER.AVC] setting nBufferCountActual to 14 failed: -22
+07-17 05:20:12.151  7151  8477 I MediaCodecLogger: [ASAP] HW.video.avc Got First Input Frame 23054693 pts:1000000046000
+07-17 05:20:12.154  7151  8486 I MediaCodecLogger: [ASAP] SW.audio.mp4a Got First Input Frame 23054696 pts:1000000000000
+07-17 05:20:12.201  7151  8486 I MediaCodecLogger: updatePTSTime [SW.audio.mp4a] First PTS after Flush or reset = 1000000000000
+07-17 05:20:12.202  7151  8486 I MediaCodecLogger: [ASAP] SW.audio.mp4a Got First Frame Ready 23054744(48)
+07-17 05:20:12.206  7151  8477 I MediaCodecLogger: updateFormatChanged width = 1920 height = 1080
+07-17 05:20:12.208  7151  8472 I android.media.AudioTrack: AUDIOINFO: audio_input: format: 2 sample_rate: 44100 channels: 2 AudioAttributes: AudioAttributes: usage=USAGE_MEDIA content=CONTENT_TYPE_MUSIC flags=0x200 tags= bundle=null
+07-17 05:20:12.209  7151  8477 I MediaCodecLogger: updatePTSTime [HW.video.avc] First PTS after Flush or reset = 1000000046000
+07-17 05:20:12.209  7151  8477 I MediaCodecLogger: [ASAP] HW.video.avc Got First Frame Ready 23054752(59)
+07-17 05:20:12.234  7151  8477 I MediaCodecLogger: Rendering first frame after starting or flushing.
+07-17 05:20:12.234  7151  8477 I MediaCodecLogger: [ASAP] HW.video.avc Got First Frame Render 23054777(84)
+07-17 05:20:12.234  7151  8477 I MediaCodecLogger: App sets Timestamps for render in SurfaceFlinger
+07-17 05:20:12.776  7151  8477 I MediaCodecLogger: 7151.HW.video.avc Resolution change from 0x0 to 1920x1080 took = 6
+07-17 05:20:12.951  7151  7161 I vision.svplaye: Background concurrent copying GC freed 177731(6MB) AllocSpace objects, 10(440KB) LOS objects, 15% free, 33MB/39MB, paused 274us total 777.996ms
+07-17 05:20:13.597  7151  7161 I vision.svplaye: Background concurrent copying GC freed 101512(3MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 41MB/47MB, paused 321us total 414.982ms

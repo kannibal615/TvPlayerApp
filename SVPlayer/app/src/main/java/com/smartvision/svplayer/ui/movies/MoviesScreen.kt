@@ -595,20 +595,23 @@ private fun MovieList(
                     key = { _, movie -> movie.streamId },
                 ) { index, movie ->
                     val itemFocusRequester = remember(movie.streamId) { FocusRequester() }
+                    val reliableMetadata = movie.takeIf { it.externalMetadataLoaded }
                     VodContentRow(
                         title = movie.title,
-                        subtitle = listOfNotNull(
-                            movie.year,
-                            movie.duration,
-                            movie.director?.takeIf { it.isNotBlank() },
-                        ).joinToString(" | ").ifBlank { movie.subtitle },
-                        genre = movie.genre
+                        subtitle = reliableMetadata?.let {
+                            listOfNotNull(
+                                it.year,
+                                it.duration,
+                                it.director?.takeIf(String::isNotBlank),
+                            ).joinToString(" | ").ifBlank { it.categoryLabel }
+                        } ?: "Informations en cours...",
+                        genre = reliableMetadata?.genre
                             ?.substringBefore('/')
                             ?.substringBefore(',')
                             ?.trim()
                             ?.takeIf(String::isNotEmpty),
-                        rating = movie.rating,
-                        sideLabel = movie.duration ?: movie.containerExtension.uppercase(),
+                        rating = reliableMetadata?.rating,
+                        sideLabel = reliableMetadata?.duration.orEmpty(),
                         imageUrl = movie.backdropUrl ?: movie.posterUrl,
                         fallbackText = movie.title.take(2).uppercase(),
                         selected = movie.streamId == state.selectedMovieId,

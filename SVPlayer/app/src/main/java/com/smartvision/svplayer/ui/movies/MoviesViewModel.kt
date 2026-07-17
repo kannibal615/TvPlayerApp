@@ -55,6 +55,7 @@ data class MovieItemUi(
     val cast: String? = null,
     val streamUrl: String,
     val isFavorite: Boolean = false,
+    val externalMetadataLoaded: Boolean = false,
 ) {
     val subtitle: String =
         listOfNotNull(genre, rating?.let { "$it/10" }, year).joinToString(" | ").ifBlank { categoryLabel }
@@ -560,7 +561,7 @@ class MoviesViewModel(
         if (movies.isEmpty()) return
         val job = viewModelScope.launch {
             movies.distinctBy { it.streamId }.chunked(TmdbMetadataUpdateBatchSize).forEach { batch ->
-                val enrichedById = batch.map { movie ->
+                batch.map { movie ->
                     async {
                         val metadata = tmdbEnrichmentSemaphore.withPermit {
                             tmdbRepository.enrichMovie(
@@ -571,7 +572,7 @@ class MoviesViewModel(
                                 includeAdult = !playerSettings.parentalControlEnabled,
                             )
                         } ?: return@async null
-                        movie.streamId to movie.copy(
+                        val enrichedMovie = movie.copy(
                             title = metadata.title.nonBlank() ?: movie.title,
                             posterUrl = metadata.posterUrl.nonBlank() ?: movie.posterUrl,
                             backdropUrl = metadata.backdropUrl.nonBlank() ?: movie.backdropUrl,
@@ -582,14 +583,25 @@ class MoviesViewModel(
                             plot = metadata.overview.nonBlank() ?: movie.plot,
                             director = metadata.director.nonBlank() ?: movie.director,
                             cast = metadata.cast.nonBlank() ?: movie.cast,
+                            externalMetadataLoaded = true,
                         )
+                        // Publish every resolved row immediately. Waiting for all
+                        // 12 requests made one slow TMDB lookup keep the other
+                        // visible rows on unreliable Xtream metadata for minutes.
+                        _uiState.update { state ->
+                            if (state.movies.none { it.streamId == movie.streamId }) {
+                                state
+                            } else {
+                                state.copy(
+                                    movies = state.movies.map { current ->
+                                        if (current.streamId == movie.streamId) enrichedMovie else current
+                                    },
+                                )
+                            }
+                        }
+                        movie.streamId
                     }
-                }.awaitAll().filterNotNull().toMap()
-                if (enrichedById.isNotEmpty()) {
-                    _uiState.update { state ->
-                        state.copy(movies = state.movies.map { movie -> enrichedById[movie.streamId] ?: movie })
-                    }
-                }
+                }.awaitAll()
             }
         }
         tmdbMetadataJobs += job
