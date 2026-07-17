@@ -20,6 +20,7 @@ import com.smartvision.svplayer.data.tmdb.TmdbMatcher
 import com.smartvision.svplayer.domain.model.PlaybackKind
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.repository.CatalogRepository
+import com.smartvision.svplayer.domain.repository.CatalogContentCounts
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
 import kotlinx.coroutines.Job
@@ -41,6 +42,7 @@ data class HomeUiState(
     val trendingMovies: List<ContinueItem> = emptyList(),
     val trendingSeries: List<ContinueItem> = emptyList(),
     val slides: List<HomeSlide> = emptyList(),
+    val catalogCounts: CatalogContentCounts = CatalogContentCounts(),
     val continueWatchingLoading: Boolean = false,
     val trendingLoading: Boolean = false,
 )
@@ -48,6 +50,7 @@ data class HomeUiState(
 private data class HomeLoadingState(
     val continueWatching: Boolean,
     val trending: Boolean,
+    val catalogCounts: CatalogContentCounts,
 )
 
 class HomeViewModel(
@@ -70,13 +73,16 @@ class HomeViewModel(
     private val slides = MutableStateFlow(homeSlidesRepository.getCachedSlides().orEmpty())
     private val continueWatchingLoading = MutableStateFlow(cachedContinueWatching.isEmpty())
     private val trendingLoading = MutableStateFlow(cachedTrending == null)
+    private val catalogCounts = MutableStateFlow(CatalogContentCounts())
     private val loadingState = combine(
         continueWatchingLoading,
         trendingLoading,
-    ) { continueLoading, trendLoading ->
+        catalogCounts,
+    ) { continueLoading, trendLoading, counts ->
         HomeLoadingState(
             continueWatching = continueLoading,
             trending = trendLoading,
+            catalogCounts = counts,
         )
     }
     private var trendingRefreshJob: Job? = null
@@ -128,6 +134,7 @@ class HomeViewModel(
             trendingMovies = trendMovieItems,
             trendingSeries = trendSeriesItems,
             slides = homeSlides,
+            catalogCounts = loading.catalogCounts,
             continueWatchingLoading = loading.continueWatching,
             trendingLoading = loading.trending,
         )
@@ -158,6 +165,7 @@ class HomeViewModel(
             ),
         )
         refreshSlides()
+        refreshCatalogCounts()
         observeProfileChanges()
     }
 
@@ -174,7 +182,9 @@ class HomeViewModel(
                 continueWatchingLoading.value = true
                 trendingMovies.value = emptyList()
                 trendingSeries.value = emptyList()
+                catalogCounts.value = CatalogContentCounts()
                 trendingLoading.value = true
+                refreshCatalogCounts()
                 refreshTrending(forceRefresh = false)
             }
         }
@@ -214,6 +224,13 @@ class HomeViewModel(
                         error = error,
                     )
                 }
+        }
+    }
+
+    fun refreshCatalogCounts() {
+        viewModelScope.launch {
+            runCatching { catalogRepository.getCatalogContentCounts() }
+                .onSuccess { counts -> catalogCounts.value = counts }
         }
     }
 

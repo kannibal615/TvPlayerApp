@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -248,6 +247,13 @@ fun ContentProgressCard(
                     .padding(if (isLive && displayedImageUrl == item.imageUrl) 16.dp else 0.dp),
             )
         }
+        if (videoVisible) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+            )
+        }
         if (showPreview && item.previewUrl != null) {
             HomePreviewSurface(
                 controller = previewController,
@@ -329,6 +335,7 @@ fun ContentProgressCard(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        val progressWidthFraction = if (remainingText.isNullOrBlank()) 1f else 0.72f
                         if (item.mediaType == "SERIE" && !item.secondaryLabel.isNullOrBlank()) {
                             Text(
                                 text = item.secondaryLabel,
@@ -341,7 +348,7 @@ fun ContentProgressCard(
                         }
                         ProgressBar(
                             progress = item.progress,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.fillMaxWidth(progressWidthFraction),
                         )
                         if (!remainingText.isNullOrBlank()) {
                             Spacer(Modifier.width(6.dp))

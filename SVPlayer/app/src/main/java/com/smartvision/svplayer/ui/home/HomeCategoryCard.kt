@@ -47,6 +47,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.smartvision.svplayer.data.mock.HomeCategory
 import com.smartvision.svplayer.data.mock.HomeCategoryType
@@ -70,6 +71,7 @@ fun HomeCategoryCard(
     blockedMessage: String = "Connection unavailable",
     workOverlay: HomeCategoryWorkOverlay? = null,
     kidsMode: Boolean = false,
+    itemCount: Int = 0,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -159,32 +161,39 @@ fun HomeCategoryCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+                .padding(
+                    start = HomeCategoryCardLayout.HorizontalPadding,
+                    top = HomeCategoryCardLayout.TopPadding,
+                    end = HomeCategoryCardLayout.HorizontalPadding,
+                    bottom = HomeCategoryCardLayout.BottomPadding,
+                ),
+            verticalArrangement = Arrangement.Bottom,
         ) {
-            CategoryBadge(text = category.badge, accent = accent)
-            Column {
-                Text(
-                    text = category.title,
-                    color = SmartVisionColors.TextPrimary,
-                    style = SmartVisionType.HomeCategoryTitle,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = category.subtitle,
-                    color = SmartVisionColors.TextSecondary,
-                    style = SmartVisionType.Label,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(10.dp))
-                CategoryCta(
-                    text = category.actionLabel,
-                    icon = if (category.type == HomeCategoryType.Live) Icons.Default.Tv else Icons.Default.PlayArrow,
-                )
-            }
+            Text(
+                text = category.title,
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.HomeCategoryTitle.copy(
+                    fontSize = HomeCategoryCardLayout.TitleFontSize,
+                    lineHeight = HomeCategoryCardLayout.TitleLineHeight,
+                ),
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(HomeCategoryCardLayout.TitleSubtitleSpacing))
+            Text(
+                text = category.subtitle,
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(HomeCategoryCardLayout.SubtitleActionSpacing))
+            CategoryActionRow(
+                text = category.actionLabel,
+                icon = if (category.type == HomeCategoryType.Live) Icons.Default.Tv else Icons.Default.PlayArrow,
+                itemCount = itemCount,
+            )
         }
         if (blocked) {
             Box(
@@ -281,56 +290,67 @@ data class HomeCategoryWorkOverlay(
 )
 
 @Composable
-private fun CategoryBadge(
+private fun CategoryActionRow(
     text: String,
-    accent: Color,
+    icon: ImageVector,
+    itemCount: Int,
 ) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(SmartVisionDimensions.HomeContentRadius))
-            .background(accent.copy(alpha = 0.26f))
-            .border(BorderStroke(1.dp, accent.copy(alpha = 0.78f)), RoundedCornerShape(SmartVisionDimensions.HomeContentRadius))
-            .padding(horizontal = 8.dp, vertical = 3.dp),
-        contentAlignment = Alignment.Center,
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(SmartVisionDimensions.HomeContentRadius))
+                .background(Color.Black.copy(alpha = 0.28f))
+                .border(
+                    BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
+                    RoundedCornerShape(SmartVisionDimensions.HomeContentRadius),
+                )
+                .padding(
+                    horizontal = HomeCategoryCardLayout.ActionHorizontalPadding,
+                    vertical = HomeCategoryCardLayout.ActionVerticalPadding,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(HomeCategoryCardLayout.ActionIconSpacing),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(HomeCategoryCardLayout.ActionIconSize),
+            )
+            Text(
+                text = text,
+                color = Color.White,
+                style = SmartVisionType.Caption,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
         Text(
-            text = text,
+            text = itemCount.coerceAtLeast(0).toString(),
             color = Color.White,
-            style = SmartVisionType.Caption,
+            style = SmartVisionType.Label,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
         )
     }
 }
 
-@Composable
-private fun CategoryCta(
-    text: String,
-    icon: ImageVector,
-) {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(SmartVisionDimensions.HomeContentRadius))
-            .background(Color.Black.copy(alpha = 0.28f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(SmartVisionDimensions.HomeContentRadius))
-            .padding(horizontal = 12.dp, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(14.dp),
-        )
-        Text(
-            text = text,
-            color = Color.White,
-            style = SmartVisionType.Caption,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
-    }
+private object HomeCategoryCardLayout {
+    val HorizontalPadding = 20.dp
+    val TopPadding = 12.dp
+    val BottomPadding = 18.dp
+    val TitleFontSize = 42.sp
+    val TitleLineHeight = 51.sp
+    val TitleSubtitleSpacing = 1.dp
+    val SubtitleActionSpacing = 8.dp
+    val ActionHorizontalPadding = 12.dp
+    val ActionVerticalPadding = 5.dp
+    val ActionIconSpacing = 8.dp
+    val ActionIconSize = 14.dp
 }
 
 private val HomeCategoryType.accent: Color

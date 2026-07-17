@@ -484,6 +484,7 @@ fun HomeScreen(
             )
             viewModel.refreshSlides(forceRefresh = true)
             viewModel.refreshTrending(forceRefresh = false)
+            viewModel.refreshCatalogCounts()
             continueRowState.scrollToItem(0)
             movieTrendRowState.scrollToItem(0)
             seriesTrendRowState.scrollToItem(0)
@@ -567,6 +568,7 @@ fun HomeScreen(
                         container.xtreamRepository.clearCaches()
                         container.catalogRepository.invalidateLocalCatalogCache()
                         container.synchronizeCatalog().getOrThrow()
+                        viewModel.refreshCatalogCounts()
                         if (request.source == PlaylistSource.Xtream) {
                             viewModel.loadSavedTrendingMovies(forceRefresh = true)
                             viewModel.loadSavedTrendingSeries(forceRefresh = true)
@@ -684,6 +686,11 @@ fun HomeScreen(
                         blockedMessage = strings.connectionUnavailable,
                         workOverlay = catalogWorkUiState.overlayFor(category.id, strings),
                         kidsMode = kidsMode,
+                        itemCount = when (category.type) {
+                            HomeCategoryType.Live -> state.catalogCounts.live
+                            HomeCategoryType.Movies -> state.catalogCounts.movies
+                            HomeCategoryType.Series -> state.catalogCounts.series
+                        },
                         focusRequester = when (category.id) {
                             "live" -> liveFocusRequester
                             "movies" -> moviesFocusRequester

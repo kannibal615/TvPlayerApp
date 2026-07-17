@@ -8,6 +8,7 @@ Derniere mise a jour: 2026-07-17.
 - Le focus conserve la largeur et le ratio; la card passe de `1.04` a `1.2` uniquement apres la premiere image video.
 - Les metadonnees preview sont preparees par fenetre visible avec concurrence bornee. Apres `550 ms` de focus stable, un unique `HomePreviewController` peut lire l'URL Xtream reconstruite en memoire; le focus seul ne lance aucune requete.
 - `item.id` reste la cle Lazy et `item.imageUrl` l'unique URL d'image rendue par la card. Les backdrops caches sont hydrates avant emission; les cinq premieres Series sont preparees avec concurrence `2` avant retrait du skeleton. Un enrichissement ulterieur ne remplace jamais l'image uniquement au focus/recomposition.
+- Apres la premiere frame, la surface video repose sur un fond noir plein format afin que le poster ne reste pas visible dans les zones transparentes ou non couvertes du mini-player. Avant la premiere frame, le poster conserve son role de transition.
 - Une perte de focus, une autre preview, une sortie Home, un changement de profil ou `ON_STOP` arrete et libere le player.
 - Les previews ne passent jamais par le lecteur principal et n'ecrivent ni progression, ni historique, ni date de derniere lecture.
 - Films: lien Xtream du film avec extension locale.

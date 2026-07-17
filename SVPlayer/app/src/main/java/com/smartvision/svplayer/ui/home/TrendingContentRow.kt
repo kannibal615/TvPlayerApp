@@ -366,6 +366,13 @@ private fun TrendingPreviewCard(
                 modifier = Modifier.fillMaxSize(),
             )
         }
+        if (videoVisible) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+            )
+        }
         HomePreviewSurface(
             controller = previewController,
             previewId = item.id,

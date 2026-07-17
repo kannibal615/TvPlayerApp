@@ -9,6 +9,8 @@ Derniere mise a jour: 2026-07-17.
 - La ligne basse Continue est remontee a `8 dp`: Film affiche barre puis temps restant, Serie affiche `Sx Ex`, barre puis temps restant, Live n'affiche ni barre ni compteur. Les libelles restants sont localises en anglais/francais.
 - Tendances garde le titre sur une ligne (`15 sp`, repli `12 sp`, ellipsis), affiche la note numerique avec une etoile jaune separee et place duree Film ou `xS xxE` dans un badge noir en haut a gauche. Une duree nulle/invalide reste masquee.
 - Les gradients statiques inferieurs de Continue et Tendances terminent a `0.96` d'opacite; l'overlay allege pendant la video reste inchange.
+- Quand une preview Continue/Tendances affiche sa premiere image video, un aplat noir couvre le poster derriere la surface Media3. Le poster reste conserve jusqu'a cette premiere image et le cycle de vie du mini-player ne change pas.
+- Les trois cards categories ne rendent plus les badges `LIVE`/`VOD`/`SERIES`. Leur titre passe de `28 sp` a `42 sp`, remonte dans la composition, et le compteur Room Live/Films/Series s'affiche a droite de l'action `Watch now`/`Explore`. Les valeurs de taille et position sont centralisees dans `HomeCategoryCardLayout`.
 - Le poster reste visible jusqu'a la premiere image decodee. La carte passe alors a `1.2x` et ne garde qu'un titre sur une ligne et un gradient bas court.
 - Le controleur conserve un seul player partage. Sa vue Android utilise `surface_view` pour eviter le chemin `TextureView` acquire-fence/pertes d'images; verifier le clipping et l'ordre des overlays sur chaque cible.
 
