@@ -291,7 +291,7 @@ private fun TrendingPreviewCard(
                 cornerRadius = SmartVisionDimensions.HomeContentRadius,
             )
             .shadow(
-                elevation = if (focusState.isFocused) 15.dp else 3.dp,
+                elevation = if (focusState.isFocused) 10.dp else 3.dp,
                 shape = shape,
                 ambientColor = SmartVisionColors.CardFocusGlow,
                 spotColor = SmartVisionColors.CardFocusGlow,
