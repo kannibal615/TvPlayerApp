@@ -1,0 +1,230 @@
+Activity Resolver Table:
+  Non-Data Actions:
+      android.intent.action.MAIN:
+        c10f4d6 com.smartvision.svplayer/.MainActivity filter 155a357
+          Action: "android.intent.action.MAIN"
+          Category: "android.intent.category.LEANBACK_LAUNCHER"
+        c10f4d6 com.smartvision.svplayer/.MainActivity filter 5853e44
+          Action: "android.intent.action.MAIN"
+          Category: "android.intent.category.LAUNCHER"
+
+Receiver Resolver Table:
+  Non-Data Actions:
+      android.intent.action.BATTERY_OKAY:
+        d8ba64f com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy filter 13c11dc
+          Action: "android.intent.action.BATTERY_OKAY"
+          Action: "android.intent.action.BATTERY_LOW"
+      android.intent.action.ACTION_POWER_DISCONNECTED:
+        cb18d29 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy filter 751c8ae
+          Action: "android.intent.action.ACTION_POWER_CONNECTED"
+          Action: "android.intent.action.ACTION_POWER_DISCONNECTED"
+      android.intent.action.QUICKBOOT_POWERON:
+        f4c6b2d com.smartvision.svplayer/.startup.BootReceiver filter dff8862
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.LOCKED_BOOT_COMPLETED"
+          Action: "android.intent.action.MY_PACKAGE_REPLACED"
+          Action: "android.intent.action.QUICKBOOT_POWERON"
+      androidx.profileinstaller.action.SAVE_PROFILE:
+        a5369e3 com.smartvision.svplayer/androidx.profileinstaller.ProfileInstallReceiver filter 997b95e
+          Action: "androidx.profileinstaller.action.SAVE_PROFILE"
+      android.intent.action.DEVICE_STORAGE_LOW:
+        2cd2e5 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy filter d75c1ba
+          Action: "android.intent.action.DEVICE_STORAGE_LOW"
+          Action: "android.intent.action.DEVICE_STORAGE_OK"
+      android.net.conn.CONNECTIVITY_CHANGE:
+        c06586b com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy filter b666fc8
+          Action: "android.net.conn.CONNECTIVITY_CHANGE"
+      android.intent.action.LOCKED_BOOT_COMPLETED:
+        f4c6b2d com.smartvision.svplayer/.startup.BootReceiver filter dff8862
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.LOCKED_BOOT_COMPLETED"
+          Action: "android.intent.action.MY_PACKAGE_REPLACED"
+          Action: "android.intent.action.QUICKBOOT_POWERON"
+      android.intent.action.DEVICE_STORAGE_OK:
+        2cd2e5 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy filter d75c1ba
+          Action: "android.intent.action.DEVICE_STORAGE_LOW"
+          Action: "android.intent.action.DEVICE_STORAGE_OK"
+      androidx.profileinstaller.action.INSTALL_PROFILE:
+        a5369e3 com.smartvision.svplayer/androidx.profileinstaller.ProfileInstallReceiver filter 8596fe0
+          Action: "androidx.profileinstaller.action.INSTALL_PROFILE"
+      android.intent.action.BATTERY_LOW:
+        d8ba64f com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy filter 13c11dc
+          Action: "android.intent.action.BATTERY_OKAY"
+          Action: "android.intent.action.BATTERY_LOW"
+      android.intent.action.TIMEZONE_CHANGED:
+        d5cb861 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.RescheduleReceiver filter cae3f86
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.TIME_SET"
+          Action: "android.intent.action.TIMEZONE_CHANGED"
+      android.intent.action.TIME_SET:
+        d5cb861 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.RescheduleReceiver filter cae3f86
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.TIME_SET"
+          Action: "android.intent.action.TIMEZONE_CHANGED"
+      androidx.profileinstaller.action.SKIP_FILE:
+        a5369e3 com.smartvision.svplayer/androidx.profileinstaller.ProfileInstallReceiver filter 56b1299
+          Action: "androidx.profileinstaller.action.SKIP_FILE"
+      androidx.profileinstaller.action.BENCHMARK_OPERATION:
+        a5369e3 com.smartvision.svplayer/androidx.profileinstaller.ProfileInstallReceiver filter cc8c13f
+          Action: "androidx.profileinstaller.action.BENCHMARK_OPERATION"
+      android.intent.action.BOOT_COMPLETED:
+        f4c6b2d com.smartvision.svplayer/.startup.BootReceiver filter dff8862
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.LOCKED_BOOT_COMPLETED"
+          Action: "android.intent.action.MY_PACKAGE_REPLACED"
+          Action: "android.intent.action.QUICKBOOT_POWERON"
+        d5cb861 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.RescheduleReceiver filter cae3f86
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.TIME_SET"
+          Action: "android.intent.action.TIMEZONE_CHANGED"
+      android.intent.action.USER_PRESENT:
+        f271df3 com.smartvision.svplayer/.startup.UserPresentReceiver filter bb9fab0
+          Action: "android.intent.action.USER_PRESENT"
+      android.intent.action.ACTION_POWER_CONNECTED:
+        cb18d29 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy filter 751c8ae
+          Action: "android.intent.action.ACTION_POWER_CONNECTED"
+          Action: "android.intent.action.ACTION_POWER_DISCONNECTED"
+      androidx.work.diagnostics.REQUEST_DIAGNOSTICS:
+        94b799d com.smartvision.svplayer/androidx.work.impl.diagnostics.DiagnosticsReceiver filter 9ece12
+          Action: "androidx.work.diagnostics.REQUEST_DIAGNOSTICS"
+      android.intent.action.MY_PACKAGE_REPLACED:
+        f4c6b2d com.smartvision.svplayer/.startup.BootReceiver filter dff8862
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.LOCKED_BOOT_COMPLETED"
+          Action: "android.intent.action.MY_PACKAGE_REPLACED"
+          Action: "android.intent.action.QUICKBOOT_POWERON"
+      androidx.work.impl.background.systemalarm.UpdateProxies:
+        5301047 com.smartvision.svplayer/androidx.work.impl.background.systemalarm.ConstraintProxyUpdateReceiver filter 856c074
+          Action: "androidx.work.impl.background.systemalarm.UpdateProxies"
+
+Permissions:
+  Permission [com.smartvision.svplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION] (5eebbdb):
+    sourcePackage=com.smartvision.svplayer
+    uid=10147 gids=null type=0 prot=signature
+    perm=Permission{bb70cbd com.smartvision.svplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION}
+
+Registered ContentProviders:
+  com.smartvision.svplayer/androidx.core.content.FileProvider:
+    Provider{a0032b2 com.smartvision.svplayer/androidx.core.content.FileProvider}
+  com.smartvision.svplayer/androidx.startup.InitializationProvider:
+    Provider{9340203 com.smartvision.svplayer/androidx.startup.InitializationProvider}
+
+ContentProvider Authorities:
+  [com.smartvision.svplayer.androidx-startup]:
+    Provider{9340203 com.smartvision.svplayer/androidx.startup.InitializationProvider}
+      applicationInfo=ApplicationInfo{513f580 com.smartvision.svplayer}
+  [com.smartvision.svplayer.fileprovider]:
+    Provider{a0032b2 com.smartvision.svplayer/androidx.core.content.FileProvider}
+      applicationInfo=ApplicationInfo{f4cb7b9 com.smartvision.svplayer}
+
+Key Set Manager:
+  [com.smartvision.svplayer]
+      Signing KeySets: 98
+
+Packages:
+  Package [com.smartvision.svplayer] (5bac7fe):
+    userId=10147
+    pkg=Package{5eabb5f com.smartvision.svplayer}
+    codePath=/data/app/~~IQ0pTH5PUjho9JohgTgfyg==/com.smartvision.svplayer-dH7iMESL-tYNobZQ63KRQw==
+    resourcePath=/data/app/~~IQ0pTH5PUjho9JohgTgfyg==/com.smartvision.svplayer-dH7iMESL-tYNobZQ63KRQw==
+    legacyNativeLibraryDir=/data/app/~~IQ0pTH5PUjho9JohgTgfyg==/com.smartvision.svplayer-dH7iMESL-tYNobZQ63KRQw==/lib
+    primaryCpuAbi=armeabi-v7a
+    secondaryCpuAbi=null
+    versionCode=189 minSdk=23 targetSdk=36
+    versionName=0.1.120
+    splits=[base]
+    apkSigningVersion=2
+    applicationInfo=ApplicationInfo{5eabb5f com.smartvision.svplayer}
+    flags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]
+    privateFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE PARTIALLY_DIRECT_BOOT_AWARE PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    forceQueryable=false
+    queriesPackages=[]
+    dataDir=/data/user/0/com.smartvision.svplayer
+    supportsScreens=[small, medium, large, xlarge, resizeable, anyDensity]
+    timeStamp=2026-07-17 20:08:17
+    firstInstallTime=2026-06-24 21:26:25
+    lastUpdateTime=2026-07-17 20:08:21
+    installerPackageName=com.google.android.packageinstaller
+    signatures=PackageSignatures{482e9ac version:2, signatures:[2264628b], past signatures:[]}
+    installPermissionsFixed=true
+    pkgFlags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]
+    declared permissions:
+      com.smartvision.svplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: prot=signature, INSTALLED
+    requested permissions:
+      android.permission.INTERNET
+      android.permission.ACCESS_NETWORK_STATE
+      android.permission.POST_NOTIFICATIONS
+      android.permission.REQUEST_INSTALL_PACKAGES
+      android.permission.RECEIVE_BOOT_COMPLETED
+      android.permission.FOREGROUND_SERVICE
+      android.permission.FOREGROUND_SERVICE_DATA_SYNC
+      android.permission.WAKE_LOCK
+      com.smartvision.svplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+    install permissions:
+      android.permission.FOREGROUND_SERVICE: granted=true
+      android.permission.RECEIVE_BOOT_COMPLETED: granted=true
+      android.permission.INTERNET: granted=true
+      com.smartvision.svplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: granted=true
+      android.permission.ACCESS_NETWORK_STATE: granted=true
+      android.permission.WAKE_LOCK: granted=true
+    User 0: ceDataInode=32598 installed=true hidden=false suspended=false distractionFlags=0 stopped=false notLaunched=false enabled=0 instant=false virtual=false
+      lastDisabledCaller: com.google.android.packageinstaller
+      gids=[3003]
+      runtime permissions:
+      enabledComponents:
+        androidx.work.impl.background.systemalarm.RescheduleReceiver
+        androidx.work.impl.background.systemjob.SystemJobService
+    User 10: ceDataInode=0 installed=false hidden=false suspended=false distractionFlags=0 stopped=true notLaunched=true enabled=0 instant=false virtual=false
+      gids=[3003]
+      runtime permissions:
+
+Queries:
+  system apps queryable: false
+  queries via package name:
+  queries via intent:
+    com.google.android.play.games:
+      com.smartvision.svplayer
+  queryable via interaction:
+    User 0:
+      [com.tcl.settings,com.tcl.gallery,com.android.dynsystem,com.android.wallpaperbackup,com.tcl.providers.config,com.tcl.keyhelp,com.tcl.system.server,com.tcl.suspension,com.tcl.copydatatotv,com.tcl.gamebar,com.tcl.tvinput,com.tcl.MultiScreenInteraction_TV,com.android.inputdevices,com.tcl.autopair,com.android.networkstack.tethering.inprocess,com.tcl.externaldevice.update,com.tcl.micmanager,com.tcl.tcl_bt_rcu_service,com.tcl.initsetup,com.tcl.overseasappshow,com.tcl.audioplayer,com.tcl.t_solo,com.tcl.partnercustomizer,com.tcl.messagebox,com.android.localtransport,com.tcl.ui_mediaCenter,com.tcl.smartalexa,com.tcl.assistant,com.tcl.factory.view,android,com.tcl.videoplayer,com.tcl.versionUpdateApp,com.android.tv.settings,com.android.keychain,com.tcl.miracast,com.tcl.esticker,com.android.providers.settings,com.android.networkstack.inprocess,com.google.android.tv.assistant,com.android.location.fused,com.tcl.tv,com.tcl.imageplayer,com.tcl.guard]:
+        com.smartvision.svplayer
+      com.tcl.inputmethod.international:
+        com.smartvision.svplayer
+      com.smartvision.svplayer:
+        [com.tcl.settings,com.tcl.gallery,com.android.dynsystem,com.android.wallpaperbackup,com.tcl.providers.config,com.tcl.keyhelp,com.tcl.system.server,com.tcl.suspension,com.tcl.copydatatotv,com.tcl.gamebar,com.tcl.tvinput,com.tcl.MultiScreenInteraction_TV,com.android.inputdevices,com.tcl.autopair,com.android.networkstack.tethering.inprocess,com.tcl.externaldevice.update,com.tcl.micmanager,com.tcl.tcl_bt_rcu_service,com.tcl.initsetup,com.tcl.overseasappshow,com.tcl.audioplayer,com.tcl.t_solo,com.tcl.partnercustomizer,com.tcl.messagebox,com.android.localtransport,com.tcl.ui_mediaCenter,com.tcl.smartalexa,com.tcl.assistant,com.tcl.factory.view,android,com.tcl.videoplayer,com.tcl.versionUpdateApp,com.android.tv.settings,com.android.keychain,com.tcl.miracast,com.tcl.esticker,com.android.providers.settings,com.android.networkstack.inprocess,com.google.android.tv.assistant,com.android.location.fused,com.tcl.tv,com.tcl.imageplayer,com.tcl.guard]
+    User 10:
+
+Package Changes:
+  Sequence number=55
+  User 0:
+    seq=7, package=com.goodtoolapps.zeus
+    seq=8, package=com.amazon.amazonvideo.livingroom
+    seq=15, package=de.twokit.screen.recording.app
+    seq=26, package=com.google.android.gms
+    seq=27, package=com.google.android.youtube.tv
+    seq=29, package=com.google.android.apps.tv.launcherx
+    seq=30, package=com.google.android.videos
+    seq=38, package=com.android.vending
+    seq=48, package=com.netflix.ninja
+    seq=49, package=com.tcl.notereminder
+    seq=51, package=com.google.android.webview
+    seq=52, package=com.google.android.apps.tv.dreamx
+    seq=53, package=flar2.homebutton
+    seq=54, package=com.smartvision.svplayer
+  User 10:
+    seq=22, package=com.android.vending
+    seq=26, package=com.google.android.gms
+    seq=28, package=com.google.android.videos
+    seq=29, package=com.google.android.apps.tv.launcherx
+    seq=51, package=com.google.android.webview
+
+
+Dexopt state:
+  [com.smartvision.svplayer]
+    path: /data/app/~~IQ0pTH5PUjho9JohgTgfyg==/com.smartvision.svplayer-dH7iMESL-tYNobZQ63KRQw==/base.apk
+      arm: [status=speed-profile] [reason=install]
+
+
+Compiler stats:
+  [com.smartvision.svplayer]
+     base.apk - 20984

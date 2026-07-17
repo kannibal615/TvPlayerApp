@@ -1,0 +1,25 @@
+{
+  "label": "marwen-home-run1",
+  "captured_at": "2026-07-17T18:26:22.269207+00:00",
+  "serial": "192.168.1.11:5555",
+  "package": "com.smartvision.svplayer",
+  "pid": "3153",
+  "keys": [],
+  "settle_ms": 700,
+  "capture_elapsed_ms": 7129.1,
+  "focus": [
+    "mResumedActivity: ActivityRecord{7738a48 u0 com.smartvision.svplayer/.MainActivity t9476}",
+    "mCurrentFocus=Window{8fc70ec u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}",
+    "mFocusedApp=ActivityRecord{7738a48 u0 com.smartvision.svplayer/.MainActivity t9476}"
+  ],
+  "ui_dump_status": "UI hierchary dumped to: /data/local/tmp/codex-ui-1960.xml",
+  "files": [
+    "activity.txt",
+    "gfxinfo-framestats.txt",
+    "logcat.txt",
+    "screenshot.png",
+    "ui-dump-status.txt",
+    "ui.xml",
+    "window.txt"
+  ]
+}

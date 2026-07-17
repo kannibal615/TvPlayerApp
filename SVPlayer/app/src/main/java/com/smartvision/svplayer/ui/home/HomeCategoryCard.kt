@@ -170,6 +170,17 @@ fun HomeCategoryCard(
             verticalArrangement = Arrangement.Bottom,
         ) {
             Text(
+                text = itemCount.coerceAtLeast(0).toString(),
+                color = Color.White.copy(alpha = 0.92f),
+                style = SmartVisionType.HomeCategoryTitle.copy(
+                    fontSize = HomeCategoryCardLayout.CountFontSize,
+                    lineHeight = HomeCategoryCardLayout.CountLineHeight,
+                ),
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+            Spacer(Modifier.height(HomeCategoryCardLayout.CountTitleSpacing))
+            Text(
                 text = category.title,
                 color = SmartVisionColors.TextPrimary,
                 style = SmartVisionType.HomeCategoryTitle.copy(
@@ -192,7 +203,6 @@ fun HomeCategoryCard(
             CategoryActionRow(
                 text = category.actionLabel,
                 icon = if (category.type == HomeCategoryType.Live) Icons.Default.Tv else Icons.Default.PlayArrow,
-                itemCount = itemCount,
             )
         }
         if (blocked) {
@@ -293,12 +303,11 @@ data class HomeCategoryWorkOverlay(
 private fun CategoryActionRow(
     text: String,
     icon: ImageVector,
-    itemCount: Int,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.Start,
     ) {
         Row(
             modifier = Modifier
@@ -329,13 +338,6 @@ private fun CategoryActionRow(
                 maxLines = 1,
             )
         }
-        Text(
-            text = itemCount.coerceAtLeast(0).toString(),
-            color = Color.White,
-            style = SmartVisionType.Label,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-        )
     }
 }
 
@@ -345,6 +347,9 @@ private object HomeCategoryCardLayout {
     val BottomPadding = 18.dp
     val TitleFontSize = 42.sp
     val TitleLineHeight = 51.sp
+    val CountFontSize = 27.sp
+    val CountLineHeight = 32.sp
+    val CountTitleSpacing = 0.dp
     val TitleSubtitleSpacing = 1.dp
     val SubtitleActionSpacing = 8.dp
     val ActionHorizontalPadding = 12.dp

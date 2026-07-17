@@ -489,8 +489,40 @@ fun AppNavigation(
             }
         }.also { profileSwitchSyncJob = it }
     }
-    val activateProfileForSession: (String) -> Unit = { profileId ->
-        startProfileActivation(profileId)
+    val requestProfileSelection: (String) -> Unit = requestProfileSelection@{ profileId ->
+        if (profileSelectionRequest != null) return@requestProfileSelection
+        val request = ProfileSelectionRequest(
+            requestId = ++profileSelectionRequestCounter,
+            profileId = profileId,
+        )
+        profileSelectionRequest = request
+        profileActivationCompletedRequestId = null
+        profilePickerCompleted = false
+        if (activeProfileId != profileId) {
+            homeReadyProfileId = null
+        }
+        runCatching {
+            startProfileActivation(profileId)
+        }.onSuccess { activationJob ->
+            if (activationJob == null) {
+                profileActivationCompletedRequestId = request.requestId
+            } else {
+                scope.launch {
+                    activationJob.join()
+                    if (
+                        profileSelectionRequest == request &&
+                        container.accountManager.activeProfileId.value == request.profileId
+                    ) {
+                        profileActivationCompletedRequestId = request.requestId
+                    }
+                }
+            }
+        }.onFailure {
+            if (profileSelectionRequest == request) {
+                profileSelectionRequest = null
+                profileActivationCompletedRequestId = null
+            }
+        }
     }
     LaunchedEffect(activationState.activationType, xtreamAccountSignature) {
         if (activationState.activationType == "trial_pending_xtream" && xtreamAccounts.isNotEmpty()) {
@@ -741,7 +773,7 @@ fun AppNavigation(
                 startDestination = com.smartvision.svplayer.ui.profile.ProfileAreaDestination.INFO,
                 onOpenInfo = {},
                 onOpenManage = { navController.navigateSingleTop(AppRoute.ManageProfiles.route) },
-                onActivateProfileForSession = activateProfileForSession,
+                onActivateProfileForSession = requestProfileSelection,
             )
         }
         composable(AppRoute.ManageProfiles.route) {
@@ -767,7 +799,7 @@ fun AppNavigation(
                 startDestination = com.smartvision.svplayer.ui.profile.ProfileAreaDestination.MANAGE,
                 onOpenInfo = { navController.navigateSingleTop(AppRoute.Profile.route) },
                 onOpenManage = {},
-                onActivateProfileForSession = activateProfileForSession,
+                onActivateProfileForSession = requestProfileSelection,
             )
         }
         composable(AppRoute.Live.route) {
@@ -1202,41 +1234,7 @@ fun AppNavigation(
                 }
             },
             onVerifyPin = container.settingsRepository::verifyParentalPin,
-            onSelectProfile = { profileId ->
-                if (profileSelectionRequest == null) {
-                    val request = ProfileSelectionRequest(
-                        requestId = ++profileSelectionRequestCounter,
-                        profileId = profileId,
-                    )
-                    profileSelectionRequest = request
-                    profileActivationCompletedRequestId = null
-                    if (activeProfileId != profileId) {
-                        homeReadyProfileId = null
-                    }
-                    runCatching {
-                        startProfileActivation(profileId)
-                    }.onSuccess { activationJob ->
-                        if (activationJob == null) {
-                            profileActivationCompletedRequestId = request.requestId
-                        } else {
-                            scope.launch {
-                                activationJob.join()
-                                if (
-                                    profileSelectionRequest == request &&
-                                    container.accountManager.activeProfileId.value == request.profileId
-                                ) {
-                                    profileActivationCompletedRequestId = request.requestId
-                                }
-                            }
-                        }
-                    }.onFailure {
-                        if (profileSelectionRequest == request) {
-                            profileSelectionRequest = null
-                            profileActivationCompletedRequestId = null
-                        }
-                    }
-                }
-            },
+            onSelectProfile = requestProfileSelection,
             onSaveProfile = { profile ->
                 val wasActiveProfile =
                     profile.id.isNotBlank() &&

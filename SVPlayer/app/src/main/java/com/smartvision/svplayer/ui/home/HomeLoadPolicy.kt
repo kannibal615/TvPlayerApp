@@ -12,3 +12,19 @@ internal fun shouldApplyHomeLoadResult(
 ): Boolean =
     token.profileId == activeProfileId &&
         token.catalogRevision == catalogRevision
+
+internal fun HomeUiState.visibleForProfile(activeProfileId: String): HomeUiState =
+    if (profileId == activeProfileId) {
+        this
+    } else {
+        HomeUiState(
+            profileId = activeProfileId,
+            slides = slides,
+            continueWatchingLoading = true,
+            trendingLoading = true,
+            catalogCountsLoading = true,
+            catalogRevision = catalogRevision,
+            loadedCatalogRevision = -1L,
+            syncInProgress = syncInProgress,
+        )
+    }

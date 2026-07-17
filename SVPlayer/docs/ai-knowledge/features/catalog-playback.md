@@ -63,6 +63,7 @@ Clarification stockage/performance:
 - La synchronisation reseau complete est separee du chargement local et depend de `SyncFrequencyPolicy`: `A chaque demarrage` est consomme une seule fois par instance d'application, pas a chaque retour Home; `24h`/`48h` utilisent le dernier `sync_state` reussi et `Manuelle`/`Jamais` evitent la synchro automatique sauf catalogue absent.
 - Recommandation d'optimisation: ne remettre aucun prechauffage Room dans le splash; preferer une frequence `24h` ou `48h` pour eviter les telechargements reseau inutiles tout en gardant les catalogues frais.
 - Les index Room sur `categoryId`, tri par numero/titre/nom et `episodes.seriesId` supportent le chargement pagine local.
+- Les tendances Home sont recalculees depuis les candidats Room avec une unicite `contentId + poster normalise`; deux titres differents ne peuvent plus occuper la meme section avec la meme image. Les URLs vides ne sont pas assimilees entre elles et le candidat suivant remplit la limite quand il est disponible.
 
 ## Controle parental local
 

@@ -19,6 +19,7 @@ Derniere mise a jour: 2026-07-17.
 ## Tendances
 
 - `HomeTrendingPolicy.SectionLimit = 10` centralise la taille par section.
+- La selection est unique par identifiant de contenu et par URL de poster normalisee (casse, query et fragment ignores). Un doublon visuel est saute au profit du candidat suivant; une entree sans poster reste eligible. Ce controle s'applique aux Films et Series et reconstruit aussi les selections Room deja persistees lors de la prochaine lecture Home.
 - La selection est calculee uniquement apres import Live/Films/Series pendant `CatalogRepository.synchronize(profileId)`.
 - Films conservent la selection Room existante. Series normalise toute note sur `5`, forme un pool recent borne, exclut les notes inferieures a `3/5`, trie par note/date d'ajout/annee/id puis complete uniquement avec les meilleures Series globales a au moins `3/5`.
 - Les doublons et marqueurs adultes sont retires avant persistance.

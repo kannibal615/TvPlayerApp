@@ -1,0 +1,367 @@
+--------- beginning of main
+07-17 20:25:36.718   288   383 I chatty  : uid=1000(system) vsync expire 18 lines
+07-17 20:25:36.738   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:36.749   491   491 D FACE    : wait UI enable AI service
+07-17 20:25:36.749   491   491 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:36.759   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.041   288   383 I chatty  : uid=1000(system) vsync identical 14 lines
+07-17 20:25:37.061   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.065  2802  3420 I adbd    : host-18: write thread spawning
+07-17 20:25:37.065  2802  3419 I adbd    : host-18: read thread spawning
+07-17 20:25:37.065  2802  3419 I adbd    : host-18: read failed: Success
+07-17 20:25:37.065  2802  3419 I adbd    : host-18: connection terminated: read failed
+07-17 20:25:37.066  2802  2802 I adbd    : host-18: already offline
+07-17 20:25:37.066  2802  2802 I adbd    : destroying transport host-18
+07-17 20:25:37.066  2802  2802 I adbd    : BlockingConnectionAdapter(host-18): stopping
+07-17 20:25:37.067  2802  2802 I adbd    : BlockingConnectionAdapter(host-18): stopped
+07-17 20:25:37.067  2802  2802 I adbd    : BlockingConnectionAdapter(host-18): destructing
+07-17 20:25:37.067  2802  2802 I adbd    : BlockingConnectionAdapter(host-18): already stopped
+07-17 20:25:37.068   310   903 I HdmieArc: rhal earc status: 0, error code: 0 
+07-17 20:25:37.071   705   891 E Traffic : performPollLocked:java.lang.Throwable
+--------- beginning of system
+07-17 20:25:37.071   705   781 W ProcessCpuTracker: Failed to stat(/proc/3418): android.system.ErrnoException: stat failed: ENOENT (No such file or directory)
+07-17 20:25:37.071   705   781 W ProcessCpuTracker: Skipping unknown process pid 3418
+07-17 20:25:37.075   705   891 D OomAdjuster: Making ui-service: ProcessRecord{d61d471 3819:com.tcl.versionUpdateApp/1000}
+07-17 20:25:37.077   705   891 D OomAdjuster: Making ui-service: ProcessRecord{d61d471 3819:com.tcl.versionUpdateApp/1000}
+07-17 20:25:37.081   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.092   975  1047 I TGuardMemoryManagerAppClassifier: AppRecord message type is 5, package name is com.tcl.usercenter, bitMap is -1
+07-17 20:25:37.098   705   705 D HotPlugDetectionAction: pollDevices:pollAllDevices
+07-17 20:25:37.098   705   705 V HotPlugDetectionAction: Poll all devices.
+07-17 20:25:37.098   294   294 I hdmi_cec: hdmi_cec_send_message, cec_msg.un8RxLogAddr = 1,cec_msg.un8Msg = 0x0, cec_msg.un8DataLen = 0
+07-17 20:25:37.102   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.203   288   383 I chatty  : uid=1000(system) vsync identical 5 lines
+07-17 20:25:37.223   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.235   487   487 D AIAQ    : wait UI enable AI service
+07-17 20:25:37.235   487   487 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:37.243   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.243   705   948 W HDMI    : [2]:Failed to send a polling message(0->1) with return code -1
+07-17 20:25:37.244   294   294 I hdmi_cec: hdmi_cec_send_message, cec_msg.un8RxLogAddr = 2,cec_msg.un8Msg = 0x0, cec_msg.un8DataLen = 0
+07-17 20:25:37.263   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.324   288   383 I chatty  : uid=1000(system) vsync identical 3 lines
+07-17 20:25:37.344   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.349   488   488 D SCENE   : wait UI enable AI service
+07-17 20:25:37.349   488   488 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:37.364   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.385   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.402   705   948 W HDMI    : [2]:Failed to send a polling message(0->2) with return code -1
+07-17 20:25:37.402   294   294 I hdmi_cec: hdmi_cec_send_message, cec_msg.un8RxLogAddr = 3,cec_msg.un8Msg = 0x0, cec_msg.un8DataLen = 0
+07-17 20:25:37.405   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.526   288   383 I chatty  : uid=1000(system) vsync identical 6 lines
+07-17 20:25:37.546   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.561   705   948 W HDMI    : [2]:Failed to send a polling message(0->3) with return code -1
+07-17 20:25:37.561   294   294 I hdmi_cec: hdmi_cec_send_message, cec_msg.un8RxLogAddr = 4,cec_msg.un8Msg = 0x0, cec_msg.un8DataLen = 0
+07-17 20:25:37.567   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.580  3424  3424 E ion     : ioctl c0044901 failed with code -1: Invalid argument
+07-17 20:25:37.587   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.688   288   383 I chatty  : uid=1000(system) vsync identical 5 lines
+07-17 20:25:37.708   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.719   705   948 W HDMI    : [2]:Failed to send a polling message(0->4) with return code -1
+07-17 20:25:37.720   294   294 I hdmi_cec: hdmi_cec_send_message, cec_msg.un8RxLogAddr = 5,cec_msg.un8Msg = 0x0, cec_msg.un8DataLen = 0
+07-17 20:25:37.728   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.749   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.750   491   491 D FACE    : wait UI enable AI service
+07-17 20:25:37.750   491   491 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:37.769   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.850   288   383 I chatty  : uid=1000(system) vsync identical 4 lines
+07-17 20:25:37.870   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.878   705   948 W HDMI    : [2]:Failed to send a polling message(0->5) with return code -1
+07-17 20:25:37.878   294   294 I hdmi_cec: hdmi_cec_send_message, cec_msg.un8RxLogAddr = 6,cec_msg.un8Msg = 0x0, cec_msg.un8DataLen = 0
+07-17 20:25:37.890   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.909  1729  3133 I AlexaLog: isAVGEnable isNeedQuery =  false  c.isGetActiveCode =  false
+07-17 20:25:37.910  1729  3133 I AlexaLog: isAVGEnable avgEnable =  false
+07-17 20:25:37.911   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.951   288   383 I chatty  : uid=1000(system) vsync identical 2 lines
+07-17 20:25:37.971   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:37.973   705   900 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.978) failed {.code = ERROR_NOT_SUPPORTED, .description = }
+07-17 20:25:37.991   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.012   288   383 I chatty  : uid=1000(system) vsync identical 1 line
+07-17 20:25:38.032   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.036   705   948 W HDMI    : [2]:Failed to send a polling message(0->6) with return code -1
+07-17 20:25:38.037   294   294 I hdmi_cec: hdmi_cec_send_message, cec_msg.un8RxLogAddr = 7,cec_msg.un8Msg = 0x0, cec_msg.un8DataLen = 0
+07-17 20:25:38.052   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.069   310   903 I HdmieArc: rhal earc status: 0, error code: 0 
+07-17 20:25:38.072   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.173   288   383 I chatty  : uid=1000(system) vsync identical 5 lines
+07-17 20:25:38.193   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.195   705   948 W HDMI    : [2]:Failed to send a polling message(0->7) with return code -1
+07-17 20:25:38.196   294   294 I hdmi_cec: hdmi_cec_send_message, cec_msg.un8RxLogAddr = 8,cec_msg.un8Msg = 0x0, cec_msg.un8DataLen = 0
+07-17 20:25:38.214   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.234   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.236   487   487 D AIAQ    : wait UI enable AI service
+07-17 20:25:38.236   487   487 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:38.254   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.315   288   383 I chatty  : uid=1000(system) vsync identical 3 lines
+07-17 20:25:38.335   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.349   488   488 D SCENE   : wait UI enable AI service
+07-17 20:25:38.349   488   488 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:38.354   705   948 W HDMI    : [2]:Failed to send a polling message(0->8) with return code -1
+07-17 20:25:38.354   294   294 I hdmi_cec: hdmi_cec_send_message, cec_msg.un8RxLogAddr = 9,cec_msg.un8Msg = 0x0, cec_msg.un8DataLen = 0
+07-17 20:25:38.355   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.476   288   383 I chatty  : uid=1000(system) vsync identical 6 lines
+07-17 20:25:38.497   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.507  1830  1107 D TCastPublishOverUdp: a8db5f9@sendOnline
+07-17 20:25:38.513   705   948 W HDMI    : [2]:Failed to send a polling message(0->9) with return code -1
+07-17 20:25:38.514   294   294 I hdmi_cec: hdmi_cec_send_message, cec_msg.un8RxLogAddr = 10,cec_msg.un8Msg = 0x0, cec_msg.un8DataLen = 0
+07-17 20:25:38.517   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.638   288   383 I chatty  : uid=1000(system) vsync identical 6 lines
+07-17 20:25:38.658   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.672   705   948 W HDMI    : [2]:Failed to send a polling message(0->10) with return code -1
+07-17 20:25:38.673   294   294 I hdmi_cec: hdmi_cec_send_message, cec_msg.un8RxLogAddr = 11,cec_msg.un8Msg = 0x0, cec_msg.un8DataLen = 0
+07-17 20:25:38.678   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.719   288   383 I chatty  : uid=1000(system) vsync identical 2 lines
+07-17 20:25:38.739   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.750   491   491 D FACE    : wait UI enable AI service
+07-17 20:25:38.750   491   491 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:38.759   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.800   288   383 I chatty  : uid=1000(system) vsync identical 2 lines
+07-17 20:25:38.820   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.831   705   948 W HDMI    : [2]:Failed to send a polling message(0->11) with return code -1
+07-17 20:25:38.832   294   294 I hdmi_cec: hdmi_cec_send_message, cec_msg.un8RxLogAddr = 12,cec_msg.un8Msg = 0x0, cec_msg.un8DataLen = 0
+07-17 20:25:38.840   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.961   288   383 I chatty  : uid=1000(system) vsync identical 6 lines
+07-17 20:25:38.981   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:38.990   705   948 W HDMI    : [2]:Failed to send a polling message(0->12) with return code -1
+07-17 20:25:38.990   294   294 I hdmi_cec: hdmi_cec_send_message, cec_msg.un8RxLogAddr = 13,cec_msg.un8Msg = 0x0, cec_msg.un8DataLen = 0
+07-17 20:25:39.002   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.042   288   383 I chatty  : uid=1000(system) vsync identical 2 lines
+07-17 20:25:39.062   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.069   310   903 I HdmieArc: rhal earc status: 0, error code: 0 
+07-17 20:25:39.082   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.123   288   383 I chatty  : uid=1000(system) vsync identical 2 lines
+07-17 20:25:39.143   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.148   705   948 W HDMI    : [2]:Failed to send a polling message(0->13) with return code -1
+07-17 20:25:39.149   294   294 I hdmi_cec: hdmi_cec_send_message, cec_msg.un8RxLogAddr = 14,cec_msg.un8Msg = 0x0, cec_msg.un8DataLen = 0
+07-17 20:25:39.163   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.204   288   383 I chatty  : uid=1000(system) vsync identical 2 lines
+07-17 20:25:39.224   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.236   487   487 D AIAQ    : wait UI enable AI service
+07-17 20:25:39.236   487   487 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:39.244   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.305   288   383 I chatty  : uid=1000(system) vsync identical 3 lines
+07-17 20:25:39.307   705   948 W HDMI    : [2]:Failed to send a polling message(0->14) with return code -1
+07-17 20:25:39.325   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.338   975  1046 D TGuardMemoryManagerEventReceiver: currentAvailable:  432240level0
+07-17 20:25:39.339   975  1136 D TGuardMemoryManagerMemoryStrategy: getStrategy, type is LOW_MEMORY
+07-17 20:25:39.339   975  1136 D TGuardMemoryManagerMemoryStrategy: run LowMemoryStrategy
+07-17 20:25:39.339   975  1136 D TGuardMemoryManagerMemoryStrategy: reviseStrategy end, trend = 3 level=0
+07-17 20:25:39.339   975  1136 D TGuardMemoryManagerMemoryStrategy: current top app is :com.smartvision.svplayer
+07-17 20:25:39.339   975  1136 I TGuardMemoryManagerMemoryInfoManager: com.smartvision.svplayer avgPss is 168973  predictSize is 73728
+07-17 20:25:39.339   975  1136 D TGuardMemoryManagerMemoryStrategy: unit(kb),need=73728,lost=0,memAvail=432268,WarningThreshold=265320,realAvail=166948,realNeed=-93220
+07-17 20:25:39.339   975  1136 I TGuardMemoryManagerMemoryStrategy: com.smartvision.svplayer need memory is 0
+07-17 20:25:39.339   975  1136 D TGuardMemoryManagerMemoryStrategy: end calculateNeedMemory, need memory = 0
+07-17 20:25:39.339   975  1136 D TGuardMemoryManagerMemoryStrategy: gridIndex =3, strategyK
+07-17 20:25:39.339   975  1136 I TGuardMemoryManagerMemoryStrategy: memory, kill handleNeed:0
+07-17 20:25:39.339   975  1134 W TGuardMemoryManagerKillHandler: tryKillEachRank, now start loop
+07-17 20:25:39.339   975  1134 D TGuardMemoryManagerKillHandler: looper killing rank =0
+07-17 20:25:39.339   975  1134 D TGuardMemoryManagerKillHandler: pkg is system
+07-17 20:25:39.339   975  1134 I TGuardMemoryManagerKillHandler: rank[0, 10]:skipped kill for children size is 0:system
+07-17 20:25:39.339   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.google.process.gservices
+07-17 20:25:39.339   975  1134 I TGuardMemoryManagerKillHandler: rank[0, 9]:skipped kill for children size is 0:com.google.process.gservices
+07-17 20:25:39.339   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.google.process.gapps
+07-17 20:25:39.340   975  1134 I TGuardMemoryManagerKillHandler: rank[0, 8]:skipped kill for children size is 0:com.google.process.gapps
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is android.process.acore
+07-17 20:25:39.340   975  1134 I TGuardMemoryManagerKillHandler: rank[0, 7]:skipped kill for children size is 0:android.process.acore
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.google.android.gms.unstable
+07-17 20:25:39.340   975  1134 I TGuardMemoryManagerKillHandler: rank[0, 6]:skipped kill for children size is 0:com.google.android.gms.unstable
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.google.android.youtube.tv.recommendations
+07-17 20:25:39.340   975  1134 I TGuardMemoryManagerKillHandler: rank[0, 5]:skipped kill for children size is 0:com.google.android.youtube.tv.recommendations
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0
+07-17 20:25:39.340   975  1134 I TGuardMemoryManagerKillHandler: rank[0, 4]:skipped kill for children size is 0:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.bi.persistent
+07-17 20:25:39.340   975  1134 I TGuardMemoryManagerKillHandler: rank[0, 3]:skipped kill for children size is 0:com.tcl.bi.persistent
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.android.vending:background
+07-17 20:25:39.340   975  1134 I TGuardMemoryManagerKillHandler: rank[0, 2]:skipped kill for children size is 0:com.android.vending:background
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.android.dynsystem:dynsystem
+07-17 20:25:39.340   975  1134 I TGuardMemoryManagerKillHandler: rank[0, 1]:skipped kill for children size is 0:com.android.dynsystem:dynsystem
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is 
+07-17 20:25:39.340   975  1134 I TGuardMemoryManagerKillHandler: rank[0, 0]:skipped kill for children size is 0:
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: looper killing rank =1
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: looper killing rank =2
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.android.dynsystem
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.gallery
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.android.networkstack.tethering.inprocess
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.tcl_bt_rcu_service
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.ui_mediaCenter
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.android.wallpaperbackup
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.android.keychain
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.copydatatotv
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.tv
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.keyhelp
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.factory.view
+07-17 20:25:39.340   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.videoplayer
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.providers.config
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.partnercustomizer
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.esticker
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.system.server
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.android.inputdevices
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.android.providers.settings
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.android.localtransport
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.assistant
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.android.location.fused
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.google.android.tv.assistant
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.gamebar
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.autopair
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.audioplayer
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.tvinput
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.suspension
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.android.networkstack.inprocess
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.overseasappshow
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.micmanager
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.t_solo
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.initsetup
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.imageplayer
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.google.android.tungsten.setupwraith
+07-17 20:25:39.341   975  1134 I TGuardMemoryManagerKillHandler: rank[2, 6]:skipped kill white list:com.google.android.tungsten.setupwraith
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.google.android.inputmethod.latin
+07-17 20:25:39.341   975  1134 I TGuardMemoryManagerKillHandler: rank[2, 5]:skipped kill white list:com.google.android.inputmethod.latin
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.android.bluetooth
+07-17 20:25:39.341   975  1134 I TGuardMemoryManagerKillHandler: rank[2, 4]: skipped kill as auto restart:com.android.bluetooth
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.google.android.gms
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.tcl.xian.StartandroidService
+07-17 20:25:39.341   975  1134 I TGuardMemoryManagerKillHandler: rank[2, 2]:skipped kill white list:com.tcl.xian.StartandroidService
+07-17 20:25:39.341   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.android.providers.tv
+07-17 20:25:39.341   975  1134 I TGuardMemoryManagerKillHandler: rank[2, 1]:skipped kill white list:com.android.providers.tv
+07-17 20:25:39.342   975  1134 D TGuardMemoryManagerKillHandler: pkg is com.android.providers.media.module
+07-17 20:25:39.342   975  1134 I TGuardMemoryManagerKillHandler: rank[2, 0]:skipped kill white list:com.android.providers.media.module
+07-17 20:25:39.342   975  1134 D TGuardMemoryManagerKillHandler: looper killing rank =3
+07-17 20:25:39.342   975  1134 I TGuardMemoryManagerKillHandler: stop killing when max kill rank is reached! cur_rank:3 max_rank[9] realNeed: 0 trimTotal:0
+07-17 20:25:39.346   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.349   488   488 D SCENE   : wait UI enable AI service
+07-17 20:25:39.349   488   488 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:39.366   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.467   288   383 I chatty  : uid=1000(system) vsync identical 5 lines
+07-17 20:25:39.487   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.494  3428  3428 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+07-17 20:25:39.503  3428  3428 W app_process: type=1400 audit(0.0:8017): avc: denied { open } for path="/dev/__properties__/u:object_r:device_config_runtime_native_boot_prop:s0" dev="tmpfs" ino=8247 scontext=u:r:shell:s0 tcontext=u:object_r:device_config_runtime_native_boot_prop:s0 tclass=file permissive=0
+07-17 20:25:39.503  3428  3428 W app_process: type=1400 audit(0.0:8018): avc: denied { open } for path="/dev/__properties__/u:object_r:device_config_runtime_native_boot_prop:s0" dev="tmpfs" ino=8247 scontext=u:r:shell:s0 tcontext=u:object_r:device_config_runtime_native_boot_prop:s0 tclass=file permissive=0
+07-17 20:25:39.503  3428  3428 W app_process: type=1400 audit(0.0:8019): avc: denied { open } for path="/dev/__properties__/u:object_r:device_config_runtime_native_boot_prop:s0" dev="tmpfs" ino=8247 scontext=u:r:shell:s0 tcontext=u:object_r:device_config_runtime_native_boot_prop:s0 tclass=file permissive=0
+07-17 20:25:39.507  3428  3428 W app_process: type=1400 audit(0.0:8020): avc: denied { open } for path="/dev/__properties__/u:object_r:device_config_runtime_native_boot_prop:s0" dev="tmpfs" ino=8247 scontext=u:r:shell:s0 tcontext=u:object_r:device_config_runtime_native_boot_prop:s0 tclass=file permissive=0
+07-17 20:25:39.508   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.508  3428  3428 E libc    : Access denied finding property "persist.device_config.runtime_native_boot.profilebootclasspath"
+07-17 20:25:39.508  3428  3428 E libc    : Access denied finding property "persist.device_config.runtime_native_boot.enable_apex_image"
+07-17 20:25:39.508  3428  3428 I AndroidRuntime: Using default boot image
+07-17 20:25:39.508  3428  3428 E libc    : Access denied finding property "persist.device_config.runtime_native_boot.disable_lock_profiling"
+07-17 20:25:39.508  3428  3428 I AndroidRuntime: Leaving lock profiling enabled
+07-17 20:25:39.509  3428  3428 E libc    : Access denied finding property "persist.device_config.runtime_native_boot.enable_generational_cc"
+07-17 20:25:39.522  3428  3428 W app_process: Could not reserve sentinel fault page
+07-17 20:25:39.528   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.710   288   383 I chatty  : uid=1000(system) vsync identical 9 lines
+07-17 20:25:39.731   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.750   491   491 D FACE    : wait UI enable AI service
+07-17 20:25:39.750   491   491 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:39.751   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.852   288   383 I chatty  : uid=1000(system) vsync identical 5 lines
+07-17 20:25:39.872   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.889  3428  3428 W app_process: DexFile /product/framework/com.tcl.tvmanager.jar is in boot class path but is not in a known location
+07-17 20:25:39.890  3428  3428 W app_process: DexFile /product/framework/com.tcl.deviceinfo.jar is in boot class path but is not in a known location
+07-17 20:25:39.890  3428  3428 W app_process: DexFile /product/framework/tcl-systemserver.jar is in boot class path but is not in a known location
+07-17 20:25:39.890  3428  3428 W app_process: DexFile /product/framework/com.tcl.os.system.jar is in boot class path but is not in a known location
+07-17 20:25:39.890  3428  3428 W app_process: DexFile /product/framework/com.tcl.hbbtv.jar is in boot class path but is not in a known location
+07-17 20:25:39.890  3428  3428 W app_process: DexFile /product/framework/com.ginga.jar is in boot class path but is not in a known location
+07-17 20:25:39.890  3428  3428 W app_process: DexFile /product/framework/tcl-framework.jar is in boot class path but is not in a known location
+07-17 20:25:39.893   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.913   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.926  3428  3428 D app_process: Time zone APEX ICU file found: /apex/com.android.tzdata/etc/icu/icu_tzdata.dat
+07-17 20:25:39.927  3428  3428 D app_process: I18n APEX ICU file found: /apex/com.android.i18n/etc/icu/icudt66l.dat
+07-17 20:25:39.933   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.953   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.959  3428  3428 I app_process: The ClassLoaderContext is a special shared library.
+07-17 20:25:39.966  3428  3428 I app_process: The ClassLoaderContext is a special shared library.
+07-17 20:25:39.974   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:39.994   288   383 I chatty  : uid=1000(system) vsync identical 1 line
+07-17 20:25:40.014   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:40.032  3428  3428 W app_process: JNI RegisterNativeMethods: attempt to register 0 native methods for android.media.AudioAttributes
+07-17 20:25:40.034   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:40.055  3428  3428 W main    : type=1400 audit(0.0:8021): avc: denied { open } for path="/dev/__properties__/u:object_r:ro_treble_enabled_prop:s0" dev="tmpfs" ino=8323 scontext=u:r:shell:s0 tcontext=u:object_r:ro_treble_enabled_prop:s0 tclass=file permissive=0
+07-17 20:25:40.055   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:40.057  3428  3428 E libc    : Access denied finding property "ro.treble.enabled"
+07-17 20:25:40.058  3428  3428 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+07-17 20:25:40.070   310   903 I HdmieArc: rhal earc status: 0, error code: 0 
+07-17 20:25:40.075   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:40.075  3428  3428 V TclFrameworkFactory: successes to get AllImpl object and return....
+07-17 20:25:40.095   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:40.115   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:40.119   705   973 D freeze  : recv from kernel: tag 6 buf [PID 705 CALLED][PID 1670] 
+07-17 20:25:40.119   705   973 D freeze  : recv from kernel: tag 6 binder from 705 to 1670
+07-17 20:25:40.120   705   973 D Process : freeze state is 6 pid is 1670 ohter is 705
+07-17 20:25:40.123   975  1047 I TGuardMemoryManagerAppClassifier: AppRecord message type is 4, package name is com.android.tv.settings, bitMap is 262161
+07-17 20:25:40.123   975  1047 I TGuardMemoryManagerPackageRecord: systemApp name is com.android.tv.settings
+07-17 20:25:40.136   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:40.196   288   383 I chatty  : uid=1000(system) vsync identical 3 lines
+07-17 20:25:40.217   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:40.236   487   487 D AIAQ    : wait UI enable AI service
+07-17 20:25:40.236   487   487 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:40.237   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:40.317   288   383 I chatty  : uid=1000(system) vsync identical 4 lines
+07-17 20:25:40.338   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:40.350   488   488 D SCENE   : wait UI enable AI service
+07-17 20:25:40.350   488   488 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:40.358   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:40.721   288   383 I chatty  : uid=1000(system) vsync identical 18 lines
+07-17 20:25:40.742   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:40.750   491   491 D FACE    : wait UI enable AI service
+07-17 20:25:40.750   491   491 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:40.762   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:40.964   288   383 I chatty  : uid=1000(system) vsync identical 10 lines
+07-17 20:25:40.984   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:40.987   705   900 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.978) failed {.code = ERROR_NOT_SUPPORTED, .description = }
+07-17 20:25:41.004   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:41.044   288   383 I chatty  : uid=1000(system) vsync identical 2 lines
+07-17 20:25:41.064   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:41.070   310   903 I HdmieArc: rhal earc status: 0, error code: 0 
+07-17 20:25:41.085   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:41.206   288   383 I chatty  : uid=1000(system) vsync identical 6 lines
+07-17 20:25:41.226   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:41.237   487   487 D AIAQ    : wait UI enable AI service
+07-17 20:25:41.237   487   487 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:41.247   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:41.328   288   383 I chatty  : uid=1000(system) vsync identical 4 lines
+07-17 20:25:41.348   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:41.350   488   488 D SCENE   : wait UI enable AI service
+07-17 20:25:41.350   488   488 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:41.368   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:41.429   288   383 I chatty  : uid=1000(system) vsync identical 3 lines
+07-17 20:25:41.449   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:41.467  3428  3428 W AccessibilityNodeInfoDumper: Fetch time: 157ms
+07-17 20:25:41.469   705  1848 W WindowManager: removeWindowToken: Attempted to remove non-existing token: android.os.Binder@216ad37
+07-17 20:25:41.469   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:41.474   705   981 I TclAppBoot: [TclAppBootManagerImpl]:TclAppBootInfo{callerPkgName = 'android',callerFlag = '786449',calleePkgName = 'flar2.homebutton',calleeComponent = 'flar2.homebutton/a.i',calleeFlag = '0',bootType = 'bind_service',broadcastAction = '',time = '1784312741474',isAutoStart = 'true',isAllow = 'false',reason = 'callee_does't_have_OP_AUTO_START_permission.',count = '1'}
+07-17 20:25:41.474   705  1848 W ActivityManager: forbid bind service ComponentInfo{flar2.homebutton/a.i}
+07-17 20:25:41.611   288   383 I chatty  : uid=1000(system) vsync identical 7 lines
+07-17 20:25:41.631   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:41.636  3428  3428 D AndroidRuntime: Shutting down VM
+07-17 20:25:41.652   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:41.712   288   383 I chatty  : uid=1000(system) vsync identical 3 lines
+07-17 20:25:41.733   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:41.750   491   491 D FACE    : wait UI enable AI service
+07-17 20:25:41.751   491   491 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:41.753   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:42.036   288   383 I chatty  : uid=1000(system) vsync identical 14 lines
+07-17 20:25:42.056   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:42.071   310   903 I HdmieArc: rhal earc status: 0, error code: 0 
+07-17 20:25:42.076   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:42.197   288   383 I chatty  : uid=1000(system) vsync identical 6 lines
+07-17 20:25:42.217   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:42.237   487   487 D AIAQ    : wait UI enable AI service
+07-17 20:25:42.237   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:42.238   487   487 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:42.258   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:42.318   288   383 I chatty  : uid=1000(system) vsync identical 3 lines
+07-17 20:25:42.338   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:42.351   488   488 D SCENE   : wait UI enable AI service
+07-17 20:25:42.351   488   488 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:42.358   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:42.722   288   383 I chatty  : uid=1000(system) vsync identical 18 lines
+07-17 20:25:42.742   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:42.751   491   491 D FACE    : wait UI enable AI service
+07-17 20:25:42.751   491   491 D KADP_AI_VPQ: [KADP_AI_VPQ_GetAPMode 512] enable=0
+07-17 20:25:42.762   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:42.883   288   383 I chatty  : uid=1000(system) vsync identical 6 lines
+07-17 20:25:42.904   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:42.910  1729  3619 I AlexaLog: isAVGEnable isNeedQuery =  false  c.isGetActiveCode =  false
+07-17 20:25:42.910  1729  3619 I AlexaLog: isAVGEnable avgEnable =  false
+07-17 20:25:42.924   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:43.045   288   383 I chatty  : uid=1000(system) vsync identical 6 lines
+07-17 20:25:43.065   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO
+07-17 20:25:43.071   310   903 I HdmieArc: rhal earc status: 0, error code: 0 
+07-17 20:25:43.085   288   383 E RHWC2   : failed on ioctl GDMA_GET_FENCE_INFO

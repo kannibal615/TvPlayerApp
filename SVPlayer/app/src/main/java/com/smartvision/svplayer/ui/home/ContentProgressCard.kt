@@ -308,21 +308,23 @@ fun ContentProgressCard(
                     color = Color.White,
                     style = SmartVisionType.Caption.copy(
                         fontSize = when {
-                            isLive -> 14.sp
+                            isLive && compactTitle -> 10.sp
+                            isLive -> 12.sp
                             compactTitle -> 12.sp
                             else -> 15.sp
                         },
                         lineHeight = when {
-                            isLive -> 17.sp
+                            isLive && compactTitle -> 12.sp
+                            isLive -> 14.sp
                             compactTitle -> 14.sp
                             else -> 17.sp
                         },
                     ),
                     fontWeight = FontWeight.Bold,
-                    maxLines = 2,
+                    maxLines = if (isLive) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                     onTextLayout = { result ->
-                        if (!isLive && result.hasVisualOverflow) compactTitle = true
+                        if (result.hasVisualOverflow) compactTitle = true
                     },
                 )
                 if (!isLive) {
@@ -425,12 +427,13 @@ private fun MediaTypeBadge(
     modifier: Modifier = Modifier,
 ) {
     if (text.isBlank()) return
-    Box(
+    Row(
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
             .background(Color.Black.copy(alpha = 0.86f))
             .padding(horizontal = 6.dp, vertical = 3.dp),
-        contentAlignment = Alignment.Center,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
             text = text,
@@ -440,6 +443,14 @@ private fun MediaTypeBadge(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        if (text.equals("LIVE", ignoreCase = true)) {
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color(0xFFFF3B30)),
+            )
+        }
     }
 }
 

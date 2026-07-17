@@ -14,6 +14,7 @@ class HomeTrendingPolicyTest {
         val addedAt: Long,
         val year: Int?,
         val adult: Boolean = false,
+        val artwork: String? = null,
     )
 
     @Test
@@ -41,6 +42,22 @@ class HomeTrendingPolicyTest {
         assertTrue(HomeTrendingPolicy.isNoveltyCategory("New Releases"))
         assertTrue(HomeTrendingPolicy.containsAdultMarker("Films \u00C9rotiques"))
         assertFalse(HomeTrendingPolicy.containsAdultMarker("Films famille"))
+    }
+
+    @Test
+    fun `selection replaces duplicate artwork with the next distinct candidate`() {
+        val rated = listOf(
+            Item(1, 9.5f, 300, 2025, artwork = "HTTPS://img.example/poster.jpg?size=large"),
+            Item(2, 9.0f, 200, 2024, artwork = "https://img.example/poster.jpg?size=small"),
+            Item(3, 8.5f, 100, 2023, artwork = "https://img.example/other.jpg"),
+        )
+        val newest = listOf(
+            Item(4, null, 500, 2025, artwork = "https://img.example/latest.jpg"),
+        )
+
+        val selected = select(rated, newest, 3)
+
+        assertEquals(listOf(1, 3, 4), selected.map(Item::id))
     }
 
     @Test
@@ -85,6 +102,7 @@ class HomeTrendingPolicyTest {
             addedAtOf = Item::addedAt,
             yearOf = Item::year,
             allowed = { !it.adult },
+            artworkKeyOf = Item::artwork,
             limit = limit,
         )
 }

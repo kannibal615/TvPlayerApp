@@ -1,0 +1,25 @@
+{
+  "label": "picker-marwen-stuck-plus30s",
+  "captured_at": "2026-07-17T18:41:30.945161+00:00",
+  "serial": "192.168.1.11:5555",
+  "package": "com.smartvision.svplayer",
+  "pid": "710",
+  "keys": [],
+  "settle_ms": 700,
+  "capture_elapsed_ms": 6898.2,
+  "focus": [
+    "mResumedActivity: ActivityRecord{7669b4c u0 com.smartvision.svplayer/.MainActivity t9480}",
+    "mCurrentFocus=Window{8899abd u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}",
+    "mFocusedApp=ActivityRecord{7669b4c u0 com.smartvision.svplayer/.MainActivity t9480}"
+  ],
+  "ui_dump_status": "UI hierchary dumped to: /data/local/tmp/codex-ui-6040.xml",
+  "files": [
+    "activity.txt",
+    "gfxinfo-framestats.txt",
+    "logcat.txt",
+    "screenshot.png",
+    "ui-dump-status.txt",
+    "ui.xml",
+    "window.txt"
+  ]
+}

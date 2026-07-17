@@ -44,10 +44,11 @@ object HomeTrendingPolicy {
         addedAtOf: (T) -> Long,
         yearOf: (T) -> Int?,
         allowed: (T) -> Boolean,
+        artworkKeyOf: (T) -> String? = { null },
         limit: Int = SectionLimit,
     ): List<T> {
         if (limit <= 0) return emptyList()
-        val rated = ratedCandidates
+        val rankedRated = ratedCandidates
             .asSequence()
             .filter(allowed)
             .distinctBy(idOf)
@@ -58,11 +59,18 @@ object HomeTrendingPolicy {
                     .thenByDescending { yearOf(it) ?: 0 }
                     .thenBy(idOf),
             )
-            .take(limit)
             .toList()
+        val usedIds = mutableSetOf<Int>()
+        val usedArtwork = mutableSetOf<String>()
+        val rated = rankedRated.takeUniqueVisualItems(
+            limit = limit,
+            idOf = idOf,
+            artworkKeyOf = artworkKeyOf,
+            usedIds = usedIds,
+            usedArtwork = usedArtwork,
+        )
         if (rated.size >= limit) return rated
-        val usedIds = rated.mapTo(mutableSetOf(), idOf)
-        val newest = newestCandidates
+        val rankedNewest = newestCandidates
             .asSequence()
             .filter(allowed)
             .filterNot { idOf(it) in usedIds }
@@ -72,8 +80,14 @@ object HomeTrendingPolicy {
                     .thenByDescending { yearOf(it) ?: 0 }
                     .thenBy(idOf),
             )
-            .take(limit - rated.size)
             .toList()
+        val newest = rankedNewest.takeUniqueVisualItems(
+            limit = limit - rated.size,
+            idOf = idOf,
+            artworkKeyOf = artworkKeyOf,
+            usedIds = usedIds,
+            usedArtwork = usedArtwork,
+        )
         return rated + newest
     }
 
@@ -85,6 +99,7 @@ object HomeTrendingPolicy {
         addedAtOf: (T) -> Long,
         yearOf: (T) -> Int?,
         allowed: (T) -> Boolean,
+        artworkKeyOf: (T) -> String? = { null },
         minimumRating: Float = MinimumSeriesRating,
         limit: Int = SectionLimit,
     ): List<T> {
@@ -93,27 +108,50 @@ object HomeTrendingPolicy {
             .thenByDescending(addedAtOf)
             .thenByDescending { yearOf(it) ?: 0 }
             .thenBy(idOf)
-        val recent = recentCandidates
+        val rankedRecent = recentCandidates
             .asSequence()
             .filter(allowed)
             .distinctBy(idOf)
             .filter { (ratingOf(it) ?: 0f).isFinite() && (ratingOf(it) ?: 0f) >= minimumRating }
             .sortedWith(comparator)
-            .take(limit)
             .toList()
+        val usedIds = mutableSetOf<Int>()
+        val usedArtwork = mutableSetOf<String>()
+        val recent = rankedRecent.takeUniqueVisualItems(
+            limit = limit,
+            idOf = idOf,
+            artworkKeyOf = artworkKeyOf,
+            usedIds = usedIds,
+            usedArtwork = usedArtwork,
+        )
         if (recent.size >= limit) return recent
-        val usedIds = recent.mapTo(mutableSetOf(), idOf)
-        val bestRatedFallback = ratedCandidates
+        val rankedFallback = ratedCandidates
             .asSequence()
             .filter(allowed)
             .filterNot { idOf(it) in usedIds }
             .distinctBy(idOf)
             .filter { (ratingOf(it) ?: 0f).isFinite() && (ratingOf(it) ?: 0f) >= minimumRating }
             .sortedWith(comparator)
-            .take(limit - recent.size)
             .toList()
+        val bestRatedFallback = rankedFallback.takeUniqueVisualItems(
+            limit = limit - recent.size,
+            idOf = idOf,
+            artworkKeyOf = artworkKeyOf,
+            usedIds = usedIds,
+            usedArtwork = usedArtwork,
+        )
         return recent + bestRatedFallback
     }
+
+    fun artworkIdentity(value: String?): String? =
+        value
+            ?.trim()
+            ?.takeIf(String::isNotEmpty)
+            ?.substringBefore('#')
+            ?.substringBefore('?')
+            ?.trimEnd('/')
+            ?.lowercase(Locale.ROOT)
+            ?.takeIf(String::isNotEmpty)
 
     fun normalize(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFKD)
         .lowercase(Locale.ROOT)
@@ -125,4 +163,26 @@ object HomeTrendingPolicy {
     private val AdultPattern = Regex(
         "(^|[^a-z0-9])(adult|adults|adulte|adultes|porn|porno|pornographie|pornographies|xxx|erotic|erotics|erotique|erotiques|hentai|sex|sexe|sexuel|sexuelle|sexuels|sexuelles|sexy|18\\+)([^a-z0-9]|$)",
     )
+
+    private fun <T> List<T>.takeUniqueVisualItems(
+        limit: Int,
+        idOf: (T) -> Int,
+        artworkKeyOf: (T) -> String?,
+        usedIds: MutableSet<Int>,
+        usedArtwork: MutableSet<String>,
+    ): List<T> {
+        if (limit <= 0) return emptyList()
+        val selected = ArrayList<T>(limit)
+        for (item in this) {
+            val id = idOf(item)
+            if (id in usedIds) continue
+            val artwork = artworkIdentity(artworkKeyOf(item))
+            if (artwork != null && artwork in usedArtwork) continue
+            usedIds += id
+            if (artwork != null) usedArtwork += artwork
+            selected += item
+            if (selected.size == limit) break
+        }
+        return selected
+    }
 }

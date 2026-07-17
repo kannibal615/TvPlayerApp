@@ -610,11 +610,24 @@ class DefaultCatalogRepository(
             return@withContext emptyList()
         }
         val profileId = activeProfileId()
-        val categoryNames = categoryDao.getByType(profileId, MediaSection.Movies.storageName).associate { it.id to it.name }
+        val categories = categoryDao.getByType(profileId, MediaSection.Movies.storageName)
+        val categoryNames = categories.associate { it.id to it.name }
         val imageBaseHost = imageBaseHost()
         val persisted = mediaDao.getTrendingMedia(profileId, TrendingMovieType)
-        val order = persisted.mapIndexed { index, item -> item.contentId to index }.toMap()
-        mediaDao.getMoviesByIds(profileId, persisted.map { it.contentId })
+        val selected = selectTrendingMovieCandidates(profileId, categories)
+            .take(limit.coerceAtMost(HomeTrendingPolicy.SectionLimit))
+        val selectedEntities = selected.mapIndexed { index, movie ->
+            movie.toTrendingEntity(profileId, System.currentTimeMillis() - index)
+        }
+        val selectionChanged = persisted.map { it.contentId } != selectedEntities.map { it.contentId } ||
+            persisted.map { it.rating } != selectedEntities.map { it.rating }
+        if (selectionChanged) {
+            database.withTransaction {
+                mediaDao.clearTrendingMedia(profileId, TrendingMovieType)
+                if (selectedEntities.isNotEmpty()) mediaDao.upsertTrendingMedia(selectedEntities)
+            }
+        }
+        selected
             .asSequence()
             .map { movie ->
                 TrendingCatalogItem(
@@ -629,8 +642,6 @@ class DefaultCatalogRepository(
                 )
             }
             .filterNot { it.containsAdultMarker() }
-            .sortedBy { order[it.contentId] ?: Int.MAX_VALUE }
-            .take(limit.coerceAtMost(HomeTrendingPolicy.SectionLimit))
             .toList()
     }
 
@@ -1055,47 +1066,9 @@ class DefaultCatalogRepository(
     private suspend fun persistTrendingSelections(profileId: String, synchronizedAt: Long) {
         val movieCategories = categoryDao.getByType(profileId, MediaSection.Movies.storageName)
         val seriesCategories = categoryDao.getByType(profileId, MediaSection.Series.storageName)
-        val movieCategoryNames = movieCategories.associate { it.id to it.name }
-        val seriesCategoryNames = seriesCategories.associate { it.id to it.name }
-        val movieNoveltyIds = movieCategories.filter { HomeTrendingPolicy.isNoveltyCategory(it.name) }.map { it.id }
-        val seriesNoveltyIds = seriesCategories.filter { HomeTrendingPolicy.isNoveltyCategory(it.name) }.map { it.id }
-
-        val ratedMovies = mediaDao.getTopRatedMovieCandidates(profileId, HomeTrendingPolicy.CandidateLimit)
-        val newestMovies = if (movieNoveltyIds.isNotEmpty()) {
-            mediaDao.getNewestMovieCandidatesByCategory(profileId, movieNoveltyIds, HomeTrendingPolicy.CandidateLimit)
-        } else {
-            mediaDao.getNewestMovieCandidates(profileId, HomeTrendingPolicy.CandidateLimit)
-        }
-        val ratedSeries = mediaDao.getTopRatedSeriesCandidates(profileId, HomeTrendingPolicy.CandidateLimit)
-        val newestSeries = (
-            if (seriesNoveltyIds.isNotEmpty()) {
-                mediaDao.getNewestSeriesCandidatesByCategory(profileId, seriesNoveltyIds, HomeTrendingPolicy.CandidateLimit)
-            } else {
-                emptyList()
-            } + mediaDao.getNewestSeriesCandidates(profileId, HomeTrendingPolicy.CandidateLimit)
-            )
-            .distinctBy(SeriesEntity::seriesId)
-            .take(HomeTrendingPolicy.CandidateLimit)
-
-        val movies = HomeTrendingPolicy.selectDeterministic(
-            ratedCandidates = ratedMovies,
-            newestCandidates = newestMovies,
-            idOf = MovieEntity::streamId,
-            ratingOf = { it.rating.toTrendingRating().takeIf { rating -> rating > 0f } },
-            addedAtOf = MovieEntity::addedAt,
-            yearOf = { it.year?.take(4)?.toIntOrNull() },
-            allowed = { movie -> !containsAdultMarker(movie.title, movieCategoryNames[movie.categoryId]) },
-        )
+        val movies = selectTrendingMovieCandidates(profileId, movieCategories)
             .mapIndexed { index, movie -> movie.toTrendingEntity(profileId, synchronizedAt - index) }
-        val series = HomeTrendingPolicy.selectRecentRated(
-            recentCandidates = newestSeries,
-            ratedCandidates = ratedSeries,
-            idOf = SeriesEntity::seriesId,
-            ratingOf = { it.rating.toFiveStarRating().takeIf { rating -> rating > 0f } },
-            addedAtOf = SeriesEntity::addedAt,
-            yearOf = { it.year?.take(4)?.toIntOrNull() },
-            allowed = { item -> !containsAdultMarker(item.title, seriesCategoryNames[item.categoryId]) },
-        )
+        val series = selectTrendingSeriesCandidates(profileId, seriesCategories)
             .mapIndexed { index, item -> item.toTrendingEntity(profileId, synchronizedAt - index) }
 
         database.withTransaction {
@@ -1104,6 +1077,41 @@ class DefaultCatalogRepository(
             if (movies.isNotEmpty()) mediaDao.upsertTrendingMedia(movies)
             if (series.isNotEmpty()) mediaDao.upsertTrendingMedia(series)
         }
+    }
+
+    private suspend fun selectTrendingMovieCandidates(
+        profileId: String,
+        categories: List<CategoryEntity>,
+    ): List<MovieEntity> {
+        val categoryNames = categories.associate { it.id to it.name }
+        val noveltyIds = categories
+            .filter { HomeTrendingPolicy.isNoveltyCategory(it.name) }
+            .map { it.id }
+        val ratedCandidates = mediaDao.getTopRatedMovieCandidates(
+            profileId,
+            HomeTrendingPolicy.CandidateLimit,
+        )
+        val newestCandidates = if (noveltyIds.isNotEmpty()) {
+            mediaDao.getNewestMovieCandidatesByCategory(
+                profileId,
+                noveltyIds,
+                HomeTrendingPolicy.CandidateLimit,
+            )
+        } else {
+            mediaDao.getNewestMovieCandidates(profileId, HomeTrendingPolicy.CandidateLimit)
+        }
+        return HomeTrendingPolicy.selectDeterministic(
+            ratedCandidates = ratedCandidates,
+            newestCandidates = newestCandidates,
+            idOf = MovieEntity::streamId,
+            ratingOf = { it.rating.toTrendingRating().takeIf { rating -> rating > 0f } },
+            addedAtOf = MovieEntity::addedAt,
+            yearOf = { it.year?.take(4)?.toIntOrNull() },
+            allowed = { movie ->
+                !containsAdultMarker(movie.title, categoryNames[movie.categoryId])
+            },
+            artworkKeyOf = MovieEntity::posterUrl,
+        )
     }
 
     private suspend fun selectTrendingSeriesCandidates(
@@ -1143,6 +1151,7 @@ class DefaultCatalogRepository(
             allowed = { series ->
                 !containsAdultMarker(series.title, categoryNames[series.categoryId])
             },
+            artworkKeyOf = SeriesEntity::posterUrl,
         )
     }
 

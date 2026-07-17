@@ -1,0 +1,25 @@
+{
+  "label": "final-restored-picker",
+  "captured_at": "2026-07-17T18:44:07.541145+00:00",
+  "serial": "192.168.1.11:5555",
+  "package": "com.smartvision.svplayer",
+  "pid": "2265",
+  "keys": [],
+  "settle_ms": 700,
+  "capture_elapsed_ms": 9767.9,
+  "focus": [
+    "mResumedActivity: ActivityRecord{1e9e32 u0 com.smartvision.svplayer/.MainActivity t9481}",
+    "mCurrentFocus=Window{ce8bbdb u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}",
+    "mFocusedApp=ActivityRecord{1e9e32 u0 com.smartvision.svplayer/.MainActivity t9481}"
+  ],
+  "ui_dump_status": "UI hierchary dumped to: /data/local/tmp/codex-ui-1164.xml",
+  "files": [
+    "activity.txt",
+    "gfxinfo-framestats.txt",
+    "logcat.txt",
+    "screenshot.png",
+    "ui-dump-status.txt",
+    "ui.xml",
+    "window.txt"
+  ]
+}
