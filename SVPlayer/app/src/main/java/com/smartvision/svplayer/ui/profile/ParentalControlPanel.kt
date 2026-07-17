@@ -60,7 +60,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
@@ -219,13 +218,6 @@ fun ParentalControlPanel(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .clip(RoundedCornerShape(8.dp))
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color(0xEA0B1526), Color(0xF207101E)),
-                    ),
-                )
-                .border(1.dp, SmartVisionColors.Border, RoundedCornerShape(8.dp))
                 .padding(horizontal = 14.dp, vertical = 10.dp),
         ) {
             LazyColumn(

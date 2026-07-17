@@ -355,6 +355,7 @@ fun SeriesScreen(
                     },
                     onLoadNextPage = viewModel::loadNextPage,
                     onRetry = viewModel::retryCurrentCategory,
+                    seasonsLabel = strings.seasonsLabel,
                     modifier = Modifier
                         .weight(0.42f)
                         .fillMaxHeight(),
@@ -503,6 +504,7 @@ private fun SeriesList(
     onSeriesClick: (SeriesItemUi) -> Unit,
     onLoadNextPage: () -> Unit,
     onRetry: () -> Unit,
+    seasonsLabel: String,
     modifier: Modifier = Modifier,
 ) {
     val sortFocusRequester = remember { FocusRequester() }
@@ -633,7 +635,8 @@ private fun SeriesList(
                             ?.trim()
                             ?.takeIf(String::isNotEmpty),
                         rating = series.rating,
-                        sideLabel = series.sideLabel(),
+                        sideLabel = series.listSideLabel(),
+                        titleSideLabel = series.seasonsCount?.let { "$it $seasonsLabel" },
                         imageUrl = series.backdropUrl ?: series.coverUrl,
                         fallbackText = series.title.take(2).uppercase(),
                         selected = series.seriesId == state.selectedSeriesId,
@@ -686,6 +689,13 @@ private fun SeriesItemUi.sideLabel(): String =
         seasonsCount != null -> "${seasonsCount} saisons"
         episodesCount != null -> "${episodesCount} episodes"
         else -> episodeRunTime?.let { "${it}m/ep" }.orEmpty()
+    }
+
+private fun SeriesItemUi.listSideLabel(): String =
+    when {
+        episodesCount != null -> "${episodesCount}E"
+        episodeRunTime != null -> "${episodeRunTime}m/ep"
+        else -> ""
     }
 
 private const val SeriesNextPageThreshold = 15

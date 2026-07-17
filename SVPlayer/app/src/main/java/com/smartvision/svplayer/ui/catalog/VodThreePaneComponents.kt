@@ -147,6 +147,7 @@ fun VodContentRow(
     genre: String?,
     rating: String?,
     sideLabel: String,
+    titleSideLabel: String? = null,
     imageUrl: String?,
     fallbackText: String,
     selected: Boolean,
@@ -270,14 +271,30 @@ fun VodContentRow(
                 .weight(1f)
                 .padding(vertical = 3.dp),
         ) {
-            Text(
-                text = title,
-                color = SmartVisionColors.TextPrimary,
-                style = CatalogItemTitleStyle,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = title,
+                    color = SmartVisionColors.TextPrimary,
+                    style = CatalogItemTitleStyle,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                titleSideLabel?.takeIf { it.isNotBlank() }?.let { label ->
+                    Text(
+                        text = label,
+                        color = SmartVisionColors.TextSecondary,
+                        style = CatalogMetaStyle,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                    )
+                }
+            }
             Spacer(Modifier.height(4.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),

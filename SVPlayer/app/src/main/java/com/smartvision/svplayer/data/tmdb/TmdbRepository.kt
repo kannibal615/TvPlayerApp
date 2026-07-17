@@ -389,6 +389,7 @@ private fun TmdbSeriesDetailsDto.toEntity(
         logoUrl = imageResolver.logoUrl(logoPath),
         firstAirDate = firstAirDate.blankToNull(),
         episodeRunTimeMinutes = episodeRunTime?.firstOrNull { it > 0 },
+        seasonsCount = numberOfSeasons?.takeIf { it > 0 },
         genres = genres.joinNames(),
         voteAverage = voteAverage?.takeIf { it > 0.0 },
         voteCount = voteCount?.takeIf { it > 0 },

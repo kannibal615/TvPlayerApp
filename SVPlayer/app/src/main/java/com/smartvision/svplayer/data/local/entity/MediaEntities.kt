@@ -213,6 +213,7 @@ data class TmdbSeriesMetadataEntity(
     val logoUrl: String?,
     val firstAirDate: String?,
     val episodeRunTimeMinutes: Int?,
+    val seasonsCount: Int?,
     val genres: String?,
     val voteAverage: Double?,
     val voteCount: Int?,

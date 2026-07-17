@@ -627,7 +627,7 @@ class SeriesViewModel(
     private fun loadVisibleMetadata(series: List<SeriesItemUi>) {
         metadataJob?.cancel()
         metadataJob = viewModelScope.launch {
-            series.take(VisibleTmdbSeriesEnhanceLimit).chunked(TmdbEnrichmentConcurrency).forEach { batch ->
+            series.chunked(TmdbEnrichmentConcurrency).forEach { batch ->
                 val metadata = batch.map { item ->
                     async {
                         val tmdb = tmdbRepository.enrichSeries(
@@ -641,7 +641,8 @@ class SeriesViewModel(
                             catalogRepository.getSeriesEpisodes(item.seriesId)
                         }.getOrDefault(emptyList())
                         item.seriesId to CachedSeriesMetadata(
-                            seasons = episodes.map { it.seasonNumber }.filter { it > 0 }.distinct().size,
+                            seasons = tmdb?.seasonsCount
+                                ?: episodes.map { it.seasonNumber }.filter { it > 0 }.distinct().size,
                             episodes = episodes.size,
                             title = tmdb?.name.nonBlank(),
                             coverUrl = tmdb?.posterUrl.nonBlank(),
@@ -721,6 +722,22 @@ class SeriesViewModel(
                             episodesLoading = false,
                             episodes = episodes,
                             selectedPreviewEpisodeId = preferredId,
+                            series = it.series.map { item ->
+                                if (item.seriesId == seriesId) {
+                                    item.copy(
+                                        seasonsCount = episodes.map { episode -> episode.seasonNumber }
+                                            .filter { season -> season > 0 }
+                                            .distinct()
+                                            .size
+                                            .takeIf { count -> count > 0 }
+                                            ?: item.seasonsCount,
+                                        episodesCount = episodes.size.takeIf { count -> count > 0 }
+                                            ?: item.episodesCount,
+                                    )
+                                } else {
+                                    item
+                                }
+                            },
                         )
                     } else {
                         it.copy(episodesLoading = false)
@@ -781,7 +798,6 @@ private data class CachedSeriesMetadata(
 )
 
 private const val SeriesItemsPageSize = 72
-private const val VisibleTmdbSeriesEnhanceLimit = 12
 private const val TmdbEnrichmentConcurrency = 2
 private const val InitialCategoryLimit = 20
 private const val FavoriteSeriesCategoryId = "__favorites_series__"

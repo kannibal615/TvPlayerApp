@@ -897,8 +897,6 @@ private fun SettingsPanel(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .background(Color(0xE60A1424), RoundedCornerShape(8.dp))
-                .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
                 .padding(10.dp),
         ) {
             val contentModifier = if (contentFocusable) {

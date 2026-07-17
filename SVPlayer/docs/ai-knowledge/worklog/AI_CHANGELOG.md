@@ -1,5 +1,7 @@
 # AI Changelog
 
+- 2026-07-17: suppression des cadres globaux des colonnes de contenu Profile et Settings; les titres restent externes et seuls les cadres propres aux sous-sections sont conserves, sans changement de focus ni de comportement.
+
 ## 2026-07-17 - EPG courant/futur et Playlist multi-profils
 
 - Scope les caches EPG par URL, respecte les offsets XMLTV, retire les emissions terminees et centralise le refresh EPG stale-aware apres toutes les synchronisations catalogue.
@@ -3172,3 +3174,11 @@ Fichiers code concernes:
 
 - `NumericPinDialog` suit le modele vertical compact: en-tete centre, indicateurs PIN circulaires, separateur cyan, clavier 3 x 4 centre et actions de largeur egale.
 - Les dimensions sont centralisees; le quatrieme chiffre focalise `Apply`, et chaque erreur vide le PIN, rejoue un shake court sur les seuls indicateurs puis restaure le focus sur `1`.
+
+## 2026-07-17 - Metadonnees des lignes Films et saisons Series
+
+- Films enrichit toutes les lignes chargees de tous les dossiers avec TMDB, applique le backdrop paysage aux vignettes et aligne l'ordre note/genre/details sur les lignes Series.
+- La preview Films reutilise les metadonnees enrichies de la ligne selectionnee; les annulations normales de changement de dossier ne produisent plus d'erreur fugace au centre.
+- Series stocke `number_of_seasons` dans le cache TMDB Room v19 et affiche le nombre de saisons a droite du titre de chaque ligne enrichie.
+- Home separe durablement le header du viewport par un espace non scrollable de `24 dp` et clippe le contenu vertical, afin que le hero ne puisse plus passer sous le header pendant les restaurations de scroll/focus.
+- Les rangees Historique et Tendances portent leur padding horizontal interne a `20 dp`, ce qui laisse dessiner entierement le halo de la premiere card sans perdre les cinq cards paysage visibles.

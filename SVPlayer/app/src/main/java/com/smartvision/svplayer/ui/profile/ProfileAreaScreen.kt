@@ -926,8 +926,6 @@ private fun AreaPanel(title: String, icon: ImageVector, modifier: Modifier = Mod
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .background(Color(0xD9091424), RoundedCornerShape(8.dp))
-                .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
                 .padding(10.dp),
         ) {
             content()

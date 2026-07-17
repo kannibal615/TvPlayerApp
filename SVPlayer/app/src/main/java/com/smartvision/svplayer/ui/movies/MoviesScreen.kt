@@ -602,7 +602,11 @@ private fun MovieList(
                             movie.duration,
                             movie.director?.takeIf { it.isNotBlank() },
                         ).joinToString(" | ").ifBlank { movie.subtitle },
-                        genre = movie.genre,
+                        genre = movie.genre
+                            ?.substringBefore('/')
+                            ?.substringBefore(',')
+                            ?.trim()
+                            ?.takeIf(String::isNotEmpty),
                         rating = movie.rating,
                         sideLabel = movie.duration ?: movie.containerExtension.uppercase(),
                         imageUrl = movie.backdropUrl ?: movie.posterUrl,
@@ -620,6 +624,7 @@ private fun MovieList(
                         onRight = { onEnterPreview(movie) },
                         onFocused = { onMovieFocused(movie) },
                         onClick = { onMovieClick(movie) },
+                        ratingFirst = true,
                     )
                 }
             }

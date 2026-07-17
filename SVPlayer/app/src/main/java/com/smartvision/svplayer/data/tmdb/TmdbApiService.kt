@@ -125,6 +125,7 @@ data class TmdbSeriesDetailsDto(
     @SerializedName("backdrop_path") val backdropPath: String?,
     @SerializedName("first_air_date") val firstAirDate: String?,
     @SerializedName("episode_run_time") val episodeRunTime: List<Int>?,
+    @SerializedName("number_of_seasons") val numberOfSeasons: Int?,
     @SerializedName("genres") val genres: List<TmdbGenreDto>?,
     @SerializedName("vote_average") val voteAverage: Double?,
     @SerializedName("vote_count") val voteCount: Int?,

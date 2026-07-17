@@ -19,6 +19,7 @@ import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
 import com.smartvision.svplayer.ui.catalog.AllCategoryPolicy
 import java.util.Locale
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -28,6 +29,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 data class MovieCategoryUi(
     val id: String,
@@ -98,7 +101,8 @@ class MoviesViewModel(
     val uiState: StateFlow<MoviesScreenState> = _uiState.asStateFlow()
 
     private var moviesJob: Job? = null
-    private var tmdbMetadataJob: Job? = null
+    private val tmdbMetadataJobs = mutableSetOf<Job>()
+    private val tmdbEnrichmentSemaphore = Semaphore(TmdbEnrichmentConcurrency)
     private var favoriteIds: Set<Int> = emptySet()
     private var historyProgress: List<PlaybackProgressEntity> = emptyList()
     private var historyCategorySignals: List<CategoryHistorySignal> = emptyList()
@@ -132,7 +136,7 @@ class MoviesViewModel(
 
     private fun reloadCatalogAfterRevision() {
         moviesJob?.cancel()
-        tmdbMetadataJob?.cancel()
+        cancelTmdbMetadataJobs()
         localCategories = emptyList()
         _uiState.value = MoviesScreenState(categoriesLoading = true)
         loadCategories()
@@ -140,6 +144,7 @@ class MoviesViewModel(
 
     fun loadCategories() {
         moviesJob?.cancel()
+        cancelTmdbMetadataJobs()
         val cachedCategories = catalogRepository.getCachedMovieCategories()
         if (!cachedCategories.isNullOrEmpty()) {
             applyCategories(cachedCategories)
@@ -312,6 +317,7 @@ class MoviesViewModel(
                             ?.takeIf { selectedId -> refreshedMovies.any { it.streamId == selectedId } },
                     )
                 }
+                favoriteSelection?.let(::loadTmdbMetadataForMovies)
             }
         }
     }
@@ -331,8 +337,8 @@ class MoviesViewModel(
                     } ?: playerSettings.allowsContent(item.title, item.subtitle)
                 }
                 historyCategorySignals = userContentRepository.resolveCategorySignals(historyProgress)
+                val refreshedHistoryMovies = historyMovies(_uiState.value.contentSearchQuery)
                 _uiState.update { state ->
-                    val historyMovies = historyMovies(state.contentSearchQuery)
                     state.copy(
                         categories = state.categories.withSpecialCategories(
                             allCount = catalogTotalCount(),
@@ -340,9 +346,12 @@ class MoviesViewModel(
                             historyCount = historyProgress.size,
                             historySignals = historyCategorySignals,
                         ),
-                        movies = if (state.selectedCategoryId == HistoryMovieCategoryId) historyMovies else state.movies,
-                        focusedMovieId = if (state.selectedCategoryId == HistoryMovieCategoryId) historyMovies.firstOrNull()?.streamId else state.focusedMovieId,
+                        movies = if (state.selectedCategoryId == HistoryMovieCategoryId) refreshedHistoryMovies else state.movies,
+                        focusedMovieId = if (state.selectedCategoryId == HistoryMovieCategoryId) refreshedHistoryMovies.firstOrNull()?.streamId else state.focusedMovieId,
                     )
+                }
+                if (_uiState.value.selectedCategoryId == HistoryMovieCategoryId) {
+                    loadTmdbMetadataForMovies(refreshedHistoryMovies)
                 }
             }
         }
@@ -350,7 +359,7 @@ class MoviesViewModel(
 
     private fun loadFavoriteMovies() {
         moviesJob?.cancel()
-        tmdbMetadataJob?.cancel()
+        cancelTmdbMetadataJobs()
         moviesJob = viewModelScope.launch {
             val movies = favoriteMovies(_uiState.value.contentSearchQuery)
             _uiState.update { state ->
@@ -373,13 +382,13 @@ class MoviesViewModel(
                     selectedMovieId = null,
                 )
             }
-            loadCachedTmdbMetadataForMovies(movies)
+            loadTmdbMetadataForMovies(movies)
         }
     }
 
     private fun loadHistoryMovies() {
         moviesJob?.cancel()
-        tmdbMetadataJob?.cancel()
+        cancelTmdbMetadataJobs()
         val movies = historyMovies(_uiState.value.contentSearchQuery)
         _uiState.update { state ->
             state.copy(
@@ -401,7 +410,7 @@ class MoviesViewModel(
                 selectedMovieId = null,
             )
         }
-        loadCachedTmdbMetadataForMovies(movies)
+        loadTmdbMetadataForMovies(movies)
     }
 
     private fun loadAllMovies() {
@@ -468,7 +477,10 @@ class MoviesViewModel(
         query: String = _uiState.value.contentSearchQuery,
         replace: Boolean,
     ) {
-        if (replace) moviesJob?.cancel()
+        if (replace) {
+            moviesJob?.cancel()
+            cancelTmdbMetadataJobs()
+        }
         moviesJob = viewModelScope.launch {
             val startOffset = if (replace) 0 else _uiState.value.currentOffset
             val previousMovies = if (replace) emptyList() else _uiState.value.movies
@@ -502,7 +514,11 @@ class MoviesViewModel(
                             favoriteIds = favoriteIds,
                         )
                     }
-                PageLoadResult(items = (previousMovies + visiblePage).distinctBy { it.streamId }, rawPageSize = page.size)
+                PageLoadResult(
+                    items = (previousMovies + visiblePage).distinctBy { it.streamId },
+                    loadedItems = visiblePage,
+                    rawPageSize = page.size,
+                )
             }.onSuccess { result ->
                 _uiState.update { state ->
                     state.copy(
@@ -522,8 +538,9 @@ class MoviesViewModel(
                         errorMessage = null,
                     )
                 }
-                loadCachedTmdbMetadataForMovies(result.items)
+                loadTmdbMetadataForMovies(result.loadedItems)
             }.onFailure { error ->
+                if (error is CancellationException) return@onFailure
                 _uiState.update {
                     it.copy(
                         itemsLoading = false,
@@ -539,20 +556,21 @@ class MoviesViewModel(
         }
     }
 
-    private fun loadCachedTmdbMetadataForMovies(movies: List<MovieItemUi>) {
-        tmdbMetadataJob?.cancel()
+    private fun loadTmdbMetadataForMovies(movies: List<MovieItemUi>) {
         if (movies.isEmpty()) return
-        tmdbMetadataJob = viewModelScope.launch {
-            movies.take(CachedTmdbMovieEnhanceLimit).chunked(TmdbEnrichmentConcurrency).forEach { batch ->
+        val job = viewModelScope.launch {
+            movies.distinctBy { it.streamId }.chunked(TmdbMetadataUpdateBatchSize).forEach { batch ->
                 val enrichedById = batch.map { movie ->
                     async {
-                        val metadata = tmdbRepository.enrichMovie(
-                            contentId = movie.streamId,
-                            title = movie.title,
-                            year = movie.year,
-                            language = playerSettings.language,
-                            includeAdult = !playerSettings.parentalControlEnabled,
-                        ) ?: return@async null
+                        val metadata = tmdbEnrichmentSemaphore.withPermit {
+                            tmdbRepository.enrichMovie(
+                                contentId = movie.streamId,
+                                title = movie.title,
+                                year = movie.year,
+                                language = playerSettings.language,
+                                includeAdult = !playerSettings.parentalControlEnabled,
+                            )
+                        } ?: return@async null
                         movie.streamId to movie.copy(
                             title = metadata.title.nonBlank() ?: movie.title,
                             posterUrl = metadata.posterUrl.nonBlank() ?: movie.posterUrl,
@@ -574,6 +592,14 @@ class MoviesViewModel(
                 }
             }
         }
+        tmdbMetadataJobs += job
+        job.invokeOnCompletion { tmdbMetadataJobs -= job }
+    }
+
+    private fun cancelTmdbMetadataJobs() {
+        val jobs = tmdbMetadataJobs.toList()
+        tmdbMetadataJobs.clear()
+        jobs.forEach { it.cancel() }
     }
 
     fun deleteHistoryMovie(movie: MovieItemUi) {
@@ -600,11 +626,12 @@ private fun String?.durationMinutes(): Int = this?.let { Regex("""\d+""").find(i
 
 private data class PageLoadResult<T>(
     val items: List<T>,
+    val loadedItems: List<T>,
     val rawPageSize: Int,
 )
 
 private const val MovieItemsPageSize = 72
-private const val CachedTmdbMovieEnhanceLimit = 12
+private const val TmdbMetadataUpdateBatchSize = 12
 private const val TmdbEnrichmentConcurrency = 2
 private const val InitialCategoryLimit = 20
 private const val FavoriteMovieCategoryId = "__favorites_movies__"

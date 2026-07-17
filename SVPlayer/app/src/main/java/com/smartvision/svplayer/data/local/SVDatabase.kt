@@ -70,7 +70,7 @@ import com.smartvision.svplayer.data.local.entity.YoutubeVideoHistoryEntity
         ParentalFilterSnapshotEntity::class,
         ParentalHiddenItemEntity::class,
     ],
-    version = 18,
+    version = 19,
     exportSchema = true,
 )
 abstract class SVDatabase : RoomDatabase() {
@@ -106,6 +106,7 @@ abstract class SVDatabase : RoomDatabase() {
                     Migration15To16,
                     Migration16To17,
                     Migration17To18,
+                    Migration18To19,
                 )
                 .build()
 
@@ -718,6 +719,12 @@ abstract class SVDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE sync_state ADD COLUMN kidsExcludedLive INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE sync_state ADD COLUMN kidsExcludedMovies INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE sync_state ADD COLUMN kidsExcludedSeries INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val Migration18To19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE tmdb_series_metadata ADD COLUMN seasonsCount INTEGER")
             }
         }
     }

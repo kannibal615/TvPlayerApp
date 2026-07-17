@@ -26,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -550,14 +551,15 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth(),
         )
 
+        Spacer(Modifier.height(SmartVisionDimensions.HomeHeaderContentClearance))
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(top = SmartVisionDimensions.HomeHeaderToHeroSpacing)
+                .clipToBounds()
                 .verticalScroll(scrollState)
         ) {
-            Spacer(Modifier.height(100.dp))
             HomeHeroBanner(
                 strings = strings,
                 remoteSlides = state.slides,

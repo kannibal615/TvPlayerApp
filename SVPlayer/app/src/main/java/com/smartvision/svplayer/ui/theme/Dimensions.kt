@@ -32,6 +32,7 @@ object SmartVisionDimensions {
     val HomeScreenPadding = AppScreenHorizontalPadding
     val HomeHeaderTopPadding = AppScreenVerticalPadding
     val HomeHeaderHeight = 44.dp
+    val HomeHeaderContentClearance = 24.dp
     val HomeHeaderToHeroSpacing = AppHeaderContentSpacing
     val HomeHeroHeight = 132.dp
     val HomeCategoryHeight = 170.dp
@@ -42,7 +43,9 @@ object SmartVisionDimensions {
     val HomeContentCardHeight = 94.5.dp
     val HomeContentPreviewCardWidth = HomeContentCardHeight * (16f / 9f)
     val HomeContentRowHeight = 158.dp
-    val HomeRowEdgePadding = 12.dp
+    // LazyRow clips drawing at its viewport edges. Keep enough inset for the
+    // focused card scale + shadow while preserving five complete 16:9 cards.
+    val HomeRowEdgePadding = 20.dp
     val HomeContentCardSpacing = 6.dp
     val HomeContentSectionSpacing = 10.dp
     val HomePanelRadius = 8.dp
