@@ -126,6 +126,7 @@ class LiveTvViewModel(
     val uiState: StateFlow<LiveTvUiState> = _uiState.asStateFlow()
 
     private var channelsJob: Job? = null
+    private var categoriesJob: Job? = null
     private var favoriteIds: Set<Int> = emptySet()
     private var historyProgress: List<PlaybackProgressEntity> = emptyList()
     private var historyCategorySignals: List<CategoryHistorySignal> = emptyList()
@@ -163,7 +164,8 @@ class LiveTvViewModel(
 
     private fun reloadCatalogAfterRevision() {
         val previousFilterCode = _uiState.value.activeCategoryFilterCode
-        channelsJob?.cancel()
+        categoriesJob?.cancel()
+        cancelChannelsLoad(clearChannels = true)
         localCategories = emptyList()
         pendingHistoryFocusAfterDelete = null
         userSelectedCategory = false
@@ -176,15 +178,16 @@ class LiveTvViewModel(
         loadCategories()
     }
 
-    fun loadCategories() {
-        channelsJob?.cancel()
+    fun loadCategories(reloadChannels: Boolean = false) {
+        categoriesJob?.cancel()
+        if (reloadChannels) cancelChannelsLoad(clearChannels = true)
         val cachedCategories = catalogRepository.getCachedLiveCategories()
         if (!cachedCategories.isNullOrEmpty()) {
             applyCategories(cachedCategories)
             return
         }
-        viewModelScope.launch {
-            _uiState.value = LiveTvUiState(categoriesLoading = true)
+        categoriesJob = viewModelScope.launch {
+            _uiState.update { it.copy(categoriesLoading = true, errorMessage = null) }
             var initialApplied = false
             runCatchingNonCancellation { catalogRepository.getInitialLiveCategoriesSnapshot(InitialCategoryLimit) }
                 .onSuccess { categories ->
@@ -250,7 +253,9 @@ class LiveTvViewModel(
         }
         val state = _uiState.value
         val selectedCategoryChanged = state.selectedCategoryId != previousSelectedCategoryId
-        if (selectedCategoryChanged || (state.channels.isEmpty() && !state.channelsLoading)) {
+        val selectedCategoryLoadActive =
+            channelsJob?.isActive == true && loadedChannelsCategoryId == state.selectedCategoryId
+        if (selectedCategoryChanged || (state.channels.isEmpty() && !selectedCategoryLoadActive)) {
             state.selectedCategory?.let { category -> selectCategory(category, userInitiated = false) }
         }
     }
@@ -321,7 +326,7 @@ class LiveTvViewModel(
         if (
             current.selectedCategoryId == category.id &&
             loadedChannelsCategoryId == category.id &&
-            (current.channels.isNotEmpty() || current.channelsLoading)
+            (current.channels.isNotEmpty() || channelsJob?.isActive == true)
         ) {
             return
         }
@@ -457,8 +462,8 @@ class LiveTvViewModel(
                 val changed = playerSettings.parentalControlEnabled != settings.parentalControlEnabled ||
                     playerSettings.parentalKeywords != settings.parentalKeywords
                 playerSettings = settings
-                if (changed && !_uiState.value.categoriesLoading) {
-                    loadCategories()
+                if (changed && (localCategories.isNotEmpty() || categoriesJob?.isActive == true)) {
+                    loadCategories(reloadChannels = true)
                 }
             }
         }
@@ -549,9 +554,12 @@ class LiveTvViewModel(
     }
 
     private fun loadFavoriteChannels(autoPreviewFirstChannel: Boolean = false) {
-        channelsJob?.cancel()
+        cancelChannelsLoad(clearChannels = true)
         loadedChannelsCategoryId = FavoriteLiveCategoryId
         channelsJob = viewModelScope.launch {
+            _uiState.update {
+                it.copy(itemsLoading = true, channelsLoading = true, selectedCategoryId = FavoriteLiveCategoryId)
+            }
             val allChannels = favoriteChannels()
             val channels = allChannels.filterBySearch(_uiState.value.channelSearchQuery)
             _uiState.update { state ->
@@ -578,9 +586,12 @@ class LiveTvViewModel(
     }
 
     private fun loadHistoryChannels(autoPreviewFirstChannel: Boolean = false) {
-        channelsJob?.cancel()
+        cancelChannelsLoad(clearChannels = true)
         loadedChannelsCategoryId = HistoryLiveCategoryId
         channelsJob = viewModelScope.launch {
+            _uiState.update {
+                it.copy(itemsLoading = true, channelsLoading = true, selectedCategoryId = HistoryLiveCategoryId)
+            }
             val allChannels = historyChannels()
             val channels = allChannels.filterBySearch(_uiState.value.channelSearchQuery)
             _uiState.update { state ->
@@ -718,7 +729,7 @@ class LiveTvViewModel(
         replace: Boolean,
         autoPreviewFirstChannel: Boolean = false,
     ) {
-        if (replace) channelsJob?.cancel()
+        if (replace) cancelChannelsLoad(clearChannels = true)
         if (replace) loadedChannelsCategoryId = selectedCategoryId
         channelsJob = viewModelScope.launch {
             val startOffset = if (replace) 0 else _uiState.value.currentOffset
@@ -811,6 +822,22 @@ class LiveTvViewModel(
                     )
                 }
             }
+        }
+    }
+
+    private fun cancelChannelsLoad(clearChannels: Boolean) {
+        channelsJob?.cancel()
+        channelsJob = null
+        loadedChannelsCategoryId = null
+        _uiState.update { state ->
+            state.copy(
+                itemsLoading = false,
+                channelsLoading = false,
+                nextPageLoading = false,
+                channels = if (clearChannels) emptyList() else state.channels,
+                currentOffset = if (clearChannels) 0 else state.currentOffset,
+                hasMoreItems = if (clearChannels) false else state.hasMoreItems,
+            )
         }
     }
 

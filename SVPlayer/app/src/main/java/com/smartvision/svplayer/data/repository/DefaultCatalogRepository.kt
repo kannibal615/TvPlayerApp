@@ -26,10 +26,6 @@ import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.local.entity.SeriesEntity
 import com.smartvision.svplayer.data.local.entity.SyncStateEntity
 import com.smartvision.svplayer.data.local.entity.TrendingMediaEntity
-import com.smartvision.svplayer.data.network.NetworkActivityHandle
-import com.smartvision.svplayer.data.network.NetworkActivityStatus
-import com.smartvision.svplayer.data.network.NetworkActivityTracker
-import com.smartvision.svplayer.data.network.NetworkActivityType
 import com.smartvision.svplayer.data.playlist.EpgRepository
 import com.smartvision.svplayer.data.playlist.M3uPlaylistClient
 import com.smartvision.svplayer.data.remote.XtreamApiService
@@ -98,7 +94,6 @@ class DefaultCatalogRepository(
     private val syncStateDao: SyncStateDao,
     private val youtubeDao: YoutubeDao,
     private val kidsFilterDao: KidsFilterDao,
-    private val networkActivityTracker: NetworkActivityTracker,
 ) : CatalogRepository {
     private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     override val syncStatus: StateFlow<SyncStatus> = _syncStatus
@@ -789,18 +784,6 @@ class DefaultCatalogRepository(
                 SyncStatus.SyncSectionProgress(currentItems = count, previousItems = count)
             },
         )
-        val syncWorkId = "catalog-sync-${System.currentTimeMillis()}"
-        val syncWork = networkActivityTracker.begin(
-            id = syncWorkId,
-            title = "Catalog synchronization",
-            type = NetworkActivityType.Catalog,
-            message = "Preparing catalog synchronization",
-            source = "Xtream",
-            progressPercent = 0,
-        )
-        val liveWork = networkActivityTracker.beginCatalogSectionWork(syncWorkId, "Live TV")
-        val moviesWork = networkActivityTracker.beginCatalogSectionWork(syncWorkId, "Movies")
-        val seriesWork = networkActivityTracker.beginCatalogSectionWork(syncWorkId, "Series")
         var liveItems = 0
         var movieItems = 0
         var seriesItems = 0
@@ -885,12 +868,6 @@ class DefaultCatalogRepository(
                 } else {
                     0
                 }
-                syncWork.update(
-                    message = message,
-                    progressPercent = percent,
-                    currentItems = completedItems,
-                    totalItems = totalItems,
-                )
                 _syncStatus.value = SyncStatus.Running(
                     message = message,
                     completedItems = completedItems,
@@ -922,13 +899,6 @@ class DefaultCatalogRepository(
                         keptItems?.let { liveKept = it }
                         excludedItems?.let { liveExcluded = it }
                         liveCompleted = phase == SyncStatus.SyncSectionPhase.COMPLETED
-                        liveWork.update(
-                            status = phase.toNetworkActivityStatus(),
-                            message = message,
-                            progressPercent = percent,
-                            currentItems = currentItems,
-                        )
-                        if (liveCompleted) liveWork.complete("Live TV ready")
                     }
                     MediaSection.Movies -> {
                         moviesMessage = message
@@ -939,13 +909,6 @@ class DefaultCatalogRepository(
                         keptItems?.let { moviesKept = it }
                         excludedItems?.let { moviesExcluded = it }
                         moviesCompleted = phase == SyncStatus.SyncSectionPhase.COMPLETED
-                        moviesWork.update(
-                            status = phase.toNetworkActivityStatus(),
-                            message = message,
-                            progressPercent = percent,
-                            currentItems = currentItems,
-                        )
-                        if (moviesCompleted) moviesWork.complete("Movies ready")
                     }
                     MediaSection.Series -> {
                         seriesMessage = message
@@ -956,13 +919,6 @@ class DefaultCatalogRepository(
                         keptItems?.let { seriesKept = it }
                         excludedItems?.let { seriesExcluded = it }
                         seriesCompleted = phase == SyncStatus.SyncSectionPhase.COMPLETED
-                        seriesWork.update(
-                            status = phase.toNetworkActivityStatus(),
-                            message = message,
-                            progressPercent = percent,
-                            currentItems = currentItems,
-                        )
-                        if (seriesCompleted) seriesWork.complete("Series ready")
                     }
                 }
                 updateProgress(message = message, fetched = fetched, remainingSteps = remainingSteps)
@@ -1047,8 +1003,6 @@ class DefaultCatalogRepository(
                 message = "Synchronisation terminee",
                 catalogProgress = currentCatalogProgress(),
             )
-            syncWork.update(currentItems = liveItems + movieItems + seriesItems, progressPercent = 100)
-            syncWork.complete("Catalog ready")
             logSyncMemory(stage = "xtream_sync_success", live = liveItems, movies = movieItems, series = seriesItems)
             refreshEpgAfterCatalogSync(resolvedProfile?.epgUrl.orEmpty())
             Result.success(Unit)
@@ -1078,11 +1032,6 @@ class DefaultCatalogRepository(
                 message = "Erreur reseau",
                 catalogProgress = currentCatalogProgress(),
             )
-            val errorMessage = error.message ?: error.javaClass.simpleName
-            syncWork.fail(errorMessage)
-            if (!liveCompleted) liveWork.fail(errorMessage)
-            if (!moviesCompleted) moviesWork.fail(errorMessage)
-            if (!seriesCompleted) seriesWork.fail(errorMessage)
             Result.failure(error)
         }
     }
@@ -1818,21 +1767,6 @@ class DefaultCatalogRepository(
             _syncStatus.value = SyncStatus.Error(message)
             return Result.failure(IllegalStateException(message))
         }
-        val syncWorkId = "catalog-m3u-${System.currentTimeMillis()}"
-        val syncWork = networkActivityTracker.begin(
-            id = syncWorkId,
-            title = "Catalog synchronization",
-            type = NetworkActivityType.Catalog,
-            message = "Synchronisation M3U...",
-            source = "M3U",
-            progressPercent = 8,
-        )
-        val liveWork = networkActivityTracker.beginCatalogSectionWork(syncWorkId, "Live TV")
-        liveWork.update(
-            status = NetworkActivityStatus.Running,
-            message = "Downloading M3U playlist",
-            progressPercent = 8,
-        )
         _syncStatus.value = SyncStatus.Running(
             message = "Synchronisation M3U...",
             totalItems = 2,
@@ -1878,39 +1812,11 @@ class DefaultCatalogRepository(
                     toLocalEntity = { it.toEntity(profileId) },
                     clearItems = { mediaDao.clearLiveStreams(profileId) },
                     upsertItems = mediaDao::upsertLiveStreams,
-                    onProgress = { processed, total, kept, metrics ->
-                        val percent = 35 + (processed * 50 / total.coerceAtLeast(1))
-                        syncWork.update(
-                            message = "Kids M3U: $kept conserves, ${metrics.inheritedItems} herites, " +
-                                "${metrics.cacheHits} cache",
-                            progressPercent = percent,
-                            currentItems = processed,
-                            totalItems = total,
-                        )
-                        liveWork.update(
-                            status = NetworkActivityStatus.Importing,
-                            message = "Filtering and importing Kids channels",
-                            progressPercent = percent,
-                            currentItems = processed,
-                            totalItems = total,
-                        )
-                    },
+                    onProgress = { _, _, _, _ -> },
                 )
             } else null
             val importedChannelCount = kidsImport?.keptItems ?: downloadedPlaylist.channels.size
             val importedPercent = if (kidsProfile) 88 else 72
-            syncWork.update(
-                message = "Chargement catalogue M3U...",
-                progressPercent = if (kidsProfile) 88 else 50,
-                currentItems = 1,
-                totalItems = 2,
-            )
-            liveWork.update(
-                status = NetworkActivityStatus.Importing,
-                message = "Importing M3U channels",
-                progressPercent = importedPercent,
-                currentItems = importedChannelCount,
-            )
             _syncStatus.value = SyncStatus.Running(
                 message = "Chargement catalogue M3U...",
                 completedItems = 1,
@@ -1959,10 +1865,6 @@ class DefaultCatalogRepository(
                     ),
                 ),
             )
-            liveWork.update(progressPercent = 100, currentItems = importedChannelCount)
-            liveWork.complete("Live TV ready")
-            syncWork.update(progressPercent = 100, currentItems = importedChannelCount)
-            syncWork.complete("Catalog ready")
             refreshEpgAfterCatalogSync(epgUrl)
             Result.success(Unit)
         } catch (error: Exception) {
@@ -1987,9 +1889,6 @@ class DefaultCatalogRepository(
                     ),
                 ),
             )
-            val errorMessage = error.message ?: error.javaClass.simpleName
-            liveWork.fail(errorMessage)
-            syncWork.fail(errorMessage)
             Result.failure(error)
         }
     }
@@ -2081,28 +1980,6 @@ private fun PlaylistSource.hasConfiguredCatalog(m3uUrl: String, hasXtream: Boole
     when (this) {
         PlaylistSource.Xtream -> hasXtream
         PlaylistSource.M3u -> m3uUrl.isNotBlank()
-    }
-
-private fun NetworkActivityTracker.beginCatalogSectionWork(syncWorkId: String, section: String): NetworkActivityHandle =
-    begin(
-        id = "$syncWorkId-${section.lowercase().replace(' ', '-')}",
-        title = "Catalog $section",
-        type = NetworkActivityType.Catalog,
-        section = section,
-        message = "Waiting",
-        status = NetworkActivityStatus.Queued,
-        progressPercent = 0,
-    )
-
-private fun SyncStatus.SyncSectionPhase.toNetworkActivityStatus(): NetworkActivityStatus =
-    when (this) {
-        SyncStatus.SyncSectionPhase.WAITING -> NetworkActivityStatus.Queued
-        SyncStatus.SyncSectionPhase.RUNNING,
-        SyncStatus.SyncSectionPhase.FILTERING,
-        SyncStatus.SyncSectionPhase.LOADING_TRENDS -> NetworkActivityStatus.Running
-        SyncStatus.SyncSectionPhase.IMPORTING -> NetworkActivityStatus.Importing
-        SyncStatus.SyncSectionPhase.COMPLETED -> NetworkActivityStatus.Completed
-        SyncStatus.SyncSectionPhase.ERROR -> NetworkActivityStatus.Error
     }
 
 private const val KidsFilterImportBatchSize = 256

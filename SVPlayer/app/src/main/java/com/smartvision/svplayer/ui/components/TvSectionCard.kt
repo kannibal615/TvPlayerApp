@@ -33,6 +33,8 @@ internal fun TvSectionCard(
     backgroundColor: Color = Color(0xB8081628),
     borderColor: Color = SmartVisionColors.Border.copy(alpha = 0.86f),
     borderWidth: androidx.compose.ui.unit.Dp = 1.dp,
+    horizontalPadding: androidx.compose.ui.unit.Dp = 16.dp,
+    verticalPadding: androidx.compose.ui.unit.Dp = 14.dp,
     headerTrailing: (@Composable RowScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -44,7 +46,7 @@ internal fun TvSectionCard(
                 BorderStroke(borderWidth, borderColor),
                 RoundedCornerShape(8.dp),
             )
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = horizontalPadding, vertical = verticalPadding),
     ) {
         if (!title.isNullOrBlank() && icon != null) {
             Row(verticalAlignment = Alignment.CenterVertically) {

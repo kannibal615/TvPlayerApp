@@ -126,3 +126,4 @@ object TvFocusStyles {
 }
 
 val LocalTvFocusStyle = staticCompositionLocalOf { TvFocusStyles.Default }
+val LocalTvAnimationsEnabled = staticCompositionLocalOf { true }

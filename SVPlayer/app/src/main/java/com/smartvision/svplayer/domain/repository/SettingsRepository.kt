@@ -24,6 +24,8 @@ interface SettingsRepository {
     suspend fun setVideoRatio(value: String)
     suspend fun setBufferMode(value: String)
     suspend fun setRetryEnabled(value: Boolean)
+    suspend fun setShowHeaderClock(value: Boolean)
+    suspend fun setShowHeaderSeconds(value: Boolean)
     suspend fun setParentalControlEnabled(value: Boolean)
     suspend fun setParentalControlEnabledForProfile(profileId: String, enabled: Boolean)
     suspend fun setParentalPin(value: String)

@@ -628,22 +628,26 @@ class SeriesViewModel(
         metadataJob?.cancel()
         metadataJob = viewModelScope.launch {
             series.chunked(TmdbEnrichmentConcurrency).forEach { batch ->
-                val metadata = batch.map { item ->
+                batch.map { item ->
                     async {
-                        val tmdb = tmdbRepository.enrichSeries(
-                            contentId = item.seriesId,
-                            title = item.title,
-                            year = item.releaseDate,
-                            language = playerSettings.language,
-                            includeAdult = !playerSettings.parentalControlEnabled,
-                        )
-                        val episodes = runCatching {
+                        val tmdb = runCatching {
+                            tmdbRepository.enrichSeries(
+                                contentId = item.seriesId,
+                                title = item.title,
+                                year = item.releaseDate,
+                                language = playerSettings.language,
+                                includeAdult = !playerSettings.parentalControlEnabled,
+                            )
+                        }.getOrNull()
+                        val localEpisodes = runCatching {
                             catalogRepository.getSeriesEpisodes(item.seriesId)
                         }.getOrDefault(emptyList())
-                        item.seriesId to CachedSeriesMetadata(
+                        val episodeSeasonNumbers = localEpisodes.map { it.seasonNumber }
+                        val episodeCount = localEpisodes.size
+                        val metadata = CachedSeriesMetadata(
                             seasons = tmdb?.seasonsCount
-                                ?: episodes.map { it.seasonNumber }.filter { it > 0 }.distinct().size,
-                            episodes = episodes.size,
+                                ?: episodeSeasonNumbers.filter { it > 0 }.distinct().size,
+                            episodes = episodeCount,
                             title = tmdb?.name.nonBlank(),
                             coverUrl = tmdb?.posterUrl.nonBlank(),
                             backdropUrl = tmdb?.backdropUrl.nonBlank(),
@@ -655,30 +659,57 @@ class SeriesViewModel(
                             createdBy = tmdb?.createdBy.nonBlank(),
                             cast = tmdb?.cast.nonBlank(),
                         )
-                    }
-                }.awaitAll().toMap()
-                _uiState.update { state ->
-                    state.copy(
-                        series = state.series.map { item ->
-                            metadata[item.seriesId]?.let { meta ->
-                                item.copy(
-                                    title = meta.title ?: item.title,
-                                    coverUrl = meta.coverUrl ?: item.coverUrl,
-                                    backdropUrl = meta.backdropUrl ?: item.backdropUrl,
-                                    plot = meta.plot ?: item.plot,
-                                    genre = meta.genre ?: item.genre,
-                                    releaseDate = meta.releaseDate ?: item.releaseDate,
-                                    rating = meta.rating ?: item.rating,
-                                    episodeRunTime = meta.episodeRunTime ?: item.episodeRunTime,
-                                    seasonsCount = meta.seasons.takeIf { it > 0 },
-                                    episodesCount = meta.episodes.takeIf { it > 0 },
-                                    createdBy = meta.createdBy ?: item.createdBy,
-                                    cast = meta.cast ?: item.cast,
+                        _uiState.update { state ->
+                            state.copy(
+                                series = state.series.map { current ->
+                                    if (current.seriesId == item.seriesId) {
+                                        current.copy(
+                                            title = metadata.title ?: current.title,
+                                            coverUrl = metadata.coverUrl ?: current.coverUrl,
+                                            backdropUrl = metadata.backdropUrl ?: current.backdropUrl,
+                                            plot = metadata.plot ?: current.plot,
+                                            genre = metadata.genre ?: current.genre,
+                                            releaseDate = metadata.releaseDate ?: current.releaseDate,
+                                            rating = metadata.rating ?: current.rating,
+                                            episodeRunTime = metadata.episodeRunTime ?: current.episodeRunTime,
+                                            seasonsCount = metadata.seasons.takeIf { it > 0 } ?: current.seasonsCount,
+                                            episodesCount = metadata.episodes.takeIf { it > 0 } ?: current.episodesCount,
+                                            createdBy = metadata.createdBy ?: current.createdBy,
+                                            cast = metadata.cast ?: current.cast,
+                                        )
+                                    } else {
+                                        current
+                                    }
+                                },
+                            )
+                        }
+                        if (localEpisodes.isEmpty()) {
+                            val remoteEpisodes = runCatching { xtreamRepository.getSeriesEpisodes(item.seriesId) }
+                                .getOrDefault(emptyList())
+                            val remoteSeasons = remoteEpisodes
+                                .map { it.seasonNumber }
+                                .filter { it > 0 }
+                                .distinct()
+                                .size
+                            _uiState.update { state ->
+                                state.copy(
+                                    series = state.series.map { current ->
+                                        if (current.seriesId == item.seriesId) {
+                                            current.copy(
+                                                seasonsCount = remoteSeasons.takeIf { it > 0 }
+                                                    ?: current.seasonsCount,
+                                                episodesCount = remoteEpisodes.size.takeIf { it > 0 }
+                                                    ?: current.episodesCount,
+                                            )
+                                        } else {
+                                            current
+                                        }
+                                    },
                                 )
-                            } ?: item
-                        },
-                    )
-                }
+                            }
+                        }
+                    }
+                }.awaitAll()
             }
         }
     }

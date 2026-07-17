@@ -120,6 +120,8 @@ fun HomeScreen(
     val profileFocusRequester = remember { FocusRequester() }
     val settingsFocusRequester = remember { FocusRequester() }
     val liveFocusRequester = remember { FocusRequester() }
+    val moviesFocusRequester = remember { FocusRequester() }
+    val seriesFocusRequester = remember { FocusRequester() }
     val continueFirstFocusRequester = remember { FocusRequester() }
     val movieTrendFirstFocusRequester = remember { FocusRequester() }
     val seriesTrendFirstFocusRequester = remember { FocusRequester() }
@@ -580,7 +582,7 @@ fun HomeScreen(
                     .height(SmartVisionDimensions.HomeCategoryHeight),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                homeCategories.forEach { category ->
+                homeCategories.forEachIndexed { index, category ->
                     HomeCategoryCard(
                         category = category,
                         onClick = {
@@ -596,7 +598,22 @@ fun HomeScreen(
                         blockedMessage = strings.connectionUnavailable,
                         workOverlay = catalogWorkUiState.overlayFor(category.id, strings),
                         kidsMode = kidsMode,
-                        focusRequester = if (category.id == "live") liveFocusRequester else null,
+                        focusRequester = when (category.id) {
+                            "live" -> liveFocusRequester
+                            "movies" -> moviesFocusRequester
+                            "series" -> seriesFocusRequester
+                            else -> null
+                        },
+                        onLeft = if (index == 0) {
+                            { runCatching { seriesFocusRequester.requestFocus() } }
+                        } else {
+                            null
+                        },
+                        onRight = if (index == homeCategories.lastIndex) {
+                            { runCatching { liveFocusRequester.requestFocus() } }
+                        } else {
+                            null
+                        },
                         onDown = if (hasContinueWatching || hasMovieTrends || hasSeriesTrends) {
                             { requestFirstHomeRowFocus() }
                         } else {

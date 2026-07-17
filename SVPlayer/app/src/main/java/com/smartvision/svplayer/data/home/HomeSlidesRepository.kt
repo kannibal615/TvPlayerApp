@@ -7,8 +7,6 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.google.gson.annotations.SerializedName
 import com.smartvision.svplayer.BuildConfig
-import com.smartvision.svplayer.data.network.NetworkActivityTracker
-import com.smartvision.svplayer.data.network.NetworkActivityType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -41,7 +39,6 @@ class HomeSlidesRepository(
     appContext: Context,
     private val api: HomeSlidesApiService,
     private val okHttpClient: OkHttpClient,
-    private val networkActivityTracker: NetworkActivityTracker,
 ) {
     private val context = appContext.applicationContext
     private val preferences = context.getSharedPreferences("home_hero_cache", Context.MODE_PRIVATE)
@@ -59,12 +56,6 @@ class HomeSlidesRepository(
         if (!currentCache.isNullOrEmpty() && System.currentTimeMillis() - lastRefreshAt < CACHE_MAX_AGE_MS) {
             return currentCache
         }
-        val work = networkActivityTracker.begin(
-            id = "home-slides-${System.currentTimeMillis()}",
-            title = "Home slides",
-            type = NetworkActivityType.Home,
-            message = "Refreshing home slides",
-        )
         return try {
             val response = api.getHomeSlides()
             check(response.success) { "Slides indisponibles." }
@@ -75,11 +66,8 @@ class HomeSlidesRepository(
                     cachedSlides = it
                     persistSlides(it)
                     preferences.edit { putLong(KEY_LAST_REFRESH_AT, System.currentTimeMillis()) }
-                    work.update(currentItems = it.size, progressPercent = 100)
-                    work.complete("Home slides ready")
                 }
         } catch (error: Throwable) {
-            work.fail(error.message ?: error.javaClass.simpleName)
             throw error
         }
     }

@@ -46,8 +46,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -112,6 +114,9 @@ fun TrendingContentRow(
 ) {
     val fallbackRowState = rememberLazyListState()
     val rowState = lazyListState ?: fallbackRowState
+    val rowScope = rememberCoroutineScope()
+    val internalFirstItemFocusRequester = remember { FocusRequester() }
+    val resolvedFirstItemFocusRequester = firstItemFocusRequester ?: internalFirstItemFocusRequester
     var focusedItemId by remember { mutableStateOf<String?>(null) }
     var focusedIndex by remember { mutableIntStateOf(-1) }
     var activePreviewId by remember { mutableStateOf<String?>(null) }
@@ -119,6 +124,7 @@ fun TrendingContentRow(
     val itemsSignature = remember(items) {
         items.joinToString("|") { it.id }
     }
+    val lastItemFocusRequester = remember(itemsSignature) { FocusRequester() }
 
     LaunchedEffect(itemsSignature) {
         focusedItemId = null
@@ -155,6 +161,15 @@ fun TrendingContentRow(
         }
     }
 
+    fun wrapFocus(targetIndex: Int, targetRequester: FocusRequester) {
+        if (items.isEmpty()) return
+        rowScope.launch {
+            rowState.scrollToItem(targetIndex.coerceIn(items.indices))
+            withFrameNanos { }
+            runCatching { targetRequester.requestFocus() }
+        }
+    }
+
     Column(modifier = modifier.height(SmartVisionDimensions.HomeContentRowHeight)) {
         Text(
             text = title,
@@ -180,7 +195,11 @@ fun TrendingContentRow(
                         item.previewPrepared &&
                         !item.previewUrl.isNullOrBlank(),
                     onClick = { if (blocked) onBlockedClick() else onItemClick(item) },
-                    focusRequester = if (index == 0) firstItemFocusRequester else null,
+                    focusRequester = when {
+                        index == 0 -> resolvedFirstItemFocusRequester
+                        index == items.lastIndex -> lastItemFocusRequester
+                        else -> null
+                    },
                     onFocusChanged = { focused ->
                         if (focused) {
                             focusedItemId = item.id
@@ -192,7 +211,16 @@ fun TrendingContentRow(
                     },
                     onDown = onDownFromRow,
                     onUp = onUpFromRow,
-                    blockLeft = index == 0,
+                    onLeft = if (index == 0) {
+                        { wrapFocus(items.lastIndex, if (items.size == 1) resolvedFirstItemFocusRequester else lastItemFocusRequester) }
+                    } else {
+                        null
+                    },
+                    onRight = if (index == items.lastIndex) {
+                        { wrapFocus(0, resolvedFirstItemFocusRequester) }
+                    } else {
+                        null
+                    },
                     blocked = blocked,
                     blockedMessage = blockedMessage,
                     previewController = previewController,
@@ -223,6 +251,8 @@ private fun TrendingPreviewCard(
     onDown: (() -> Unit)? = null,
     onUp: (() -> Unit)? = null,
     blockLeft: Boolean = false,
+    onLeft: (() -> Unit)? = null,
+    onRight: (() -> Unit)? = null,
     blocked: Boolean = false,
     blockedMessage: String = "Connection unavailable",
     previewController: HomePreviewController,
@@ -275,6 +305,14 @@ private fun TrendingPreviewCard(
                         }
                         event.key == Key.DirectionUp && onUp != null -> {
                             onUp()
+                            true
+                        }
+                        event.key == Key.DirectionLeft && onLeft != null -> {
+                            onLeft()
+                            true
+                        }
+                        event.key == Key.DirectionRight && onRight != null -> {
+                            onRight()
                             true
                         }
                         event.key == Key.DirectionLeft && blockLeft -> true

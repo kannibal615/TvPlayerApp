@@ -9,7 +9,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -34,7 +33,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
@@ -81,9 +79,6 @@ import com.smartvision.svplayer.R
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.config.XtreamAccount
 import com.smartvision.svplayer.core.data.LocalAppContainer
-import com.smartvision.svplayer.data.network.NetworkActivityItem
-import com.smartvision.svplayer.data.network.NetworkActivitySnapshot
-import com.smartvision.svplayer.data.network.NetworkActivityStatus
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
@@ -136,7 +131,6 @@ fun SettingsScreen(
     val settings by container.settingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = com.smartvision.svplayer.domain.model.PlayerSettings(),
     )
-    val networkSnapshot by container.networkActivityTracker.snapshot.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var selectedSection by remember { mutableStateOf(SettingsSection.License) }
     var showClearLocalDataConfirmation by remember { mutableStateOf(false) }
@@ -208,7 +202,6 @@ fun SettingsScreen(
             settings = settings,
             accountsCount = accounts.size,
             activeAccount = activeAccount,
-            networkSnapshot = networkSnapshot,
             updateState = updateState,
             onCheckForUpdate = onCheckForUpdate,
             onSetLanguage = { value -> scope.launch { container.settingsRepository.setLanguage(value) } },
@@ -221,7 +214,10 @@ fun SettingsScreen(
             onSetFocusParentColor = { value -> scope.launch { container.settingsRepository.setFocusParentColor(value) } },
             onSetVideoRatio = { value -> scope.launch { container.settingsRepository.setVideoRatio(value) } },
             onSetAnimations = { value -> scope.launch { container.settingsRepository.setAnimationsEnabled(value) } },
+            onSetBufferMode = { value -> scope.launch { container.settingsRepository.setBufferMode(value) } },
             onSetRetry = { value -> scope.launch { container.settingsRepository.setRetryEnabled(value) } },
+            onSetShowHeaderClock = { value -> scope.launch { container.settingsRepository.setShowHeaderClock(value) } },
+            onSetShowHeaderSeconds = { value -> scope.launch { container.settingsRepository.setShowHeaderSeconds(value) } },
             onClearLocalData = { showClearLocalDataConfirmation = true },
             licenseState = licenseState,
             onRefreshLicense = licenseViewModel::refresh,
@@ -277,7 +273,6 @@ private fun SettingsMenuLayout(
     settings: PlayerSettings,
     accountsCount: Int,
     activeAccount: XtreamAccount?,
-    networkSnapshot: NetworkActivitySnapshot,
     updateState: AppUpdateUiState,
     onCheckForUpdate: () -> Unit,
     onSetLanguage: (String) -> Unit,
@@ -290,7 +285,10 @@ private fun SettingsMenuLayout(
     onSetFocusParentColor: (String) -> Unit,
     onSetVideoRatio: (String) -> Unit,
     onSetAnimations: (Boolean) -> Unit,
+    onSetBufferMode: (String) -> Unit,
     onSetRetry: (Boolean) -> Unit,
+    onSetShowHeaderClock: (Boolean) -> Unit,
+    onSetShowHeaderSeconds: (Boolean) -> Unit,
     onClearLocalData: () -> Unit,
     licenseState: com.smartvision.svplayer.ui.profile.ProfileUiState,
     onRefreshLicense: () -> Unit,
@@ -306,12 +304,12 @@ private fun SettingsMenuLayout(
     ) {
         LazyColumn(
             modifier = Modifier
-                .width(250.dp)
+                .width(230.dp)
                 .fillMaxHeight()
                 .background(Color(0xD9091424), RoundedCornerShape(8.dp))
                 .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(8.dp))
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             items(SettingsSection.entries, key = { it.name }) { section ->
                 Box(modifier = Modifier.fillMaxWidth()) {
@@ -323,7 +321,7 @@ private fun SettingsMenuLayout(
                         onClick = { onSectionSelected(section) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp)
+                            .height(44.dp)
                             .then(
                                 if (section == SettingsSection.License) {
                                     Modifier.onPreviewKeyEvent { event ->
@@ -357,7 +355,6 @@ private fun SettingsMenuLayout(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
-            contentFocusable = selectedSection == SettingsSection.Network,
         ) {
             when (selectedSection) {
                 SettingsSection.License -> {
@@ -372,52 +369,72 @@ private fun SettingsMenuLayout(
                     )
                 }
                 SettingsSection.Preferences -> {
-                    TvSectionCard(strings.language, Icons.Default.Settings, Modifier.fillMaxWidth()) {
-                        SettingsChoice(
-                            label = strings.language,
-                            values = listOf(
-                                SettingsOption("English", strings.english),
-                                SettingsOption("Francais", strings.french),
-                            ),
-                            selected = settings.language,
-                            onSelected = onSetLanguage,
-                        )
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    TvSectionCard(strings.videoFormat, Icons.Default.Settings, Modifier.fillMaxWidth()) {
-                        SettingsChoice(
-                            label = strings.videoFormat,
-                            values = settingsOptions("Fit", "Fill", "Zoom"),
-                            selected = settings.videoRatio,
-                            onSelected = onSetVideoRatio,
-                        )
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    TvSectionCard(strings.animations, Icons.Default.Settings, Modifier.fillMaxWidth()) {
-                        SettingsChoice(
-                            label = strings.animations,
-                            values = listOf(
-                                SettingsOption("enabled", strings.enabled),
-                                SettingsOption("reduced", strings.reduced),
-                            ),
-                            selected = if (settings.animationsEnabled) "enabled" else "reduced",
-                            onSelected = { value -> onSetAnimations(value == "enabled") },
-                        )
-                        SettingsChoice(
-                            label = strings.automaticReconnect,
-                            values = listOf(
-                                SettingsOption("enabled", strings.enabled),
-                                SettingsOption("disabled", strings.disabled),
-                            ),
-                            selected = if (settings.retryEnabled) "enabled" else "disabled",
-                            onSelected = { value -> onSetRetry(value == "enabled") },
-                        )
-                    }
-                }
-                SettingsSection.Network -> {
-                    NetworkActivityPanel(
-                        snapshot = networkSnapshot,
-                        strings = strings,
+                    SettingsCardRow(
+                        first = {
+                            CompactSettingsCard(strings.language) {
+                                SettingsChoice(
+                                    label = strings.language,
+                                    values = listOf(
+                                        SettingsOption("English", strings.english),
+                                        SettingsOption("Francais", strings.french),
+                                    ),
+                                    selected = settings.language,
+                                    columns = 2,
+                                    onSelected = onSetLanguage,
+                                )
+                            }
+                        },
+                        second = {
+                            CompactSettingsCard(strings.videoFormat) {
+                                SettingsChoice(
+                                    label = strings.videoFormat,
+                                    values = settingsOptions("Fit", "Fill", "Zoom"),
+                                    selected = settings.videoRatio,
+                                    onSelected = onSetVideoRatio,
+                                )
+                            }
+                        },
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    SettingsCardRow(
+                        first = {
+                            CompactSettingsCard(strings.animations) {
+                                SettingsChoice(
+                                    label = strings.animations,
+                                    values = listOf(
+                                        SettingsOption("enabled", strings.enabled),
+                                        SettingsOption("reduced", strings.reduced),
+                                    ),
+                                    selected = if (settings.animationsEnabled) "enabled" else "reduced",
+                                    columns = 2,
+                                    onSelected = { value -> onSetAnimations(value == "enabled") },
+                                )
+                            }
+                        },
+                        second = {
+                            CompactSettingsCard(strings.playbackStability) {
+                                SettingsChoice(
+                                    label = strings.bufferMode,
+                                    values = listOf(
+                                        SettingsOption("Low latency", strings.bufferLowLatency),
+                                        SettingsOption("Standard", strings.bufferStandard),
+                                        SettingsOption("Stable", strings.bufferStable),
+                                    ),
+                                    selected = settings.bufferMode,
+                                    onSelected = onSetBufferMode,
+                                )
+                                SettingsChoice(
+                                    label = strings.automaticReconnect,
+                                    values = listOf(
+                                        SettingsOption("enabled", strings.enabled),
+                                        SettingsOption("disabled", strings.disabled),
+                                    ),
+                                    selected = if (settings.retryEnabled) "enabled" else "disabled",
+                                    columns = 2,
+                                    onSelected = { value -> onSetRetry(value == "enabled") },
+                                )
+                            }
+                        },
                     )
                 }
                 SettingsSection.Tmdb -> {
@@ -456,71 +473,73 @@ private fun SettingsMenuLayout(
                     }
                 }
                 SettingsSection.Personalization -> {
-                    TvSectionCard(strings.focusStyle, Icons.Default.Settings, Modifier.fillMaxWidth()) {
-                        SettingsChoice(
-                        label = strings.focusStyle,
-                        values = listOf(
-                            SettingsOption(TvFocusStyles.Default.key, strings.focusDefault),
-                            SettingsOption(TvFocusStyles.Soft.key, strings.focusSoft),
-                            SettingsOption(TvFocusStyles.Compact.key, strings.focusCompact),
-                        ),
-                        selected = settings.focusStyle,
-                        onSelected = onSetFocusStyle,
+                    SettingsCardRow(
+                        first = { CompactSettingsCard(strings.focusStyle) {
+                            SettingsChoice(strings.focusStyle, listOf(
+                                SettingsOption(TvFocusStyles.Default.key, strings.focusDefault),
+                                SettingsOption(TvFocusStyles.Soft.key, strings.focusSoft),
+                                SettingsOption(TvFocusStyles.Compact.key, strings.focusCompact),
+                            ), settings.focusStyle, onSetFocusStyle)
+                        } },
+                        second = { CompactSettingsCard(strings.focusColor) {
+                            SettingsChoice(strings.focusColor, listOf(
+                                SettingsOption("White", strings.focusWhite),
+                                SettingsOption("CyanNeon", strings.focusCyanNeon),
+                                SettingsOption("ElectricBlue", strings.focusElectricBlue),
+                            ), settings.focusColor, onSetFocusColor)
+                        } },
                     )
-                        SettingsChoice(
-                        label = strings.focusColor,
-                        values = listOf(
-                            SettingsOption("White", strings.focusWhite),
-                            SettingsOption("CyanNeon", strings.focusCyanNeon),
-                            SettingsOption("ElectricBlue", strings.focusElectricBlue),
-                        ),
-                        selected = settings.focusColor,
-                        onSelected = onSetFocusColor,
+                    Spacer(Modifier.height(8.dp))
+                    SettingsCardRow(
+                        first = { CompactSettingsCard(strings.focusEffect) {
+                            SettingsChoice(strings.focusEffect, listOf(
+                                SettingsOption("Frame", strings.focusFrame),
+                                SettingsOption("NeonGlow", strings.focusNeonGlow),
+                                SettingsOption("GoldSweep", strings.focusGoldSweep),
+                            ), settings.focusEffect, onSetFocusEffect)
+                        } },
+                        second = { CompactSettingsCard(strings.focusBackground) {
+                            SettingsChoice(strings.focusBackground, listOf(
+                                SettingsOption("BlueTransparent", strings.focusBackgroundBlue),
+                                SettingsOption("GoldTransparent", strings.focusBackgroundGold),
+                                SettingsOption("WhiteTransparent", strings.focusBackgroundWhite),
+                            ), settings.focusBackground, onSetFocusBackground)
+                        } },
                     )
-                        SettingsChoice(
-                        label = strings.focusEffect,
-                        values = listOf(
-                            SettingsOption("Frame", strings.focusFrame),
-                            SettingsOption("NeonGlow", strings.focusNeonGlow),
-                            SettingsOption("GoldSweep", strings.focusGoldSweep),
-                        ),
-                        selected = settings.focusEffect,
-                        onSelected = onSetFocusEffect,
+                    Spacer(Modifier.height(8.dp))
+                    SettingsCardRow(
+                        first = { CompactSettingsCard(strings.focusSelectedElement) {
+                            SettingsChoice(strings.focusSelectedElement, focusRoleColorOptions(strings), settings.focusSelectedColor, onSetFocusSelectedColor, columns = 2)
+                        } },
+                        second = { CompactSettingsCard(strings.focusActiveElement) {
+                            SettingsChoice(strings.focusActiveElement, focusRoleColorOptions(strings), settings.focusActiveColor, onSetFocusActiveColor, columns = 2)
+                        } },
                     )
-                        SettingsChoice(
-                        label = strings.focusBackground,
-                        values = listOf(
-                            SettingsOption("BlueTransparent", strings.focusBackgroundBlue),
-                            SettingsOption("GoldTransparent", strings.focusBackgroundGold),
-                            SettingsOption("WhiteTransparent", strings.focusBackgroundWhite),
-                        ),
-                        selected = settings.focusBackground,
-                        onSelected = onSetFocusBackground,
+                    Spacer(Modifier.height(8.dp))
+                    SettingsCardRow(
+                        first = { CompactSettingsCard(strings.focusParentElement) {
+                            SettingsChoice(strings.focusParentElement, focusRoleColorOptions(strings), settings.focusParentColor, onSetFocusParentColor, columns = 2)
+                        } },
+                        second = { CompactSettingsCard(strings.showHeaderClock) {
+                            SettingsChoice(
+                                label = strings.showHeaderClock,
+                                values = listOf(SettingsOption("enabled", strings.enabled), SettingsOption("disabled", strings.disabled)),
+                                selected = if (settings.showHeaderClock) "enabled" else "disabled",
+                                onSelected = { onSetShowHeaderClock(it == "enabled") },
+                                columns = 2,
+                            )
+                            SettingsChoice(
+                                label = strings.showHeaderSeconds,
+                                values = listOf(SettingsOption("enabled", strings.enabled), SettingsOption("disabled", strings.disabled)),
+                                selected = if (settings.showHeaderSeconds) "enabled" else "disabled",
+                                onSelected = { onSetShowHeaderSeconds(it == "enabled") },
+                                columns = 2,
+                                enabled = settings.showHeaderClock,
+                            )
+                        } },
                     )
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    TvSectionCard(strings.focusSelectedElement, Icons.Default.CheckCircle, Modifier.fillMaxWidth()) {
-                        SettingsChoice(
-                        label = strings.focusSelectedElement,
-                        values = focusRoleColorOptions(strings),
-                        selected = settings.focusSelectedColor,
-                        onSelected = onSetFocusSelectedColor,
-                    )
-                        SettingsChoice(
-                        label = strings.focusActiveElement,
-                        values = focusRoleColorOptions(strings),
-                        selected = settings.focusActiveColor,
-                        onSelected = onSetFocusActiveColor,
-                    )
-                        SettingsChoice(
-                        label = strings.focusParentElement,
-                        values = focusRoleColorOptions(strings),
-                        selected = settings.focusParentColor,
-                        onSelected = onSetFocusParentColor,
-                    )
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    TvSectionCard(strings.focusLivePreview, Icons.Default.Info, Modifier.fillMaxWidth()) {
+                    Spacer(Modifier.height(8.dp))
+                    TvSectionCard(strings.focusLivePreview, Icons.Default.Info, Modifier.fillMaxWidth(), horizontalPadding = 12.dp, verticalPadding = 10.dp) {
                         FocusStatePreview(strings = strings)
                     }
                 }
@@ -581,7 +600,6 @@ private enum class SettingsSection(
 ) {
     License(Icons.Default.Verified),
     Preferences(Icons.Default.Settings),
-    Network(Icons.Default.CloudSync),
     Tmdb(Icons.Default.Info),
     Personalization(Icons.Default.Settings),
     Updates(Icons.Default.Refresh),
@@ -591,7 +609,6 @@ private enum class SettingsSection(
 private fun SettingsSection.label(strings: SmartVisionStrings): String = when (this) {
     SettingsSection.License -> "Licence SmartVision"
     SettingsSection.Preferences -> strings.generalPreferences
-    SettingsSection.Network -> strings.networkActivity
     SettingsSection.Tmdb -> strings.tmdbAttribution
     SettingsSection.Personalization -> strings.personalization
     SettingsSection.Updates -> strings.updates
@@ -707,176 +724,14 @@ private fun Context.smartVisionLastUpdateLabel(): String {
 }
 
 @Composable
-private fun NetworkActivityPanel(
-    snapshot: NetworkActivitySnapshot,
-    strings: SmartVisionStrings,
-) {
-    TvSectionCard(strings.networkActivity, Icons.Default.CloudSync, Modifier.fillMaxWidth()) {
-        Text(
-            text = strings.networkActivitySubtitle,
-            color = SmartVisionColors.TextSecondary,
-            style = SmartVisionType.Body,
-        )
-        Spacer(Modifier.height(14.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            NetworkMetricCard(strings.networkActive, snapshot.activeCount.toString(), Modifier.weight(1f))
-            NetworkMetricCard(strings.networkThroughput, snapshot.bytesPerSecond.formatByteRate(), Modifier.weight(1f))
-            NetworkMetricCard(strings.networkErrors, snapshot.errorCount.toString(), Modifier.weight(1f))
-        }
-    }
-    Spacer(Modifier.height(10.dp))
-
-    TvSectionCard(strings.networkActive, Icons.Default.CloudSync, Modifier.fillMaxWidth()) {
-        if (snapshot.active.isEmpty()) {
-            Text(strings.networkNoActivity, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                snapshot.active.take(NetworkActivityVisibleLimit).forEach { item ->
-                    NetworkActivityRow(item = item, strings = strings)
-                }
-            }
-        }
-    }
-
-    Spacer(Modifier.height(10.dp))
-    TvSectionCard(strings.networkRecent, Icons.Default.Refresh, Modifier.fillMaxWidth()) {
-        if (snapshot.recent.isEmpty()) {
-            Text(strings.networkNoActivity, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                snapshot.recent.take(NetworkActivityVisibleLimit).forEach { item ->
-                    NetworkActivityRow(item = item, strings = strings)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun NetworkMetricCard(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .background(SmartVisionColors.Surface.copy(alpha = 0.72f), RoundedCornerShape(7.dp))
-            .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(7.dp))
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-    ) {
-        Text(label, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1)
-        Spacer(Modifier.height(4.dp))
-        Text(value, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Label, fontWeight = FontWeight.Bold, maxLines = 1)
-    }
-}
-
-@Composable
-private fun NetworkActivityRow(
-    item: NetworkActivityItem,
-    strings: SmartVisionStrings,
-) {
-    val statusColor = item.status.statusColor()
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xB80D1828), RoundedCornerShape(7.dp))
-            .border(BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.82f)), RoundedCornerShape(7.dp))
-            .padding(10.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = item.title,
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.Caption,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = item.status.name,
-                color = statusColor,
-                style = SmartVisionType.Caption,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-            )
-        }
-        if (item.message.isNotBlank()) {
-            Spacer(Modifier.height(4.dp))
-            Text(item.message, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1)
-        }
-        Spacer(Modifier.height(7.dp))
-        NetworkProgressBar(item.progressPercent ?: 0, statusColor)
-        Spacer(Modifier.height(7.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            NetworkTinyInfo(strings.networkProgress, "${item.progressPercent ?: 0}%", Modifier.weight(1f))
-            NetworkTinyInfo(strings.networkData, item.formatData(), Modifier.weight(1f))
-            NetworkTinyInfo(strings.networkDuration, item.durationMs.formatDuration(), Modifier.weight(1f))
-        }
-        val section = item.section
-        val source = item.source
-        if (!section.isNullOrBlank() || !source.isNullOrBlank() || item.currentItems != null) {
-            Spacer(Modifier.height(5.dp))
-            Text(
-                text = listOfNotNull(
-                    section?.let { "${strings.networkSection}: $it" },
-                    source?.let { "${strings.networkSource}: $it" },
-                    item.currentItems?.let { current ->
-                        "${strings.networkItems}: " + item.totalItems?.let { "$current/$it" }.orEmpty().ifBlank { current.toString() }
-                    },
-                ).joinToString("  |  "),
-                color = SmartVisionColors.TextSecondary,
-                style = SmartVisionType.Caption,
-                maxLines = 1,
-            )
-        }
-        item.errorMessage?.takeIf { it.isNotBlank() }?.let { error ->
-            Spacer(Modifier.height(5.dp))
-            Text(error, color = SmartVisionColors.Error, style = SmartVisionType.Caption, maxLines = 1)
-        }
-    }
-}
-
-@Composable
-private fun NetworkTinyInfo(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier) {
-        Text(label, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1)
-        Text(value, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Caption, fontWeight = FontWeight.SemiBold, maxLines = 1)
-    }
-}
-
-@Composable
-private fun NetworkProgressBar(percent: Int, color: Color) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(5.dp)
-            .background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(50)),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(percent.coerceIn(0, 100) / 100f)
-                .height(5.dp)
-                .background(color, RoundedCornerShape(50)),
-        )
-    }
-}
-
-@Composable
 private fun SettingsPanel(
     title: String,
     icon: ImageVector,
     modifier: Modifier,
     trailing: @Composable (() -> Unit)? = null,
-    contentFocusable: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollState = rememberScrollState()
-    val scope = rememberCoroutineScope()
-    val scrollStep = 116
     Column(
         modifier = modifier,
     ) {
@@ -899,42 +754,11 @@ private fun SettingsPanel(
                 .weight(1f)
                 .padding(10.dp),
         ) {
-            val contentModifier = if (contentFocusable) {
-                Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .onPreviewKeyEvent { event ->
-                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                        when (event.key) {
-                            Key.DirectionDown -> {
-                                scope.launch {
-                                    scrollState.animateScrollTo(
-                                        (scrollState.value + scrollStep).coerceAtMost(scrollState.maxValue),
-                                    )
-                                }
-                                true
-                            }
-                            Key.DirectionUp -> {
-                                scope.launch {
-                                    scrollState.animateScrollTo(
-                                        (scrollState.value - scrollStep).coerceAtLeast(0),
-                                    )
-                                }
-                                true
-                            }
-                            else -> false
-                        }
-                    }
-                    .focusable()
-                    .verticalScroll(scrollState)
-            } else {
-                Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(scrollState)
-            }
             Column(
-                modifier = contentModifier,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(scrollState),
             ) {
                 content()
                 Spacer(Modifier.height(12.dp))
@@ -943,45 +767,35 @@ private fun SettingsPanel(
     }
 }
 
-private const val NetworkActivityVisibleLimit = 10
-
-private fun NetworkActivityStatus.statusColor(): Color =
-    when (this) {
-        NetworkActivityStatus.Queued -> SmartVisionColors.TextSecondary
-        NetworkActivityStatus.Running -> SmartVisionColors.CyanAccent
-        NetworkActivityStatus.Importing -> SmartVisionColors.Primary
-        NetworkActivityStatus.Completed -> SmartVisionColors.Success
-        NetworkActivityStatus.Error -> SmartVisionColors.Error
-    }
-
-private fun NetworkActivityItem.formatData(): String {
-    val read = bytesRead
-    val total = totalBytes
-    return when {
-        read != null && total != null -> "${read.formatBytes()}/${total.formatBytes()}"
-        read != null -> read.formatBytes()
-        currentItems != null && totalItems != null -> "$currentItems/$totalItems"
-        currentItems != null -> currentItems.toString()
-        else -> "-"
+@Composable
+private fun SettingsCardRow(
+    first: @Composable () -> Unit,
+    second: @Composable () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Box(Modifier.weight(1f)) { first() }
+        Box(Modifier.weight(1f)) { second() }
     }
 }
 
-private fun Long.formatByteRate(): String =
-    if (this <= 0L) "-" else "${formatBytes()}/s"
-
-private fun Long.formatBytes(): String =
-    when {
-        this >= 1024L * 1024L -> "${this / (1024L * 1024L)} MB"
-        this >= 1024L -> "${this / 1024L} KB"
-        else -> "$this B"
-    }
-
-private fun Long.formatDuration(): String =
-    when {
-        this < 1_000L -> "<1s"
-        this < 60_000L -> "${this / 1_000L}s"
-        else -> "${this / 60_000L}m ${(this % 60_000L) / 1_000L}s"
-    }
+@Composable
+private fun CompactSettingsCard(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    TvSectionCard(
+        title = title,
+        icon = Icons.Default.Settings,
+        modifier = Modifier.fillMaxWidth(),
+        horizontalPadding = 12.dp,
+        verticalPadding = 10.dp,
+        content = content,
+    )
+}
 
 @Composable
 private fun SettingsChoice(
@@ -989,11 +803,13 @@ private fun SettingsChoice(
     values: List<SettingsOption>,
     selected: String,
     onSelected: (String) -> Unit,
+    columns: Int = 3,
+    enabled: Boolean = true,
 ) {
     Text(label, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Label)
     Spacer(Modifier.height(7.dp))
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        values.chunked(3).forEach { rowValues ->
+        values.chunked(columns).forEach { rowValues ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
@@ -1003,19 +819,20 @@ private fun SettingsChoice(
                         text = value.label,
                         onClick = { onSelected(value.value) },
                         selected = value.value == selected,
+                        enabled = enabled,
                         variant = if (value.value == selected) TvButtonVariant.Primary else TvButtonVariant.Secondary,
                         modifier = Modifier
                             .weight(1f)
-                            .height(40.dp),
+                            .height(36.dp),
                     )
                 }
-                repeat(3 - rowValues.size) {
+                repeat(columns - rowValues.size) {
                     Spacer(Modifier.weight(1f))
                 }
             }
         }
     }
-    Spacer(Modifier.height(18.dp))
+    Spacer(Modifier.height(10.dp))
 }
 
 @Composable

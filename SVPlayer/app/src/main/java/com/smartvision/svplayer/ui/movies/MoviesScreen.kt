@@ -63,6 +63,7 @@ import com.smartvision.svplayer.ui.catalog.CatalogCategoryRow
 import com.smartvision.svplayer.ui.catalog.CatalogEmpty
 import com.smartvision.svplayer.ui.catalog.CatalogError
 import com.smartvision.svplayer.ui.catalog.CatalogMetaStyle
+import com.smartvision.svplayer.ui.catalog.CatalogPanelTitleWithCount
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.catalog.CatalogSortButton
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
@@ -532,6 +533,12 @@ private fun MovieList(
     MediaCatalogPanel(
         title = "Movies",
         modifier = modifier,
+        titleContent = {
+            CatalogPanelTitleWithCount(
+                title = "Movies",
+                count = state.selectedCategory?.count ?: state.displayedMovies.size,
+            )
+        },
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CatalogSearchField(
@@ -539,7 +546,6 @@ private fun MovieList(
                     onQueryChange = onSearchQueryChange,
                     placeholder = "Film",
                     modifier = Modifier
-                        .width(190.dp)
                         .focusRequester(searchFocusRequester)
                         .onPreviewKeyEvent { event ->
                             if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -556,7 +562,7 @@ private fun MovieList(
                             }
                         },
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(6.dp))
                 CatalogSortButton(
                     options = MovieSortMode.entries.map { it.label },
                     selectedIndex = state.sortMode.ordinal,
@@ -595,23 +601,18 @@ private fun MovieList(
                     key = { _, movie -> movie.streamId },
                 ) { index, movie ->
                     val itemFocusRequester = remember(movie.streamId) { FocusRequester() }
-                    val reliableMetadata = movie.takeIf { it.externalMetadataLoaded }
                     VodContentRow(
                         title = movie.title,
-                        subtitle = reliableMetadata?.let {
-                            listOfNotNull(
-                                it.year,
-                                it.duration,
-                                it.director?.takeIf(String::isNotBlank),
-                            ).joinToString(" | ").ifBlank { it.categoryLabel }
-                        } ?: "Informations en cours...",
-                        genre = reliableMetadata?.genre
+                        subtitle = listOfNotNull(movie.year, movie.genre)
+                            .joinToString(" | ")
+                            .ifBlank { movie.categoryLabel },
+                        genre = movie.genre
                             ?.substringBefore('/')
                             ?.substringBefore(',')
                             ?.trim()
                             ?.takeIf(String::isNotEmpty),
-                        rating = reliableMetadata?.rating,
-                        sideLabel = reliableMetadata?.duration.orEmpty(),
+                        rating = movie.rating,
+                        sideLabel = movie.duration.orEmpty(),
                         imageUrl = movie.backdropUrl ?: movie.posterUrl,
                         fallbackText = movie.title.take(2).uppercase(),
                         selected = movie.streamId == state.selectedMovieId,

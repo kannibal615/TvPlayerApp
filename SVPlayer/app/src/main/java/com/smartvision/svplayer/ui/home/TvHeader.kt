@@ -61,6 +61,7 @@ import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.config.PlaylistProfile
 import com.smartvision.svplayer.core.config.ProfileType
 import com.smartvision.svplayer.core.data.LocalAppContainer
+import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.YoutubeLogoIcon
@@ -117,8 +118,23 @@ fun TvHeader(
     val container = LocalAppContainer.current
     val profiles by container.accountManager.profiles.collectAsStateWithLifecycle()
     val activeProfileId by container.accountManager.activeProfileId.collectAsStateWithLifecycle()
+    val playerSettings by container.settingsRepository.settings.collectAsStateWithLifecycle(
+        initialValue = PlayerSettings(),
+    )
     val activeProfile = profiles.firstOrNull { it.id == activeProfileId }
     val kidsMode = activeProfile?.type == ProfileType.KIDS
+    val internalFirstFocusRequester = remember { FocusRequester() }
+    val internalLastFocusRequester = remember { FocusRequester() }
+    val firstTabRequester = when {
+        tabs.firstOrNull()?.route == currentRoute -> currentTabFocusRequester
+            ?: homeTabFocusRequester
+            ?: internalFirstFocusRequester
+        else -> homeTabFocusRequester ?: internalFirstFocusRequester
+    }
+    val lastControlRequester = when {
+        kidsMode -> profileFocusRequester ?: internalLastFocusRequester
+        else -> settingsFocusRequester ?: internalLastFocusRequester
+    }
     Row(
         modifier = modifier.height(SmartVisionDimensions.HomeHeaderHeight),
         verticalAlignment = Alignment.CenterVertically,
@@ -138,9 +154,14 @@ fun TvHeader(
                     height = 38.dp,
                     horizontalPadding = 6.dp,
                     focusRequester = when {
+                        index == 0 -> firstTabRequester
                         tab.route == currentRoute -> currentTabFocusRequester
-                        index == 0 -> homeTabFocusRequester
                         else -> null
+                    },
+                    onLeft = if (index == 0) {
+                        { runCatching { lastControlRequester.requestFocus() } }
+                    } else {
+                        null
                     },
                     downFocusRequester = contentDownFocusRequester,
                     onDown = onContentDown,
@@ -157,12 +178,15 @@ fun TvHeader(
             notificationBadgeCount = notificationBadgeCount,
             licenseFocusRequester = licenseFocusRequester,
             notificationsFocusRequester = notificationsFocusRequester,
-            profileFocusRequester = profileFocusRequester,
-            settingsFocusRequester = settingsFocusRequester,
+            profileFocusRequester = if (kidsMode) lastControlRequester else profileFocusRequester,
+            settingsFocusRequester = if (!kidsMode) lastControlRequester else settingsFocusRequester,
             activeProfile = activeProfile,
             kidsMode = kidsMode,
+            showClock = playerSettings.showHeaderClock,
+            showSeconds = playerSettings.showHeaderSeconds,
             downFocusRequester = contentDownFocusRequester,
             onDown = onContentDown,
+            onWrapToStart = { runCatching { firstTabRequester.requestFocus() } },
         )
     }
 }
@@ -185,6 +209,9 @@ fun HeaderControls(
     settingsFocusRequester: FocusRequester? = null,
     activeProfile: PlaylistProfile? = null,
     kidsMode: Boolean = false,
+    showClock: Boolean = true,
+    showSeconds: Boolean = true,
+    onWrapToStart: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier,
@@ -220,6 +247,7 @@ fun HeaderControls(
             downFocusRequester = downFocusRequester,
             onDown = onDown,
             focusRequester = profileFocusRequester,
+            onRight = onWrapToStart.takeIf { kidsMode },
         )
         if (!kidsMode) {
             HeaderIconButton(
@@ -229,9 +257,12 @@ fun HeaderControls(
                 downFocusRequester = downFocusRequester,
                 onDown = onDown,
                 focusRequester = settingsFocusRequester,
+                onRight = onWrapToStart,
             )
         }
-        HeaderDateTime()
+        if (showClock) {
+            HeaderDateTime(showSeconds = showSeconds)
+        }
     }
 }
 
@@ -242,6 +273,7 @@ private fun HeaderAvatarButton(
     downFocusRequester: FocusRequester?,
     onDown: (() -> Unit)?,
     focusRequester: FocusRequester?,
+    onRight: (() -> Unit)? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -263,10 +295,18 @@ private fun HeaderAvatarButton(
                 .size(38.dp)
                 .then(if (downFocusRequester != null) Modifier.focusProperties { down = downFocusRequester } else Modifier)
                 .onPreviewKeyEvent { event ->
-                    if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown && onDown != null) {
-                        onDown()
-                        true
-                    } else false
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when {
+                        event.key == Key.DirectionDown && onDown != null -> {
+                            onDown()
+                            true
+                        }
+                        event.key == Key.DirectionRight && onRight != null -> {
+                            onRight()
+                            true
+                        }
+                        else -> false
+                    }
                 }
                 .tvFocusTarget(
                     state = focusState,
@@ -310,6 +350,7 @@ private fun HeaderIconButton(
     downFocusRequester: FocusRequester? = null,
     onDown: (() -> Unit)? = null,
     focusRequester: FocusRequester? = null,
+    onRight: (() -> Unit)? = null,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -329,11 +370,17 @@ private fun HeaderIconButton(
                     },
                 )
                 .onPreviewKeyEvent { event ->
-                    if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown && onDown != null) {
-                        onDown()
-                        true
-                    } else {
-                        false
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when {
+                        event.key == Key.DirectionDown && onDown != null -> {
+                            onDown()
+                            true
+                        }
+                        event.key == Key.DirectionRight && onRight != null -> {
+                            onRight()
+                            true
+                        }
+                        else -> false
                     }
                 }
                 .tvFocusTarget(
@@ -399,13 +446,13 @@ private fun HeaderIconButton(
 }
 
 @Composable
-private fun HeaderDateTime() {
-    var dateTime by remember { mutableStateOf(formatHeaderDateTime()) }
+private fun HeaderDateTime(showSeconds: Boolean) {
+    var dateTime by remember(showSeconds) { mutableStateOf(formatHeaderDateTime(showSeconds)) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(showSeconds) {
         while (true) {
-            dateTime = formatHeaderDateTime()
-            delay(1_000)
+            dateTime = formatHeaderDateTime(showSeconds)
+            delay(if (showSeconds) 1_000 else 30_000)
         }
     }
 
@@ -469,6 +516,7 @@ fun HeaderTabButton(
     focusRequester: FocusRequester? = null,
     downFocusRequester: FocusRequester? = null,
     onDown: (() -> Unit)? = null,
+    onLeft: (() -> Unit)? = null,
 ) {
     Box(
         modifier = modifier
@@ -513,11 +561,17 @@ fun HeaderTabButton(
                     },
                 )
                 .onPreviewKeyEvent { event ->
-                    if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown && onDown != null) {
-                        onDown()
-                        true
-                    } else {
-                        false
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when {
+                        event.key == Key.DirectionDown && onDown != null -> {
+                            onDown()
+                            true
+                        }
+                        event.key == Key.DirectionLeft && onLeft != null -> {
+                            onLeft()
+                            true
+                        }
+                        else -> false
                     }
                 }
                 .alpha(if (tab.locked || tab.warning) 0.42f else 1f),
@@ -543,10 +597,10 @@ private data class HeaderDateTimeText(
     val date: String,
 )
 
-private fun formatHeaderDateTime(): HeaderDateTimeText {
+private fun formatHeaderDateTime(showSeconds: Boolean): HeaderDateTimeText {
     val now = Date()
     return HeaderDateTimeText(
-        time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(now),
+        time = SimpleDateFormat(if (showSeconds) "HH:mm:ss" else "HH:mm", Locale.getDefault()).format(now),
         date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(now),
     )
 }

@@ -3,8 +3,6 @@ package com.smartvision.svplayer.data.playlist
 import android.content.Context
 import android.util.Log
 import android.util.Xml
-import com.smartvision.svplayer.data.network.NetworkActivityTracker
-import com.smartvision.svplayer.data.network.NetworkActivityType
 import java.io.File
 import java.io.Reader
 import java.security.MessageDigest
@@ -23,7 +21,6 @@ import org.xmlpull.v1.XmlPullParser
 class EpgRepository(
     context: Context,
     private val okHttpClient: OkHttpClient,
-    private val networkActivityTracker: NetworkActivityTracker,
 ) {
     private val cacheDirectory = File(context.filesDir, "smartvision_epg")
     private val caches = ConcurrentHashMap<String, Map<String, List<EpgProgram>>>()
@@ -35,17 +32,8 @@ class EpgRepository(
 
     suspend fun synchronize(url: String): Result<Int> = withContext(Dispatchers.IO) {
         val sourceKey = url.sourceKey()
-        val work = networkActivityTracker.begin(
-            id = "epg-${System.currentTimeMillis()}",
-            title = "EPG",
-            type = NetworkActivityType.Epg,
-            message = "Downloading EPG",
-            source = "EPG",
-            progressPercent = 0,
-        )
         runCatching {
             if (url.isBlank()) {
-                work.complete("No EPG URL")
                 return@runCatching 0
             }
             logMemory("epg_sync_start")
@@ -53,11 +41,6 @@ class EpgRepository(
             val parsed = okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) error("URL EPG indisponible (${response.code}).")
                 val body = response.body ?: error("URL EPG vide.")
-                work.update(
-                    status = com.smartvision.svplayer.data.network.NetworkActivityStatus.Importing,
-                    message = "Parsing EPG",
-                    progressPercent = 75,
-                )
                 body.charStream().use { parseXmltv(it, System.currentTimeMillis()) }
             }
             caches[sourceKey] = withLookupAliases(parsed)
@@ -66,8 +49,6 @@ class EpgRepository(
             markSynchronized(sourceKey)
             parsed.values.sumOf { it.size }.also { count ->
                 logMemory("epg_sync_success", "channels=${parsed.size} programs=$count")
-                work.update(currentItems = count, progressPercent = 100)
-                work.complete("EPG ready")
             }
         }.onFailure { error ->
             if (error is OutOfMemoryError) {
@@ -76,7 +57,6 @@ class EpgRepository(
                 runCatching { cacheFile(sourceKey).delete() }
             }
             logMemory("epg_sync_error", "error=${error.javaClass.simpleName}")
-            work.fail(error.message ?: error.javaClass.simpleName)
         }
     }
 

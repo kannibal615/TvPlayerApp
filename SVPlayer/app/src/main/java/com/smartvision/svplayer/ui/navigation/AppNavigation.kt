@@ -99,6 +99,7 @@ import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.components.TvDialogSurface
 import com.smartvision.svplayer.ui.components.TvDialogTone
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
+import com.smartvision.svplayer.ui.focus.LocalTvAnimationsEnabled
 import com.smartvision.svplayer.ui.focus.TvFocusStyles
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -373,7 +374,10 @@ fun AppNavigation(
     }
 
     if (appConfigState.consentRequired) {
-        CompositionLocalProvider(LocalTvFocusStyle provides focusStyle) {
+        CompositionLocalProvider(
+            LocalTvFocusStyle provides focusStyle,
+            LocalTvAnimationsEnabled provides playerSettings.animationsEnabled,
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -653,7 +657,10 @@ fun AppNavigation(
     val hasNewNotifications = notificationBadgeState.hasUnread
     val notificationBadgeCount = notificationBadgeState.unreadCount
 
-    CompositionLocalProvider(LocalTvFocusStyle provides focusStyle) {
+    CompositionLocalProvider(
+        LocalTvFocusStyle provides focusStyle,
+        LocalTvAnimationsEnabled provides playerSettings.animationsEnabled,
+    ) {
     val routeAllowedForProfile = currentRoute.isAllowedFor(profilePermissions)
     LaunchedEffect(currentRoute, profilePermissions) {
         if (!routeAllowedForProfile) {

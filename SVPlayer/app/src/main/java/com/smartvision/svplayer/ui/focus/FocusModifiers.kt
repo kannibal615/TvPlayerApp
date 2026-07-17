@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.focusable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -53,10 +54,11 @@ fun Modifier.tvFocusTarget(
 ): Modifier = composed {
     val density = LocalDensity.current
     val style = LocalTvFocusStyle.current
+    val animationsEnabled = LocalTvAnimationsEnabled.current
     // Keep the infinite animation out of the composition for the regular focus styles.
     // This modifier is used by hundreds of TV targets, so an always-running transition
     // on every card produces avoidable recompositions while navigating large rows.
-    val shimmer = if (style.effect == TvFocusEffect.GoldSweep) {
+    val shimmer = if (animationsEnabled && style.effect == TvFocusEffect.GoldSweep) {
         val animatedShimmer by rememberInfiniteTransition(label = "focusGoldSweep").animateFloat(
             initialValue = -0.35f,
             targetValue = 1.35f,
@@ -79,7 +81,11 @@ fun Modifier.tvFocusTarget(
             state.isFocused && enabled -> targetScale
             else -> 1f
         },
-        animationSpec = tween(durationMillis = SmartVisionDimensions.FocusAnimationMillis),
+        animationSpec = if (animationsEnabled) {
+            tween(durationMillis = SmartVisionDimensions.FocusAnimationMillis)
+        } else {
+            snap()
+        },
         label = "tvFocusScale",
     )
 

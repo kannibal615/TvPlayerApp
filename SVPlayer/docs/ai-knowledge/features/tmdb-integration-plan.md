@@ -1,6 +1,12 @@
 # Plan d'integration TMDB complet
 
-Derniere mise a jour: 2026-07-07.
+Derniere mise a jour: 2026-07-17.
+
+Etat UI du 2026-07-17:
+- les listes Films et Series utilisent le backdrop TMDB paysage en priorite;
+- Series ne recadre plus le poster portrait dans ses lignes ni dans le poster final du mini-player;
+- l'enrichissement Series publie chaque resultat individuellement et complete saisons/episodes depuis les episodes Xtream lorsque le cache Room est vide;
+- la fiche Film affiche le casting TMDB en portraits `2:3` avec le nom sous chaque photo.
 
 ## 1. Objectif produit
 

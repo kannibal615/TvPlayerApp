@@ -132,6 +132,7 @@ import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
+import com.smartvision.svplayer.ui.catalog.CatalogPanelTitleWithCount
 import com.smartvision.svplayer.ui.catalog.CatalogSortButton
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
@@ -784,6 +785,12 @@ private fun ChannelList(
     LiveTvPanel(
         title = strings.liveTvChannels,
         modifier = modifier,
+        titleContent = {
+            CatalogPanelTitleWithCount(
+                title = strings.liveTvChannels,
+                count = state.selectedCategory?.count ?: visibleChannels.size,
+            )
+        },
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CatalogSearchField(
@@ -791,7 +798,6 @@ private fun ChannelList(
                 onQueryChange = onSearchQueryChange,
                 placeholder = strings.liveTvSearchPlaceholder,
                 modifier = Modifier
-                    .width(190.dp)
                     .focusRequester(searchFocusRequester)
                     .focusProperties { up = headerFocusRequester }
                     .onPreviewKeyEvent { event ->
@@ -813,7 +819,7 @@ private fun ChannelList(
                         }
                     },
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(6.dp))
                 CatalogSortButton(
                     options = LiveSortMode.entries.map { it.label },
                     selectedIndex = state.sortMode.ordinal,
@@ -2964,6 +2970,7 @@ private fun ErrorState(
 private fun LiveTvPanel(
     title: String,
     modifier: Modifier = Modifier,
+    titleContent: @Composable (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
     shape: Shape = RoundedCornerShape(LiveTvDimens.PanelRadius),
     content: @Composable () -> Unit,
@@ -2971,6 +2978,7 @@ private fun LiveTvPanel(
     MediaCatalogPanel(
         title = title,
         modifier = modifier,
+        titleContent = titleContent,
         trailing = trailing,
         shape = shape,
         content = content,

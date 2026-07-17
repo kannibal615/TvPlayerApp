@@ -4,8 +4,6 @@ import android.content.Context
 import com.google.gson.JsonParseException
 import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.data.anomaly.AnomalyReporter
-import com.smartvision.svplayer.data.network.NetworkActivityTracker
-import com.smartvision.svplayer.data.network.NetworkActivityType
 import com.smartvision.svplayer.data.remote.XtreamConnectionApi
 import java.io.EOFException
 import java.io.IOException
@@ -64,7 +62,6 @@ class XtreamConnectionManager(
     private val accountManager: XtreamAccountManager,
     private val apiClient: XtreamConnectionApi,
     private val anomalyReporter: AnomalyReporter,
-    private val networkActivityTracker: NetworkActivityTracker,
 ) {
     private val appContext = context.applicationContext
     private val notifier = XtreamConnectionNotifier(appContext)
@@ -98,15 +95,6 @@ class XtreamConnectionManager(
             notifier.clear()
             return notConfigured
         }
-        val work = networkActivityTracker.begin(
-            id = "xtream-check-${source}-${System.currentTimeMillis()}",
-            title = "Xtream connection",
-            type = NetworkActivityType.Xtream,
-            message = "Checking Xtream connection",
-            source = source,
-            progressPercent = 0,
-        )
-
         _state.value = _state.value.copy(
             checking = true,
             message = "Verification de la connexion Xtream...",
@@ -121,34 +109,21 @@ class XtreamConnectionManager(
             retryDelayMillis = CONNECTION_CHECK_RETRY_DELAY_MS,
             checkOnce = { verifyAccountOnce(credentials.normalizedHost) },
             onPendingFailure = { pendingState ->
-                work.update(
-                    message = pendingState.message,
-                    progressPercent = pendingState.attempt.takeIf { it > 0 }?.let {
-                        ((it.toFloat() / CONNECTION_CHECK_ATTEMPTS.toFloat()) * 100).toInt().coerceIn(0, 99)
-                    },
-                    currentItems = pendingState.attempt,
-                    totalItems = CONNECTION_CHECK_ATTEMPTS,
-                )
                 _state.value = pendingState
             },
         )
 
         _state.value = checked
         if (checked.isConnected) {
-            work.update(progressPercent = 100, currentItems = CONNECTION_CHECK_ATTEMPTS, totalItems = CONNECTION_CHECK_ATTEMPTS)
-            work.complete("Xtream connected")
             lastConnectedAccountSignature = credentials.connectionSignature()
             notifier.clear()
         } else if (checked.blocksCatalog) {
-            work.fail(checked.message.ifBlank { checked.status.name })
             lastConnectedAccountSignature = ""
             reportFailureIfNeeded(checked, source)
             notifier.showIssue()
             if (source.shouldRequestForegroundAlert()) {
                 requestAlert()
             }
-        } else {
-            work.complete(checked.message.ifBlank { checked.status.name })
         }
         return checked
     }

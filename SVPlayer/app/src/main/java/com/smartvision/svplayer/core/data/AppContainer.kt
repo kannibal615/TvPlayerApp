@@ -28,8 +28,6 @@ import com.smartvision.svplayer.data.monetization.AdConfigApiService
 import com.smartvision.svplayer.data.monetization.AdsEventReporter
 import com.smartvision.svplayer.data.monetization.AdsEventsApiService
 import com.smartvision.svplayer.data.monetization.RemoteAdConfigProvider
-import com.smartvision.svplayer.data.network.NetworkActivityInterceptor
-import com.smartvision.svplayer.data.network.NetworkActivityTracker
 import com.smartvision.svplayer.data.notifications.NotificationsApiService
 import com.smartvision.svplayer.data.notifications.NotificationsRepository
 import com.smartvision.svplayer.data.playlist.EpgRepository
@@ -91,7 +89,6 @@ class AppContainer(context: Context) {
     var startupActivationState: StoredActivationState? = null
         private set
     val startupCatalogWork: StateFlow<StartupCatalogWorkRequest> = _startupCatalogWork
-    val networkActivityTracker = NetworkActivityTracker()
     val accountManager = XtreamAccountManager(appContext)
     val profilePinManager = ProfilePinManager(appContext)
     private val credentialsProvider = accountManager
@@ -122,7 +119,6 @@ class AppContainer(context: Context) {
                 )
             }
         }
-        .addInterceptor(NetworkActivityInterceptor(networkActivityTracker, "Xtream"))
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(40, TimeUnit.SECONDS)
         .writeTimeout(20, TimeUnit.SECONDS)
@@ -139,13 +135,12 @@ class AppContainer(context: Context) {
     private val xtreamApiClient = XtreamApiClient(api, credentialsProvider)
 
     private val activationOkHttpClient = OkHttpClient.Builder()
-        .addInterceptor(NetworkActivityInterceptor(networkActivityTracker, "SmartVision"))
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS)
         .build()
     val m3uPlaylistClient = M3uPlaylistClient(activationOkHttpClient)
-    val epgRepository = EpgRepository(appContext, activationOkHttpClient, networkActivityTracker)
+    val epgRepository = EpgRepository(appContext, activationOkHttpClient)
 
     private val activationRetrofit = Retrofit.Builder()
         .baseUrl(activationBaseUrl())
@@ -181,7 +176,6 @@ class AppContainer(context: Context) {
             }
             chain.proceed(builder.build())
         }
-        .addInterceptor(NetworkActivityInterceptor(networkActivityTracker, "TMDB"))
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS)
@@ -216,14 +210,12 @@ class AppContainer(context: Context) {
         appContext = appContext,
         api = appUpdateApi,
         okHttpClient = activationOkHttpClient,
-        networkActivityTracker = networkActivityTracker,
     )
 
     val homeSlidesRepository = HomeSlidesRepository(
         appContext = appContext,
         api = homeSlidesApi,
         okHttpClient = activationOkHttpClient,
-        networkActivityTracker = networkActivityTracker,
     )
     val notificationsRepository = NotificationsRepository(
         activationRepository = activationRepository,
@@ -244,7 +236,6 @@ class AppContainer(context: Context) {
         accountManager = accountManager,
         apiClient = xtreamApiClient,
         anomalyReporter = anomalyReporter,
-        networkActivityTracker = networkActivityTracker,
     )
     private val startupStateStore = StartupStateStore(appContext)
     val deviceDiagnosticsReporter = DeviceDiagnosticsReporter(
@@ -325,7 +316,6 @@ class AppContainer(context: Context) {
         syncStateDao = database.syncStateDao(),
         youtubeDao = database.youtubeDao(),
         kidsFilterDao = database.kidsFilterDao(),
-        networkActivityTracker = networkActivityTracker,
     )
     val settingsRepository: SettingsRepository =
         DefaultSettingsRepository(appContext, appContext.settingsDataStore, database, profilePinManager, accountManager)
@@ -340,7 +330,6 @@ class AppContainer(context: Context) {
         tmdbRepository = tmdbRepository,
         settingsRepository = settingsRepository,
         urlFactory = urlFactory,
-        networkActivityTracker = networkActivityTracker,
     )
     val syncStateDao = database.syncStateDao()
 

@@ -2,6 +2,7 @@ package com.smartvision.svplayer.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.zIndex
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
+import com.smartvision.svplayer.ui.focus.LocalTvAnimationsEnabled
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -57,6 +59,7 @@ fun TvCard(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val focusStyle = LocalTvFocusStyle.current
+    val animationsEnabled = LocalTvAnimationsEnabled.current
 
     val border by animateColorAsState(
         targetValue = when {
@@ -64,7 +67,7 @@ fun TvCard(
             selected -> accent
             else -> SmartVisionColors.Border
         },
-        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        animationSpec = if (animationsEnabled) tween(SmartVisionDimensions.FocusAnimationMillis) else snap(),
         label = "tvCardBorder",
     )
     val topAccent by animateColorAsState(
@@ -73,7 +76,7 @@ fun TvCard(
             selected -> accent.copy(alpha = 0.26f)
             else -> SmartVisionColors.SurfaceElevated
         },
-        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        animationSpec = if (animationsEnabled) tween(SmartVisionDimensions.FocusAnimationMillis) else snap(),
         label = "tvCardAccent",
     )
 

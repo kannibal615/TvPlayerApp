@@ -15,7 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,7 +65,7 @@ fun CatalogSortButton(
         else -> SmartVisionColors.Border
     }
     Row(
-        modifier = Modifier.height(42.dp).width(42.dp)
+        modifier = Modifier.height(30.dp).width(30.dp)
             .background(backgroundColor, RoundedCornerShape(7.dp))
             .border(1.dp, borderColor, RoundedCornerShape(7.dp))
             .focusRequester(buttonRequester)
@@ -87,12 +87,12 @@ fun CatalogSortButton(
                 }
             }
             .onFocusChanged { focused = it.isFocused }.focusable().clickable { open = true }
-            .padding(9.dp),
+            .padding(6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
         Icon(
-            Icons.Default.Sort,
+            Icons.Default.FilterList,
             contentDescription = options.getOrNull(selectedIndex) ?: "Sort",
             tint = if (active || focused) Color.White else SmartVisionColors.TextPrimary,
         )

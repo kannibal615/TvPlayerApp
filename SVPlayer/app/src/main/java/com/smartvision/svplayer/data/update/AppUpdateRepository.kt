@@ -7,8 +7,6 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import com.smartvision.svplayer.BuildConfig
-import com.smartvision.svplayer.data.network.NetworkActivityTracker
-import com.smartvision.svplayer.data.network.NetworkActivityType
 import java.io.File
 import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
@@ -20,15 +18,8 @@ class AppUpdateRepository(
     private val appContext: Context,
     private val api: AppUpdateApiService,
     private val okHttpClient: OkHttpClient,
-    private val networkActivityTracker: NetworkActivityTracker,
 ) {
     suspend fun checkForUpdate(): AppUpdateInfo? {
-        val work = networkActivityTracker.begin(
-            id = "update-check-${System.currentTimeMillis()}",
-            title = "App update check",
-            type = NetworkActivityType.Updates,
-            message = "Checking latest version",
-        )
         try {
             val response = api.checkUpdate(
                 versionCode = BuildConfig.VERSION_CODE,
@@ -38,7 +29,6 @@ class AppUpdateRepository(
                 throw AppUpdateException(response.error ?: "Verification de mise a jour indisponible.")
             }
             if (!response.updateAvailable || response.latestVersionCode <= BuildConfig.VERSION_CODE) {
-                work.complete("App up to date")
                 return null
             }
             val apkUrl = response.apkUrl?.takeIf { it.startsWith("https://") }
@@ -52,24 +42,13 @@ class AppUpdateRepository(
                 apkSize = response.apkSize,
                 mandatory = response.mandatory,
                 releaseNotes = response.releaseNotes,
-            ).also {
-                work.update(progressPercent = 100)
-                work.complete("Update available")
-            }
+            )
         } catch (error: Throwable) {
-            work.fail(error.message ?: error.javaClass.simpleName)
             throw error
         }
     }
 
     suspend fun downloadApk(update: AppUpdateInfo): File = withContext(Dispatchers.IO) {
-        val work = networkActivityTracker.begin(
-            id = "update-download-${update.versionCode}-${System.currentTimeMillis()}",
-            title = "APK download",
-            type = NetworkActivityType.Updates,
-            message = "Downloading SmartVision ${update.versionName}",
-            totalBytes = update.apkSize,
-        )
         val request = Request.Builder()
             .url(update.apkUrl)
             .get()
@@ -94,11 +73,8 @@ class AppUpdateRepository(
                 apkFile.delete()
                 throw AppUpdateException("APK de mise a jour invalide.")
             }
-            work.update(progressPercent = 100, bytesRead = apkFile.length(), totalBytes = update.apkSize)
-            work.complete("APK ready")
             apkFile
         } catch (error: Throwable) {
-            work.fail(error.message ?: error.javaClass.simpleName)
             throw error
         }
     }

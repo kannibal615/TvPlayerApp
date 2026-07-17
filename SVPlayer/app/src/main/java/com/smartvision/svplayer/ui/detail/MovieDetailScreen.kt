@@ -114,7 +114,8 @@ data class MovieDetailUiState(
         get() = tmdbMetadata?.voteAverage?.takeIf { it > 0.0 }?.formatRating() ?: rating
 
     val displayDurationLabel: String?
-        get() = tmdbMetadata?.runtimeMinutes?.takeIf { it > 0 }?.let { "$it min" } ?: duration?.durationLabel()
+        get() = tmdbMetadata?.runtimeMinutes?.takeIf { it > 0 }?.let(::formatRuntimeMinutes)
+            ?: duration?.durationLabel()
 
     val displayDirector: String?
         get() = tmdbMetadata?.director.nonBlank() ?: director
@@ -427,7 +428,6 @@ private fun MovieDetailInfo(
                 Text("•", color = SmartVisionColors.TextSecondary, style = DetailBodyStyle)
             }
             state.displayRating?.let { DetailBadge(text = "$it/10") }
-            DetailBadge(text = state.extension.uppercase())
         }
         Spacer(Modifier.height(14.dp))
         Text(
@@ -490,7 +490,7 @@ private fun MovieDetailInfo(
             people = state.tmdbMetadata?.castMembers.orEmpty(),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(132.dp),
+                .height(174.dp),
         )
     }
 }
@@ -535,10 +535,11 @@ private fun MovieCastStrip(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .focusProperties { canFocus = false }
             .clip(RoundedCornerShape(9.dp))
             .background(Color(0x98101A2B))
             .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.13f)), RoundedCornerShape(9.dp))
-            .padding(16.dp),
+            .padding(10.dp),
     ) {
         Text("Cast", color = SmartVisionColors.TextPrimary, style = DetailTitleStyle)
         Spacer(Modifier.height(8.dp))
@@ -548,15 +549,17 @@ private fun MovieCastStrip(
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(end = 12.dp),
+                modifier = Modifier.focusProperties { canFocus = false },
             ) {
                 items(people.take(10), key = { "${it.name}:${it.role.orEmpty()}" }) { person ->
-                    Column(modifier = Modifier.width(74.dp)) {
+                    Column(modifier = Modifier.width(78.dp)) {
                         AsyncImage(
                             model = person.profileUrl,
                             contentDescription = person.name,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
-                                .size(width = 74.dp, height = 70.dp)
+                                .width(78.dp)
+                                .height(92.dp)
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(Color.Black.copy(alpha = 0.35f)),
                         )
@@ -623,13 +626,27 @@ private fun String.cleanDetailTitle(): String =
         .ifBlank { "Film" }
 
 private fun String.durationLabel(): String {
-    val seconds = toLongOrNull() ?: return this
-    if (seconds < 300) return this
-    val hours = seconds / 3600
-    val minutes = (seconds % 3600) / 60
+    val clean = trim()
+    val colonParts = clean.split(':').mapNotNull(String::toLongOrNull)
+    val minutes = when {
+        colonParts.size == 3 -> colonParts[0] * 60 + colonParts[1] + colonParts[2] / 60
+        colonParts.size == 2 -> colonParts[0] * 60 + colonParts[1]
+        clean.toLongOrNull() != null -> {
+            val numeric = clean.toLong()
+            if (numeric >= 300) numeric / 60 else numeric
+        }
+        else -> return clean
+    }
+    return formatRuntimeMinutes(minutes.toInt())
+}
+
+private fun formatRuntimeMinutes(totalMinutes: Int): String {
+    val safeMinutes = totalMinutes.coerceAtLeast(0)
+    val hours = safeMinutes / 60
+    val minutes = safeMinutes % 60
     return when {
-        hours > 0 && minutes > 0 -> "${hours} h ${minutes} min"
-        hours > 0 -> "${hours} h"
-        else -> "${minutes} min"
+        hours > 0 && minutes > 0 -> "${hours}h ${minutes}m"
+        hours > 0 -> "${hours}h"
+        else -> "${minutes}m"
     }
 }

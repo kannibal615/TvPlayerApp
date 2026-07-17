@@ -1,6 +1,7 @@
 package com.smartvision.svplayer.ui.catalog
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -168,6 +169,11 @@ fun CatalogSearchField(
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusStyle = LocalTvFocusStyle.current
     val shape = RoundedCornerShape(7.dp)
+    val fieldWidth by animateDpAsState(
+        targetValue = if (editing) 190.dp else MediaCatalogDimens.PanelHeaderHeight,
+        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        label = "catalogSearchWidth",
+    )
     val borderColor by animateColorAsState(
         targetValue = if (focused) focusStyle.accent else SmartVisionColors.Border,
         animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
@@ -191,7 +197,8 @@ fun CatalogSearchField(
         cursorBrush = SolidColor(focusStyle.accent),
         textStyle = CatalogMetaStyle.copy(color = SmartVisionColors.TextPrimary),
         modifier = modifier
-            .height(34.dp)
+            .width(fieldWidth)
+            .height(MediaCatalogDimens.PanelHeaderHeight)
             .focusRequester(inputFocusRequester)
             .onFocusChanged {
                 focused = it.isFocused
@@ -236,17 +243,23 @@ fun CatalogSearchField(
                     tint = if (focused) focusStyle.accent else SmartVisionColors.TextSecondary,
                     modifier = Modifier.size(16.dp),
                 )
-                Spacer(Modifier.width(7.dp))
-                Box(modifier = Modifier.weight(1f)) {
-                    if (query.isBlank()) {
-                        Text(
-                            text = placeholder,
-                            color = SmartVisionColors.TextSecondary,
-                            style = CatalogMetaStyle,
-                            maxLines = 1,
-                        )
+                if (editing) {
+                    Spacer(Modifier.width(7.dp))
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (query.isBlank()) {
+                            Text(
+                                text = placeholder,
+                                color = SmartVisionColors.TextSecondary,
+                                style = CatalogMetaStyle,
+                                maxLines = 1,
+                            )
+                        }
+                        innerTextField()
                     }
-                    innerTextField()
+                } else {
+                    Box(modifier = Modifier.size(0.dp).alpha(0f)) {
+                        innerTextField()
+                    }
                 }
             }
         },
@@ -304,6 +317,34 @@ fun MediaCatalogPanel(
         Spacer(Modifier.height(6.dp))
 
         content()
+    }
+}
+
+@Composable
+fun CatalogPanelTitleWithCount(
+    title: String,
+    count: Int,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(start = MediaCatalogDimens.PanelHeaderTitleStartPadding),
+    ) {
+        Text(
+            text = title,
+            color = SmartVisionColors.TextPrimary,
+            style = CatalogPanelTitleStyle,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.width(7.dp))
+        Text(
+            text = count.coerceAtLeast(0).toString(),
+            color = SmartVisionColors.TextSecondary,
+            style = CatalogMetaStyle,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
     }
 }
 

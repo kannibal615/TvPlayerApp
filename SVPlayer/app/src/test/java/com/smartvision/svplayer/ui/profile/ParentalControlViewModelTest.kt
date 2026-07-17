@@ -290,5 +290,7 @@ private class FakeSettingsRepository(initial: PlayerSettings) : SettingsReposito
     override suspend fun setVideoRatio(value: String) = Unit
     override suspend fun setBufferMode(value: String) = Unit
     override suspend fun setRetryEnabled(value: Boolean) = Unit
+    override suspend fun setShowHeaderClock(value: Boolean) = Unit
+    override suspend fun setShowHeaderSeconds(value: Boolean) = Unit
     override suspend fun clearLocalData() = Unit
 }

@@ -211,6 +211,8 @@ data class PlayerSettings(
     val videoRatio: String = "Fit",
     val bufferMode: String = "Standard",
     val retryEnabled: Boolean = true,
+    val showHeaderClock: Boolean = true,
+    val showHeaderSeconds: Boolean = true,
     val parentalControlEnabled: Boolean = false,
     val parentalPin: String = "",
     val parentalKeywords: String = "adults; porn; xxx",

@@ -98,6 +98,8 @@ fun ContentProgressCard(
     onDown: (() -> Unit)? = null,
     onUp: (() -> Unit)? = null,
     blockLeft: Boolean = false,
+    onLeft: (() -> Unit)? = null,
+    onRight: (() -> Unit)? = null,
     enablePreview: Boolean = false,
     resumeOverlayText: String = "Resume playback",
     blocked: Boolean = false,
@@ -186,6 +188,14 @@ fun ContentProgressCard(
                         }
                         event.key == Key.DirectionUp && onUp != null -> {
                             onUp()
+                            true
+                        }
+                        event.key == Key.DirectionLeft && onLeft != null -> {
+                            onLeft()
+                            true
+                        }
+                        event.key == Key.DirectionRight && onRight != null -> {
+                            onRight()
                             true
                         }
                         event.key == Key.DirectionLeft && blockLeft -> true

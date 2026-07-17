@@ -75,6 +75,8 @@ class DefaultSettingsRepository(
                 videoRatio = preferences[profileStringKey(VIDEO_RATIO_KEY, profileId)] ?: preferences[VIDEO_RATIO] ?: "Fit",
                 bufferMode = preferences[profileStringKey(BUFFER_MODE_KEY, profileId)] ?: preferences[BUFFER_MODE] ?: "Standard",
                 retryEnabled = preferences[profileBooleanKey(RETRY_KEY, profileId)] ?: preferences[RETRY] ?: true,
+                showHeaderClock = preferences[SHOW_HEADER_CLOCK] ?: true,
+                showHeaderSeconds = preferences[SHOW_HEADER_SECONDS] ?: true,
                 parentalControlEnabled = parentalScope.isEnabledFor(profileId),
                 parentalPin = if (profilePinManager.hasPin() || preferences[PARENTAL_PIN].orEmpty().isNotBlank()) {
                     CONFIGURED_PIN_MARKER
@@ -152,6 +154,14 @@ class DefaultSettingsRepository(
         dataStore.edit { it[profileBooleanKey(RETRY_KEY, accountManager.activeProfileId.value)] = value }
     }
 
+    override suspend fun setShowHeaderClock(value: Boolean) {
+        dataStore.edit { it[SHOW_HEADER_CLOCK] = value }
+    }
+
+    override suspend fun setShowHeaderSeconds(value: Boolean) {
+        dataStore.edit { it[SHOW_HEADER_SECONDS] = value }
+    }
+
     override suspend fun setParentalControlEnabled(value: Boolean) {
         dataStore.edit { it[PARENTAL_CONTROL_ENABLED] = value }
     }
@@ -218,6 +228,8 @@ class DefaultSettingsRepository(
         val VIDEO_RATIO = stringPreferencesKey("video_ratio")
         val BUFFER_MODE = stringPreferencesKey("buffer_mode")
         val RETRY = booleanPreferencesKey("retry_enabled")
+        val SHOW_HEADER_CLOCK = booleanPreferencesKey("show_header_clock")
+        val SHOW_HEADER_SECONDS = booleanPreferencesKey("show_header_seconds")
         val PARENTAL_CONTROL_ENABLED = booleanPreferencesKey("parental_control_enabled")
         val PARENTAL_PIN = stringPreferencesKey("parental_pin")
         val PARENTAL_KEYWORDS = stringPreferencesKey("parental_keywords")

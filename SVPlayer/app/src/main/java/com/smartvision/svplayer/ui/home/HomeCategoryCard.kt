@@ -64,6 +64,8 @@ fun HomeCategoryCard(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
     onDown: (() -> Unit)? = null,
+    onLeft: (() -> Unit)? = null,
+    onRight: (() -> Unit)? = null,
     blocked: Boolean = false,
     blockedMessage: String = "Connection unavailable",
     workOverlay: HomeCategoryWorkOverlay? = null,
@@ -86,11 +88,21 @@ fun HomeCategoryCard(
         modifier = modifier
             .zIndex(if (focusState.isFocused) 3f else 0f)
             .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown && onDown != null) {
-                    onDown()
-                    true
-                } else {
-                    false
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when {
+                    event.key == Key.DirectionDown && onDown != null -> {
+                        onDown()
+                        true
+                    }
+                    event.key == Key.DirectionLeft && onLeft != null -> {
+                        onLeft()
+                        true
+                    }
+                    event.key == Key.DirectionRight && onRight != null -> {
+                        onRight()
+                        true
+                    }
+                    else -> false
                 }
             }
             .tvFocusTarget(

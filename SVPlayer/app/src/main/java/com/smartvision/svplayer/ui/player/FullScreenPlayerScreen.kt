@@ -121,6 +121,7 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.data.LocalAppContainer
+import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.anomaly.AnomalyReporter
@@ -263,6 +264,28 @@ internal data class LiveAspectMode(
     val label: String,
     val resizeMode: Int,
 )
+
+internal enum class LiveRemoteAction {
+    ZapPrevious,
+    ZapNext,
+    DelegateToSecondaryPanel,
+    None,
+}
+
+internal fun resolveLiveRemoteAction(
+    keyCode: Int,
+    secondaryPanelOpen: Boolean,
+): LiveRemoteAction {
+    if (keyCode != AndroidKeyEvent.KEYCODE_DPAD_UP && keyCode != AndroidKeyEvent.KEYCODE_DPAD_DOWN) {
+        return LiveRemoteAction.None
+    }
+    if (secondaryPanelOpen) return LiveRemoteAction.DelegateToSecondaryPanel
+    return if (keyCode == AndroidKeyEvent.KEYCODE_DPAD_UP) {
+        LiveRemoteAction.ZapPrevious
+    } else {
+        LiveRemoteAction.ZapNext
+    }
+}
 
 private data class SubtitleTrackOption(
     val id: String,
@@ -731,6 +754,12 @@ private fun FullScreenPlayerScreen(
 ) {
     val context = LocalContext.current
     val container = LocalAppContainer.current
+    val playerSettings by container.settingsRepository.settings.collectAsStateWithLifecycle(
+        initialValue = PlayerSettings(),
+    )
+    val bufferConfig = remember(playerSettings.bufferMode) {
+        playbackBufferConfig(playerSettings.bufferMode)
+    }
     val coroutineScope = rememberCoroutineScope()
     val latestUrl by rememberUpdatedState(playback.url)
     val latestFallbackUrl by rememberUpdatedState(playback.fallbackUrl)
@@ -752,7 +781,12 @@ private fun FullScreenPlayerScreen(
     var bufferedPositionMs by remember { mutableLongStateOf(0L) }
     var activeMenu by remember { mutableStateOf(PlayerOverlayMenu.None) }
     var playbackSpeed by remember { mutableStateOf(1f) }
-    var liveAspectMode by remember { mutableStateOf(LiveAspectModes.first()) }
+    var liveAspectMode by remember(playback.streamId, playerSettings.videoRatio) {
+        mutableStateOf(
+            LiveAspectModes.firstOrNull { it.label.equals(playerSettings.videoRatio, ignoreCase = true) }
+                ?: LiveAspectModes.first { it.label == "Fit" },
+        )
+    }
     var subtitleTracks by remember { mutableStateOf<List<SubtitleTrackOption>>(emptyList()) }
     var selectedSubtitleId by remember { mutableStateOf<String?>(null) }
     var episodesPanelVisible by remember(playback.streamId) { mutableStateOf(false) }
@@ -802,9 +836,10 @@ private fun FullScreenPlayerScreen(
         }
     }
     val mediaSourceFactory = remember(context) { smartVisionMediaSourceFactory(context) }
-    val player = remember(mediaSourceFactory) {
+    val player = remember(mediaSourceFactory, playerSettings.bufferMode) {
         ExoPlayer.Builder(context)
             .setMediaSourceFactory(mediaSourceFactory)
+            .setLoadControl(buildPlaybackLoadControl(playerSettings.bufferMode))
             .build()
             .apply {
             playWhenReady = true
@@ -875,6 +910,12 @@ private fun FullScreenPlayerScreen(
         if (playback.contentType == UserContentType.LocalMedia) {
             buffering = false
             errorText = strings?.mediaPlaybackUnavailable ?: "Fichier local indisponible"
+            showOverlay(requestPlayFocus = true)
+            return
+        }
+        if (!playerSettings.retryEnabled) {
+            buffering = false
+            errorText = "Connexion au flux indisponible"
             showOverlay(requestPlayFocus = true)
             return
         }
@@ -1167,30 +1208,30 @@ private fun FullScreenPlayerScreen(
         }
     }
 
-    fun hideLiveOverlayToPlayer() {
-        overlayVisible = false
-        brightnessMode = false
-        liveProgressFocused = false
-        focusPlayWhenOverlayShows = false
-        playerView.post { runCatching { playerView.requestFocus() } }
-    }
-
     fun handleLiveChannelKey(keyCode: Int, repeatCount: Int = 0): Boolean {
         if (playback.contentType != UserContentType.Live) return false
         if (adGateActive) return true
-        if (activeMenu != PlayerOverlayMenu.None) return false
-        if (!overlayVisible) {
-            if (keyCode == AndroidKeyEvent.KEYCODE_DPAD_UP || keyCode == AndroidKeyEvent.KEYCODE_DPAD_DOWN) {
-                playAdjacent(if (keyCode == AndroidKeyEvent.KEYCODE_DPAD_UP) playback.previousItem else playback.nextItem)
+        when (
+            resolveLiveRemoteAction(
+                keyCode = keyCode,
+                secondaryPanelOpen = activeMenu != PlayerOverlayMenu.None || brightnessMode,
+            )
+        ) {
+            LiveRemoteAction.ZapPrevious -> {
+                if (repeatCount == 0) playAdjacent(playback.previousItem)
                 showOverlay()
                 return true
             }
-            return false
+            LiveRemoteAction.ZapNext -> {
+                if (repeatCount == 0) playAdjacent(playback.nextItem)
+                showOverlay()
+                return true
+            }
+            LiveRemoteAction.DelegateToSecondaryPanel -> return false
+            LiveRemoteAction.None -> Unit
         }
-        if (keyCode == AndroidKeyEvent.KEYCODE_DPAD_DOWN) {
-            hideLiveOverlayToPlayer()
-            return true
-        }
+        if (activeMenu != PlayerOverlayMenu.None) return false
+        if (!overlayVisible) return false
         if (brightnessMode) {
             return when (keyCode) {
                 AndroidKeyEvent.KEYCODE_DPAD_LEFT -> {
@@ -1250,17 +1291,6 @@ private fun FullScreenPlayerScreen(
             AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> {
                 moveLiveFocus(1)
                 showOverlay(requestPlayFocus = false)
-                true
-            }
-            AndroidKeyEvent.KEYCODE_DPAD_UP -> {
-                if (liveSeekable) {
-                    liveProgressFocused = true
-                    coroutineScope.launch {
-                        delay(20)
-                        runCatching { progressFocusRequester.requestFocus() }
-                    }
-                    showOverlay(requestPlayFocus = false)
-                }
                 true
             }
             AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER -> {
@@ -1570,7 +1600,7 @@ private fun FullScreenPlayerScreen(
     LaunchedEffect(buffering, playback.url, adGateActive, exiting) {
         if (!buffering || adGateActive || exiting) return@LaunchedEffect
         val startPosition = player.currentPosition.coerceAtLeast(0L)
-        delay(12_000L)
+        delay(bufferConfig.stalledPlaybackTimeoutMs)
         val currentPosition = player.currentPosition.coerceAtLeast(0L)
         val stillStalled = buffering &&
             !adGateActive &&

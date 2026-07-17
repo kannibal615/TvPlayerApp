@@ -1,5 +1,13 @@
 # AI Changelog
 
+- 2026-07-17: suppression complete de Network Activity et de son instrumentation; Preferences/Personnalisation passent en grille compacte et appliquent format video, animations reduites, profils buffer, reconnexion et horloge configurable.
+- 2026-07-17: correction de la course categories/pages Live TV qui laissait `ALL` en skeleton; les jobs categories et chaines sont separes et toute annulation remet les loaders a zero avant relance.
+- 2026-07-17: DPAD Haut/Bas zappe maintenant la chaine Live avec l'overlay principal visible ou masque, sans masquer l'overlay avec Bas; les panneaux secondaires conservent leur navigation.
+- 2026-07-17: les lignes Films utilisent un fallback de metadonnees immediat au lieu de `Informations en cours...`; les portraits de casting sont compactes pour rendre les noms visibles sous les photos.
+
+- 2026-07-17: uniformisation des recherches compactes, filtres et compteurs des colonnes centrales Live TV/Movies/Series; les lignes Movies affichent note/genre/annee/duree et Series charge progressivement backdrops paysage et compteurs saisons/episodes sans clic.
+- 2026-07-17: fiche Movie en duree `xh xxm`, sans badge conteneur, avec casting informatif agrandi en portraits `2:3` nommes; le poster final de preview Series reste paysage.
+- 2026-07-17: navigation circulaire bidirectionnelle du header, des trois categories Home, de Continue Watching et des rangees Tendances.
 - 2026-07-17: Home neutralise la relocation verticale Compose post-focus tout en conservant la revelation horizontale native des `LazyRow`; le hero reste complet sous le header apres cinq secondes et pendant les transitions D-pad.
 - 2026-07-17: suppression du clipping tous axes du viewport Home pour rendre les halos Live TV/Series entiers, localisation du texte hero via `SmartVisionStrings`, et rythme vertical unique de `12 dp` entre categories/Continue/Tendances.
 - 2026-07-17: Home aligne le clearance bas du header sur son padding haut a `14 dp`, pour un espace vertical symetrique avant le hero sans modifier la hauteur des controles.

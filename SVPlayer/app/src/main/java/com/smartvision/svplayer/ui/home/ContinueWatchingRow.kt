@@ -39,6 +39,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -85,6 +86,8 @@ fun ContinueWatchingRow(
     val fallbackRowState = rememberLazyListState()
     val rowState = lazyListState ?: fallbackRowState
     val rowScope = rememberCoroutineScope()
+    val internalFirstItemFocusRequester = remember { FocusRequester() }
+    val resolvedFirstItemFocusRequester = firstItemFocusRequester ?: internalFirstItemFocusRequester
     var focusedItemId by remember { mutableStateOf<String?>(null) }
     var focusedPreviewId by remember { mutableStateOf<String?>(null) }
     var anchorJob by remember { mutableStateOf<Job?>(null) }
@@ -92,6 +95,7 @@ fun ContinueWatchingRow(
     val itemsSignature = remember(items) {
         items.joinToString("|") { it.id }
     }
+    val lastItemFocusRequester = remember(itemsSignature) { FocusRequester() }
 
     DisposableEffect(rowState) {
         onDispose { anchorJob?.cancel() }
@@ -179,6 +183,15 @@ fun ContinueWatchingRow(
         }
     }
 
+    fun wrapFocus(targetIndex: Int, targetRequester: FocusRequester) {
+        if (items.isEmpty()) return
+        rowScope.launch {
+            rowState.scrollToItem(targetIndex.coerceIn(items.indices))
+            withFrameNanos { }
+            runCatching { targetRequester.requestFocus() }
+        }
+    }
+
     Column(modifier = modifier.height(SmartVisionDimensions.HomeContentRowHeight)) {
         Text(
             text = title,
@@ -201,7 +214,11 @@ fun ContinueWatchingRow(
                 ContentProgressCard(
                     item = item,
                     onClick = { if (blocked) onBlockedClick() else onItemClick(item) },
-                    focusRequester = if (index == 0) firstItemFocusRequester else null,
+                    focusRequester = when {
+                        index == 0 -> resolvedFirstItemFocusRequester
+                        index == items.lastIndex -> lastItemFocusRequester
+                        else -> null
+                    },
                     onFocused = {
                         Log.i(HomeRowLogTag, "focused row=$title index=$index id=${item.id}")
                         // PERF_DIAG: one row per focused card, including width target and visible LazyRow state.
@@ -239,7 +256,16 @@ fun ContinueWatchingRow(
                     },
                     onDown = onDownFromRow,
                     onUp = onUpFromRow,
-                    blockLeft = index == 0,
+                    onLeft = if (index == 0) {
+                        { wrapFocus(items.lastIndex, if (items.size == 1) resolvedFirstItemFocusRequester else lastItemFocusRequester) }
+                    } else {
+                        null
+                    },
+                    onRight = if (index == items.lastIndex) {
+                        { wrapFocus(0, resolvedFirstItemFocusRequester) }
+                    } else {
+                        null
+                    },
                     enablePreview = enablePreview && focusedPreviewId == item.id,
                     resumeOverlayText = resumeOverlayText,
                     blocked = blocked,

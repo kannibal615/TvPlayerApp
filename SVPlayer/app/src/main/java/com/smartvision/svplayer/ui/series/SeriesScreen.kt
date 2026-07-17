@@ -63,6 +63,7 @@ import com.smartvision.svplayer.ui.catalog.CatalogCategoryRow
 import com.smartvision.svplayer.ui.catalog.CatalogEmpty
 import com.smartvision.svplayer.ui.catalog.CatalogError
 import com.smartvision.svplayer.ui.catalog.CatalogMetaStyle
+import com.smartvision.svplayer.ui.catalog.CatalogPanelTitleWithCount
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.catalog.CatalogSortButton
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
@@ -559,6 +560,12 @@ private fun SeriesList(
     MediaCatalogPanel(
         title = "Series",
         modifier = modifier,
+        titleContent = {
+            CatalogPanelTitleWithCount(
+                title = "Series",
+                count = state.selectedCategory?.count ?: state.displayedSeries.size,
+            )
+        },
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CatalogSearchField(
@@ -566,7 +573,6 @@ private fun SeriesList(
                     onQueryChange = onSearchQueryChange,
                     placeholder = "Serie",
                     modifier = Modifier
-                        .width(190.dp)
                         .focusRequester(searchFocusRequester)
                         .onPreviewKeyEvent { event ->
                             if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -583,7 +589,7 @@ private fun SeriesList(
                             }
                         },
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(6.dp))
                 CatalogSortButton(
                     options = SeriesSortMode.entries.map { it.label },
                     selectedIndex = state.sortMode.ordinal,
@@ -637,7 +643,7 @@ private fun SeriesList(
                         rating = series.rating,
                         sideLabel = series.listSideLabel(),
                         titleSideLabel = series.seasonsCount?.let { "$it $seasonsLabel" },
-                        imageUrl = series.backdropUrl ?: series.coverUrl,
+                        imageUrl = series.backdropUrl,
                         fallbackText = series.title.take(2).uppercase(),
                         selected = series.seriesId == state.selectedSeriesId,
                         focusRequester = when {
@@ -668,7 +674,7 @@ private fun SeriesItemUi.toPreviewContent(
         id = "series-$seriesId-${episode?.episodeId ?: "loading"}",
         title = title,
         subtitle = subtitle,
-        imageUrl = coverUrl,
+        imageUrl = backdropUrl,
         backdropUrl = backdropUrl,
         streamUrl = episode?.streamUrl,
         durationLabel = episode?.duration ?: episodeRunTime?.let { "${it}m/ep" },

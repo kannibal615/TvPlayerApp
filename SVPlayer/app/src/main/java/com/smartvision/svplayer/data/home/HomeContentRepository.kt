@@ -11,8 +11,6 @@ import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.mock.HomePreviewMode
 import com.smartvision.svplayer.data.mock.HomeVisualStyle
 import com.smartvision.svplayer.data.models.XtreamSeriesEpisode
-import com.smartvision.svplayer.data.network.NetworkActivityTracker
-import com.smartvision.svplayer.data.network.NetworkActivityType
 import com.smartvision.svplayer.data.remote.XtreamUrlFactory
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.data.tmdb.TmdbRepository
@@ -71,7 +69,6 @@ class HomeContentRepository(
     private val tmdbRepository: TmdbRepository,
     private val settingsRepository: SettingsRepository,
     private val urlFactory: XtreamUrlFactory,
-    private val networkActivityTracker: NetworkActivityTracker,
 ) {
     @Volatile
     private var cachedTrending: CachedHomeTrending? = null
@@ -205,16 +202,8 @@ class HomeContentRepository(
                     )
                 }
         }
-        val work = networkActivityTracker.begin(
-            id = "home-trending-${System.currentTimeMillis()}",
-            title = "Home trends",
-            type = NetworkActivityType.Home,
-            message = "Preparing trending rows",
-            progressPercent = 0,
-        )
         return withContext(Dispatchers.IO) {
-            try {
-                coroutineScope {
+            coroutineScope {
                     val movies = async {
                         val candidatesStart = SystemClock.elapsedRealtime()
                         runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingPolicy.SectionLimit) }
@@ -250,9 +239,6 @@ class HomeContentRepository(
                         series = series.await(),
                     ).also {
                         cachedTrending = CachedHomeTrending(key, it)
-                        val total = it.movies.size + it.series.size
-                        work.update(currentItems = total, totalItems = HomeTrendingPolicy.SectionLimit * 2, progressPercent = 100)
-                        work.complete("Home trends ready")
                         PerformanceDiagnosticRecorder.recordDuration(
                             sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
                             event = "home_trending_snapshot_ready",
@@ -260,23 +246,9 @@ class HomeContentRepository(
                             fields = mapOf("movies" to it.movies.size, "series" to it.series.size),
                         )
                     }
-                }
-            } catch (error: Throwable) {
-                work.fail(error.message ?: error.javaClass.simpleName)
-                throw error
             }
         }
     }
-
-    private fun beginTrendingPreviewWork(contentType: String, contentId: Int) =
-        networkActivityTracker.begin(
-            id = "home-trending-preview-$contentType-$contentId-${System.currentTimeMillis()}",
-            title = "Trending preview",
-            type = NetworkActivityType.Home,
-            section = contentType,
-            message = "Preparing preview metadata",
-            progressPercent = 0,
-        )
 
     suspend fun prepareTrendingPreview(
         contentType: String,
@@ -307,7 +279,6 @@ class HomeContentRepository(
             }
             ?.let { return@withContext it }
 
-        val previewWork = beginTrendingPreviewWork(contentType, contentId)
         val entity = runCatching {
             val settings = settingsRepository.settings.first()
             when (contentType) {
@@ -316,7 +287,6 @@ class HomeContentRepository(
                 else -> null
             }
         }.onFailure { error ->
-            previewWork.fail(error.message ?: error.javaClass.simpleName)
             PerformanceDiagnosticRecorder.recordDuration(
                 sheet = PerformanceDiagnosticRecorder.SHEET_ERRORS,
                 event = "home_trending_preview_prepare_failed",
@@ -324,15 +294,10 @@ class HomeContentRepository(
                 fields = mapOf("contentType" to contentType, "contentId" to contentId),
                 error = error,
             )
-        }.getOrNull() ?: run {
-            previewWork.complete("Preview unavailable")
-            return@withContext null
-        }
+        }.getOrNull() ?: return@withContext null
 
         mediaDao.upsertHomeTrendingPreviewCache(entity)
         entity.toPreparedPreview().also { prepared ->
-            previewWork.update(progressPercent = 100)
-            previewWork.complete("Preview metadata ready")
             PerformanceDiagnosticRecorder.recordDuration(
                 sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
                 event = "home_trending_preview_prepared",

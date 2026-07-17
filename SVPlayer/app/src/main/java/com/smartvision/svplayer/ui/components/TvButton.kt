@@ -2,6 +2,7 @@ package com.smartvision.svplayer.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
+import com.smartvision.svplayer.ui.focus.LocalTvAnimationsEnabled
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -68,6 +70,7 @@ fun TvButton(
 ) {
     val focusState = rememberTvFocusState()
     val focusStyle = LocalTvFocusStyle.current
+    val animationsEnabled = LocalTvAnimationsEnabled.current
     val shape = RoundedCornerShape(SmartVisionDimensions.ButtonRadius)
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
@@ -103,17 +106,17 @@ fun TvButton(
 
     val background by animateColorAsState(
         targetValue = targetBackground,
-        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        animationSpec = if (animationsEnabled) tween(SmartVisionDimensions.FocusAnimationMillis) else snap(),
         label = "tvButtonBackground",
     )
     val border by animateColorAsState(
         targetValue = targetBorder,
-        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        animationSpec = if (animationsEnabled) tween(SmartVisionDimensions.FocusAnimationMillis) else snap(),
         label = "tvButtonBorder",
     )
     val textColor by animateColorAsState(
         targetValue = targetTextColor,
-        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
+        animationSpec = if (animationsEnabled) tween(SmartVisionDimensions.FocusAnimationMillis) else snap(),
         label = "tvButtonText",
     )
 
