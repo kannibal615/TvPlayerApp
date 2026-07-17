@@ -6,7 +6,9 @@ Derniere mise a jour: 2026-07-17.
 
 - Films et Series retiennent le meilleur score global parmi tous les titres nettoyes et variantes avec/sans annee au lieu du premier resultat acceptable.
 - Les mappings persistants sous `85` de confiance sont recherches a nouveau; un echec de revalidation conserve le mapping existant.
-- Tendances Home consomme le backdrop 16:9 et la duree TMDB prepares sans rendre le demarrage Home dependant du reseau; Xtream/local reste le fallback non bloquant.
+- `TmdbMatcher.cleanDisplayTitle()` retire aussi les codes catalogue allowlistes en debut/fin, notamment `(BE)` et `(JP)`, tout en conservant les parenthesages qui font reellement partie du titre.
+- Tendances Home hydrate immediatement les backdrops depuis `home_trending_preview_cache`, prepare les cinq premieres Series avec concurrence `2` avant de retirer le skeleton, puis precharge la suite. L'entree du focus ne remplace jamais a elle seule l'image rendue; Xtream/local reste le fallback stable.
+- La duree Film TMDB/Xtream n'est exposee que si elle est strictement positive; `0min` et les formats invalides restent masques.
 
 Etat UI du 2026-07-17:
 - les listes Films et Series utilisent le backdrop TMDB paysage en priorite;

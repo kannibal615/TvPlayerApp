@@ -55,6 +55,7 @@ import com.smartvision.svplayer.domain.model.MediaSection
 import com.smartvision.svplayer.domain.model.SyncStatus
 import com.smartvision.svplayer.startup.StartupCatalogWorkKind
 import com.smartvision.svplayer.sync.SyncFrequencyPolicy
+import com.smartvision.svplayer.ui.focus.awaitItemVisible
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
@@ -64,6 +65,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 @Composable
 fun HomeScreen(
@@ -135,6 +137,18 @@ fun HomeScreen(
     val continueRowState = rememberHomeRowState(state.continueWatching)
     val movieTrendRowState = rememberHomeRowState(state.trendingMovies)
     val seriesTrendRowState = rememberHomeRowState(state.trendingSeries)
+    val continueItemFocusRequesters = rememberHomeItemFocusRequesters(
+        state.continueWatching,
+        continueFirstFocusRequester,
+    )
+    val movieTrendItemFocusRequesters = rememberHomeItemFocusRequesters(
+        state.trendingMovies,
+        movieTrendFirstFocusRequester,
+    )
+    val seriesTrendItemFocusRequesters = rememberHomeItemFocusRequesters(
+        state.trendingSeries,
+        seriesTrendFirstFocusRequester,
+    )
     val homeCategories = remember(strings) { homeCategories(strings) }
 
     LaunchedEffect(activeProfileId) {
@@ -231,6 +245,8 @@ fun HomeScreen(
         focusRequester: FocusRequester,
         targetScrollPx: Int,
         rowState: LazyListState? = null,
+        targetItemIndex: Int = 0,
+        resetRowToFirst: Boolean = false,
     ) {
         verticalFocusJob?.cancel()
         verticalFocusJob = focusScope.launch {
@@ -253,13 +269,25 @@ fun HomeScreen(
                 )
                 if (rowState != null) {
                     try {
-                        animateRowToFirst(targetName, rowState)
-                        Log.i(HomeFocusLogTag, "requestRowFocus target=$targetName rowScrolledToFirst")
+                        val safeTargetIndex = targetItemIndex
+                            .coerceIn(0, (rowState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
+                        if (resetRowToFirst) {
+                            animateRowToFirst(targetName, rowState)
+                        } else if (rowState.layoutInfo.visibleItemsInfo.none { it.index == safeTargetIndex }) {
+                            rowState.scrollToItem(safeTargetIndex)
+                            rowState.awaitItemVisible(safeTargetIndex)
+                        }
+                        Log.i(
+                            HomeFocusLogTag,
+                            "requestRowFocus target=$targetName item=$safeTargetIndex reset=$resetRowToFirst",
+                        )
                         PerformanceDiagnosticRecorder.record(
                             sheet = PerformanceDiagnosticRecorder.SHEET_ROW_FOCUS,
-                            event = "home_row_scrolled_to_first",
+                            event = "home_row_target_prepared",
                             fields = mapOf(
                                 "targetName" to targetName,
+                                "targetItemIndex" to safeTargetIndex,
+                                "resetRowToFirst" to resetRowToFirst,
                                 "firstVisibleItemIndex" to rowState.firstVisibleItemIndex,
                                 "firstVisibleItemScrollOffset" to rowState.firstVisibleItemScrollOffset,
                             ),
@@ -314,6 +342,34 @@ fun HomeScreen(
         }
     }
 
+    fun requestClosestRowFocus(
+        targetName: String,
+        targetItems: List<ContinueItem>,
+        targetRowState: LazyListState,
+        targetRequesters: Map<String, FocusRequester>,
+        targetScrollPx: Int,
+        sourceRowState: LazyListState,
+        sourceIndex: Int,
+    ) {
+        if (targetItems.isEmpty()) return
+        val targetIndex = closestVisibleHomeItemIndex(
+            sourceRowState = sourceRowState,
+            sourceIndex = sourceIndex,
+            targetRowState = targetRowState,
+            targetItemCount = targetItems.size,
+        )
+        val targetItem = targetItems[targetIndex]
+        val targetRequester = targetRequesters[targetItem.id] ?: return
+        requestVerticalFocus(
+            targetName = targetName,
+            focusRequester = targetRequester,
+            targetScrollPx = targetScrollPx,
+            rowState = targetRowState,
+            targetItemIndex = targetIndex,
+            resetRowToFirst = false,
+        )
+    }
+
     fun requestMainCategoryFocus() {
         requestVerticalFocus(
             targetName = "categories",
@@ -329,62 +385,91 @@ fun HomeScreen(
                 focusRequester = continueFirstFocusRequester,
                 targetScrollPx = continueScrollPx,
                 rowState = continueRowState,
+                targetItemIndex = 0,
+                resetRowToFirst = true,
             )
             hasMovieTrends -> requestVerticalFocus(
                 targetName = "trending_movies",
                 focusRequester = movieTrendFirstFocusRequester,
                 targetScrollPx = movieTrendScrollPx,
                 rowState = movieTrendRowState,
+                targetItemIndex = 0,
+                resetRowToFirst = true,
             )
             hasSeriesTrends -> requestVerticalFocus(
                 targetName = "trending_series",
                 focusRequester = seriesTrendFirstFocusRequester,
                 targetScrollPx = seriesTrendScrollPx,
                 rowState = seriesTrendRowState,
+                targetItemIndex = 0,
+                resetRowToFirst = true,
             )
         }
     }
 
-    fun requestMovieTrendFocus() {
+    fun requestMovieTrendFocus(
+        sourceRowState: LazyListState,
+        sourceIndex: Int,
+    ) {
         when {
-            hasMovieTrends -> requestVerticalFocus(
+            hasMovieTrends -> requestClosestRowFocus(
                 targetName = "trending_movies",
-                focusRequester = movieTrendFirstFocusRequester,
+                targetItems = state.trendingMovies,
+                targetRowState = movieTrendRowState,
+                targetRequesters = movieTrendItemFocusRequesters,
                 targetScrollPx = movieTrendScrollPx,
-                rowState = movieTrendRowState,
+                sourceRowState = sourceRowState,
+                sourceIndex = sourceIndex,
             )
-            hasSeriesTrends -> requestVerticalFocus(
+            hasSeriesTrends -> requestClosestRowFocus(
                 targetName = "trending_series",
-                focusRequester = seriesTrendFirstFocusRequester,
+                targetItems = state.trendingSeries,
+                targetRowState = seriesTrendRowState,
+                targetRequesters = seriesTrendItemFocusRequesters,
                 targetScrollPx = seriesTrendScrollPx,
-                rowState = seriesTrendRowState,
+                sourceRowState = sourceRowState,
+                sourceIndex = sourceIndex,
             )
         }
     }
 
-    fun requestContinueFocus() {
+    fun requestContinueFocus(
+        sourceRowState: LazyListState,
+        sourceIndex: Int,
+    ) {
         if (hasContinueWatching) {
-            requestVerticalFocus(
+            requestClosestRowFocus(
                 targetName = "continue_watching",
-                focusRequester = continueFirstFocusRequester,
+                targetItems = state.continueWatching,
+                targetRowState = continueRowState,
+                targetRequesters = continueItemFocusRequesters,
                 targetScrollPx = continueScrollPx,
-                rowState = continueRowState,
+                sourceRowState = sourceRowState,
+                sourceIndex = sourceIndex,
             )
         }
     }
 
-    fun requestPreviousBeforeMovieTrend() {
+    fun requestPreviousBeforeMovieTrend(sourceIndex: Int) {
         if (hasContinueWatching) {
-            requestContinueFocus()
+            requestContinueFocus(movieTrendRowState, sourceIndex)
         } else {
             requestMainCategoryFocus()
         }
     }
 
-    fun requestPreviousBeforeSeriesTrend() {
+    fun requestPreviousBeforeSeriesTrend(sourceIndex: Int) {
         when {
-            hasMovieTrends -> requestMovieTrendFocus()
-            hasContinueWatching -> requestContinueFocus()
+            hasMovieTrends -> requestClosestRowFocus(
+                targetName = "trending_movies",
+                targetItems = state.trendingMovies,
+                targetRowState = movieTrendRowState,
+                targetRequesters = movieTrendItemFocusRequesters,
+                targetScrollPx = movieTrendScrollPx,
+                sourceRowState = seriesTrendRowState,
+                sourceIndex = sourceIndex,
+            )
+            hasContinueWatching -> requestContinueFocus(seriesTrendRowState, sourceIndex)
             else -> requestMainCategoryFocus()
         }
     }
@@ -641,13 +726,15 @@ fun HomeScreen(
                     onItemClick = onContentClick,
                     lazyListState = continueRowState,
                     firstItemFocusRequester = continueFirstFocusRequester,
+                    itemFocusRequesters = continueItemFocusRequesters,
                     onDownFromRow = if (hasMovieTrends || hasSeriesTrends) {
-                        { requestMovieTrendFocus() }
+                        { sourceIndex -> requestMovieTrendFocus(continueRowState, sourceIndex) }
                     } else {
                         null
                     },
-                    onUpFromRow = { requestMainCategoryFocus() },
+                    onUpFromRow = { _ -> requestMainCategoryFocus() },
                     enablePreview = true,
+                    timeRemainingFormat = strings.timeRemainingFormat,
                     resumeOverlayText = strings.resumePlayback,
                     blocked = xtreamCatalogBlocked,
                     blockedMessage = strings.connectionUnavailable,
@@ -672,19 +759,23 @@ fun HomeScreen(
                     onPrepareItems = viewModel::prefetchTrendingPreviews,
                     lazyListState = movieTrendRowState,
                     firstItemFocusRequester = movieTrendFirstFocusRequester,
+                    itemFocusRequesters = movieTrendItemFocusRequesters,
                     onDownFromRow = if (hasSeriesTrends) {
-                        {
-                            requestVerticalFocus(
+                        { sourceIndex ->
+                            requestClosestRowFocus(
                                 targetName = "trending_series",
-                                focusRequester = seriesTrendFirstFocusRequester,
+                                targetItems = state.trendingSeries,
+                                targetRowState = seriesTrendRowState,
+                                targetRequesters = seriesTrendItemFocusRequesters,
                                 targetScrollPx = seriesTrendScrollPx,
-                                rowState = seriesTrendRowState,
+                                sourceRowState = movieTrendRowState,
+                                sourceIndex = sourceIndex,
                             )
                         }
                     } else {
                         null
                     },
-                    onUpFromRow = { requestPreviousBeforeMovieTrend() },
+                    onUpFromRow = { sourceIndex -> requestPreviousBeforeMovieTrend(sourceIndex) },
                     blocked = xtreamCatalogBlocked,
                     blockedMessage = strings.connectionUnavailable,
                     onBlockedClick = onXtreamBlocked,
@@ -711,7 +802,8 @@ fun HomeScreen(
                     onPrepareItems = viewModel::prefetchTrendingPreviews,
                     lazyListState = seriesTrendRowState,
                     firstItemFocusRequester = seriesTrendFirstFocusRequester,
-                    onUpFromRow = { requestPreviousBeforeSeriesTrend() },
+                    itemFocusRequesters = seriesTrendItemFocusRequesters,
+                    onUpFromRow = { sourceIndex -> requestPreviousBeforeSeriesTrend(sourceIndex) },
                     blocked = xtreamCatalogBlocked,
                     blockedMessage = strings.connectionUnavailable,
                     onBlockedClick = onXtreamBlocked,
@@ -757,6 +849,44 @@ private fun HomeVerticalScrollColumn(
 private fun rememberHomeRowState(items: List<ContinueItem>): LazyListState {
     val firstId = items.firstOrNull()?.id.orEmpty()
     return remember(firstId, items.size) { LazyListState() }
+}
+
+@Composable
+private fun rememberHomeItemFocusRequesters(
+    items: List<ContinueItem>,
+    firstItemFocusRequester: FocusRequester,
+): Map<String, FocusRequester> {
+    val signature = items.joinToString("|") { it.id }
+    return remember(signature, firstItemFocusRequester) {
+        items.mapIndexed { index, item ->
+            item.id to if (index == 0) firstItemFocusRequester else FocusRequester()
+        }.toMap()
+    }
+}
+
+private fun closestVisibleHomeItemIndex(
+    sourceRowState: LazyListState,
+    sourceIndex: Int,
+    targetRowState: LazyListState,
+    targetItemCount: Int,
+): Int {
+    if (targetItemCount <= 0) return 0
+    val sourceInfo = sourceRowState.layoutInfo.visibleItemsInfo
+        .firstOrNull { it.index == sourceIndex }
+    val sourceCenter = sourceInfo
+        ?.let { it.offset + (it.size / 2) }
+        ?: (
+            sourceRowState.layoutInfo.viewportStartOffset +
+                sourceRowState.layoutInfo.viewportEndOffset
+            ) / 2
+    return targetRowState.layoutInfo.visibleItemsInfo
+        .asSequence()
+        .filter { it.index in 0 until targetItemCount }
+        .minByOrNull { item ->
+            abs((item.offset + (item.size / 2)) - sourceCenter)
+        }
+        ?.index
+        ?: sourceIndex.coerceIn(0, targetItemCount - 1)
 }
 
 private fun playStartupChimeOnHome(context: android.content.Context) {

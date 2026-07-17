@@ -1,13 +1,13 @@
 # HOME Tendances et previews Xtream
 
-Derniere mise a jour: 2026-07-13.
+Derniere mise a jour: 2026-07-17.
 
 ## Etat actuel
 
 - Continue watching, Tendances films et Tendances series utilisent les memes cards paysage 16:9 fixes; cette intervention ne modifie ni leur taille ni leur espacement horizontal.
-- Le focus applique un scale `1.04` au conteneur complet sans changement de largeur ni de ratio.
+- Le focus conserve la largeur et le ratio; la card passe de `1.04` a `1.2` uniquement apres la premiere image video.
 - Les metadonnees preview sont preparees par fenetre visible avec concurrence bornee. Apres `550 ms` de focus stable, un unique `HomePreviewController` peut lire l'URL Xtream reconstruite en memoire; le focus seul ne lance aucune requete.
-- `item.id` reste la cle Lazy et `item.imageUrl` l'unique URL d'image de card. Un backdrop de preview peut etre mis en cache mais ne remplace jamais l'image au focus/recomposition.
+- `item.id` reste la cle Lazy et `item.imageUrl` l'unique URL d'image rendue par la card. Les backdrops caches sont hydrates avant emission; les cinq premieres Series sont preparees avec concurrence `2` avant retrait du skeleton. Un enrichissement ulterieur ne remplace jamais l'image uniquement au focus/recomposition.
 - Une perte de focus, une autre preview, une sortie Home, un changement de profil ou `ON_STOP` arrete et libere le player.
 - Les previews ne passent jamais par le lecteur principal et n'ecrivent ni progression, ni historique, ni date de derniere lecture.
 - Films: lien Xtream du film avec extension locale.
@@ -19,10 +19,11 @@ Derniere mise a jour: 2026-07-13.
 
 - `HomeTrendingPolicy.SectionLimit = 10` centralise la taille par section.
 - La selection est calculee uniquement apres import Live/Films/Series pendant `CatalogRepository.synchronize(profileId)`.
-- Priorite: note valide decroissante, date d'ajout, annee, id stable; fallback vers categories nouveautes normalisees, sinon date d'ajout.
+- Films conservent la selection Room existante. Series normalise toute note sur `5`, forme un pool recent borne, exclut les notes inferieures a `3/5`, trie par note/date d'ajout/annee/id puis complete uniquement avec les meilleures Series globales a au moins `3/5`.
 - Les doublons et marqueurs adultes sont retires avant persistance.
 - `trending_media` et `home_trending_preview_cache` sont scopes par `profileId`.
-- Home relit la selection persistante et ne la recalcule pas lors d'une ouverture, recomposition ou action du header.
+- A la lecture Series, la selection bornee est comparee a `trending_media` et remplacee transactionnellement si elle est obsolete, sans changement de schema Room.
+- Les cards affichent un titre sur une ligne, une note numerique avec etoile jaune separee et un badge haut gauche pour duree Film ou `xS xxE`; une duree nulle/invalide est masquee.
 
 ## Regles a ne pas casser
 

@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -101,6 +102,7 @@ fun ContentProgressCard(
     onLeft: (() -> Unit)? = null,
     onRight: (() -> Unit)? = null,
     enablePreview: Boolean = false,
+    remainingText: String? = null,
     resumeOverlayText: String = "Resume playback",
     blocked: Boolean = false,
     blockedMessage: String = "Connection unavailable",
@@ -275,34 +277,29 @@ fun ContentProgressCard(
                             colorStops = arrayOf(
                                 0f to Color.Transparent,
                                 0.45f to Color.Transparent,
-                                1f to Color.Black.copy(alpha = 0.92f),
+                                1f to Color.Black.copy(alpha = 0.96f),
                             ),
                         ),
                     ),
             )
-            if (!isLive && item.mediaType == "SERIE" && !item.secondaryLabel.isNullOrBlank()) {
-                Box(
+            val mediaBadge = when (item.mediaType) {
+                "FILM" -> "FILM"
+                "LIVE" -> "LIVE"
+                else -> null
+            }
+            if (mediaBadge != null) {
+                MediaTypeBadge(
+                    text = mediaBadge,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(7.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color.Black.copy(alpha = 0.82f))
-                        .padding(horizontal = 6.dp, vertical = 3.dp),
-                ) {
-                    Text(
-                        text = item.secondaryLabel,
-                        color = Color.White,
-                        style = SmartVisionType.Caption.copy(fontSize = 9.sp, lineHeight = 11.sp),
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                    )
-                }
+                        .padding(7.dp),
+                )
             }
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .padding(start = 8.dp, end = 8.dp, bottom = if (isLive) 8.dp else 5.dp),
+                    .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
             ) {
                 Text(
                     text = item.title,
@@ -327,8 +324,37 @@ fun ContentProgressCard(
                     },
                 )
                 if (!isLive) {
-                    Spacer(Modifier.height(4.dp))
-                    ProgressBar(progress = item.progress)
+                    Spacer(Modifier.height(3.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (item.mediaType == "SERIE" && !item.secondaryLabel.isNullOrBlank()) {
+                            Text(
+                                text = item.secondaryLabel,
+                                color = Color.White.copy(alpha = 0.92f),
+                                style = SmartVisionType.Caption.copy(fontSize = 8.sp, lineHeight = 10.sp),
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                            )
+                            Spacer(Modifier.width(5.dp))
+                        }
+                        ProgressBar(
+                            progress = item.progress,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (!remainingText.isNullOrBlank()) {
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = remainingText,
+                                color = Color.White.copy(alpha = 0.84f),
+                                style = SmartVisionType.Caption.copy(fontSize = 7.sp, lineHeight = 9.sp),
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
                 }
             }
         } else {
@@ -393,12 +419,10 @@ private fun MediaTypeBadge(
     modifier: Modifier = Modifier,
 ) {
     if (text.isBlank()) return
-    val accent = mediaTypeBadgeAccent(text)
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(accent.copy(alpha = 0.30f))
-            .border(BorderStroke(1.dp, accent.copy(alpha = 0.86f)), RoundedCornerShape(4.dp))
+            .background(Color.Black.copy(alpha = 0.86f))
             .padding(horizontal = 6.dp, vertical = 3.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -422,11 +446,13 @@ internal fun mediaTypeBadgeAccent(text: String): Color =
     }
 
 @Composable
-private fun ProgressBar(progress: Float) {
+private fun ProgressBar(
+    progress: Float,
+    modifier: Modifier = Modifier,
+) {
     val clamped = max(0f, min(1f, progress))
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .height(4.dp)
             .clip(RoundedCornerShape(50))
             .background(Color.White.copy(alpha = 0.18f)),

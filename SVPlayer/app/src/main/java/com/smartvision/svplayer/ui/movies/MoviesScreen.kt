@@ -339,6 +339,7 @@ fun MoviesScreen(
                     onSortSelected = viewModel::setSortMode,
                     onMovieFocused = viewModel::focusMovie,
                     onRestoreCategoryFocus = { behaviorScope.launch { focusSelectedCategory() } },
+                    onRestoreMovieFocus = { behaviorScope.launch { focusMovieColumn() } },
                     onEnterPreview = ::enterMoviePreview,
                     onMovieClick = { movie ->
                         if (inputReady) {
@@ -475,6 +476,7 @@ private fun MovieList(
     onSortSelected: (MovieSortMode) -> Unit,
     onMovieFocused: (MovieItemUi) -> Unit,
     onRestoreCategoryFocus: () -> Unit,
+    onRestoreMovieFocus: () -> Unit,
     onEnterPreview: (MovieItemUi) -> Unit,
     onMovieClick: (MovieItemUi) -> Unit,
     onLoadNextPage: () -> Unit,
@@ -550,6 +552,10 @@ private fun MovieList(
                         .onPreviewKeyEvent { event ->
                             if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                             when (event.key) {
+                                Key.DirectionDown -> {
+                                    onRestoreMovieFocus()
+                                    true
+                                }
                                 Key.DirectionLeft -> {
                                     onRestoreCategoryFocus()
                                     true

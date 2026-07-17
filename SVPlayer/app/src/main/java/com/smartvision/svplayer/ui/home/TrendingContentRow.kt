@@ -36,6 +36,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -106,8 +107,9 @@ fun TrendingContentRow(
     modifier: Modifier = Modifier,
     lazyListState: LazyListState? = null,
     firstItemFocusRequester: FocusRequester? = null,
-    onDownFromRow: (() -> Unit)? = null,
-    onUpFromRow: (() -> Unit)? = null,
+    itemFocusRequesters: Map<String, FocusRequester> = emptyMap(),
+    onDownFromRow: ((Int) -> Unit)? = null,
+    onUpFromRow: ((Int) -> Unit)? = null,
     blocked: Boolean = false,
     blockedMessage: String = "Connection unavailable",
     onBlockedClick: () -> Unit = {},
@@ -126,6 +128,9 @@ fun TrendingContentRow(
         items.joinToString("|") { it.id }
     }
     val lastItemFocusRequester = remember(itemsSignature) { FocusRequester() }
+    val resolvedLastItemFocusRequester = items.lastOrNull()
+        ?.let { itemFocusRequesters[it.id] }
+        ?: lastItemFocusRequester
 
     LaunchedEffect(itemsSignature) {
         focusedItemId = null
@@ -197,6 +202,7 @@ fun TrendingContentRow(
                         !item.previewUrl.isNullOrBlank(),
                     onClick = { if (blocked) onBlockedClick() else onItemClick(item) },
                     focusRequester = when {
+                        item.id in itemFocusRequesters -> itemFocusRequesters.getValue(item.id)
                         index == 0 -> resolvedFirstItemFocusRequester
                         index == items.lastIndex -> lastItemFocusRequester
                         else -> null
@@ -210,10 +216,15 @@ fun TrendingContentRow(
                             focusedIndex = -1
                         }
                     },
-                    onDown = onDownFromRow,
-                    onUp = onUpFromRow,
+                    onDown = onDownFromRow?.let { callback -> { callback(index) } },
+                    onUp = onUpFromRow?.let { callback -> { callback(index) } },
                     onLeft = if (index == 0) {
-                        { wrapFocus(items.lastIndex, if (items.size == 1) resolvedFirstItemFocusRequester else lastItemFocusRequester) }
+                        {
+                            wrapFocus(
+                                items.lastIndex,
+                                if (items.size == 1) resolvedFirstItemFocusRequester else resolvedLastItemFocusRequester,
+                            )
+                        }
                     } else {
                         null
                     },
@@ -269,7 +280,7 @@ private fun TrendingPreviewCard(
         label = "trendingCardBorder",
     )
     val previewUrl = item.previewUrl
-    val displayedPosterUrl = item.previewImageUrl ?: item.imageUrl
+    val displayedPosterUrl = item.imageUrl
     val firstFramePreviewId by previewController.firstFramePreviewId.collectAsStateWithLifecycle()
     val videoVisible = firstFramePreviewId == item.id
     val detailLabel = if (item.mediaType == "SERIE") item.secondaryLabel else item.previewDurationLabel
@@ -369,7 +380,7 @@ private fun TrendingPreviewCard(
                     Brush.verticalGradient(
                         listOf(
                             Color.Transparent,
-                            Color.Black.copy(alpha = if (videoVisible) 0.80f else 0.94f),
+                            Color.Black.copy(alpha = if (videoVisible) 0.80f else 0.96f),
                         ),
                     ),
                 ),
@@ -383,12 +394,40 @@ private fun TrendingPreviewCard(
                     .background(Color.Black.copy(alpha = 0.84f))
                     .padding(horizontal = 6.dp, vertical = 3.dp),
             ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = item.ratingLabel.removeSuffix("*"),
+                        color = Color.White,
+                        style = SmartVisionType.Caption.copy(fontSize = 10.sp, lineHeight = 12.sp),
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                    Spacer(Modifier.width(2.dp))
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = null,
+                        tint = TrendRatingStarColor,
+                        modifier = Modifier.size(10.dp),
+                    )
+                }
+            }
+        }
+        if (!videoVisible && !detailLabel.isNullOrBlank() && !detailLabel.isZeroDurationLabel()) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(7.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Black.copy(alpha = 0.84f))
+                    .padding(horizontal = 6.dp, vertical = 3.dp),
+            ) {
                 Text(
-                    text = item.ratingLabel,
+                    text = detailLabel,
                     color = Color.White,
-                    style = SmartVisionType.Caption.copy(fontSize = 10.sp, lineHeight = 12.sp),
-                    fontWeight = FontWeight.Bold,
+                    style = SmartVisionType.Caption.copy(fontSize = 9.sp, lineHeight = 11.sp),
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -398,19 +437,6 @@ private fun TrendingPreviewCard(
                 .fillMaxWidth()
                 .padding(horizontal = 9.dp, vertical = 7.dp),
         ) {
-            if (!videoVisible) {
-                detailLabel?.takeIf { it.isNotBlank() }?.let { label ->
-                    Text(
-                        text = label,
-                        color = Color.White.copy(alpha = 0.86f),
-                        style = SmartVisionType.Caption.copy(fontSize = 9.sp, lineHeight = 11.sp),
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.align(Alignment.End),
-                    )
-                }
-            }
             Text(
                 text = item.title,
                 color = Color.White,
@@ -427,7 +453,7 @@ private fun TrendingPreviewCard(
                     },
                 ),
                 fontWeight = FontWeight.Bold,
-                maxLines = if (videoVisible) 1 else 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 onTextLayout = { result ->
                     if (!videoVisible && result.hasVisualOverflow) compactTitle = true
@@ -737,6 +763,10 @@ private object UnsupportedTrendingPreviewCache {
 private const val TrendingFocusStabilityMillis = 550L
 private const val HomeCardFocusedScale = 1.04f
 private const val HomeCardVideoFocusedScale = 1.2f
+private val TrendRatingStarColor = Color(0xFFFFD54F)
+
+private fun String.isZeroDurationLabel(): Boolean =
+    trim().matches(Regex("""(?i)^0+\s*(?:h|m|min)?(?:\s*0+\s*(?:m|min))?$"""))
 private const val TrendingVideoPrepareDelayMillis = 900L
 private const val TrendingVideoCrossfadeMillis = 650L
 private const val TrendingPrefetchAhead = 3

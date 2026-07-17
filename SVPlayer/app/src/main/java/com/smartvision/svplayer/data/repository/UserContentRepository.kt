@@ -124,34 +124,32 @@ class UserContentRepository(
                     imageUrl = progress.imageUrl ?: movie.posterUrl,
                 )
             }
-            UserContentType.Episode -> mediaDao.getEpisode(progress.profileId, id)?.let { episode ->
-                val series = mediaDao.getSeries(progress.profileId, episode.seriesId)
-                val seasonEpisodeLabel = "S${episode.seasonNumber} E${episode.episodeNumber}"
-                val episodeSubtitle = listOf(seasonEpisodeLabel, episode.title)
-                    .filter { it.isNotBlank() }
-                    .joinToString(" - ")
-                progress.copy(
-                    title = progress.title
-                        .takeUnless { it.isFallbackEpisodeTitle(id, episode.title) }
-                        ?: series?.title
-                        ?: episode.title,
-                    subtitle = progress.subtitle
-                        .takeUnless { it.isGenericEpisodeSubtitle() }
-                        ?: episodeSubtitle,
-                    imageUrl = progress.imageUrl ?: series?.posterUrl,
-                    parentContentId = progress.parentContentId ?: episode.seriesId.toString(),
-                )
-            } ?: progress.parentContentId?.toIntOrNull()?.let { seriesId ->
-                    mediaDao.getSeries(progress.profileId, seriesId)?.let { series ->
+            UserContentType.Episode -> {
+                val episode = mediaDao.getEpisode(progress.profileId, id)
+                val resolvedSeriesId = episode?.seriesId
+                    ?: progress.parentContentId?.toIntOrNull()
+                    ?: progress.title.generatedSeriesId()
+                val series = resolvedSeriesId?.let { mediaDao.getSeries(progress.profileId, it) }
+                if (episode == null && series == null) {
+                    null
+                } else {
+                    val episodeSubtitle = episode?.let {
+                        listOf("S${it.seasonNumber} E${it.episodeNumber}", it.title)
+                            .filter(String::isNotBlank)
+                            .joinToString(" - ")
+                    }
                     progress.copy(
                         title = progress.title
-                            .takeUnless { it.isFallbackEpisodeTitle(id) }
-                            ?: series.title,
+                            .takeUnless { it.isFallbackEpisodeTitle(id, episode?.title) }
+                            ?: series?.title
+                            ?: episode?.title,
                         subtitle = progress.subtitle
                             .takeUnless { it.isGenericEpisodeSubtitle() }
+                            ?: episodeSubtitle
                             ?: "Serie",
-                        imageUrl = progress.imageUrl ?: series.posterUrl,
-                        parentContentId = progress.parentContentId,
+                        imageUrl = progress.imageUrl ?: series?.posterUrl,
+                        parentContentId = resolvedSeriesId?.toString()
+                            ?: progress.parentContentId,
                     )
                 }
             }
@@ -238,7 +236,17 @@ private fun String?.isFallbackEpisodeTitle(contentId: Int, episodeTitle: String?
     if (value.isBlank()) return true
     if (value.equals("Episode $contentId", ignoreCase = true)) return true
     if (value.equals("Series", ignoreCase = true) || value.equals("Serie", ignoreCase = true)) return true
+    if (value.generatedSeriesId() != null) return true
     return !episodeTitle.isNullOrBlank() && value.equals(episodeTitle.trim(), ignoreCase = true)
+}
+
+private fun String?.generatedSeriesId(): Int? {
+    val value = this?.trim()?.takeIf(String::isNotBlank) ?: return null
+    return GeneratedSeriesTitleRegex
+        .matchEntire(value)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.toIntOrNull()
 }
 
 private fun String?.isGenericEpisodeSubtitle(): Boolean {
@@ -255,3 +263,6 @@ private fun String?.isFallbackLiveTitle(contentId: Int): Boolean {
     return value.equals("Chaine $contentId", ignoreCase = true) ||
         value.equals("Chaîne $contentId", ignoreCase = true)
 }
+
+private val GeneratedSeriesTitleRegex =
+    Regex("""(?i)^s[eé]rie?s?\s+(\d+)$""")

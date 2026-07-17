@@ -1,5 +1,6 @@
 # AI Changelog
 
+- 2026-07-17: correction ciblee Catalogue/Home sans refonte: `DPAD_DOWN` sort des recherches non vides vers la liste composee; Continue repare les titres Series generiques, ajoute badges Film/Live et compteurs alignes; Tendances normalise les notes, exclut les Series sous `3/5`, masque `0min`, stabilise les cinq premiers backdrops et nettoie les codes `(BE)/(JP)`; Haut/Bas entre carrousels conserve la colonne visuelle la plus proche au lieu de forcer l'index `0`. Aucun schema, endpoint, test, build ou deploiement.
 - 2026-07-17: Home affiche des skeletons a froid, nettoie les titres Continue/Tendances, utilise les backdrops TMDB 16:9 et les metadonnees Film/Serie, ouvre les fiches depuis Tendances et remplace le `TextureView` du mini-player partage par un `SurfaceView`; les cartes grandissent de 20% apres la premiere image et reduisent alors leur overlay au titre.
 - 2026-07-17: Continue Watching distingue Live/Film/Serie sans badge de type ni texte secondaire, conserve une barre de progression basse pour VOD et ajoute le badge `Sxx Exx` des episodes.
 - 2026-07-17: le Back du lecteur Live masque d'abord l'overlay puis quitte au second appui, et l'index de focus fantome entre luminosite et chaine precedente est supprime.

@@ -340,6 +340,7 @@ fun SeriesScreen(
                     onSortSelected = viewModel::setSortMode,
                     onSeriesFocused = viewModel::focusSeries,
                     onRestoreCategoryFocus = { behaviorScope.launch { focusSelectedCategory() } },
+                    onRestoreSeriesFocus = { behaviorScope.launch { focusSeriesColumn() } },
                     onEnterPreview = ::enterSeriesPreview,
                     onSeriesClick = { series ->
                         if (inputReady) {
@@ -501,6 +502,7 @@ private fun SeriesList(
     onSortSelected: (SeriesSortMode) -> Unit,
     onSeriesFocused: (SeriesItemUi) -> Unit,
     onRestoreCategoryFocus: () -> Unit,
+    onRestoreSeriesFocus: () -> Unit,
     onEnterPreview: (SeriesItemUi) -> Unit,
     onSeriesClick: (SeriesItemUi) -> Unit,
     onLoadNextPage: () -> Unit,
@@ -577,6 +579,10 @@ private fun SeriesList(
                         .onPreviewKeyEvent { event ->
                             if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                             when (event.key) {
+                                Key.DirectionDown -> {
+                                    onRestoreSeriesFocus()
+                                    true
+                                }
                                 Key.DirectionLeft -> {
                                     onRestoreCategoryFocus()
                                     true

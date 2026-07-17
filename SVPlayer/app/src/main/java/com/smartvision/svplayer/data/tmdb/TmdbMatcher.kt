@@ -12,6 +12,8 @@ object TmdbMatcher {
         RegexOption.IGNORE_CASE,
     )
     private val catalogPrefixRegex = Regex("""^\s*([A-Z0-9]{2,6})\s*[-:|]\s+(.+)$""")
+    private val leadingCatalogBracketRegex = Regex("""^\s*[\[(]([A-Z]{2,6})[\])]\s*(?:[-:|]\s*)?(.+)$""")
+    private val trailingCatalogBracketRegex = Regex("""^(.+?)\s*[\[(]([A-Z]{2,6})[\])]\s*$""")
     private val parenthesizedYearRegex = Regex("""\s*\((?:19|20)\d{2}\)\s*""")
     private val punctuationRegex = Regex("""[^a-z0-9]+""")
 
@@ -29,7 +31,7 @@ object TmdbMatcher {
             .trim()
 
     fun cleanDisplayTitle(value: String): String =
-        stripCatalogPrefix(value)
+        stripCatalogBracketCodes(stripCatalogPrefix(value))
             .replace(parenthesizedYearRegex, " ")
             .replace(Regex("""\s+"""), " ")
             .trim()
@@ -49,6 +51,21 @@ object TmdbMatcher {
             ?.groupValues
             ?.getOrNull(2)
             ?: value
+
+    private fun stripCatalogBracketCodes(value: String): String {
+        val withoutLeading = leadingCatalogBracketRegex
+            .matchEntire(value)
+            ?.takeIf { it.groupValues[1] in CatalogBracketCodes }
+            ?.groupValues
+            ?.getOrNull(2)
+            ?: value
+        return trailingCatalogBracketRegex
+            .matchEntire(withoutLeading)
+            ?.takeIf { it.groupValues[2] in CatalogBracketCodes }
+            ?.groupValues
+            ?.getOrNull(1)
+            ?: withoutLeading
+    }
 
     fun scoreMovie(
         queryTitle: String,
@@ -133,3 +150,24 @@ object TmdbMatcher {
         return (coverage * 48.0).roundToInt()
     }
 }
+
+private val CatalogBracketCodes = setOf(
+    "AR",
+    "BE",
+    "BR",
+    "DE",
+    "EN",
+    "ES",
+    "FR",
+    "IT",
+    "JP",
+    "KR",
+    "MULTI",
+    "NL",
+    "PL",
+    "PT",
+    "RU",
+    "TR",
+    "VF",
+    "VOSTFR",
+)

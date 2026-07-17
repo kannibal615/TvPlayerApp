@@ -18,6 +18,7 @@ import com.smartvision.svplayer.data.local.dao.ProgressDao
 import com.smartvision.svplayer.data.local.dao.SyncStateDao
 import com.smartvision.svplayer.data.local.dao.YoutubeDao
 import com.smartvision.svplayer.data.home.HomeTrendingPolicy
+import com.smartvision.svplayer.data.local.entity.CategoryEntity
 import com.smartvision.svplayer.data.local.entity.FavoriteEntity
 import com.smartvision.svplayer.data.local.entity.KidsCategoryDecisionEntity
 import com.smartvision.svplayer.data.local.entity.KidsItemDecisionEntity
@@ -619,7 +620,7 @@ class DefaultCatalogRepository(
                     title = movie.title,
                     categoryName = categoryNames[movie.categoryId] ?: "Films",
                     posterUrl = normalizeCatalogImageUrl(movie.posterUrl, imageBaseHost),
-                    rating = movie.rating,
+                    rating = movie.rating.toFiveStarRating().toTrendingRatingLabel(),
                     year = movie.year,
                     previewUrl = null,
                 )
@@ -635,11 +636,24 @@ class DefaultCatalogRepository(
             return@withContext emptyList()
         }
         val profileId = activeProfileId()
-        val categoryNames = categoryDao.getByType(profileId, MediaSection.Series.storageName).associate { it.id to it.name }
+        val categories = categoryDao.getByType(profileId, MediaSection.Series.storageName)
+        val categoryNames = categories.associate { it.id to it.name }
         val imageBaseHost = imageBaseHost()
         val persisted = mediaDao.getTrendingMedia(profileId, TrendingSeriesType)
-        val order = persisted.mapIndexed { index, item -> item.contentId to index }.toMap()
-        mediaDao.getSeriesByIds(profileId, persisted.map { it.contentId })
+        val selected = selectTrendingSeriesCandidates(profileId, categories)
+            .take(limit.coerceAtMost(HomeTrendingPolicy.SectionLimit))
+        val selectedEntities = selected.mapIndexed { index, series ->
+            series.toTrendingEntity(profileId, System.currentTimeMillis() - index)
+        }
+        val selectionChanged = persisted.map { it.contentId } != selectedEntities.map { it.contentId } ||
+            persisted.map { it.rating } != selectedEntities.map { it.rating }
+        if (selectionChanged) {
+            database.withTransaction {
+                mediaDao.clearTrendingMedia(profileId, TrendingSeriesType)
+                if (selectedEntities.isNotEmpty()) mediaDao.upsertTrendingMedia(selectedEntities)
+            }
+        }
+        selected
             .asSequence()
             .map { series ->
                 TrendingCatalogItem(
@@ -648,14 +662,12 @@ class DefaultCatalogRepository(
                     title = series.title,
                     categoryName = categoryNames[series.categoryId] ?: "Series",
                     posterUrl = normalizeCatalogImageUrl(series.posterUrl, imageBaseHost),
-                    rating = series.rating,
+                    rating = series.rating.toFiveStarRating().toTrendingRatingLabel(),
                     year = series.year,
                     previewUrl = null,
                 )
             }
             .filterNot { it.containsAdultMarker() }
-            .sortedBy { order[it.contentId] ?: Int.MAX_VALUE }
-            .take(limit.coerceAtMost(HomeTrendingPolicy.SectionLimit))
             .toList()
     }
 
@@ -1052,11 +1064,15 @@ class DefaultCatalogRepository(
             mediaDao.getNewestMovieCandidates(profileId, HomeTrendingPolicy.CandidateLimit)
         }
         val ratedSeries = mediaDao.getTopRatedSeriesCandidates(profileId, HomeTrendingPolicy.CandidateLimit)
-        val newestSeries = if (seriesNoveltyIds.isNotEmpty()) {
-            mediaDao.getNewestSeriesCandidatesByCategory(profileId, seriesNoveltyIds, HomeTrendingPolicy.CandidateLimit)
-        } else {
-            mediaDao.getNewestSeriesCandidates(profileId, HomeTrendingPolicy.CandidateLimit)
-        }
+        val newestSeries = (
+            if (seriesNoveltyIds.isNotEmpty()) {
+                mediaDao.getNewestSeriesCandidatesByCategory(profileId, seriesNoveltyIds, HomeTrendingPolicy.CandidateLimit)
+            } else {
+                emptyList()
+            } + mediaDao.getNewestSeriesCandidates(profileId, HomeTrendingPolicy.CandidateLimit)
+            )
+            .distinctBy(SeriesEntity::seriesId)
+            .take(HomeTrendingPolicy.CandidateLimit)
 
         val movies = HomeTrendingPolicy.selectDeterministic(
             ratedCandidates = ratedMovies,
@@ -1068,11 +1084,11 @@ class DefaultCatalogRepository(
             allowed = { movie -> !containsAdultMarker(movie.title, movieCategoryNames[movie.categoryId]) },
         )
             .mapIndexed { index, movie -> movie.toTrendingEntity(profileId, synchronizedAt - index) }
-        val series = HomeTrendingPolicy.selectDeterministic(
+        val series = HomeTrendingPolicy.selectRecentRated(
+            recentCandidates = newestSeries,
             ratedCandidates = ratedSeries,
-            newestCandidates = newestSeries,
             idOf = SeriesEntity::seriesId,
-            ratingOf = { it.rating.toTrendingRating().takeIf { rating -> rating > 0f } },
+            ratingOf = { it.rating.toFiveStarRating().takeIf { rating -> rating > 0f } },
             addedAtOf = SeriesEntity::addedAt,
             yearOf = { it.year?.take(4)?.toIntOrNull() },
             allowed = { item -> !containsAdultMarker(item.title, seriesCategoryNames[item.categoryId]) },
@@ -1085,6 +1101,46 @@ class DefaultCatalogRepository(
             if (movies.isNotEmpty()) mediaDao.upsertTrendingMedia(movies)
             if (series.isNotEmpty()) mediaDao.upsertTrendingMedia(series)
         }
+    }
+
+    private suspend fun selectTrendingSeriesCandidates(
+        profileId: String,
+        categories: List<CategoryEntity>,
+    ): List<SeriesEntity> {
+        val categoryNames = categories.associate { it.id to it.name }
+        val noveltyIds = categories
+            .filter { HomeTrendingPolicy.isNoveltyCategory(it.name) }
+            .map { it.id }
+        val noveltyCandidates = if (noveltyIds.isNotEmpty()) {
+            mediaDao.getNewestSeriesCandidatesByCategory(
+                profileId,
+                noveltyIds,
+                HomeTrendingPolicy.CandidateLimit,
+            )
+        } else {
+            emptyList()
+        }
+        val recentCandidates = (
+            noveltyCandidates +
+                mediaDao.getNewestSeriesCandidates(profileId, HomeTrendingPolicy.CandidateLimit)
+            )
+            .distinctBy(SeriesEntity::seriesId)
+            .take(HomeTrendingPolicy.CandidateLimit)
+        val ratedCandidates = mediaDao.getTopRatedSeriesCandidates(
+            profileId,
+            HomeTrendingPolicy.CandidateLimit,
+        )
+        return HomeTrendingPolicy.selectRecentRated(
+            recentCandidates = recentCandidates,
+            ratedCandidates = ratedCandidates,
+            idOf = SeriesEntity::seriesId,
+            ratingOf = { it.rating.toFiveStarRating().takeIf { rating -> rating > 0f } },
+            addedAtOf = SeriesEntity::addedAt,
+            yearOf = { it.year?.take(4)?.toIntOrNull() },
+            allowed = { series ->
+                !containsAdultMarker(series.title, categoryNames[series.categoryId])
+            },
+        )
     }
 
     private suspend fun <Remote, Local> filterAndImportKidsSection(
@@ -2014,7 +2070,26 @@ private fun SeriesEntity.toTrendingEntity(profileId: String, rankTimestamp: Long
     )
 
 private fun String?.toTrendingRating(): Float =
-    this?.trim()?.replace(',', '.')?.toFloatOrNull()?.takeIf { it.isFinite() && it > 0f } ?: 0f
+    toFiveStarRating()
+
+private fun String?.toFiveStarRating(): Float {
+    val raw = this
+        ?.trim()
+        ?.substringBefore('/')
+        ?.replace(',', '.')
+        ?.toFloatOrNull()
+        ?.takeIf { it.isFinite() && it > 0f }
+        ?: return 0f
+    return (if (raw > 5f) raw / 2f else raw).coerceIn(0f, 5f)
+}
+
+private fun Float.toTrendingRatingLabel(): String? =
+    takeIf { it.isFinite() && it > 0f }
+        ?.let { value ->
+            "%.1f".format(java.util.Locale.US, value)
+                .trimEnd('0')
+                .trimEnd('.')
+        }
 
 private suspend fun <Remote, Local> upsertMappedInBatches(
     items: List<Remote>,

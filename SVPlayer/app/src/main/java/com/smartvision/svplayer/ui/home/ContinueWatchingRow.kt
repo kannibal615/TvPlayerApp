@@ -74,9 +74,11 @@ fun ContinueWatchingRow(
     modifier: Modifier = Modifier,
     lazyListState: LazyListState? = null,
     firstItemFocusRequester: FocusRequester? = null,
-    onDownFromRow: (() -> Unit)? = null,
-    onUpFromRow: (() -> Unit)? = null,
+    itemFocusRequesters: Map<String, FocusRequester> = emptyMap(),
+    onDownFromRow: ((Int) -> Unit)? = null,
+    onUpFromRow: ((Int) -> Unit)? = null,
     enablePreview: Boolean = false,
+    timeRemainingFormat: String = "%s remaining",
     resumeOverlayText: String = "Resume playback",
     blocked: Boolean = false,
     blockedMessage: String = "Connection unavailable",
@@ -96,6 +98,9 @@ fun ContinueWatchingRow(
         items.joinToString("|") { it.id }
     }
     val lastItemFocusRequester = remember(itemsSignature) { FocusRequester() }
+    val resolvedLastItemFocusRequester = items.lastOrNull()
+        ?.let { itemFocusRequesters[it.id] }
+        ?: lastItemFocusRequester
 
     DisposableEffect(rowState) {
         onDispose { anchorJob?.cancel() }
@@ -215,6 +220,7 @@ fun ContinueWatchingRow(
                     item = item,
                     onClick = { if (blocked) onBlockedClick() else onItemClick(item) },
                     focusRequester = when {
+                        item.id in itemFocusRequesters -> itemFocusRequesters.getValue(item.id)
                         index == 0 -> resolvedFirstItemFocusRequester
                         index == items.lastIndex -> lastItemFocusRequester
                         else -> null
@@ -254,10 +260,15 @@ fun ContinueWatchingRow(
                             fields = mapOf("row" to title, "index" to index, "id" to item.id, "focused" to focused),
                         )
                     },
-                    onDown = onDownFromRow,
-                    onUp = onUpFromRow,
+                    onDown = onDownFromRow?.let { callback -> { callback(index) } },
+                    onUp = onUpFromRow?.let { callback -> { callback(index) } },
                     onLeft = if (index == 0) {
-                        { wrapFocus(items.lastIndex, if (items.size == 1) resolvedFirstItemFocusRequester else lastItemFocusRequester) }
+                        {
+                            wrapFocus(
+                                items.lastIndex,
+                                if (items.size == 1) resolvedFirstItemFocusRequester else resolvedLastItemFocusRequester,
+                            )
+                        }
                     } else {
                         null
                     },
@@ -267,6 +278,9 @@ fun ContinueWatchingRow(
                         null
                     },
                     enablePreview = enablePreview && focusedPreviewId == item.id,
+                    remainingText = item.remaining
+                        .takeIf(String::isNotBlank)
+                        ?.let { timeRemainingFormat.format(it) },
                     resumeOverlayText = resumeOverlayText,
                     blocked = blocked,
                     blockedMessage = blockedMessage,

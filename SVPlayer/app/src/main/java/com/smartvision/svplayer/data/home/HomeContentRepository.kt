@@ -21,6 +21,7 @@ import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -45,8 +46,18 @@ data class HomeTrendingPreparedPreview(
     val backdropAvailable: Boolean,
     val previewAvailable: Boolean,
 ) {
-    fun applyTo(item: ContinueItem): ContinueItem =
+    fun applyTo(
+        item: ContinueItem,
+        promoteCardArtwork: Boolean = false,
+    ): ContinueItem =
         item.copy(
+            imageUrl = if (promoteCardArtwork) {
+                backdropUrl.takeIf { backdropAvailable }
+                    ?: posterUrl
+                    ?: item.imageUrl
+            } else {
+                item.imageUrl
+            },
             previewImageUrl = backdropUrl.takeIf { backdropAvailable },
             remaining = durationLabel ?: item.remaining,
             previewUrl = previewUrl,
@@ -139,7 +150,14 @@ class HomeContentRepository(
                 }
                 .mapNotNull { it.toMovieTrendItem() }
                 .take(HomeTrendingPolicy.SectionLimit)
-                .let { movies -> updateCachedTrending(key = key, movies = movies).movies }
+                .let { movies ->
+                    val hydrated = hydrateCachedTrendingItems(
+                        key = key,
+                        contentType = TrendingMovieType,
+                        items = movies,
+                    )
+                    updateCachedTrending(key = key, movies = hydrated).movies
+                }
         }
     }
 
@@ -170,7 +188,10 @@ class HomeContentRepository(
                 }
                 .mapNotNull { it.toSeriesTrendItem() }
                 .take(HomeTrendingPolicy.SectionLimit)
-                .let { series -> updateCachedTrending(key = key, series = series).series }
+                .let { series ->
+                    val prepared = prepareInitialTrendingSeries(key, series)
+                    updateCachedTrending(key = key, series = prepared).series
+                }
         }
     }
 
@@ -236,11 +257,20 @@ class HomeContentRepository(
                             .mapNotNull { it.toSeriesTrendItem() }
                             .take(HomeTrendingPolicy.SectionLimit)
                     }
-                    HomeTrendingSnapshot(
+                    val baseSnapshot = HomeTrendingSnapshot(
                         movies = movies.await(),
                         series = series.await(),
-                    ).also {
-                        cachedTrending = CachedHomeTrending(key, it)
+                    )
+                    val preparedSnapshot = HomeTrendingSnapshot(
+                        movies = hydrateCachedTrendingItems(
+                            key = key,
+                            contentType = TrendingMovieType,
+                            items = baseSnapshot.movies,
+                        ),
+                        series = prepareInitialTrendingSeries(key, baseSnapshot.series),
+                    )
+                    preparedSnapshot.also {
+                        cachedTrending = CachedHomeTrending(key, preparedSnapshot)
                         PerformanceDiagnosticRecorder.recordDuration(
                             sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
                             event = "home_trending_snapshot_ready",
@@ -349,6 +379,68 @@ class HomeContentRepository(
         previewCacheCleanedForKey = key
     }
 
+    private suspend fun hydrateCachedTrendingItems(
+        key: HomeTrendingCacheKey,
+        contentType: String,
+        items: List<ContinueItem>,
+    ): List<ContinueItem> {
+        if (items.isEmpty()) return items
+        cleanPreviewCacheIfNeeded(key.lastSync)
+        return items.map { item ->
+            val contentId = item.id.substringAfter(':', "").toIntOrNull()
+                ?: return@map item
+            mediaDao.getHomeTrendingPreviewCache(
+                key.profileId,
+                contentType,
+                contentId,
+                key.lastSync,
+            )
+                ?.takeIf { it.hasReusableXtreamPreviewCache() }
+                ?.toPreparedPreview()
+                ?.applyTo(item, promoteCardArtwork = true)
+                ?: item
+        }
+    }
+
+    private suspend fun prepareInitialTrendingSeries(
+        key: HomeTrendingCacheKey,
+        items: List<ContinueItem>,
+    ): List<ContinueItem> {
+        val hydrated = hydrateCachedTrendingItems(
+            key = key,
+            contentType = TrendingSeriesType,
+            items = items,
+        )
+        if (hydrated.isEmpty()) return hydrated
+        val preparedById = mutableMapOf<String, HomeTrendingPreparedPreview>()
+        val preparationBatches = hydrated
+            .take(InitialSeriesArtworkCount)
+            .filterNot(ContinueItem::previewPrepared)
+            .chunked(TrendingPreviewPrepareConcurrency)
+        for (batch in preparationBatches) {
+            val preparedBatch = coroutineScope {
+                batch.map { item ->
+                    async {
+                        val contentId = item.id.substringAfter(':', "").toIntOrNull()
+                            ?: return@async null
+                        prepareTrendingPreview(
+                            contentType = TrendingSeriesType,
+                            contentId = contentId,
+                            fallbackPosterUrl = item.imageUrl,
+                        )?.let { item.id to it }
+                    }
+                }.awaitAll().filterNotNull()
+            }
+            preparedById.putAll(preparedBatch)
+        }
+        if (preparedById.isEmpty()) return hydrated
+        return hydrated.map { item ->
+            preparedById[item.id]
+                ?.applyTo(item, promoteCardArtwork = true)
+                ?: item
+        }
+    }
+
     private suspend fun buildMoviePreviewCache(
         contentId: Int,
         fallbackPosterUrl: String?,
@@ -375,7 +467,10 @@ class HomeContentRepository(
             contentId = contentId,
             posterUrl = posterUrl,
             backdropUrl = backdropUrl,
-            durationLabel = durationMs?.formatDurationLabel() ?: details.duration?.takeIf { it.isNotBlank() },
+            durationLabel = durationMs
+                ?.takeIf { it > 0L }
+                ?.formatDurationLabel()
+                ?: details.duration?.takeIf { it.isMeaningfulDurationLabel() },
             durationMs = durationMs,
             previewKind = if (localMovie != null) PreviewKindMovie else PreviewKindNone,
             previewContentId = localMovie?.streamId,
@@ -500,7 +595,7 @@ class HomeContentRepository(
             visualStyle = HomeVisualStyle.Cinema,
             imageUrl = posterUrl,
             previewImageUrl = null,
-            ratingLabel = rating.toStarRatingLabel(),
+            ratingLabel = rating.toRatingLabel(),
             mediaType = "FILM",
             previewUrl = null,
             previewMode = HomePreviewMode.None,
@@ -533,7 +628,7 @@ class HomeContentRepository(
             visualStyle = HomeVisualStyle.Series,
             imageUrl = posterUrl,
             previewImageUrl = null,
-            ratingLabel = rating.toStarRatingLabel(),
+            ratingLabel = rating.toRatingLabel(),
             mediaType = "SERIE",
             previewUrl = null,
             previewMode = HomePreviewMode.None,
@@ -568,7 +663,7 @@ private fun String.cleanHomeTitle(): String =
         .replace(" 4K", "", ignoreCase = true)
         .trim()
 
-private fun String?.toStarRatingLabel(): String? =
+private fun String?.toRatingLabel(): String? =
     this
         ?.trim()
         ?.substringBefore('/')
@@ -576,7 +671,6 @@ private fun String?.toStarRatingLabel(): String? =
         ?.trimEnd('0')
         ?.trimEnd('.')
         ?.takeIf { it.isNotBlank() && it != "0" }
-        ?.let { "$it*" }
 
 private fun String?.parseDurationMs(): Long? {
     val value = this?.trim()?.lowercase()?.takeIf { it.isNotBlank() } ?: return null
@@ -587,7 +681,7 @@ private fun String?.parseDurationMs(): Long? {
             3 -> ((parts[0] * 3_600L) + (parts[1] * 60L) + parts[2]) * 1_000L
             2 -> ((parts[0] * 60L) + parts[1]) * 1_000L
             else -> null
-        }
+        }?.takeIf { it > 0L }
     }
     val hours = Regex("(\\d+)\\s*h").find(value)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
     val minutes = Regex("(\\d+)\\s*(m|min)").find(value)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
@@ -595,10 +689,13 @@ private fun String?.parseDurationMs(): Long? {
     if (hours > 0L || minutes > 0L || seconds > 0L) {
         return ((hours * 3_600L) + (minutes * 60L) + seconds) * 1_000L
     }
-    val numeric = value.filter { it.isDigit() }.toLongOrNull() ?: return null
+    val numeric = value.filter { it.isDigit() }.toLongOrNull()?.takeIf { it > 0L } ?: return null
     val secondsValue = if (numeric <= 360L) numeric * 60L else numeric
     return secondsValue * 1_000L
 }
+
+private fun String.isMeaningfulDurationLabel(): Boolean =
+    isNotBlank() && parseDurationMs()?.let { it > 0L } == true
 
 private fun Long?.previewStartAt(ratio: Double): Long =
     this?.takeIf { it > 0L }
@@ -618,6 +715,8 @@ private fun Long.formatDurationLabel(): String {
 
 private const val TrendingMovieType = "movie"
 private const val TrendingSeriesType = "series"
+private const val InitialSeriesArtworkCount = 5
+private const val TrendingPreviewPrepareConcurrency = 2
 private const val PreviewKindMovie = "movie"
 private const val PreviewKindEpisode = "episode"
 private const val PreviewKindNone = "none"

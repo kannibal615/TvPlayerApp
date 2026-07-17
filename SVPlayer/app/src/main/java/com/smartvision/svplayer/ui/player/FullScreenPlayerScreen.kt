@@ -4162,7 +4162,8 @@ private fun String.isGeneratedTitleFor(kind: FullScreenContentKind, id: Int): Bo
         FullScreenContentKind.Movie -> normalized.equals("Film $id", ignoreCase = true)
         FullScreenContentKind.Episode -> normalized.equals("Episode $id", ignoreCase = true) ||
             normalized.equals("Series", ignoreCase = true) ||
-            normalized.equals("Serie", ignoreCase = true)
+            normalized.equals("Serie", ignoreCase = true) ||
+            normalized.matches(Regex("""(?i)^s[eé]rie?s?\s+\d+$"""))
         FullScreenContentKind.LocalMedia -> false
     }
 }

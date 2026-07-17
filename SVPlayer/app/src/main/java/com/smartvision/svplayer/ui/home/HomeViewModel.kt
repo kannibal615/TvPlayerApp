@@ -417,7 +417,14 @@ private fun toContinueItem(progress: PlaybackProgressEntity): ContinueItem? {
         id = "${progress.contentType}:$id",
         title = title,
         meta = meta,
-        remaining = if (duration > position) (duration - position).formatRemaining() else "Direct",
+        remaining = if (
+            progress.contentType != UserContentType.Live &&
+            duration > position
+        ) {
+            (duration - position).formatRemaining()
+        } else {
+            ""
+        },
         progress = ratio.coerceIn(0f, 1f),
         visualStyle = visualStyle,
         imageUrl = imageUrl,
@@ -483,7 +490,11 @@ private fun Long.formatRemaining(): String {
     val minutes = (this / 60_000L).coerceAtLeast(1L)
     val hours = minutes / 60L
     val remainingMinutes = minutes % 60L
-    return if (hours > 0L) "${hours}h ${remainingMinutes}min" else "${minutes}min"
+    return if (hours > 0L) {
+        "${hours} h ${remainingMinutes.toString().padStart(2, '0')} min"
+    } else {
+        "$minutes min"
+    }
 }
 
 private fun String.cleanHomeTitle(): String =
@@ -500,7 +511,7 @@ private fun PlaybackProgressEntity.episodeBadge(): String? {
     val match = EpisodeBadgeRegex.find(source) ?: return null
     val season = match.groupValues.getOrNull(1)?.toIntOrNull() ?: return null
     val episode = match.groupValues.getOrNull(2)?.toIntOrNull() ?: return null
-    return "S${season.toString().padStart(2, '0')} E${episode.toString().padStart(2, '0')}"
+    return "S$season E$episode"
 }
 
 private suspend fun awaitMinimumHomeLoading(startedAtMs: Long) {
