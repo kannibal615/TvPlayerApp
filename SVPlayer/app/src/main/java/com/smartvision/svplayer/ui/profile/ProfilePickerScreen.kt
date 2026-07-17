@@ -398,7 +398,12 @@ private fun ProfilePickerCard(
             modifier = Modifier
                 .width(cardWidth)
                 .height(cardHeight)
-                .shadow(if (focused || selected) 25.dp else 3.dp, shape, ambientColor = borderColor, spotColor = borderColor)
+                .shadow(
+                    if (focused || selected) 25.dp else 3.dp,
+                    shape,
+                    ambientColor = SmartVisionColors.CardFocusGlow,
+                    spotColor = SmartVisionColors.CardFocusGlow,
+                )
                 .clip(shape)
                 .background(
                     Brush.verticalGradient(
@@ -570,7 +575,12 @@ private fun AddProfileCard(
                 alpha = reveal.value
                 translationY = (1f - reveal.value) * 12.dp.toPx()
             }
-            .shadow(if (focused) 25.dp else 3.dp, shape, ambientColor = Color(0xFF168BFF), spotColor = Color(0xFF168BFF))
+            .shadow(
+                if (focused) 25.dp else 3.dp,
+                shape,
+                ambientColor = SmartVisionColors.CardFocusGlow,
+                spotColor = SmartVisionColors.CardFocusGlow,
+            )
             .clip(shape)
             .background(Brush.verticalGradient(listOf(Color(0xFF14233F).copy(alpha = 0.87f), Color(0xFF071329).copy(alpha = 0.97f))))
             .border(BorderStroke(if (focused) 2.5.dp else 1.5.dp, if (focused) Color(0xFF61A8FF) else Color(0xFF53698D).copy(alpha = 0.72f)), shape)

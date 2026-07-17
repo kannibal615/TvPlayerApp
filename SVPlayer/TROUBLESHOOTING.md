@@ -223,3 +223,11 @@ Avoid next time:
 - Solution: conserver le token valide existant et creer seulement la nouvelle session/short code Playlist.
 - A eviter: dupliquer un token appareil pour chaque short code; le token authentifie l'appareil, le short code autorise l'operation web.
 - Fichiers/commande: `server/public_html/api/create_playlist_setup_session.php`, `php -l server/public_html/api/create_playlist_setup_session.php`.
+# 2026-07-17 - APK release verrouille par un `adb install` bloque
+
+- Probleme: `:app:packageRelease` echoue avec `Unable to delete ... app-release.apk`.
+- Contexte: une commande `adb install -r app-release.apk` a depasse son timeout mais son processus Windows est reste actif et gardait l'APK ouvert.
+- Cause: le timeout du shell n'arrete pas toujours le processus enfant `adb.exe`.
+- Solution: identifier uniquement le processus `adb.exe` dont la ligne de commande contient `install -r`, l'arreter, relancer `assembleRelease`, puis preferer `adb push` vers `/data/local/tmp` suivi de `shell pm install -r`.
+- A eviter: tuer le serveur ADB complet ou supprimer le dossier build avant d'avoir verifie le processus qui tient le fichier.
+- Commandes concernees: `Get-CimInstance Win32_Process -Filter "Name = 'adb.exe'"`, `Stop-Process -Id <pid> -Force`, `adb push`, `adb shell pm install -r`.

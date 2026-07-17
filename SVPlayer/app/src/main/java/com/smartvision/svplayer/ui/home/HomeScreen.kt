@@ -175,8 +175,7 @@ fun HomeScreen(
 
     val categoryScrollPx = 0
     val homeHeroBlockHeight =
-        SmartVisionDimensions.HomeHeaderToHeroSpacing +
-            SmartVisionDimensions.HomeHeroHeight +
+        SmartVisionDimensions.HomeHeroHeight +
             SmartVisionDimensions.HomeHeaderToHeroSpacing
     val continueScrollPx = with(density) { homeHeroBlockHeight.roundToPx() }
         .coerceAtLeast(0)
@@ -555,10 +554,10 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
+                .padding(top = SmartVisionDimensions.HomeHeaderToHeroSpacing)
                 .verticalScroll(scrollState)
         ) {
-            Spacer(Modifier.height(SmartVisionDimensions.HomeHeaderToHeroSpacing))
-
+            Spacer(Modifier.height(100.dp))
             HomeHeroBanner(
                 strings = strings,
                 remoteSlides = state.slides,

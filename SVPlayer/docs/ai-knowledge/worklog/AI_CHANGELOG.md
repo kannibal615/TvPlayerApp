@@ -12,7 +12,8 @@
 - Rend l'en-tete de `TvSectionCard` optionnel sans modifier le style des sections qui le conservent.
 - Place les titres principaux des panneaux Profile et Settings au-dessus de leur cadre de contenu et retire les en-tetes internes de Manage Profiles.
 - Supprime les titres et cadres imbriques de Licence SmartVision dans Settings tout en preservant le rendu autonome de `LicensePanel` dans ses autres usages.
-- Stabilise le scroll Home apres le focus initial ou le retour depuis son bouton de header et place le spacer avant le hero dans la zone scrollable pour absorber `bringIntoView`; le meme espacement est utilise avant/apres le hero et integre aux positions de scroll des lignes suivantes.
+- Stabilise le scroll Home apres le focus initial ou le retour depuis son bouton de header et conserve l'espace sous le header comme padding non scrollable du viewport, afin que `bringIntoView` ne puisse plus masquer le hero.
+- Applique aux cards categories, Continue Watching et Tendances le halo bleu `25 dp` partage avec les cartes de selection de profil.
 
 ## 2026-07-16 - Header principal partage et navigation Profile
 

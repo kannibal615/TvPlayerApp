@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -101,6 +102,12 @@ fun HomeCategoryCard(
                 focusedScale = 1.0f,
                 glowColor = accent,
                 cornerRadius = SmartVisionDimensions.HomeCardRadius,
+            )
+            .shadow(
+                elevation = if (focusState.isFocused) 25.dp else 3.dp,
+                shape = shape,
+                ambientColor = SmartVisionColors.CardFocusGlow,
+                spotColor = SmartVisionColors.CardFocusGlow,
             )
             .clip(shape)
             .background(SmartVisionColors.Surface)
