@@ -49,10 +49,122 @@ class ProfilePickerPolicyTest {
     fun selectionCompletesOnlyForTheMatchingRequestAndReadyProfile() {
         val request = ProfileSelectionRequest(requestId = 42L, profileId = "walid")
 
-        assertTrue(canCompleteProfileSelection(request, 42L, "walid", "walid"))
-        assertFalse(canCompleteProfileSelection(request, 41L, "walid", "walid"))
-        assertFalse(canCompleteProfileSelection(request, 42L, "nouran", "walid"))
-        assertFalse(canCompleteProfileSelection(request, 42L, "walid", "nouran"))
+        val ready = ProfileHomeReadyToken("walid", 7L)
+        assertTrue(canCompleteProfileSelection(request, 42L, "walid", ready, 7L, appInForeground = true))
+        assertFalse(canCompleteProfileSelection(request, 41L, "walid", ready, 7L, appInForeground = true))
+        assertFalse(canCompleteProfileSelection(request, 42L, "nouran", ready, 7L, appInForeground = true))
+        assertFalse(canCompleteProfileSelection(request, 42L, "walid", ProfileHomeReadyToken("nouran", 7L), 7L, appInForeground = true))
+        assertFalse(canCompleteProfileSelection(request, 42L, "walid", ready, 8L, appInForeground = true))
+        assertFalse(canCompleteProfileSelection(request, 42L, "walid", ready, 7L, appInForeground = false))
+    }
+
+    @Test
+    fun emptyLocalCatalogAlwaysForcesSynchronizationEvenWithCurrentFingerprint() {
+        assertTrue(
+            shouldSynchronizeProfileCatalog(
+                hasLocalCatalog = false,
+                catalogCurrent = true,
+                synchronizationDue = false,
+            ),
+        )
+        assertFalse(
+            shouldSynchronizeProfileCatalog(
+                hasLocalCatalog = true,
+                catalogCurrent = true,
+                synchronizationDue = false,
+            ),
+        )
+    }
+
+    @Test
+    fun globalPickerIsRevealedOnlyAfterHomeIsActiveInForeground() {
+        assertFalse(canRevealProfilePickerAfterHome(openRequested = false, homeIsActive = true, appInForeground = true))
+        assertFalse(canRevealProfilePickerAfterHome(openRequested = true, homeIsActive = false, appInForeground = true))
+        assertFalse(canRevealProfilePickerAfterHome(openRequested = true, homeIsActive = true, appInForeground = false))
+        assertTrue(canRevealProfilePickerAfterHome(openRequested = true, homeIsActive = true, appInForeground = true))
+    }
+
+    @Test
+    fun globalPickerCannotBeDisplayedOverARestoredNonHomeRouteOrDuringStaging() {
+        assertFalse(
+            canDisplayGlobalProfilePicker(
+                pickerWanted = true,
+                homeIsActive = false,
+                openRequested = false,
+            ),
+        )
+        assertFalse(
+            canDisplayGlobalProfilePicker(
+                pickerWanted = true,
+                homeIsActive = true,
+                openRequested = true,
+            ),
+        )
+        assertTrue(
+            canDisplayGlobalProfilePicker(
+                pickerWanted = true,
+                homeIsActive = true,
+                openRequested = false,
+            ),
+        )
+    }
+
+    @Test
+    fun consumedPickerOpeningRequestCannotRevealTwice() {
+        var openRequested = true
+        assertTrue(canRevealProfilePickerAfterHome(openRequested, homeIsActive = true, appInForeground = true))
+
+        openRequested = false
+        assertFalse(canRevealProfilePickerAfterHome(openRequested, homeIsActive = true, appInForeground = true))
+    }
+
+    @Test
+    fun profileSelectionStartsOnlyFromForegroundHomeAndOnlyOnce() {
+        assertFalse(
+            canStartProfileSelectionFromPicker(
+                homeIsActive = false,
+                appInForeground = true,
+                selectionInProgress = false,
+            ),
+        )
+        assertFalse(
+            canStartProfileSelectionFromPicker(
+                homeIsActive = true,
+                appInForeground = false,
+                selectionInProgress = false,
+            ),
+        )
+        assertFalse(
+            canStartProfileSelectionFromPicker(
+                homeIsActive = true,
+                appInForeground = true,
+                selectionInProgress = true,
+            ),
+        )
+        assertTrue(
+            canStartProfileSelectionFromPicker(
+                homeIsActive = true,
+                appInForeground = true,
+                selectionInProgress = false,
+            ),
+        )
+    }
+
+    @Test
+    fun repeatedAdminKidsAdminSelectionRejectsEveryLateResult() {
+        val firstAdmin = ProfileSelectionRequest(requestId = 1L, profileId = "admin")
+        val kids = ProfileSelectionRequest(requestId = 2L, profileId = "kids")
+        val finalAdmin = ProfileSelectionRequest(requestId = 3L, profileId = "admin")
+
+        val adminReady = ProfileHomeReadyToken("admin", 9L)
+        val kidsReady = ProfileHomeReadyToken("kids", 8L)
+        assertFalse(canCompleteProfileSelection(finalAdmin, 1L, "admin", adminReady, 9L, appInForeground = true))
+        assertFalse(canCompleteProfileSelection(finalAdmin, 2L, "kids", kidsReady, 8L, appInForeground = true))
+        assertFalse(canCompleteProfileSelection(finalAdmin, 2L, "admin", adminReady, 9L, appInForeground = true))
+        assertTrue(canCompleteProfileSelection(finalAdmin, 3L, "admin", adminReady, 9L, appInForeground = true))
+
+        assertTrue(canCompleteProfileSelection(firstAdmin, 1L, "admin", adminReady, 9L, appInForeground = true))
+        assertTrue(canCompleteProfileSelection(kids, 2L, "kids", kidsReady, 8L, appInForeground = true))
     }
 
     private fun profile(

@@ -91,6 +91,7 @@ data class LiveTvUiState(
     val activeCategoryFilterCode: String? = null,
     val selectedCategoryId: String? = null,
     val channels: List<LiveTvChannel> = emptyList(),
+    val matchingChannelCount: Int = 0,
     val channelSearchQuery: String = "",
     val focusedChannelId: Int? = null,
     val selectedChannelId: Int? = null,
@@ -578,6 +579,7 @@ class LiveTvViewModel(
                         historySignals = historyCategorySignals,
                     ),
                     channels = channels,
+                    matchingChannelCount = channels.size,
                     focusedChannelId = channels.firstOrNull()?.streamId,
                     selectedChannelId = if (autoPreviewFirstChannel) channels.firstOrNull()?.streamId else null,
                 )
@@ -610,6 +612,7 @@ class LiveTvViewModel(
                         historySignals = historyCategorySignals,
                     ),
                     channels = channels,
+                    matchingChannelCount = channels.size,
                     focusedChannelId = channels.firstOrNull()?.streamId,
                     selectedChannelId = if (autoPreviewFirstChannel) channels.firstOrNull()?.streamId else null,
                 )
@@ -770,6 +773,11 @@ class LiveTvViewModel(
                 } else {
                     catalogRepository.getLiveChannelsPage(categoryId, startOffset, LiveItemsPageSize)
                 }
+                val matchingCount = if (categoryId == null && filteredCategoryIds.isNotEmpty()) {
+                    catalogRepository.countLiveChannelsByCategoryIds(filteredCategoryIds, searchQuery)
+                } else {
+                    catalogRepository.countLiveChannels(categoryId, searchQuery)
+                }
                 val visiblePage = page
                     .filter { stream -> playerSettings.allowsContent(stream.name, categoryLabel) }
                     .mapIndexed { index, stream ->
@@ -783,7 +791,7 @@ class LiveTvViewModel(
                         )
                     }
                 val merged = (previousChannels + visiblePage).distinctBy { it.streamId }
-                PageLoadResult(items = merged, rawPageSize = page.size)
+                PageLoadResult(items = merged, rawPageSize = page.size, matchingCount = matchingCount)
             }.onSuccess { result ->
                 _uiState.update { state ->
                     val refreshedCategories = state.categories.withSpecialCategories(
@@ -800,6 +808,7 @@ class LiveTvViewModel(
                         currentOffset = startOffset + result.rawPageSize,
                         categories = refreshedCategories,
                         channels = result.items,
+                        matchingChannelCount = result.matchingCount,
                         focusedChannelId = state.focusedChannelId ?: result.items.firstOrNull()?.streamId,
                         selectedChannelId = if (replace && autoPreviewFirstChannel) {
                             result.items.firstOrNull()?.streamId
@@ -855,6 +864,7 @@ private fun LiveSortMode.comparator(): Comparator<LiveTvChannel> = when (this) {
 private data class PageLoadResult<T>(
     val items: List<T>,
     val rawPageSize: Int,
+    val matchingCount: Int,
 )
 
 private fun List<LiveTvChannel>.filterBySearch(query: String): List<LiveTvChannel> {

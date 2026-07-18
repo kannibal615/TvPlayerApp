@@ -2,6 +2,7 @@ package com.smartvision.svplayer.ui.player
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import android.view.KeyEvent
 
 class PlayerNavigationPolicyTest {
     @Test
@@ -54,6 +55,18 @@ class PlayerNavigationPolicyTest {
                 hasNext = true,
                 showSeriesDetails = true,
             ),
+        )
+    }
+
+    @Test
+    fun liveVerticalZappingIsDelegatedWhileASecondaryPanelIsOpen() {
+        assertEquals(
+            LiveRemoteAction.DelegateToSecondaryPanel,
+            resolveLiveRemoteAction(KeyEvent.KEYCODE_DPAD_DOWN, secondaryPanelOpen = true),
+        )
+        assertEquals(
+            LiveRemoteAction.ZapPrevious,
+            resolveLiveRemoteAction(KeyEvent.KEYCODE_DPAD_UP, secondaryPanelOpen = false),
         )
     }
 }

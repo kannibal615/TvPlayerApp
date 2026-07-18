@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -75,6 +77,9 @@ import com.smartvision.svplayer.core.config.ProfileType
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
 import com.smartvision.svplayer.domain.model.PlayerSettings
+import com.smartvision.svplayer.domain.model.SyncStatus
+import com.smartvision.svplayer.ui.components.TvButton
+import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.NumericPinDialog
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -89,6 +94,60 @@ private const val ProfileCenteringDurationMs = 900
 private const val MinimumCenteredLoadingMs = 420L
 private const val HomeRevealDurationMs = 620
 
+data class ProfileLoadProgress(
+    val message: String,
+    val progressPercent: Int? = null,
+    val liveItems: Int = 0,
+    val liveTotal: Int? = null,
+    val movieItems: Int = 0,
+    val movieTotal: Int? = null,
+    val seriesItems: Int = 0,
+    val seriesTotal: Int? = null,
+    val startedAtMs: Long = System.currentTimeMillis(),
+    val ready: Boolean = false,
+    val errorMessage: String? = null,
+)
+
+fun profileLoadProgress(
+    syncStatus: SyncStatus,
+    activationCompleted: Boolean,
+    homeReady: Boolean,
+    startedAtMs: Long,
+    errorMessage: String?,
+): ProfileLoadProgress {
+    val progress = when (syncStatus) {
+        is SyncStatus.Running -> syncStatus.catalogProgress
+        is SyncStatus.Success -> syncStatus.catalogProgress
+        is SyncStatus.Error -> syncStatus.catalogProgress
+        SyncStatus.Idle -> SyncStatus.CatalogProgress()
+    }
+    val percentages = listOf(progress.live, progress.movies, progress.series)
+        .filter { it.phase != SyncStatus.SyncSectionPhase.WAITING }
+        .mapNotNull { section -> section.progressPercent ?: section.percent.takeIf { it > 0 } }
+    val statusError = (syncStatus as? SyncStatus.Error)?.message
+    val resolvedError = errorMessage ?: statusError
+    val message = when {
+        resolvedError != null -> "Profile loading failed"
+        homeReady -> "Ready"
+        syncStatus is SyncStatus.Running -> syncStatus.message
+        activationCompleted -> "Preparing Home"
+        else -> "Activating profile"
+    }
+    return ProfileLoadProgress(
+        message = message,
+        progressPercent = percentages.takeIf { it.isNotEmpty() }?.average()?.toInt(),
+        liveItems = progress.live.currentItems,
+        liveTotal = progress.live.totalItems,
+        movieItems = progress.movies.currentItems,
+        movieTotal = progress.movies.totalItems,
+        seriesItems = progress.series.currentItems,
+        seriesTotal = progress.series.totalItems,
+        startedAtMs = startedAtMs,
+        ready = homeReady,
+        errorMessage = resolvedError,
+    )
+}
+
 @Composable
 fun ProfilePickerScreen(
     profiles: List<PlaylistProfile>,
@@ -100,7 +159,10 @@ fun ProfilePickerScreen(
     selectionLoadingProfileId: String?,
     homeReadyRequestId: Long?,
     homeProfileAvatarBounds: Rect?,
+    loadProgress: ProfileLoadProgress?,
     onSelectionTransitionFinished: (Long, String) -> Unit,
+    onRetrySelection: () -> Unit,
+    onCancelSelection: () -> Unit,
     onLockedFeature: () -> Unit,
     onVerifyPin: (String) -> Boolean,
 ) {
@@ -145,7 +207,12 @@ fun ProfilePickerScreen(
             centeredAtMs = 0L
             return@LaunchedEffect
         }
-        if (homeRevealProgress.value >= 1f) return@LaunchedEffect
+        if (homeRevealProgress.value >= 1f) {
+            if (homeReadyRequestId == requestId) {
+                latestTransitionFinished(requestId, selectedId)
+            }
+            return@LaunchedEffect
+        }
         val remainingDuration = (
             ProfileCenteringDurationMs * (1f - centeringProgress.value)
             ).roundToInt().coerceAtLeast(1)
@@ -399,12 +466,17 @@ fun ProfilePickerScreen(
                 avatarSize = avatarSize,
                 centeringProgress = centeringProgress.value,
                 homeRevealProgress = homeRevealProgress.value,
+                loadProgress = loadProgress,
+                french = settings.language.equals("French", ignoreCase = true),
+                onRetry = onRetrySelection,
+                onCancel = onCancelSelection,
             )
         }
     }
 
     if (showProfileEditor) {
         PlaylistProfileEditorDialog(
+            strings = strings,
             initial = profileToEdit,
             createType = createProfileType,
             adminProfile = adminProfile,
@@ -615,6 +687,10 @@ private fun SelectedProfileTransition(
     avatarSize: androidx.compose.ui.unit.Dp,
     centeringProgress: Float,
     homeRevealProgress: Float,
+    loadProgress: ProfileLoadProgress?,
+    french: Boolean,
+    onRetry: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     val density = LocalDensity.current
     val cardWidthPx = with(density) { cardWidth.toPx() }
@@ -635,6 +711,15 @@ private fun SelectedProfileTransition(
         (centeringProgress - 0.64f) / 0.24f
         ).coerceIn(0f, 1f) * (1f - homeRevealProgress / 0.30f).coerceIn(0f, 1f)
     val shape = RoundedCornerShape(20.dp)
+    var elapsedSeconds by remember(loadProgress?.startedAtMs) { mutableIntStateOf(0) }
+    LaunchedEffect(loadProgress?.startedAtMs, loadProgress?.ready, loadProgress?.errorMessage) {
+        val startedAt = loadProgress?.startedAtMs ?: return@LaunchedEffect
+        while (true) {
+            elapsedSeconds = ((System.currentTimeMillis() - startedAt).coerceAtLeast(0L) / 1_000L).toInt()
+            if (loadProgress.ready || loadProgress.errorMessage != null) break
+            delay(1_000)
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -796,11 +881,94 @@ private fun SelectedProfileTransition(
                 }
             }
         }
+
+        if (loadProgress != null && homeRevealProgress <= 0.001f) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(y = cardHeight * 0.92f)
+                    .width(560.dp)
+                    .background(Color(0xE6121B2D), RoundedCornerShape(14.dp))
+                    .border(1.dp, SmartVisionColors.Border, RoundedCornerShape(14.dp))
+                    .padding(horizontal = 18.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = when {
+                        loadProgress.errorMessage != null && french -> "Echec du chargement du profil"
+                        loadProgress.errorMessage != null -> loadProgress.message
+                        loadProgress.ready && french -> "Pret"
+                        else -> loadProgress.message
+                    },
+                    color = if (loadProgress.errorMessage == null) Color.White else SmartVisionColors.Error,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(7.dp))
+                if (loadProgress.progressPercent == null && !loadProgress.ready && loadProgress.errorMessage == null) {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = SmartVisionColors.CyanAccent,
+                        trackColor = Color.White.copy(alpha = 0.12f),
+                    )
+                } else {
+                    LinearProgressIndicator(
+                        progress = { (loadProgress.progressPercent ?: 100).coerceIn(0, 100) / 100f },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = if (loadProgress.errorMessage == null) SmartVisionColors.CyanAccent else SmartVisionColors.Error,
+                        trackColor = Color.White.copy(alpha = 0.12f),
+                    )
+                }
+                Spacer(Modifier.height(7.dp))
+                Text(
+                    text = listOf(
+                        "Live ${loadProgress.liveItems.withTotal(loadProgress.liveTotal)}",
+                        "Movies ${loadProgress.movieItems.withTotal(loadProgress.movieTotal)}",
+                        "Series ${loadProgress.seriesItems.withTotal(loadProgress.seriesTotal)}",
+                        "${elapsedSeconds}s",
+                    ).joinToString(" | "),
+                    color = Color(0xFFB7C4DF),
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                )
+                if (loadProgress.errorMessage != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = loadProgress.errorMessage,
+                        color = Color(0xFFFFB4AB),
+                        fontSize = 13.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        TvButton(
+                            text = if (french) "Reessayer" else "Retry",
+                            onClick = onRetry,
+                            variant = TvButtonVariant.Primary,
+                            modifier = Modifier.height(42.dp),
+                        )
+                        TvButton(
+                            text = if (french) "Retour" else "Back",
+                            onClick = onCancel,
+                            variant = TvButtonVariant.Secondary,
+                            modifier = Modifier.height(42.dp),
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
 private fun transitionLerp(start: Float, end: Float, fraction: Float): Float =
     start + (end - start) * fraction.coerceIn(0f, 1f)
+
+private fun Int.withTotal(total: Int?): String =
+    total?.takeIf { it > 0 }?.let { "$this/$it" } ?: toString()
 
 @Composable
 private fun ProfileName(name: String, focused: Boolean) {
@@ -859,6 +1027,7 @@ private fun PickerEditButton(
             tint = if (enabled) Color.White else Color.White.copy(alpha = 0.32f),
             modifier = Modifier.size(18.dp),
         )
+
     }
 }
 

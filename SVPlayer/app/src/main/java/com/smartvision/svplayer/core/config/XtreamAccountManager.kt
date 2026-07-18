@@ -3,6 +3,8 @@ package com.smartvision.svplayer.core.config
 import android.content.Context
 import com.smartvision.svplayer.core.profile.ProfileCredentialsStore
 import com.smartvision.svplayer.core.profile.StoredProfileCredentials
+import com.smartvision.svplayer.domain.profile.CatalogSyncFingerprint
+import com.smartvision.svplayer.domain.profile.ContentPrefixPolicy
 import java.util.UUID
 import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -80,6 +82,9 @@ data class PlaylistProfile(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
     val lastSyncAt: Long? = null,
+    val selectedContentPrefixes: Set<String> = emptySet(),
+    val detectedContentPrefixes: Set<String> = emptySet(),
+    val lastCatalogFingerprint: String = "",
     val status: PlaylistProfileStatus = PlaylistProfileStatus.NotConfigured,
 ) {
     val isConfigured: Boolean
@@ -256,6 +261,13 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             xtreamPassword = if (normalizedCredentialsMode == CredentialsMode.CUSTOM) profile.xtreamPassword.trim() else "",
             m3uUrl = if (normalizedCredentialsMode == CredentialsMode.CUSTOM) profile.m3uUrl.trim() else "",
             epgUrl = if (normalizedCredentialsMode == CredentialsMode.CUSTOM) profile.epgUrl.trim() else "",
+            selectedContentPrefixes = ContentPrefixPolicy.normalize(profile.selectedContentPrefixes),
+            detectedContentPrefixes = ContentPrefixPolicy.normalize(
+                profile.detectedContentPrefixes.ifEmpty { existing?.detectedContentPrefixes.orEmpty() },
+            ),
+            lastCatalogFingerprint = profile.lastCatalogFingerprint.ifBlank {
+                existing?.lastCatalogFingerprint.orEmpty()
+            },
             createdAt = profile.createdAt.takeIf { it > 0L } ?: now,
             updatedAt = now,
         )
@@ -341,6 +353,9 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
                 createdAt = existing?.createdAt ?: now,
                 updatedAt = now,
                 lastSyncAt = if (sourceChanged) null else existing?.lastSyncAt,
+                selectedContentPrefixes = existing?.selectedContentPrefixes.orEmpty(),
+                detectedContentPrefixes = existing?.detectedContentPrefixes.orEmpty(),
+                lastCatalogFingerprint = if (sourceChanged) "" else existing?.lastCatalogFingerprint.orEmpty(),
             ),
         )
         return profileId
@@ -468,13 +483,39 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
     fun markProfileSynced(profileId: String, syncAt: Long = System.currentTimeMillis()) {
         _profiles.value = _profiles.value.map { profile ->
             if (profile.id == profileId) {
-                profile.copy(lastSyncAt = syncAt, updatedAt = syncAt)
+                profile.copy(
+                    lastSyncAt = syncAt,
+                    updatedAt = syncAt,
+                    lastCatalogFingerprint = CatalogSyncFingerprint.create(resolvedProfile(profile)),
+                )
             } else {
                 profile
             }
         }
         refreshProfileStatuses()
         persist()
+    }
+
+    @Synchronized
+    fun recordDetectedContentPrefixes(profileId: String, codes: Set<String>) {
+        val normalized = ContentPrefixPolicy.normalize(codes)
+        if (normalized.isEmpty()) return
+        var changed = false
+        _profiles.value = _profiles.value.map { profile ->
+            if (profile.id != profileId) return@map profile
+            val merged = profile.detectedContentPrefixes + normalized
+            if (merged == profile.detectedContentPrefixes) profile else {
+                changed = true
+                profile.copy(detectedContentPrefixes = merged)
+            }
+        }
+        if (changed) persist()
+    }
+
+    fun isCatalogCurrent(profile: PlaylistProfile): Boolean {
+        val resolved = resolvedProfile(profile)
+        return profile.lastCatalogFingerprint.isNotBlank() &&
+            profile.lastCatalogFingerprint == CatalogSyncFingerprint.create(resolved)
     }
 
     fun activeProfile(): PlaylistProfile? =
@@ -673,6 +714,9 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
                 createdAt = item.optLong("created_at", System.currentTimeMillis()),
                 updatedAt = item.optLong("updated_at", System.currentTimeMillis()),
                 lastSyncAt = item.takeIf { it.has("last_sync_at") && !it.isNull("last_sync_at") }?.optLong("last_sync_at"),
+                selectedContentPrefixes = item.optStringSet("selected_content_prefixes"),
+                detectedContentPrefixes = item.optStringSet("detected_content_prefixes"),
+                lastCatalogFingerprint = item.optString("last_catalog_fingerprint"),
                 status = PlaylistProfileStatus.fromStorage(item.optString("status")),
             )
         }.filter { it.id.isNotBlank() && it.name.isNotBlank() }
@@ -702,6 +746,9 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
                         .put("created_at", profile.createdAt)
                         .put("updated_at", profile.updatedAt)
                         .put("last_sync_at", profile.lastSyncAt)
+                        .put("selected_content_prefixes", JSONArray(profile.selectedContentPrefixes.sorted()))
+                        .put("detected_content_prefixes", JSONArray(profile.detectedContentPrefixes.sorted()))
+                        .put("last_catalog_fingerprint", profile.lastCatalogFingerprint)
                         .put("status", profile.status.storageValue),
                 )
             }
@@ -725,6 +772,15 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
             PlaylistSource.Xtream -> current().isConfigured
             PlaylistSource.M3u -> _m3uUrl.value.isNotBlank()
         }
+}
+
+private fun JSONObject.optStringSet(key: String): Set<String> {
+    val values = optJSONArray(key) ?: return emptySet()
+    return buildSet {
+        repeat(values.length()) { index ->
+            values.optString(index).takeIf(String::isNotBlank)?.let(::add)
+        }
+    }
 }
 
 data class WebPlaylistDelivery(

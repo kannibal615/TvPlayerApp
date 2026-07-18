@@ -230,10 +230,9 @@ class MoviesViewModel(
     }
 
     fun updateContentSearchQuery(query: String) {
-        val cleanQuery = query.trim()
         val current = _uiState.value
-        if (current.contentSearchQuery == cleanQuery) return
-        _uiState.update { it.copy(contentSearchQuery = cleanQuery) }
+        if (current.contentSearchQuery == query) return
+        _uiState.update { it.copy(contentSearchQuery = query) }
         when (current.selectedCategoryId) {
             FavoriteMovieCategoryId -> loadFavoriteMovies()
             HistoryMovieCategoryId -> loadHistoryMovies()
@@ -747,10 +746,11 @@ private fun XtreamMovieStream.toUiMovie(
     )
 
 private fun MovieItemUi.matchesSearch(query: String): Boolean {
-    if (query.isBlank()) return true
-    return title.contains(query, ignoreCase = true) ||
-        genre?.contains(query, ignoreCase = true) == true ||
-        year?.contains(query, ignoreCase = true) == true
+    val cleanQuery = query.trim()
+    if (cleanQuery.isBlank()) return true
+    return title.contains(cleanQuery, ignoreCase = true) ||
+        genre?.contains(cleanQuery, ignoreCase = true) == true ||
+        year?.contains(cleanQuery, ignoreCase = true) == true
 }
 
 private fun formatMinutes(minutes: Int): String {

@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-07-17.
+Derniere mise a jour: 2026-07-18.
 
 ## Back plein ecran Live et controles - 2026-07-17
 
@@ -20,11 +20,13 @@ Les recherches Live TV, Movies et Series sont repliees en bouton carre icon-only
 - Tous les flux Create/Enter/Confirm PIN reutilisent `NumericPinDialog`: popup vertical compact centre, grille 3 x 4 a dimensions fixes, focus initial sur `1`, focus automatique sur `Apply` au quatrieme chiffre et shake rejouable limite aux quatre indicateurs en cas de refus. La derniere ligne route D-pad Bas vers les actions et les actions remontent vers la derniere ligne du clavier.
 - Le formulaire profil est borne en hauteur, scrollable, applique `imePadding` et demande `bringIntoView()` lorsque le clavier TV ouvre un champ.
 - Le formulaire partage depuis le picker et Info compte une mise en page TV compacte: nom et avatars en tete, sources Xtream/M3U fermees par defaut dans un accordeon exclusif, contenu scrollable et footer fixe. Depuis une source fermee ou le dernier champ visible, D-pad Bas cible `Enregistrer`.
+- Dans ce formulaire, D-pad Bas depuis le nom entre d'abord dans la rangee des prefixes, puis dans le champ de saisie manuelle, avant les choix Xtream/M3U. Les filtres actifs sont groupes en tete et conservent une identite Compose stable lors du tri.
 - La rangee d'avatars est horizontale et scrollable au focus; ADMIN accepte son avatar dedie et tous les avatars CLASSIC.
 - La selection de profil conserve exactement la transition visuelle centree puis le reveal Home. Son etat est une requete `requestId + profileId`; un callback ancien ne peut pas terminer une selection plus recente. L'activation locale reste immediate, puis la transition attend l'unique synchronisation eventuellement due et la Home prete pour ce meme profil/revision.
-- `Info profil > Changer de profil` entre dans ce meme coordinateur avant l'activation. Home ne rend jamais un etat dont `profileId` differe du profil actif: il expose alors uniquement les skeletons et compteurs a zero de la cible jusqu'a la relecture Room.
+- `Info profil > Changer de profil` quitte d'abord la route Profile, compose Home au premier plan puis ouvre le picker global. Aucun profil n'est active avant OK sur une carte. Home ne rend jamais un etat dont `profileId` differe du profil actif: il expose alors uniquement les skeletons de la cible jusqu'a la relecture Room.
 - Sur une carte de profil reelle, Bas cible le crayon discret et Haut retourne a la carte. La fermeture du PIN ou du formulaire redemande le focus a la cible d'origine avec un `FocusRequester` stable.
-- Dans `Info profil`, Droite depuis le menu entre sur `Changer de profil`; Bas relie cette action a `Synchroniser ce profil`, Haut fait le chemin inverse et Gauche revient au menu. Le focus d'une carte du selecteur ne change jamais le profil actif: seul OK appelle l'activation.
+- Dans `Info profil`, Droite depuis le menu entre sur `Changer de profil`; Bas relie cette action a `Synchroniser ce profil`, Haut fait le chemin inverse et Gauche revient au menu. Le selecteur local n'existe plus. Le picker global focalise le profil actif; seul OK sur une carte appelle l'activation.
+- Une fois Who's Watching global ouvert depuis Info profil, Back conserve le comportement global de confirmation de sortie et ne retourne pas a Info profil.
 - Dans `Gerer les profils`, Gauche/Droite parcourt la `LazyRow`; Bas ou OK sur un profil selectionne la cible d'administration puis focalise `Modifier`. Haut depuis les actions retourne a la carte. Actif, selection detail et focus sont trois etats independants, et toute fermeture de dialogue redemande la carte d'origine ou son voisin apres suppression.
 - Dans `Controle parental`, Droite depuis le menu cible Activation; Droite ou OK entre dans la section et focalise le toggle global. OK/Enter modifie les toggles global et par profil, et Gauche depuis le global revient au cadre Activation puis au menu.
 
@@ -271,3 +273,5 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-17: le player Live reserve Haut/Bas au zapping avec l'overlay principal visible ou masque et retire le comportement Bas qui masquait l'overlay; les panneaux secondaires gardent leur propre navigation.
 - 2026-07-12: la rangee de filtres Live est compactee et sa fleche droite fait defiler le contenu. Le picker applique le fond Kids au focus d'un profil Kids et affiche un badge ourson PNG. Le header commun conserve date/heure en mode Kids. Le dialogue de sortie actif propose aussi `Change profile` / `Changer de profil`.
 - 2026-07-17: la selection Who's Watching conserve la card choisie comme unique cible animee, bloque les activations multiples et consomme Back pendant la transition. Le focus Home n'est demande qu'apres la revelation complete; l'avatar termine sa trajectoire sur les bounds reels du bouton profil du header.
+- 2026-07-18: le player Live limite son overlay principal aux cinq commandes de la maquette autour de Play/Pause. Gauche/Droite parcourt Precedent, Play/Pause, Suivant, Luminosite et Sortie; D-pad bas ou Menu ouvre le panneau secondaire, Back le ferme avant de quitter, et les touches media rewind/fast-forward conservent le seek quand le flux le permet. Le retour anime restaure la chaine source dans la liste.
+- 2026-07-18: `Info profil > Changer de profil`, le dialogue de sortie et l'action profil Kids ouvrent le meme Who's Watching global depuis Home. La frame de preparation Home bloque focus, touches et preview; aucune activation ne commence avant OK sur une carte.

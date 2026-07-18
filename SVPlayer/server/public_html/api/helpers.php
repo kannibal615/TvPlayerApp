@@ -320,12 +320,11 @@ function create_playlist_push_notification(
     bool $epgUpdated,
     string $source = 'playlist',
     array $receivedConfig = []
-): void {
+): array {
     if (!$xtreamUpdated && !$m3uUpdated && !$epgUpdated) {
-        return;
+        return ['created' => false, 'notification_id' => null, 'reason' => 'no_change'];
     }
 
-    ensure_app_notifications_table($pdo);
     $parts = [];
     if ($xtreamUpdated) {
         $parts[] = 'identifiants Xtream';
@@ -342,8 +341,10 @@ function create_playlist_push_notification(
         strtolower(clean_public_device_code($publicDeviceCode)),
     ]));
     if ($targetValues === []) {
-        return;
+        throw new RuntimeException('Playlist notification target unavailable.');
     }
+    $targetValue = implode(',', array_unique($targetValues));
+    $createdBy = 'system_' . clean_optional_text($source, 40);
 
     $message = 'Configuration recue depuis SmartVision Playlist: '
         . implode(', ', $parts)
@@ -362,6 +363,24 @@ function create_playlist_push_notification(
         'source' => clean_optional_text($source, 40),
     ];
 
+    $duplicate = $pdo->prepare(
+        "SELECT id FROM app_notifications
+         WHERE notification_type = 'playlist_added'
+           AND target_scope = 'devices'
+           AND target_value = :target_value
+           AND created_by = :created_by
+           AND created_at >= DATE_SUB(NOW(), INTERVAL 30 SECOND)
+         ORDER BY id DESC LIMIT 1"
+    );
+    $duplicate->execute([
+        'target_value' => $targetValue,
+        'created_by' => $createdBy,
+    ]);
+    $existingId = (int) ($duplicate->fetchColumn() ?: 0);
+    if ($existingId > 0) {
+        return ['created' => false, 'notification_id' => $existingId, 'reason' => 'duplicate'];
+    }
+
     $statement = $pdo->prepare(
         "INSERT INTO app_notifications
             (title, message, notification_type, payload_ciphertext, target_scope, target_value, priority, status, created_by, expires_at, created_at, updated_at)
@@ -369,12 +388,17 @@ function create_playlist_push_notification(
             (:title, :message, 'playlist_added', :payload_ciphertext, 'devices', :target_value, 'normal', 'active', :created_by, DATE_ADD(NOW(), INTERVAL 14 DAY), NOW(), NOW())"
     );
     $statement->execute([
-        'title' => 'Configuration playlist recue',
+        'title' => 'New playlist added',
         'message' => $message,
         'payload_ciphertext' => encrypt_playlist_config($details),
-        'target_value' => implode(',', $targetValues),
-        'created_by' => 'system_' . clean_optional_text($source, 40),
+        'target_value' => $targetValue,
+        'created_by' => $createdBy,
     ]);
+    $notificationId = (int) $pdo->lastInsertId();
+    if ($notificationId <= 0) {
+        throw new RuntimeException('Playlist notification insert failed.');
+    }
+    return ['created' => true, 'notification_id' => $notificationId, 'reason' => null];
 }
 
 function credentials_key(): string

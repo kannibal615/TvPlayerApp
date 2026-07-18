@@ -562,6 +562,7 @@ internal fun VodFocusIconButton(
     iconSize: Dp,
     modifier: Modifier = Modifier,
     prominent: Boolean = false,
+    solidFocusedCircle: Boolean = false,
     enabled: Boolean = true,
     forceFocused: Boolean = false,
     showFocusedLabel: Boolean = false,
@@ -596,6 +597,14 @@ internal fun VodFocusIconButton(
         val displayFocused = enabled && (focused || forceFocused)
         if (displayFocused) {
             VodFocusHalo(hitSize * 1.35f)
+            if (solidFocusedCircle) {
+                Box(
+                    modifier = Modifier
+                        .size(hitSize * 0.72f)
+                        .clip(CircleShape)
+                        .background(VodFocusBlue),
+                )
+            }
             if (showFocusedLabel) {
                 Text(
                     text = contentDescription,

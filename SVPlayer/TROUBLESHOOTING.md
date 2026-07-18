@@ -1,5 +1,56 @@
 # Troubleshooting
 
+## 2026-07-18 - Who's Watching bloque sur Preparing Home apres plusieurs changements de profil
+
+Problem:
+- Admin -> Kids ou Kids -> Admin pouvait rester plusieurs minutes sur `Preparing Home` alors que la synchronisation, les compteurs et les tendances etaient deja termines.
+
+Context:
+- Le signal Home pret attendait aussi `continueWatchingLoading`.
+- Une reprise d'episode absente de Room appelait `getOrFetchSeriesEpisodes`; jusqu'a 10 reprises pouvaient donc enchainer des appels Xtream de 40 s.
+- Une bascule incrementait deux fois `catalogRevision` et pouvait annuler un nouveau job Home tout juste lance.
+- Depuis `Info profil` ou `Gerer les profils`, le picker pouvait attendre le callback d'un Home non compose.
+- Une fin de synchronisation pouvait publier `Success` avant que Home consomme la nouvelle revision: l'ancien snapshot devenait alors provisoirement `ready` avec `0/0/0`.
+- `refreshCatalogCounts()` marquait auparavant son token charge dans `finally`, y compris apres erreur ou annulation; une tentative remplacee pouvait donc valider les zeros d'initialisation.
+
+Working solution:
+- Limiter le verrou de transition aux donnees catalogue du profil capture: synchronisation inactive, revision chargee, compteurs et tendances prets.
+- Charger Continue Watching en best effort, uniquement depuis Room pendant l'ouverture; les metadonnees distantes restent hors du chemin critique.
+- Passer le `profileId` capture aux lectures compteurs/tendances et refuser les resultats d'un ancien token.
+- Utiliser le coordinateur de navigation comme unique increment explicite de revision au moment de l'activation, annuler puis mettre les jobs a `null`, et maintenir le coordinateur Home actif hors de `HomeScreen`.
+- Observer ensemble `activeProfileId + catalogRevision`, avec le token initial capture avant le lancement du collector afin de ne manquer aucune bascule precoce.
+- Identifier chaque rechargement par une generation et chaque requete compteurs/tendances par un ID monotone; seule la derniere tentative reussie peut publier et marquer la revision chargee.
+- Publier atomiquement compteurs, flag de chargement et revision chargee dans le meme `HomeLoadGate`; ne pas recombiner ces trois valeurs depuis des `StateFlow` independants.
+- Fermer Who's Watching uniquement avec un jeton `(profileId, catalogRevision)` revalide apres une frame contre `catalogRepository.catalogRevision.value`.
+- Verifier les compteurs Room avec le `profileId` cible avant et apres activation: une empreinte a jour ne suffit pas si le catalogue local est vide; forcer alors une synchronisation et rester sur le picker avec erreur si elle ne produit toujours aucun contenu.
+
+Avoid next time:
+- Ne jamais mettre un enrichissement reseau ou une rangee facultative dans le verrou de navigation d'un profil.
+- Ne jamais incrementer la meme generation catalogue depuis deux coordinateurs concurrents.
+- Ne jamais transformer un `finally`, une annulation ou une erreur Room en succes de chargement; `0` peut etre un vrai catalogue vide mais ne prouve pas qu'une requete a abouti.
+- Toujours tester dans le meme processus `Admin -> Kids -> Admin`, avec reprise episode absente et resultats retardes.
+
+## 2026-07-18 - Playlist web enregistree sans notification visible et profil Kids stale
+
+Problem:
+- Le site pouvait enregistrer une nouvelle configuration de playlist tout en ne garantissant pas la creation de `playlist_added`.
+- Un profil Kids partageant la source Admin pouvait ensuite reutiliser un catalogue local devenu obsolete apres la livraison web.
+
+Context:
+- La configuration et la notification etaient deux operations independantes, et le resultat notification n'etait pas expose au site.
+- Le rafraichissement Android pouvait echouer silencieusement ou ne se produire qu'au polling suivant.
+- La fraicheur catalogue ne tenait pas compte de la source resolue partagee, du type de profil et des filtres actifs.
+
+Working solution:
+- Executer configuration + creation de notification dans la meme transaction et retourner `notification_created`, `notification_id` et `notification_reason`.
+- Cibler et dedupliquer `playlist_added` avec l'identifiant canonique du meme appareil, puis journaliser les erreurs Android sans secrets.
+- Rafraichir les notifications apres import, au retour au premier plan et par polling.
+- Comparer `CatalogSyncFingerprint` a chaque activation; un Kids partageant la source Admin est resynchronise avant Home si l'empreinte attendue a change.
+
+Avoid next time:
+- Ne jamais afficher un succes web complet si la notification associee n'a pas ete creee ou explicitement dedupliquee.
+- Ne jamais deduire la fraicheur d'un profil partage uniquement depuis sa propre date de derniere synchronisation.
+
 ## 2026-06-30 - Release rebuilt with an already published versionCode
 
 Problem:

@@ -123,6 +123,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     $message = 'Un profil porte deja ce nom.';
                     $messageType = 'error';
                 } else {
+                    // Keep schema DDL outside the atomic config+notification transaction.
+                    ensure_app_notifications_table($pdo);
+                    $pdo->beginTransaction();
                     $existingQuery = $pdo->prepare('SELECT encrypted_payload FROM device_playlist_configs WHERE device_id = :device_id LIMIT 1');
                     $existingQuery->execute(['device_id' => $deviceId]);
                     $existingPayload = $existingQuery->fetchColumn();
@@ -166,7 +169,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     mark_latest_pending_device_session_validated($pdo, $deviceId);
                     $pdo->prepare("UPDATE devices SET xtream_status = :xtream_status, updated_at = NOW() WHERE device_id = :device_id")
                         ->execute(['xtream_status' => $hasXtreamConfig ? 'configured' : 'missing', 'device_id' => $deviceId]);
-                    create_playlist_push_notification(
+                    $notification = create_playlist_push_notification(
                         $pdo,
                         $deviceId,
                         $publicDeviceCode,
@@ -182,8 +185,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                             'epg_url' => $postedConfigType === 'epg' ? $epgUrl : null,
                         ]
                     );
+                    $pdo->commit();
 
-                    $message = 'Configuration mise en attente. La TV la recevra normalement sous une minute lorsqu elle est ouverte.';
+                    $notificationStatus = ($notification['created'] ?? false)
+                        ? ' Notification TV creee.'
+                        : ' Notification TV deja creee pour cet envoi.';
+                    $message = 'Configuration mise en attente. La TV la recevra normalement sous une minute lorsqu elle est ouverte.'
+                        . $notificationStatus;
                     $messageType = 'success';
                     $postedHost = '';
                     $postedUsername = '';
@@ -195,6 +203,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 }
             }
         } catch (Throwable $exception) {
+            if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             error_log('SmartVision playlist page failed.');
             $message = 'Impossible d envoyer cette configuration. Verifiez le code TV et recommencez.';
             $messageType = 'error';

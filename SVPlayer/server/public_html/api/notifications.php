@@ -96,8 +96,8 @@ function notification_candidate_rows(PDO $pdo): array
          FROM app_notifications
          WHERE status = 'active'
            AND (expires_at IS NULL OR expires_at > NOW())
-         ORDER BY FIELD(priority, 'urgent', 'important', 'normal'), id DESC
-         LIMIT 80"
+         ORDER BY id DESC
+         LIMIT 240"
     )->fetchAll();
 }
 
@@ -138,7 +138,15 @@ function notification_visible_rows(array $rows, array $deviceTargets, array $ass
         if (notification_is_installed_update($row, $appVersionCode)) continue;
         $visible[] = $row;
     }
-    return $visible;
+    $priorityOrder = ['urgent' => 0, 'important' => 1, 'normal' => 2];
+    usort($visible, static function (array $left, array $right) use ($priorityOrder): int {
+        $leftPriority = $priorityOrder[(string) ($left['priority'] ?? 'normal')] ?? 2;
+        $rightPriority = $priorityOrder[(string) ($right['priority'] ?? 'normal')] ?? 2;
+        return $leftPriority === $rightPriority
+            ? ((int) $right['id'] <=> (int) $left['id'])
+            : ($leftPriority <=> $rightPriority);
+    });
+    return array_slice($visible, 0, 80);
 }
 
 function notification_resolved_type(array $row): string

@@ -110,6 +110,7 @@ fun TvHeader(
     showLicenseKey: Boolean,
     hasNewNotifications: Boolean,
     notificationBadgeCount: Int,
+    activeProfileOverride: PlaylistProfile? = null,
     modifier: Modifier = Modifier,
     currentTabFocusRequester: FocusRequester? = null,
     homeTabFocusRequester: FocusRequester? = null,
@@ -127,7 +128,7 @@ fun TvHeader(
     val playerSettings by container.settingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = PlayerSettings(),
     )
-    val activeProfile = profiles.firstOrNull { it.id == activeProfileId }
+    val activeProfile = activeProfileOverride ?: profiles.firstOrNull { it.id == activeProfileId }
     val kidsMode = activeProfile?.type == ProfileType.KIDS
     val internalFirstFocusRequester = remember { FocusRequester() }
     val internalLastFocusRequester = remember { FocusRequester() }

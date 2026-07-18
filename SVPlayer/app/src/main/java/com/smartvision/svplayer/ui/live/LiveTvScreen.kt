@@ -79,6 +79,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -92,6 +93,8 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -143,6 +146,7 @@ import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
+import com.smartvision.svplayer.ui.player.LivePlaybackSession
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -219,6 +223,8 @@ fun LiveTvScreen(
     notificationBadgeCount: Int,
     returnFocusChannelId: Int? = null,
     onReturnFocusConsumed: () -> Unit = {},
+    playbackSession: LivePlaybackSession,
+    onPreviewBoundsChanged: (Rect) -> Unit,
     onWatch: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -612,6 +618,8 @@ fun LiveTvScreen(
                             }
                         }
                     },
+                    playbackSession = playbackSession,
+                    onPreviewBoundsChanged = onPreviewBoundsChanged,
                     onFavorite = {
                         state.selectedChannel?.let { channel ->
                             container.behaviorReporter.reportAsync(
@@ -788,7 +796,7 @@ private fun ChannelList(
         titleContent = {
             CatalogPanelTitleWithCount(
                 title = strings.liveTvChannels,
-                count = state.selectedCategory?.count ?: visibleChannels.size,
+                count = state.matchingChannelCount,
             )
         },
         trailing = {
@@ -914,6 +922,8 @@ private fun PreviewPanel(
     onPreviewFocused: () -> Unit,
     onEpgFocused: () -> Unit,
     onWatch: () -> Unit,
+    playbackSession: LivePlaybackSession,
+    onPreviewBoundsChanged: (Rect) -> Unit,
     onFavorite: () -> Unit,
     onDeleteHistory: () -> Unit,
     modifier: Modifier = Modifier,
@@ -991,6 +1001,8 @@ private fun PreviewPanel(
                 channel = channel,
                 categoryLabel = selectedCategoryLabel.orEmpty(),
                 streamUnavailableLabel = strings.liveTvStreamUnavailable,
+                playbackSession = playbackSession,
+                onBoundsChanged = onPreviewBoundsChanged,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1.88f),
@@ -1937,19 +1949,24 @@ private fun VideoPreviewFrame(
     channel: LiveTvChannel,
     categoryLabel: String,
     streamUnavailableLabel: String,
+    playbackSession: LivePlaybackSession,
+    onBoundsChanged: (Rect) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(5.dp)
     Box(
         modifier = modifier
+            .onGloballyPositioned { onBoundsChanged(it.boundsInRoot()) }
             .clip(shape)
             .background(Color.Black)
             .border(BorderStroke(1.dp, SmartVisionColors.Border), shape),
     ) {
         MiniPreviewPlayer(
+            streamId = channel.streamId,
             streamUrl = channel.streamUrl,
             fallbackStreamUrl = channel.fallbackStreamUrl,
             streamUnavailableLabel = streamUnavailableLabel,
+            playbackSession = playbackSession,
             modifier = Modifier.matchParentSize(),
         )
 
@@ -2338,12 +2355,13 @@ private fun EpgProgramRow(
 
 @Composable
 private fun MiniPreviewPlayer(
+    streamId: Int,
     streamUrl: String,
     fallbackStreamUrl: String,
     streamUnavailableLabel: String,
+    playbackSession: LivePlaybackSession,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     val latestStreamUrl by rememberUpdatedState(streamUrl)
     val latestFallbackStreamUrl by rememberUpdatedState(fallbackStreamUrl)
     val audioScope = rememberCoroutineScope()
@@ -2352,12 +2370,7 @@ private fun MiniPreviewPlayer(
     var fallbackTried by remember(streamUrl) { mutableStateOf(false) }
     val volumeFadeJob = remember { arrayOfNulls<Job>(1) }
 
-    val player = remember {
-        ExoPlayer.Builder(context).build().apply {
-            volume = 0f
-            playWhenReady = true
-        }
-    }
+    val player = playbackSession.player
 
     fun restartPreviewAudioFade() {
         volumeFadeJob[0]?.cancel()
@@ -2369,11 +2382,7 @@ private fun MiniPreviewPlayer(
         fallbackTried = false
         errorText = null
         buffering = true
-        player.stop()
-        player.clearMediaItems()
-        player.setMediaItem(MediaItem.fromUri(streamUrl))
-        player.prepare()
-        player.playWhenReady = true
+        playbackSession.playPreview(streamId, streamUrl)
         player.volume = 0f
         restartPreviewAudioFade()
     }
@@ -2393,11 +2402,7 @@ private fun MiniPreviewPlayer(
                     fallbackTried = true
                     errorText = null
                     buffering = true
-                    player.stop()
-                    player.clearMediaItems()
-                    player.setMediaItem(MediaItem.fromUri(fallback))
-                    player.prepare()
-                    player.playWhenReady = true
+                    playbackSession.playFallback(streamId, latestStreamUrl, fallback)
                     restartPreviewAudioFade()
                     return
                 }
@@ -2411,9 +2416,7 @@ private fun MiniPreviewPlayer(
         player.addListener(listener)
         onDispose {
             volumeFadeJob[0]?.cancel()
-            player.volume = 0f
             player.removeListener(listener)
-            player.release()
         }
     }
 

@@ -1,5 +1,6 @@
 package com.smartvision.svplayer.ui.notifications
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smartvision.svplayer.BuildConfig
@@ -56,6 +57,20 @@ class NotificationBadgeViewModel(
                     it.copy(
                         unreadCount = visibleUnread,
                         hasUnread = visibleUnread > 0,
+                        lastError = null,
+                        lastRefreshAt = System.currentTimeMillis(),
+                    )
+                }
+            }
+            .onFailure { error ->
+                Log.w(
+                    NotificationLogTag,
+                    "Notification refresh failed: ${error::class.java.simpleName}: ${error.message.orEmpty().take(160)}",
+                )
+                state.update {
+                    it.copy(
+                        lastError = error.message ?: "Notifications unavailable.",
+                        lastRefreshAt = System.currentTimeMillis(),
                     )
                 }
             }
@@ -65,7 +80,11 @@ class NotificationBadgeViewModel(
 data class NotificationBadgeUiState(
     val unreadCount: Int = 0,
     val hasUnread: Boolean = false,
+    val lastError: String? = null,
+    val lastRefreshAt: Long? = null,
 )
+
+private const val NotificationLogTag = "SVNotifications"
 
 private fun AppNotification.isInstalledUpdateNotification(): Boolean {
     val isUpdate = type == NotificationType.AppUpdate || title.contains("update", ignoreCase = true) ||

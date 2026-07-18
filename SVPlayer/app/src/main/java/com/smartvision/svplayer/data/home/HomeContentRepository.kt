@@ -21,7 +21,6 @@ import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -138,7 +137,7 @@ class HomeContentRepository(
             return updateCachedTrending(key = key, movies = emptyList()).movies
         }
         return withContext(Dispatchers.IO) {
-            runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingPolicy.SectionLimit) }
+            runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingPolicy.SectionLimit, key.profileId) }
                 .getOrDefault(emptyList())
                 .also { candidates ->
                     PerformanceDiagnosticRecorder.recordDuration(
@@ -176,7 +175,7 @@ class HomeContentRepository(
             return updateCachedTrending(key = key, series = emptyList()).series
         }
         return withContext(Dispatchers.IO) {
-            runCatching { catalogRepository.getTrendingSeriesItems(HomeTrendingPolicy.SectionLimit) }
+            runCatching { catalogRepository.getTrendingSeriesItems(HomeTrendingPolicy.SectionLimit, key.profileId) }
                 .getOrDefault(emptyList())
                 .also { candidates ->
                     PerformanceDiagnosticRecorder.recordDuration(
@@ -229,7 +228,7 @@ class HomeContentRepository(
             coroutineScope {
                     val movies = async {
                         val candidatesStart = SystemClock.elapsedRealtime()
-                        runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingPolicy.SectionLimit) }
+                        runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingPolicy.SectionLimit, key.profileId) }
                             .getOrDefault(emptyList())
                             .also { candidates ->
                                 PerformanceDiagnosticRecorder.recordDuration(
@@ -244,7 +243,7 @@ class HomeContentRepository(
                     }
                     val series = async {
                         val candidatesStart = SystemClock.elapsedRealtime()
-                        runCatching { catalogRepository.getTrendingSeriesItems(HomeTrendingPolicy.SectionLimit) }
+                        runCatching { catalogRepository.getTrendingSeriesItems(HomeTrendingPolicy.SectionLimit, key.profileId) }
                             .getOrDefault(emptyList())
                             .also { candidates ->
                                 PerformanceDiagnosticRecorder.recordDuration(
@@ -405,41 +404,14 @@ class HomeContentRepository(
     private suspend fun prepareInitialTrendingSeries(
         key: HomeTrendingCacheKey,
         items: List<ContinueItem>,
-    ): List<ContinueItem> {
-        val hydrated = hydrateCachedTrendingItems(
+    ): List<ContinueItem> =
+        // Home readiness must only depend on catalog data and reusable local artwork.
+        // Missing previews are prepared asynchronously when their cards become visible.
+        hydrateCachedTrendingItems(
             key = key,
             contentType = TrendingSeriesType,
             items = items,
         )
-        if (hydrated.isEmpty()) return hydrated
-        val preparedById = mutableMapOf<String, HomeTrendingPreparedPreview>()
-        val preparationBatches = hydrated
-            .take(InitialSeriesArtworkCount)
-            .filterNot(ContinueItem::previewPrepared)
-            .chunked(TrendingPreviewPrepareConcurrency)
-        for (batch in preparationBatches) {
-            val preparedBatch = coroutineScope {
-                batch.map { item ->
-                    async {
-                        val contentId = item.id.substringAfter(':', "").toIntOrNull()
-                            ?: return@async null
-                        prepareTrendingPreview(
-                            contentType = TrendingSeriesType,
-                            contentId = contentId,
-                            fallbackPosterUrl = item.imageUrl,
-                        )?.let { item.id to it }
-                    }
-                }.awaitAll().filterNotNull()
-            }
-            preparedById.putAll(preparedBatch)
-        }
-        if (preparedById.isEmpty()) return hydrated
-        return hydrated.map { item ->
-            preparedById[item.id]
-                ?.applyTo(item, promoteCardArtwork = true)
-                ?: item
-        }
-    }
 
     private suspend fun buildMoviePreviewCache(
         contentId: Int,
@@ -715,7 +687,6 @@ private fun Long.formatDurationLabel(): String {
 
 private const val TrendingMovieType = "movie"
 private const val TrendingSeriesType = "series"
-private const val InitialSeriesArtworkCount = 5
 private const val TrendingPreviewPrepareConcurrency = 2
 private const val PreviewKindMovie = "movie"
 private const val PreviewKindEpisode = "episode"

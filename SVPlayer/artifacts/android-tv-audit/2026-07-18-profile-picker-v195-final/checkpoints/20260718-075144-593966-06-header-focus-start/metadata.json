@@ -1,0 +1,27 @@
+{
+  "label": "06-header-focus-start",
+  "captured_at": "2026-07-18T05:51:55.096703+00:00",
+  "serial": "192.168.1.11:5555",
+  "package": "com.smartvision.svplayer",
+  "pid": "3743",
+  "keys": [
+    "KEYCODE_DPAD_UP"
+  ],
+  "settle_ms": 1000,
+  "capture_elapsed_ms": 10501.7,
+  "focus": [
+    "mResumedActivity: ActivityRecord{f7dcf73 u0 com.smartvision.svplayer/.MainActivity t9509}",
+    "mCurrentFocus=Window{2c57bbb u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}",
+    "mFocusedApp=ActivityRecord{f7dcf73 u0 com.smartvision.svplayer/.MainActivity t9509}"
+  ],
+  "ui_dump_status": "UI hierchary dumped to: /data/local/tmp/codex-ui-4480.xml",
+  "files": [
+    "activity.txt",
+    "gfxinfo-framestats.txt",
+    "logcat.txt",
+    "screenshot.png",
+    "ui-dump-status.txt",
+    "ui.xml",
+    "window.txt"
+  ]
+}

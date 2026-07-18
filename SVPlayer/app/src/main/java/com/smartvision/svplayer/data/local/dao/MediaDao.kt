@@ -77,6 +77,25 @@ interface MediaDao {
         offset: Int,
     ): List<LiveStreamEntity>
 
+    @Query(
+        "SELECT COUNT(*) FROM live_streams " +
+            "WHERE profileId = :profileId " +
+            "AND (:categoryId IS NULL OR categoryId = :categoryId) " +
+            "AND (:pattern IS NULL OR name LIKE :pattern ESCAPE '\\')",
+    )
+    suspend fun countLiveStreamsMatching(profileId: String, categoryId: String?, pattern: String?): Int
+
+    @Query(
+        "SELECT COUNT(*) FROM live_streams " +
+            "WHERE profileId = :profileId AND categoryId IN (:categoryIds) " +
+            "AND (:pattern IS NULL OR name LIKE :pattern ESCAPE '\\')",
+    )
+    suspend fun countLiveStreamsByCategoriesMatching(
+        profileId: String,
+        categoryIds: List<String>,
+        pattern: String?,
+    ): Int
+
     @Query("SELECT * FROM live_streams WHERE profileId = :profileId AND streamId IN (:streamIds)")
     suspend fun getLiveStreamsByIds(profileId: String, streamIds: List<Int>): List<LiveStreamEntity>
 

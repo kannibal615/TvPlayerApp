@@ -1,0 +1,27 @@
+{
+  "label": "12-kids-retry-home",
+  "captured_at": "2026-07-18T06:01:30.770911+00:00",
+  "serial": "192.168.1.11:5555",
+  "package": "com.smartvision.svplayer",
+  "pid": "3743",
+  "keys": [
+    "KEYCODE_DPAD_CENTER"
+  ],
+  "settle_ms": 10000,
+  "capture_elapsed_ms": 17282.9,
+  "focus": [
+    "mResumedActivity: ActivityRecord{74349e3 u0 com.smartvision.svplayer/.MainActivity t9510}",
+    "mCurrentFocus=Window{844484b u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}",
+    "mFocusedApp=ActivityRecord{74349e3 u0 com.smartvision.svplayer/.MainActivity t9510}"
+  ],
+  "ui_dump_status": "UI hierchary dumped to: /data/local/tmp/codex-ui-2488.xml",
+  "files": [
+    "activity.txt",
+    "gfxinfo-framestats.txt",
+    "logcat.txt",
+    "screenshot.png",
+    "ui-dump-status.txt",
+    "ui.xml",
+    "window.txt"
+  ]
+}

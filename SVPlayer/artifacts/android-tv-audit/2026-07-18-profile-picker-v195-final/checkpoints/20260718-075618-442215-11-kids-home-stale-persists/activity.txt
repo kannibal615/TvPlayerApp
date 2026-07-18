@@ -1,0 +1,525 @@
+ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
+Display #0 (activities from top to bottom):
+  Stack #9509: type=standard mode=fullscreen
+  isSleeping=false
+  mBounds=Rect(0, 0 - 0, 0)
+    mResumedActivity: ActivityRecord{f7dcf73 u0 com.smartvision.svplayer/.MainActivity t9509}
+    * Task{a33b93a #9509 visible=true type=standard mode=fullscreen translucent=false A=10147:com.smartvision.svplayer U=0 StackId=9509 sz=1}
+      mBounds=Rect(0, 0 - 0, 0)
+      mMinWidth=-1 mMinHeight=-1
+      userId=0 effectiveUid=u0a147 mCallingUid=2000 mUserSetupComplete=true mCallingPackage=com.android.shell mCallingFeatureId=null
+      affinity=10147:com.smartvision.svplayer
+      intent={flg=0x10000000 cmp=com.smartvision.svplayer/.MainActivity}
+      mActivityComponent=com.smartvision.svplayer/.MainActivity
+      autoRemoveRecents=false isPersistable=true activityType=1
+      rootWasReset=false mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE
+      Activities=[ActivityRecord{f7dcf73 u0 com.smartvision.svplayer/.MainActivity t9509}]
+      askedCompatMode=false inRecents=true isAvailable=true
+      mRootProcess=ProcessRecord{3b88e30 3743:com.smartvision.svplayer/u0a147}
+      taskId=9509 stackId=9509
+      mHasBeenVisible=true
+      mResizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION mSupportsPictureInPicture=false isResizeable=true
+      lastActiveTime=1166471131 (inactive for 1s)
+      * Hist #0: ActivityRecord{f7dcf73 u0 com.smartvision.svplayer/.MainActivity t9509}
+          packageName=com.smartvision.svplayer processName=com.smartvision.svplayer
+          launchedFromUid=2000 launchedFromPackage=com.android.shell launchedFromFeature=null userId=0
+          app=ProcessRecord{3b88e30 3743:com.smartvision.svplayer/u0a147}
+          Intent { flg=0x10000000 cmp=com.smartvision.svplayer/.MainActivity }
+          rootOfTask=true task=Task{a33b93a #9509 visible=true type=standard mode=fullscreen translucent=false A=10147:com.smartvision.svplayer U=0 StackId=9509 sz=1}
+          taskAffinity=10147:com.smartvision.svplayer
+          mActivityComponent=com.smartvision.svplayer/.MainActivity
+          baseDir=/data/app/~~uMtZcHu68b_MKHQ3cPsPQw==/com.smartvision.svplayer-K-_hFmVUldCLggOyCm8I1w==/base.apk
+          dataDir=/data/user/0/com.smartvision.svplayer
+          stateNotNeeded=false componentSpecified=false mActivityType=standard
+          compat={320dpi always-compat} labelRes=0x7f0e0001 icon=0x7f0b0000 theme=0x7f0f002b
+          mLastReportedConfigurations:
+            mGlobalConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} s.713}
+            mOverrideConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.2}
+          CurrentConfiguration={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.2}
+          taskDescription: label="null" icon=null iconResource=/0 iconFilename=null primaryColor=ff212121
+            backgroundColor=ff303030 statusBarColor=ff020817 navigationBarColor=ff020817
+          launchFailed=false launchCount=1 lastLaunchTime=-8m36s303ms
+          mHaveState=false mIcicle=null
+          state=RESUMED stopped=false delayedResume=false finishing=false
+          keysPaused=false inHistory=true setToSleep=false idle=true mStartingWindowState=STARTING_WINDOW_SHOWN
+          occludesParent=true noDisplay=false immersive=false launchMode=0
+          frozenBeforeDestroy=false forceNewConfig=false
+          mActivityType=standard
+          windows=[Window{2c57bbb u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}]
+          windowType=2 hasVisible=true
+          mOccludesParent=true mOrientation=0
+          mVisibleRequested=true mVisible=true mClientVisible=true reportedDrawn=true reportedVisible=true
+          mNumInterestingWindows=2 mNumDrawnWindows=2 allDrawn=true lastAllDrawn=true)
+          startingData=null firstWindowDrawn=true mIsExiting=false
+          nowVisible=true lastVisibleTime=-8m34s705ms
+          resizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION
+          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false
+
+  Stack #9474: type=home mode=fullscreen
+  isSleeping=false
+  mBounds=Rect(0, 0 - 0, 0)
+    mLastPausedActivity: ActivityRecord{7732513 u0 com.google.android.apps.tv.launcherx/.home.HomeActivity t9475}
+    * Task{104c350 #9475 visible=false type=home mode=fullscreen translucent=true A=10026:com.google.android.apps.tv.launcherx U=0 StackId=9474 sz=1}
+      mBounds=Rect(0, 0 - 0, 0)
+      mMinWidth=-1 mMinHeight=-1
+      userId=0 effectiveUid=u0a26 mCallingUid=u0a26 mUserSetupComplete=true mCallingPackage=com.google.android.apps.tv.launcherx mCallingFeatureId=null
+      affinity=10026:com.google.android.apps.tv.launcherx
+      intent={act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10800100 cmp=com.google.android.apps.tv.launcherx/.home.HomeActivity}
+      mActivityComponent=com.google.android.apps.tv.launcherx/.home.HomeActivity
+      autoRemoveRecents=false isPersistable=false activityType=2
+      rootWasReset=false mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE
+      Activities=[ActivityRecord{7732513 u0 com.google.android.apps.tv.launcherx/.home.HomeActivity t9475}]
+      askedCompatMode=false inRecents=true isAvailable=true
+      taskId=9475 stackId=9474
+      mHasBeenVisible=true
+      mResizeMode=RESIZE_MODE_UNRESIZEABLE mSupportsPictureInPicture=false isResizeable=false
+      lastActiveTime=1165955965 (inactive for 516s)
+      * Hist #0: ActivityRecord{7732513 u0 com.google.android.apps.tv.launcherx/.home.HomeActivity t9475}
+          packageName=com.google.android.apps.tv.launcherx processName=com.google.android.apps.tv.launcherx
+          launchedFromUid=0 launchedFromPackage=null launchedFromFeature=null userId=0
+          app=ProcessRecord{d303396 2175:com.google.android.apps.tv.launcherx/u0a26}
+          Intent { act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10800100 cmp=com.google.android.apps.tv.launcherx/.home.HomeActivity (has extras) }
+          rootOfTask=true task=Task{104c350 #9475 visible=false type=home mode=fullscreen translucent=true A=10026:com.google.android.apps.tv.launcherx U=0 StackId=9474 sz=1}
+          taskAffinity=10026:com.google.android.apps.tv.launcherx
+          mActivityComponent=com.google.android.apps.tv.launcherx/.home.HomeActivity
+          baseDir=/data/app/~~mErMmy82XvLEkxh-Eerz1A==/com.google.android.apps.tv.launcherx-6cSY9ikgTF66K69Ag07Vjw==/base.apk
+          dataDir=/data/user/0/com.google.android.apps.tv.launcherx
+          splitDir=[/data/app/~~mErMmy82XvLEkxh-Eerz1A==/com.google.android.apps.tv.launcherx-6cSY9ikgTF66K69Ag07Vjw==/split_config.armeabi_v7a.apk, /data/app/~~mErMmy82XvLEkxh-Eerz1A==/com.google.android.apps.tv.launcherx-6cSY9ikgTF66K69Ag07Vjw==/split_config.fr.apk, /data/app/~~mErMmy82XvLEkxh-Eerz1A==/com.google.android.apps.tv.launcherx-6cSY9ikgTF66K69Ag07Vjw==/split_config.xhdpi.apk]
+          stateNotNeeded=true componentSpecified=false mActivityType=home
+          compat={320dpi always-compat} labelRes=0x7f140435 icon=0x7f100001 theme=0x7f15021b
+          mLastReportedConfigurations:
+            mGlobalConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} s.755}
+            mOverrideConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=home mAlwaysOnTop=undefined mRotation=ROTATION_0} s.3}
+          CurrentConfiguration={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=home mAlwaysOnTop=undefined mRotation=ROTATION_0} s.41}
+          RequestedOverrideConfiguration={0.0 ?mcc?mnc ?localeList ?layoutDir ?swdp ?wdp ?hdp ?density ?lsize ?long ?ldr ?wideColorGamut ?orien ?uimode ?night ?touch ?keyb/?/? ?nav/? winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=null mWindowingMode=undefined mDisplayWindowingMode=undefined mActivityType=home mAlwaysOnTop=undefined mRotation=undefined}}
+          taskDescription: label="null" icon=null iconResource=/0 iconFilename=null primaryColor=ff37474f
+            backgroundColor=ff0e0e0f statusBarColor=ff263238 navigationBarColor=ff000000
+          launchFailed=false launchCount=0 lastLaunchTime=-12h11m53s377ms
+          mHaveState=true mIcicle=Bundle[EMPTY_PARCEL]
+          state=STOPPED stopped=true delayedResume=false finishing=false
+          keysPaused=false inHistory=true setToSleep=false idle=true mStartingWindowState=STARTING_WINDOW_REMOVED
+          occludesParent=true noDisplay=false immersive=false launchMode=2
+          frozenBeforeDestroy=false forceNewConfig=false
+          mActivityType=home
+          windows=[Window{4a5b4e3 u0 com.google.android.apps.tv.launcherx/com.google.android.apps.tv.launcherx.home.HomeActivity}]
+          windowType=2 hasVisible=true
+          mOccludesParent=true mOrientation=-1
+          mVisibleRequested=false mVisible=false mClientVisible=false reportedDrawn=false reportedVisible=false
+          mAppStopped=true
+          mNumInterestingWindows=1 mNumDrawnWindows=1 allDrawn=true lastAllDrawn=true)
+          startingData=null firstWindowDrawn=true mIsExiting=false
+          nowVisible=false lastVisibleTime=-9m7s929ms
+          resizeMode=RESIZE_MODE_UNRESIZEABLE
+          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false
+
+  Stack #9487: type=standard mode=fullscreen
+  isSleeping=false
+  mBounds=Rect(0, 0 - 0, 0)
+    * Task{be2651a #9487 visible=false type=standard mode=fullscreen translucent=true A=10030:com.android.vending U=0 StackId=9487 sz=1}
+      mBounds=Rect(0, 0 - 0, 0)
+      mMinWidth=-1 mMinHeight=-1
+      userId=0 effectiveUid=u0a30 mCallingUid=u0a30 mUserSetupComplete=true mCallingPackage=com.android.vending mCallingFeatureId=null
+      affinity=10030:com.android.vending
+      intent={act=android.intent.action.VIEW dat=http://market.android.com/details?id=fr.francetv.pluzz&url=https%3A%2F%2Fwww.france.tv%2Fsport%2Fcyclisme%2Ftour-de-france%2F%3Fat_medium%3D4%26at_platform%3D2%26at_variant%3D1%26at_campaign%3Dmea_tour_de_france_2026 flg=0x10000000 cmp=com.android.vending/com.google.android.finsky.activities.MainActivity}
+      origActivity=com.android.vending/com.google.android.finsky.activities.MainActivity
+      mActivityComponent=com.android.vending/com.google.android.finsky.tvmainactivity.TvMainActivity
+      autoRemoveRecents=false isPersistable=true activityType=1
+      rootWasReset=false mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE
+      Activities=[ActivityRecord{2e96e3c u0 com.android.vending/com.google.android.finsky.activities.MainActivity t9487}]
+      askedCompatMode=false inRecents=true isAvailable=true
+      taskId=9487 stackId=9487
+      mHasBeenVisible=true
+      mResizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION mSupportsPictureInPicture=false isResizeable=true
+      lastActiveTime=1144508946 (inactive for 21963s)
+      * Hist #0: ActivityRecord{2e96e3c u0 com.android.vending/com.google.android.finsky.activities.MainActivity t9487}
+          packageName=com.android.vending processName=com.android.vending
+          launchedFromUid=10030 launchedFromPackage=com.android.vending launchedFromFeature=null userId=0
+          app=null
+          Intent { act=android.intent.action.VIEW dat=http://market.android.com/details?id=fr.francetv.pluzz&url=https%3A%2F%2Fwww.france.tv%2Fsport%2Fcyclisme%2Ftour-de-france%2F%3Fat_medium%3D4%26at_platform%3D2%26at_variant%3D1%26at_campaign%3Dmea_tour_de_france_2026 flg=0x10000000 cmp=com.android.vending/com.google.android.finsky.activities.MainActivity (has extras) }
+          rootOfTask=true task=Task{be2651a #9487 visible=false type=standard mode=fullscreen translucent=true A=10030:com.android.vending U=0 StackId=9487 sz=1}
+          taskAffinity=10030:com.android.vending
+          mActivityComponent=com.android.vending/com.google.android.finsky.tvmainactivity.TvMainActivity
+          baseDir=/data/app/~~5kM7704yvUxj7HRLtykNrQ==/com.android.vending-qZx4KIwVUV8iZwrq_exb7Q==/base.apk
+          dataDir=/data/user/0/com.android.vending
+          splitDir=[/data/app/~~5kM7704yvUxj7HRLtykNrQ==/com.android.vending-qZx4KIwVUV8iZwrq_exb7Q==/split_config.armeabi_v7a.apk, /data/app/~~5kM7704yvUxj7HRLtykNrQ==/com.android.vending-qZx4KIwVUV8iZwrq_exb7Q==/split_config.fr.apk]
+          stateNotNeeded=false componentSpecified=false mActivityType=standard
+          compat={320dpi always-compat} labelRes=0x7f140643 icon=0x7f110001 theme=0x7f150247
+          mLastReportedConfigurations:
+            mGlobalConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} s.713}
+            mOverrideConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.3}
+          CurrentConfiguration={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.4}
+          taskDescription: label="null" icon=null iconResource=/0 iconFilename=null primaryColor=ff33867b
+            backgroundColor=ff303030 statusBarColor=ff000000 navigationBarColor=0
+          launchFailed=false launchCount=0 lastLaunchTime=-6h18m22s591ms
+          mHaveState=true mIcicle=Bundle[mParcelledData.dataSize=10916]
+          state=DESTROYED stopped=true delayedResume=false finishing=false
+          keysPaused=false inHistory=true setToSleep=false idle=true mStartingWindowState=STARTING_WINDOW_REMOVED
+          occludesParent=true noDisplay=false immersive=false launchMode=2
+          frozenBeforeDestroy=false forceNewConfig=false
+          mActivityType=standard
+          windows=[]
+          windowType=2 hasVisible=true
+          mOccludesParent=true mOrientation=-1
+          mVisibleRequested=false mVisible=false mClientVisible=false reportedDrawn=false reportedVisible=false
+          mAppStopped=true
+          mNumInterestingWindows=1 mNumDrawnWindows=1 allDrawn=false lastAllDrawn=false)
+          nowVisible=false lastVisibleTime=-6h6m37s59ms
+          resizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION
+          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false
+
+  Stack #9468: type=standard mode=fullscreen
+  isSleeping=false
+  mBounds=Rect(0, 0 - 0, 0)
+    * Task{52ed125 #9468 visible=false type=standard mode=fullscreen translucent=true A=10055:com.google.android.youtube.tv.main U=0 StackId=9468 sz=1}
+      mBounds=Rect(0, 0 - 0, 0)
+      mMinWidth=-1 mMinHeight=-1
+      userId=0 effectiveUid=u0a55 mCallingUid=u0a55 mUserSetupComplete=true mCallingPackage=com.google.android.youtube.tv mCallingFeatureId=null
+      affinity=10055:com.google.android.youtube.tv.main
+      intent={act=android.intent.action.MAIN cat=[android.intent.category.LEANBACK_LAUNCHER] flg=0x15000000 pkg=com.google.android.youtube.tv cmp=com.google.android.youtube.tv/com.google.android.apps.youtube.tv.activity.MainActivity}
+      mActivityComponent=com.google.android.youtube.tv/com.google.android.apps.youtube.tv.activity.MainActivity
+      autoRemoveRecents=false isPersistable=true activityType=1
+      rootWasReset=false mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE
+      Activities=[ActivityRecord{694331 u0 com.google.android.youtube.tv/com.google.android.apps.youtube.tv.activity.MainActivity t9468}]
+      askedCompatMode=false inRecents=true isAvailable=true
+      taskId=9468 stackId=9468
+      mHasBeenVisible=true
+      mResizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION mSupportsPictureInPicture=false isResizeable=true
+      lastActiveTime=796845196 (inactive for 369627s)
+      * Hist #0: ActivityRecord{694331 u0 com.google.android.youtube.tv/com.google.android.apps.youtube.tv.activity.MainActivity t9468}
+          packageName=com.google.android.youtube.tv processName=com.google.android.youtube.tv
+          launchedFromUid=10055 launchedFromPackage=com.google.android.youtube.tv launchedFromFeature=null userId=0
+          app=null
+          Intent { act=android.intent.action.MAIN cat=[android.intent.category.LEANBACK_LAUNCHER] flg=0x15000000 pkg=com.google.android.youtube.tv cmp=com.google.android.youtube.tv/com.google.android.apps.youtube.tv.activity.MainActivity (has extras) }
+          rootOfTask=true task=Task{52ed125 #9468 visible=false type=standard mode=fullscreen translucent=true A=10055:com.google.android.youtube.tv.main U=0 StackId=9468 sz=1}
+          taskAffinity=10055:com.google.android.youtube.tv.main
+          mActivityComponent=com.google.android.youtube.tv/com.google.android.apps.youtube.tv.activity.MainActivity
+          baseDir=/data/app/~~2MhJvAruGTkmn57VEKF6qQ==/com.google.android.youtube.tv-0e2sisCgSxBvIXoUqYb3fg==/base.apk
+          dataDir=/data/user/0/com.google.android.youtube.tv
+          splitDir=[/data/app/~~2MhJvAruGTkmn57VEKF6qQ==/com.google.android.youtube.tv-0e2sisCgSxBvIXoUqYb3fg==/split_config.armeabi_v7a.apk]
+          stateNotNeeded=false componentSpecified=false mActivityType=standard
+          compat={320dpi always-compat} labelRes=0x7f140031 icon=0x7f110001 theme=0x7f150185
+          mLastReportedConfigurations:
+            mGlobalConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} s.445}
+            mOverrideConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.2}
+          CurrentConfiguration={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.15}
+          taskDescription: label="null" icon=null iconResource=/0 iconFilename=null primaryColor=ff282828
+            backgroundColor=ff303030 statusBarColor=ff000000 navigationBarColor=ff000000
+          launchFailed=false launchCount=0 lastLaunchTime=-19h48m40s679ms
+          mHaveState=true mIcicle=Bundle[mParcelledData.dataSize=1876]
+          state=DESTROYED stopped=true delayedResume=false finishing=false
+          keysPaused=false inHistory=true setToSleep=false idle=true mStartingWindowState=STARTING_WINDOW_REMOVED
+          occludesParent=true noDisplay=false immersive=false launchMode=2
+          frozenBeforeDestroy=false forceNewConfig=false
+          mActivityType=standard
+          windows=[]
+          windowType=2 hasVisible=true
+          mOccludesParent=true mOrientation=6
+          mVisibleRequested=false mVisible=false mClientVisible=false reportedDrawn=false reportedVisible=false
+          mAppStopped=true
+          mNumInterestingWindows=1 mNumDrawnWindows=1 allDrawn=false lastAllDrawn=false)
+          nowVisible=false lastVisibleTime=-13h27m19s808ms
+          resizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION
+          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false
+
+  Stack #9439: type=standard mode=fullscreen
+  isSleeping=false
+  mBounds=Rect(0, 0 - 0, 0)
+    mLastPausedActivity: ActivityRecord{c29ad2e u0 com.nathnetwork.xciptv/.PlayStreamEPGActivity t-1 f}}
+    * Task{b60d605 #9439 visible=false type=standard mode=fullscreen translucent=true A=10115:com.nathnetwork.xciptv U=0 StackId=9439 sz=3}
+      mBounds=Rect(0, 0 - 0, 0)
+      mMinWidth=-1 mMinHeight=-1
+      userId=0 effectiveUid=u0a115 mCallingUid=u0a115 mUserSetupComplete=true mCallingPackage=com.nathnetwork.xciptv mCallingFeatureId=null
+      affinity=10115:com.nathnetwork.xciptv
+      intent={act=android.intent.action.MAIN cat=[android.intent.category.LEANBACK_LAUNCHER] flg=0x10000000 pkg=com.nathnetwork.xciptv cmp=com.nathnetwork.xciptv/.SplashVideoActivity}
+      mActivityComponent=com.nathnetwork.xciptv/.SplashVideoActivity
+      autoRemoveRecents=false isPersistable=true activityType=1
+      rootWasReset=false mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE
+      Activities=[ActivityRecord{f02e72e u0 com.nathnetwork.xciptv/.CategoriesActivity t9439}, ActivityRecord{d45d83f u0 com.nathnetwork.xciptv/.ChannelListActivity t9439 f}}, ActivityRecord{af7506a u0 com.nathnetwork.xciptv/.ChannelListActivity t9439}]
+      askedCompatMode=false inRecents=true isAvailable=true
+      taskId=9439 stackId=9439
+      mHasBeenVisible=true
+      mResizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION mSupportsPictureInPicture=false isResizeable=true
+      lastActiveTime=446966981 (inactive for 719505s)
+      * Hist #2: ActivityRecord{af7506a u0 com.nathnetwork.xciptv/.ChannelListActivity t9439}
+          packageName=com.nathnetwork.xciptv processName=com.nathnetwork.xciptv
+          launchedFromUid=10115 launchedFromPackage=com.nathnetwork.xciptv launchedFromFeature=null userId=0
+          app=null
+          Intent { flg=0x4000000 cmp=com.nathnetwork.xciptv/.ChannelListActivity (has extras) }
+          rootOfTask=false task=Task{b60d605 #9439 visible=false type=standard mode=fullscreen translucent=true A=10115:com.nathnetwork.xciptv U=0 StackId=9439 sz=3}
+          taskAffinity=10115:com.nathnetwork.xciptv
+          mActivityComponent=com.nathnetwork.xciptv/.ChannelListActivity
+          baseDir=/data/app/~~USeDv779bNlnIGGjaMQ3oA==/com.nathnetwork.xciptv-FNVV7XzUTqZ8Cn70naqqjQ==/base.apk
+          dataDir=/data/user/0/com.nathnetwork.xciptv
+          splitDir=[/data/app/~~USeDv779bNlnIGGjaMQ3oA==/com.nathnetwork.xciptv-FNVV7XzUTqZ8Cn70naqqjQ==/split_config.armeabi_v7a.apk, /data/app/~~USeDv779bNlnIGGjaMQ3oA==/com.nathnetwork.xciptv-FNVV7XzUTqZ8Cn70naqqjQ==/split_config.fr.apk, /data/app/~~USeDv779bNlnIGGjaMQ3oA==/com.nathnetwork.xciptv-FNVV7XzUTqZ8Cn70naqqjQ==/split_config.xhdpi.apk]
+          stateNotNeeded=false componentSpecified=false mActivityType=standard
+          compat={320dpi always-compat} labelRes=0x0 icon=0x7f100000 theme=0x7f1401d1
+          mLastReportedConfigurations:
+            mGlobalConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} s.274}
+            mOverrideConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.2}
+          CurrentConfiguration={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.29}
+          taskDescription: label="null" icon=null iconResource=/0 iconFilename=null primaryColor=ff212121
+            backgroundColor=ff303030 statusBarColor=ff000000 navigationBarColor=ff000000
+          launchFailed=false launchCount=0 lastLaunchTime=-1d7h45m26s172ms
+          mHaveState=true mIcicle=Bundle[mParcelledData.dataSize=3572]
+          state=DESTROYED stopped=true delayedResume=false finishing=false
+          keysPaused=false inHistory=true setToSleep=false idle=true mStartingWindowState=STARTING_WINDOW_REMOVED
+          occludesParent=true noDisplay=false immersive=false launchMode=0
+          frozenBeforeDestroy=false forceNewConfig=false
+          mActivityType=standard
+          windows=[]
+          windowType=2 hasVisible=true
+          mOccludesParent=true mOrientation=0
+          mVisibleRequested=false mVisible=false mClientVisible=false reportedDrawn=false reportedVisible=false
+          mAppStopped=true
+          mNumInterestingWindows=1 mNumDrawnWindows=1 allDrawn=false lastAllDrawn=false)
+          nowVisible=false lastVisibleTime=-1d7h31m42s704ms
+          resizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION
+          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false
+      * Hist #1: ActivityRecord{d45d83f u0 com.nathnetwork.xciptv/.ChannelListActivity t9439 f}}
+          packageName=com.nathnetwork.xciptv processName=com.nathnetwork.xciptv
+          launchedFromUid=10115 launchedFromPackage=com.nathnetwork.xciptv launchedFromFeature=null userId=0
+          app=null
+          Intent { cmp=com.nathnetwork.xciptv/.ChannelListActivity }
+          rootOfTask=false task=Task{b60d605 #9439 visible=false type=standard mode=fullscreen translucent=true A=10115:com.nathnetwork.xciptv U=0 StackId=9439 sz=3}
+          taskAffinity=10115:com.nathnetwork.xciptv
+          mActivityComponent=com.nathnetwork.xciptv/.ChannelListActivity
+          baseDir=/data/app/~~USeDv779bNlnIGGjaMQ3oA==/com.nathnetwork.xciptv-FNVV7XzUTqZ8Cn70naqqjQ==/base.apk
+          dataDir=/data/user/0/com.nathnetwork.xciptv
+          splitDir=[/data/app/~~USeDv779bNlnIGGjaMQ3oA==/com.nathnetwork.xciptv-FNVV7XzUTqZ8Cn70naqqjQ==/split_config.armeabi_v7a.apk, /data/app/~~USeDv779bNlnIGGjaMQ3oA==/com.nathnetwork.xciptv-FNVV7XzUTqZ8Cn70naqqjQ==/split_config.fr.apk, /data/app/~~USeDv779bNlnIGGjaMQ3oA==/com.nathnetwork.xciptv-FNVV7XzUTqZ8Cn70naqqjQ==/split_config.xhdpi.apk]
+          stateNotNeeded=false componentSpecified=false mActivityType=standard
+          compat=null labelRes=0x0 icon=0x7f100000 theme=0x7f1401d1
+          mLastReportedConfigurations:
+            mGlobalConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} s.274}
+            mOverrideConfig={0.0 ?mcc?mnc ?localeList ?layoutDir ?swdp ?wdp ?hdp ?density ?lsize ?long ?ldr ?wideColorGamut ?orien ?uimode ?night ?touch ?keyb/?/? ?nav/? winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=null mWindowingMode=undefined mDisplayWindowingMode=undefined mActivityType=undefined mAlwaysOnTop=undefined mRotation=undefined}}
+          CurrentConfiguration={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.30}
+          launchFailed=false launchCount=0 lastLaunchTime=0
+          mHaveState=false mIcicle=null
+          state=DESTROYED stopped=false delayedResume=false finishing=true
+          keysPaused=false inHistory=true setToSleep=false idle=false mStartingWindowState=STARTING_WINDOW_NOT_SHOWN
+          occludesParent=false noDisplay=false immersive=false launchMode=0
+          frozenBeforeDestroy=false forceNewConfig=false
+          mActivityType=standard
+          windows=[]
+          windowType=2 hasVisible=false
+          mOccludesParent=true mOrientation=0
+          mVisibleRequested=false mVisible=false mClientVisible=true reportedDrawn=false reportedVisible=false
+          resizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION
+          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false
+      * Hist #0: ActivityRecord{f02e72e u0 com.nathnetwork.xciptv/.CategoriesActivity t9439}
+          packageName=com.nathnetwork.xciptv processName=com.nathnetwork.xciptv
+          launchedFromUid=10115 launchedFromPackage=com.nathnetwork.xciptv launchedFromFeature=null userId=0
+          app=null
+          Intent { cmp=com.nathnetwork.xciptv/.CategoriesActivity }
+          rootOfTask=true task=Task{b60d605 #9439 visible=false type=standard mode=fullscreen translucent=true A=10115:com.nathnetwork.xciptv U=0 StackId=9439 sz=3}
+          taskAffinity=10115:com.nathnetwork.xciptv
+          mActivityComponent=com.nathnetwork.xciptv/.CategoriesActivity
+          baseDir=/data/app/~~USeDv779bNlnIGGjaMQ3oA==/com.nathnetwork.xciptv-FNVV7XzUTqZ8Cn70naqqjQ==/base.apk
+          dataDir=/data/user/0/com.nathnetwork.xciptv
+          splitDir=[/data/app/~~USeDv779bNlnIGGjaMQ3oA==/com.nathnetwork.xciptv-FNVV7XzUTqZ8Cn70naqqjQ==/split_config.armeabi_v7a.apk, /data/app/~~USeDv779bNlnIGGjaMQ3oA==/com.nathnetwork.xciptv-FNVV7XzUTqZ8Cn70naqqjQ==/split_config.fr.apk, /data/app/~~USeDv779bNlnIGGjaMQ3oA==/com.nathnetwork.xciptv-FNVV7XzUTqZ8Cn70naqqjQ==/split_config.xhdpi.apk]
+          stateNotNeeded=false componentSpecified=false mActivityType=standard
+          compat={320dpi always-compat} labelRes=0x0 icon=0x7f100000 theme=0x7f1401d1
+          mLastReportedConfigurations:
+            mGlobalConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} s.274}
+            mOverrideConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.2}
+          CurrentConfiguration={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch qwerty/v/v dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.32}
+          taskDescription: label="null" icon=null iconResource=/0 iconFilename=null primaryColor=ff212121
+            backgroundColor=ff303030 statusBarColor=ff000000 navigationBarColor=ff000000
+          launchFailed=false launchCount=0 lastLaunchTime=-1d7h47m32s848ms
+          mHaveState=true mIcicle=Bundle[mParcelledData.dataSize=2860]
+          state=DESTROYED stopped=true delayedResume=false finishing=false
+          keysPaused=false inHistory=true setToSleep=false idle=true mStartingWindowState=STARTING_WINDOW_NOT_SHOWN
+          occludesParent=true noDisplay=false immersive=false launchMode=0
+          frozenBeforeDestroy=false forceNewConfig=false
+          mActivityType=standard
+          windows=[]
+          windowType=2 hasVisible=true
+          mOccludesParent=true mOrientation=0
+          mVisibleRequested=false mVisible=false mClientVisible=false reportedDrawn=false reportedVisible=false
+          mAppStopped=true
+          mNumInterestingWindows=1 mNumDrawnWindows=1 allDrawn=false lastAllDrawn=false)
+          nowVisible=false lastVisibleTime=-1d7h45m45s178ms
+          resizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION
+          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false
+
+  Resumed activities in task display areas (from top to bottom):
+    Resumed: ActivityRecord{f7dcf73 u0 com.smartvision.svplayer/.MainActivity t9509}
+
+  ResumedActivity: ActivityRecord{f7dcf73 u0 com.smartvision.svplayer/.MainActivity t9509}
+
+ActivityStackSupervisor state:
+  topDisplayFocusedStack=Task{a33b93a #9509 visible=true type=standard mode=fullscreen translucent=false A=10147:com.smartvision.svplayer U=0 StackId=9509 sz=1}
+  mLastOrientationSource=ActivityRecord{f7dcf73 u0 com.smartvision.svplayer/.MainActivity t9509}
+  Display: mDisplayId=0 stacks=5
+    init=1920x1080 320dpi cur=1920x1080 app=1920x1080 rng=1080x1080-1920x1920
+    deferred=false mLayoutNeeded=false mTouchExcludeRegion=SkRegion((0,0,1920,1080))
+
+  mLayoutSeq=5122
+  mCurrentFocus=Window{2c57bbb u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}
+  mFocusedApp=ActivityRecord{f7dcf73 u0 com.smartvision.svplayer/.MainActivity t9509}
+  mLastStatusBarVisibility=0x9708
+
+  displayId=0
+  mWallpaperTarget=null
+  mLastWallpaperX=-1.0 mLastWallpaperY=-1.0
+
+  Task display areas in top down Z order:
+    TaskDisplayArea DefaultTaskDisplayArea
+      mLastOrientationSource=Task{a33b93a #9509 visible=true type=standard mode=fullscreen translucent=false A=10147:com.smartvision.svplayer U=0 StackId=9509 sz=1}
+      mPreferredTopFocusableStack=Task{a33b93a #9509 visible=true type=standard mode=fullscreen translucent=false A=10147:com.smartvision.svplayer U=0 StackId=9509 sz=1}
+      mLastFocusedStack=Task{a33b93a #9509 visible=true type=standard mode=fullscreen translucent=false A=10147:com.smartvision.svplayer U=0 StackId=9509 sz=1}
+      Application tokens in top down Z order:
+      * Task{a33b93a #9509 visible=true type=standard mode=fullscreen translucent=false A=10147:com.smartvision.svplayer U=0 StackId=9509 sz=1}
+        mLastOrientationSource=ActivityRecord{f7dcf73 u0 com.smartvision.svplayer/.MainActivity t9509}
+        bounds=[0,0][1920,1080]
+        * ActivityRecord{f7dcf73 u0 com.smartvision.svplayer/.MainActivity t9509}
+      * Task{269b949 #9474 visible=false type=home mode=fullscreen translucent=true I=com.google.android.apps.tv.launcherx/.home.HomeActivity U=0 StackId=9474 sz=1}
+        mLastOrientationSource=Task{104c350 #9475 visible=false type=home mode=fullscreen translucent=true A=10026:com.google.android.apps.tv.launcherx U=0 StackId=9474 sz=1}
+        bounds=[0,0][1920,1080]
+        * Task{104c350 #9475 visible=false type=home mode=fullscreen translucent=true A=10026:com.google.android.apps.tv.launcherx U=0 StackId=9474 sz=1}
+          mLastOrientationSource=ActivityRecord{7732513 u0 com.google.android.apps.tv.launcherx/.home.HomeActivity t9475}
+          bounds=[0,0][1920,1080]
+          * ActivityRecord{7732513 u0 com.google.android.apps.tv.launcherx/.home.HomeActivity t9475}
+      * Task{be2651a #9487 visible=false type=standard mode=fullscreen translucent=true A=10030:com.android.vending U=0 StackId=9487 sz=1}
+        mLastOrientationSource=ActivityRecord{2e96e3c u0 com.android.vending/com.google.android.finsky.activities.MainActivity t9487}
+        bounds=[0,0][1920,1080]
+        * ActivityRecord{2e96e3c u0 com.android.vending/com.google.android.finsky.activities.MainActivity t9487}
+      * Task{52ed125 #9468 visible=false type=standard mode=fullscreen translucent=true A=10055:com.google.android.youtube.tv.main U=0 StackId=9468 sz=1}
+        bounds=[0,0][1920,1080]
+        * ActivityRecord{694331 u0 com.google.android.youtube.tv/com.google.android.apps.youtube.tv.activity.MainActivity t9468}
+      * Task{b60d605 #9439 visible=false type=standard mode=fullscreen translucent=true A=10115:com.nathnetwork.xciptv U=0 StackId=9439 sz=3}
+        bounds=[0,0][1920,1080]
+        * ActivityRecord{af7506a u0 com.nathnetwork.xciptv/.ChannelListActivity t9439}
+        * ActivityRecord{d45d83f u0 com.nathnetwork.xciptv/.ChannelListActivity t9439 f}}
+        * ActivityRecord{f02e72e u0 com.nathnetwork.xciptv/.CategoriesActivity t9439}
+
+  no ScreenRotationAnimation 
+
+  homeStack=Task=9474
+
+  PinnedStackController
+    mIsImeShowing=false
+    mImeHeight=0
+    mAspectRatio=-1.0
+    mMinAspectRatio=0.41841003
+    mMaxAspectRatio=2.39
+    mActions=[]
+    mDisplayInfo=DisplayInfo{"Écran intégré", displayId 0, FLAG_SECURE, FLAG_SUPPORTS_PROTECTED_BUFFERS, FLAG_TRUSTED, real 1920 x 1080, largest app 1920 x 1920, smallest app 1080 x 1080, appVsyncOff 1000000, presDeadline 16666666, mode 1, defaultMode 1, modes [{id=1, width=1920, height=1080, fps=60.000004}], hdrCapabilities HdrCapabilities{mSupportedHdrTypes=[2, 3, 4], mMaxLuminance=500.0, mMaxAverageLuminance=500.0, mMinLuminance=0.0}, minimalPostProcessingSupported false, rotation 0, state ON, type INTERNAL, uniqueId "local:0", app 1920 x 1080, density 320 (40.337 x 40.341) dpi, layerStack 0, colorMode 0, supportedColorModes [0], address {port=0}, deviceProductInfo null, removeMode 0}
+
+  DisplayFrames w=1920 h=1080 r=0
+    mStable=[0,0][1920,1080]
+    mStableFullscreen=[0,0][1920,1080]
+    mDock=[0,0][1920,1080]
+    mCurrent=[0,0][1920,1080]
+    mSystem=[0,0][1920,1080]
+    mContent=[0,0][1920,1080]
+    mVoiceContent=[0,0][1920,1080]
+    mRestricted=[0,0][1920,1080]
+    mUnrestricted=[0,0][1920,1080]
+    mDisplayCutout=WmDisplayCutout{DisplayCutout{insets=Rect(0, 0 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]}}, mFrameSize=null}
+
+  DisplayPolicy
+    mCarDockEnablesAccelerometer=true mDeskDockEnablesAccelerometer=true
+    mDockMode=EXTRA_DOCK_STATE_UNDOCKED mLidState=LID_ABSENT
+    mAwake=true mScreenOnEarly=true mScreenOnFully=true
+    mKeyguardDrawComplete=true mWindowManagerDrawComplete=true
+    mHdmiPlugged=false
+    mLastSystemUiFlags=0x9708 mResettingSystemUiFlags=0x0 mForceClearedSystemUiFlags=0x0
+    mShowingDream=false mDreamingLockscreen=false isKeyguardShowing=false
+    mFocusedWindow=Window{2c57bbb u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}
+    mTopFullscreenOpaqueWindowState=Window{2c57bbb u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}
+    mTopFullscreenOpaqueOrDimmingWindowState=Window{2c57bbb u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}
+    mTopIsFullscreen=false
+    mForceStatusBar=false    mForceShowSystemBarsFromExternal=false mAllowLockscreenWhenOn=false
+    Looper state:
+      Looper (android.ui, tid 21) {bc0a4f1}
+        (Total messages: 0, polling=true, quitting=false)
+
+  DisplayRotation
+    mCurrentAppOrientation=SCREEN_ORIENTATION_LANDSCAPE
+    mLastOrientation=0
+    mRotation=0 mDeferredRotationPauseCount=0
+    mLandscapeRotation=ROTATION_0 mSeascapeRotation=ROTATION_180
+    mPortraitRotation=ROTATION_270 mUpsideDownRotation=ROTATION_90
+    mSupportAutoRotation=true
+    WindowOrientationListener
+      mEnabled=false
+      mCurrentRotation=ROTATION_0
+      mSensorType=null
+      mSensor=null
+      mRate=2
+
+    mCarDockRotation=-1 mDeskDockRotation=-1
+    mUserRotationMode=USER_ROTATION_FREE mUserRotation=ROTATION_0 mAllowAllRotations=unknown
+    mDemoHdmiRotation=ROTATION_0 mDemoHdmiRotationLock=false mUndockedHdmiRotation=-1
+    mLidOpenRotation=-1
+    mFixedToUserRotation=true
+
+
+  WindowInsetsStateController
+    InsetsState
+      InsetsSource type=ITYPE_IME frame=[0,0][0,0] visible=false
+    Control map:
+    ITYPE_IME -> Window{2c57bbb u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}
+    InsetsSourceProviders map:
+    ITYPE_IME -> 
+  InsetsSourceProvider
+   mSource=    InsetsSource type=ITYPE_IME frame=[0,0][0,0] visible=false
+   mControl=    InsetsSourceControl type=ITYPE_IME mLeash=Surface(name=Surface(name=5d467a0 InputMethod)/@0x190d71e - animation-leash)/@0xdc9d131 mSurfacePosition=Point(0, 617)
+   mFakeControl=    InsetsSourceControl type=ITYPE_IME mLeash=null mSurfacePosition=Point(0, 0)
+ mIsLeashReadyForDispatching=true mImeOverrideFrame=Rect(0, 0 - 0, 0)   mWin=    mDisplayId=0 rootTaskId=9474 mSession=Session{6eaa307 3887:u0a10060} mClient=android.os.BinderProxy@70468a3
+    mOwnerUid=10060 showForAllUsers=false package=com.tcl.inputmethod.international appop=NONE
+    mAttrs={(0,0)(fillxwrap) gr=BOTTOM CENTER_VERTICAL sim={adjust=pan} ty=INPUT_METHOD fmt=TRANSPARENT wanim=0x1030056
+      fl=NOT_FOCUSABLE LAYOUT_IN_SCREEN SPLIT_TOUCH HARDWARE_ACCELERATED DRAWS_SYSTEM_BAR_BACKGROUNDS
+      pfl=FIT_INSETS_CONTROLLED
+      fitTypes=STATUS_BARS NAVIGATION_BARS
+      fitSides=LEFT TOP RIGHT
+      fitIgnoreVis}
+    Requested w=1920 h=463 mLayoutSeq=4008
+    mIsImWindow=true mIsWallpaper=false mIsFloatingLayer=true mWallpaperVisible=false
+    mHasSurface=false isReadyForDisplay()=false mWindowRemovalAllowed=false
+    ContainerAnimator:
+      mLeash=Surface(name=Surface(name=5d467a0 InputMethod)/@0x190d71e - animation-leash)/@0xdc9d131 mAnimationType=32
+      Animation: com.android.server.wm.InsetsSourceProvider$ControlAdapter@9913016
+        ControlAdapter
+         mCapturedLeash=Surface(name=Surface(name=5d467a0 InputMethod)/@0x190d71e - animation-leash)/@0xdc9d131    WindowStateAnimator{4272cae InputMethod}:
+       mAnimationIsEntrance=true    mForceSeamlesslyRotate=false seamlesslyRotate: pending=null finishedFrameNumber=0
+    isOnScreen=false
+    isVisible=false
+   mAdapter=    ControlAdapter
+     mCapturedLeash=Surface(name=Surface(name=5d467a0 InputMethod)/@0x190d71e - animation-leash)/@0xdc9d131   mControlTarget=    mDisplayId=0 rootTaskId=9509 mSession=Session{18109ec 3743:u0a10147} mClient=android.os.BinderProxy@119204a
+    mOwnerUid=10147 showForAllUsers=false package=com.smartvision.svplayer appop=NONE
+    mAttrs={(0,0)(fillxfill) sim={adjust=pan} ty=BASE_APPLICATION wanim=0x10302fe
+      fl=KEEP_SCREEN_ON LAYOUT_IN_SCREEN FULLSCREEN LAYOUT_INSET_DECOR SPLIT_TOUCH HARDWARE_ACCELERATED DRAWS_SYSTEM_BAR_BACKGROUNDS
+      pfl=FORCE_DRAW_STATUS_BAR_BACKGROUND FIT_INSETS_CONTROLLED
+      vsysui=HIDE_NAVIGATION FULLSCREEN LAYOUT_STABLE LAYOUT_HIDE_NAVIGATION LAYOUT_FULLSCREEN IMMERSIVE_STICKY
+      bhv=SHOW_TRANSIENT_BARS_BY_SWIPE
+      fitSides=}
+    Requested w=1920 h=1080 mLayoutSeq=5122
+    mHasSurface=true isReadyForDisplay()=true mWindowRemovalAllowed=false
+    WindowStateAnimator{3638099 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}:
+      Surface: shown=true layer=0 alpha=1.0 rect=(0.0,0.0) 1920 x 1080 transform=(1.0, 0.0, 1.0, 0.0)
+    mForceSeamlesslyRotate=false seamlesslyRotate: pending=null finishedFrameNumber=0
+    isOnScreen=true
+    isVisible=true
+
+  KeyguardController:
+    mKeyguardShowing=false
+    mAodShowing=false
+    mKeyguardGoingAway=false
+    Occluded=false DismissingKeyguardActivity=null at display=0
+    mDismissalRequested=false
+
+  LockTaskController:
+    mLockTaskModeState=NONE
+    mLockTaskModeTasks=
+    mLockTaskPackages (userId:packages)=
+      u0:[]
+      u10:[]
+
+  mCurTaskIdForUser={0=9509}
+  mUserStackInFront={}
+  mVisibilityTransactionDepth=0
+  isHomeRecentsComponent=false
+
+  TaskOrganizerController:
+    Per windowing mode:

@@ -261,10 +261,9 @@ class SeriesViewModel(
     }
 
     fun updateContentSearchQuery(query: String) {
-        val cleanQuery = query.trim()
         val current = _uiState.value
-        if (current.contentSearchQuery == cleanQuery) return
-        _uiState.update { it.copy(contentSearchQuery = cleanQuery) }
+        if (current.contentSearchQuery == query) return
+        _uiState.update { it.copy(contentSearchQuery = query) }
         when (current.selectedCategoryId) {
             FavoriteSeriesCategoryId -> loadFavoriteSeries()
             HistorySeriesCategoryId -> loadHistorySeries()
@@ -921,10 +920,11 @@ private fun XtreamSeriesStream.toUiSeries(
     )
 
 private fun SeriesItemUi.matchesSearch(query: String): Boolean {
-    if (query.isBlank()) return true
-    return title.contains(query, ignoreCase = true) ||
-        genre?.contains(query, ignoreCase = true) == true ||
-        releaseDate?.contains(query, ignoreCase = true) == true
+    val cleanQuery = query.trim()
+    if (cleanQuery.isBlank()) return true
+    return title.contains(cleanQuery, ignoreCase = true) ||
+        genre?.contains(cleanQuery, ignoreCase = true) == true ||
+        releaseDate?.contains(cleanQuery, ignoreCase = true) == true
 }
 
 private fun Episode.toUiEpisode(xtreamRepository: XtreamRepository): SeriesEpisodeUi =

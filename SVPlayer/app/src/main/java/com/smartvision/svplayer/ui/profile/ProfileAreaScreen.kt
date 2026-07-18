@@ -136,7 +136,7 @@ internal fun ProfileAreaScreen(
     onLicenseKey: () -> Unit,
     onLockedFeature: () -> Unit,
     onSaveProfile: (PlaylistProfile) -> String,
-    onActivateProfile: (String) -> Unit,
+    onRequestGlobalProfilePicker: () -> Unit,
     onDeleteProfile: (String) -> Unit,
     onSynchronizeProfile: (String) -> Unit,
     onSetAutostartEnabled: (Boolean) -> Unit,
@@ -286,8 +286,7 @@ internal fun ProfileAreaScreen(
                         menuRequester = menuRequesters.getValue(ProfileAreaDestination.INFO),
                         changeRequester = infoChangeRequester,
                         syncRequester = infoSyncRequester,
-                        onActivateProfile = onActivateProfile,
-                        onVerifyPin = onVerifyPin,
+                        onRequestGlobalProfilePicker = onRequestGlobalProfilePicker,
                         onOpenManage = onOpenManage,
                         onSynchronizeProfile = onSynchronizeProfile,
                         modifier = Modifier.fillMaxSize(),
@@ -394,15 +393,12 @@ private fun ProfileInfoContent(
     menuRequester: FocusRequester,
     changeRequester: FocusRequester,
     syncRequester: FocusRequester,
-    onActivateProfile: (String) -> Unit,
-    onVerifyPin: (String) -> Boolean,
+    onRequestGlobalProfilePicker: () -> Unit,
     onOpenManage: () -> Unit,
     onSynchronizeProfile: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val activeProfile = state.playlistProfiles.firstOrNull { it.id == state.activePlaylistProfileId }
-    var showPicker by remember { mutableStateOf(false) }
-    var lockedProfile by remember { mutableStateOf<PlaylistProfile?>(null) }
     val syncing = syncStatus is SyncStatus.Running
     val scrollState = rememberScrollState()
 
@@ -434,7 +430,7 @@ private fun ProfileInfoContent(
                 }
                 TvButton(
                     text = strings.changeProfile,
-                    onClick = { showPicker = true },
+                    onClick = onRequestGlobalProfilePicker,
                     focusRequester = changeRequester,
                     modifier = Modifier.width(160.dp).height(40.dp).focusProperties {
                         left = menuRequester
@@ -511,74 +507,6 @@ private fun ProfileInfoContent(
         }
     }
 
-    if (showPicker) {
-        ProfileActivationDialog(
-            strings = strings,
-            profiles = state.playlistProfiles,
-            activeProfileId = state.activePlaylistProfileId,
-            onDismiss = { showPicker = false },
-            onActivate = { profile ->
-                if (!profile.isConfigured) return@ProfileActivationDialog
-                if (profile.isLocked) lockedProfile = profile else {
-                    showPicker = false
-                    onActivateProfile(profile.id)
-                }
-            },
-        )
-    }
-    lockedProfile?.let { profile ->
-        NumericPinDialog(
-            title = strings.enterPin,
-            strings = strings,
-            onDismiss = { lockedProfile = null },
-            onSubmit = { pin ->
-                onVerifyPin(pin).also { valid ->
-                    if (valid) {
-                        lockedProfile = null
-                        showPicker = false
-                        onActivateProfile(profile.id)
-                    }
-                }
-            },
-        )
-    }
-}
-
-@Composable
-private fun ProfileActivationDialog(
-    strings: SmartVisionStrings,
-    profiles: List<PlaylistProfile>,
-    activeProfileId: String,
-    onDismiss: () -> Unit,
-    onActivate: (PlaylistProfile) -> Unit,
-) {
-    val firstRequester = remember { FocusRequester() }
-    LaunchedEffect(profiles) {
-        if (profiles.isNotEmpty()) {
-            delay(ProfileAreaFocusDelay)
-            firstRequester.requestFocus()
-        }
-    }
-    com.smartvision.svplayer.ui.components.TvDialogSurface(
-        title = strings.changeProfile,
-        onDismiss = onDismiss,
-        width = 500.dp,
-    ) {
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(4.dp)) {
-            items(profiles, key = { it.id }) { profile ->
-                ProfileCard(
-                    profile = profile,
-                    active = profile.id == activeProfileId,
-                    strings = strings,
-                    onClick = { onActivate(profile) },
-                    modifier = Modifier.width(130.dp).height(150.dp)
-                        .then(if (profile.id == profiles.firstOrNull()?.id) Modifier.focusRequester(firstRequester) else Modifier),
-                )
-            }
-        }
-        Spacer(Modifier.height(14.dp))
-        TvButton(strings.cancel, onDismiss, variant = TvButtonVariant.Secondary, modifier = Modifier.align(Alignment.End).height(35.dp))
-    }
 }
 
 @Composable
@@ -786,6 +714,7 @@ private fun ManageProfilesContent(
 
     if (showEditor) {
         PlaylistProfileEditorDialog(
+            strings = strings,
             initial = editorProfile,
             createType = editorCreateType,
             adminProfile = adminProfile,

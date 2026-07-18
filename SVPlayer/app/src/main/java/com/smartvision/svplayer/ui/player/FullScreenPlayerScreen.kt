@@ -8,6 +8,8 @@ import android.os.SystemClock
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -76,17 +78,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
@@ -153,6 +159,7 @@ import com.smartvision.svplayer.media.MediaCenterPlayback
 import com.smartvision.svplayer.media.MediaCenterSource
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
+import com.smartvision.svplayer.ui.focus.LocalTvAnimationsEnabled
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
@@ -650,6 +657,8 @@ fun FullScreenPlayerRoute(
     recorderAccess: PremiumFeatureGateResult? = null,
     strings: SmartVisionStrings? = null,
     onRecorderLocked: () -> Unit = {},
+    livePlaybackSession: LivePlaybackSession? = null,
+    liveEnterFromBounds: Rect? = null,
 ) {
     val container = LocalAppContainer.current
     val viewModel: FullScreenPlayerViewModel = viewModel(
@@ -696,6 +705,8 @@ fun FullScreenPlayerRoute(
         recorderAccess = recorderAccess,
         strings = strings,
         onRecorderLocked = onRecorderLocked,
+        livePlaybackSession = livePlaybackSession,
+        liveEnterFromBounds = liveEnterFromBounds,
     )
 }
 
@@ -793,6 +804,8 @@ private fun FullScreenPlayerScreen(
     recorderAccess: PremiumFeatureGateResult? = null,
     strings: SmartVisionStrings? = null,
     onRecorderLocked: () -> Unit = {},
+    livePlaybackSession: LivePlaybackSession? = null,
+    liveEnterFromBounds: Rect? = null,
 ) {
     val context = LocalContext.current
     val container = LocalAppContainer.current
@@ -856,6 +869,11 @@ private fun FullScreenPlayerScreen(
     var adDurationMs by remember(playback.streamId) { mutableLongStateOf(0L) }
     var exiting by remember(playback.streamId) { mutableStateOf(false) }
     var playbackCompletedReported by remember(playback.streamId) { mutableStateOf(false) }
+    val animationsEnabled = LocalTvAnimationsEnabled.current
+    val expansionProgress = remember(liveEnterFromBounds, playback.streamId) {
+        Animatable(if (liveEnterFromBounds == null || !animationsEnabled) 1f else 0f)
+    }
+    var playerViewportSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
     val exitStopDone = remember(playback.streamId) { AtomicBoolean(false) }
     val releaseScheduled = remember(playback.streamId) { AtomicBoolean(false) }
@@ -878,13 +896,32 @@ private fun FullScreenPlayerScreen(
         }
     }
     val mediaSourceFactory = remember(context) { smartVisionMediaSourceFactory(context) }
-    val player = remember(mediaSourceFactory, playerSettings.bufferMode) {
-        ExoPlayer.Builder(context)
-            .setMediaSourceFactory(mediaSourceFactory)
-            .setLoadControl(buildPlaybackLoadControl(playerSettings.bufferMode))
-            .build()
-            .apply {
-            playWhenReady = true
+    val ownedPlayer = remember(mediaSourceFactory, playerSettings.bufferMode, livePlaybackSession) {
+        if (livePlaybackSession == null) {
+            ExoPlayer.Builder(context)
+                .setMediaSourceFactory(mediaSourceFactory)
+                .setLoadControl(buildPlaybackLoadControl(playerSettings.bufferMode))
+                .build()
+                .apply { playWhenReady = true }
+        } else {
+            null
+        }
+    }
+    val player = livePlaybackSession?.player ?: requireNotNull(ownedPlayer)
+
+    LaunchedEffect(liveEnterFromBounds, animationsEnabled, playback.streamId) {
+        if (liveEnterFromBounds != null && animationsEnabled) {
+            overlayVisible = false
+            expansionProgress.snapTo(0f)
+            expansionProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+            )
+            overlayVisible = true
+            focusPlayWhenOverlayShows = true
+            overlayTick += 1
+        } else {
+            expansionProgress.snapTo(1f)
         }
     }
 
@@ -930,6 +967,24 @@ private fun FullScreenPlayerScreen(
     }
 
     fun prepareContentWithoutAd() {
+        if (
+            livePlaybackSession != null &&
+            livePlaybackSession.matches(playback.streamId, playback.url) &&
+            player.playbackState != Player.STATE_IDLE
+        ) {
+            player.volume = 1f
+            player.playWhenReady = true
+            buffering = player.playbackState != Player.STATE_READY
+            return
+        }
+        if (livePlaybackSession != null) {
+            fallbackTried = false
+            errorText = null
+            buffering = true
+            livePlaybackSession.playPreview(playback.streamId, playback.url)
+            player.volume = 1f
+            return
+        }
         val shouldResume = resumeDecision != ResumePlaybackDecision.Restart
         prepareMedia(MediaItem.fromUri(playback.url), resumeContent = shouldResume)
         val remainingAtResume = playback.resumeDurationMs - playback.resumePositionMs
@@ -1067,8 +1122,10 @@ private fun FullScreenPlayerScreen(
         reportPlayerExitStep("before_exit_release", "source=$source")
         runCatching {
             playerView.player = null
-            player.clearVideoSurface()
-            player.release()
+            if (livePlaybackSession == null) {
+                player.clearVideoSurface()
+                player.release()
+            }
             anomalyReporter.setCurrentContext(releaseContext)
         }.onFailure { error ->
             anomalyReporter.reportAsync(
@@ -1094,13 +1151,17 @@ private fun FullScreenPlayerScreen(
             anomalyType = "PLAYER_EXIT_BEGIN",
         )
         runCatching {
-            if (exitStopDone.compareAndSet(false, true)) {
+            if (livePlaybackSession == null && exitStopDone.compareAndSet(false, true)) {
                 reportPlayerExitStep("before_pause", "source=$source")
                 player.pause()
                 reportPlayerExitStep("after_pause", "source=$source")
                 reportPlayerExitStep("before_stop", "source=$source")
                 player.stop()
                 reportPlayerExitStep("after_stop", "source=$source")
+            }
+            if (livePlaybackSession != null) {
+                overlayVisible = false
+                brightnessMode = false
             }
         }.onFailure { error ->
             anomalyReporter.reportAsync(
@@ -1149,6 +1210,12 @@ private fun FullScreenPlayerScreen(
                         anomalyType = "PLAYER_PROGRESS_SAVE_FAILED",
                     )
                 }
+            }
+            if (livePlaybackSession != null && liveEnterFromBounds != null && animationsEnabled) {
+                expansionProgress.animateTo(
+                    targetValue = 0f,
+                    animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                )
             }
             releasePlayerBeforeNavigation(source)
             reportPlayerExitStep(
@@ -1271,6 +1338,26 @@ private fun FullScreenPlayerScreen(
     fun handleLiveChannelKey(keyCode: Int, repeatCount: Int = 0): Boolean {
         if (playback.contentType != UserContentType.Live) return false
         if (adGateActive) return true
+        if (
+            activeMenu == PlayerOverlayMenu.None &&
+            overlayVisible &&
+            !brightnessMode &&
+            (keyCode == AndroidKeyEvent.KEYCODE_DPAD_DOWN || keyCode == AndroidKeyEvent.KEYCODE_MENU)
+        ) {
+            activeMenu = PlayerOverlayMenu.Settings
+            overlayVisible = false
+            return true
+        }
+        if (keyCode == AndroidKeyEvent.KEYCODE_MEDIA_REWIND) {
+            seekLiveBy(-10_000L)
+            showOverlay(requestPlayFocus = false)
+            return true
+        }
+        if (keyCode == AndroidKeyEvent.KEYCODE_MEDIA_FAST_FORWARD) {
+            seekLiveBy(10_000L)
+            showOverlay(requestPlayFocus = false)
+            return true
+        }
         when (
             resolveLiveRemoteAction(
                 keyCode = keyCode,
@@ -1330,12 +1417,10 @@ private fun FullScreenPlayerScreen(
         }
         fun moveLiveFocus(direction: Int) {
             val enabled = buildList {
-                add(0)
                 if (playback.previousItem != null) add(1)
-                if (liveSeekable) add(2)
                 add(3)
-                if (liveSeekable) add(4)
                 if (playback.nextItem != null) add(5)
+                add(0)
                 add(6)
             }
             val current = enabled.indexOf(liveFocusedControlIndex).takeIf { it >= 0 } ?: enabled.indexOf(3)
@@ -1801,7 +1886,7 @@ private fun FullScreenPlayerScreen(
             runCatching {
                 player.removeListener(listener)
                 playerView.player = null
-                if (releaseScheduled.compareAndSet(false, true)) {
+                if (livePlaybackSession == null && releaseScheduled.compareAndSet(false, true)) {
                     val releaseBeginContext = playerExitContext("release_begin")
                     val releaseDoneContext = playerExitContext("release_done")
                     anomalyReporter.setCurrentContext(releaseBeginContext)
@@ -1842,6 +1927,7 @@ private fun FullScreenPlayerScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .onSizeChanged { playerViewportSize = it }
             .background(Color.Black)
             .focusable()
             .onPreviewKeyEvent { event ->
@@ -1930,7 +2016,25 @@ private fun FullScreenPlayerScreen(
                     }
                 }
             },
-            modifier = Modifier.matchParentSize(),
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer {
+                    val bounds = liveEnterFromBounds
+                    val width = playerViewportSize.width.toFloat()
+                    val height = playerViewportSize.height.toFloat()
+                    val progress = expansionProgress.value.coerceIn(0f, 1f)
+                    if (bounds != null && width > 0f && height > 0f) {
+                        val startScaleX = (bounds.width / width).coerceIn(0.05f, 1f)
+                        val startScaleY = (bounds.height / height).coerceIn(0.05f, 1f)
+                        scaleX = startScaleX + (1f - startScaleX) * progress
+                        scaleY = startScaleY + (1f - startScaleY) * progress
+                        translationX = (bounds.center.x - width / 2f) * (1f - progress)
+                        translationY = (bounds.center.y - height / 2f) * (1f - progress)
+                        transformOrigin = TransformOrigin.Center
+                        clip = progress < 1f
+                        shape = RoundedCornerShape(8.dp * (1f - progress))
+                    }
+                },
         )
 
         if (brightnessValue < 50f) {

@@ -4,7 +4,8 @@ param(
     [switch]$SkipApkUpload,
     [string]$QaDeviceId = "",
     [string]$QaShortCode = "",
-    [int]$QaActiveHoldSeconds = 0
+    [int]$QaActiveHoldSeconds = 0,
+    [string]$ResendExistingPlaylistPublicCode = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -857,6 +858,117 @@ try {
     Write-Utf8NoBomFile -Path $OutputPath -Content $content
 }
 
+function New-ExistingPlaylistResendFile {
+    param(
+        [string]$OutputPath,
+        [string]$Token,
+        [string]$PublicDeviceCode
+    )
+
+    $content = @'
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/api/config.php';
+require_once __DIR__ . '/api/helpers.php';
+
+header('Content-Type: application/json; charset=utf-8');
+if (!hash_equals('__TOKEN__', (string) ($_GET['token'] ?? ''))) {
+    http_response_code(404);
+    echo json_encode(['success' => false]);
+    exit;
+}
+
+register_shutdown_function(static function (): void { @unlink(__FILE__); });
+
+$pdo = db();
+try {
+    $publicCode = clean_public_device_code('__PUBLIC_DEVICE_CODE__');
+    $deviceQuery = $pdo->prepare(
+        "SELECT device_id FROM devices
+         WHERE public_device_code = :public_code AND status <> 'blocked'
+         LIMIT 1"
+    );
+    $deviceQuery->execute(['public_code' => $publicCode]);
+    $deviceId = clean_device_id($deviceQuery->fetchColumn() ?: null);
+    if ($deviceId === '') {
+        throw new RuntimeException('Device unavailable.');
+    }
+
+    $configQuery = $pdo->prepare(
+        'SELECT encrypted_payload FROM device_playlist_configs WHERE device_id = :device_id LIMIT 1'
+    );
+    $configQuery->execute(['device_id' => $deviceId]);
+    $encryptedPayload = $configQuery->fetchColumn();
+    $config = is_string($encryptedPayload) ? decrypt_playlist_config($encryptedPayload) : null;
+    if (!is_array($config)) {
+        throw new RuntimeException('Playlist config unavailable.');
+    }
+
+    $config['config_id'] = generate_uuid_v4();
+    $hasXtream = trim((string) ($config['host'] ?? '')) !== ''
+        && trim((string) ($config['username'] ?? '')) !== ''
+        && trim((string) ($config['password'] ?? '')) !== '';
+    $hasM3u = trim((string) ($config['m3u_url'] ?? '')) !== '';
+    $hasEpg = trim((string) ($config['epg_url'] ?? '')) !== '';
+    if (!$hasXtream && !$hasM3u && !$hasEpg) {
+        throw new RuntimeException('Playlist config empty.');
+    }
+
+    ensure_app_notifications_table($pdo);
+    $pdo->beginTransaction();
+    $update = $pdo->prepare(
+        'UPDATE device_playlist_configs
+         SET encrypted_payload = :payload, delivered_at = NULL, updated_at = NOW()
+         WHERE device_id = :device_id'
+    );
+    $update->execute([
+        'payload' => encrypt_playlist_config($config),
+        'device_id' => $deviceId,
+    ]);
+    if ($update->rowCount() !== 1) {
+        throw new RuntimeException('Playlist config resend failed.');
+    }
+
+    $notification = create_playlist_push_notification(
+        $pdo,
+        $deviceId,
+        $publicCode,
+        $hasXtream,
+        $hasM3u,
+        $hasEpg,
+        'production_validation',
+        [
+            'xtream_host' => $config['host'] ?? null,
+            'xtream_username' => $config['username'] ?? null,
+            'xtream_password' => $config['password'] ?? null,
+            'm3u_url' => $config['m3u_url'] ?? null,
+            'epg_url' => $config['epg_url'] ?? null,
+        ]
+    );
+    $pdo->commit();
+
+    echo json_encode([
+        'success' => true,
+        'notification_created' => (bool) ($notification['created'] ?? false),
+        'notification_id' => $notification['notification_id'] ?? null,
+        'notification_reason' => $notification['reason'] ?? null,
+        'config_id' => $config['config_id'],
+    ], JSON_UNESCAPED_SLASHES);
+} catch (Throwable $exception) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    error_log('SmartVision existing playlist resend failed.');
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Playlist resend failed.']);
+}
+'@
+    $content = $content.Replace('__TOKEN__', (Escape-PhpString $Token))
+    $content = $content.Replace('__PUBLIC_DEVICE_CODE__', (Escape-PhpString $PublicDeviceCode))
+    Write-Utf8NoBomFile -Path $OutputPath -Content $content
+}
+
 function Test-AdsApi {
     param(
         [string]$Domain,
@@ -1351,6 +1463,57 @@ try {
             } | ConvertTo-Json
             $playlist = Invoke-RestMethod -Method Post -Uri "https://$domain/api/save_playlist_config.php" -ContentType "application/json" -Body $playlistBody
             Assert-ApiResult -Result $playlist -Label "save_playlist_config"
+            if ($playlist.notification_created -ne $true -or [int]$playlist.notification_id -le 0) {
+                throw "La notification playlist_added n a pas ete creee."
+            }
+
+            $notificationId = [int]$playlist.notification_id
+            $notificationsUrl = "https://$domain/api/notifications.php?device_id=$([Uri]::EscapeDataString($qaDeviceId))&public_device_code=$([Uri]::EscapeDataString([string]$session.short_code))&device_token=$([Uri]::EscapeDataString([string]$session.device_token))&app_version_code=191"
+            $notifications = Invoke-RestMethod -Method Get -Uri $notificationsUrl
+            Assert-ApiResult -Result $notifications -Label "notifications playlist_added"
+            $playlistNotification = @($notifications.notifications) |
+                Where-Object { [int]$_.id -eq $notificationId } |
+                Select-Object -First 1
+            $notificationSummary = @($notifications.notifications) | ForEach-Object {
+                "$([int]$_.id):$([string]$_.type):$([string]$_.title):seen=$([bool]$_.seen)"
+            }
+            Write-Host "Notifications QA visibles: $($notificationSummary -join ', ')"
+            if ($null -eq $playlistNotification -or
+                $playlistNotification.type -ne "playlist_added" -or
+                $playlistNotification.title -ne "New playlist added" -or
+                $playlistNotification.seen -ne $false) {
+                throw "La notification playlist_added n est pas visible comme non lue."
+            }
+
+            $duplicatePlaylist = Invoke-RestMethod -Method Post -Uri "https://$domain/api/save_playlist_config.php" -ContentType "application/json" -Body $playlistBody
+            Assert-ApiResult -Result $duplicatePlaylist -Label "save_playlist_config duplicate"
+            if ($duplicatePlaylist.notification_created -ne $false -or
+                $duplicatePlaylist.notification_reason -ne "duplicate" -or
+                [int]$duplicatePlaylist.notification_id -ne $notificationId) {
+                throw "La deduplication playlist_added est invalide."
+            }
+
+            $seenBody = @{
+                device_id = $qaDeviceId
+                public_device_code = [string]$session.short_code
+                device_token = [string]$session.device_token
+                app_version_code = 191
+                action = "mark_seen"
+                notification_ids = @($notificationId)
+            } | ConvertTo-Json
+            $seen = Invoke-RestMethod -Method Post -Uri "https://$domain/api/notifications.php" -ContentType "application/json" -Body $seenBody
+            Assert-ApiResult -Result $seen -Label "notifications mark_seen"
+            if ([int]$seen.marked_seen -ne 1) {
+                throw "Le recu lu playlist_added n a pas ete enregistre."
+            }
+            $history = Invoke-RestMethod -Method Get -Uri $notificationsUrl
+            Assert-ApiResult -Result $history -Label "notifications history"
+            $historyNotification = @($history.notifications) |
+                Where-Object { [int]$_.id -eq $notificationId -and $_.seen -eq $true } |
+                Select-Object -First 1
+            if ($null -eq $historyNotification) {
+                throw "La notification lue playlist_added n est pas conservee dans l historique."
+            }
 
             $statusUrl = "https://$domain/api/device_status.php?device_id=$([Uri]::EscapeDataString($qaDeviceId))&device_token=$([Uri]::EscapeDataString([string]$session.device_token))"
             $status = Invoke-RestMethod -Method Get -Uri $statusUrl
@@ -1379,6 +1542,26 @@ try {
             -Username ([string]$properties["SMARTVISION_ADMIN_USERNAME"]) `
             -Password ([string]$properties["SMARTVISION_ADMIN_PASSWORD"])
         Write-Host "Tests admin OK: login, generation, desactivation, suppression et logout."
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($ResendExistingPlaylistPublicCode)) {
+        $resendPublicCode = ($ResendExistingPlaylistPublicCode -replace '[^A-Za-z0-9]', '').ToUpperInvariant()
+        if ($resendPublicCode.Length -ne 6) {
+            throw "Le code public de reemission doit contenir exactement 6 caracteres."
+        }
+        $resendToken = [Guid]::NewGuid().ToString("N")
+        $resendPath = Join-Path $tempRoot "playlist_resend.php"
+        New-ExistingPlaylistResendFile `
+            -OutputPath $resendPath `
+            -Token $resendToken `
+            -PublicDeviceCode $resendPublicCode
+        Upload-File -BaseUrl $cpanelBaseUrl -Headers $headers -Directory $remoteRoot -FilePath $resendPath
+        $resend = Invoke-RestMethod -Method Get -Uri "https://$domain/playlist_resend.php?token=$resendToken"
+        Assert-ApiResult -Result $resend -Label "existing playlist resend"
+        if ([int]$resend.notification_id -le 0) {
+            throw "La reemission n a pas cree ou retrouve la notification playlist_added."
+        }
+        Write-Host "Reemission chiffree existante OK; notification playlist_added $([int]$resend.notification_id)."
     }
 
     Write-Host "Deploiement activation phase 3 termine."

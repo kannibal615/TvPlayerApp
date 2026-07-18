@@ -41,13 +41,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.smartvision.svplayer.R
+import com.smartvision.svplayer.core.config.PlaylistProfile
 import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.config.ProfileType
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
-import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.data.mock.ContinueItem
 import com.smartvision.svplayer.data.mock.HomeCategory
 import com.smartvision.svplayer.data.mock.HomeCategoryType
@@ -70,6 +69,9 @@ import kotlin.math.abs
 
 @Composable
 fun HomeScreen(
+    viewModel: HomeViewModel,
+    state: HomeUiState,
+    activeProfile: PlaylistProfile?,
     currentRoute: String,
     tabs: List<HomeHeaderTab>,
     onNavigate: (String) -> Unit,
@@ -91,8 +93,6 @@ fun HomeScreen(
     headerFocusRequest: Int = 0,
     headerFocusTarget: HomeHeaderFocusTarget = HomeHeaderFocusTarget.CurrentTab,
     visibleToUser: Boolean = true,
-    onContentReady: (String) -> Unit = {},
-    onContentLoading: (String) -> Unit = {},
     onProfileAvatarBoundsChanged: (Rect) -> Unit = {},
 ) {
     val container = LocalAppContainer.current
@@ -102,24 +102,9 @@ fun HomeScreen(
     val density = LocalDensity.current
     val scrollState = rememberScrollState()
     var verticalFocusJob by remember { mutableStateOf<Job?>(null) }
-    val viewModel: HomeViewModel = viewModel(
-        factory = viewModelFactory {
-            HomeViewModel(
-                userContentRepository = container.userContentRepository,
-                catalogRepository = container.catalogRepository,
-                homeSlidesRepository = container.homeSlidesRepository,
-                homeContentRepository = container.homeContentRepository,
-                accountManager = container.accountManager,
-                settingsRepository = container.settingsRepository,
-            )
-        },
-    )
     val startupWorkRequest by container.startupCatalogWork.collectAsStateWithLifecycle()
-    val profiles by container.accountManager.profiles.collectAsStateWithLifecycle()
-    val activeProfileId by container.accountManager.activeProfileId.collectAsStateWithLifecycle()
-    val rawState by viewModel.uiState.collectAsStateWithLifecycle()
-    val state = rawState.visibleForProfile(activeProfileId.orEmpty())
-    val kidsMode = profiles.firstOrNull { it.id == activeProfileId }?.type == ProfileType.KIDS
+    val activeProfileId = state.profileId
+    val kidsMode = activeProfile?.type == ProfileType.KIDS
     var catalogWorkUiState by remember { mutableStateOf(HomeCatalogWorkUiState.Idle) }
     var initialHomeVisibilityHandled by remember { mutableStateOf(false) }
     val catalogWorkActive = catalogWorkUiState.active
@@ -141,14 +126,6 @@ fun HomeScreen(
     val showContinueSkeleton = state.continueWatchingLoading
     val showMovieTrendSkeleton = state.trendingLoading
     val showSeriesTrendSkeleton = state.trendingLoading
-    val homeContentReady =
-        state.profileId.isNotBlank() &&
-            state.profileId == activeProfileId &&
-            !state.syncInProgress &&
-            state.loadedCatalogRevision == state.catalogRevision &&
-            !state.continueWatchingLoading &&
-            !state.trendingLoading &&
-            !state.catalogCountsLoading
     val continueRowState = rememberHomeRowState(state.continueWatching)
     val movieTrendRowState = rememberHomeRowState(state.trendingMovies)
     val seriesTrendRowState = rememberHomeRowState(state.trendingSeries)
@@ -168,16 +145,6 @@ fun HomeScreen(
 
     LaunchedEffect(activeProfileId) {
         previewController.stop()
-    }
-
-    LaunchedEffect(homeContentReady, state.profileId) {
-        if (state.profileId.isBlank()) return@LaunchedEffect
-        if (!homeContentReady) {
-            onContentLoading(state.profileId)
-            return@LaunchedEffect
-        }
-        withFrameNanos { }
-        onContentReady(state.profileId)
     }
 
     // PERF_DIAG: Home lifecycle and visible section counts for the splash-to-home handoff.
@@ -531,7 +498,11 @@ fun HomeScreen(
     }
 
     LaunchedEffect(visibleToUser) {
-        if (!visibleToUser) return@LaunchedEffect
+        if (!visibleToUser) {
+            verticalFocusJob?.cancel()
+            previewController.stop()
+            return@LaunchedEffect
+        }
         val firstVisibleEntry = !initialHomeVisibilityHandled
         initialHomeVisibilityHandled = true
         PerformanceDiagnosticRecorder.record(
@@ -560,8 +531,8 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(headerFocusRequest, headerFocusTarget) {
-        if (headerFocusRequest > 0) {
+    LaunchedEffect(headerFocusRequest, headerFocusTarget, visibleToUser) {
+        if (visibleToUser && headerFocusRequest > 0) {
             scrollState.scrollTo(0)
             withFrameNanos { }
             delay(90)
@@ -631,7 +602,7 @@ fun HomeScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .onPreviewKeyEvent { catalogSyncActive }
+            .onPreviewKeyEvent { !visibleToUser || catalogSyncActive }
             .background(
                 Brush.radialGradient(
                     colors = listOf(
@@ -666,6 +637,7 @@ fun HomeScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
+            activeProfileOverride = activeProfile,
             currentTabFocusRequester = homeTabFocusRequester,
             licenseFocusRequester = licenseFocusRequester,
             notificationsFocusRequester = notificationsFocusRequester,
@@ -687,7 +659,7 @@ fun HomeScreen(
                 strings = strings,
                 remoteSlides = state.slides,
                 kidsMode = kidsMode,
-                profileKey = activeProfileId.orEmpty(),
+                profileKey = activeProfileId,
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -1170,6 +1142,8 @@ private suspend fun shouldRequestPostHomeCatalogSync(
     val source = container.accountManager.activePlaylistSource.value
     if (source == PlaylistSource.Xtream && !container.accountManager.current().isConfigured) return false
     if (source == PlaylistSource.M3u && container.accountManager.m3uUrl.value.isBlank()) return false
+    val activeProfile = container.accountManager.activeProfile()
+    if (activeProfile != null && !container.accountManager.isCatalogCurrent(activeProfile)) return true
     val hasLocalCatalog = container.catalogRepository.hasLocalCatalogForActiveProfile()
     val settings = container.settingsRepository.settings.first()
     val lastSync = container.syncStateDao.get(container.accountManager.activeProfileIdOrDefault())?.lastSync

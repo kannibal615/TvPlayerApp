@@ -87,6 +87,10 @@ try {
         json_response(['success' => false, 'error' => 'Activation appareil invalide.'], 403);
     }
 
+    // DDL in ensure_app_notifications_table() may implicitly commit on MySQL,
+    // so prepare the schema before opening the atomic config+notification transaction.
+    ensure_app_notifications_table($pdo);
+    $pdo->beginTransaction();
     $existingQuery = $pdo->prepare('SELECT encrypted_payload FROM device_playlist_configs WHERE device_id = :device_id LIMIT 1');
     $existingQuery->execute(['device_id' => $deviceId]);
     $existingPayload = $existingQuery->fetchColumn();
@@ -146,7 +150,7 @@ try {
             'device_id' => $deviceId,
         ]);
 
-    create_playlist_push_notification(
+    $notification = create_playlist_push_notification(
         $pdo,
         $deviceId,
         clean_public_device_code($access['public_device_code'] ?? null),
@@ -162,14 +166,21 @@ try {
             'epg_url' => $epgProvided ? $epgUrl : null,
         ]
     );
+    $pdo->commit();
 
     json_response([
         'success' => true,
         'playlist_configured' => $playlistConfigured,
         'trial_started' => $trialActivation !== null,
         'expires_at' => is_array($trialActivation) ? ($trialActivation['expires_at'] ?? null) : null,
+        'notification_created' => (bool) ($notification['created'] ?? false),
+        'notification_id' => $notification['notification_id'] ?? null,
+        'notification_reason' => $notification['reason'] ?? null,
     ]);
 } catch (Throwable $exception) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     error_log('SmartVision save_playlist_config failed.');
     json_response(['success' => false, 'error' => 'Impossible d enregistrer la configuration Xtream.'], 500);
 }

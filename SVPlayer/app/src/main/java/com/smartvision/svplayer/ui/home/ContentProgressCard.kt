@@ -118,6 +118,7 @@ fun ContentProgressCard(
         label = "contentCardBorder",
     )
     val isLive = item.mediaType == "LIVE"
+    val isMovie = item.mediaType == "MOVIE" || item.mediaType == "FILM"
     val previewActive = enablePreview &&
         focusState.isFocused &&
         !blocked &&
@@ -128,7 +129,7 @@ fun ContentProgressCard(
     val firstFramePreviewId by previewController.firstFramePreviewId.collectAsStateWithLifecycle()
     val showPreview = activePreviewId == item.id
     val videoVisible = firstFramePreviewId == item.id
-    var compactTitle by remember(item.id) { mutableStateOf(false) }
+    var titleSizeStep by remember(item.id) { mutableStateOf(0) }
 
     LaunchedEffect(focusState.isFocused) {
         onFocusChanged(focusState.isFocused)
@@ -308,23 +309,28 @@ fun ContentProgressCard(
                     color = Color.White,
                     style = SmartVisionType.Caption.copy(
                         fontSize = when {
-                            isLive && compactTitle -> 10.sp
+                            isLive && titleSizeStep > 0 -> 10.sp
                             isLive -> 12.sp
-                            compactTitle -> 12.sp
+                            isMovie && titleSizeStep >= 2 -> 10.sp
+                            titleSizeStep > 0 -> 12.sp
                             else -> 15.sp
                         },
                         lineHeight = when {
-                            isLive && compactTitle -> 12.sp
+                            isLive && titleSizeStep > 0 -> 12.sp
                             isLive -> 14.sp
-                            compactTitle -> 14.sp
+                            isMovie && titleSizeStep >= 2 -> 12.sp
+                            titleSizeStep > 0 -> 14.sp
                             else -> 17.sp
                         },
                     ),
                     fontWeight = FontWeight.Bold,
-                    maxLines = if (isLive) 1 else 2,
+                    maxLines = if (isLive || isMovie) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                     onTextLayout = { result ->
-                        if (result.hasVisualOverflow) compactTitle = true
+                        val maxStep = if (isMovie) 2 else 1
+                        if (result.hasVisualOverflow && titleSizeStep < maxStep) {
+                            titleSizeStep += 1
+                        }
                     },
                 )
                 if (!isLive) {

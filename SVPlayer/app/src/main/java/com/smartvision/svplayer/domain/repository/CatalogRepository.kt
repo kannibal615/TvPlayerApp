@@ -58,6 +58,8 @@ interface CatalogRepository {
     suspend fun getLiveChannelsPage(categoryId: String?, offset: Int, limit: Int): List<LiveChannel>
     suspend fun searchLiveChannelsPage(categoryId: String?, query: String, offset: Int, limit: Int): List<LiveChannel>
     suspend fun getLiveChannelsByCategoryIdsPage(categoryIds: List<String>, query: String, offset: Int, limit: Int): List<LiveChannel>
+    suspend fun countLiveChannels(categoryId: String?, query: String): Int
+    suspend fun countLiveChannelsByCategoryIds(categoryIds: List<String>, query: String): Int
     suspend fun getLiveChannelById(streamId: Int): LiveChannel?
     suspend fun getPreviousLiveChannel(streamId: Int): LiveChannel?
     suspend fun getNextLiveChannel(streamId: Int): LiveChannel?
@@ -74,9 +76,9 @@ interface CatalogRepository {
     suspend fun getLiveChannelsByIds(streamIds: List<Int>): List<LiveChannel>
     suspend fun getMoviesByIds(streamIds: List<Int>): List<Movie>
     suspend fun getSeriesByIds(seriesIds: List<Int>): List<TvSeries>
-    suspend fun getTrendingMovieItems(limit: Int): List<TrendingCatalogItem>
-    suspend fun getTrendingSeriesItems(limit: Int): List<TrendingCatalogItem>
-    suspend fun getCatalogContentCounts(): CatalogContentCounts
+    suspend fun getTrendingMovieItems(limit: Int, profileId: String? = null): List<TrendingCatalogItem>
+    suspend fun getTrendingSeriesItems(limit: Int, profileId: String? = null): List<TrendingCatalogItem>
+    suspend fun getCatalogContentCounts(profileId: String? = null): CatalogContentCounts
     suspend fun hasLocalCatalogForActiveProfile(): Boolean
     fun invalidateLocalCatalogCache()
     suspend fun clearCatalogForProfileSwitch()

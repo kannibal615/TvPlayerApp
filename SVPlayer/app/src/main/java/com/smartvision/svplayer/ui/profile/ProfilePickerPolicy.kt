@@ -8,6 +8,11 @@ data class ProfileSelectionRequest(
     val profileId: String,
 )
 
+data class ProfileHomeReadyToken(
+    val profileId: String,
+    val catalogRevision: Long,
+)
+
 fun orderProfilePickerProfiles(profiles: List<PlaylistProfile>): List<PlaylistProfile> =
     profiles
         .filter { it.isConfigured }
@@ -24,13 +29,42 @@ fun initialProfilePickerId(
     ?: profiles.firstOrNull { it.type == ProfileType.ADMIN }?.id
     ?: profiles.firstOrNull()?.id
 
+fun shouldSynchronizeProfileCatalog(
+    hasLocalCatalog: Boolean,
+    catalogCurrent: Boolean,
+    synchronizationDue: Boolean,
+): Boolean = !hasLocalCatalog || !catalogCurrent || synchronizationDue
+
+fun canRevealProfilePickerAfterHome(
+    openRequested: Boolean,
+    homeIsActive: Boolean,
+    appInForeground: Boolean,
+): Boolean = openRequested && homeIsActive && appInForeground
+
+fun canDisplayGlobalProfilePicker(
+    pickerWanted: Boolean,
+    homeIsActive: Boolean,
+    openRequested: Boolean,
+): Boolean = pickerWanted && homeIsActive && !openRequested
+
+fun canStartProfileSelectionFromPicker(
+    homeIsActive: Boolean,
+    appInForeground: Boolean,
+    selectionInProgress: Boolean,
+): Boolean = homeIsActive && appInForeground && !selectionInProgress
+
 fun canCompleteProfileSelection(
     request: ProfileSelectionRequest?,
     completedRequestId: Long?,
     activeProfileId: String?,
-    homeReadyProfileId: String?,
+    homeReadyToken: ProfileHomeReadyToken?,
+    catalogRevision: Long,
+    appInForeground: Boolean,
 ): Boolean =
-    request != null &&
+    appInForeground &&
+        request != null &&
         completedRequestId == request.requestId &&
         activeProfileId == request.profileId &&
-        homeReadyProfileId == request.profileId
+        homeReadyToken != null &&
+        homeReadyToken.profileId == request.profileId &&
+        homeReadyToken.catalogRevision == catalogRevision

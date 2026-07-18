@@ -1,6 +1,7 @@
 package com.smartvision.svplayer.ui.home
 
 import android.os.SystemClock
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
@@ -74,6 +75,8 @@ private data class HomeLoadGate(
     val catalogRevision: Long,
     val loadedCatalogRevision: Long = -1L,
     val syncInProgress: Boolean = false,
+    val catalogCounts: CatalogContentCounts = CatalogContentCounts(),
+    val catalogCountsLoading: Boolean = true,
 )
 
 private data class ScopedHomeItems<T>(
@@ -81,9 +84,9 @@ private data class ScopedHomeItems<T>(
     val items: List<T>,
 )
 
-private data class ScopedCatalogCounts(
+private data class HomeLoadAttempt(
     val token: HomeLoadToken,
-    val counts: CatalogContentCounts,
+    val generation: Long,
 )
 
 private data class ContinueLoadInput(
@@ -119,10 +122,6 @@ class HomeViewModel(
     private val slides = MutableStateFlow(homeSlidesRepository.getCachedSlides().orEmpty())
     private val continueWatchingLoading = MutableStateFlow(cachedContinueWatching.isEmpty())
     private val trendingLoading = MutableStateFlow(cachedTrending == null)
-    private val catalogCounts = MutableStateFlow(
-        ScopedCatalogCounts(initialToken, CatalogContentCounts()),
-    )
-    private val catalogCountsLoading = MutableStateFlow(true)
     private val loadGate = MutableStateFlow(
         HomeLoadGate(
             profileId = initialProfileId,
@@ -133,20 +132,8 @@ class HomeViewModel(
     private val loadingState = combine(
         continueWatchingLoading,
         trendingLoading,
-        catalogCounts,
-        catalogCountsLoading,
         loadGate,
-    ) { continueLoading, trendLoading, scopedCounts, countsLoading, gate ->
-        val counts = scopedCounts
-            .takeIf {
-                shouldApplyHomeLoadResult(
-                    token = it.token,
-                    activeProfileId = gate.profileId,
-                    catalogRevision = gate.catalogRevision,
-                )
-            }
-            ?.counts
-            ?: CatalogContentCounts()
+    ) { continueLoading, trendLoading, gate ->
         HomeLoadingState(
             profileId = gate.profileId,
             catalogRevision = gate.catalogRevision,
@@ -154,14 +141,17 @@ class HomeViewModel(
             syncInProgress = gate.syncInProgress,
             continueWatching = continueLoading,
             trending = trendLoading,
-            catalogCounts = counts,
-            catalogCountsLoading = countsLoading,
+            catalogCounts = gate.catalogCounts,
+            catalogCountsLoading = gate.catalogCountsLoading,
         )
     }
     private var trendingRefreshJob: Job? = null
     private var catalogCountsRefreshJob: Job? = null
-    private var catalogCountsLoadedToken: HomeLoadToken? = null
-    private var trendingLoadedToken: HomeLoadToken? = null
+    private var homeLoadGeneration = 0L
+    private var catalogCountsRequestId = 0L
+    private var trendingRequestId = 0L
+    private var catalogCountsLoadedAttempt: HomeLoadAttempt? = null
+    private var trendingLoadedAttempt: HomeLoadAttempt? = null
     private val trendingPreviewPrepareJobs = mutableMapOf<String, Job>()
     private val trendingPreviewPrepareSemaphore = Semaphore(TrendingPreviewPrepareConcurrency)
     private val continueWatching = accountManager.activeProfileId
@@ -190,19 +180,18 @@ class HomeViewModel(
                 .mapLatest { input ->
             // PERF_DIAG: measures why Continue watching can appear after Home is already visible.
             val startedAt = SystemClock.elapsedRealtime()
-            ensureCurrent(input.token)
+            if (!isCurrent(input.token)) {
+                return@mapLatest ScopedHomeItems(input.token, emptyList())
+            }
             val recent = input.progress
                 .filter { it.positionMs > 5_000L }
                 .filterNot { HomeTrendingPolicy.containsAdultMarker(it.title, it.subtitle) }
                 .mapNotNull { progress ->
-                    ensureCurrent(input.token)
                     try {
                         resolveContinueWatchingProgress(
                             progress = progress,
                             profileId = input.token.profileId,
                             userContentRepository = userContentRepository,
-                            catalogRepository = catalogRepository,
-                            activeProfileId = accountManager::activeProfileIdOrDefault,
                         )
                     } catch (cancelled: CancellationException) {
                         throw cancelled
@@ -214,14 +203,18 @@ class HomeViewModel(
                 .distinctBy(::historyGroupingKey)
                 .take(10)
             val items = recent.mapNotNull { item ->
-                ensureCurrent(input.token)
                 toContinueItemWithPreview(item, catalogRepository)
             }
             if (cachedContinueWatching.isEmpty()) {
                 awaitMinimumHomeLoading(continueWatchingColdStartAtMs)
             }
-            ensureCurrent(input.token)
-            continueWatchingLoading.value = false
+            if (isCurrent(input.token)) {
+                continueWatchingLoading.value = false
+                Log.i(
+                    HomeLoadLogTag,
+                    "continue ready profile=${input.token.safeProfileLogKey()} revision=${input.token.catalogRevision}",
+                )
+            }
             PerformanceDiagnosticRecorder.recordDuration(
                 sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
                 event = "continue_watching_flow_mapped",
@@ -241,6 +234,11 @@ class HomeViewModel(
             val token = currentHomeLoadToken()
             if (token.profileId == profileId) {
                 continueWatchingLoading.value = false
+                Log.w(
+                    HomeLoadLogTag,
+                    "continue fallback profile=${token.safeProfileLogKey()} revision=${token.catalogRevision} " +
+                        "error=${error.javaClass.simpleName}",
+                )
                 emit(ScopedHomeItems(token, emptyList()))
             }
         }
@@ -302,36 +300,30 @@ class HomeViewModel(
                 "cachedSlides" to slides.value.size,
             ),
         )
-        observeProfileChanges()
-        observeCatalogRevision()
+        observeHomeLoadToken()
         observeSyncStatus()
         refreshSlides()
         refreshCatalogCounts()
         refreshTrending(forceRefresh = false)
     }
 
-    private fun observeProfileChanges() {
+    private fun observeHomeLoadToken() {
+        // Capture this before launching the collector. If a profile switch and
+        // revision bump happen before the coroutine starts, the first combined
+        // emission still differs and cannot be missed.
+        val tokenAtRegistration = currentHomeLoadToken()
         viewModelScope.launch {
-            var previousProfileId = accountManager.activeProfileIdOrDefault()
-            accountManager.activeProfileId.collect {
-                val nextProfileId = accountManager.activeProfileIdOrDefault()
-                if (nextProfileId == previousProfileId) return@collect
-                previousProfileId = nextProfileId
-                val token = HomeLoadToken(nextProfileId, catalogRepository.catalogRevision.value)
-                resetHomeData(token)
-                refreshCatalogCounts()
-                refreshTrending(forceRefresh = false)
-            }
-        }
-    }
-
-    private fun observeCatalogRevision() {
-        viewModelScope.launch {
-            var previousRevision = catalogRepository.catalogRevision.value
-            catalogRepository.catalogRevision.collect { revision ->
-                if (revision == previousRevision) return@collect
-                previousRevision = revision
-                val token = HomeLoadToken(accountManager.activeProfileIdOrDefault(), revision)
+            var previousToken = tokenAtRegistration
+            combine(
+                accountManager.activeProfileId
+                    .map { accountManager.activeProfileIdOrDefault() }
+                    .distinctUntilChanged(),
+                catalogRepository.catalogRevision,
+            ) { profileId, revision -> HomeLoadToken(profileId, revision) }
+                .distinctUntilChanged()
+                .collect { token ->
+                if (token == previousToken) return@collect
+                previousToken = token
                 resetHomeData(token)
                 refreshCatalogCounts()
                 refreshTrending(forceRefresh = false)
@@ -350,30 +342,43 @@ class HomeViewModel(
     }
 
     private fun resetHomeData(token: HomeLoadToken) {
+        homeLoadGeneration += 1L
         trendingRefreshJob?.cancel()
+        trendingRefreshJob = null
         catalogCountsRefreshJob?.cancel()
+        catalogCountsRefreshJob = null
         trendingPreviewPrepareJobs.values.forEach(Job::cancel)
         trendingPreviewPrepareJobs.clear()
-        catalogCountsLoadedToken = null
-        trendingLoadedToken = null
+        catalogCountsLoadedAttempt = null
+        trendingLoadedAttempt = null
         loadGate.value = HomeLoadGate(
             profileId = token.profileId,
             catalogRevision = token.catalogRevision,
             loadedCatalogRevision = -1L,
             syncInProgress = catalogRepository.syncStatus.value is SyncStatus.Running,
+            catalogCounts = CatalogContentCounts(),
+            catalogCountsLoading = true,
         )
         continueWatchingLoading.value = true
         trendingMovies.value = ScopedHomeItems(token, emptyList())
         trendingSeries.value = ScopedHomeItems(token, emptyList())
-        catalogCounts.value = ScopedCatalogCounts(token, CatalogContentCounts())
-        catalogCountsLoading.value = true
         trendingLoading.value = true
+        Log.i(
+            HomeLoadLogTag,
+            "reset profile=${token.safeProfileLogKey()} revision=${token.catalogRevision}",
+        )
     }
 
     private fun currentHomeLoadToken(): HomeLoadToken =
         HomeLoadToken(
             profileId = accountManager.activeProfileIdOrDefault(),
             catalogRevision = catalogRepository.catalogRevision.value,
+        )
+
+    private fun currentHomeLoadAttempt(): HomeLoadAttempt =
+        HomeLoadAttempt(
+            token = currentHomeLoadToken(),
+            generation = homeLoadGeneration,
         )
 
     private fun isCurrent(token: HomeLoadToken): Boolean =
@@ -383,34 +388,59 @@ class HomeViewModel(
             catalogRevision = catalogRepository.catalogRevision.value,
         )
 
+    private fun isCurrent(attempt: HomeLoadAttempt): Boolean =
+        attempt.generation == homeLoadGeneration && isCurrent(attempt.token)
+
     private fun ensureCurrent(token: HomeLoadToken) {
         if (!isCurrent(token)) {
             throw CancellationException("Home load superseded by another profile or catalog revision")
         }
     }
 
-    private fun markCatalogCountsLoaded(token: HomeLoadToken) {
-        if (!isCurrent(token)) return
-        catalogCountsLoadedToken = token
-        markCatalogRevisionLoadedIfComplete(token)
-    }
-
-    private fun markTrendingLoaded(token: HomeLoadToken) {
-        if (!isCurrent(token)) return
-        trendingLoadedToken = token
-        markCatalogRevisionLoadedIfComplete(token)
-    }
-
-    private fun markCatalogRevisionLoadedIfComplete(token: HomeLoadToken) {
+    private fun ensureCurrent(attempt: HomeLoadAttempt, requestId: Long, latestRequestId: Long) {
         if (
-            !isCurrent(token) ||
-            catalogCountsLoadedToken != token ||
-            trendingLoadedToken != token
+            !shouldApplyHomeLoadAttempt(
+                token = attempt.token,
+                generation = attempt.generation,
+                requestId = requestId,
+                activeProfileId = accountManager.activeProfileIdOrDefault(),
+                catalogRevision = catalogRepository.catalogRevision.value,
+                currentGeneration = homeLoadGeneration,
+                currentRequestId = latestRequestId,
+            )
+        ) {
+            throw CancellationException("Home load superseded by another attempt")
+        }
+    }
+
+    private fun markCatalogCountsLoaded(attempt: HomeLoadAttempt) {
+        if (!isCurrent(attempt)) return
+        catalogCountsLoadedAttempt = attempt
+        markCatalogRevisionLoadedIfComplete(attempt)
+    }
+
+    private fun markTrendingLoaded(attempt: HomeLoadAttempt) {
+        if (!isCurrent(attempt)) return
+        trendingLoadedAttempt = attempt
+        markCatalogRevisionLoadedIfComplete(attempt)
+    }
+
+    private fun markCatalogRevisionLoadedIfComplete(attempt: HomeLoadAttempt) {
+        val token = attempt.token
+        if (
+            !isCurrent(attempt) ||
+            catalogCountsLoadedAttempt != attempt ||
+            trendingLoadedAttempt != attempt ||
+            loadGate.value.syncInProgress
         ) {
             return
         }
         loadGate.update { gate ->
             if (gate.profileId == token.profileId && gate.catalogRevision == token.catalogRevision) {
+                Log.i(
+                    HomeLoadLogTag,
+                    "ready profile=${token.safeProfileLogKey()} revision=${token.catalogRevision}",
+                )
                 gate.copy(loadedCatalogRevision = token.catalogRevision)
             } else {
                 gate
@@ -456,24 +486,42 @@ class HomeViewModel(
     }
 
     fun refreshCatalogCounts() {
-        val token = currentHomeLoadToken()
+        val attempt = currentHomeLoadAttempt()
+        val token = attempt.token
+        val requestId = ++catalogCountsRequestId
         catalogCountsRefreshJob?.cancel()
-        catalogCountsLoadedToken = null
+        catalogCountsLoadedAttempt = null
         loadGate.update { gate ->
             if (gate.profileId == token.profileId && gate.catalogRevision == token.catalogRevision) {
-                gate.copy(loadedCatalogRevision = -1L)
+                gate.copy(
+                    loadedCatalogRevision = -1L,
+                    catalogCounts = CatalogContentCounts(),
+                    catalogCountsLoading = true,
+                )
             } else {
                 gate
             }
         }
-        catalogCounts.value = ScopedCatalogCounts(token, CatalogContentCounts())
-        catalogCountsLoading.value = true
         catalogCountsRefreshJob = viewModelScope.launch {
             try {
-                val counts = catalogRepository.getCatalogContentCounts()
-                if (isCurrent(token)) {
-                    catalogCounts.value = ScopedCatalogCounts(token, counts)
+                val counts = catalogRepository.getCatalogContentCounts(token.profileId)
+                ensureCurrent(attempt, requestId, catalogCountsRequestId)
+                loadGate.update { gate ->
+                    if (gate.profileId == token.profileId && gate.catalogRevision == token.catalogRevision) {
+                        gate.copy(
+                            catalogCounts = counts,
+                            catalogCountsLoading = false,
+                        )
+                    } else {
+                        gate
+                    }
                 }
+                markCatalogCountsLoaded(attempt)
+                Log.i(
+                    HomeLoadLogTag,
+                    "counts ready profile=${token.safeProfileLogKey()} revision=${token.catalogRevision} " +
+                        "live=${counts.live} movies=${counts.movies} series=${counts.series}",
+                )
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Throwable) {
@@ -486,20 +534,17 @@ class HomeViewModel(
                         "error" to error.javaClass.simpleName,
                     ),
                 )
-            } finally {
-                if (isCurrent(token)) {
-                    catalogCountsLoading.value = false
-                    markCatalogCountsLoaded(token)
-                }
             }
         }
     }
 
     fun refreshTrending(forceRefresh: Boolean = false) {
         if (!forceRefresh && trendingRefreshJob?.isActive == true) return
-        val token = currentHomeLoadToken()
+        val attempt = currentHomeLoadAttempt()
+        val token = attempt.token
+        val requestId = ++trendingRequestId
         trendingRefreshJob?.cancel()
-        trendingLoadedToken = null
+        trendingLoadedAttempt = null
         loadGate.update { gate ->
             if (gate.profileId == token.profileId && gate.catalogRevision == token.catalogRevision) {
                 gate.copy(loadedCatalogRevision = -1L)
@@ -513,7 +558,7 @@ class HomeViewModel(
             val cached = if (forceRefresh) null else homeContentRepository.getCachedTrending()
             trendingLoading.value = cached == null
             if (cached != null) {
-                ensureCurrent(token)
+                ensureCurrent(attempt, requestId, trendingRequestId)
                 trendingMovies.value = ScopedHomeItems(token, cached.movies)
                 trendingSeries.value = ScopedHomeItems(token, cached.series)
                 PerformanceDiagnosticRecorder.recordDuration(
@@ -541,7 +586,7 @@ class HomeViewModel(
                     null
                 }
                 if (snapshot != null) {
-                    ensureCurrent(token)
+                    ensureCurrent(attempt, requestId, trendingRequestId)
                     trendingMovies.value = ScopedHomeItems(token, snapshot.movies)
                     trendingSeries.value = ScopedHomeItems(token, snapshot.series)
                     PerformanceDiagnosticRecorder.recordDuration(
@@ -557,9 +602,13 @@ class HomeViewModel(
                 }
             }
             awaitMinimumHomeLoading(startedAt)
-            ensureCurrent(token)
+            ensureCurrent(attempt, requestId, trendingRequestId)
             trendingLoading.value = false
-            markTrendingLoaded(token)
+            markTrendingLoaded(attempt)
+            Log.i(
+                HomeLoadLogTag,
+                "trending ready profile=${token.safeProfileLogKey()} revision=${token.catalogRevision}",
+            )
         }
     }
 
@@ -640,25 +689,12 @@ private suspend fun resolveContinueWatchingProgress(
     progress: PlaybackProgressEntity,
     profileId: String,
     userContentRepository: UserContentRepository,
-    catalogRepository: CatalogRepository,
-    activeProfileId: () -> String,
-): PlaybackProgressEntity {
-    if (activeProfileId() != profileId || progress.profileId != profileId) {
-        throw CancellationException("Continue watching profile changed")
-    }
-    var enriched = userContentRepository.enrichProgress(progress)
-    if (progress.contentType != UserContentType.Episode) return enriched
-    val episodeId = progress.contentId.toIntOrNull() ?: return enriched
-    if (catalogRepository.getEpisodeById(episodeId) != null) return enriched
-    val seriesId = enriched.parentContentId?.toIntOrNull()
-        ?: progress.parentContentId?.toIntOrNull()
-        ?: return enriched
-    catalogRepository.getOrFetchSeriesEpisodes(seriesId)
-    if (activeProfileId() != profileId) {
-        throw CancellationException("Continue watching profile changed while loading episodes")
-    }
-    enriched = userContentRepository.enrichProgress(enriched)
-    return enriched
+): PlaybackProgressEntity? {
+    if (progress.profileId != profileId) return null
+    // Keep profile activation entirely local. Missing lazy episode metadata is
+    // enriched later by the normal detail/playback flow instead of triggering
+    // a provider request while Who's Watching is waiting for Home.
+    return userContentRepository.enrichProgress(progress)
 }
 
 private suspend fun PlaybackProgressEntity.isAllowedByParentalControl(
@@ -850,3 +886,6 @@ private suspend fun awaitMinimumHomeLoading(startedAtMs: Long) {
 private val EpisodeBadgeRegex =
     Regex("""(?i)\bS(?:aison)?\s*0*(\d{1,3})\s*[-_. ]*E(?:pisode)?\s*0*(\d{1,3})\b""")
 private const val MinimumHomeSkeletonMillis = 650L
+private const val HomeLoadLogTag = "SVHomeLoad"
+
+private fun HomeLoadToken.safeProfileLogKey(): String = profileId.hashCode().toUInt().toString(16)

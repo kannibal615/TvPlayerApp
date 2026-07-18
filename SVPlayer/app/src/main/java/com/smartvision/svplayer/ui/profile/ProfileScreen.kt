@@ -64,6 +64,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -125,6 +126,7 @@ import com.smartvision.svplayer.data.activation.ActivationRepository
 import com.smartvision.svplayer.domain.model.AccountProfile
 import com.smartvision.svplayer.domain.model.ParentalControlScope
 import com.smartvision.svplayer.domain.model.SyncStatus
+import com.smartvision.svplayer.domain.profile.ContentPrefixPolicy
 import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
@@ -172,7 +174,7 @@ fun ProfileRoute(
     startDestination: ProfileAreaDestination = ProfileAreaDestination.INFO,
     onOpenInfo: () -> Unit,
     onOpenManage: () -> Unit,
-    onActivateProfileForSession: (String) -> Unit,
+    onRequestGlobalProfilePicker: () -> Unit,
 ) {
     val container = LocalAppContainer.current
     val context = LocalContext.current
@@ -254,7 +256,9 @@ fun ProfileRoute(
         parentalHiddenLoading = false
         val hasLocalCatalog = container.catalogRepository.hasLocalCatalogForActiveProfile()
         val activeProfile = state.playlistProfiles.firstOrNull { it.id == profileId }
-        synchronizationDue = SyncFrequencyPolicy.isSynchronizationDue(
+        synchronizationDue = activeProfile?.let {
+            !container.accountManager.isCatalogCurrent(it)
+        } == true || SyncFrequencyPolicy.isSynchronizationDue(
             value = profileSettings.syncFrequency,
             lastSyncAt = activeProfile?.lastSyncAt,
             hasLocalCatalog = hasLocalCatalog,
@@ -320,9 +324,7 @@ fun ProfileRoute(
             }
             savedProfileId
         },
-        onActivateProfile = { profileId ->
-            onActivateProfileForSession(profileId)
-        },
+        onRequestGlobalProfilePicker = onRequestGlobalProfilePicker,
         onDeleteProfile = { profileId ->
             val profileToDelete = container.accountManager.profiles.value.firstOrNull { it.id == profileId }
             val wasActiveProfile = profileId == container.accountManager.activeProfileId.value
@@ -981,6 +983,7 @@ private fun XtreamPanel(
 
     if (showProfileEditor) {
         PlaylistProfileEditorDialog(
+            strings = strings,
             initial = profileToEdit,
             adminProfile = state.playlistProfiles.firstOrNull { it.type == ProfileType.ADMIN },
             existingNames = state.playlistProfiles
@@ -2153,6 +2156,7 @@ private fun SyncStatus.errorMessageOrDefault(): String =
 
 @Composable
 fun PlaylistProfileEditorDialog(
+    strings: SmartVisionStrings,
     initial: PlaylistProfile?,
     createType: ProfileType? = null,
     adminProfile: PlaylistProfile? = null,
@@ -2186,11 +2190,19 @@ fun PlaylistProfileEditorDialog(
     var password by remember(initial?.id) { mutableStateOf(initial?.xtreamPassword ?: "") }
     var m3uUrl by remember(initial?.id) { mutableStateOf(initial?.m3uUrl ?: "") }
     var epgUrl by remember(initial?.id) { mutableStateOf(initial?.epgUrl ?: "") }
+    var selectedContentPrefixes by remember(initial?.id) {
+        mutableStateOf(ContentPrefixPolicy.normalize(initial?.selectedContentPrefixes.orEmpty()))
+    }
+    var manualContentPrefix by remember(initial?.id) { mutableStateOf("") }
+    var manualContentPrefixError by remember(initial?.id) { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var validationMessage by remember { mutableStateOf<String?>(null) }
     var validatingCredentials by remember { mutableStateOf(false) }
     var expandedSource by remember(initial?.id, profileType) { mutableStateOf<PlaylistSource?>(null) }
     val nameFocusRequester = remember { FocusRequester() }
+    val contentPrefixFocusRequester = remember { FocusRequester() }
+    val manualPrefixFocusRequester = remember { FocusRequester() }
+    val manualPrefixAddFocusRequester = remember { FocusRequester() }
     val firstSourceFocusRequester = remember { FocusRequester() }
     val hostFocusRequester = remember { FocusRequester() }
     val usernameFocusRequester = remember { FocusRequester() }
@@ -2229,6 +2241,12 @@ val dialogHeight = requestedDialogHeight.coerceAtMost(
             ProfileType.NORMAL -> ProfileAvatarPresetIds
         }
     }
+    val contentPrefixOptions = remember(initial?.detectedContentPrefixes, selectedContentPrefixes) {
+        ContentPrefixPolicy.optionsWithDetected(
+            detectedCodes = initial?.detectedContentPrefixes.orEmpty(),
+            selectedCodes = selectedContentPrefixes,
+        )
+    }
 
     fun buildProfile(normalizedName: String, normalizedHost: String = host): PlaylistProfile =
         PlaylistProfile(
@@ -2247,6 +2265,9 @@ val dialogHeight = requestedDialogHeight.coerceAtMost(
             epgUrl = if (credentialsMode == CredentialsMode.CUSTOM) epgUrl else "",
             createdAt = initial?.createdAt ?: System.currentTimeMillis(),
             lastSyncAt = initial?.lastSyncAt,
+            selectedContentPrefixes = selectedContentPrefixes,
+            detectedContentPrefixes = initial?.detectedContentPrefixes.orEmpty(),
+            lastCatalogFingerprint = initial?.lastCatalogFingerprint.orEmpty(),
         )
 
     fun validateCustomXtream(onSuccess: (String) -> Unit) {
@@ -2263,6 +2284,19 @@ val dialogHeight = requestedDialogHeight.coerceAtMost(
                 is XtreamCredentialsValidationResult.Failure -> error = result.message
             }
             validatingCredentials = false
+        }
+    }
+
+    fun addManualContentPrefix() {
+        val normalizedPrefix = ContentPrefixPolicy.normalizeCode(manualContentPrefix)
+        manualContentPrefixError = when {
+            normalizedPrefix == null -> strings.profileContentFilterRequired
+            normalizedPrefix in selectedContentPrefixes -> strings.profileContentFilterDuplicate
+            else -> null
+        }
+        if (normalizedPrefix != null && manualContentPrefixError == null) {
+            selectedContentPrefixes = selectedContentPrefixes + normalizedPrefix
+            manualContentPrefix = ""
         }
     }
 
@@ -2296,7 +2330,7 @@ val dialogHeight = requestedDialogHeight.coerceAtMost(
                         value = name,
                         onValueChange = { name = it },
                         focusRequester = nameFocusRequester,
-                        nextFocusRequester = firstSourceFocusRequester,
+                        nextFocusRequester = contentPrefixFocusRequester,
                     )
                 }
                 Column(modifier = Modifier.weight(0.58f)) {
@@ -2318,6 +2352,98 @@ val dialogHeight = requestedDialogHeight.coerceAtMost(
                 }
             }
             Spacer(Modifier.height(12.dp))
+            Text(
+                strings.profileContentFilters,
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Caption,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                if (selectedContentPrefixes.isEmpty()) {
+                    strings.profileContentFiltersAllIncluded
+                } else {
+                    strings.profileContentFiltersSelectedOnly
+                },
+                color = SmartVisionColors.TextSecondary,
+                style = SmartVisionType.Caption,
+                maxLines = 2,
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+            ) {
+                contentPrefixOptions.forEachIndexed { index, option ->
+                    key(option.code) {
+                        val selected = option.code in selectedContentPrefixes
+                        TvButton(
+                            text = option.code,
+                            onClick = {
+                                selectedContentPrefixes = if (selected) {
+                                    selectedContentPrefixes - option.code
+                                } else {
+                                    selectedContentPrefixes + option.code
+                                }
+                            },
+                            focusRequester = contentPrefixFocusRequester.takeIf { index == 0 },
+                            selected = selected,
+                            variant = TvButtonVariant.Secondary,
+                            modifier = Modifier
+                                .height(42.dp)
+                                .focusProperties {
+                                    up = nameFocusRequester
+                                    down = manualPrefixFocusRequester
+                                },
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    ProfileEditTextField(
+                        label = strings.profileContentFilterCode,
+                        value = manualContentPrefix,
+                        onValueChange = { value ->
+                            manualContentPrefix = value
+                                .filter(Char::isLetter)
+                                .take(3)
+                                .uppercase(Locale.ROOT)
+                            manualContentPrefixError = null
+                        },
+                        focusRequester = manualPrefixFocusRequester,
+                        previousFocusRequester = contentPrefixFocusRequester,
+                        nextFocusRequester = firstSourceFocusRequester,
+                        rightFocusRequester = manualPrefixAddFocusRequester,
+                    )
+                }
+                TvButton(
+                    text = strings.profileContentFilterAdd,
+                    onClick = ::addManualContentPrefix,
+                    enabled = manualContentPrefix.isNotBlank(),
+                    focusRequester = manualPrefixAddFocusRequester,
+                    variant = TvButtonVariant.Secondary,
+                    modifier = Modifier
+                        .width(112.dp)
+                        .height(42.dp)
+                        .focusProperties {
+                            left = manualPrefixFocusRequester
+                            up = contentPrefixFocusRequester
+                            down = firstSourceFocusRequester
+                        },
+                )
+            }
+            manualContentPrefixError?.let { message ->
+                Spacer(Modifier.height(5.dp))
+                Text(message, color = SmartVisionColors.Error, style = SmartVisionType.Caption)
+            }
+            Spacer(Modifier.height(12.dp))
             if (profileType != ProfileType.ADMIN && adminProfile != null) {
                 Text("Xtream credentials", color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
                 Spacer(Modifier.height(6.dp))
@@ -2331,6 +2457,7 @@ val dialogHeight = requestedDialogHeight.coerceAtMost(
                             .weight(1f)
                             .height(42.dp)
                             .focusProperties {
+                                up = manualPrefixFocusRequester
                                 if (credentialsMode == CredentialsMode.SHARED_WITH_ADMIN) down = saveFocusRequester
                             },
                     )
@@ -2338,7 +2465,10 @@ val dialogHeight = requestedDialogHeight.coerceAtMost(
                         text = "Other credentials",
                         onClick = { credentialsMode = CredentialsMode.CUSTOM },
                         variant = if (credentialsMode == CredentialsMode.CUSTOM) TvButtonVariant.Primary else TvButtonVariant.Secondary,
-                        modifier = Modifier.weight(1f).height(42.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .focusProperties { up = manualPrefixFocusRequester },
                     )
                 }
                 Spacer(Modifier.height(12.dp))
@@ -2362,6 +2492,7 @@ val dialogHeight = requestedDialogHeight.coerceAtMost(
                         .weight(1f)
                         .height(42.dp)
                         .focusProperties {
+                            up = manualPrefixFocusRequester
                             if (expandedSource == null) down = saveFocusRequester
                         },
                 )
@@ -2382,6 +2513,7 @@ val dialogHeight = requestedDialogHeight.coerceAtMost(
                         .weight(1f)
                         .height(42.dp)
                         .focusProperties {
+                            up = manualPrefixFocusRequester
                             if (expandedSource == null) down = saveFocusRequester
                         },
                 )
@@ -2588,6 +2720,7 @@ private fun ProfileEditTextField(
     focusRequester: FocusRequester,
     previousFocusRequester: FocusRequester? = null,
     nextFocusRequester: FocusRequester? = null,
+    rightFocusRequester: FocusRequester? = null,
     password: Boolean = false,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -2659,6 +2792,14 @@ private fun ProfileEditTextField(
                         keyboardController?.hide()
                         runCatching { previousFocusRequester?.requestFocus() }
                         previousFocusRequester != null
+                    }
+                    Key.DirectionRight -> {
+                        if (editing || rightFocusRequester == null) {
+                            false
+                        } else {
+                            runCatching { rightFocusRequester.requestFocus() }
+                            true
+                        }
                     }
                     else -> false
                 }
