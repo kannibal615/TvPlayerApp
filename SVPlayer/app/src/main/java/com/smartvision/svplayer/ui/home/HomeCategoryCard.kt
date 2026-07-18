@@ -83,6 +83,7 @@ fun HomeCategoryCard(
     workOverlay: HomeCategoryWorkOverlay? = null,
     kidsMode: Boolean = false,
     itemCount: Int = 0,
+    transitionSurfaceModifier: Modifier = Modifier,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -145,29 +146,35 @@ fun HomeCategoryCard(
             )
             .focusable(interactionSource = interactionSource),
     ) {
-        HomeVisualBackground(style = category.visualStyle, kidsMode = kidsMode, modifier = Modifier.fillMaxSize())
         Box(
-            modifier = Modifier
+            modifier = transitionSurfaceModifier
                 .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color(0xFF020712).copy(alpha = 0.72f),
-                            Color(0xFF020712).copy(alpha = 0.24f),
-                            Color.Transparent,
+                .clip(shape),
+        ) {
+            HomeVisualBackground(style = category.visualStyle, kidsMode = kidsMode, modifier = Modifier.fillMaxSize())
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color(0xFF020712).copy(alpha = 0.72f),
+                                Color(0xFF020712).copy(alpha = 0.24f),
+                                Color.Transparent,
+                            ),
                         ),
                     ),
-                ),
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, Color(0xFF020712).copy(alpha = 0.68f)),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color(0xFF020712).copy(alpha = 0.68f)),
+                        ),
                     ),
-                ),
-        )
+            )
+        }
 
         Column(
             modifier = Modifier

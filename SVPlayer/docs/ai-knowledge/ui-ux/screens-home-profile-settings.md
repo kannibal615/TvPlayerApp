@@ -12,6 +12,8 @@ Derniere mise a jour: 2026-07-18.
 - Les gradients statiques inferieurs de Continue et Tendances terminent a `0.96` d'opacite; l'overlay allege pendant la video reste inchange.
 - Quand une preview Continue/Tendances affiche sa premiere image video, un aplat noir couvre le poster derriere la surface Media3. Le poster reste conserve jusqu'a cette premiere image et le cycle de vie du mini-player ne change pas.
 - Les trois cards categories ne rendent plus les badges `LIVE`/`VOD`/`SERIES`. Leur titre reste a `42 sp`; le compteur Room Live/Films/Series est place juste au-dessus a `27 sp` (environ 65 % du titre), tandis que l'action `Watch now`/`Explore` reste seule sur la ligne basse. Pendant la synchronisation, l'arc cyan du loader occupe `46,8 %` du perimetre de la card. Les valeurs de taille et position sont centralisees dans `HomeCategoryCardLayout`.
+- Les cards categories font `190 dp` de haut afin que le detail de synchronisation reste entierement visible sous la barre, sans reduire les titres ni modifier la rangee de trois cards.
+- Un clic direct sur une card Live TV/Movies/Series declenche un container transform Compose reversible vers la zone catalogue sous le header. Le header reste partage et stable, les autres navigations conservent leur comportement, et les entrees sont bloquees pendant les `320 ms` d'ouverture ou `260 ms` de retour. Back replie l'ecran vers la card et lui restaure le focus.
 - Le poster reste visible jusqu'a la premiere image decodee. La carte passe alors a `1.2x` et ne garde qu'un titre sur une ligne et un gradient bas court.
 - Le controleur conserve un seul player partage. Sa vue Android utilise `surface_view` pour eviter le chemin `TextureView` acquire-fence/pertes d'images; verifier le clipping et l'ordre des overlays sur chaque cible.
 
@@ -19,6 +21,7 @@ Derniere mise a jour: 2026-07-18.
 
 - `PlaylistProfile` porte `ProfileType`, `CredentialsMode` et `isLocked`; l'ID historique est conserve lors de la migration du premier profil vers `ADMIN`.
 - `ProfilePickerScreen` utilise une `LazyRow`: profils configures reels ordonnes ADMIN puis date de creation, suivis des actions i18n enfant et profil normal. Les cartes sont cleees par `profile.id` et leur seul libelle est `PlaylistProfile.name`; aucun nom `Admin` ou `PlaylistWeb` n'est fabrique par l'UI.
+- Toutes les cards du picker, profils et actions d'ajout, utilisent le meme gradient bleu opaque `#123764 -> #071A33`. Leur hauteur commune est calculee depuis l'avatar et le plus haut libelle reellement mesure; les noms courts sont ancres en bas de leur slot afin de garder `14 dp` visibles au-dessus et sous le contenu sans reserve fixe de `54 dp`.
 - Si l'administrateur est verrouille, les deux cartes d'ajout utilisent le PIN parental avant d'ouvrir le formulaire. Les profils verrouilles utilisent le meme dialogue.
 - Le formulaire partage les identifiants ADMIN par defaut et conserve la validation existante. Il est commun au picker et a Info compte, adapte son titre/type, place nom et avatars sur la meme rangee, garde un footer fixe et ouvre Xtream/M3U dans un accordeon exclusif ferme par defaut.
 - Le filtre catalogue du formulaire affiche uniquement les codes (`AE`, `FR`, `X`), regroupe les codes actifs en debut de rangee et accepte l'ajout manuel d'un code de 1-3 lettres. `[X]` et `[x]` sont detectes comme le meme code `X`.

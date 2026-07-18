@@ -1,5 +1,6 @@
 # AI Changelog
 
+- 2026-07-18: les cards categories Home passent a `190 dp` pour afficher le detail sous leur progress bar; Who's Watching mesure le plus haut libelle, uniformise profils/actions d'ajout avec paddings haut/bas `14 dp` et gradient bleu opaque. Les clics directs Live/Movies/Series utilisent un container transform Compose reversible sous le header, bloquent les entrees pendant l'animation et restaurent la card source au Back. Validation locale: `:app:compileReleaseKotlin` reussi, sans APK ni deploiement.
 - 2026-07-18: tous les emplacements d'avatars profil adoptent un masque carre arrondi proportionnel a 16 % au lieu du cercle: Who's Watching, transition vers Home, header, gestion/edition et controle parental reutilisent `ProfileAvatarShape`; les images remplissent le cadre en `Crop` et le loader suit le meme perimetre sans changer les tailles ni le focus.
 - 2026-07-18: le segment cyan du loader des cards categories Home passe de 36 % a 46,8 % du perimetre, soit une nouvelle augmentation de 30 %, sans modifier son epaisseur, sa couleur ni sa vitesse.
 - 2026-07-18: le segment cyan du loader de synchronisation autour des cards categories Home passe de 24 % a 36 % du perimetre, soit une longueur augmentee de 50 %, sans changer son epaisseur ni sa vitesse.

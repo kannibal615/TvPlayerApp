@@ -75,6 +75,7 @@ fun HomeScreen(
     currentRoute: String,
     tabs: List<HomeHeaderTab>,
     onNavigate: (String) -> Unit,
+    onCategoryNavigate: (String) -> Unit = onNavigate,
     onSync: () -> Unit,
     onSettings: () -> Unit,
     onProfile: () -> Unit,
@@ -94,6 +95,10 @@ fun HomeScreen(
     headerFocusTarget: HomeHeaderFocusTarget = HomeHeaderFocusTarget.CurrentTab,
     visibleToUser: Boolean = true,
     onProfileAvatarBoundsChanged: (Rect) -> Unit = {},
+    headerTransitionModifier: Modifier = Modifier,
+    categoryTransitionModifiers: Map<String, Modifier> = emptyMap(),
+    restoreCategoryRoute: String? = null,
+    restoreCategoryFocusRequest: Int = 0,
 ) {
     val container = LocalAppContainer.current
     val context = LocalContext.current.applicationContext
@@ -142,6 +147,18 @@ fun HomeScreen(
         seriesTrendFirstFocusRequester,
     )
     val homeCategories = remember(strings) { homeCategories(strings) }
+
+    LaunchedEffect(restoreCategoryFocusRequest, restoreCategoryRoute, visibleToUser, catalogSyncActive) {
+        if (restoreCategoryFocusRequest <= 0 || !visibleToUser || catalogSyncActive) return@LaunchedEffect
+        withFrameNanos { }
+        val requester = when (restoreCategoryRoute) {
+            "live_tv" -> liveFocusRequester
+            "movies" -> moviesFocusRequester
+            "series" -> seriesFocusRequester
+            else -> null
+        }
+        requester?.let { runCatching { it.requestFocus() } }
+    }
 
     LaunchedEffect(activeProfileId) {
         previewController.stop()
@@ -643,7 +660,7 @@ fun HomeScreen(
             notificationsFocusRequester = notificationsFocusRequester,
             profileFocusRequester = profileFocusRequester,
             settingsFocusRequester = settingsFocusRequester,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = headerTransitionModifier.fillMaxWidth(),
             onProfileAvatarBoundsChanged = onProfileAvatarBoundsChanged,
         )
 
@@ -680,7 +697,7 @@ fun HomeScreen(
                             } else if (xtreamCatalogNavigationBlocked) {
                                 onXtreamBlocked()
                             } else {
-                                onNavigate(category.routeName)
+                                onCategoryNavigate(category.routeName)
                             }
                         },
                         blocked = xtreamCatalogBlocked,
@@ -692,6 +709,7 @@ fun HomeScreen(
                             HomeCategoryType.Movies -> state.catalogCounts.movies
                             HomeCategoryType.Series -> state.catalogCounts.series
                         },
+                        transitionSurfaceModifier = categoryTransitionModifiers[category.routeName] ?: Modifier,
                         focusRequester = when (category.id) {
                             "live" -> liveFocusRequester
                             "movies" -> moviesFocusRequester

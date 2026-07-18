@@ -10,6 +10,8 @@ object SmartVisionColors {
     val PrimaryDark = Color(0xFF0D47A1)
     val CyanAccent = Color(0xFF14E6FF)
     val CardFocusGlow = Color(0xFF168BFF)
+    val ProfileCardSurfaceTop = Color(0xFF123764)
+    val ProfileCardSurfaceBottom = Color(0xFF071A33)
     val Border = Color(0xFF243044)
     val TextPrimary = Color(0xFFFFFFFF)
     val TextSecondary = Color(0xFFB0B8C9)

@@ -60,9 +60,13 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
@@ -87,6 +91,8 @@ private const val AddProfileFocusKey = "action:add-profile"
 private const val ProfileCenteringDurationMs = 900
 private const val MinimumCenteredLoadingMs = 420L
 private const val HomeRevealDurationMs = 620
+private val ProfileCardContentPadding = 14.dp
+private val ProfileAvatarNameSpacing = 12.dp
 
 @Composable
 fun ProfilePickerScreen(
@@ -108,6 +114,8 @@ fun ProfilePickerScreen(
     )
     val strings = smartVisionStrings(settings.language)
     val orderedProfiles = remember(profiles) { orderProfilePickerProfiles(profiles) }
+    val density = LocalDensity.current
+    val textMeasurer = rememberTextMeasurer()
     val adminProfile = orderedProfiles.firstOrNull { it.type == ProfileType.ADMIN }
     val initialProfileId = initialProfilePickerId(orderedProfiles, activeProfileId)
     val orderedProfileIds = remember(orderedProfiles) { orderedProfiles.map { it.id } }
@@ -222,8 +230,28 @@ fun ProfilePickerScreen(
         val screenWidth = maxWidth
         val screenHeight = maxHeight
         val cardWidth = (screenWidth * 0.158f).coerceIn(148.dp, 205.dp)
-        val cardHeight = (screenHeight * 0.345f).coerceIn(185.dp, 255.dp)
         val avatarSize = (cardWidth * 0.63f).coerceIn(84.dp, 130.dp)
+        val profileLabels = remember(orderedProfiles, strings.addKidsProfile, strings.addProfile) {
+            orderedProfiles.map(PlaylistProfile::name) + listOf(strings.addKidsProfile, strings.addProfile)
+        }
+        val nameWidthPx = with(density) {
+            (cardWidth - ProfileCardContentPadding * 2).roundToPx()
+        }
+        val profileNameHeight = remember(profileLabels, nameWidthPx, density.fontScale) {
+            profileLabels.maxOfOrNull { label ->
+                with(density) {
+                    textMeasurer.measure(
+                        text = AnnotatedString(label),
+                        style = profileNameTextStyle(label),
+                        overflow = TextOverflow.Clip,
+                        maxLines = 3,
+                        constraints = Constraints(maxWidth = nameWidthPx),
+                    ).size.height.toDp()
+                }
+            } ?: 21.dp
+        }
+        val cardHeight = ProfileCardContentPadding * 2 +
+            avatarSize + ProfileAvatarNameSpacing + profileNameHeight
         val itemGap = (screenWidth * 0.016f).coerceIn(15.dp, 28.dp)
         val pickerItemCount = orderedProfiles.size + 2
         val pickerContentWidth = cardWidth * pickerItemCount + itemGap * (pickerItemCount - 1).coerceAtLeast(0)
@@ -313,6 +341,7 @@ fun ProfilePickerScreen(
                         cardWidth = cardWidth,
                         cardHeight = cardHeight,
                         avatarSize = avatarSize,
+                        profileNameHeight = profileNameHeight,
                         itemIndex = index,
                         adminBadge = strings.adminBadge,
                         editDescription = strings.editProfile,
@@ -352,6 +381,7 @@ fun ProfilePickerScreen(
                         cardWidth = cardWidth,
                         cardHeight = cardHeight,
                         avatarSize = avatarSize,
+                        profileNameHeight = profileNameHeight,
                         itemIndex = orderedProfiles.size,
                         onFocused = { lastFocusKey = AddKidsFocusKey },
                         contentAlpha = secondaryContentAlpha * revealAlpha,
@@ -374,6 +404,7 @@ fun ProfilePickerScreen(
                         cardWidth = cardWidth,
                         cardHeight = cardHeight,
                         avatarSize = avatarSize,
+                        profileNameHeight = profileNameHeight,
                         itemIndex = orderedProfiles.size + 1,
                         onFocused = { lastFocusKey = AddProfileFocusKey },
                         contentAlpha = secondaryContentAlpha * revealAlpha,
@@ -401,6 +432,7 @@ fun ProfilePickerScreen(
                 cardWidth = cardWidth,
                 cardHeight = cardHeight,
                 avatarSize = avatarSize,
+                profileNameHeight = profileNameHeight,
                 centeringProgress = centeringProgress.value,
                 homeRevealProgress = homeRevealProgress.value,
             )
@@ -472,6 +504,7 @@ private fun ProfilePickerCard(
     cardWidth: androidx.compose.ui.unit.Dp,
     cardHeight: androidx.compose.ui.unit.Dp,
     avatarSize: androidx.compose.ui.unit.Dp,
+    profileNameHeight: androidx.compose.ui.unit.Dp,
     itemIndex: Int,
     adminBadge: String,
     editDescription: String,
@@ -533,7 +566,10 @@ private fun ProfilePickerCard(
                 .clip(shape)
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color(0xFF14274B).copy(alpha = if (focused) 0.98f else 0.86f), Color(0xFF071329).copy(alpha = 0.97f)),
+                        listOf(
+                            SmartVisionColors.ProfileCardSurfaceTop,
+                            SmartVisionColors.ProfileCardSurfaceBottom,
+                        ),
                     ),
                 )
                 .border(BorderStroke(if (focused || selected) 2.5.dp else 1.5.dp, borderColor), shape)
@@ -545,7 +581,7 @@ private fun ProfilePickerCard(
                 }
                 .clickable(enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick)
                 .focusable(enabled = enabled, interactionSource = interactionSource)
-                .padding(horizontal = 14.dp, vertical = 14.dp),
+                .padding(ProfileCardContentPadding),
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -554,7 +590,7 @@ private fun ProfilePickerCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .height(avatarSize),
                     contentAlignment = Alignment.Center,
                 ) {
                     ProfilePickerAvatar(
@@ -579,6 +615,7 @@ private fun ProfilePickerCard(
                         )
                     }
                 }
+                Spacer(Modifier.height(ProfileAvatarNameSpacing))
                /*  if (profile.type == ProfileType.ADMIN) {
                     Text(
                         text = adminBadge,
@@ -592,7 +629,7 @@ private fun ProfilePickerCard(
                     )
                     Spacer(Modifier.height(5.dp))
                 } */
-                ProfileName(profile.name, focused)
+                ProfileName(profile.name, focused, profileNameHeight)
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -617,6 +654,7 @@ private fun SelectedProfileTransition(
     cardWidth: androidx.compose.ui.unit.Dp,
     cardHeight: androidx.compose.ui.unit.Dp,
     avatarSize: androidx.compose.ui.unit.Dp,
+    profileNameHeight: androidx.compose.ui.unit.Dp,
     centeringProgress: Float,
     homeRevealProgress: Float,
 ) {
@@ -624,8 +662,7 @@ private fun SelectedProfileTransition(
     val cardWidthPx = with(density) { cardWidth.toPx() }
     val cardHeightPx = with(density) { cardHeight.toPx() }
     val avatarSizePx = with(density) { avatarSize.toPx() }
-    val cardPaddingPx = with(density) { 14.dp.toPx() }
-    val profileNameHeightPx = with(density) { 54.dp.toPx() }
+    val cardPaddingPx = with(density) { ProfileCardContentPadding.toPx() }
     val startLeft = startBounds.left - rootBounds.left
     val startTop = startBounds.top - rootBounds.top
     val centeredLeft = (rootBounds.width - cardWidthPx) / 2f
@@ -674,8 +711,8 @@ private fun SelectedProfileTransition(
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color(0xFF16305D).copy(alpha = 0.98f),
-                                Color(0xFF071329),
+                                SmartVisionColors.ProfileCardSurfaceTop,
+                                SmartVisionColors.ProfileCardSurfaceBottom,
                             ),
                         ),
                     )
@@ -688,12 +725,12 @@ private fun SelectedProfileTransition(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 14.dp, vertical = 14.dp),
+                    .padding(ProfileCardContentPadding),
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .height(avatarSize),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (cardAvatarVisible) {
@@ -712,18 +749,19 @@ private fun SelectedProfileTransition(
                         )
                     }
                 }
+                Spacer(Modifier.height(ProfileAvatarNameSpacing))
                 Box(
-                    modifier = Modifier.graphicsLayer { alpha = shellAlpha },
+                    modifier = Modifier
+                        .height(profileNameHeight)
+                        .graphicsLayer { alpha = shellAlpha },
                 ) {
-                    ProfileName(profile.name, focused = true)
+                    ProfileName(profile.name, focused = true, profileNameHeight = profileNameHeight)
                 }
             }
         }
 
         if (homeRevealProgress > 0f) {
-            val availableAvatarHeightPx =
-                cardHeightPx - cardPaddingPx * 2f - profileNameHeightPx
-            val avatarLocalCenterY = cardPaddingPx + availableAvatarHeightPx / 2f
+            val avatarLocalCenterY = cardPaddingPx + avatarSizePx / 2f
             val centeredCardCenterX = rootBounds.width / 2f
             val centeredCardCenterY = rootBounds.height / 2f
             val flyingStartCenterX = centeredCardCenterX
@@ -806,25 +844,39 @@ private fun transitionLerp(start: Float, end: Float, fraction: Float): Float =
     start + (end - start) * fraction.coerceIn(0f, 1f)
 
 @Composable
-private fun ProfileName(name: String, focused: Boolean) {
+private fun ProfileName(
+    name: String,
+    focused: Boolean,
+    profileNameHeight: androidx.compose.ui.unit.Dp,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(profileNameHeight),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Text(
+            text = name,
+            color = if (focused) Color.White else Color(0xFFE8EEFA),
+            style = profileNameTextStyle(name),
+            textAlign = TextAlign.Center,
+            maxLines = 3,
+            overflow = TextOverflow.Clip,
+        )
+    }
+}
+
+private fun profileNameTextStyle(name: String): TextStyle {
     val fontSize = when {
         name.length > 25 -> 12.sp
         name.length > 19 -> 14.sp
         name.length > 14 -> 16.sp
         else -> 18.sp
     }
-    Text(
-        text = name,
-        color = if (focused) Color.White else Color(0xFFE8EEFA),
+    return TextStyle(
         fontSize = fontSize,
         lineHeight = (fontSize.value + 3f).sp,
         fontWeight = FontWeight.SemiBold,
-        textAlign = TextAlign.Center,
-        maxLines = 3,
-        overflow = TextOverflow.Clip,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp),
     )
 }
 
@@ -876,6 +928,7 @@ private fun AddProfileCard(
     cardWidth: androidx.compose.ui.unit.Dp,
     cardHeight: androidx.compose.ui.unit.Dp,
     avatarSize: androidx.compose.ui.unit.Dp,
+    profileNameHeight: androidx.compose.ui.unit.Dp,
     itemIndex: Int,
     onFocused: () -> Unit,
     contentAlpha: Float,
@@ -907,7 +960,14 @@ private fun AddProfileCard(
                 spotColor = SmartVisionColors.CardFocusGlow,
             )
             .clip(shape)
-            .background(Brush.verticalGradient(listOf(Color(0xFF14233F).copy(alpha = 0.87f), Color(0xFF071329).copy(alpha = 0.97f))))
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        SmartVisionColors.ProfileCardSurfaceTop,
+                        SmartVisionColors.ProfileCardSurfaceBottom,
+                    ),
+                ),
+            )
             .border(BorderStroke(if (focused) 2.5.dp else 1.5.dp, if (focused) Color(0xFF61A8FF) else Color(0xFF53698D).copy(alpha = 0.72f)), shape)
             .focusRequester(focusRequester)
             .onFocusChanged {
@@ -916,7 +976,7 @@ private fun AddProfileCard(
             }
             .clickable(enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick)
             .focusable(enabled = enabled, interactionSource = interactionSource)
-            .padding(horizontal = 14.dp, vertical = 14.dp),
+            .padding(ProfileCardContentPadding),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -925,7 +985,7 @@ private fun AddProfileCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .height(avatarSize),
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
@@ -943,7 +1003,8 @@ private fun AddProfileCard(
                     )
                 }
             }
-            ProfileName(label, focused)
+            Spacer(Modifier.height(ProfileAvatarNameSpacing))
+            ProfileName(label, focused, profileNameHeight)
         }
     }
 }

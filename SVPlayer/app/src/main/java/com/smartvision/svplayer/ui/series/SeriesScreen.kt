@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -106,6 +107,8 @@ fun SeriesScreen(
     onOpenSeriesDetails: (Int) -> Unit,
     onWatchEpisode: (episodeId: Int, seriesId: Int) -> Unit,
     modifier: Modifier = Modifier,
+    headerTransitionModifier: Modifier = Modifier,
+    contentTransitionSurfaceModifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
     val viewModel: SeriesViewModel = viewModel(
@@ -261,7 +264,7 @@ fun SeriesScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = headerTransitionModifier.fillMaxWidth(),
             currentTabFocusRequester = currentTabFocusRequester,
             onContentDown = if (!m3uActive && accounts.isNotEmpty() && state.categories.isNotEmpty()) {
                 { behaviorScope.launch { focusSelectedCategory() } }
@@ -272,6 +275,11 @@ fun SeriesScreen(
 
         Spacer(Modifier.height(MediaCatalogDimens.HeaderGap))
 
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = contentTransitionSurfaceModifier
+                    .fillMaxSize(),
+            )
         if (m3uActive) {
             CatalogEmpty(
                 title = "Series non disponibles en M3U",
@@ -408,6 +416,7 @@ fun SeriesScreen(
                         .fillMaxHeight(),
                 )
             }
+        }
         }
     }
 

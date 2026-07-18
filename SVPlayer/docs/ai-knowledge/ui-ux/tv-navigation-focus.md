@@ -11,6 +11,8 @@ Derniere mise a jour: 2026-07-18.
 
 Le header principal boucle horizontalement entre son premier onglet et sa derniere action visible, dans les deux sens; en profil Kids, l'avatar est la derniere action. Home applique la meme boucle aux trois cards Categories ainsi qu'aux rangees Continue Watching et Tendances, avec scroll vers la carte opposee avant la demande de focus.
 
+Depuis Home, OK sur Live TV, Movies ou Series distingue la navigation categorie des clics du header. La surface visuelle de la card s'etend par `SharedTransitionLayout/sharedBounds` vers le contenu sous le header; le header conserve ses bounds. Pendant la transition, le parent NavHost consomme D-pad/OK et un `BackHandler` prioritaire consomme Back. Au repli par Back, le focus revient explicitement au `FocusRequester` de la card source. Une card bloquee par Xtream ou par une synchronisation ne cree aucune transition.
+
 Les recherches Live TV, Movies et Series sont repliees en bouton carre icon-only. OK les transforme en champ, demande le focus de saisie et ouvre le clavier; Back ou la perte de focus referme le champ. Le filtre adjacent reprend le bouton `FilterList` carre utilise par Categories Live TV.
 
 ## Profils Kids et dialogues
@@ -25,6 +27,7 @@ Les recherches Live TV, Movies et Series sont repliees en bouton carre icon-only
 - La selection de profil conserve exactement la transition visuelle centree puis le reveal Home. Son etat est une requete `requestId + profileId`; un callback ancien ne peut pas terminer une selection plus recente. L'activation locale reste immediate, puis la transition attend l'unique synchronisation eventuellement due et la Home prete pour ce meme profil/revision.
 - `Info profil > Changer de profil` quitte d'abord la route Profile, compose Home au premier plan puis ouvre le picker global. Aucun profil n'est active avant OK sur une carte. Home ne rend jamais un etat dont `profileId` differe du profil actif: il expose alors uniquement les skeletons de la cible jusqu'a la relecture Room.
 - Sur une carte de profil reelle, Bas cible le crayon discret et Haut retourne a la carte. La fermeture du PIN ou du formulaire redemande le focus a la cible d'origine avec un `FocusRequester` stable.
+- La hauteur visuelle des cards Who's Watching depend du plus haut libelle mesure dans la rangee, puis est appliquee a tous les profils et aux deux actions d'ajout. Le bouton crayon reste hors de la surface et son routage Haut/Bas ne change pas.
 - Dans `Info profil`, Droite depuis le menu entre sur `Changer de profil`; Bas relie cette action a `Synchroniser ce profil`, Haut fait le chemin inverse et Gauche revient au menu. Le selecteur local n'existe plus. Le picker global focalise le profil actif; seul OK sur une carte appelle l'activation.
 - Une fois Who's Watching global ouvert depuis Info profil, Back conserve le comportement global de confirmation de sortie et ne retourne pas a Info profil.
 - Dans `Gerer les profils`, Gauche/Droite parcourt la `LazyRow`; Bas ou OK sur un profil selectionne la cible d'administration puis focalise `Modifier`. Haut depuis les actions retourne a la carte. Actif, selection detail et focus sont trois etats independants, et toute fermeture de dialogue redemande la carte d'origine ou son voisin apres suppression.

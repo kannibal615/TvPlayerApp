@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -105,6 +106,8 @@ fun MoviesScreen(
     onOpenMovieDetails: (Int) -> Unit,
     onWatchMovie: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    headerTransitionModifier: Modifier = Modifier,
+    contentTransitionSurfaceModifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
     val viewModel: MoviesViewModel = viewModel(
@@ -260,7 +263,7 @@ fun MoviesScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = headerTransitionModifier.fillMaxWidth(),
             currentTabFocusRequester = currentTabFocusRequester,
             onContentDown = if (!m3uActive && accounts.isNotEmpty() && state.categories.isNotEmpty()) {
                 { behaviorScope.launch { focusSelectedCategory() } }
@@ -271,6 +274,11 @@ fun MoviesScreen(
 
         Spacer(Modifier.height(MediaCatalogDimens.HeaderGap))
 
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = contentTransitionSurfaceModifier
+                    .fillMaxSize(),
+            )
         if (m3uActive) {
             CatalogEmpty(
                 title = "Films non disponibles en M3U",
@@ -386,6 +394,7 @@ fun MoviesScreen(
                         .fillMaxHeight(),
                 )
             }
+        }
         }
     }
 

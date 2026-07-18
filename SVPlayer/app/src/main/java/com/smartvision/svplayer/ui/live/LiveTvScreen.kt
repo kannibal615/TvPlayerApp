@@ -227,6 +227,8 @@ fun LiveTvScreen(
     onPreviewBoundsChanged: (Rect) -> Unit,
     onWatch: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    headerTransitionModifier: Modifier = Modifier,
+    contentTransitionSurfaceModifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
     val viewModel: LiveTvViewModel = viewModel(
@@ -466,13 +468,18 @@ fun LiveTvScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = headerTransitionModifier.fillMaxWidth(),
             currentTabFocusRequester = headerLiveFocusRequester,
             onContentDown = ::restoreCategoryFocus,
         )
 
         Spacer(Modifier.height(LiveTvDimens.HeaderGap))
 
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = contentTransitionSurfaceModifier
+                    .fillMaxSize(),
+            )
         if (!hasPlayableSource) {
             XtreamQrSetupPanel(
                 activationRepository = container.activationRepository,
@@ -638,6 +645,7 @@ fun LiveTvScreen(
                         .fillMaxHeight(),
                 )
             }
+        }
         }
     }
 
