@@ -395,7 +395,7 @@ private fun CategoryActionRow(
 }
 
 private object HomeCategoryCardLayout {
-    const val LoaderSegmentFraction = 0.468f
+    const val LoaderSegmentFraction = 0.650f
     val HorizontalPadding = 20.dp
     val TopPadding = 12.dp
     val BottomPadding = 18.dp
