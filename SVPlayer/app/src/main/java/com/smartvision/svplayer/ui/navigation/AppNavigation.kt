@@ -16,6 +16,7 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -271,6 +272,11 @@ fun AppNavigation(
     val activity = context as? Activity
     val livePlaybackSession = remember(context) { LivePlaybackSession(context) }
     var livePreviewBounds by remember { mutableStateOf<Rect?>(null) }
+    var moviePreviewBounds by remember { mutableStateOf<Rect?>(null) }
+    var seriesPreviewBounds by remember { mutableStateOf<Rect?>(null) }
+    var livePlayerEnterBounds by remember { mutableStateOf<Rect?>(null) }
+    var moviePlayerEnterBounds by remember { mutableStateOf<Rect?>(null) }
+    var seriesPlayerEnterBounds by remember { mutableStateOf<Rect?>(null) }
     DisposableEffect(livePlaybackSession) {
         onDispose { livePlaybackSession.release() }
     }
@@ -893,6 +899,9 @@ fun AppNavigation(
                         if (xtreamCatalogBlocked) {
                             showXtreamConnectionDialog = true
                         } else {
+                            livePlayerEnterBounds = null
+                            moviePlayerEnterBounds = null
+                            seriesPlayerEnterBounds = null
                             navController.navigateFromContinueItem(item)
                         }
                     },
@@ -900,6 +909,9 @@ fun AppNavigation(
                         if (xtreamCatalogBlocked) {
                             showXtreamConnectionDialog = true
                         } else {
+                            livePlayerEnterBounds = null
+                            moviePlayerEnterBounds = null
+                            seriesPlayerEnterBounds = null
                             navController.navigateFromTrendingItem(item)
                         }
                     },
@@ -994,7 +1006,10 @@ fun AppNavigation(
                 onReturnFocusConsumed = { liveReturnFocusChannelId = null },
                 playbackSession = livePlaybackSession,
                 onPreviewBoundsChanged = { livePreviewBounds = it },
-                onWatch = { channelId -> navController.navigate("player/$channelId") },
+                onWatch = { channelId ->
+                    livePlayerEnterBounds = livePreviewBounds
+                    navController.navigate("player/$channelId")
+                },
                 headerTransitionModifier = headerTransitionModifier,
                 contentTransitionSurfaceModifier = contentTransitionModifier,
             )
@@ -1033,8 +1048,10 @@ fun AppNavigation(
                 onReturnFocusConsumed = { movieReturnFocusId = null },
                 onOpenMovieDetails = { movieId -> navController.navigate("movie_detail/$movieId") },
                 onWatchMovie = { movieId ->
+                    moviePlayerEnterBounds = moviePreviewBounds
                     navController.navigate("movie_player/$movieId")
                 },
+                onPreviewBoundsChanged = { moviePreviewBounds = it },
                 headerTransitionModifier = headerTransitionModifier,
                 contentTransitionSurfaceModifier = contentTransitionModifier,
             )
@@ -1074,8 +1091,10 @@ fun AppNavigation(
                 onOpenSeriesDetails = { seriesId -> navController.navigate("series_detail/$seriesId") },
                 onWatchEpisode = { episodeId, seriesId ->
                     episodeReturnFocusSeriesId = seriesId
+                    seriesPlayerEnterBounds = seriesPreviewBounds
                     navController.navigate("episode_player/$episodeId")
                 },
+                onPreviewBoundsChanged = { seriesPreviewBounds = it },
                 headerTransitionModifier = headerTransitionModifier,
                 contentTransitionSurfaceModifier = contentTransitionModifier,
             )
@@ -1214,6 +1233,7 @@ fun AppNavigation(
                         navController.popBackStack()
                     },
                     onPlayLive = { nextChannelId ->
+                        livePlayerEnterBounds = null
                         navController.navigate("player/$nextChannelId") {
                             popUpTo("player/{channelId}") { inclusive = true }
                         }
@@ -1221,7 +1241,7 @@ fun AppNavigation(
                     recorderAccess = recorderGate,
                     strings = strings,
                     livePlaybackSession = livePlaybackSession,
-                    liveEnterFromBounds = livePreviewBounds,
+                    enterFromBounds = livePlayerEnterBounds,
                     onRecorderLocked = {
                         if (recorderGate.shouldShowUpgradePrompt) {
                             showLicensePurchaseQr = true
@@ -1259,11 +1279,13 @@ fun AppNavigation(
                         navController.popBackStack()
                     },
                     onPlayMovie = { nextMovieId ->
+                        moviePlayerEnterBounds = null
                         navController.navigate("movie_player/$nextMovieId") {
                             popUpTo("movie_player/{movieId}") { inclusive = true }
                         }
                     },
                     strings = strings,
+                    enterFromBounds = moviePlayerEnterBounds,
                 )
             }
         }
@@ -1296,6 +1318,7 @@ fun AppNavigation(
                     notificationBadgeCount = notificationBadgeCount,
                     onWatchMovie = { id ->
                         movieReturnFocusId = id
+                        moviePlayerEnterBounds = null
                         navController.navigate("movie_player/$id")
                     },
                 )
@@ -1322,6 +1345,7 @@ fun AppNavigation(
                         navController.popBackStack()
                     },
                     onPlayEpisode = { nextEpisodeId ->
+                        seriesPlayerEnterBounds = null
                         navController.navigate("episode_player/$nextEpisodeId") {
                             popUpTo("episode_player/{episodeId}") { inclusive = true }
                         }
@@ -1334,6 +1358,7 @@ fun AppNavigation(
                         }
                     },
                     strings = strings,
+                    enterFromBounds = seriesPlayerEnterBounds,
                 )
             }
         }
@@ -1366,6 +1391,7 @@ fun AppNavigation(
                     notificationBadgeCount = notificationBadgeCount,
                     onWatchEpisode = { episodeId ->
                         episodeReturnFocusSeriesId = seriesId
+                        seriesPlayerEnterBounds = null
                         navController.navigate("episode_player/$episodeId")
                     },
                     )
@@ -1749,10 +1775,22 @@ private const val HOME_HEADER_TRANSITION_KEY = "home-category:header"
 
 private val HomeCategoryBoundsTransform = BoundsTransform { initialBounds, targetBounds ->
     val expanding = targetBounds.width * targetBounds.height > initialBounds.width * initialBounds.height
-    tween(
-        durationMillis = if (expanding) 320 else 260,
-        easing = FastOutSlowInEasing,
+    val cardBounds = if (expanding) initialBounds else targetBounds
+    val viewportBounds = if (expanding) targetBounds else initialBounds
+    val centerScale = 1.12f
+    val centeredWidth = cardBounds.width * centerScale
+    val centeredHeight = cardBounds.height * centerScale
+    val centeredBounds = Rect(
+        left = viewportBounds.center.x - centeredWidth / 2f,
+        top = viewportBounds.center.y - centeredHeight / 2f,
+        right = viewportBounds.center.x + centeredWidth / 2f,
+        bottom = viewportBounds.center.y + centeredHeight / 2f,
     )
+    keyframes {
+        durationMillis = if (expanding) 560 else 480
+        centeredBounds at (if (expanding) 220 else 300) using FastOutSlowInEasing
+        targetBounds at durationMillis using FastOutSlowInEasing
+    }
 }
 
 private val HomeHeaderBoundsTransform = BoundsTransform { _, _ ->
@@ -1771,11 +1809,16 @@ private fun SharedTransitionScope.containerTransformModifier(
         animatedVisibilityScope = animatedVisibilityScope,
         enter = fadeIn(
             tween(
-                durationMillis = if (header) 120 else 180,
-                delayMillis = if (header) 0 else 90,
+                durationMillis = if (header) 120 else 220,
+                delayMillis = if (header) 0 else 300,
             ),
         ),
-        exit = fadeOut(tween(durationMillis = 100)),
+        exit = fadeOut(
+            tween(
+                durationMillis = if (header) 100 else 140,
+                delayMillis = if (header) 0 else 220,
+            ),
+        ),
         boundsTransform = if (header) HomeHeaderBoundsTransform else HomeCategoryBoundsTransform,
         resizeMode = SharedTransitionScope.ResizeMode.ScaleToBounds(
             contentScale = ContentScale.FillBounds,
@@ -1792,7 +1835,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.homeCategoryEnterT
         activeTransitionRoute == route &&
         initialState.destination.route == AppRoute.Home.route
     ) {
-        fadeIn(tween(durationMillis = 180, delayMillis = 90))
+        fadeIn(tween(durationMillis = 220, delayMillis = 300))
     } else {
         null
     }
@@ -1805,7 +1848,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.homeCategoryExitTr
         activeTransitionRoute == route &&
         targetState.destination.route == AppRoute.Home.route
     ) {
-        fadeOut(tween(durationMillis = 100))
+        fadeOut(tween(durationMillis = 140, delayMillis = 220))
     } else {
         null
     }

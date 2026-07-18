@@ -66,6 +66,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -76,6 +77,8 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -630,6 +633,7 @@ fun VodPreviewPanel(
     resumeLabel: String = "Resume",
     progressLabel: String = "Progress",
     onNavigateLeft: (() -> Unit)? = null,
+    onPreviewBoundsChanged: (Rect) -> Unit = {},
 ) {
     val miniPlayerFocusRequester = remember { FocusRequester() }
     val isSeriesPreview = content?.id?.startsWith("series-") == true
@@ -731,6 +735,7 @@ fun VodPreviewPanel(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(16f / 9f)
+                        .onGloballyPositioned { onPreviewBoundsChanged(it.boundsInRoot()) }
                         .focusRequester(miniPlayerFocusRequester)
                         .onPreviewKeyEvent { event ->
                             if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionUp) {

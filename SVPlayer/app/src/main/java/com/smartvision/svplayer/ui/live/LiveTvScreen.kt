@@ -475,11 +475,10 @@ fun LiveTvScreen(
 
         Spacer(Modifier.height(LiveTvDimens.HeaderGap))
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = contentTransitionSurfaceModifier
-                    .fillMaxSize(),
-            )
+        Box(
+            modifier = contentTransitionSurfaceModifier
+                .fillMaxSize(),
+        ) {
         if (!hasPlayableSource) {
             XtreamQrSetupPanel(
                 activationRepository = container.activationRepository,

@@ -37,7 +37,7 @@ object SmartVisionDimensions {
     val HomeHeaderContentClearance = HomeHeaderTopPadding
     val HomeHeaderToHeroSpacing = AppHeaderContentSpacing
     val HomeHeroHeight = 132.dp
-    val HomeCategoryHeight = 190.dp
+    val HomeCategoryHeight = 170.dp
     val HomeContentCardWidth = 112.dp
     // Fire TV reports 1920 px at density 2 (960 dp logical width). With the
     // Home side paddings, row edge paddings and 6 dp gaps, 94.5 dp keeps five

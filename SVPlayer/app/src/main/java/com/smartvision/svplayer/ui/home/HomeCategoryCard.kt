@@ -91,6 +91,7 @@ fun HomeCategoryCard(
     val shape = RoundedCornerShape(SmartVisionDimensions.HomeCardRadius)
     val accent = category.type.accent
     val focusStyle = LocalTvFocusStyle.current
+    val compactWorkLayout = workOverlay?.active == true || workOverlay?.error == true
 
     val border by animateColorAsState(
         targetValue = if (focusState.isFocused) focusStyle.accent else SmartVisionColors.Border,
@@ -100,6 +101,7 @@ fun HomeCategoryCard(
 
     Box(
         modifier = modifier
+            .then(transitionSurfaceModifier)
             .zIndex(if (focusState.isFocused) 3f else 0f)
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -147,7 +149,7 @@ fun HomeCategoryCard(
             .focusable(interactionSource = interactionSource),
     ) {
         Box(
-            modifier = transitionSurfaceModifier
+            modifier = Modifier
                 .fillMaxSize()
                 .clip(shape),
         ) {
@@ -191,8 +193,16 @@ fun HomeCategoryCard(
                 text = itemCount.coerceAtLeast(0).toString(),
                 color = Color.White.copy(alpha = 0.92f),
                 style = SmartVisionType.HomeCategoryTitle.copy(
-                    fontSize = HomeCategoryCardLayout.CountFontSize,
-                    lineHeight = HomeCategoryCardLayout.CountLineHeight,
+                    fontSize = if (compactWorkLayout) {
+                        HomeCategoryCardLayout.CompactCountFontSize
+                    } else {
+                        HomeCategoryCardLayout.CountFontSize
+                    },
+                    lineHeight = if (compactWorkLayout) {
+                        HomeCategoryCardLayout.CompactCountLineHeight
+                    } else {
+                        HomeCategoryCardLayout.CountLineHeight
+                    },
                 ),
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -202,8 +212,16 @@ fun HomeCategoryCard(
                 text = category.title,
                 color = SmartVisionColors.TextPrimary,
                 style = SmartVisionType.HomeCategoryTitle.copy(
-                    fontSize = HomeCategoryCardLayout.TitleFontSize,
-                    lineHeight = HomeCategoryCardLayout.TitleLineHeight,
+                    fontSize = if (compactWorkLayout) {
+                        HomeCategoryCardLayout.CompactTitleFontSize
+                    } else {
+                        HomeCategoryCardLayout.TitleFontSize
+                    },
+                    lineHeight = if (compactWorkLayout) {
+                        HomeCategoryCardLayout.CompactTitleLineHeight
+                    } else {
+                        HomeCategoryCardLayout.TitleLineHeight
+                    },
                 ),
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -217,7 +235,15 @@ fun HomeCategoryCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(HomeCategoryCardLayout.SubtitleActionSpacing))
+            Spacer(
+                Modifier.height(
+                    if (compactWorkLayout) {
+                        HomeCategoryCardLayout.CompactSubtitleActionSpacing
+                    } else {
+                        HomeCategoryCardLayout.SubtitleActionSpacing
+                    },
+                ),
+            )
             if (workOverlay?.active == true || workOverlay?.error == true) {
                 CategoryWorkProgress(workOverlay)
             } else {
@@ -402,17 +428,22 @@ private fun CategoryActionRow(
 }
 
 private object HomeCategoryCardLayout {
-    const val LoaderSegmentFraction = 0.650f
+    const val LoaderSegmentFraction = 0.500f
     val HorizontalPadding = 20.dp
-    val TopPadding = 12.dp
+    val TopPadding = 8.dp
     val BottomPadding = 18.dp
     val TitleFontSize = 42.sp
     val TitleLineHeight = 51.sp
     val CountFontSize = 27.sp
     val CountLineHeight = 32.sp
+    val CompactCountFontSize = 24.sp
+    val CompactCountLineHeight = 28.sp
     val CountTitleSpacing = 0.dp
+    val CompactTitleFontSize = 36.sp
+    val CompactTitleLineHeight = 43.sp
     val TitleSubtitleSpacing = 1.dp
     val SubtitleActionSpacing = 8.dp
+    val CompactSubtitleActionSpacing = 4.dp
     val ActionHorizontalPadding = 12.dp
     val ActionVerticalPadding = 5.dp
     val ActionIconSpacing = 8.dp

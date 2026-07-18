@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -106,6 +107,7 @@ fun SeriesScreen(
     onReturnFocusConsumed: () -> Unit = {},
     onOpenSeriesDetails: (Int) -> Unit,
     onWatchEpisode: (episodeId: Int, seriesId: Int) -> Unit,
+    onPreviewBoundsChanged: (Rect) -> Unit = {},
     modifier: Modifier = Modifier,
     headerTransitionModifier: Modifier = Modifier,
     contentTransitionSurfaceModifier: Modifier = Modifier,
@@ -275,11 +277,10 @@ fun SeriesScreen(
 
         Spacer(Modifier.height(MediaCatalogDimens.HeaderGap))
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = contentTransitionSurfaceModifier
-                    .fillMaxSize(),
-            )
+        Box(
+            modifier = contentTransitionSurfaceModifier
+                .fillMaxSize(),
+        ) {
         if (m3uActive) {
             CatalogEmpty(
                 title = "Series non disponibles en M3U",
@@ -411,6 +412,7 @@ fun SeriesScreen(
                     resumeLabel = strings.resumePlayback,
                     progressLabel = strings.progressLabel,
                     onNavigateLeft = { behaviorScope.launch { focusSeriesColumn() } },
+                    onPreviewBoundsChanged = onPreviewBoundsChanged,
                     modifier = Modifier
                         .weight(0.34f)
                         .fillMaxHeight(),

@@ -658,7 +658,7 @@ fun FullScreenPlayerRoute(
     strings: SmartVisionStrings? = null,
     onRecorderLocked: () -> Unit = {},
     livePlaybackSession: LivePlaybackSession? = null,
-    liveEnterFromBounds: Rect? = null,
+    enterFromBounds: Rect? = null,
 ) {
     val container = LocalAppContainer.current
     val viewModel: FullScreenPlayerViewModel = viewModel(
@@ -706,7 +706,7 @@ fun FullScreenPlayerRoute(
         strings = strings,
         onRecorderLocked = onRecorderLocked,
         livePlaybackSession = livePlaybackSession,
-        liveEnterFromBounds = liveEnterFromBounds,
+        enterFromBounds = enterFromBounds,
     )
 }
 
@@ -805,7 +805,7 @@ private fun FullScreenPlayerScreen(
     strings: SmartVisionStrings? = null,
     onRecorderLocked: () -> Unit = {},
     livePlaybackSession: LivePlaybackSession? = null,
-    liveEnterFromBounds: Rect? = null,
+    enterFromBounds: Rect? = null,
 ) {
     val context = LocalContext.current
     val container = LocalAppContainer.current
@@ -870,9 +870,12 @@ private fun FullScreenPlayerScreen(
     var exiting by remember(playback.streamId) { mutableStateOf(false) }
     var playbackCompletedReported by remember(playback.streamId) { mutableStateOf(false) }
     val animationsEnabled = LocalTvAnimationsEnabled.current
-    val expansionProgress = remember(liveEnterFromBounds, playback.streamId) {
-        Animatable(if (liveEnterFromBounds == null || !animationsEnabled) 1f else 0f)
+    val expansionProgress = remember(enterFromBounds, playback.streamId) {
+        Animatable(if (enterFromBounds == null || !animationsEnabled) 1f else 0f)
     }
+    val playerTransitionActive = enterFromBounds != null &&
+        animationsEnabled &&
+        expansionProgress.value < 0.999f
     var playerViewportSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
     val exitStopDone = remember(playback.streamId) { AtomicBoolean(false) }
@@ -909,13 +912,13 @@ private fun FullScreenPlayerScreen(
     }
     val player = livePlaybackSession?.player ?: requireNotNull(ownedPlayer)
 
-    LaunchedEffect(liveEnterFromBounds, animationsEnabled, playback.streamId) {
-        if (liveEnterFromBounds != null && animationsEnabled) {
+    LaunchedEffect(enterFromBounds, animationsEnabled, playback.streamId) {
+        if (enterFromBounds != null && animationsEnabled) {
             overlayVisible = false
             expansionProgress.snapTo(0f)
             expansionProgress.animateTo(
                 targetValue = 1f,
-                animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+                animationSpec = tween(durationMillis = 520, easing = FastOutSlowInEasing),
             )
             overlayVisible = true
             focusPlayWhenOverlayShows = true
@@ -1211,10 +1214,10 @@ private fun FullScreenPlayerScreen(
                     )
                 }
             }
-            if (livePlaybackSession != null && liveEnterFromBounds != null && animationsEnabled) {
+            if (enterFromBounds != null && animationsEnabled) {
                 expansionProgress.animateTo(
                     targetValue = 0f,
-                    animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                    animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
                 )
             }
             releasePlayerBeforeNavigation(source)
@@ -1573,6 +1576,10 @@ private fun FullScreenPlayerScreen(
     BackHandler {
         handleBack("back_handler")
     }
+    BackHandler(enabled = playerTransitionActive) {
+        // The mini-player container transform is atomic. Back is restored once
+        // the player has completely reached its destination.
+    }
 
     LaunchedEffect(playback.url, playback.resumePositionMs, playback.resumeCheckComplete, resumeDecision, contentKind) {
         if (!playback.resumeCheckComplete || resumePromptVisible) return@LaunchedEffect
@@ -1928,9 +1935,40 @@ private fun FullScreenPlayerScreen(
         modifier = Modifier
             .fillMaxSize()
             .onSizeChanged { playerViewportSize = it }
+            .graphicsLayer {
+                val bounds = enterFromBounds
+                val width = playerViewportSize.width.toFloat()
+                val height = playerViewportSize.height.toFloat()
+                val progress = expansionProgress.value.coerceIn(0f, 1f)
+                if (bounds != null && width > 0f && height > 0f) {
+                    val startScaleX = (bounds.width / width).coerceIn(0.05f, 1f)
+                    val startScaleY = (bounds.height / height).coerceIn(0.05f, 1f)
+                    val centerPhaseEnd = 0.38f
+                    val centering = (progress / centerPhaseEnd).coerceIn(0f, 1f)
+                    val expansion = ((progress - centerPhaseEnd) / (1f - centerPhaseEnd)).coerceIn(0f, 1f)
+                    val centeredScaleX = (startScaleX * 1.12f).coerceAtMost(1f)
+                    val centeredScaleY = (startScaleY * 1.12f).coerceAtMost(1f)
+                    scaleX = if (progress <= centerPhaseEnd) {
+                        transitionLerp(startScaleX, centeredScaleX, centering)
+                    } else {
+                        transitionLerp(centeredScaleX, 1f, expansion)
+                    }
+                    scaleY = if (progress <= centerPhaseEnd) {
+                        transitionLerp(startScaleY, centeredScaleY, centering)
+                    } else {
+                        transitionLerp(centeredScaleY, 1f, expansion)
+                    }
+                    translationX = transitionLerp(bounds.center.x - width / 2f, 0f, centering)
+                    translationY = transitionLerp(bounds.center.y - height / 2f, 0f, centering)
+                    transformOrigin = TransformOrigin.Center
+                    clip = progress < 1f
+                    shape = RoundedCornerShape(8.dp * (1f - progress))
+                }
+            }
             .background(Color.Black)
             .focusable()
             .onPreviewKeyEvent { event ->
+                if (playerTransitionActive) return@onPreviewKeyEvent true
                 val keyCode = event.nativeKeyEvent.keyCode
                 if (event.nativeKeyEvent.action == AndroidKeyEvent.ACTION_DOWN &&
                     handleLiveChannelKey(keyCode, event.nativeKeyEvent.repeatCount)
@@ -1956,6 +1994,8 @@ private fun FullScreenPlayerScreen(
                     isFocusableInTouchMode = !adGateActive
                     setOnKeyListener { _, keyCode, event ->
                         when {
+                            playerTransitionActive -> true
+
                             keyCode == AndroidKeyEvent.KEYCODE_BACK &&
                                 event.action == AndroidKeyEvent.ACTION_UP &&
                                 adGateActive -> true
@@ -1990,6 +2030,8 @@ private fun FullScreenPlayerScreen(
                 if (adGateActive) it.clearFocus()
                 it.setOnKeyListener { _, keyCode, event ->
                     when {
+                        playerTransitionActive -> true
+
                         keyCode == AndroidKeyEvent.KEYCODE_BACK &&
                             event.action == AndroidKeyEvent.ACTION_UP &&
                             adGateActive -> true
@@ -2016,25 +2058,7 @@ private fun FullScreenPlayerScreen(
                     }
                 }
             },
-            modifier = Modifier
-                .matchParentSize()
-                .graphicsLayer {
-                    val bounds = liveEnterFromBounds
-                    val width = playerViewportSize.width.toFloat()
-                    val height = playerViewportSize.height.toFloat()
-                    val progress = expansionProgress.value.coerceIn(0f, 1f)
-                    if (bounds != null && width > 0f && height > 0f) {
-                        val startScaleX = (bounds.width / width).coerceIn(0.05f, 1f)
-                        val startScaleY = (bounds.height / height).coerceIn(0.05f, 1f)
-                        scaleX = startScaleX + (1f - startScaleX) * progress
-                        scaleY = startScaleY + (1f - startScaleY) * progress
-                        translationX = (bounds.center.x - width / 2f) * (1f - progress)
-                        translationY = (bounds.center.y - height / 2f) * (1f - progress)
-                        transformOrigin = TransformOrigin.Center
-                        clip = progress < 1f
-                        shape = RoundedCornerShape(8.dp * (1f - progress))
-                    }
-                },
+            modifier = Modifier.matchParentSize(),
         )
 
         if (brightnessValue < 50f) {
@@ -4399,6 +4423,9 @@ private fun formatLocalMediaSize(bytes: Long): String {
 
 private fun Long.validDurationMs(): Long =
     takeIf { it > 0L && it != C.TIME_UNSET } ?: 0L
+
+private fun transitionLerp(start: Float, end: Float, fraction: Float): Float =
+    start + (end - start) * fraction.coerceIn(0f, 1f)
 
 internal fun Long.formatPlaybackTime(): String {
     val totalSeconds = (this / 1_000L).coerceAtLeast(0L)
