@@ -1150,6 +1150,7 @@ class DefaultCatalogRepository(
                 !containsAdultMarker(movie.title, categoryNames[movie.categoryId])
             },
             artworkKeyOf = MovieEntity::posterUrl,
+            limit = HomeTrendingPolicy.CandidateLimit,
         )
     }
 

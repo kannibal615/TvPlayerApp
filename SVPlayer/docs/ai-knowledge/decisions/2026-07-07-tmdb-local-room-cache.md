@@ -15,6 +15,7 @@ SmartVision doit integrer TMDB pour enrichir les fiches films/series, avec une l
 - Les providers JustWatch sont conserves comme metadonnees d'information.
 - L'attribution TMDB/JustWatch est exposee dans un nouveau menu Settings.
 - Les donnees adultes suivent le statut parental: `include_adult=false` quand le controle parental est actif.
+- L'utilisateur peut desactiver TMDB depuis Settings. OFF masque le cache local et interdit le reseau sans supprimer les donnees; ON restaure immediatement la lecture du cache.
 
 ## Consequences
 
@@ -22,3 +23,4 @@ SmartVision doit integrer TMDB pour enrichir les fiches films/series, avec une l
 - Les ids TMDB ne remplacent jamais les ids Xtream pour la lecture.
 - Les prochains lots peuvent enrichir Series/Home/catalogues depuis les memes tables sans reintroduire de chargement massif au demarrage.
 - Avant commercialisation, revoir licence TMDB, attribution officielle et politique cache/providers.
+- Le cache Home enrichi doit etre bypassé pendant OFF pour ne laisser aucune image ou duree TMDB visible; il reste intact pour une reactivation ulterieure et aucune migration Room n'est necessaire.

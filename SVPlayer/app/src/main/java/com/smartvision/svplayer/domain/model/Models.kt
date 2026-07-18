@@ -200,6 +200,7 @@ data class PlayerSettings(
     val syncFrequency: String = "24h",
     val autostartEnabled: Boolean = true,
     val backgroundSyncEnabled: Boolean = true,
+    val tmdbApiEnabled: Boolean = true,
     val focusStyle: String = "Default",
     val focusColor: String = "White",
     val focusEffect: String = "Frame",

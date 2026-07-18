@@ -7,6 +7,8 @@ object HomeTrendingPolicy {
     const val SectionLimit = 10
     const val CandidateLimit = 120
     const val MinimumSeriesRating = 3f
+    const val MinimumMovieRuntimeMinutes = 80
+    private const val MinimumMovieRuntimeMs = MinimumMovieRuntimeMinutes * 60_000L
 
     private val noveltyTerms = listOf(
         "new movie",
@@ -35,6 +37,43 @@ object HomeTrendingPolicy {
         values.filterNotNull()
             .map(::normalize)
             .any { AdultPattern.containsMatchIn(it) }
+
+    fun isEligibleMovieDuration(durationMs: Long?): Boolean =
+        durationMs != null && durationMs > MinimumMovieRuntimeMs
+
+    fun isEligibleMovieDuration(value: String?): Boolean =
+        isEligibleMovieDuration(parseDurationMs(value))
+
+    fun <T> selectEligibleMoviesPreservingOrder(
+        candidates: List<T>,
+        durationMsOf: (T) -> Long?,
+        limit: Int = SectionLimit,
+    ): List<T> = candidates
+        .asSequence()
+        .filter { isEligibleMovieDuration(durationMsOf(it)) }
+        .take(limit.coerceAtLeast(0))
+        .toList()
+
+    fun parseDurationMs(rawValue: String?): Long? {
+        val value = rawValue?.trim()?.lowercase()?.takeIf { it.isNotBlank() } ?: return null
+        if (":" in value) {
+            val parts = value.split(":").mapNotNull { it.trim().toLongOrNull() }
+            return when (parts.size) {
+                3 -> ((parts[0] * 3_600L) + (parts[1] * 60L) + parts[2]) * 1_000L
+                2 -> ((parts[0] * 60L) + parts[1]) * 1_000L
+                else -> null
+            }?.takeIf { it > 0L }
+        }
+        val hours = Regex("(\\d+)\\s*h").find(value)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
+        val minutes = Regex("(\\d+)\\s*(m|min)").find(value)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
+        val seconds = Regex("(\\d+)\\s*s").find(value)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
+        if (hours > 0L || minutes > 0L || seconds > 0L) {
+            return ((hours * 3_600L) + (minutes * 60L) + seconds) * 1_000L
+        }
+        val numeric = value.filter(Char::isDigit).toLongOrNull()?.takeIf { it > 0L } ?: return null
+        val secondsValue = if (numeric <= 360L) numeric * 60L else numeric
+        return secondsValue * 1_000L
+    }
 
     fun <T> selectDeterministic(
         ratedCandidates: List<T>,

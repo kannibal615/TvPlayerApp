@@ -522,7 +522,7 @@ fun HomeScreen(
             sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
             event = "home_initial_focus_requested",
         )
-        if (firstVisibleEntry && shouldRequestPostHomeCatalogSync(container)) {
+        if (shouldRequestPostHomeCatalogSync(container)) {
             PerformanceDiagnosticRecorder.record(
                 sheet = PerformanceDiagnosticRecorder.SHEET_HOME_STATE,
                 event = "home_post_render_sync_requested",
@@ -547,8 +547,8 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(startupWorkRequest.requestedAtMs) {
-        if (!startupWorkRequest.active) return@LaunchedEffect
+    LaunchedEffect(startupWorkRequest.requestedAtMs, visibleToUser) {
+        if (!visibleToUser || !startupWorkRequest.active) return@LaunchedEffect
         val request = startupWorkRequest
         catalogWorkUiState = HomeCatalogWorkUiState.initial(request.kind, request.source)
         runCatching {
@@ -761,6 +761,7 @@ fun HomeScreen(
             } else if (hasMovieTrends) {
                 TrendingContentRow(
                     title = strings.trendingMovies,
+                    previewNamespace = "trending-movies",
                     items = state.trendingMovies,
                     previewController = previewController,
                     onItemClick = onTrendingContentClick,
@@ -804,6 +805,7 @@ fun HomeScreen(
             } else if (hasSeriesTrends) {
                 TrendingContentRow(
                     title = strings.trendingSeries,
+                    previewNamespace = "trending-series",
                     items = state.trendingSeries,
                     previewController = previewController,
                     onItemClick = onTrendingContentClick,
@@ -1009,13 +1011,13 @@ private data class HomeCatalogWorkUiState(
             "series" -> series
             else -> return null
         }
-        if (!active &&
-            section.phase != SyncStatus.SyncSectionPhase.ERROR &&
-            section.phase != SyncStatus.SyncSectionPhase.COMPLETED
+        if (section.phase == SyncStatus.SyncSectionPhase.WAITING ||
+            section.phase == SyncStatus.SyncSectionPhase.COMPLETED
         ) return null
         val running = section.phase != SyncStatus.SyncSectionPhase.WAITING &&
             section.phase != SyncStatus.SyncSectionPhase.ERROR &&
             section.phase != SyncStatus.SyncSectionPhase.COMPLETED
+        if (!running && section.phase != SyncStatus.SyncSectionPhase.ERROR) return null
         val label = when {
             section.phase == SyncStatus.SyncSectionPhase.ERROR -> section.message ?: strings.catalogWorkFailed
             section.phase == SyncStatus.SyncSectionPhase.COMPLETED -> section.message ?: strings.catalogWorkCompleted
@@ -1027,7 +1029,6 @@ private data class HomeCatalogWorkUiState(
             active = active && running,
             error = section.phase == SyncStatus.SyncSectionPhase.ERROR,
             label = label,
-            completed = section.phase == SyncStatus.SyncSectionPhase.COMPLETED,
             detail = buildString {
                 if (profileName.isNotBlank()) append(profileName)
                 if (kidsMode) { if (isNotEmpty()) append(" • "); append("Kids") }

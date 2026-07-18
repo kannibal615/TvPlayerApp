@@ -73,7 +73,6 @@ import com.smartvision.svplayer.domain.model.SyncStatus
 import com.smartvision.svplayer.domain.repository.CatalogContentCounts
 import com.smartvision.svplayer.startup.BackgroundSyncScheduler
 import com.smartvision.svplayer.sync.CatalogSyncScheduler
-import com.smartvision.svplayer.sync.SyncFrequencyPolicy
 import com.smartvision.svplayer.ui.activation.ActivationScreen
 import com.smartvision.svplayer.ui.activation.ActivationViewModel
 import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
@@ -85,7 +84,6 @@ import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.HomeHeaderFocusTarget
 import com.smartvision.svplayer.ui.home.HomeScreen
 import com.smartvision.svplayer.ui.home.HomeViewModel
-import com.smartvision.svplayer.ui.home.isHomeContentReady
 import com.smartvision.svplayer.ui.home.visibleForProfile
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
@@ -102,15 +100,12 @@ import com.smartvision.svplayer.ui.player.LivePlaybackSession
 import com.smartvision.svplayer.ui.player.LocalMediaPlayerRoute
 import com.smartvision.svplayer.ui.profile.ProfileRoute
 import com.smartvision.svplayer.ui.profile.ProfilePickerScreen
-import com.smartvision.svplayer.ui.profile.ProfileHomeReadyToken
 import com.smartvision.svplayer.ui.profile.ProfileSelectionRequest
-import com.smartvision.svplayer.ui.profile.profileLoadProgress
 import com.smartvision.svplayer.ui.profile.SmartVisionQrDialog
 import com.smartvision.svplayer.ui.profile.canDisplayGlobalProfilePicker
 import com.smartvision.svplayer.ui.profile.canRevealProfilePickerAfterHome
 import com.smartvision.svplayer.ui.profile.canStartProfileSelectionFromPicker
 import com.smartvision.svplayer.ui.profile.canCompleteProfileSelection
-import com.smartvision.svplayer.ui.profile.shouldSynchronizeProfileCatalog
 import com.smartvision.svplayer.ui.series.SeriesScreen
 import com.smartvision.svplayer.ui.settings.SettingsScreen
 import com.smartvision.svplayer.ui.components.TvButton
@@ -126,11 +121,9 @@ import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.update.AppUpdateDialog
 import com.smartvision.svplayer.ui.update.AppUpdateViewModel
 import com.smartvision.svplayer.ui.youtube.YoutubeScreen
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -206,10 +199,7 @@ fun AppNavigation(
     var profileSelectionRequest by remember { mutableStateOf<ProfileSelectionRequest?>(null) }
     var profileSelectionRequestCounter by remember { mutableStateOf(0L) }
     var profileActivationCompletedRequestId by remember { mutableStateOf<Long?>(null) }
-    var profileSwitchSyncJob by remember { mutableStateOf<Job?>(null) }
-    var profileSelectionStartedAtMs by remember { mutableStateOf(0L) }
-    var profileSelectionError by remember { mutableStateOf<String?>(null) }
-    var homeReadyToken by remember { mutableStateOf<ProfileHomeReadyToken?>(null) }
+    var profileSwitchActivationJob by remember { mutableStateOf<Job?>(null) }
     var homeProfileAvatarBounds by remember { mutableStateOf<Rect?>(null) }
     val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
     val playlistProfiles by container.accountManager.profiles.collectAsStateWithLifecycle()
@@ -238,46 +228,9 @@ fun AppNavigation(
     val rawHomeState by homeViewModel.uiState.collectAsStateWithLifecycle()
     val authoritativeCatalogRevision by container.catalogRepository.catalogRevision.collectAsStateWithLifecycle()
     val coordinatedHomeState = rawHomeState.visibleForProfile(activeProfileId.orEmpty())
-    val coordinatedHomeReady = isHomeContentReady(
-        state = coordinatedHomeState,
-        activeProfileId = activeProfileId,
-        expectedCatalogRevision = authoritativeCatalogRevision,
-    )
-    LaunchedEffect(
-        coordinatedHomeReady,
-        activeProfileId,
-        coordinatedHomeState.catalogRevision,
-        authoritativeCatalogRevision,
-    ) {
-        if (!coordinatedHomeReady) {
-            homeReadyToken = null
-            return@LaunchedEffect
-        }
-        // Re-read the authoritative flows after a frame. A sync can publish
-        // Success just after bumping the catalog revision; an old Home snapshot
-        // must never close the picker during that scheduling window.
-        withFrameNanos { }
-        val latestProfileId = container.accountManager.activeProfileIdOrDefault()
-        val latestRevision = container.catalogRepository.catalogRevision.value
-        val latestHomeState = homeViewModel.uiState.value.visibleForProfile(latestProfileId)
-        homeReadyToken = if (
-            isHomeContentReady(
-                state = latestHomeState,
-                activeProfileId = latestProfileId,
-                expectedCatalogRevision = latestRevision,
-            )
-        ) {
-            ProfileHomeReadyToken(latestProfileId, latestRevision)
-        } else {
-            null
-        }
-    }
     val activeProfile = remember(playlistProfiles, activeProfileId) {
         playlistProfiles.firstOrNull { it.id == activeProfileId }
     }
-    val catalogSyncStatus by container.catalogRepository.syncStatus.collectAsStateWithLifecycle(
-        initialValue = SyncStatus.Idle,
-    )
     val lifecycleOwner = LocalLifecycleOwner.current
     var appInForeground by remember { mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) }
     DisposableEffect(lifecycleOwner) {
@@ -465,8 +418,6 @@ fun AppNavigation(
         }
         profileSelectionRequest = null
         profileActivationCompletedRequestId = null
-        profileSelectionError = null
-        profileSelectionStartedAtMs = 0L
         profilePickerCompleted = false
         openProfilePickerAfterHome = false
     }
@@ -595,63 +546,21 @@ fun AppNavigation(
     var lastXtreamProfileId by remember { mutableStateOf<String?>(null) }
     var lastM3uProfileSignature by remember { mutableStateOf<String?>(null) }
     var lastM3uProfileId by remember { mutableStateOf<String?>(null) }
-    val startProfileActivation: (String) -> Job? = startProfileActivation@{ profileId ->
+    val startProfileActivation: (String) -> Job = { profileId ->
         val profileChanged = container.accountManager.activeProfileId.value != profileId
         if (profileChanged) {
-            profileSwitchSyncJob?.cancel()
+            profileSwitchActivationJob?.cancel()
             container.accountManager.activateProfile(profileId)
             container.xtreamRepository.clearCaches()
             container.homeContentRepository.invalidateTrending()
         }
         scope.launch {
-            try {
-                if (profileChanged) {
-                    // Single deterministic catalog generation for this switch.
-                    // No background observer also increments the revision.
-                    container.catalogRepository.clearCatalogForProfileSwitch()
-                }
-                if (container.accountManager.activeProfileId.value != profileId) return@launch
-                val target = container.accountManager.profiles.value.firstOrNull { it.id == profileId }
-                val initialCounts = container.catalogRepository.getCatalogContentCounts(profileId)
-                val hasLocalCatalog = initialCounts.hasAnyContent()
-                val currentSettings = container.settingsRepository.settings.first()
-                val lastSuccessfulSync = container.syncStateDao.get(profileId)?.lastSync ?: target?.lastSyncAt
-                val catalogCurrent = target?.let(container.accountManager::isCatalogCurrent) == true
-                val synchronizationDue = SyncFrequencyPolicy.isSynchronizationDue(
-                    value = currentSettings.syncFrequency,
-                    lastSyncAt = lastSuccessfulSync,
-                    hasLocalCatalog = hasLocalCatalog,
-                    allowRunOnStartup = false,
-                )
-                val shouldSynchronize = shouldSynchronizeProfileCatalog(
-                    hasLocalCatalog = hasLocalCatalog,
-                    catalogCurrent = catalogCurrent,
-                    synchronizationDue = synchronizationDue,
-                )
-                Log.i(
-                    "SVProfileSwitch",
-                    "activation profile=${profileId.hashCode().toUInt().toString(16)} " +
-                        "local=$hasLocalCatalog current=$catalogCurrent due=$synchronizationDue sync=$shouldSynchronize",
-                )
-                if (
-                    target != null &&
-                    container.accountManager.activeProfileId.value == profileId &&
-                    shouldSynchronize
-                ) {
-                    container.catalogRepository.synchronize(profileId).getOrThrow()
-                }
-                if (container.accountManager.activeProfileId.value != profileId) return@launch
-                val finalCounts = container.catalogRepository.getCatalogContentCounts(profileId)
-                if (!finalCounts.hasAnyContent()) {
-                    throw IllegalStateException("The selected profile catalog is empty. Please retry synchronization.")
-                }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Throwable) {
-                Log.w("SVProfileSwitch", "Profile activation failed for $profileId", error)
-                profileSelectionError = error.message ?: "Unable to load this profile."
+            if (profileChanged) {
+                // Profile cards only switch the active local scope. Network catalog
+                // work is evaluated and launched by Home after the picker is gone.
+                container.catalogRepository.clearCatalogForProfileSwitch()
             }
-        }.also { profileSwitchSyncJob = it }
+        }.also { profileSwitchActivationJob = it }
     }
     val requestProfileSelection: (String) -> Unit = requestProfileSelection@{ profileId ->
         if (
@@ -669,32 +578,22 @@ fun AppNavigation(
         )
         profileSelectionRequest = request
         profileActivationCompletedRequestId = null
-        profileSelectionStartedAtMs = System.currentTimeMillis()
-        profileSelectionError = null
         profilePickerCompleted = false
-        if (activeProfileId != profileId) {
-            homeReadyToken = null
-        }
         runCatching {
             startProfileActivation(profileId)
         }.onSuccess { activationJob ->
-            if (activationJob == null) {
-                profileActivationCompletedRequestId = request.requestId
-            } else {
-                scope.launch {
-                    activationJob.join()
-                    if (
-                        profileSelectionRequest == request &&
-                        container.accountManager.activeProfileId.value == request.profileId &&
-                        profileSelectionError == null
-                    ) {
-                        profileActivationCompletedRequestId = request.requestId
-                    }
+            scope.launch {
+                activationJob.join()
+                if (
+                    profileSelectionRequest == request &&
+                    container.accountManager.activeProfileId.value == request.profileId
+                ) {
+                    profileActivationCompletedRequestId = request.requestId
                 }
             }
         }.onFailure {
             if (profileSelectionRequest == request) {
-                profileSelectionError = it.message ?: "Unable to load this profile."
+                profileSelectionRequest = null
             }
         }
     }
@@ -1365,14 +1264,12 @@ fun AppNavigation(
     }
 
     if (showProfilePicker) {
-        val homeReadyRequestId = profileSelectionRequest
+        val activationReadyRequestId = profileSelectionRequest
             ?.takeIf { request ->
                 homeRouteIsActive && canCompleteProfileSelection(
                     request = request,
                     completedRequestId = profileActivationCompletedRequestId,
                     activeProfileId = activeProfileId,
-                    homeReadyToken = homeReadyToken,
-                    catalogRevision = authoritativeCatalogRevision,
                     appInForeground = appInForeground,
                 )
             }
@@ -1388,17 +1285,8 @@ fun AppNavigation(
             multiProfileAccess = multiProfileGate,
             selectionRequestId = profileSelectionRequest?.requestId,
             selectionLoadingProfileId = profileSelectionRequest?.profileId,
-            homeReadyRequestId = homeReadyRequestId,
+            activationReadyRequestId = activationReadyRequestId,
             homeProfileAvatarBounds = homeProfileAvatarBounds,
-            loadProgress = profileSelectionRequest?.let {
-                profileLoadProgress(
-                    syncStatus = catalogSyncStatus,
-                    activationCompleted = profileActivationCompletedRequestId == it.requestId,
-                    homeReady = homeReadyRequestId == it.requestId,
-                    startedAtMs = profileSelectionStartedAtMs,
-                    errorMessage = profileSelectionError,
-                )
-            },
             onSelectionTransitionFinished = { requestId, profileId ->
                 val request = profileSelectionRequest
                 if (
@@ -1409,29 +1297,13 @@ fun AppNavigation(
                         request = request,
                         completedRequestId = profileActivationCompletedRequestId,
                         activeProfileId = activeProfileId,
-                        homeReadyToken = homeReadyToken,
-                        catalogRevision = container.catalogRepository.catalogRevision.value,
                         appInForeground = appInForeground,
                     )
                 ) {
                     profilePickerCompleted = true
                     profileSelectionRequest = null
                     profileActivationCompletedRequestId = null
-                    profileSelectionError = null
                 }
-            },
-            onRetrySelection = {
-                val retryProfileId = profileSelectionRequest?.profileId
-                profileSelectionRequest = null
-                profileActivationCompletedRequestId = null
-                profileSelectionError = null
-                retryProfileId?.let(requestProfileSelection)
-            },
-            onCancelSelection = {
-                profileSwitchSyncJob?.cancel()
-                profileSelectionRequest = null
-                profileActivationCompletedRequestId = null
-                profileSelectionError = null
             },
             onLockedFeature = {
                 if (multiProfileGate.shouldShowUpgradePrompt) {
@@ -1444,16 +1316,11 @@ fun AppNavigation(
                 val wasActiveProfile =
                     profile.id.isNotBlank() &&
                         profile.id == container.accountManager.activeProfileId.value
-                val savedProfileId = container.accountManager.upsertProfile(profile)
+                container.accountManager.upsertProfile(profile)
                 if (wasActiveProfile) {
                     container.xtreamRepository.clearCaches()
                     scope.launch {
                         container.catalogRepository.clearCatalogForProfileSwitch()
-                        val savedProfile = container.accountManager.profiles.value
-                            .firstOrNull { it.id == savedProfileId }
-                        if (savedProfile != null && !container.accountManager.isCatalogCurrent(savedProfile)) {
-                            container.catalogRepository.synchronize(savedProfileId).getOrThrow()
-                        }
                     }
                 }
             },

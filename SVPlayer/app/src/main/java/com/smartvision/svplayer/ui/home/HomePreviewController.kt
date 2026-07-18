@@ -138,6 +138,9 @@ class HomePreviewController(context: Context) {
     }
 }
 
+internal fun homePreviewSessionId(namespace: String, contentId: String): String =
+    "${namespace.trim().ifBlank { "home" }}:$contentId"
+
 @Composable
 fun rememberHomePreviewController(context: Context): HomePreviewController {
     val controller = remember(context.applicationContext) { HomePreviewController(context) }

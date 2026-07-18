@@ -281,10 +281,12 @@ class MoviesViewModel(
     private fun observeSettings() {
         viewModelScope.launch {
             settingsRepository.settings.collect { settings ->
-                val changed = playerSettings.parentalControlEnabled != settings.parentalControlEnabled ||
+                val tmdbChanged = playerSettings.tmdbApiEnabled != settings.tmdbApiEnabled
+                val changed = tmdbChanged || playerSettings.parentalControlEnabled != settings.parentalControlEnabled ||
                     playerSettings.parentalKeywords != settings.parentalKeywords
                 playerSettings = settings
                 if (changed && !_uiState.value.categoriesLoading) {
+                    if (tmdbChanged) cancelTmdbMetadataJobs()
                     loadCategories()
                 }
             }

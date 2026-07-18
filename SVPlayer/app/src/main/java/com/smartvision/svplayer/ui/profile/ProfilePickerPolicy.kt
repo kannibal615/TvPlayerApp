@@ -8,11 +8,6 @@ data class ProfileSelectionRequest(
     val profileId: String,
 )
 
-data class ProfileHomeReadyToken(
-    val profileId: String,
-    val catalogRevision: Long,
-)
-
 fun orderProfilePickerProfiles(profiles: List<PlaylistProfile>): List<PlaylistProfile> =
     profiles
         .filter { it.isConfigured }
@@ -28,12 +23,6 @@ fun initialProfilePickerId(
     ?.takeIf { activeId -> profiles.any { it.id == activeId } }
     ?: profiles.firstOrNull { it.type == ProfileType.ADMIN }?.id
     ?: profiles.firstOrNull()?.id
-
-fun shouldSynchronizeProfileCatalog(
-    hasLocalCatalog: Boolean,
-    catalogCurrent: Boolean,
-    synchronizationDue: Boolean,
-): Boolean = !hasLocalCatalog || !catalogCurrent || synchronizationDue
 
 fun canRevealProfilePickerAfterHome(
     openRequested: Boolean,
@@ -57,14 +46,9 @@ fun canCompleteProfileSelection(
     request: ProfileSelectionRequest?,
     completedRequestId: Long?,
     activeProfileId: String?,
-    homeReadyToken: ProfileHomeReadyToken?,
-    catalogRevision: Long,
     appInForeground: Boolean,
 ): Boolean =
     appInForeground &&
         request != null &&
         completedRequestId == request.requestId &&
-        activeProfileId == request.profileId &&
-        homeReadyToken != null &&
-        homeReadyToken.profileId == request.profileId &&
-        homeReadyToken.catalogRevision == catalogRevision
+        activeProfileId == request.profileId

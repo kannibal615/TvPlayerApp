@@ -137,7 +137,7 @@ class HomeContentRepository(
             return updateCachedTrending(key = key, movies = emptyList()).movies
         }
         return withContext(Dispatchers.IO) {
-            runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingPolicy.SectionLimit, key.profileId) }
+            runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingPolicy.CandidateLimit, key.profileId) }
                 .getOrDefault(emptyList())
                 .also { candidates ->
                     PerformanceDiagnosticRecorder.recordDuration(
@@ -148,14 +148,9 @@ class HomeContentRepository(
                     )
                 }
                 .mapNotNull { it.toMovieTrendItem() }
-                .take(HomeTrendingPolicy.SectionLimit)
-                .let { movies ->
-                    val hydrated = hydrateCachedTrendingItems(
-                        key = key,
-                        contentType = TrendingMovieType,
-                        items = movies,
-                    )
-                    updateCachedTrending(key = key, movies = hydrated).movies
+                .let { candidates ->
+                    val eligible = prepareEligibleTrendingMovies(candidates)
+                    updateCachedTrending(key = key, movies = eligible).movies
                 }
         }
     }
@@ -228,7 +223,7 @@ class HomeContentRepository(
             coroutineScope {
                     val movies = async {
                         val candidatesStart = SystemClock.elapsedRealtime()
-                        runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingPolicy.SectionLimit, key.profileId) }
+                        runCatching { catalogRepository.getTrendingMovieItems(HomeTrendingPolicy.CandidateLimit, key.profileId) }
                             .getOrDefault(emptyList())
                             .also { candidates ->
                                 PerformanceDiagnosticRecorder.recordDuration(
@@ -239,7 +234,6 @@ class HomeContentRepository(
                                 )
                             }
                             .mapNotNull { it.toMovieTrendItem() }
-                            .take(HomeTrendingPolicy.SectionLimit)
                     }
                     val series = async {
                         val candidatesStart = SystemClock.elapsedRealtime()
@@ -261,11 +255,7 @@ class HomeContentRepository(
                         series = series.await(),
                     )
                     val preparedSnapshot = HomeTrendingSnapshot(
-                        movies = hydrateCachedTrendingItems(
-                            key = key,
-                            contentType = TrendingMovieType,
-                            items = baseSnapshot.movies,
-                        ),
+                        movies = prepareEligibleTrendingMovies(baseSnapshot.movies),
                         series = prepareInitialTrendingSeries(key, baseSnapshot.series),
                     )
                     preparedSnapshot.also {
@@ -291,8 +281,8 @@ class HomeContentRepository(
         if (key.source != PlaylistSource.Xtream.storageValue || key.accountSignature.isBlank()) {
             return@withContext null
         }
-        cleanPreviewCacheIfNeeded(key.lastSync)
-        mediaDao.getHomeTrendingPreviewCache(key.profileId, contentType, contentId, key.lastSync)
+        if (key.tmdbApiEnabled) cleanPreviewCacheIfNeeded(key.lastSync)
+        if (key.tmdbApiEnabled) mediaDao.getHomeTrendingPreviewCache(key.profileId, contentType, contentId, key.lastSync)
             ?.takeIf { it.hasReusableXtreamPreviewCache() }
             ?.toPreparedPreview()
             ?.also { prepared ->
@@ -310,8 +300,8 @@ class HomeContentRepository(
             }
             ?.let { return@withContext it }
 
+        val settings = settingsRepository.settings.first()
         val entity = runCatching {
-            val settings = settingsRepository.settings.first()
             when (contentType) {
                 TrendingMovieType -> buildMoviePreviewCache(contentId, fallbackPosterUrl, key.lastSync, settings)
                 TrendingSeriesType -> buildSeriesPreviewCache(contentId, fallbackPosterUrl, key.lastSync, settings)
@@ -327,7 +317,7 @@ class HomeContentRepository(
             )
         }.getOrNull() ?: return@withContext null
 
-        mediaDao.upsertHomeTrendingPreviewCache(entity)
+        if (key.tmdbApiEnabled) mediaDao.upsertHomeTrendingPreviewCache(entity)
         entity.toPreparedPreview().also { prepared ->
             PerformanceDiagnosticRecorder.recordDuration(
                 sheet = PerformanceDiagnosticRecorder.SHEET_LOADED_DATA,
@@ -352,6 +342,7 @@ class HomeContentRepository(
             },
             profileId = accountManager.activeProfileIdOrDefault(),
             lastSync = syncStateDao.get(accountManager.activeProfileIdOrDefault())?.lastSync ?: 0L,
+            tmdbApiEnabled = settingsRepository.settings.first().tmdbApiEnabled,
         )
 
     private fun updateCachedTrending(
@@ -384,6 +375,7 @@ class HomeContentRepository(
         items: List<ContinueItem>,
     ): List<ContinueItem> {
         if (items.isEmpty()) return items
+        if (!key.tmdbApiEnabled) return items
         cleanPreviewCacheIfNeeded(key.lastSync)
         return items.map { item ->
             val contentId = item.id.substringAfter(':', "").toIntOrNull()
@@ -412,6 +404,29 @@ class HomeContentRepository(
             contentType = TrendingSeriesType,
             items = items,
         )
+
+    private suspend fun prepareEligibleTrendingMovies(
+        candidates: List<ContinueItem>,
+    ): List<ContinueItem> = coroutineScope {
+        val selected = ArrayList<ContinueItem>(HomeTrendingPolicy.SectionLimit)
+        for (batch in candidates.chunked(TrendingMovieDurationBatchSize)) {
+            val preparedBatch = batch.map { item ->
+                async {
+                    val contentId = item.id.substringAfter(':', "").toIntOrNull() ?: return@async null
+                    prepareTrendingPreview(
+                        contentType = TrendingMovieType,
+                        contentId = contentId,
+                        fallbackPosterUrl = item.imageUrl,
+                    )
+                        ?.takeIf { HomeTrendingPolicy.isEligibleMovieDuration(it.durationMs) }
+                        ?.applyTo(item, promoteCardArtwork = true)
+                }
+            }.map { it.await() }
+            preparedBatch.filterNotNullTo(selected)
+            if (selected.size >= HomeTrendingPolicy.SectionLimit) break
+        }
+        selected.take(HomeTrendingPolicy.SectionLimit)
+    }
 
     private suspend fun buildMoviePreviewCache(
         contentId: Int,
@@ -625,6 +640,7 @@ private data class HomeTrendingCacheKey(
     val source: String,
     val accountSignature: String,
     val lastSync: Long,
+    val tmdbApiEnabled: Boolean,
 )
 
 private fun String.cleanHomeTitle(): String =
@@ -645,25 +661,7 @@ private fun String?.toRatingLabel(): String? =
         ?.takeIf { it.isNotBlank() && it != "0" }
 
 private fun String?.parseDurationMs(): Long? {
-    val value = this?.trim()?.lowercase()?.takeIf { it.isNotBlank() } ?: return null
-    if (":" in value) {
-        val parts = value.split(":")
-            .mapNotNull { it.trim().toLongOrNull() }
-        return when (parts.size) {
-            3 -> ((parts[0] * 3_600L) + (parts[1] * 60L) + parts[2]) * 1_000L
-            2 -> ((parts[0] * 60L) + parts[1]) * 1_000L
-            else -> null
-        }?.takeIf { it > 0L }
-    }
-    val hours = Regex("(\\d+)\\s*h").find(value)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
-    val minutes = Regex("(\\d+)\\s*(m|min)").find(value)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
-    val seconds = Regex("(\\d+)\\s*s").find(value)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
-    if (hours > 0L || minutes > 0L || seconds > 0L) {
-        return ((hours * 3_600L) + (minutes * 60L) + seconds) * 1_000L
-    }
-    val numeric = value.filter { it.isDigit() }.toLongOrNull()?.takeIf { it > 0L } ?: return null
-    val secondsValue = if (numeric <= 360L) numeric * 60L else numeric
-    return secondsValue * 1_000L
+    return HomeTrendingPolicy.parseDurationMs(this)
 }
 
 private fun String.isMeaningfulDurationLabel(): Boolean =
@@ -697,3 +695,4 @@ private const val PreviewAvailable = "available"
 private const val PreviewUnavailable = "unavailable"
 private const val PreviewStartRatio = 0.15
 private const val PreviewFallbackStartRatio = 0.30
+private const val TrendingMovieDurationBatchSize = 3

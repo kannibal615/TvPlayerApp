@@ -279,6 +279,7 @@ private class FakeSettingsRepository(initial: PlayerSettings) : SettingsReposito
     override suspend fun setSyncFrequency(value: String) = Unit
     override suspend fun setAutostartEnabled(value: Boolean) = Unit
     override suspend fun setBackgroundSyncEnabled(value: Boolean) = Unit
+    override suspend fun setTmdbApiEnabled(value: Boolean) = Unit
     override suspend fun setFocusStyle(value: String) = Unit
     override suspend fun setFocusColor(value: String) = Unit
     override suspend fun setFocusEffect(value: String) = Unit

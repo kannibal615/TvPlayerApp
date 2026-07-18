@@ -318,6 +318,8 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-18: les films Tendances Home sont selectionnes dans l'ordre classe depuis un pool de 120 candidats, par lots de 3, et seuls les 10 premiers dont la duree resolue TMDB/Xtream est strictement superieure a 80 minutes sont conserves; duree inconnue ou egale a 80 minutes exclue.
+- 2026-07-18: la synchronisation automatique du profil ne part plus de Who's Watching. Home evalue la fraicheur uniquement lorsqu'il est visible et conserve l'ordre repository Live TV, Films, Series.
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: documentation des routes `player`, `movie_player`, `episode_player`, `series_detail`.
 - 2026-06-30: refonte overlay player Live/Films/Series vers le modele glassmorphism TV premium, sans modifier le rendu video Media3.

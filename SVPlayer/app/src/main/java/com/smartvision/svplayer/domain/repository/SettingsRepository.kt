@@ -13,6 +13,7 @@ interface SettingsRepository {
     suspend fun setSyncFrequency(value: String)
     suspend fun setAutostartEnabled(value: Boolean)
     suspend fun setBackgroundSyncEnabled(value: Boolean)
+    suspend fun setTmdbApiEnabled(value: Boolean)
     suspend fun setFocusStyle(value: String)
     suspend fun setFocusColor(value: String)
     suspend fun setFocusEffect(value: String)

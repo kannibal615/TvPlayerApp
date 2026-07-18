@@ -45,6 +45,36 @@ class HomeTrendingPolicyTest {
     }
 
     @Test
+    fun `movie trends require a runtime strictly greater than eighty minutes`() {
+        assertFalse(HomeTrendingPolicy.isEligibleMovieDuration("80 min"))
+        assertFalse(HomeTrendingPolicy.isEligibleMovieDuration("01:20:00"))
+        assertTrue(HomeTrendingPolicy.isEligibleMovieDuration("81 min"))
+        assertTrue(HomeTrendingPolicy.isEligibleMovieDuration("01:20:01"))
+        assertFalse(HomeTrendingPolicy.isEligibleMovieDuration(null as String?))
+        assertFalse(HomeTrendingPolicy.isEligibleMovieDuration("unknown"))
+    }
+
+    @Test
+    fun `duration filtering backfills candidates without changing ranking`() {
+        val ranked = listOf(
+            "unknown" to null,
+            "boundary" to 4_800_000L,
+            "first" to 5_400_000L,
+            "short" to 3_000_000L,
+            "second" to 4_800_001L,
+            "third" to 6_000_000L,
+        )
+
+        val selected = HomeTrendingPolicy.selectEligibleMoviesPreservingOrder(
+            candidates = ranked,
+            durationMsOf = { it.second },
+            limit = 3,
+        )
+
+        assertEquals(listOf("first", "second", "third"), selected.map { it.first })
+    }
+
+    @Test
     fun `selection replaces duplicate artwork with the next distinct candidate`() {
         val rated = listOf(
             Item(1, 9.5f, 300, 2025, artwork = "HTTPS://img.example/poster.jpg?size=large"),

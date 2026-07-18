@@ -64,6 +64,7 @@ class DefaultSettingsRepository(
                 syncFrequency = preferences[SYNC_FREQUENCY] ?: "24h",
                 autostartEnabled = preferences[AUTOSTART_ENABLED] ?: startupStateStore.isAutostartEnabled(),
                 backgroundSyncEnabled = preferences[BACKGROUND_SYNC_ENABLED] ?: startupStateStore.isBackgroundSyncEnabled(),
+                tmdbApiEnabled = preferences[TMDB_API_ENABLED] ?: true,
                 focusStyle = preferences[FOCUS_STYLE] ?: "Default",
                 focusColor = preferences[FOCUS_COLOR] ?: "White",
                 focusEffect = preferences[FOCUS_EFFECT] ?: "Frame",
@@ -108,6 +109,10 @@ class DefaultSettingsRepository(
     override suspend fun setBackgroundSyncEnabled(value: Boolean) {
         startupStateStore.setBackgroundSyncEnabled(value)
         dataStore.edit { it[BACKGROUND_SYNC_ENABLED] = value }
+    }
+
+    override suspend fun setTmdbApiEnabled(value: Boolean) {
+        dataStore.edit { it[TMDB_API_ENABLED] = value }
     }
 
     override suspend fun setFocusStyle(value: String) {
@@ -217,6 +222,7 @@ class DefaultSettingsRepository(
         val SYNC_FREQUENCY = stringPreferencesKey("sync_frequency")
         val AUTOSTART_ENABLED = booleanPreferencesKey("autostart_enabled")
         val BACKGROUND_SYNC_ENABLED = booleanPreferencesKey("background_sync_enabled")
+        val TMDB_API_ENABLED = booleanPreferencesKey("tmdb_api_enabled")
         val FOCUS_STYLE = stringPreferencesKey("focus_style")
         val FOCUS_COLOR = stringPreferencesKey("focus_color")
         val FOCUS_EFFECT = stringPreferencesKey("focus_effect")

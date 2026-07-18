@@ -218,6 +218,7 @@ fun SettingsScreen(
             onSetRetry = { value -> scope.launch { container.settingsRepository.setRetryEnabled(value) } },
             onSetShowHeaderClock = { value -> scope.launch { container.settingsRepository.setShowHeaderClock(value) } },
             onSetShowHeaderSeconds = { value -> scope.launch { container.settingsRepository.setShowHeaderSeconds(value) } },
+            onSetTmdbApiEnabled = { value -> scope.launch { container.settingsRepository.setTmdbApiEnabled(value) } },
             onClearLocalData = { showClearLocalDataConfirmation = true },
             licenseState = licenseState,
             onRefreshLicense = licenseViewModel::refresh,
@@ -289,6 +290,7 @@ private fun SettingsMenuLayout(
     onSetRetry: (Boolean) -> Unit,
     onSetShowHeaderClock: (Boolean) -> Unit,
     onSetShowHeaderSeconds: (Boolean) -> Unit,
+    onSetTmdbApiEnabled: (Boolean) -> Unit,
     onClearLocalData: () -> Unit,
     licenseState: com.smartvision.svplayer.ui.profile.ProfileUiState,
     onRefreshLicense: () -> Unit,
@@ -297,6 +299,7 @@ private fun SettingsMenuLayout(
     lastUpdateLabel: String,
     modifier: Modifier = Modifier,
 ) {
+    val tmdbToggleFocusRequester = remember { FocusRequester() }
 
     Row(
         modifier = modifier,
@@ -450,6 +453,14 @@ private fun SettingsMenuLayout(
                             value = if (BuildConfig.TMDB_READ_ACCESS_TOKEN.isNotBlank()) strings.active else strings.notConfigured,
                         )
                         SettingsInfoRow(strings.language, settings.language)
+                        Spacer(Modifier.height(8.dp))
+                        SyncPreferenceToggleRow(
+                            title = strings.tmdbApiRetrieval,
+                            subtitle = strings.tmdbApiRetrievalSubtitle,
+                            checked = settings.tmdbApiEnabled,
+                            focusRequester = tmdbToggleFocusRequester,
+                            onCheckedChange = onSetTmdbApiEnabled,
+                        )
                     }
                     Spacer(Modifier.height(10.dp))
                     TvSectionCard(strings.tmdbAttribution, Icons.Default.Info, Modifier.fillMaxWidth()) {

@@ -220,7 +220,7 @@ internal fun SynchronizationPreferencesContent(
 }
 
 @Composable
-private fun SyncPreferenceToggleRow(
+internal fun SyncPreferenceToggleRow(
     title: String,
     subtitle: String,
     checked: Boolean,

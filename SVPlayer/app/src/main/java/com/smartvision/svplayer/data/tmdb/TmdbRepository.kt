@@ -5,13 +5,16 @@ import com.smartvision.svplayer.data.local.dao.MediaDao
 import com.smartvision.svplayer.data.local.entity.TmdbContentMappingEntity
 import com.smartvision.svplayer.data.local.entity.TmdbMovieMetadataEntity
 import com.smartvision.svplayer.data.local.entity.TmdbSeriesMetadataEntity
+import com.smartvision.svplayer.domain.repository.SettingsRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 class TmdbRepository(
     private val api: TmdbApiService,
     private val mediaDao: MediaDao,
     private val accountManager: XtreamAccountManager,
+    private val settingsRepository: SettingsRepository,
     readAccessToken: String,
 ) {
     private val tokenConfigured = readAccessToken.isNotBlank()
@@ -25,6 +28,7 @@ class TmdbRepository(
         contentId: Int,
         language: String,
     ): TmdbMovieMetadata? = withContext(Dispatchers.IO) {
+        if (!TmdbAccessPolicy.canUse(settingsRepository.settings.first().tmdbApiEnabled)) return@withContext null
         cachedMovieEntity(contentId, language.toTmdbLanguage())?.toTmdbMovieMetadata()
     }
 
@@ -32,6 +36,7 @@ class TmdbRepository(
         contentId: Int,
         language: String,
     ): TmdbSeriesMetadata? = withContext(Dispatchers.IO) {
+        if (!TmdbAccessPolicy.canUse(settingsRepository.settings.first().tmdbApiEnabled)) return@withContext null
         cachedSeriesEntity(contentId, language.toTmdbLanguage())?.toTmdbSeriesMetadata()
     }
 
@@ -42,10 +47,13 @@ class TmdbRepository(
         language: String,
         includeAdult: Boolean,
     ): TmdbMovieMetadata? = withContext(Dispatchers.IO) {
+        if (!TmdbAccessPolicy.canUse(settingsRepository.settings.first().tmdbApiEnabled)) return@withContext null
         val tmdbLanguage = language.toTmdbLanguage()
         val cached = cachedMovieEntity(contentId, tmdbLanguage)
         if (cached != null && cached.isFresh()) return@withContext cached.toTmdbMovieMetadata()
-        if (!isConfigured) return@withContext cached?.toTmdbMovieMetadata()
+        if (!TmdbAccessPolicy.canRequestNetwork(settingsRepository.settings.first().tmdbApiEnabled, tokenConfigured)) {
+            return@withContext cached?.toTmdbMovieMetadata()
+        }
 
         val match = resolveMovieMatch(
             contentId = contentId,
@@ -76,10 +84,13 @@ class TmdbRepository(
         language: String,
         includeAdult: Boolean,
     ): TmdbSeriesMetadata? = withContext(Dispatchers.IO) {
+        if (!TmdbAccessPolicy.canUse(settingsRepository.settings.first().tmdbApiEnabled)) return@withContext null
         val tmdbLanguage = language.toTmdbLanguage()
         val cached = cachedSeriesEntity(contentId, tmdbLanguage)
         if (cached != null && cached.isFresh()) return@withContext cached.toTmdbSeriesMetadata()
-        if (!isConfigured) return@withContext cached?.toTmdbSeriesMetadata()
+        if (!TmdbAccessPolicy.canRequestNetwork(settingsRepository.settings.first().tmdbApiEnabled, tokenConfigured)) {
+            return@withContext cached?.toTmdbSeriesMetadata()
+        }
 
         val match = resolveSeriesMatch(
             contentId = contentId,
@@ -313,6 +324,13 @@ class TmdbRepository(
         val year: String? = null,
         val adult: Boolean = false,
     )
+}
+
+internal object TmdbAccessPolicy {
+    fun canUse(apiEnabled: Boolean): Boolean = apiEnabled
+
+    fun canRequestNetwork(apiEnabled: Boolean, tokenConfigured: Boolean): Boolean =
+        apiEnabled && tokenConfigured
 }
 
 private fun String.toTmdbLanguage(): String =

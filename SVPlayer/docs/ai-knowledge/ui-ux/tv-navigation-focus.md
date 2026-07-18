@@ -225,6 +225,8 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-18: les previews Home utilisent une identite de session scopee par rangee (`continue:*`, `trending-movies:*`, `trending-series:*`). Une meme video dans plusieurs rangees garde des surfaces distinctes; un blur/dispose ne peut arreter que la session dont la card est proprietaire.
+- 2026-07-18: les loaders de synchronisation des cards Home ne modifient ni leur taille ni leurs cibles D-pad; les cards en attente et terminees conservent leur comportement de focus normal.
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: ajout des signaux `FocusRequester`, `D-pad`, `focusBackground`.
 - 2026-06-30: ajout de la regle focus pour overlay YouTube custom demande explicitement: bandeau focusable borne, retour Haut/Back vers le player.

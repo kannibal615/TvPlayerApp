@@ -101,6 +101,7 @@ import kotlin.math.roundToLong
 @Composable
 fun TrendingContentRow(
     title: String,
+    previewNamespace: String,
     items: List<ContinueItem>,
     onItemClick: (ContinueItem) -> Unit,
     onPrepareItems: (List<ContinueItem>) -> Unit,
@@ -195,8 +196,10 @@ fun TrendingContentRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
+                val previewSessionId = homePreviewSessionId(previewNamespace, item.id)
                 TrendingPreviewCard(
                     item = item,
+                    previewSessionId = previewSessionId,
                     enablePreview = activePreviewId == item.id &&
                         item.previewPrepared &&
                         !item.previewUrl.isNullOrBlank(),
@@ -255,6 +258,7 @@ fun TrendingContentRow(
 @Composable
 private fun TrendingPreviewCard(
     item: ContinueItem,
+    previewSessionId: String,
     enablePreview: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -282,25 +286,25 @@ private fun TrendingPreviewCard(
     val previewUrl = item.previewUrl
     val displayedPosterUrl = item.imageUrl
     val firstFramePreviewId by previewController.firstFramePreviewId.collectAsStateWithLifecycle()
-    val videoVisible = firstFramePreviewId == item.id
+    val videoVisible = firstFramePreviewId == previewSessionId
     val detailLabel = if (item.mediaType == "SERIE") item.secondaryLabel else item.previewDurationLabel
     var compactTitle by remember(item.id) { mutableStateOf(false) }
 
     LaunchedEffect(focusState.isFocused) {
         onFocusChanged(focusState.isFocused)
-        if (!focusState.isFocused) previewController.stop(item.id)
+        if (!focusState.isFocused) previewController.stop(previewSessionId)
     }
 
     LaunchedEffect(enablePreview, previewUrl, focusState.isFocused) {
         if (enablePreview && focusState.isFocused && previewUrl != null) {
-            previewController.play(item.id, previewUrl, item.previewStartPositionMs, item.previewMode)
+            previewController.play(previewSessionId, previewUrl, item.previewStartPositionMs, item.previewMode)
         } else {
-            previewController.stop(item.id)
+            previewController.stop(previewSessionId)
         }
     }
 
-    DisposableEffect(item.id, previewController) {
-        onDispose { previewController.stop(item.id) }
+    DisposableEffect(previewSessionId, previewController) {
+        onDispose { previewController.stop(previewSessionId) }
     }
 
     Box(
@@ -375,7 +379,7 @@ private fun TrendingPreviewCard(
         }
         HomePreviewSurface(
             controller = previewController,
-            previewId = item.id,
+            previewId = previewSessionId,
             modifier = Modifier.fillMaxSize(),
         )
         Box(

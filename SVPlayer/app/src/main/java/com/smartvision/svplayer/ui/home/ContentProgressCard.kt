@@ -90,6 +90,7 @@ import kotlin.math.min
 @Composable
 fun ContentProgressCard(
     item: ContinueItem,
+    previewSessionId: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
@@ -127,14 +128,14 @@ fun ContentProgressCard(
     val previewPosterUrl = item.previewImageUrl ?: item.imageUrl
     val activePreviewId by previewController.activePreviewId.collectAsStateWithLifecycle()
     val firstFramePreviewId by previewController.firstFramePreviewId.collectAsStateWithLifecycle()
-    val showPreview = activePreviewId == item.id
-    val videoVisible = firstFramePreviewId == item.id
+    val showPreview = activePreviewId == previewSessionId
+    val videoVisible = firstFramePreviewId == previewSessionId
     var titleSizeStep by remember(item.id) { mutableStateOf(0) }
 
     LaunchedEffect(focusState.isFocused) {
         onFocusChanged(focusState.isFocused)
         if (focusState.isFocused) onFocused()
-        if (!focusState.isFocused) previewController.stop(item.id)
+        if (!focusState.isFocused) previewController.stop(previewSessionId)
         // PERF_DIAG: focus-to-preview marker for black-frame and delayed mini-player diagnosis.
         PerformanceDiagnosticRecorder.record(
             sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
@@ -155,9 +156,9 @@ fun ContentProgressCard(
 
     LaunchedEffect(previewActive, item.previewUrl, item.previewStartPositionMs) {
         if (previewActive) {
-            previewController.play(item.id, item.previewUrl.orEmpty(), item.previewStartPositionMs, item.previewMode)
+            previewController.play(previewSessionId, item.previewUrl.orEmpty(), item.previewStartPositionMs, item.previewMode)
         } else {
-            previewController.stop(item.id)
+            previewController.stop(previewSessionId)
         }
         PerformanceDiagnosticRecorder.record(
             sheet = PerformanceDiagnosticRecorder.SHEET_MINI_PLAYER,
@@ -174,8 +175,8 @@ fun ContentProgressCard(
         )
     }
 
-    DisposableEffect(item.id, previewController) {
-        onDispose { previewController.stop(item.id) }
+    DisposableEffect(previewSessionId, previewController) {
+        onDispose { previewController.stop(previewSessionId) }
     }
 
     Box(
@@ -258,7 +259,7 @@ fun ContentProgressCard(
         if (showPreview && item.previewUrl != null) {
             HomePreviewSurface(
                 controller = previewController,
-                previewId = item.id,
+                previewId = previewSessionId,
                 modifier = Modifier.fillMaxSize(),
             )
         }

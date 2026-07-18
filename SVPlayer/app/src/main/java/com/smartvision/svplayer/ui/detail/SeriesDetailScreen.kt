@@ -79,6 +79,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 data class SeriesDetailEpisodeUi(
@@ -187,6 +188,7 @@ class SeriesDetailViewModel(
     )
     val uiState: StateFlow<SeriesDetailUiState> = _uiState.asStateFlow()
     private var lastTmdbRequestKey: String? = null
+    private var tmdbMetadataJob: Job? = null
 
     init {
         observeFavorite()
@@ -236,13 +238,20 @@ class SeriesDetailViewModel(
         _uiState.update { it.copy(selectedSeason = season) }
     }
 
-    fun loadTmdbMetadata(language: String, includeAdult: Boolean) {
+    fun loadTmdbMetadata(language: String, includeAdult: Boolean, enabled: Boolean) {
+        if (!enabled) {
+            tmdbMetadataJob?.cancel()
+            lastTmdbRequestKey = null
+            _uiState.update { it.copy(tmdbMetadata = null, tmdbLoading = false) }
+            return
+        }
         val current = _uiState.value
         if (current.loading || current.title.isBlank()) return
         val requestKey = listOf(seriesId, current.title, current.releaseDate.orEmpty(), language, includeAdult).joinToString("|")
         if (requestKey == lastTmdbRequestKey) return
         lastTmdbRequestKey = requestKey
-        viewModelScope.launch {
+        tmdbMetadataJob?.cancel()
+        tmdbMetadataJob = viewModelScope.launch {
             _uiState.update { it.copy(tmdbLoading = true) }
             runCatching {
                 tmdbRepository.enrichSeries(
@@ -255,7 +264,7 @@ class SeriesDetailViewModel(
             }.onSuccess { metadata ->
                 _uiState.update {
                     it.copy(
-                        tmdbMetadata = metadata ?: it.tmdbMetadata,
+                        tmdbMetadata = metadata,
                         tmdbLoading = false,
                     )
                 }
@@ -321,11 +330,13 @@ fun SeriesDetailRoute(
         state.releaseDate,
         settings.language,
         settings.parentalControlEnabled,
+        settings.tmdbApiEnabled,
     ) {
         if (!state.loading) {
             viewModel.loadTmdbMetadata(
                 language = settings.language,
                 includeAdult = !settings.parentalControlEnabled,
+                enabled = settings.tmdbApiEnabled,
             )
         }
     }

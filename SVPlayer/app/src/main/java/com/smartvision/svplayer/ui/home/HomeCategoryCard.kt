@@ -2,6 +2,11 @@ package com.smartvision.svplayer.ui.home
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,12 +26,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,6 +45,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -200,10 +211,14 @@ fun HomeCategoryCard(
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(HomeCategoryCardLayout.SubtitleActionSpacing))
-            CategoryActionRow(
-                text = category.actionLabel,
-                icon = if (category.type == HomeCategoryType.Live) Icons.Default.Tv else Icons.Default.PlayArrow,
-            )
+            if (workOverlay?.active == true || workOverlay?.error == true) {
+                CategoryWorkProgress(workOverlay)
+            } else {
+                CategoryActionRow(
+                    text = category.actionLabel,
+                    icon = if (category.type == HomeCategoryType.Live) Icons.Default.Tv else Icons.Default.PlayArrow,
+                )
+            }
         }
         if (blocked) {
             Box(
@@ -238,54 +253,12 @@ fun HomeCategoryCard(
                 }
             }
         }
-        if (workOverlay != null) {
-            val remainingOverlay = 1f - workOverlay.progress.coerceIn(0f, 1f)
-            if (remainingOverlay > 0.001f) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(remainingOverlay)
-                        .align(Alignment.CenterEnd)
-                        .background(Color.Black.copy(alpha = if (workOverlay.error) 0.70f else 0.62f)),
-                )
-            }
-            if (workOverlay.active || workOverlay.error || workOverlay.completed) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF020712).copy(alpha = 0.78f))
-                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 14.dp, vertical = 9.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = workOverlay.label,
-                            color = when {
-                                workOverlay.error -> SmartVisionColors.Warning
-                                workOverlay.completed -> SmartVisionColors.Success
-                                else -> Color.White
-                            },
-                            style = SmartVisionType.Caption,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                        )
-                        if (!workOverlay.error && !workOverlay.completed) {
-                            Text(
-                                text = "${(workOverlay.progress * 100f).toInt().coerceIn(0, 100)}%",
-                                color = Color.White,
-                                style = SmartVisionType.Label,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                            )
-                            workOverlay.detail?.let { detail ->
-                                Text(detail, color = Color.White.copy(alpha = 0.78f), style = SmartVisionType.Caption, maxLines = 1)
-                            }
-                        }
-                    }
-                }
-            }
+        if (workOverlay?.active == true) {
+            CategoryPerimeterLoader(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(2.dp),
+            )
         }
     }
 }
@@ -295,9 +268,89 @@ data class HomeCategoryWorkOverlay(
     val active: Boolean,
     val error: Boolean,
     val label: String,
-    val completed: Boolean = false,
     val detail: String? = null,
 )
+
+@Composable
+private fun CategoryPerimeterLoader(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "home-category-loader")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1_150, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "home-category-loader-phase",
+    )
+    Canvas(modifier = modifier) {
+        val perimeter = 2f * (size.width + size.height)
+        val segment = perimeter * HomeCategoryCardLayout.LoaderSegmentFraction
+        val gap = (perimeter - segment).coerceAtLeast(1f)
+        drawRoundRect(
+            color = SmartVisionColors.CyanAccent,
+            cornerRadius = CornerRadius(SmartVisionDimensions.HomeCardRadius.toPx()),
+            style = Stroke(
+                width = 4.dp.toPx(),
+                cap = StrokeCap.Round,
+                pathEffect = PathEffect.dashPathEffect(
+                    intervals = floatArrayOf(segment, gap),
+                    phase = -phase * perimeter,
+                ),
+            ),
+        )
+    }
+}
+
+@Composable
+private fun CategoryWorkProgress(workOverlay: HomeCategoryWorkOverlay) {
+    val progress = workOverlay.progress.coerceIn(0f, 1f)
+    val statusColor = if (workOverlay.error) SmartVisionColors.Warning else SmartVisionColors.CyanAccent
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = workOverlay.label,
+                color = if (workOverlay.error) SmartVisionColors.Warning else Color.White,
+                style = SmartVisionType.Caption,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "${(progress * 100f).toInt()}%",
+                color = statusColor,
+                style = SmartVisionType.Caption,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        LinearProgressIndicator(
+            progress = { progress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(5.dp)
+                .clip(RoundedCornerShape(50)),
+            color = statusColor,
+            trackColor = Color.White.copy(alpha = 0.16f),
+        )
+        workOverlay.detail?.let { detail ->
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = detail,
+                color = Color.White.copy(alpha = 0.80f),
+                style = SmartVisionType.Caption,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
 
 @Composable
 private fun CategoryActionRow(
@@ -342,6 +395,7 @@ private fun CategoryActionRow(
 }
 
 private object HomeCategoryCardLayout {
+    const val LoaderSegmentFraction = 0.468f
     val HorizontalPadding = 20.dp
     val TopPadding = 12.dp
     val BottomPadding = 18.dp

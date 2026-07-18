@@ -216,8 +216,10 @@ fun ContinueWatchingRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
+                val previewSessionId = homePreviewSessionId("continue", item.id)
                 ContentProgressCard(
                     item = item,
+                    previewSessionId = previewSessionId,
                     onClick = { if (blocked) onBlockedClick() else onItemClick(item) },
                     focusRequester = when {
                         item.id in itemFocusRequesters -> itemFocusRequesters.getValue(item.id)

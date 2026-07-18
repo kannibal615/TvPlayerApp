@@ -49,31 +49,10 @@ class ProfilePickerPolicyTest {
     fun selectionCompletesOnlyForTheMatchingRequestAndReadyProfile() {
         val request = ProfileSelectionRequest(requestId = 42L, profileId = "walid")
 
-        val ready = ProfileHomeReadyToken("walid", 7L)
-        assertTrue(canCompleteProfileSelection(request, 42L, "walid", ready, 7L, appInForeground = true))
-        assertFalse(canCompleteProfileSelection(request, 41L, "walid", ready, 7L, appInForeground = true))
-        assertFalse(canCompleteProfileSelection(request, 42L, "nouran", ready, 7L, appInForeground = true))
-        assertFalse(canCompleteProfileSelection(request, 42L, "walid", ProfileHomeReadyToken("nouran", 7L), 7L, appInForeground = true))
-        assertFalse(canCompleteProfileSelection(request, 42L, "walid", ready, 8L, appInForeground = true))
-        assertFalse(canCompleteProfileSelection(request, 42L, "walid", ready, 7L, appInForeground = false))
-    }
-
-    @Test
-    fun emptyLocalCatalogAlwaysForcesSynchronizationEvenWithCurrentFingerprint() {
-        assertTrue(
-            shouldSynchronizeProfileCatalog(
-                hasLocalCatalog = false,
-                catalogCurrent = true,
-                synchronizationDue = false,
-            ),
-        )
-        assertFalse(
-            shouldSynchronizeProfileCatalog(
-                hasLocalCatalog = true,
-                catalogCurrent = true,
-                synchronizationDue = false,
-            ),
-        )
+        assertTrue(canCompleteProfileSelection(request, 42L, "walid", appInForeground = true))
+        assertFalse(canCompleteProfileSelection(request, 41L, "walid", appInForeground = true))
+        assertFalse(canCompleteProfileSelection(request, 42L, "nouran", appInForeground = true))
+        assertFalse(canCompleteProfileSelection(request, 42L, "walid", appInForeground = false))
     }
 
     @Test
@@ -156,15 +135,13 @@ class ProfilePickerPolicyTest {
         val kids = ProfileSelectionRequest(requestId = 2L, profileId = "kids")
         val finalAdmin = ProfileSelectionRequest(requestId = 3L, profileId = "admin")
 
-        val adminReady = ProfileHomeReadyToken("admin", 9L)
-        val kidsReady = ProfileHomeReadyToken("kids", 8L)
-        assertFalse(canCompleteProfileSelection(finalAdmin, 1L, "admin", adminReady, 9L, appInForeground = true))
-        assertFalse(canCompleteProfileSelection(finalAdmin, 2L, "kids", kidsReady, 8L, appInForeground = true))
-        assertFalse(canCompleteProfileSelection(finalAdmin, 2L, "admin", adminReady, 9L, appInForeground = true))
-        assertTrue(canCompleteProfileSelection(finalAdmin, 3L, "admin", adminReady, 9L, appInForeground = true))
+        assertFalse(canCompleteProfileSelection(finalAdmin, 1L, "admin", appInForeground = true))
+        assertFalse(canCompleteProfileSelection(finalAdmin, 2L, "kids", appInForeground = true))
+        assertFalse(canCompleteProfileSelection(finalAdmin, 2L, "admin", appInForeground = true))
+        assertTrue(canCompleteProfileSelection(finalAdmin, 3L, "admin", appInForeground = true))
 
-        assertTrue(canCompleteProfileSelection(firstAdmin, 1L, "admin", adminReady, 9L, appInForeground = true))
-        assertTrue(canCompleteProfileSelection(kids, 2L, "kids", kidsReady, 8L, appInForeground = true))
+        assertTrue(canCompleteProfileSelection(firstAdmin, 1L, "admin", appInForeground = true))
+        assertTrue(canCompleteProfileSelection(kids, 2L, "kids", appInForeground = true))
     }
 
     private fun profile(

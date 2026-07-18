@@ -375,3 +375,11 @@ Les lots 7-8 sont termines cote application quand:
 - `:app:compileReleaseKotlin` et `:app:assembleRelease` passent.
 
 Avant commercialisation, il reste obligatoire de remplacer la licence personnelle TMDB par une licence/autorisation adaptee et de revalider les conditions TMDB/JustWatch applicables.
+
+## 13. Activation utilisateur de l'API
+
+- `PlayerSettings.tmdbApiEnabled` vaut `true` par defaut et est persiste dans DataStore.
+- Le menu Settings > Attribution TMDB expose un toggle TV ON/OFF.
+- OFF bloque les lectures du cache TMDB et les appels reseau, annule/recharge les enrichissements visibles et force Home/Films/Series/details a afficher les fallbacks Xtream.
+- Les tables et mappings Room ne sont pas supprimes. ON rend le cache existant de nouveau visible et autorise les enrichissements reseau si le token est configure.
+- Le cache Home enrichi `home_trending_preview_cache` est ignore et n'est pas ecrase pendant OFF.

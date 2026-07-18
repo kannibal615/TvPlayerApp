@@ -2667,7 +2667,7 @@ private fun ProfileAvatarPresetButton(
     var focused by remember { mutableStateOf(false) }
     Box(
         modifier = modifier
-            .clip(CircleShape)
+            .clip(ProfileAvatarShape)
             .border(
                 BorderStroke(
                     if (focused || selected) 2.dp else 1.dp,
@@ -2677,7 +2677,7 @@ private fun ProfileAvatarPresetButton(
                         else -> Color.White.copy(alpha = 0.20f)
                     },
                 ),
-                CircleShape,
+                ProfileAvatarShape,
             )
             .onFocusChanged { focused = it.isFocused }
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)

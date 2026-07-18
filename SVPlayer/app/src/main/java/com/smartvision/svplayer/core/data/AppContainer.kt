@@ -294,10 +294,13 @@ class AppContainer(context: Context) {
         behaviorReporter = youtubeBehaviorReporter,
         accountManager = accountManager,
     )
+    val settingsRepository: SettingsRepository =
+        DefaultSettingsRepository(appContext, appContext.settingsDataStore, database, profilePinManager, accountManager)
     val tmdbRepository = TmdbRepository(
         api = tmdbApi,
         mediaDao = database.mediaDao(),
         accountManager = accountManager,
+        settingsRepository = settingsRepository,
         readAccessToken = tmdbReadAccessToken,
     )
 
@@ -317,8 +320,6 @@ class AppContainer(context: Context) {
         youtubeDao = database.youtubeDao(),
         kidsFilterDao = database.kidsFilterDao(),
     )
-    val settingsRepository: SettingsRepository =
-        DefaultSettingsRepository(appContext, appContext.settingsDataStore, database, profilePinManager, accountManager)
     val parentalCatalogRepository = RoomParentalCatalogRepository(database)
 
     val homeContentRepository = HomeContentRepository(

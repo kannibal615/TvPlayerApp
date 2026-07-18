@@ -302,9 +302,30 @@ class HomeViewModel(
         )
         observeHomeLoadToken()
         observeSyncStatus()
+        observeTmdbSetting()
         refreshSlides()
         refreshCatalogCounts()
         refreshTrending(forceRefresh = false)
+    }
+
+    private fun observeTmdbSetting() {
+        viewModelScope.launch {
+            var previous: Boolean? = null
+            settingsRepository.settings
+                .map { it.tmdbApiEnabled }
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    val changed = previous != null && previous != enabled
+                    val mustMaskInitialCache = previous == null && !enabled
+                    previous = enabled
+                    if (!changed && !mustMaskInitialCache) return@collect
+                    trendingRefreshJob?.cancel()
+                    trendingPreviewPrepareJobs.values.forEach(Job::cancel)
+                    trendingPreviewPrepareJobs.clear()
+                    homeContentRepository.invalidateTrending()
+                    refreshTrending(forceRefresh = true)
+                }
+        }
     }
 
     private fun observeHomeLoadToken() {
