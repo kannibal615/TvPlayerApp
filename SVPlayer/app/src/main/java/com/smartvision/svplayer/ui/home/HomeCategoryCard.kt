@@ -83,7 +83,6 @@ fun HomeCategoryCard(
     workOverlay: HomeCategoryWorkOverlay? = null,
     kidsMode: Boolean = false,
     itemCount: Int = 0,
-    transitionSurfaceModifier: Modifier = Modifier,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -101,7 +100,6 @@ fun HomeCategoryCard(
 
     Box(
         modifier = modifier
-            .then(transitionSurfaceModifier)
             .zIndex(if (focusState.isFocused) 3f else 0f)
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false

@@ -109,8 +109,6 @@ fun SeriesScreen(
     onWatchEpisode: (episodeId: Int, seriesId: Int) -> Unit,
     onPreviewBoundsChanged: (Rect) -> Unit = {},
     modifier: Modifier = Modifier,
-    headerTransitionModifier: Modifier = Modifier,
-    contentTransitionSurfaceModifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
     val viewModel: SeriesViewModel = viewModel(
@@ -266,7 +264,7 @@ fun SeriesScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
-            modifier = headerTransitionModifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             currentTabFocusRequester = currentTabFocusRequester,
             onContentDown = if (!m3uActive && accounts.isNotEmpty() && state.categories.isNotEmpty()) {
                 { behaviorScope.launch { focusSelectedCategory() } }
@@ -277,10 +275,7 @@ fun SeriesScreen(
 
         Spacer(Modifier.height(MediaCatalogDimens.HeaderGap))
 
-        Box(
-            modifier = contentTransitionSurfaceModifier
-                .fillMaxSize(),
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
         if (m3uActive) {
             CatalogEmpty(
                 title = "Series non disponibles en M3U",

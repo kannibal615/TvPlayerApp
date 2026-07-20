@@ -1,23 +1,8 @@
-@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
-
 package com.smartvision.svplayer.ui.navigation
 
 import android.app.Activity
 import android.util.Log
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.BoundsTransform
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -54,8 +39,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -67,7 +50,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -146,7 +128,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 @Composable
-@OptIn(ExperimentalSharedTransitionApi::class)
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
 ) {
@@ -213,9 +194,6 @@ fun AppNavigation(
     var episodeReturnFocusSeriesId by remember { mutableStateOf<Int?>(null) }
     var homeHeaderFocusRequest by remember { mutableStateOf(0) }
     var homeHeaderFocusTarget by remember { mutableStateOf(HomeHeaderFocusTarget.CurrentTab) }
-    var categoryTransitionRoute by remember { mutableStateOf<String?>(null) }
-    var restoreCategoryRoute by remember { mutableStateOf<String?>(null) }
-    var restoreCategoryFocusRequest by remember { mutableStateOf(0) }
     var profilePickerCompleted by remember { mutableStateOf(false) }
     var openProfilePickerAfterHome by remember { mutableStateOf(false) }
     var profileSelectionRequest by remember { mutableStateOf<ProfileSelectionRequest?>(null) }
@@ -229,11 +207,6 @@ fun AppNavigation(
         playlistProfiles.filter { it.isConfigured }
     }
     val profilePickerWanted = !profilePickerCompleted && configuredPickerProfiles.isNotEmpty()
-    val showProfilePicker = canDisplayGlobalProfilePicker(
-        pickerWanted = profilePickerWanted,
-        homeIsActive = homeRouteIsActive,
-        openRequested = openProfilePickerAfterHome,
-    )
     val activeProfileId by container.accountManager.activeProfileId.collectAsStateWithLifecycle()
     val homeViewModel: HomeViewModel = viewModel(
         factory = viewModelFactory {
@@ -262,6 +235,13 @@ fun AppNavigation(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
+    val showProfilePicker = canDisplayGlobalProfilePicker(
+        pickerWanted = profilePickerWanted,
+        homeIsActive = homeRouteIsActive,
+        openRequested = openProfilePickerAfterHome,
+        appInForeground = appInForeground,
+        waitingForFirstRoute = backStack == null,
+    )
     val profilePermissions = remember(activeProfile?.type) {
         ProfilePermissions.forType(activeProfile?.type ?: ProfileType.ADMIN)
     }
@@ -271,10 +251,8 @@ fun AppNavigation(
     val context = LocalContext.current
     val activity = context as? Activity
     val livePlaybackSession = remember(context) { LivePlaybackSession(context) }
-    var livePreviewBounds by remember { mutableStateOf<Rect?>(null) }
     var moviePreviewBounds by remember { mutableStateOf<Rect?>(null) }
     var seriesPreviewBounds by remember { mutableStateOf<Rect?>(null) }
-    var livePlayerEnterBounds by remember { mutableStateOf<Rect?>(null) }
     var moviePlayerEnterBounds by remember { mutableStateOf<Rect?>(null) }
     var seriesPlayerEnterBounds by remember { mutableStateOf<Rect?>(null) }
     DisposableEffect(livePlaybackSession) {
@@ -367,7 +345,6 @@ fun AppNavigation(
         }
     }
     val navigateFromHeader: (String) -> Unit = { route ->
-        if (route != currentRoute) categoryTransitionRoute = null
         if (!route.isAllowedFor(profilePermissions)) {
             navController.navigateSingleTop(AppRoute.Home.route)
         } else if (route.isXtreamCatalogRoute() && xtreamCatalogBlocked) {
@@ -395,12 +372,6 @@ fun AppNavigation(
             }
         }
     }
-    val navigateFromHomeCategory: (String) -> Unit = { route ->
-        categoryTransitionRoute = route.takeIf {
-            playerSettings.animationsEnabled && it.isHomeCategoryRoute()
-        }
-        navController.navigateSingleTop(route)
-    }
     fun navigateHomeWithHeaderFocus(target: HomeHeaderFocusTarget = HomeHeaderFocusTarget.CurrentTab) {
         homeHeaderFocusTarget = target
         homeHeaderFocusRequest += 1
@@ -412,7 +383,6 @@ fun AppNavigation(
     }
     val openProfilePickerFromHome: () -> Unit = {
         if (profileSelectionRequest == null && !openProfilePickerAfterHome) {
-            categoryTransitionRoute = null
             openProfilePickerAfterHome = true
             if (!homeRouteIsActive) {
                 navController.navigate(AppRoute.Home.route) {
@@ -801,69 +771,12 @@ fun AppNavigation(
         Box(Modifier.fillMaxSize().background(SmartVisionColors.Background))
         return@CompositionLocalProvider
     }
-    SharedTransitionLayout {
-    val sharedTransitionScope = this
-    var categoryTransitionWasActive by remember { mutableStateOf(false) }
-    LaunchedEffect(isTransitionActive, currentRoute, categoryTransitionRoute) {
-        if (isTransitionActive) {
-            categoryTransitionWasActive = true
-        } else if (categoryTransitionWasActive) {
-            categoryTransitionWasActive = false
-            if (currentRoute == AppRoute.Home.route) {
-                categoryTransitionRoute?.let { route ->
-                    restoreCategoryRoute = route
-                    restoreCategoryFocusRequest += 1
-                }
-                categoryTransitionRoute = null
-            }
-        }
-    }
     NavHost(
         navController = navController,
         startDestination = AppRoute.Home.route,
-        modifier = Modifier
-            .fillMaxSize()
-            .onPreviewKeyEvent { isTransitionActive },
+        modifier = Modifier.fillMaxSize(),
     ) {
-        composable(
-            route = AppRoute.Home.route,
-            enterTransition = {
-                if (categoryTransitionRoute != null && initialState.destination.route.isHomeCategoryRoute()) {
-                    fadeIn(tween(durationMillis = 150, delayMillis = 80))
-                } else null
-            },
-            exitTransition = {
-                if (targetState.destination.route == categoryTransitionRoute) {
-                    fadeOut(tween(durationMillis = 100))
-                } else null
-            },
-            popEnterTransition = {
-                if (categoryTransitionRoute != null && initialState.destination.route.isHomeCategoryRoute()) {
-                    fadeIn(tween(durationMillis = 150, delayMillis = 80))
-                } else null
-            },
-            popExitTransition = {
-                if (targetState.destination.route == categoryTransitionRoute) {
-                    fadeOut(tween(durationMillis = 100))
-                } else null
-            },
-        ) {
-            val activeTransitionRoute = categoryTransitionRoute
-            val headerTransitionModifier = if (activeTransitionRoute != null) {
-                sharedTransitionScope.containerTransformModifier(
-                    key = HOME_HEADER_TRANSITION_KEY,
-                    animatedVisibilityScope = this,
-                    header = true,
-                )
-            } else Modifier
-            val categoryTransitionModifiers = activeTransitionRoute?.let { route ->
-                mapOf(
-                    route to sharedTransitionScope.containerTransformModifier(
-                        key = categoryTransitionKey(route),
-                        animatedVisibilityScope = this,
-                    ),
-                )
-            }.orEmpty()
+        composable(AppRoute.Home.route) {
             key(activeProfileId) {
                 HomeScreen(
                     viewModel = homeViewModel,
@@ -872,7 +785,6 @@ fun AppNavigation(
                     currentRoute = currentRoute,
                     tabs = tabs,
                     onNavigate = navigateFromHeader,
-                    onCategoryNavigate = navigateFromHomeCategory,
                     onSync = launchSyncCatalog,
                     onSettings = { navigateFromHeader(AppRoute.Settings.route) },
                     onProfile = onProfileAction,
@@ -887,10 +799,6 @@ fun AppNavigation(
                     onProfileAvatarBoundsChanged = { bounds ->
                         homeProfileAvatarBounds = bounds
                     },
-                    headerTransitionModifier = headerTransitionModifier,
-                    categoryTransitionModifiers = categoryTransitionModifiers,
-                    restoreCategoryRoute = restoreCategoryRoute,
-                    restoreCategoryFocusRequest = restoreCategoryFocusRequest,
                     strings = strings,
                     xtreamCatalogBlocked = xtreamCatalogVisualBlocked,
                     xtreamCatalogNavigationBlocked = xtreamCatalogBlocked,
@@ -899,7 +807,6 @@ fun AppNavigation(
                         if (xtreamCatalogBlocked) {
                             showXtreamConnectionDialog = true
                         } else {
-                            livePlayerEnterBounds = null
                             moviePlayerEnterBounds = null
                             seriesPlayerEnterBounds = null
                             navController.navigateFromContinueItem(item)
@@ -909,7 +816,6 @@ fun AppNavigation(
                         if (xtreamCatalogBlocked) {
                             showXtreamConnectionDialog = true
                         } else {
-                            livePlayerEnterBounds = null
                             moviePlayerEnterBounds = null
                             seriesPlayerEnterBounds = null
                             navController.navigateFromTrendingItem(item)
@@ -972,20 +878,7 @@ fun AppNavigation(
                 onRequestGlobalProfilePicker = openProfilePickerFromHome,
             )
         }
-        composable(
-            route = AppRoute.Live.route,
-            enterTransition = { homeCategoryEnterTransition(AppRoute.Live.route, categoryTransitionRoute) },
-            exitTransition = { homeCategoryExitTransition(AppRoute.Live.route, categoryTransitionRoute) },
-            popEnterTransition = { homeCategoryEnterTransition(AppRoute.Live.route, categoryTransitionRoute) },
-            popExitTransition = { homeCategoryExitTransition(AppRoute.Live.route, categoryTransitionRoute) },
-        ) {
-            val transitionEnabled = categoryTransitionRoute == AppRoute.Live.route
-            val headerTransitionModifier = if (transitionEnabled) {
-                sharedTransitionScope.containerTransformModifier(HOME_HEADER_TRANSITION_KEY, this, header = true)
-            } else Modifier
-            val contentTransitionModifier = if (transitionEnabled) {
-                sharedTransitionScope.containerTransformModifier(categoryTransitionKey(AppRoute.Live.route), this)
-            } else Modifier
+        composable(AppRoute.Live.route) {
             if (xtreamCatalogBlocked) {
                 LaunchedEffect(Unit) { showXtreamConnectionDialog = true }
                 PlaceholderRouteScreen("Live TV", "Connexion Xtream indisponible.")
@@ -1005,29 +898,10 @@ fun AppNavigation(
                 returnFocusChannelId = liveReturnFocusChannelId,
                 onReturnFocusConsumed = { liveReturnFocusChannelId = null },
                 playbackSession = livePlaybackSession,
-                onPreviewBoundsChanged = { livePreviewBounds = it },
-                onWatch = { channelId ->
-                    livePlayerEnterBounds = livePreviewBounds
-                    navController.navigate("player/$channelId")
-                },
-                headerTransitionModifier = headerTransitionModifier,
-                contentTransitionSurfaceModifier = contentTransitionModifier,
+                onWatch = { channelId -> navController.navigate("player/$channelId") },
             )
         }
-        composable(
-            route = AppRoute.Movies.route,
-            enterTransition = { homeCategoryEnterTransition(AppRoute.Movies.route, categoryTransitionRoute) },
-            exitTransition = { homeCategoryExitTransition(AppRoute.Movies.route, categoryTransitionRoute) },
-            popEnterTransition = { homeCategoryEnterTransition(AppRoute.Movies.route, categoryTransitionRoute) },
-            popExitTransition = { homeCategoryExitTransition(AppRoute.Movies.route, categoryTransitionRoute) },
-        ) {
-            val transitionEnabled = categoryTransitionRoute == AppRoute.Movies.route
-            val headerTransitionModifier = if (transitionEnabled) {
-                sharedTransitionScope.containerTransformModifier(HOME_HEADER_TRANSITION_KEY, this, header = true)
-            } else Modifier
-            val contentTransitionModifier = if (transitionEnabled) {
-                sharedTransitionScope.containerTransformModifier(categoryTransitionKey(AppRoute.Movies.route), this)
-            } else Modifier
+        composable(AppRoute.Movies.route) {
             if (xtreamCatalogBlocked) {
                 LaunchedEffect(Unit) { showXtreamConnectionDialog = true }
                 PlaceholderRouteScreen("Movies", "Connexion Xtream indisponible.")
@@ -1052,24 +926,9 @@ fun AppNavigation(
                     navController.navigate("movie_player/$movieId")
                 },
                 onPreviewBoundsChanged = { moviePreviewBounds = it },
-                headerTransitionModifier = headerTransitionModifier,
-                contentTransitionSurfaceModifier = contentTransitionModifier,
             )
         }
-        composable(
-            route = AppRoute.Series.route,
-            enterTransition = { homeCategoryEnterTransition(AppRoute.Series.route, categoryTransitionRoute) },
-            exitTransition = { homeCategoryExitTransition(AppRoute.Series.route, categoryTransitionRoute) },
-            popEnterTransition = { homeCategoryEnterTransition(AppRoute.Series.route, categoryTransitionRoute) },
-            popExitTransition = { homeCategoryExitTransition(AppRoute.Series.route, categoryTransitionRoute) },
-        ) {
-            val transitionEnabled = categoryTransitionRoute == AppRoute.Series.route
-            val headerTransitionModifier = if (transitionEnabled) {
-                sharedTransitionScope.containerTransformModifier(HOME_HEADER_TRANSITION_KEY, this, header = true)
-            } else Modifier
-            val contentTransitionModifier = if (transitionEnabled) {
-                sharedTransitionScope.containerTransformModifier(categoryTransitionKey(AppRoute.Series.route), this)
-            } else Modifier
+        composable(AppRoute.Series.route) {
             if (xtreamCatalogBlocked) {
                 LaunchedEffect(Unit) { showXtreamConnectionDialog = true }
                 PlaceholderRouteScreen("Series", "Connexion Xtream indisponible.")
@@ -1095,8 +954,6 @@ fun AppNavigation(
                     navController.navigate("episode_player/$episodeId")
                 },
                 onPreviewBoundsChanged = { seriesPreviewBounds = it },
-                headerTransitionModifier = headerTransitionModifier,
-                contentTransitionSurfaceModifier = contentTransitionModifier,
             )
         }
         composable(AppRoute.Media.route) {
@@ -1233,7 +1090,6 @@ fun AppNavigation(
                         navController.popBackStack()
                     },
                     onPlayLive = { nextChannelId ->
-                        livePlayerEnterBounds = null
                         navController.navigate("player/$nextChannelId") {
                             popUpTo("player/{channelId}") { inclusive = true }
                         }
@@ -1241,7 +1097,6 @@ fun AppNavigation(
                     recorderAccess = recorderGate,
                     strings = strings,
                     livePlaybackSession = livePlaybackSession,
-                    enterFromBounds = livePlayerEnterBounds,
                     onRecorderLocked = {
                         if (recorderGate.shouldShowUpgradePrompt) {
                             showLicensePurchaseQr = true
@@ -1419,11 +1274,6 @@ fun AppNavigation(
             showExitConfirmation = true
         }
     }
-    BackHandler(enabled = isTransitionActive) {
-        // A container transform is atomic: Back becomes available again as
-        // soon as the destination or source has fully settled.
-    }
-
     BackHandler(enabled = openProfilePickerAfterHome) {
         // The Home staging frame is not interactive. Back is handled by the
         // global picker as soon as it becomes visible.
@@ -1591,7 +1441,6 @@ fun AppNavigation(
             onInstall = { appUpdateViewModel.installUpdate(context) },
             onDismiss = appUpdateViewModel::dismiss,
         )
-    }
     }
     }
 
@@ -1770,93 +1619,6 @@ private fun String.isAllowedFor(permissions: ProfilePermissions): Boolean {
 
 private fun CatalogContentCounts.hasAnyContent(): Boolean =
     live > 0 || movies > 0 || series > 0
-
-private const val HOME_HEADER_TRANSITION_KEY = "home-category:header"
-
-private val HomeCategoryBoundsTransform = BoundsTransform { initialBounds, targetBounds ->
-    val expanding = targetBounds.width * targetBounds.height > initialBounds.width * initialBounds.height
-    val cardBounds = if (expanding) initialBounds else targetBounds
-    val viewportBounds = if (expanding) targetBounds else initialBounds
-    val centerScale = 1.12f
-    val centeredWidth = cardBounds.width * centerScale
-    val centeredHeight = cardBounds.height * centerScale
-    val centeredBounds = Rect(
-        left = viewportBounds.center.x - centeredWidth / 2f,
-        top = viewportBounds.center.y - centeredHeight / 2f,
-        right = viewportBounds.center.x + centeredWidth / 2f,
-        bottom = viewportBounds.center.y + centeredHeight / 2f,
-    )
-    keyframes {
-        durationMillis = if (expanding) 560 else 480
-        centeredBounds at (if (expanding) 220 else 300) using FastOutSlowInEasing
-        targetBounds at durationMillis using FastOutSlowInEasing
-    }
-}
-
-private val HomeHeaderBoundsTransform = BoundsTransform { _, _ ->
-    tween(durationMillis = 150, easing = FastOutSlowInEasing)
-}
-
-@Composable
-@OptIn(ExperimentalSharedTransitionApi::class)
-private fun SharedTransitionScope.containerTransformModifier(
-    key: String,
-    animatedVisibilityScope: AnimatedVisibilityScope,
-    header: Boolean = false,
-): Modifier = with(this) {
-    Modifier.sharedBounds(
-        sharedContentState = rememberSharedContentState(key),
-        animatedVisibilityScope = animatedVisibilityScope,
-        enter = fadeIn(
-            tween(
-                durationMillis = if (header) 120 else 220,
-                delayMillis = if (header) 0 else 300,
-            ),
-        ),
-        exit = fadeOut(
-            tween(
-                durationMillis = if (header) 100 else 140,
-                delayMillis = if (header) 0 else 220,
-            ),
-        ),
-        boundsTransform = if (header) HomeHeaderBoundsTransform else HomeCategoryBoundsTransform,
-        resizeMode = SharedTransitionScope.ResizeMode.ScaleToBounds(
-            contentScale = ContentScale.FillBounds,
-            alignment = Alignment.Center,
-        ),
-    )
-}
-
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.homeCategoryEnterTransition(
-    route: String,
-    activeTransitionRoute: String?,
-): EnterTransition? =
-    if (
-        activeTransitionRoute == route &&
-        initialState.destination.route == AppRoute.Home.route
-    ) {
-        fadeIn(tween(durationMillis = 220, delayMillis = 300))
-    } else {
-        null
-    }
-
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.homeCategoryExitTransition(
-    route: String,
-    activeTransitionRoute: String?,
-): ExitTransition? =
-    if (
-        activeTransitionRoute == route &&
-        targetState.destination.route == AppRoute.Home.route
-    ) {
-        fadeOut(tween(durationMillis = 140, delayMillis = 220))
-    } else {
-        null
-    }
-
-private fun categoryTransitionKey(route: String): String = "home-category:$route"
-
-private fun String?.isHomeCategoryRoute(): Boolean =
-    this == AppRoute.Live.route || this == AppRoute.Movies.route || this == AppRoute.Series.route
 
 private fun NavHostController.navigateFromTrendingItem(item: ContinueItem) {
     val parts = item.id.split(":", limit = 2)

@@ -79,7 +79,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -93,8 +92,6 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -224,11 +221,8 @@ fun LiveTvScreen(
     returnFocusChannelId: Int? = null,
     onReturnFocusConsumed: () -> Unit = {},
     playbackSession: LivePlaybackSession,
-    onPreviewBoundsChanged: (Rect) -> Unit,
     onWatch: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    headerTransitionModifier: Modifier = Modifier,
-    contentTransitionSurfaceModifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
     val viewModel: LiveTvViewModel = viewModel(
@@ -468,17 +462,14 @@ fun LiveTvScreen(
             showLicenseKey = showLicenseKey,
             hasNewNotifications = hasNewNotifications,
             notificationBadgeCount = notificationBadgeCount,
-            modifier = headerTransitionModifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             currentTabFocusRequester = headerLiveFocusRequester,
             onContentDown = ::restoreCategoryFocus,
         )
 
         Spacer(Modifier.height(LiveTvDimens.HeaderGap))
 
-        Box(
-            modifier = contentTransitionSurfaceModifier
-                .fillMaxSize(),
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
         if (!hasPlayableSource) {
             XtreamQrSetupPanel(
                 activationRepository = container.activationRepository,
@@ -625,7 +616,6 @@ fun LiveTvScreen(
                         }
                     },
                     playbackSession = playbackSession,
-                    onPreviewBoundsChanged = onPreviewBoundsChanged,
                     onFavorite = {
                         state.selectedChannel?.let { channel ->
                             container.behaviorReporter.reportAsync(
@@ -930,7 +920,6 @@ private fun PreviewPanel(
     onEpgFocused: () -> Unit,
     onWatch: () -> Unit,
     playbackSession: LivePlaybackSession,
-    onPreviewBoundsChanged: (Rect) -> Unit,
     onFavorite: () -> Unit,
     onDeleteHistory: () -> Unit,
     modifier: Modifier = Modifier,
@@ -1009,7 +998,6 @@ private fun PreviewPanel(
                 categoryLabel = selectedCategoryLabel.orEmpty(),
                 streamUnavailableLabel = strings.liveTvStreamUnavailable,
                 playbackSession = playbackSession,
-                onBoundsChanged = onPreviewBoundsChanged,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1.88f),
@@ -1957,13 +1945,11 @@ private fun VideoPreviewFrame(
     categoryLabel: String,
     streamUnavailableLabel: String,
     playbackSession: LivePlaybackSession,
-    onBoundsChanged: (Rect) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(5.dp)
     Box(
         modifier = modifier
-            .onGloballyPositioned { onBoundsChanged(it.boundsInRoot()) }
             .clip(shape)
             .background(Color.Black)
             .border(BorderStroke(1.dp, SmartVisionColors.Border), shape),

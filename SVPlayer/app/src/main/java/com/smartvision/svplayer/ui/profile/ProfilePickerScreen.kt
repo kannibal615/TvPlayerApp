@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -41,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,6 +57,11 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -82,6 +89,7 @@ import com.smartvision.svplayer.ui.components.NumericPinDialog
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -126,6 +134,8 @@ fun ProfilePickerScreen(
     }
     val addKidsFocus = remember { FocusRequester() }
     val addProfileFocus = remember { FocusRequester() }
+    val pickerListState = rememberLazyListState()
+    val pickerFocusScope = rememberCoroutineScope()
     var profileToEdit by remember { mutableStateOf<PlaylistProfile?>(null) }
     var createProfileType by remember { mutableStateOf<ProfileType?>(null) }
     var showProfileEditor by remember { mutableStateOf(false) }
@@ -141,6 +151,29 @@ fun ProfilePickerScreen(
     val selectionInProgress = selectionLoadingProfileId != null
     val selectedProfile = remember(orderedProfiles, selectionLoadingProfileId) {
         orderedProfiles.firstOrNull { it.id == selectionLoadingProfileId }
+    }
+    val firstProfileId = orderedProfiles.firstOrNull()?.id
+    val addProfileIndex = orderedProfiles.size + 1
+
+    fun requestPickerFocus(index: Int, focusKey: String, requester: FocusRequester) {
+        lastFocusKey = focusKey
+        pickerFocusScope.launch {
+            pickerListState.scrollToItem(index)
+            delay(16)
+            runCatching { requester.requestFocus() }
+        }
+    }
+
+    fun wrapFocusToFirstProfile(): Boolean {
+        val targetId = firstProfileId ?: return false
+        val target = profileFocusTargets[targetId]?.card ?: return false
+        requestPickerFocus(index = 0, focusKey = targetId, requester = target)
+        return true
+    }
+
+    fun wrapFocusToAddProfile(): Boolean {
+        requestPickerFocus(index = addProfileIndex, focusKey = AddProfileFocusKey, requester = addProfileFocus)
+        return true
     }
 
     LaunchedEffect(selectionRequestId, selectionLoadingProfileId, activationReadyRequestId) {
@@ -320,7 +353,22 @@ fun ProfilePickerScreen(
             Spacer(Modifier.height((screenHeight * 0.045f).coerceIn(22.dp, 46.dp)))
 
             LazyRow(
-                modifier = Modifier.fillMaxWidth(),
+                state = pickerListState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown || selectionInProgress) {
+                            false
+                        } else {
+                            when {
+                                event.key == Key.DirectionRight && lastFocusKey == AddProfileFocusKey ->
+                                    wrapFocusToFirstProfile()
+                                event.key == Key.DirectionLeft && lastFocusKey == firstProfileId ->
+                                    wrapFocusToAddProfile()
+                                else -> false
+                            }
+                        }
+                    },
                 contentPadding = PaddingValues(horizontal = pickerHorizontalPadding, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(itemGap),
                 verticalAlignment = Alignment.Top,
@@ -519,11 +567,11 @@ private fun ProfilePickerCard(
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
         targetValue = when {
-            selected -> 1.07f
-            focused -> 1.05f
+            selected -> 1.06f
+            focused -> 1.035f
             else -> 1f
         },
-        animationSpec = tween(if (selected) 150 else 150),
+        animationSpec = tween(90),
         label = "profile-card-scale",
     )
     val reveal = remember { Animatable(0f) }
@@ -936,7 +984,7 @@ private fun AddProfileCard(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     var focused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (focused) 1.05f else 1f, tween(150), label = "add-profile-scale")
+    val scale by animateFloatAsState(if (focused) 1.035f else 1f, tween(90), label = "add-profile-scale")
     val reveal = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         delay((itemIndex.coerceAtMost(7) * 40L))

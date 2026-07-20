@@ -11,15 +11,16 @@ Derniere mise a jour: 2026-07-18.
 
 Le header principal boucle horizontalement entre son premier onglet et sa derniere action visible, dans les deux sens; en profil Kids, l'avatar est la derniere action. Home applique la meme boucle aux trois cards Categories ainsi qu'aux rangees Continue Watching et Tendances, avec scroll vers la carte opposee avant la demande de focus.
 
-Depuis Home, OK sur Live TV, Movies ou Series distingue la navigation categorie des clics du header. La card complete et le vrai conteneur catalogue partagent leurs bounds via `SharedTransitionLayout/sharedBounds`; une keyframe intermediaire place d'abord la card au centre a `1,12x`, puis le catalogue se revele pendant l'expansion. Le header conserve ses bounds. Pendant la transition, le parent NavHost consomme D-pad/OK et un `BackHandler` prioritaire consomme Back. Au repli par Back, le focus revient explicitement au `FocusRequester` de la card source. Une card bloquee par Xtream ou par une synchronisation ne cree aucune transition.
+Depuis Home, OK sur Live TV, Movies ou Series utilise la navigation NavHost standard. Aucun `SharedTransitionLayout`, bounds partage, zoom ou verrouillage D-pad/OK/Back n'est applique aux cards categories. Les protections Xtream et synchronisation restent gerees avant le callback de navigation.
 
-Les mini-players Live/Movies/Series publient leurs bounds reels a la navigation. Le lecteur plein ecran reutilise ces bounds pour un mouvement centre puis expansion, masque ses controles pendant le mouvement et consomme D-pad/OK/Back jusqu'a stabilisation. Le retour utilise la meme geometrie en sens inverse avant de rendre le focus a la ligne catalogue.
+Les mini-players Movies/Series publient leurs bounds reels a la navigation et gardent leur mouvement centre puis expansion/repli. Le mini-player Live ne publie plus de bounds de transition: son lecteur s'ouvre directement et le D-pad/OK/Back n'est plus bloque par une animation d'entree ou de sortie.
 
 Les recherches Live TV, Movies et Series sont repliees en bouton carre icon-only. OK les transforme en champ, demande le focus de saisie et ouvre le clavier; Back ou la perte de focus referme le champ. Le filtre adjacent reprend le bouton `FilterList` carre utilise par Categories Live TV.
 
 ## Profils Kids et dialogues
 
 - Le picker utilise des cles `profile.id` stables dans une `LazyRow`. Le focus initial cible le profil actif, sinon ADMIN, sinon le premier profil; Compose revele automatiquement les cartes hors ecran.
+- Au premier demarrage, Who's Watching peut couvrir l'ecran avant que Home soit visuellement revelee; Home reste composee seulement comme support cache et non interactif. Depuis une route deja restauree, l'ouverture globale continue de repasser par Home avant d'afficher le picker.
 - Les actions verrouillees ouvrent un dialogue PIN a quatre chiffres; annuler retourne au picker sans navigation anticipee.
 - Tous les flux Create/Enter/Confirm PIN reutilisent `NumericPinDialog`: popup vertical compact centre, grille 3 x 4 a dimensions fixes, focus initial sur `1`, focus automatique sur `Apply` au quatrieme chiffre et shake rejouable limite aux quatre indicateurs en cas de refus. La derniere ligne route D-pad Bas vers les actions et les actions remontent vers la derniere ligne du clavier.
 - Le formulaire profil est borne en hauteur, scrollable, applique `imePadding` et demande `bringIntoView()` lorsque le clavier TV ouvre un champ.
@@ -30,6 +31,7 @@ Les recherches Live TV, Movies et Series sont repliees en bouton carre icon-only
 - `Info profil > Changer de profil` quitte d'abord la route Profile, compose Home au premier plan puis ouvre le picker global. Aucun profil n'est active avant OK sur une carte. Home ne rend jamais un etat dont `profileId` differe du profil actif: il expose alors uniquement les skeletons de la cible jusqu'a la relecture Room.
 - Sur une carte de profil reelle, Bas cible le crayon discret et Haut retourne a la carte. La fermeture du PIN ou du formulaire redemande le focus a la cible d'origine avec un `FocusRequester` stable.
 - La hauteur visuelle des cards Who's Watching depend du plus haut libelle mesure dans la rangee, puis est appliquee a tous les profils et aux deux actions d'ajout. Le bouton crayon reste hors de la surface et son routage Haut/Bas ne change pas.
+- Who's Watching boucle horizontalement entre le premier profil et `Add Profile`: Gauche depuis le premier profil scrolle vers la derniere action, Droite depuis `Add Profile` scrolle vers le premier profil puis demande le focus. Ce wrap passe par `LazyListState.scrollToItem()` avant `requestFocus()` pour eviter une cible lazy non composee.
 - Dans `Info profil`, Droite depuis le menu entre sur `Changer de profil`; Bas relie cette action a `Synchroniser ce profil`, Haut fait le chemin inverse et Gauche revient au menu. Le selecteur local n'existe plus. Le picker global focalise le profil actif; seul OK sur une carte appelle l'activation.
 - Une fois Who's Watching global ouvert depuis Info profil, Back conserve le comportement global de confirmation de sortie et ne retourne pas a Info profil.
 - Dans `Gerer les profils`, Gauche/Droite parcourt la `LazyRow`; Bas ou OK sur un profil selectionne la cible d'administration puis focalise `Modifier`. Haut depuis les actions retourne a la carte. Actif, selection detail et focus sont trois etats independants, et toute fermeture de dialogue redemande la carte d'origine ou son voisin apres suppression.
@@ -232,6 +234,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 - 2026-07-18: les previews Home utilisent une identite de session scopee par rangee (`continue:*`, `trending-movies:*`, `trending-series:*`). Une meme video dans plusieurs rangees garde des surfaces distinctes; un blur/dispose ne peut arreter que la session dont la card est proprietaire.
 - 2026-07-18: les loaders de synchronisation des cards Home ne modifient ni leur taille ni leurs cibles D-pad; les cards en attente et terminees conservent leur comportement de focus normal.
+- 2026-07-19: Who's Watching couvre le premier rendu de demarrage avant toute frame Home visible, tout en gardant Home cachee/non interactive comme support de transition. La rangee profils boucle explicitement `Add Profile` -> premier profil et premier profil -> `Add Profile` avec scroll lazy protege.
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: ajout des signaux `FocusRequester`, `D-pad`, `focusBackground`.
 - 2026-06-30: ajout de la regle focus pour overlay YouTube custom demande explicitement: bandeau focusable borne, retour Haut/Back vers le player.
