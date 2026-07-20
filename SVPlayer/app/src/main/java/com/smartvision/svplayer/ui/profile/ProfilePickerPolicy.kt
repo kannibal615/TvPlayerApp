@@ -34,11 +34,9 @@ fun canDisplayGlobalProfilePicker(
     pickerWanted: Boolean,
     homeIsActive: Boolean,
     openRequested: Boolean,
-    appInForeground: Boolean,
     waitingForFirstRoute: Boolean,
 ): Boolean =
     pickerWanted &&
-        appInForeground &&
         !openRequested &&
         (homeIsActive || waitingForFirstRoute)
 

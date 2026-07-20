@@ -70,7 +70,6 @@ class ProfilePickerPolicyTest {
                 pickerWanted = true,
                 homeIsActive = false,
                 openRequested = false,
-                appInForeground = true,
                 waitingForFirstRoute = true,
             ),
         )
@@ -83,7 +82,6 @@ class ProfilePickerPolicyTest {
                 pickerWanted = true,
                 homeIsActive = false,
                 openRequested = false,
-                appInForeground = true,
                 waitingForFirstRoute = false,
             ),
         )
@@ -92,16 +90,6 @@ class ProfilePickerPolicyTest {
                 pickerWanted = true,
                 homeIsActive = true,
                 openRequested = true,
-                appInForeground = true,
-                waitingForFirstRoute = false,
-            ),
-        )
-        assertFalse(
-            canDisplayGlobalProfilePicker(
-                pickerWanted = true,
-                homeIsActive = true,
-                openRequested = false,
-                appInForeground = false,
                 waitingForFirstRoute = false,
             ),
         )
@@ -110,7 +98,6 @@ class ProfilePickerPolicyTest {
                 pickerWanted = true,
                 homeIsActive = true,
                 openRequested = false,
-                appInForeground = true,
                 waitingForFirstRoute = false,
             ),
         )

@@ -239,9 +239,10 @@ fun AppNavigation(
         pickerWanted = profilePickerWanted,
         homeIsActive = homeRouteIsActive,
         openRequested = openProfilePickerAfterHome,
-        appInForeground = appInForeground,
         waitingForFirstRoute = backStack == null,
     )
+    val maskHomeBeforeProfileSelection =
+        (profilePickerWanted || openProfilePickerAfterHome) && profileSelectionRequest == null
     val profilePermissions = remember(activeProfile?.type) {
         ProfilePermissions.forType(activeProfile?.type ?: ProfileType.ADMIN)
     }
@@ -795,7 +796,7 @@ fun AppNavigation(
                     notificationBadgeCount = notificationBadgeCount,
                     headerFocusRequest = homeHeaderFocusRequest,
                     headerFocusTarget = homeHeaderFocusTarget,
-                    visibleToUser = !showProfilePicker && !openProfilePickerAfterHome,
+                    visibleToUser = !showProfilePicker && !openProfilePickerAfterHome && !maskHomeBeforeProfileSelection,
                     onProfileAvatarBoundsChanged = { bounds ->
                         homeProfileAvatarBounds = bounds
                     },
@@ -1277,6 +1278,10 @@ fun AppNavigation(
     BackHandler(enabled = openProfilePickerAfterHome) {
         // The Home staging frame is not interactive. Back is handled by the
         // global picker as soon as it becomes visible.
+    }
+
+    if (maskHomeBeforeProfileSelection) {
+        Box(Modifier.fillMaxSize().background(SmartVisionColors.Background))
     }
 
     if (showProfilePicker) {

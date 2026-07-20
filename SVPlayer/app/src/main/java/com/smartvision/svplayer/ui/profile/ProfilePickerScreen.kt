@@ -402,7 +402,10 @@ fun ProfilePickerScreen(
                             else -> secondaryContentAlpha
                         },
                         onCardBoundsChanged = { bounds ->
-                            if (profileCardBounds[profile.id] != bounds) {
+                            if (
+                                profile.id == selectionLoadingProfileId &&
+                                profileCardBounds[profile.id] != bounds
+                            ) {
                                 profileCardBounds = profileCardBounds + (profile.id to bounds)
                             }
                         },
@@ -568,7 +571,6 @@ private fun ProfilePickerCard(
     val scale by animateFloatAsState(
         targetValue = when {
             selected -> 1.06f
-            focused -> 1.035f
             else -> 1f
         },
         animationSpec = tween(90),
@@ -606,7 +608,7 @@ private fun ProfilePickerCard(
                     onCardBoundsChanged(coordinates.boundsInRoot())
                 }
                 .shadow(
-                    if (focused || selected) 25.dp else 3.dp,
+                    if (focused || selected) 12.dp else 3.dp,
                     shape,
                     ambientColor = SmartVisionColors.CardFocusGlow,
                     spotColor = SmartVisionColors.CardFocusGlow,
@@ -984,7 +986,6 @@ private fun AddProfileCard(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     var focused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (focused) 1.035f else 1f, tween(90), label = "add-profile-scale")
     val reveal = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         delay((itemIndex.coerceAtMost(7) * 40L))
@@ -996,13 +997,11 @@ private fun AddProfileCard(
             .width(cardWidth)
             .height(cardHeight)
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
                 alpha = reveal.value * contentAlpha
                 translationY = (1f - reveal.value) * 12.dp.toPx()
             }
             .shadow(
-                if (focused) 25.dp else 3.dp,
+                if (focused) 12.dp else 3.dp,
                 shape,
                 ambientColor = SmartVisionColors.CardFocusGlow,
                 spotColor = SmartVisionColors.CardFocusGlow,
