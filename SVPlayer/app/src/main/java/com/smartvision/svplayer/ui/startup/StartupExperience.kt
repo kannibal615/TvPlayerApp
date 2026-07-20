@@ -94,7 +94,7 @@ private fun StartupLoadingOverlay(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             StartupProgressBar(
-                progress = progress.progress,
+                progress = progress.visibleProgress,
                 modifier = Modifier
                     .width(progressWidth)
                     .height(progressHeight),

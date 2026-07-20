@@ -137,13 +137,20 @@ class MainActivity : ComponentActivity() {
             if (!startupComplete) {
                 while (!startupComplete) {
                     val elapsed = SystemClock.elapsedRealtime() - startupStartedAt
-                    if (shouldRevealStartupLoading(elapsed, startupComplete)) {
+                    if (shouldRevealStartupLoading(elapsed, startupComplete, startupProgress)) {
                         visualPhase = StartupVisualPhase.Loading
                         break
                     }
                     delay(50)
                 }
-                if (!startupComplete && shouldRevealStartupLoading(SystemClock.elapsedRealtime() - startupStartedAt, startupComplete)) {
+                if (
+                    !startupComplete &&
+                    shouldRevealStartupLoading(
+                        elapsedMillis = SystemClock.elapsedRealtime() - startupStartedAt,
+                        startupComplete = startupComplete,
+                        progress = startupProgress,
+                    )
+                ) {
                     visualPhase = StartupVisualPhase.Loading
                 }
             }

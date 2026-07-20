@@ -27,9 +27,19 @@ data class StartupProgressSnapshot(
         } else {
             (completedSteps.toFloat() / totalSteps.toFloat()).coerceIn(0f, 1f)
         }
+
+    val visibleProgress: Float
+        get() = progress.takeIf { it > 0f }
+            ?: if (totalSteps > 0) StartupMinimumVisibleProgress else 0f
 }
 
 fun shouldRevealStartupLoading(
     elapsedMillis: Long,
     startupComplete: Boolean,
-): Boolean = !startupComplete && elapsedMillis >= StartupLoadingRevealDelayMillis
+    progress: StartupProgressSnapshot = StartupProgressSnapshot(),
+): Boolean =
+    !startupComplete &&
+        elapsedMillis >= StartupLoadingRevealDelayMillis &&
+        progress.progress < 1f
+
+private const val StartupMinimumVisibleProgress = 0.08f

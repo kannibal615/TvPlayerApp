@@ -36,9 +36,8 @@ fun canDisplayGlobalProfilePicker(
     openRequested: Boolean,
     waitingForFirstRoute: Boolean,
 ): Boolean =
-    pickerWanted &&
-        !openRequested &&
-        (homeIsActive || waitingForFirstRoute)
+    (pickerWanted || openRequested) &&
+        (homeIsActive || waitingForFirstRoute || openRequested)
 
 fun canStartProfileSelectionFromPicker(
     homeIsActive: Boolean,

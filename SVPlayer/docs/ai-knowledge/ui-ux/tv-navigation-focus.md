@@ -20,7 +20,7 @@ Les recherches Live TV, Movies et Series sont repliees en bouton carre icon-only
 ## Profils Kids et dialogues
 
 - Le picker utilise des cles `profile.id` stables dans une `LazyRow`. Le focus initial cible le profil actif, sinon ADMIN, sinon le premier profil; Compose revele automatiquement les cartes hors ecran.
-- Au premier demarrage, Who's Watching couvre l'ecran avant que Home soit visuellement revelee; si le picker est requis mais pas encore affiche, un masque opaque couvre Home. Home reste composee seulement comme support cache et non interactif. Depuis une route deja restauree, l'ouverture globale continue de repasser par Home avant d'afficher le picker.
+- Au premier demarrage, Who's Watching couvre l'ecran avant que Home soit visuellement revelee. Pendant la stabilisation `NavHost` ou une demande `openProfilePickerAfterHome`, le picker reste rendu au-dessus du masque opaque; le masque ne doit jamais etre la seule surface visible. Home reste composee seulement comme support cache et non interactif.
 - Les actions verrouillees ouvrent un dialogue PIN a quatre chiffres; annuler retourne au picker sans navigation anticipee.
 - Tous les flux Create/Enter/Confirm PIN reutilisent `NumericPinDialog`: popup vertical compact centre, grille 3 x 4 a dimensions fixes, focus initial sur `1`, focus automatique sur `Apply` au quatrieme chiffre et shake rejouable limite aux quatre indicateurs en cas de refus. La derniere ligne route D-pad Bas vers les actions et les actions remontent vers la derniere ligne du clavier.
 - Le formulaire profil est borne en hauteur, scrollable, applique `imePadding` et demande `bringIntoView()` lorsque le clavier TV ouvre un champ.
@@ -235,7 +235,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-20: refonte du header principal: les onglets centraux utilisent des PNG custom transparents, sans rail ni glow de focus local; les icones font la taille du bloc d'actions droit hors focus puis se reduisent pour afficher le label au focus/selection. La hauteur mesuree reste `44 dp`.
 - 2026-07-18: les previews Home utilisent une identite de session scopee par rangee (`continue:*`, `trending-movies:*`, `trending-series:*`). Une meme video dans plusieurs rangees garde des surfaces distinctes; un blur/dispose ne peut arreter que la session dont la card est proprietaire.
 - 2026-07-18: les loaders de synchronisation des cards Home ne modifient ni leur taille ni leurs cibles D-pad; les cards en attente et terminees conservent leur comportement de focus normal.
-- 2026-07-20: Who's Watching couvre le demarrage avec un masque opaque au-dessus de Home tant qu'aucun profil n'est selectionne. Les mouvements gauche/droite retirent le scale de focus simple et les mesures de bounds continues; le wrap lazy protege reste `Add Profile` <-> premier profil.
+- 2026-07-20: Who's Watching couvre le demarrage avec un masque opaque au-dessus de Home tant qu'aucun profil n'est selectionne; le picker reste visible pendant le staging Home pour eviter tout ecran vide. Les mouvements gauche/droite retirent le scale de focus simple et les mesures de bounds continues; le wrap lazy protege reste `Add Profile` <-> premier profil.
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: ajout des signaux `FocusRequester`, `D-pad`, `focusBackground`.
 - 2026-06-30: ajout de la regle focus pour overlay YouTube custom demande explicitement: bandeau focusable borne, retour Haut/Back vers le player.

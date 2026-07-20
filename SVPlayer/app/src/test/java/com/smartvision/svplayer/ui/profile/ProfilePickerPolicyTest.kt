@@ -76,7 +76,7 @@ class ProfilePickerPolicyTest {
     }
 
     @Test
-    fun globalPickerCannotBeDisplayedOverARestoredNonHomeRouteOrDuringStaging() {
+    fun globalPickerCannotBeDisplayedOverARestoredNonHomeRoute() {
         assertFalse(
             canDisplayGlobalProfilePicker(
                 pickerWanted = true,
@@ -85,19 +85,39 @@ class ProfilePickerPolicyTest {
                 waitingForFirstRoute = false,
             ),
         )
-        assertFalse(
+        assertTrue(
             canDisplayGlobalProfilePicker(
                 pickerWanted = true,
                 homeIsActive = true,
-                openRequested = true,
+                openRequested = false,
+                waitingForFirstRoute = false,
+            ),
+        )
+    }
+
+    @Test
+    fun globalPickerStaysVisibleWhileHomeIsBeingStaged() {
+        assertFalse(
+            canDisplayGlobalProfilePicker(
+                pickerWanted = false,
+                homeIsActive = false,
+                openRequested = false,
                 waitingForFirstRoute = false,
             ),
         )
         assertTrue(
             canDisplayGlobalProfilePicker(
                 pickerWanted = true,
-                homeIsActive = true,
-                openRequested = false,
+                homeIsActive = false,
+                openRequested = true,
+                waitingForFirstRoute = false,
+            ),
+        )
+        assertTrue(
+            canDisplayGlobalProfilePicker(
+                pickerWanted = false,
+                homeIsActive = false,
+                openRequested = true,
                 waitingForFirstRoute = false,
             ),
         )
