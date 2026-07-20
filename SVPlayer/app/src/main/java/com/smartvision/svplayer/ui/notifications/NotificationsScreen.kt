@@ -32,7 +32,6 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlaylistAdd
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.CircularProgressIndicator
@@ -73,6 +72,7 @@ import com.smartvision.svplayer.data.notifications.NotificationType
 import com.smartvision.svplayer.data.notifications.NotificationsRepository
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
+import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.components.TvDialogSurface
 import com.smartvision.svplayer.ui.components.TvDialogTone
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
@@ -133,7 +133,8 @@ fun NotificationsRoute(
         hasNewNotifications = hasNewNotifications,
         notificationBadgeCount = notificationBadgeCount,
         onBack = onBack,
-        onRefresh = viewModel::refresh,
+        onMarkAllSeen = { viewModel.markAllSeen(onNotificationsChanged) },
+        onClearHistory = { viewModel.clearHistory(onNotificationsChanged) },
         onOpenNotification = { notification ->
             if (!notification.seen) {
                 viewModel.markSeen(notification.id, onNotificationsChanged)
@@ -159,7 +160,8 @@ private fun NotificationsScreen(
     hasNewNotifications: Boolean,
     notificationBadgeCount: Int,
     onBack: () -> Unit,
-    onRefresh: () -> Unit,
+    onMarkAllSeen: () -> Unit,
+    onClearHistory: () -> Unit,
     onOpenNotification: (AppNotification) -> Unit,
     strings: SmartVisionStrings,
     modifier: Modifier = Modifier,
@@ -167,8 +169,9 @@ private fun NotificationsScreen(
     BackHandler(onBack = onBack)
     var selectedSection by remember { mutableStateOf(NotificationSection.Updates) }
     var dialogNotification by remember { mutableStateOf<AppNotification?>(null) }
+    var pendingBulkAction by remember { mutableStateOf<NotificationBulkAction?>(null) }
     val headerFocusRequester = remember { FocusRequester() }
-    val refreshFocusRequester = remember { FocusRequester() }
+    val bulkActionFocusRequester = remember { FocusRequester() }
     val firstCardFocusRequester = remember { FocusRequester() }
     val sectionRequesters = remember { NotificationSection.entries.associateWith { FocusRequester() } }
     val notificationRequesters = remember { mutableMapOf<Long, FocusRequester>() }
@@ -178,6 +181,14 @@ private fun NotificationsScreen(
         filterNotifications(state.notifications, selectedSection)
     }
     val counts = remember(state.notifications) { notificationCounts(state.notifications) }
+    val unreadVisibleTotal = remember(state.notifications) { state.notifications.count { !it.seen } }
+    val showMarkAllSeen = selectedSection != NotificationSection.History && unreadVisibleTotal >= 2
+    val showClearHistory = selectedSection == NotificationSection.History && visibleNotifications.isNotEmpty()
+    val currentBulkAction = when {
+        showMarkAllSeen -> NotificationBulkAction.MarkAllSeen
+        showClearHistory -> NotificationBulkAction.ClearHistory
+        else -> null
+    }
 
     LaunchedEffect(Unit) {
         withFrameNanos { }
@@ -279,18 +290,20 @@ private fun NotificationsScreen(
                     Spacer(Modifier.width(9.dp))
                     Text(strings.notifications, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.weight(1f))
-                    TvButton(
-                        text = if (state.loading) strings.refreshing else strings.refresh,
-                        leadingIcon = Icons.Default.Refresh,
-                        onClick = onRefresh,
-                        enabled = !state.loading,
-                        focusRequester = refreshFocusRequester,
-                        variant = TvButtonVariant.Primary,
-                        modifier = Modifier.height(38.dp).focusProperties {
-                            if (visibleNotifications.isNotEmpty()) down = firstCardFocusRequester
-                            left = sectionRequesters.getValue(selectedSection)
-                        },
-                    )
+                    currentBulkAction?.let { action ->
+                        TvButton(
+                            text = action.label(strings),
+                            leadingIcon = action.icon,
+                            onClick = { pendingBulkAction = action },
+                            enabled = !state.loading && !state.actionInProgress,
+                            focusRequester = bulkActionFocusRequester,
+                            variant = TvButtonVariant.Primary,
+                            modifier = Modifier.height(38.dp).focusProperties {
+                                if (visibleNotifications.isNotEmpty()) down = firstCardFocusRequester
+                                left = sectionRequesters.getValue(selectedSection)
+                            },
+                        )
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
                 when {
@@ -319,7 +332,7 @@ private fun NotificationsScreen(
                                 notification = notification,
                                 focusRequester = cardFocusRequester,
                                 leftFocusRequester = sectionRequesters.getValue(selectedSection),
-                                upFocusRequester = if (index == 0) refreshFocusRequester else null,
+                                upFocusRequester = if (index == 0 && currentBulkAction != null) bulkActionFocusRequester else null,
                                 onClick = {
                                     openedNotificationId = notification.id
                                     preferredFocusId = nextNotificationFocusId(visibleNotifications, index)
@@ -336,6 +349,24 @@ private fun NotificationsScreen(
 
     dialogNotification?.let { notification ->
         NotificationDetailsDialog(notification, strings) { dialogNotification = null }
+    }
+    pendingBulkAction?.let { action ->
+        TvConfirmationDialog(
+            title = action.confirmTitle(strings),
+            message = action.confirmMessage(strings),
+            confirmText = action.confirmText(strings),
+            cancelText = strings.cancel,
+            onDismiss = { pendingBulkAction = null },
+            onConfirm = {
+                pendingBulkAction = null
+                when (action) {
+                    NotificationBulkAction.MarkAllSeen -> onMarkAllSeen()
+                    NotificationBulkAction.ClearHistory -> onClearHistory()
+                }
+            },
+            tone = if (action == NotificationBulkAction.ClearHistory) TvDialogTone.Destructive else TvDialogTone.Default,
+            icon = action.icon,
+        )
     }
 }
 
@@ -543,6 +574,31 @@ private fun NotificationType.icon(): ImageVector = when (this) {
     NotificationType.ImportantInfo -> Icons.Default.Info
 }
 
+private enum class NotificationBulkAction(val icon: ImageVector) {
+    MarkAllSeen(Icons.Default.Notifications),
+    ClearHistory(Icons.Default.History);
+
+    fun label(strings: SmartVisionStrings): String = when (this) {
+        MarkAllSeen -> strings.markAllSeen
+        ClearHistory -> strings.clearAll
+    }
+
+    fun confirmTitle(strings: SmartVisionStrings): String = when (this) {
+        MarkAllSeen -> strings.markAllSeenConfirmTitle
+        ClearHistory -> strings.clearAllNotificationsConfirmTitle
+    }
+
+    fun confirmMessage(strings: SmartVisionStrings): String = when (this) {
+        MarkAllSeen -> strings.markAllSeenConfirmMessage
+        ClearHistory -> strings.clearAllNotificationsConfirmMessage
+    }
+
+    fun confirmText(strings: SmartVisionStrings): String = when (this) {
+        MarkAllSeen -> strings.markAllSeenConfirmAction
+        ClearHistory -> strings.clearAllNotificationsConfirmAction
+    }
+}
+
 class NotificationsViewModel(private val repository: NotificationsRepository) : ViewModel() {
     private val state = MutableStateFlow(NotificationsUiState())
     val uiState: StateFlow<NotificationsUiState> = state
@@ -568,10 +624,51 @@ class NotificationsViewModel(private val repository: NotificationsRepository) : 
                 .onFailure { state.update { it.copy(errorMessage = "Impossible de marquer la notification comme lue.") } }
         }
     }
+
+    fun markAllSeen(onChanged: () -> Unit) {
+        viewModelScope.launch {
+            state.update { it.copy(actionInProgress = true, errorMessage = null) }
+            runCatching { repository.markAllSeen() }
+                .onSuccess {
+                    state.update { current ->
+                        current.copy(
+                            actionInProgress = false,
+                            notifications = current.notifications.map { notification ->
+                                if (notification.seen) notification else notification.copy(seen = true)
+                            },
+                        )
+                    }
+                    onChanged()
+                }
+                .onFailure {
+                    state.update { it.copy(actionInProgress = false, errorMessage = "Impossible de marquer les notifications comme vues.") }
+                }
+        }
+    }
+
+    fun clearHistory(onChanged: () -> Unit) {
+        viewModelScope.launch {
+            state.update { it.copy(actionInProgress = true, errorMessage = null) }
+            runCatching { repository.clearHistory() }
+                .onSuccess {
+                    state.update { current ->
+                        current.copy(
+                            actionInProgress = false,
+                            notifications = current.notifications.filterNot { notification -> notification.seen },
+                        )
+                    }
+                    onChanged()
+                }
+                .onFailure {
+                    state.update { it.copy(actionInProgress = false, errorMessage = "Impossible de supprimer l'historique.") }
+                }
+        }
+    }
 }
 
 data class NotificationsUiState(
     val loading: Boolean = false,
     val notifications: List<AppNotification> = emptyList(),
     val errorMessage: String? = null,
+    val actionInProgress: Boolean = false,
 )

@@ -1,5 +1,6 @@
 # AI Changelog
 
+- 2026-07-20: nettoyage Splash/Header/Media/Notifications: `MainActivity` retire le Crossfade splash->app et utilise `shouldRevealStartupLoading`; `AppNavigation` rend l'app sur fond opaque pour eviter la frame noire avant Who's Watching. Le header ne rend plus le bouton Premium ni le separateur vertical avant l'horloge, tout en conservant le dialogue Premium pour les features verrouillees. Media prive est retire des routes Android, repositories, ecran Media, flags, endpoints PHP, admin et deploy. Notifications remplace Refresh par `Tout marquer vu` et `Clear All` conditionnels avec confirmations, et `api/notifications.php` ajoute `clear_history`.
 - 2026-07-20: refonte du header principal selon le choix `M04/H01`: les onglets centraux deviennent icon-first avec icones Compose Canvas glass bleues, rail lumineux et libelle visible seulement au focus ou sur la route active. Un separateur est ajoute apres YouTube avant le bloc droite, qui conserve ses boutons cle premium, notifications, avatar, parametres et horloge. La hauteur mesuree du header reste `44 dp`; le degagement Home sous header est reduit a `8 dp`.
 - 2026-07-20: correction supplementaire Who's Watching apres retour terrain: Home est maintenant couverte par un masque opaque tant qu'un picker profil est requis et qu'aucun profil n'est selectionne, ce qui evite tout flash Home apres le splash. Le picker s'affiche sans attendre l'etat foreground, tandis que la selection reste protegee par Home foreground. Le focus gauche/droite retire le scale anime simple, reduit l'ombre et ne mesure les bounds que pour la card selectionnee afin de fluidifier la telecommande.
 - 2026-07-19: Who's Watching s'affiche des le premier rendu de demarrage sans frame Home visible; Home reste composee mais cachee/non interactive pendant le picker. La navigation D-pad boucle maintenant `Add Profile` -> premier profil et premier profil -> `Add Profile` via scroll lazy protege, avec animations de focus profil raccourcies. Validation locale: tests release et compilation release lances dans ce lot.
@@ -3217,3 +3218,8 @@ Fichiers code concernes:
 - Series stocke `number_of_seasons` dans le cache TMDB Room v19 et affiche le nombre de saisons a droite du titre de chaque ligne enrichie.
 - Home separe durablement le header du viewport par un espace non scrollable de `24 dp` et clippe le contenu vertical, afin que le hero ne puisse plus passer sous le header pendant les restaurations de scroll/focus.
 - Les rangees Historique et Tendances portent leur padding horizontal interne a `20 dp`, ce qui laisse dessiner entierement le halo de la premiere card sans perdre les cinq cards paysage visibles.
+## 2026-07-20 - Header principal PNG transparents
+
+- Remplace les glyphes Canvas du header principal par six PNG `header_icon_*` transparents.
+- Supprime le rail lumineux sous les onglets et le glow de focus local du header central.
+- Agrandit les icones hors focus a la taille des boutons du bloc droit; au focus/selection, l'icone se reduit pour afficher le libelle sans augmenter la hauteur du header.

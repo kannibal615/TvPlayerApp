@@ -15,8 +15,7 @@ import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -27,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import com.smartvision.svplayer.core.data.AppContainer
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.data.diagnostics.PerformanceDiagnosticRecorder
@@ -38,7 +38,7 @@ import com.smartvision.svplayer.ui.startup.StartupMinimumLogoOnlyMillis
 import com.smartvision.svplayer.ui.startup.StartupProgressSnapshot
 import com.smartvision.svplayer.ui.startup.StartupStage
 import com.smartvision.svplayer.ui.startup.StartupVisualPhase
-import com.smartvision.svplayer.ui.startup.StartupLoadingRevealDelayMillis
+import com.smartvision.svplayer.ui.startup.shouldRevealStartupLoading
 import com.smartvision.svplayer.ui.theme.SmartVisionTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -135,8 +135,15 @@ class MainActivity : ComponentActivity() {
 
         LaunchedEffect(startupComplete) {
             if (!startupComplete) {
-                delay(StartupLoadingRevealDelayMillis)
-                if (!startupComplete) {
+                while (!startupComplete) {
+                    val elapsed = SystemClock.elapsedRealtime() - startupStartedAt
+                    if (shouldRevealStartupLoading(elapsed, startupComplete)) {
+                        visualPhase = StartupVisualPhase.Loading
+                        break
+                    }
+                    delay(50)
+                }
+                if (!startupComplete && shouldRevealStartupLoading(SystemClock.elapsedRealtime() - startupStartedAt, startupComplete)) {
                     visualPhase = StartupVisualPhase.Loading
                 }
             }
@@ -197,24 +204,21 @@ class MainActivity : ComponentActivity() {
         }
 
         val readyContainer = appContainer
-        Crossfade(
-            targetState = startupComplete && readyContainer != null,
-            animationSpec = tween(380),
-            label = "startupToApplication",
-            modifier = Modifier.fillMaxSize(),
-        ) { showApplication ->
-            if (showApplication) {
-                CompositionLocalProvider(LocalAppContainer provides requireNotNull(readyContainer)) {
-                    AppNavigation()
-                }
-            } else {
-                StartupExperience(
-                    phase = visualPhase,
-                    progress = startupProgress,
-                    strings = strings,
-                    modifier = Modifier.fillMaxSize(),
+        if (startupComplete && readyContainer != null) {
+            CompositionLocalProvider(LocalAppContainer provides readyContainer) {
+                AppNavigation(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(AppOpaqueBackground),
                 )
             }
+        } else {
+            StartupExperience(
+                phase = visualPhase,
+                progress = startupProgress,
+                strings = strings,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 
@@ -277,5 +281,6 @@ class MainActivity : ComponentActivity() {
         const val ACTION_SHOW_XTREAM_CONNECTION_ALERT = "com.smartvision.svplayer.SHOW_XTREAM_CONNECTION_ALERT"
         private const val REQUEST_NOTIFICATIONS = 7041
         private const val FirstFrameStartupDelayMillis = 60L
+        private val AppOpaqueBackground = Color(0xFF020714)
     }
 }

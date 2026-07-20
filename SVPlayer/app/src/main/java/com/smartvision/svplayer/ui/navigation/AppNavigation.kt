@@ -90,8 +90,6 @@ import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.live.LiveTvScreen
 import com.smartvision.svplayer.ui.media.MediaScreen
-import com.smartvision.svplayer.ui.media.PrivateMediaDetailRoute
-import com.smartvision.svplayer.ui.media.PrivateMediaPlayerRoute
 import com.smartvision.svplayer.ui.movies.MoviesScreen
 import com.smartvision.svplayer.ui.notifications.NotificationBadgeViewModel
 import com.smartvision.svplayer.ui.notifications.NotificationsRoute
@@ -131,6 +129,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
+    modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
     val scope = rememberCoroutineScope()
@@ -302,11 +301,6 @@ fun AppNavigation(
     } else {
         loadedMediaPhoneTransferGate
     }
-    val loadedPrivateMediaGate = PremiumFeatureGate.evaluate(
-        config = appConfigState.config,
-        feature = PremiumFeature.PRIVATE_MEDIA,
-        status = monetizationStatus,
-    )
     val loadedMultiProfileGate = PremiumFeatureGate.evaluate(
         config = appConfigState.config,
         feature = PremiumFeature.MULTI_PROFILE,
@@ -316,18 +310,6 @@ fun AppNavigation(
         PremiumFeatureGateResult(PremiumFeature.MULTI_PROFILE, PremiumFeatureGateState.Allowed)
     } else {
         loadedMultiProfileGate
-    }
-    val loadedPrivateMediaProviderGate = PremiumFeatureGate.evaluate(
-        config = appConfigState.config,
-        feature = PremiumFeature.PRIVATE_MEDIA_EPORNER,
-        status = monetizationStatus,
-    )
-    val privateMediaGate = if (appConfigState.loading) {
-        PremiumFeatureGateResult(PremiumFeature.PRIVATE_MEDIA, PremiumFeatureGateState.Allowed)
-    } else if (!loadedPrivateMediaGate.allowed) {
-        loadedPrivateMediaGate
-    } else {
-        loadedPrivateMediaProviderGate
     }
     val parentalControlAllowed = container.appConfigRepository.isFeatureAllowed(
         config = appConfigState.config,
@@ -776,7 +758,9 @@ fun AppNavigation(
     NavHost(
         navController = navController,
         startDestination = AppRoute.Home.route,
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .background(SmartVisionColors.Background),
     ) {
         composable(AppRoute.Home.route) {
             key(activeProfileId) {
@@ -977,40 +961,12 @@ fun AppNavigation(
                     strings = strings,
                     access = mediaCenterGate,
                     transferAccess = mediaPhoneTransferGate,
-                    privateMediaAccess = privateMediaGate,
                     onPlayFile = { mediaFileId -> navController.navigate("media_player/$mediaFileId") },
-                    onOpenPrivateMediaDetails = { itemId -> navController.navigate("private_media_detail/${android.net.Uri.encode(itemId)}") },
-                    onOpenPrivateMediaPlayer = { itemId -> navController.navigate("private_media_player/${android.net.Uri.encode(itemId)}") },
                     onLockedFeature = {
-                        if (mediaCenterGate.shouldShowUpgradePrompt || mediaPhoneTransferGate.shouldShowUpgradePrompt || privateMediaGate.shouldShowUpgradePrompt) {
+                        if (mediaCenterGate.shouldShowUpgradePrompt || mediaPhoneTransferGate.shouldShowUpgradePrompt) {
                             showLicensePurchaseQr = true
                         }
                     },
-                )
-            }
-        }
-        composable("private_media_detail/{itemId}") { entry ->
-            val itemId = entry.arguments?.getString("itemId").orEmpty()
-            if (!privateMediaGate.allowed || itemId.isBlank()) {
-                PlaceholderRouteScreen(strings.mediaPrivate, strings.mediaDisabledByAdmin)
-            } else {
-                PrivateMediaDetailRoute(
-                    itemId = itemId,
-                    strings = strings,
-                    onBack = { navController.popBackStack() },
-                    onPlay = { id -> navController.navigate("private_media_player/${android.net.Uri.encode(id)}") },
-                )
-            }
-        }
-        composable("private_media_player/{itemId}") { entry ->
-            val itemId = entry.arguments?.getString("itemId").orEmpty()
-            if (!privateMediaGate.allowed || itemId.isBlank()) {
-                PlaceholderRouteScreen(strings.mediaPrivate, strings.mediaDisabledByAdmin)
-            } else {
-                PrivateMediaPlayerRoute(
-                    itemId = itemId,
-                    strings = strings,
-                    onBack = { navController.popBackStack() },
                 )
             }
         }
@@ -1260,8 +1216,7 @@ fun AppNavigation(
     val playerRouteActive = currentRoute.startsWith("player/") ||
         currentRoute.startsWith("movie_player/") ||
         currentRoute.startsWith("episode_player/") ||
-        currentRoute.startsWith("media_player/") ||
-        currentRoute.startsWith("private_media_player/")
+        currentRoute.startsWith("media_player/")
     BackHandler(enabled = !playerRouteActive) {
         if (currentRoute == AppRoute.Settings.route) {
             navigateHomeWithHeaderFocus(HomeHeaderFocusTarget.Settings)

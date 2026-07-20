@@ -1,6 +1,6 @@
 # Backend, Admin, API et Deploiement
 
-Derniere mise a jour: 2026-07-17.
+Derniere mise a jour: 2026-07-20.
 
 ## 1. Objectif
 
@@ -20,7 +20,7 @@ Le script de deploiement upload les fichiers explicitement. Tout nouveau fichier
 - Playlist: page publique `/playlist/` pour valider le code au sixieme caractere, lire l'inventaire non sensible Admin/Normal, cibler plusieurs profils et/ou creer un profil Normal. `api/device_profiles.php` remplace l'inventaire avec un `device_token`; `api/playlist_targets.php` expose seulement id/nom/type et limite les recherches par hash IP. Chaque envoi cree une notification `playlist_added`; le payload chiffre contient `config_id`, cibles et configuration, puis n'est dechiffre que pour la TV ciblee.
 - Admin: gestion fonctionnalites, consentement, pubs, codes, notifications, diagnostics.
 - Admin Diagnostics centralise maintenant Synthese, AutoSync, Anomalies App, Info Serveur et Journal dans `server/public_html/admin/index.php`.
-- Admin ajoute `Bibliotheque privee` pour activer/desactiver le proxy provider, gerer les sous-dossiers TV prives (nom, recherche/theme, ordre, actif, suppression), vider le cache, lancer la sync `removed` et consulter le monitoring provider.
+- Depuis le 2026-07-20, l'ancien menu admin Bibliotheque privee et les endpoints Media prives sont retires; ne pas les reintegrer dans les deploys ni dans `app_feature_access`.
 - App: consomme les endpoints activation, config, update, ads, tracking.
 
 ## 4. Workflow technique
@@ -45,7 +45,7 @@ Deploy:
 Regle release:
 - apres chaque nouveau build Android release destine a etre livre, executer le deploy backend avec `scripts/deploy_activation_phase1.ps1` pour synchroniser le manifeste update, l'APK versionne, l'APK stable, la notification release et les fichiers serveur;
 - ne pas publier un APK seul si des changements PHP/admin/API accompagnent la release.
-- pour les nouveaux endpoints imbriques, creer explicitement chaque dossier distant dans le script avant `Upload-File` (`api/media`, `api/media/private`, `api/media/private/providers`), sinon Fileman peut ne pas exposer les nouveaux PHP via HTTP malgre un deploy global OK.
+- pour les nouveaux endpoints imbriques, creer explicitement chaque dossier distant dans le script avant `Upload-File`, sinon Fileman peut ne pas exposer les nouveaux PHP via HTTP malgre un deploy global OK.
 
 ## 5. Ecrans concernes
 
@@ -88,17 +88,11 @@ Endpoints importants:
 - `api/save_playlist_config.php`
 - `api/app_update.php`
 - `api/app_config.php`
-- `api/media/private/libraries.php`
-- `api/media/private/categories.php`
-- `api/media/private/items.php`
-- `api/media/private/item.php`
-- `api/media/private/playback.php`
-- `api/media/private/providers/health.php`
-  - Verifie en prod le 2026-07-07 via routes extensionless avec User-Agent Android-like: `libraries`, `categories`, `items` et `providers/health` retournent 200; si la bibliotheque est desactivee, `items` retourne `error=provider_disabled`.
 - `api/notifications.php`
   - Optimisation 2026-07-05: la jointure appareil -> commande -> utilisateur n'est executee que si des notifications ciblees `users` existent dans les candidates actives. Les notifications `all` / `devices` evitent cette jointure pour reduire les risques de timeout socket sur l'app.
   - Contrat 2026-07-14: accepte `device_token` et `app_version_code`, retourne `type`, `seen_at` et `details`; conserve une reponse minimale pour les anciennes APK. Les types stables sont `app_update`, `playlist_added`, `important_info`. Les updates deja installees sont masquees.
   - Les recus suivent `non lu -> vu/historique -> purge`. `purged_at` est un tombstone: une ligne purgee ne redevient jamais non lue. Les lignes vues restent consultables apres expiration jusqu'a purge.
+  - Contrat 2026-07-20: POST `action=clear_history` purge seulement les recus du `device_id` courant avec `seen_at IS NOT NULL` et `purged_at IS NULL`, puis retourne `success`, `cleared_history`, `unread_count`, `error`.
 - `api/home_slides.php`
 - `api/commerce.php`
 - `api/gammal-webhook.php`
@@ -121,7 +115,7 @@ Tables/settings a surveiller:
 - `app_feature_access`;
 - defaults `app_feature_access` Recorder/Media ajoutes le 2026-07-05: `recorder`, `media_center` (`Menu Media Center`), `media_file_management`, `media_phone_transfer` avec Premium oui, Trial oui, Free Ads non;
 - default `app_feature_access` ajoute le 2026-07-10: `multi_profile` (`Multi-profils`) avec Premium oui, Trial oui, Free Ads non; Android l'utilise pour griser/verrouiller l'ajout et la modification de profils.
-- defaults `app_feature_access` ajoutes le 2026-07-07 pour `private_media`, `private_media_eporner`, `private_media_native_playback`; la configuration detaillee est stockee en JSON dans `app_settings.private_media_config`.
+- Depuis le 2026-07-20, les defaults `private_media`, `private_media_eporner` et `private_media_native_playback` ne doivent plus etre servis par `api/app_config.php` ni par l'admin.
 - `app_consent_receipts`;
 - `app_notifications`;
 - `app_notifications.notification_type`, `source_version_code`, `payload_ciphertext` et `app_notification_receipts.purged_at` portent le contrat type, version, payload chiffre et purge durable.
@@ -152,14 +146,10 @@ Tables/settings a surveiller:
 ## 10. Problemes connus
 
 - Admin HTTP 500 possible si service PHP requis non uploade.
-- `Bibliotheque privee > Synchroniser removed` doit rester borne et transactionnel: le provider peut renvoyer un fichier volumineux, donc ne pas reinserer tous les ids en une seule requete admin non bornee.
-- `Bibliotheque privee > Sous-dossiers TV` conserve les IDs des sections existantes; ne pas regenerer les IDs a chaque renommage, sinon Android perd la selection/categorie.
-- `Bibliotheque privee > Forcer lecture native HLS/MP4` est un mode de test: il priorise `native_test_stream_url` si cette URL est un vrai `.m3u8` ou `.mp4`. Ne pas le presenter comme une conversion d'embed; sans flux direct, le backend doit renvoyer `UNAVAILABLE` pour la lecture native forcee.
 - Le test admin du deploy doit suivre la navigation courante: apres la centralisation de Journal dans Diagnostics, le marqueur attendu au login est `Diagnostics`, pas un menu `Journal` separe.
 - Feature flags stockes en prod peuvent rester anciens.
 - cPanel peut ne pas offrir `Fileman/delete_files`; preferer self-delete.
 - Encodage UTF-8 avec BOM peut casser `declare(strict_types=1);`.
-- Sans User-Agent explicite, certains appels manuels PowerShell vers les nouveaux endpoints private media peuvent recevoir une 404 LiteSpeed alors que les appels Android/QA avec User-Agent retournent bien le JSON; verifier avec un User-Agent avant de conclure a un fichier manquant.
 
 ## 11. Quand lire ce fichier ?
 
@@ -187,6 +177,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-07-10: release prod Android `0.1.116` / `132` deployee via `scripts/deploy_activation_phase1.ps1 -SkipInstall`; manifeste `smartvision-tv-v132-04eaf015.apk`, SHA256 `04eaf0154a106c91f1d403325480217cdb95eece95bfe94d3accc2f71d3ebe5c`, taille `41116724`. Verification publique OK: manifeste et `api/app_update.php` en `132`, APK versionne et stable HTTP 200, hash/taille telecharges identiques, `app_config.php` expose `multi_profile` Premium=true Trial=true FreeAds=false.
+- 2026-07-20: retrait local des endpoints `api/media/private/*`, du menu admin Bibliotheque privee, des actions admin privees, des uploads deploy associes et des defaults `private_media*`; `api/notifications.php` ajoute `clear_history`.
 - 2026-07-07: ajout des endpoints `api/media/private/*`, du menu admin `Bibliotheque privee`, des flags `private_media*`, et correction du deploy pour creer explicitement `api/media/private/providers` avant upload.
 - 2026-07-07: `items.php` accepte `query` pour la recherche privee; `Synchroniser removed` est limite par lot et rollback en erreur pour eviter un HTTP 500 admin; playback prive renvoie aussi `embedUrl/pageUrl` pour le fallback TV.
 - 2026-07-07: `Bibliotheque privee` gere les sous-dossiers TV prives avec suppression explicite et migration de l'ancien dossier unique vers les premiers themes par defaut; le backend ne renvoie des streams natifs que pour URLs directes HLS/MP4.

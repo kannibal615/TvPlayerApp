@@ -1,8 +1,8 @@
 # Recorder + Media Center - Plan technique
 
-Derniere mise a jour: 2026-07-07.
+Derniere mise a jour: 2026-07-20.
 
-Statut: Lot 17 - Media Center garde l'agencement Live TV en 3 colonnes pour le local, mais la colonne gauche devient hierarchique: parent expandable `Media local` avec `All files`, `Recordings`, `Imports`, `Transfers`, puis categorie principale `Media prives`. En mode prive, l'ecran se rapproche de YouTube: categories a gauche, liste compacte au centre, player/miniature dans une section principale plus large a droite. Les contenus prives passent uniquement par le backend/proxy SmartVision `api/media/private/*`; Android ne connait pas les endpoints Eporner, ne scrape rien et n'essaie pas de lecture native sans flux HLS/MP4 fourni par SmartVision.
+Statut: Media Center garde l'agencement Live TV en 3 colonnes pour le local, avec `Media local`, `All files`, `Recordings`, `Imports`, `Transfers`, puis les actions telephone/TV. Depuis le 2026-07-20, la fonctionnalite privee a ete retiree de l'app, du backend/admin, des flags et du deploy; ne pas la traiter comme surface active.
 
 ## 1. Objectif
 
@@ -615,7 +615,9 @@ Non fait dans ce lot:
 Prochaine etape recommandee:
 - Lot 5 - Room Media + stockage local.
 
-### Extension Media prives 2026-07-07
+### Extension Media prives 2026-07-07 - historique retire le 2026-07-20
+
+Note 2026-07-20: cette extension n'est plus active. Les routes Android, endpoints backend, menu admin, flags et uploads associes ont ete supprimes. La section ci-dessous reste uniquement un historique ancien, pas une base d'implementation.
 
 Termine:
 - `Media prives` devient un dossier expandable avec sous-dossiers/categories issus du backend SmartVision.

@@ -69,6 +69,7 @@ data class MarkNotificationsSeenRequest(
 data class MarkNotificationsSeenResponse(
     @SerializedName("success") val success: Boolean = false,
     @SerializedName("marked_seen") val markedSeen: Int = 0,
+    @SerializedName("cleared_history") val clearedHistory: Int = 0,
     @SerializedName("unread_count") val unreadCount: Int = 0,
     @SerializedName("error") val error: String? = null,
 )

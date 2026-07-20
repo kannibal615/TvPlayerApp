@@ -1,6 +1,6 @@
 # Catalogue, Playlist et Lecture
 
-Derniere mise a jour: 2026-07-17.
+Derniere mise a jour: 2026-07-20.
 
 ## Presentation Films et Series - 2026-07-17
 
@@ -184,8 +184,7 @@ Playback:
 - Recorder Live MVP: `RecordingService` en foreground service `dataSync` telecharge le flux Live vers `SmartVisionMedia/Recordings` avec fichier temporaire `.part`, finalise le fichier puis l'indexe dans Media Center. Un seul enregistrement actif est autorise. Le Recorder doit continuer apres sortie de la chaine/player; l'arret normal passe par la notification Stop, la duree choisie ou une erreur. Les flux progressifs reconnectent si le serveur ferme la socket avant la duree demandee, avec grace de recuperation apres premiere donnees recues; HLS simple non chiffre est supporte; les HLS chiffres echouent proprement.
 - Overlay plein ecran Films/Series: depuis le 2026-07-07, le player VOD/episode utilise un overlay fullscreen bas distinct du Live TV. Films: titre/categorie, favoris, luminosite, parametres, plein ecran, controles -15s/play/+15s. Series: titre serie + episode, bouton `Autres episodes` en premiere icone utilitaire, favoris, luminosite, parametres, plein ecran, controles episode precedent/-15s/play/+15s/episode suivant. Le panneau `Autres episodes` est cache-only depuis les episodes Xtream deja charges, s'ouvre a droite, masque l'overlay principal et rend le focus au bouton d'ouverture a la fermeture. La card `Episode suivant` apparait uniquement pour les series quand il reste 10 secondes ou moins et peut etre annulee pour la lecture courante. Le slider luminosite remplace temporairement les icones utilitaires et applique seulement un voile noir sur la video, sans modifier la luminosite systeme.
 - Lecture locale Media: `media_player/{mediaFileId}` charge `MediaCenterPlayback` depuis `MediaRepository`; video/audio reutilisent le player fullscreen sans preroll pub ni verification Xtream, photo ouvre un viewer plein ecran local. Les actions Media Center `Renommer`, `Deplacer` et `Supprimer` ciblent le fichier par id explicite; `Supprimer` est accessible dans la premiere rangee d'actions avec `Lire` et `Renommer`, puis confirme via un dialog focusable.
-- Transfert telephone/TV Media MVP: `MediaTransferServer` demarre un serveur HTTP local temporaire depuis `MediaScreen`. Import: QR `/u/{token}`, upload mobile par `PUT`, ecriture dans `SmartVisionMedia/Transfers` puis indexation. Export: QR `/d/{token}`, download du seul fichier selectionne via `/download/{token}`. La feature est gatee par `media_phone_transfer`; l'import est expose dans la bibliotheque par un bloc `Telephone -> TV` / `Hub transfert` qui explique soit `Recevoir fichier`, soit le verrou Premium/essai. Depuis le Lot 16, l'ecran Media affiche un agencement premium avec hero studio, stats bibliotheque, lignes enrichies et preview hero sans changer les endpoints ni la logique stockage.
-- Media prives: `private_media_detail/{id}` ouvre une fiche detail alimentee par le proxy SmartVision. Les feature flags `private_media`, `private_media_eporner` et `private_media_native_playback` controlent respectivement l'acces, le provider et la lecture native future.
+- Transfert telephone/TV Media MVP: `MediaTransferServer` demarre un serveur HTTP local temporaire depuis `MediaScreen`. Import: QR `/u/{token}`, upload mobile par `PUT`, ecriture dans `SmartVisionMedia/Transfers` puis indexation. Export: QR `/d/{token}`, download du seul fichier selectionne via `/download/{token}`. La feature est gatee par `media_phone_transfer`; l'import est expose dans la bibliotheque par un bloc `Telephone -> TV` / `Hub transfert` qui explique soit `Recevoir fichier`, soit le verrou Premium/essai. Depuis le Lot 16, l'ecran Media affiche un agencement premium avec hero studio, stats bibliotheque, lignes enrichies et preview hero sans changer les endpoints ni la logique stockage. Depuis le 2026-07-20, Media ne contient plus de source privee: seules les fonctions locales, Recorder et transferts restent actives.
 
 ## 5. Ecrans concernes
 
@@ -285,7 +284,7 @@ URL de lecture:
 - La verification de connexion Xtream est obligatoire au premier affichage actif, mais elle reste non bloquante pendant ses essais silencieux et ne doit pas forcer une resynchronisation globale si la politique de frequence ne la demande pas.
 - Les routes player/detail doivent aussi respecter le blocage Xtream; ne pas compter uniquement sur Home/Header pour bloquer l'acces.
 - Les diagnostics de synchro doivent rester non intrusifs: pas de credentials dans `logcat`, seulement les compteurs catalogue et les valeurs memoire Runtime.
-- Media prives: la lecture native n'est autorisee que si le backend SmartVision renvoie explicitement un flux direct HLS/MP4. Si le provider officiel expose seulement un embed/page, Android utilise `private_media_player/{id}` avec WebView embed; aucun scraping/extraction HTML ni URL provider construite dans l'APK.
+- Ne pas reintroduire de source privee dans Media: les routes, endpoints, flags et menu admin associes ont ete retires le 2026-07-20.
 
 ## 10. Problemes connus
 
@@ -319,6 +318,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 ## 12. Historique court
 
 - 2026-07-18: les films Tendances Home sont selectionnes dans l'ordre classe depuis un pool de 120 candidats, par lots de 3, et seuls les 10 premiers dont la duree resolue TMDB/Xtream est strictement superieure a 80 minutes sont conserves; duree inconnue ou egale a 80 minutes exclue.
+- 2026-07-20: Media prive retire des routes Android, defaults de feature flags, endpoints backend et admin; Media reste limite au stockage local, Recorder et transferts telephone/TV.
 - 2026-07-18: la synchronisation automatique du profil ne part plus de Who's Watching. Home evalue la fraicheur uniquement lorsqu'il est visible et conserve l'ordre repository Live TV, Films, Series.
 - 2026-06-29: migration vers documentation specialisee.
 - 2026-06-29: documentation des routes `player`, `movie_player`, `episode_player`, `series_detail`.

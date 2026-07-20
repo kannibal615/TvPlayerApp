@@ -6,12 +6,6 @@ require_once dirname(__DIR__) . '/api/commerce.php';
 require_once dirname(__DIR__) . '/api/mail_service.php';
 require_once dirname(__DIR__) . '/api/ads_service.php';
 require_once dirname(__DIR__) . '/api/anomaly_service.php';
-$privateMediaService = dirname(__DIR__) . '/api/media/private/private_media_service.php';
-if (is_file($privateMediaService)) {
-    require_once $privateMediaService;
-} else {
-    error_log('SmartVision private media service missing.');
-}
 $behaviorService = dirname(__DIR__) . '/api/behavior_service.php';
 if (is_file($behaviorService)) {
     require_once $behaviorService;
@@ -53,9 +47,6 @@ ads_ensure_schema($pdo);
 anomaly_ensure_schema($pdo);
 if (function_exists('behavior_ensure_schema')) {
     behavior_ensure_schema($pdo);
-}
-if (function_exists('private_media_ensure_schema')) {
-    private_media_ensure_schema($pdo);
 }
 $page = admin_current_page($_POST['redirect_page'] ?? $_GET['page'] ?? 'overview');
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
@@ -116,7 +107,6 @@ $adsAdmin = $page === 'ads' ? admin_load_ads_admin($pdo, $adsPeriod) : [];
 $anomaliesAdmin = in_array($page, ['anomalies', 'diagnostics'], true) ? admin_load_anomalies_admin($pdo) : [];
 $behaviorAdmin = $page === 'segments' ? admin_load_behavior_admin($pdo) : [];
 $appConfigAdmin = $page === 'features' ? admin_load_app_config_admin($pdo) : [];
-$privateMediaAdmin = $page === 'private_media' ? admin_load_private_media_admin($pdo) : [];
 $diagnosticsAdmin = $page === 'diagnostics' ? admin_load_diagnostics_admin($pdo) : [];
 $flash = consume_admin_flash();
 $generatedCode = $_SESSION['generated_activation_code'] ?? null;
@@ -152,7 +142,6 @@ render_admin_dashboard(
     $anomaliesAdmin,
     $behaviorAdmin,
     $appConfigAdmin,
-    $privateMediaAdmin,
     $diagnosticsAdmin,
     $flash,
     $generatedCode,
@@ -163,7 +152,7 @@ render_admin_dashboard(
 function admin_current_page(mixed $page): string
 {
     $page = is_string($page) ? $page : 'overview';
-    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'payments', 'emails', 'ads', 'segments', 'anomalies', 'features', 'private_media', 'devices', 'diagnostics', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
+    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'payments', 'emails', 'ads', 'segments', 'anomalies', 'features', 'devices', 'diagnostics', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
         ? $page
         : 'overview';
 }
@@ -214,9 +203,6 @@ function handle_admin_action(PDO $pdo, string $action): void
         case 'save_feature_access': admin_save_feature_access($pdo); break;
         case 'save_app_consent': admin_save_app_consent($pdo); break;
         case 'save_trending_config': admin_save_trending_config($pdo); break;
-        case 'save_private_media_config': admin_save_private_media_config($pdo); break;
-        case 'private_media_sync_removed': admin_private_media_sync_removed($pdo); break;
-        case 'private_media_clear_cache': admin_private_media_clear_cache($pdo); break;
         case 'send_notification': admin_send_notification($pdo); break;
         case 'set_notification_status': admin_set_notification_status($pdo); break;
         case 'delete_notification': admin_delete_notification($pdo); break;
@@ -1891,32 +1877,6 @@ function admin_load_app_config_admin(PDO $pdo): array
     ];
 }
 
-function admin_load_private_media_admin(PDO $pdo): array
-{
-    if (!function_exists('private_media_config')) {
-        return ['available' => false, 'config' => [], 'health' => null, 'message' => 'Service bibliotheque privee indisponible.'];
-    }
-
-    $config = private_media_config($pdo);
-    return [
-        'available' => true,
-        'config' => $config,
-        'health' => private_media_health_snapshot($pdo),
-    ];
-}
-
-function private_media_health_snapshot(PDO $pdo): ?array
-{
-    if (!function_exists('private_media_ensure_schema')) {
-        return null;
-    }
-    private_media_ensure_schema($pdo);
-    $statement = $pdo->prepare("SELECT provider, status, latency_ms, last_checked_at, last_error FROM private_media_provider_health WHERE provider = :provider LIMIT 1");
-    $statement->execute(['provider' => 'eporner']);
-    $row = $statement->fetch();
-    return is_array($row) ? $row : null;
-}
-
 function admin_save_app_config(PDO $pdo): void
 {
     admin_save_feature_access($pdo, false);
@@ -1993,99 +1953,6 @@ function admin_save_trending_config(PDO $pdo, bool $withFlash = true): void
     }
 }
 
-function admin_save_private_media_config(PDO $pdo): void
-{
-    if (!function_exists('private_media_save_config')) {
-        throw new RuntimeException('Service bibliotheque privee indisponible.');
-    }
-
-    $sectionTitles = $_POST['private_media']['section_title'] ?? [];
-    $sectionQueries = $_POST['private_media']['section_query'] ?? [];
-    $sectionOrders = $_POST['private_media']['section_order'] ?? [];
-    $sectionIds = $_POST['private_media']['section_id'] ?? [];
-    $sectionEnabled = $_POST['private_media']['section_enabled'] ?? [];
-    $sectionDelete = $_POST['private_media']['section_delete'] ?? [];
-    $sections = [];
-    $usedIds = [];
-    if (is_array($sectionTitles) && is_array($sectionQueries) && is_array($sectionOrders)) {
-        foreach ($sectionTitles as $index => $title) {
-            if (isset($sectionDelete[$index])) {
-                continue;
-            }
-            $title = smartvision_text_substr(trim((string) $title), 0, 80);
-            $query = smartvision_text_substr(trim((string) ($sectionQueries[$index] ?? '')), 0, 120);
-            if ($title === '' || $query === '') {
-                continue;
-            }
-            $id = is_array($sectionIds) ? private_media_slug((string) ($sectionIds[$index] ?? '')) : '';
-            if ($id === '') {
-                $id = private_media_slug($title);
-            }
-            if ($id === '') {
-                $id = 'section';
-            }
-            $baseId = $id;
-            $suffix = 2;
-            while (isset($usedIds[$id])) {
-                $id = $baseId . '-' . $suffix;
-                $suffix++;
-            }
-            $usedIds[$id] = true;
-            $sections[] = [
-                'id' => $id,
-                'title' => $title,
-                'query' => $query,
-                'order' => (string) ($sectionOrders[$index] ?? 'latest'),
-                'enabled' => isset($sectionEnabled[$index]),
-            ];
-        }
-    }
-
-    private_media_save_config($pdo, [
-        'enabled' => isset($_POST['private_media']['enabled']),
-        'provider_eporner_enabled' => isset($_POST['private_media']['provider_eporner_enabled']),
-        'show_in_app' => isset($_POST['private_media']['show_in_app']),
-        'native_playback_enabled' => isset($_POST['private_media']['native_playback_enabled']),
-        'force_native_playback_enabled' => isset($_POST['private_media']['force_native_playback_enabled']),
-        'native_test_stream_url' => $_POST['private_media']['native_test_stream_url'] ?? '',
-        'per_page' => $_POST['private_media']['per_page'] ?? 24,
-        'thumbsize' => (string) ($_POST['private_media']['thumbsize'] ?? 'big'),
-        'order' => (string) ($_POST['private_media']['order'] ?? 'latest'),
-        'sections' => $sections,
-    ]);
-
-    audit_admin_action($pdo, 'private_media_config_updated', 'settings', 'private_media');
-    set_admin_flash('success', 'Bibliotheque privee enregistree.');
-}
-
-function admin_private_media_sync_removed(PDO $pdo): void
-{
-    if (!function_exists('private_media_sync_removed')) {
-        throw new RuntimeException('Service bibliotheque privee indisponible.');
-    }
-    try {
-        $count = private_media_sync_removed($pdo);
-        audit_admin_action($pdo, 'private_media_removed_synced', 'provider', 'eporner');
-        set_admin_flash('success', $count . ' identifiant(s) retires synchronises. Synchronisation limitee par lot pour eviter les timeouts admin.');
-    } catch (Throwable $exception) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        error_log('SmartVision private media removed sync failed: ' . $exception->getMessage());
-        set_admin_flash('error', 'Synchronisation removed indisponible pour le moment. Reessayez plus tard.');
-    }
-}
-
-function admin_private_media_clear_cache(PDO $pdo): void
-{
-    if (!function_exists('private_media_clear_cache')) {
-        throw new RuntimeException('Service bibliotheque privee indisponible.');
-    }
-    private_media_clear_cache($pdo);
-    audit_admin_action($pdo, 'private_media_cache_cleared', 'provider', 'eporner');
-    set_admin_flash('success', 'Cache bibliotheque privee vide.');
-}
-
 function admin_save_app_settings(PDO $pdo, array $settings): void
 {
     $statement = $pdo->prepare(
@@ -2151,9 +2018,6 @@ function admin_default_feature_access(): array
         ['key' => 'media_file_management', 'label' => 'Gestion fichiers Media', 'premium' => true, 'trial' => true, 'free_ads' => false],
         ['key' => 'media_phone_transfer', 'label' => 'Transfert telephone TV', 'premium' => true, 'trial' => true, 'free_ads' => false],
         ['key' => 'multi_profile', 'label' => 'Multi-profils', 'premium' => true, 'trial' => true, 'free_ads' => false],
-        ['key' => 'private_media', 'label' => 'Bibliotheque privee', 'premium' => true, 'trial' => false, 'free_ads' => false],
-        ['key' => 'private_media_eporner', 'label' => 'Provider Eporner', 'premium' => true, 'trial' => false, 'free_ads' => false],
-        ['key' => 'private_media_native_playback', 'label' => 'Lecture native media prives', 'premium' => true, 'trial' => false, 'free_ads' => false],
     ];
 }
 
@@ -2293,7 +2157,6 @@ function render_admin_dashboard(
     array $anomaliesAdmin,
     array $behaviorAdmin,
     array $appConfigAdmin,
-    array $privateMediaAdmin,
     array $diagnosticsAdmin,
     ?array $flash,
     ?array $generatedCode,
@@ -2311,7 +2174,6 @@ function render_admin_dashboard(
         'ads' => ['Publicites', 'Gestion des publicites video du player SmartVision.'],
         'segments' => ['Segmentation', 'Analyse comportementale et segments utilisateurs pour ciblage publicitaire.'],
         'features' => ['Fonctionnalites', 'Droits par type de licence et consentement TV.'],
-        'private_media' => ['Bibliotheque privee', 'Provider, sections, cache et monitoring des medias prives.'],
         'devices' => ['Appareils', 'TV associees, essais, licences et configuration Xtream.'],
         'diagnostics' => ['Diagnostics', 'Synthese, AutoSync, anomalies app, serveur et journal.'],
         'notifications' => ['Notifications', 'Messages envoyes vers toutes les TV ou vers des cibles precises.'],
@@ -2356,7 +2218,6 @@ function render_admin_dashboard(
         <?php if ($page === 'segments'): admin_render_behavior_segments_page($behaviorAdmin); endif; ?>
         <?php if ($page === 'anomalies'): admin_render_anomalies_page($anomaliesAdmin); endif; ?>
         <?php if ($page === 'features'): admin_render_features_page($appConfigAdmin); endif; ?>
-        <?php if ($page === 'private_media'): admin_render_private_media_page($privateMediaAdmin); endif; ?>
         <?php if ($page === 'diagnostics'): admin_render_diagnostics_page($diagnosticsAdmin, $anomaliesAdmin, $serverStats, $auditLogs, $stats); endif; ?>
 
         <?php if ($page === 'orders'): ?>
@@ -3339,82 +3200,6 @@ function admin_render_features_page(array $appConfigAdmin): void
                 <button class="admin-button primary" type="submit">Enregistrer le consentement TV</button>
             </section>
         </form>
-    <?php
-}
-
-function admin_render_private_media_page(array $privateMediaAdmin): void
-{
-    $available = !empty($privateMediaAdmin['available']);
-    $config = $privateMediaAdmin['config'] ?? (function_exists('private_media_default_config') ? private_media_default_config() : []);
-    $health = $privateMediaAdmin['health'] ?? null;
-    $sections = is_array($config['sections'] ?? null) ? $config['sections'] : [];
-    if ($sections === [] && function_exists('private_media_default_config')) {
-        $sections = private_media_default_config()['sections'];
-    }
-    $orders = ['latest', 'longest', 'shortest', 'top-rated', 'most-popular', 'top-weekly', 'top-monthly'];
-    ?>
-        <?php if (!$available): ?>
-            <section class="admin-panel"><p class="admin-empty"><?= admin_escape((string) ($privateMediaAdmin['message'] ?? 'Bibliotheque privee indisponible.')) ?></p></section>
-        <?php return; endif; ?>
-
-        <form method="post">
-            <input type="hidden" name="redirect_page" value="private_media">
-            <input type="hidden" name="action" value="save_private_media_config">
-            <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
-            <section class="admin-panel">
-                <div class="admin-panel-heading"><div><h2>Activation</h2><p>L'application Android ne consomme que les endpoints SmartVision internes.</p></div></div>
-                <div class="admin-check-grid">
-                    <label><input type="checkbox" name="private_media[enabled]" value="1"<?= !empty($config['enabled']) ? ' checked' : '' ?>> Activer la bibliotheque privee</label>
-                    <label><input type="checkbox" name="private_media[provider_eporner_enabled]" value="1"<?= !empty($config['provider_eporner_enabled']) ? ' checked' : '' ?>> Activer Eporner via proxy</label>
-                    <label><input type="checkbox" name="private_media[show_in_app]" value="1"<?= !empty($config['show_in_app']) ? ' checked' : '' ?>> Afficher Media prives dans l'app</label>
-                    <label><input type="checkbox" name="private_media[native_playback_enabled]" value="1"<?= !empty($config['native_playback_enabled']) ? ' checked' : '' ?>> Autoriser lecture native si flux compatible</label>
-                    <label><input type="checkbox" name="private_media[force_native_playback_enabled]" value="1"<?= !empty($config['force_native_playback_enabled']) ? ' checked' : '' ?>> Forcer lecture native HLS/MP4</label>
-                </div>
-                <div class="admin-form-grid">
-                    <label><span>Elements par page</span><input name="private_media[per_page]" type="number" min="1" max="50" value="<?= (int) ($config['per_page'] ?? 24) ?>"></label>
-                    <label><span>Taille thumbnails</span><select name="private_media[thumbsize]"><?php foreach (['small', 'medium', 'big'] as $size): ?><option value="<?= admin_escape($size) ?>"<?= ($config['thumbsize'] ?? 'big') === $size ? ' selected' : '' ?>><?= admin_escape($size) ?></option><?php endforeach; ?></select></label>
-                    <label><span>Ordre par defaut</span><select name="private_media[order]"><?php foreach ($orders as $order): ?><option value="<?= admin_escape($order) ?>"<?= ($config['order'] ?? 'latest') === $order ? ' selected' : '' ?>><?= admin_escape($order) ?></option><?php endforeach; ?></select></label>
-                    <label><span>Flux HLS/MP4 de test</span><input name="private_media[native_test_stream_url]" maxlength="1000" placeholder="https://.../stream.m3u8 ou .mp4" value="<?= admin_escape((string) ($config['native_test_stream_url'] ?? '')) ?>"></label>
-                </div>
-            </section>
-
-            <section class="admin-panel">
-                <div class="admin-panel-heading"><div><h2>Sous-dossiers TV</h2><p>Chaque ligne cree un sous-dossier expandable sous Media prives. Le nom est affiche sur TV; la query/theme alimente la recherche backend.</p></div></div>
-                <div class="admin-table-wrap"><table><thead><tr><th>Active</th><th>Nom sous-dossier</th><th>Recherche / theme</th><th>Ordre</th><th>Supprimer</th></tr></thead><tbody>
-                    <?php foreach ($sections as $index => $section): ?><tr>
-                        <td><input type="hidden" name="private_media[section_id][<?= (int) $index ?>]" value="<?= admin_escape((string) ($section['id'] ?? '')) ?>"><input type="checkbox" name="private_media[section_enabled][<?= (int) $index ?>]" value="1"<?= !empty($section['enabled']) ? ' checked' : '' ?>></td>
-                        <td><input name="private_media[section_title][<?= (int) $index ?>]" maxlength="80" value="<?= admin_escape((string) ($section['title'] ?? '')) ?>"></td>
-                        <td><input name="private_media[section_query][<?= (int) $index ?>]" maxlength="120" value="<?= admin_escape((string) ($section['query'] ?? '')) ?>"></td>
-                        <td><select name="private_media[section_order][<?= (int) $index ?>]"><?php foreach ($orders as $order): ?><option value="<?= admin_escape($order) ?>"<?= ($section['order'] ?? 'latest') === $order ? ' selected' : '' ?>><?= admin_escape($order) ?></option><?php endforeach; ?></select></td>
-                        <td><label class="inline-check"><input type="checkbox" name="private_media[section_delete][<?= (int) $index ?>]" value="1"> Supprimer</label></td>
-                    </tr><?php endforeach; ?>
-                    <?php $newIndex = count($sections); ?><tr>
-                        <td><input type="hidden" name="private_media[section_id][<?= (int) $newIndex ?>]" value=""><input type="checkbox" name="private_media[section_enabled][<?= (int) $newIndex ?>]" value="1"></td>
-                        <td><input name="private_media[section_title][<?= (int) $newIndex ?>]" maxlength="80" placeholder="Nouveau sous-dossier"></td>
-                        <td><input name="private_media[section_query][<?= (int) $newIndex ?>]" maxlength="120" placeholder="theme ou recherche"></td>
-                        <td><select name="private_media[section_order][<?= (int) $newIndex ?>]"><?php foreach ($orders as $order): ?><option value="<?= admin_escape($order) ?>"><?= admin_escape($order) ?></option><?php endforeach; ?></select></td>
-                        <td><span class="muted">Nouvelle ligne</span></td>
-                    </tr>
-                </tbody></table></div>
-                <p class="muted">Premiers sous-dossiers fournis par defaut: Nouveautes, Populaires, Top semaine, Mieux notees, Long format, Amateur, Couples, POV. Aucun scraping: search/id/removed officiels uniquement. Lecture native HLS/MP4 seulement si SmartVision recoit un flux direct compatible; sinon l'app TV utilise le player embed officiel.</p>
-                <button class="admin-button primary" type="submit">Enregistrer la bibliotheque privee</button>
-            </section>
-        </form>
-
-        <section class="admin-panel">
-            <div class="admin-panel-heading"><div><h2>Cache et monitoring</h2><p>Etat provider et operations de maintenance.</p></div></div>
-            <div class="server-metric-list">
-                <div><span>Provider</span><strong>Eporner</strong></div>
-                <div><span>Statut</span><strong><?= admin_escape((string) ($health['status'] ?? 'non verifie')) ?></strong></div>
-                <div><span>Latence</span><strong><?= isset($health['latency_ms']) ? (int) $health['latency_ms'] . ' ms' : '-' ?></strong></div>
-                <div><span>Dernier check</span><strong><?= admin_escape((string) ($health['last_checked_at'] ?? '-')) ?></strong></div>
-            </div>
-            <?php if (!empty($health['last_error'])): ?><p class="admin-empty"><?= admin_escape((string) $health['last_error']) ?></p><?php endif; ?>
-            <div class="admin-actions">
-                <form method="post"><input type="hidden" name="redirect_page" value="private_media"><input type="hidden" name="action" value="private_media_sync_removed"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><button class="admin-button secondary" type="submit">Synchroniser removed</button></form>
-                <form method="post"><input type="hidden" name="redirect_page" value="private_media"><input type="hidden" name="action" value="private_media_clear_cache"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><button class="admin-button secondary" type="submit">Vider le cache</button></form>
-            </div>
-        </section>
     <?php
 }
 

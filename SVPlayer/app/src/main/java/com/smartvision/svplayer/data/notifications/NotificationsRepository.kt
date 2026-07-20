@@ -72,6 +72,25 @@ class NotificationsRepository(
         return response.unreadCount.coerceAtLeast(0)
     }
 
+    suspend fun markAllSeen(): Int = markSeen(emptyList())
+
+    suspend fun clearHistory(): Int {
+        val access = currentAccess()
+        val response = api.markNotificationsSeen(
+            MarkNotificationsSeenRequest(
+                action = "clear_history",
+                deviceId = access.deviceId,
+                publicDeviceCode = access.publicDeviceCode,
+                deviceToken = access.deviceToken,
+                appVersionCode = BuildConfig.VERSION_CODE,
+            )
+        )
+        if (!response.success) {
+            throw ActivationException(response.error ?: "Suppression historique notifications impossible.")
+        }
+        return response.clearedHistory.coerceAtLeast(0)
+    }
+
     suspend fun refreshDeviceStatus() {
         activationRepository.checkStatus()
     }

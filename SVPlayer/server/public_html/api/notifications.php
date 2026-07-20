@@ -41,6 +41,14 @@ try {
 
     if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $action = (string) ($input['action'] ?? 'mark_seen');
+        if ($action === 'clear_history') {
+            $clearedHistory = notification_clear_history($pdo, $deviceId);
+            json_response([
+                'success' => true,
+                'cleared_history' => $clearedHistory,
+                'unread_count' => count($currentRows),
+            ]);
+        }
         if ($action !== 'mark_seen') {
             json_response(['success' => false, 'error' => 'Action inconnue.'], 400);
         }
@@ -216,6 +224,20 @@ function notification_mark_seen(PDO $pdo, string $deviceId, array $notificationI
     foreach (array_values(array_unique(array_map('intval', $notificationIds))) as $id) {
         if ($id > 0) $statement->execute(['notification_id' => $id, 'device_id' => $deviceId]);
     }
+}
+
+function notification_clear_history(PDO $pdo, string $deviceId): int
+{
+    if ($deviceId === '') return 0;
+    $statement = $pdo->prepare(
+        "UPDATE app_notification_receipts
+         SET purged_at = NOW()
+         WHERE device_id = :device_id
+           AND seen_at IS NOT NULL
+           AND purged_at IS NULL"
+    );
+    $statement->execute(['device_id' => $deviceId]);
+    return max(0, $statement->rowCount());
 }
 
 function notification_requested_ids(mixed $value): array
