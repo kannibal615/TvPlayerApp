@@ -80,8 +80,9 @@ import com.smartvision.svplayer.ui.appconfig.AppConfigViewModel
 import com.smartvision.svplayer.ui.appconfig.ConsentDialog
 import com.smartvision.svplayer.ui.detail.MovieDetailRoute
 import com.smartvision.svplayer.ui.detail.SeriesDetailRoute
-import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.HomeHeaderFocusTarget
+import com.smartvision.svplayer.ui.home.HomeHeaderTab
+import com.smartvision.svplayer.ui.home.HomeHeaderTabKind
 import com.smartvision.svplayer.ui.home.HomeScreen
 import com.smartvision.svplayer.ui.home.HomeViewModel
 import com.smartvision.svplayer.ui.home.visibleForProfile
@@ -1673,12 +1674,12 @@ private enum class AppRoute(val route: String) {
 }
 
 private fun headerTabs(strings: SmartVisionStrings) = listOf(
-    HomeHeaderTab(strings.home, AppRoute.Home.route),
-    HomeHeaderTab(strings.liveTv, AppRoute.Live.route),
-    HomeHeaderTab(strings.movies, AppRoute.Movies.route),
-    HomeHeaderTab(strings.series, AppRoute.Series.route),
-    HomeHeaderTab(strings.media, AppRoute.Media.route),
-    HomeHeaderTab("YouTube", AppRoute.Youtube.route, useYoutubeLogo = true),
+    HomeHeaderTab(strings.home, AppRoute.Home.route, kind = HomeHeaderTabKind.Home),
+    HomeHeaderTab(strings.liveTv, AppRoute.Live.route, kind = HomeHeaderTabKind.LiveTv),
+    HomeHeaderTab(strings.movies, AppRoute.Movies.route, kind = HomeHeaderTabKind.Movies),
+    HomeHeaderTab(strings.series, AppRoute.Series.route, kind = HomeHeaderTabKind.Series),
+    HomeHeaderTab(strings.media, AppRoute.Media.route, kind = HomeHeaderTabKind.Media),
+    HomeHeaderTab("YouTube", AppRoute.Youtube.route, useYoutubeLogo = true, kind = HomeHeaderTabKind.Youtube),
 )
 
 private fun activationPortalBaseUrl(): String =

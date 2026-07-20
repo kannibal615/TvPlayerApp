@@ -58,6 +58,7 @@ import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
+import com.smartvision.svplayer.ui.home.HeaderActionSeparator
 import com.smartvision.svplayer.ui.home.HeaderControls
 import com.smartvision.svplayer.ui.home.HeaderTabButton
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
@@ -206,6 +207,7 @@ fun DetailHeader(
                 )
             }
         }
+        HeaderActionSeparator()
         HeaderControls(
             onNotifications = onNotifications,
             onLicenseKey = onLicenseKey,

@@ -1,6 +1,6 @@
 # Ecrans Home, Catalogues, Profile, Settings et YouTube
 
-Derniere mise a jour: 2026-07-18.
+Derniere mise a jour: 2026-07-20.
 
 ## Cartes Home et preview partagee - 2026-07-17
 
@@ -35,9 +35,9 @@ Cartographier les principaux ecrans utilisateur et les chemins de code pour orie
 
 ## 2. Fonctionnement actuel
 
-Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header principal expose Home, Live TV, Movies, Series et YouTube, les actions globales, puis la date/heure non focusable a droite. L'horloge et ses secondes sont configurables globalement dans Personnalisation et reagissent immediatement. Le bouton licence apparait selon le statut. Les ecrans de contenu affichent un QR Xtream si aucun compte n'est configure. Si un compte Xtream existe mais que la verification rapide echoue, Home reste accessible et les entrees Live TV / Movies / Series sont bloquees par popup et overlay. Pendant une verification Xtream en cours, la navigation catalogue peut rester temporairement protegee si aucun etat connecte valide n'est deja connu, mais Home et le header ne doivent afficher les warnings/overlays "Connexion indisponible" qu'apres un echec Xtream confirme.
+Les ecrans actifs sont routes depuis `ui/navigation/AppNavigation.kt`. Le header principal expose Home, Live TV, Movies, Series, Media et YouTube en onglets centraux icon-first `M04/H01`: icones custom glass bleues, libelle visible seulement au focus ou si la route est active, rail lumineux et separateur apres YouTube. Les actions globales restent dans le bloc droite inchange, puis la date/heure non focusable. L'horloge et ses secondes sont configurables globalement dans Personnalisation et reagissent immediatement. Le bouton licence apparait selon le statut. Les ecrans de contenu affichent un QR Xtream si aucun compte n'est configure. Si un compte Xtream existe mais que la verification rapide echoue, Home reste accessible et les entrees Live TV / Movies / Series sont bloquees par popup et overlay. Pendant une verification Xtream en cours, la navigation catalogue peut rester temporairement protegee si aucun etat connecte valide n'est deja connu, mais Home et le header ne doivent afficher les warnings/overlays "Connexion indisponible" qu'apres un echec Xtream confirme.
 
-Tous les ecrans principaux reutilisent le meme `ui/home/TvHeader.kt` et le meme shell exterieur: `25 dp` de marge horizontale et `14 dp` de marge verticale. Home garde son hero dans le flux sous ce shell et remet son scroll vertical a zero lors d'un retour cible vers le header.
+Tous les ecrans principaux reutilisent le meme `ui/home/TvHeader.kt` et le meme shell exterieur: `25 dp` de marge horizontale et `14 dp` de marge verticale. La hauteur mesuree du header reste `44 dp` pour ne pas deformer la section droite; le degagement Home sous header est reduit a `8 dp`. Home garde son hero dans le flux sous ce shell et remet son scroll vertical a zero lors d'un retour cible vers le header.
 Un spacer structurel non scrollable de `14 dp`, identique au padding haut du shell, separe le header du viewport Home afin d'equilibrer visuellement ses espaces haut/bas. Le `verticalScroll` utilise une politique `BringIntoView` neutre: les transitions D-pad verticales restent l'unique proprietaire du `ScrollState`, tandis que les `LazyRow` internes recuperent la politique Compose standard pour leur revelation horizontale. Le clipping tous axes explicite est retire afin de laisser les halos depasser lateralement; le conteneur scrollable conserve son clipping directionnel vertical.
 
 ## 3. Workflow utilisateur
@@ -220,6 +220,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-20: header principal refondu selon `M04/H01`: onglets centraux Home/Live/Films/Series/Media/YouTube en icones Canvas glass bleues, labels visibles seulement au focus/selection, rail lumineux, separateur apres YouTube et bloc droite conserve tel quel. La hauteur reste `44 dp`; le degagement Home sous header passe a `8 dp`.
 - 2026-07-18: Who's Watching active seulement le profil et termine sa transition; aucun statut, loader ou erreur catalogue n'est affiche sur une card profil et aucune synchronisation reseau ne part derriere le picker.
 - 2026-07-20: Who's Watching masque Home au demarrage tant qu'aucun profil n'est selectionne, affiche le picker sans dependance foreground, et allege le D-pad gauche/droite en retirant le scale de focus simple et les mesures de bounds hors selection.
 - 2026-07-18: pendant la synchronisation Home, seule la card de la phase Live TV, Films ou Series affiche une couronne cyan 4 dp et une barre basse avec phase, compteurs et pourcentage. Son badge Watch now/Explore est masque sans changer les dimensions ni le focus; les actions catalogue restent bloquees jusqu'a la fin globale.

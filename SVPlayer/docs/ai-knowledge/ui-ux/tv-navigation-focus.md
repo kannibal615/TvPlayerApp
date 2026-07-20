@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-07-18.
+Derniere mise a jour: 2026-07-20.
 
 ## Back plein ecran Live et controles - 2026-07-17
 
@@ -9,7 +9,7 @@ Derniere mise a jour: 2026-07-18.
 - Les indices de focus Live correspondent uniquement aux controles rendus `0..6`; l'index `7` ne doit pas etre retabli car il cree un arret D-pad invisible entre luminosite et chaine precedente.
 - L'overlay episode place `Detail serie` immediatement a droite de `Suivant`, puis `Sortie plein ecran`; le libelle devient visible au focus. L'action sauvegarde/libere le player avant de remplacer la route par la fiche serie.
 
-Le header principal boucle horizontalement entre son premier onglet et sa derniere action visible, dans les deux sens; en profil Kids, l'avatar est la derniere action. Home applique la meme boucle aux trois cards Categories ainsi qu'aux rangees Continue Watching et Tendances, avec scroll vers la carte opposee avant la demande de focus.
+Le header principal boucle horizontalement entre son premier onglet et sa derniere action visible, dans les deux sens; en profil Kids, l'avatar est la derniere action. Ses onglets centraux suivent le modele `M04/H01`: icones custom glass bleues sur rail lumineux, libelle visible uniquement au focus ou si l'onglet est la route active, separateur vertical apres YouTube, puis bloc droite global inchange. Home applique la meme boucle aux trois cards Categories ainsi qu'aux rangees Continue Watching et Tendances, avec scroll vers la carte opposee avant la demande de focus.
 
 Depuis Home, OK sur Live TV, Movies ou Series utilise la navigation NavHost standard. Aucun `SharedTransitionLayout`, bounds partage, zoom ou verrouillage D-pad/OK/Back n'est applique aux cards categories. Les protections Xtream et synchronisation restent gerees avant le callback de navigation.
 
@@ -59,7 +59,7 @@ Le focus global est derive des settings utilisateur:
 - Les actions doivent etre focusables et pas seulement clickables.
 - Home, Live TV, Movies, Series, Media, YouTube, Settings, Profile et Notifications partagent une logique de header.
 - En profil Kids, les headers Home/Live TV et catalogue Movies/Series/YouTube masquent les actions Licence/Premium, Notifications et Parametres; l'avatar de profil et la date/heure restent visibles.
-- Le header principal affiche aussi une date/heure non focusable a droite (`HH:mm:ss` puis `dd/MM/yyyy`), separee des boutons globaux par un trait vertical discret.
+- Le header principal affiche aussi une date/heure non focusable a droite (`HH:mm:ss` puis `dd/MM/yyyy`), separee des boutons globaux par un trait vertical discret; le bloc droite cle premium, notifications, avatar, parametres, horloge reste visuellement stable.
 - Les formulaires doivent permettre Haut/Bas entre champs.
 - Les popups doivent etre navigables au D-pad.
 - Controle parental utilise un focus a deux niveaux: Activation, puis Mots-cles, puis Resultats. `Change PIN` est le seul bouton du header droit. OK sur Activation entre dans la section sans changer l'etat; le toggle global applique ON/OFF, puis Bas entre dans la rangee horizontale des toggles profils. Haut revient au toggle global puis au bouton PIN; Gauche/Droite parcourt les profils. Les toggles profils restent visibles mais non focusables quand le global est OFF. Back revient d'abord a la carte, puis au bouton Controle parental du menu gauche.
@@ -93,8 +93,8 @@ Attention:
 - Les handlers D-pad doivent tenir compte des surfaces visibles.
 - Depuis le 2026-07-10, le retour du player restaure explicitement la ligne de contenu source: Live TV attend que la chaine soit composee avant de la focaliser et neutralise le focus initial Categories; Movies et Series transportent respectivement le `streamId` ou `seriesId`, scrollent la liste vers l'item puis demandent son focus. Le retour Settings -> Home cible l'icone Settings du header; Profile et Notifications utilisent le meme contrat avec leur controle d'origine.
 - Notifications initialise le focus sur `Mises a jour`. Haut depuis cette premiere entree cible explicitement l'icone Notifications du header et Bas revient a la categorie selectionnee. Droite entre dans la liste seulement si elle contient une notification; l'etat vide est informatif et non focusable. Gauche revient a la categorie selectionnee et Haut depuis la premiere carte atteint `Actualiser`. Apres ouverture, le focus vise la carte suivante, la precedente si necessaire, ou la categorie lorsque la liste devient vide.
-- Le hero Home est strictement informatif: texte et pagination uniquement, sans CTA ni cible focusable. Un clearance non scrollable de `14 dp`, egal au padding haut du shell, le separe du header; tout retour cible vers le header remet le scroll Home en haut. Son texte vient des `SmartVisionStrings` de la langue active, meme quand l'image est distante.
-- Home, Live TV, Films, Series, Media, YouTube, Notifications, Profile et Settings reutilisent `ui/home/TvHeader.kt` dans un shell commun de `25 dp` horizontaux et `14 dp` verticaux. Les `FocusRequester` propres a chaque ecran restent branches sur cette instance unique.
+- Le hero Home est strictement informatif: texte et pagination uniquement, sans CTA ni cible focusable. Un clearance non scrollable de `8 dp` le separe du header; tout retour cible vers le header remet le scroll Home en haut. Son texte vient des `SmartVisionStrings` de la langue active, meme quand l'image est distante.
+- Home, Live TV, Films, Series, Media, YouTube, Notifications, Profile et Settings reutilisent `ui/home/TvHeader.kt` dans un shell commun de `25 dp` horizontaux et `14 dp` verticaux. Les `FocusRequester` propres a chaque ecran restent branches sur cette instance unique; les ecrans detail reutilisent les memes onglets et le meme separateur avant le bloc droite.
 - Les trois cards Xtream Home gardent une taille stable au focus (`focusedScale = 1f`): leur cadre/glow commun exprime le focus sans recouvrir ni deplacer les autres elements.
 - La navigation horizontale Continue watching/Tendances laisse `LazyRow` faire la revelation minimale du prochain enfant. Ne pas reintroduire un `animateScrollToItem(index)` a chaque changement de focus: il entrait en concurrence avec le mouvement D-pad et l'animation de largeur premium.
 - `tvFocusTarget` ne doit creer l'animation infinie de balayage que lorsque `TvFocusEffect.GoldSweep` est actif. Les styles Frame/Neon ne doivent pas conserver une infinite transition par composant.
@@ -232,6 +232,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
+- 2026-07-20: refonte du header principal selon `M04/H01`: onglets centraux icon-first en Canvas glass bleu, label affiche seulement au focus/selection, rail lumineux, separateur apres YouTube et bloc droite conserve. La hauteur mesuree reste `44 dp`; seul le degagement Home sous header passe a `8 dp`.
 - 2026-07-18: les previews Home utilisent une identite de session scopee par rangee (`continue:*`, `trending-movies:*`, `trending-series:*`). Une meme video dans plusieurs rangees garde des surfaces distinctes; un blur/dispose ne peut arreter que la session dont la card est proprietaire.
 - 2026-07-18: les loaders de synchronisation des cards Home ne modifient ni leur taille ni leurs cibles D-pad; les cards en attente et terminees conservent leur comportement de focus normal.
 - 2026-07-20: Who's Watching couvre le demarrage avec un masque opaque au-dessus de Home tant qu'aucun profil n'est selectionne. Les mouvements gauche/droite retirent le scale de focus simple et les mesures de bounds continues; le wrap lazy protege reste `Add Profile` <-> premier profil.

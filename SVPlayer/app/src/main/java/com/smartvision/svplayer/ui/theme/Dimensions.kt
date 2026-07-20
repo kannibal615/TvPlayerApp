@@ -32,9 +32,9 @@ object SmartVisionDimensions {
     val HomeScreenPadding = AppScreenHorizontalPadding
     val HomeHeaderTopPadding = AppScreenVerticalPadding
     val HomeHeaderHeight = 44.dp
-    // Match the outer top inset so the shared Home header has the same
-    // breathing room above its controls and below them before the hero.
-    val HomeHeaderContentClearance = HomeHeaderTopPadding
+    // Keep the shared header controls at their stable TV target size while
+    // reducing the visual dead space below the slimmer icon runway.
+    val HomeHeaderContentClearance = 8.dp
     val HomeHeaderToHeroSpacing = AppHeaderContentSpacing
     val HomeHeroHeight = 132.dp
     val HomeCategoryHeight = 170.dp

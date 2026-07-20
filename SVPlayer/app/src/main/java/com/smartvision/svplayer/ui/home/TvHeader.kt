@@ -1,6 +1,7 @@
 package com.smartvision.svplayer.ui.home
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -11,7 +12,6 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,9 +42,16 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -66,9 +73,6 @@ import com.smartvision.svplayer.core.config.PlaylistProfile
 import com.smartvision.svplayer.core.config.ProfileType
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.domain.model.PlayerSettings
-import com.smartvision.svplayer.ui.components.TvButton
-import com.smartvision.svplayer.ui.components.TvButtonVariant
-import com.smartvision.svplayer.ui.components.YoutubeLogoIcon
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
@@ -87,7 +91,17 @@ data class HomeHeaderTab(
     val useYoutubeLogo: Boolean = false,
     val locked: Boolean = false,
     val warning: Boolean = false,
+    val kind: HomeHeaderTabKind? = null,
 )
+
+enum class HomeHeaderTabKind {
+    Home,
+    LiveTv,
+    Movies,
+    Series,
+    Media,
+    Youtube,
+}
 
 enum class HomeHeaderFocusTarget {
     CurrentTab,
@@ -148,33 +162,18 @@ fun TvHeader(
     ) {
         SmartVisionLogo()
         Spacer(Modifier.width(6.dp))
-        Row(
+        HeaderTabsRail(
+            tabs = tabs,
+            currentRoute = currentRoute,
+            onNavigate = onNavigate,
+            firstTabRequester = firstTabRequester,
+            currentTabFocusRequester = currentTabFocusRequester,
+            lastControlRequester = lastControlRequester,
+            contentDownFocusRequester = contentDownFocusRequester,
+            onContentDown = onContentDown,
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            tabs.forEachIndexed { index, tab ->
-                HeaderTabButton(
-                    tab = tab,
-                    currentRoute = currentRoute,
-                    onNavigate = onNavigate,
-                    height = 38.dp,
-                    horizontalPadding = 6.dp,
-                    focusRequester = when {
-                        index == 0 -> firstTabRequester
-                        tab.route == currentRoute -> currentTabFocusRequester
-                        else -> null
-                    },
-                    onLeft = if (index == 0) {
-                        { runCatching { lastControlRequester.requestFocus() } }
-                    } else {
-                        null
-                    },
-                    downFocusRequester = contentDownFocusRequester,
-                    onDown = onContentDown,
-                )
-            }
-        }
+        )
+        HeaderActionSeparator()
         HeaderControls(
             onNotifications = onNotifications,
             onLicenseKey = onLicenseKey,
@@ -196,6 +195,69 @@ fun TvHeader(
             onWrapToStart = { runCatching { firstTabRequester.requestFocus() } },
             onProfileAvatarBoundsChanged = onProfileAvatarBoundsChanged,
         )
+    }
+}
+
+@Composable
+private fun HeaderTabsRail(
+    tabs: List<HomeHeaderTab>,
+    currentRoute: String,
+    onNavigate: (String) -> Unit,
+    firstTabRequester: FocusRequester,
+    currentTabFocusRequester: FocusRequester?,
+    lastControlRequester: FocusRequester,
+    contentDownFocusRequester: FocusRequester?,
+    onContentDown: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .padding(start = 2.dp, end = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.matchParentSize()) {
+            val railY = size.height * 0.76f
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        SmartVisionColors.Primary.copy(alpha = 0.38f),
+                        Color(0xFF76D9FF).copy(alpha = 0.52f),
+                        SmartVisionColors.Primary.copy(alpha = 0.34f),
+                        Color.Transparent,
+                    ),
+                ),
+                topLeft = Offset(size.width * 0.06f, railY),
+                size = Size(size.width * 0.88f, 1.4.dp.toPx()),
+            )
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            tabs.forEachIndexed { index, tab ->
+                HeaderTabButton(
+                    tab = tab,
+                    currentRoute = currentRoute,
+                    onNavigate = onNavigate,
+                    height = 38.dp,
+                    horizontalPadding = 4.dp,
+                    focusRequester = when {
+                        index == 0 -> firstTabRequester
+                        tab.route == currentRoute -> currentTabFocusRequester
+                        else -> null
+                    },
+                    onLeft = if (index == 0) {
+                        { runCatching { lastControlRequester.requestFocus() } }
+                    } else {
+                        null
+                    },
+                    downFocusRequester = contentDownFocusRequester,
+                    onDown = onContentDown,
+                )
+            }
+        }
     }
 }
 
@@ -274,6 +336,17 @@ fun HeaderControls(
             HeaderDateTime(showSeconds = showSeconds)
         }
     }
+}
+
+@Composable
+fun HeaderActionSeparator() {
+    Box(
+        modifier = Modifier
+            .padding(start = 4.dp, end = 10.dp)
+            .height(34.dp)
+            .width(1.dp)
+            .background(SmartVisionColors.Border.copy(alpha = 0.78f)),
+    )
 }
 
 @Composable
@@ -539,41 +612,30 @@ fun HeaderTabButton(
     onDown: (() -> Unit)? = null,
     onLeft: (() -> Unit)? = null,
 ) {
+    val focusState = rememberTvFocusState()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val selected = tab.route == currentRoute
+    val emphasized = selected || focusState.isFocused
+    val width = if (height <= 34.dp) 56.dp else 66.dp
+    val iconSize = if (height <= 34.dp) 23.dp else 26.dp
+    val accent = when {
+        tab.warning -> SmartVisionColors.Warning
+        tab.kind == HomeHeaderTabKind.Youtube || tab.useYoutubeLogo -> Color(0xFFFF2E42)
+        else -> SmartVisionColors.Primary
+    }
+
     Box(
         modifier = modifier
             .height(height + if (tab.locked) 8.dp else 0.dp)
+            .width(width)
             .padding(top = if (tab.locked) 8.dp else 0.dp),
         contentAlignment = Alignment.BottomCenter,
     ) {
-        TvButton(
-            text = tab.label,
-            onClick = { onNavigate(tab.route) },
-            selected = tab.route == currentRoute,
-            variant = if (tab.route == currentRoute) TvButtonVariant.Primary else TvButtonVariant.Text,
-            leadingIcon = tab.icon,
-            leadingContent = if (tab.useYoutubeLogo) {
-                {
-                    YoutubeLogoIcon()
-                }
-            } else {
-                null
-            },
-            trailingContent = if (tab.warning) {
-                {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "Indisponible",
-                        tint = SmartVisionColors.Warning,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-            } else {
-                null
-            },
-            enabled = true,
-            contentPadding = PaddingValues(horizontal = horizontalPadding),
+        Box(
             modifier = Modifier
                 .height(height)
+                .width(width)
                 .then(
                     if (downFocusRequester != null) {
                         Modifier.focusProperties { down = downFocusRequester }
@@ -595,9 +657,63 @@ fun HeaderTabButton(
                         else -> false
                     }
                 }
-                .alpha(if (tab.locked || tab.warning) 0.42f else 1f),
-            focusRequester = focusRequester,
-        )
+                .tvFocusTarget(
+                    state = focusState,
+                    focusRequester = focusRequester,
+                    pressed = pressed,
+                    focusedScale = 1.02f,
+                    glowColor = accent,
+                    cornerRadius = 8.dp,
+                )
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = { onNavigate(tab.route) },
+                )
+                .focusable(interactionSource = interactionSource)
+                .padding(horizontal = horizontalPadding)
+                .alpha(if (tab.locked || tab.warning) 0.48f else 1f),
+            contentAlignment = Alignment.Center,
+        ) {
+            HeaderTabFocusLight(
+                emphasized = emphasized,
+                accent = accent,
+                modifier = Modifier.matchParentSize(),
+            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom,
+            ) {
+                HeaderTabGlyph(
+                    kind = tab.kind ?: tab.inferredKind(),
+                    emphasized = emphasized,
+                    warning = tab.warning,
+                    modifier = Modifier.size(iconSize),
+                )
+                Text(
+                    text = tab.label,
+                    color = SmartVisionColors.TextPrimary,
+                    fontSize = if (height <= 34.dp) 9.sp else 10.sp,
+                    lineHeight = if (height <= 34.dp) 9.sp else 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    modifier = Modifier.alpha(if (emphasized) 1f else 0f),
+                )
+            }
+        }
+        if (tab.warning) {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = "Indisponible",
+                tint = SmartVisionColors.Warning,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = (-7).dp, y = 2.dp)
+                    .zIndex(5f)
+                    .size(14.dp),
+            )
+        }
         if (tab.locked) {
             Image(
                 painter = painterResource(R.drawable.premium_crown),
@@ -611,6 +727,251 @@ fun HeaderTabButton(
             )
         }
     }
+}
+
+@Composable
+private fun HeaderTabFocusLight(
+    emphasized: Boolean,
+    accent: Color,
+    modifier: Modifier = Modifier,
+) {
+    if (!emphasized) return
+    Canvas(modifier) {
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    accent.copy(alpha = 0.32f),
+                    accent.copy(alpha = 0.08f),
+                    Color.Transparent,
+                ),
+            ),
+            topLeft = Offset(size.width * 0.32f, 0f),
+            size = Size(size.width * 0.36f, size.height * 0.72f),
+        )
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(accent.copy(alpha = 0.66f), Color.Transparent),
+                center = Offset(size.width / 2f, size.height * 0.82f),
+                radius = size.width * 0.48f,
+            ),
+            radius = size.width * 0.36f,
+            center = Offset(size.width / 2f, size.height * 0.82f),
+        )
+    }
+}
+
+@Composable
+private fun HeaderTabGlyph(
+    kind: HomeHeaderTabKind,
+    emphasized: Boolean,
+    warning: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val cyan = if (warning) SmartVisionColors.Warning else Color(0xFF50D6FF)
+    val glass = if (warning) Color(0xFFFFD28A) else Color(0xFFA7F2FF)
+    val deep = if (warning) Color(0xFF6B3E06) else Color(0xFF0B4F85)
+    val red = Color(0xFFFF2340)
+    val alphaBoost = if (emphasized) 1f else 0.76f
+
+    Canvas(modifier) {
+        val strokeThin = Stroke(width = 1.2.dp.toPx(), cap = StrokeCap.Round)
+        val stroke = Stroke(width = 1.8.dp.toPx(), cap = StrokeCap.Round)
+        val w = size.width
+        val h = size.height
+        val glassBrush = Brush.linearGradient(
+            colors = listOf(
+                glass.copy(alpha = 0.86f * alphaBoost),
+                Color.White.copy(alpha = 0.54f * alphaBoost),
+                deep.copy(alpha = 0.82f * alphaBoost),
+            ),
+            start = Offset(w * 0.18f, h * 0.04f),
+            end = Offset(w * 0.82f, h),
+        )
+
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(cyan.copy(alpha = 0.28f * alphaBoost), Color.Transparent),
+                center = Offset(w / 2f, h * 0.82f),
+                radius = w * 0.58f,
+            ),
+            radius = w * 0.5f,
+            center = Offset(w / 2f, h * 0.82f),
+        )
+
+        when (kind) {
+            HomeHeaderTabKind.Home -> {
+                val roof = Path().apply {
+                    moveTo(w * 0.16f, h * 0.48f)
+                    lineTo(w * 0.50f, h * 0.16f)
+                    lineTo(w * 0.84f, h * 0.48f)
+                    lineTo(w * 0.76f, h * 0.48f)
+                    lineTo(w * 0.76f, h * 0.83f)
+                    lineTo(w * 0.24f, h * 0.83f)
+                    lineTo(w * 0.24f, h * 0.48f)
+                    close()
+                }
+                drawPath(roof, brush = glassBrush)
+                drawPath(roof, color = cyan.copy(alpha = 0.78f * alphaBoost), style = strokeThin)
+                drawRoundRect(
+                    color = Color(0xFF061C3A).copy(alpha = 0.62f),
+                    topLeft = Offset(w * 0.41f, h * 0.56f),
+                    size = Size(w * 0.18f, h * 0.27f),
+                    cornerRadius = CornerRadius(4.dp.toPx()),
+                )
+                drawLine(cyan, Offset(w * 0.5f, h * 0.58f), Offset(w * 0.5f, h * 0.82f), 1.dp.toPx(), StrokeCap.Round)
+            }
+            HomeHeaderTabKind.LiveTv -> {
+                drawRoundRect(
+                    brush = glassBrush,
+                    topLeft = Offset(w * 0.16f, h * 0.28f),
+                    size = Size(w * 0.58f, h * 0.44f),
+                    cornerRadius = CornerRadius(5.dp.toPx()),
+                )
+                drawRoundRect(
+                    color = Color(0xFF041D3B).copy(alpha = 0.66f),
+                    topLeft = Offset(w * 0.22f, h * 0.35f),
+                    size = Size(w * 0.46f, h * 0.30f),
+                    cornerRadius = CornerRadius(3.dp.toPx()),
+                )
+                val wave = Path().apply {
+                    moveTo(w * 0.25f, h * 0.50f)
+                    lineTo(w * 0.34f, h * 0.50f)
+                    lineTo(w * 0.39f, h * 0.42f)
+                    lineTo(w * 0.46f, h * 0.60f)
+                    lineTo(w * 0.53f, h * 0.43f)
+                    lineTo(w * 0.61f, h * 0.50f)
+                }
+                drawPath(wave, color = cyan.copy(alpha = alphaBoost), style = stroke)
+                drawLine(cyan, Offset(w * 0.36f, h * 0.22f), Offset(w * 0.28f, h * 0.11f), 1.dp.toPx(), StrokeCap.Round)
+                drawLine(cyan, Offset(w * 0.54f, h * 0.22f), Offset(w * 0.64f, h * 0.11f), 1.dp.toPx(), StrokeCap.Round)
+                drawLine(cyan.copy(alpha = 0.78f), Offset(w * 0.82f, h * 0.37f), Offset(w * 0.92f, h * 0.30f), 1.5.dp.toPx(), StrokeCap.Round)
+                drawLine(cyan.copy(alpha = 0.54f), Offset(w * 0.82f, h * 0.50f), Offset(w * 0.96f, h * 0.50f), 1.5.dp.toPx(), StrokeCap.Round)
+                drawLine(cyan.copy(alpha = 0.78f), Offset(w * 0.82f, h * 0.63f), Offset(w * 0.92f, h * 0.70f), 1.5.dp.toPx(), StrokeCap.Round)
+            }
+            HomeHeaderTabKind.Movies -> {
+                drawRoundRect(
+                    brush = glassBrush,
+                    topLeft = Offset(w * 0.18f, h * 0.34f),
+                    size = Size(w * 0.64f, h * 0.43f),
+                    cornerRadius = CornerRadius(5.dp.toPx()),
+                )
+                drawRoundRect(
+                    color = Color(0xFF071B32).copy(alpha = 0.7f),
+                    topLeft = Offset(w * 0.22f, h * 0.44f),
+                    size = Size(w * 0.56f, h * 0.25f),
+                    cornerRadius = CornerRadius(3.dp.toPx()),
+                )
+                drawRect(
+                    color = Color.White.copy(alpha = 0.72f * alphaBoost),
+                    topLeft = Offset(w * 0.22f, h * 0.30f),
+                    size = Size(w * 0.12f, h * 0.08f),
+                )
+                drawRect(
+                    color = Color.White.copy(alpha = 0.52f * alphaBoost),
+                    topLeft = Offset(w * 0.43f, h * 0.30f),
+                    size = Size(w * 0.12f, h * 0.08f),
+                )
+                drawRect(
+                    color = Color.White.copy(alpha = 0.72f * alphaBoost),
+                    topLeft = Offset(w * 0.64f, h * 0.30f),
+                    size = Size(w * 0.12f, h * 0.08f),
+                )
+                drawCircle(color = cyan.copy(alpha = 0.78f * alphaBoost), radius = w * 0.13f, center = Offset(w * 0.68f, h * 0.57f), style = strokeThin)
+                drawCircle(color = Color.White.copy(alpha = 0.72f * alphaBoost), radius = w * 0.025f, center = Offset(w * 0.68f, h * 0.57f))
+            }
+            HomeHeaderTabKind.Series -> {
+                drawRoundRect(
+                    brush = glassBrush,
+                    topLeft = Offset(w * 0.30f, h * 0.20f),
+                    size = Size(w * 0.50f, h * 0.38f),
+                    cornerRadius = CornerRadius(5.dp.toPx()),
+                )
+                drawRoundRect(
+                    color = deep.copy(alpha = 0.76f),
+                    topLeft = Offset(w * 0.20f, h * 0.34f),
+                    size = Size(w * 0.50f, h * 0.38f),
+                    cornerRadius = CornerRadius(5.dp.toPx()),
+                    style = strokeThin,
+                )
+                val star = Path().apply {
+                    moveTo(w * 0.50f, h * 0.34f)
+                    lineTo(w * 0.55f, h * 0.46f)
+                    lineTo(w * 0.68f, h * 0.46f)
+                    lineTo(w * 0.57f, h * 0.54f)
+                    lineTo(w * 0.61f, h * 0.66f)
+                    lineTo(w * 0.50f, h * 0.59f)
+                    lineTo(w * 0.39f, h * 0.66f)
+                    lineTo(w * 0.43f, h * 0.54f)
+                    lineTo(w * 0.32f, h * 0.46f)
+                    lineTo(w * 0.45f, h * 0.46f)
+                    close()
+                }
+                drawPath(star, color = Color.White.copy(alpha = 0.82f * alphaBoost))
+                drawLine(cyan, Offset(w * 0.28f, h * 0.78f), Offset(w * 0.72f, h * 0.78f), 1.3.dp.toPx(), StrokeCap.Round)
+            }
+            HomeHeaderTabKind.Media -> {
+                val folder = Path().apply {
+                    moveTo(w * 0.15f, h * 0.34f)
+                    lineTo(w * 0.38f, h * 0.34f)
+                    lineTo(w * 0.45f, h * 0.25f)
+                    lineTo(w * 0.80f, h * 0.25f)
+                    quadraticTo(w * 0.86f, h * 0.25f, w * 0.86f, h * 0.32f)
+                    lineTo(w * 0.86f, h * 0.74f)
+                    quadraticTo(w * 0.86f, h * 0.82f, w * 0.78f, h * 0.82f)
+                    lineTo(w * 0.18f, h * 0.82f)
+                    quadraticTo(w * 0.12f, h * 0.82f, w * 0.12f, h * 0.74f)
+                    lineTo(w * 0.12f, h * 0.42f)
+                    quadraticTo(w * 0.12f, h * 0.34f, w * 0.15f, h * 0.34f)
+                    close()
+                }
+                drawPath(folder, brush = glassBrush)
+                drawPath(folder, color = cyan.copy(alpha = 0.76f * alphaBoost), style = strokeThin)
+                val play = Path().apply {
+                    moveTo(w * 0.43f, h * 0.47f)
+                    lineTo(w * 0.43f, h * 0.68f)
+                    lineTo(w * 0.63f, h * 0.575f)
+                    close()
+                }
+                drawPath(play, color = Color.White.copy(alpha = 0.88f * alphaBoost))
+            }
+            HomeHeaderTabKind.Youtube -> {
+                drawRoundRect(
+                    brush = Brush.linearGradient(
+                        listOf(
+                            red.copy(alpha = 0.96f * alphaBoost),
+                            Color(0xFFFF6A78).copy(alpha = 0.8f * alphaBoost),
+                            Color(0xFF9D0016).copy(alpha = 0.94f * alphaBoost),
+                        ),
+                    ),
+                    topLeft = Offset(w * 0.15f, h * 0.34f),
+                    size = Size(w * 0.70f, h * 0.40f),
+                    cornerRadius = CornerRadius(7.dp.toPx()),
+                )
+                drawRoundRect(
+                    color = Color.White.copy(alpha = 0.35f * alphaBoost),
+                    topLeft = Offset(w * 0.22f, h * 0.39f),
+                    size = Size(w * 0.56f, h * 0.06f),
+                    cornerRadius = CornerRadius(3.dp.toPx()),
+                )
+                val play = Path().apply {
+                    moveTo(w * 0.44f, h * 0.44f)
+                    lineTo(w * 0.44f, h * 0.64f)
+                    lineTo(w * 0.64f, h * 0.54f)
+                    close()
+                }
+                drawPath(play, color = Color.White.copy(alpha = 0.94f * alphaBoost))
+            }
+        }
+    }
+}
+
+private fun HomeHeaderTab.inferredKind(): HomeHeaderTabKind = when {
+    useYoutubeLogo || label.equals("YouTube", ignoreCase = true) -> HomeHeaderTabKind.Youtube
+    route.contains("live", ignoreCase = true) -> HomeHeaderTabKind.LiveTv
+    route.contains("movie", ignoreCase = true) || route.contains("film", ignoreCase = true) -> HomeHeaderTabKind.Movies
+    route.contains("series", ignoreCase = true) -> HomeHeaderTabKind.Series
+    route.contains("media", ignoreCase = true) -> HomeHeaderTabKind.Media
+    else -> HomeHeaderTabKind.Home
 }
 
 private data class HeaderDateTimeText(
