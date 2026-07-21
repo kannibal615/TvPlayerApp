@@ -475,8 +475,8 @@ fun HomeScreen(
                 event = "home_header_refresh_started",
             )
             viewModel.refreshSlides(forceRefresh = true)
-            viewModel.refreshTrending(forceRefresh = false)
-            viewModel.refreshCatalogCounts()
+            viewModel.refreshTrending(forceRefresh = false, preserveReadyState = true)
+            viewModel.refreshCatalogCounts(preserveReadyState = true)
             continueRowState.scrollToItem(0)
             movieTrendRowState.scrollToItem(0)
             seriesTrendRowState.scrollToItem(0)
@@ -494,7 +494,6 @@ fun HomeScreen(
 
     LaunchedEffect(Unit) {
         viewModel.refreshSlides()
-        viewModel.refreshTrending(forceRefresh = false)
     }
 
     LaunchedEffect(visibleToUser) {

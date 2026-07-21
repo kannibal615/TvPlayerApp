@@ -10,6 +10,12 @@ import org.junit.Test
 
 class HomeLoadPolicyTest {
     @Test
+    fun warmHeaderRefreshKeepsCurrentCatalogRevisionReady() {
+        assertEquals(12L, refreshedHomeRevision(currentRevision = 12L, preserveReadyState = true))
+        assertEquals(-1L, refreshedHomeRevision(currentRevision = 12L, preserveReadyState = false))
+    }
+
+    @Test
     fun allowsProfileTransitionWhileContinueWatchingFinishesAsynchronously() {
         val state = HomeUiState(
             profileId = "kids",

@@ -41,6 +41,13 @@ interface TmdbApiService {
         @Query("include_image_language") includeImageLanguage: String? = null,
     ): TmdbSeriesDetailsDto
 
+    @GET("tv/{series_id}/season/{season_number}")
+    suspend fun getSeriesSeasonDetails(
+        @Path("series_id") seriesId: Int,
+        @Path("season_number") seasonNumber: Int,
+        @Query("language") language: String,
+    ): TmdbSeriesSeasonDetailsDto
+
     companion object {
         const val MovieAppendToResponse = "credits,videos,images,release_dates,watch/providers,recommendations"
         const val SeriesAppendToResponse = "credits,videos,images,content_ratings,watch/providers,recommendations"
@@ -142,6 +149,12 @@ data class TmdbSeriesDetailsDto(
     @SerializedName("content_ratings") val contentRatings: TmdbContentRatingsDto?,
     @SerializedName("watch/providers") val watchProviders: TmdbWatchProvidersDto?,
     @SerializedName("recommendations") val recommendations: TmdbSearchResponse<TmdbSeriesSearchResultDto>?,
+)
+
+data class TmdbSeriesSeasonDetailsDto(
+    @SerializedName("id") val id: Int?,
+    @SerializedName("season_number") val seasonNumber: Int?,
+    @SerializedName("poster_path") val posterPath: String?,
 )
 
 data class TmdbGenreDto(

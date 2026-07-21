@@ -3,6 +3,8 @@ package com.smartvision.svplayer.ui.navigation
 import android.app.Activity
 import android.util.Log
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -336,9 +338,18 @@ fun AppNavigation(
             }
         }
     }
+    fun navigateHomeWithHeaderFocus(target: HomeHeaderFocusTarget = HomeHeaderFocusTarget.CurrentTab) {
+        homeHeaderFocusTarget = target
+        homeHeaderFocusRequest += 1
+        navController.navigate(AppRoute.Home.route) {
+            popUpTo(AppRoute.Home.route) { inclusive = false }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
     val navigateFromHeader: (String) -> Unit = { route ->
         if (!route.isAllowedFor(profilePermissions)) {
-            navController.navigateSingleTop(AppRoute.Home.route)
+            navigateHomeWithHeaderFocus()
         } else if (route.isXtreamCatalogRoute() && xtreamCatalogBlocked) {
             showXtreamConnectionDialog = true
         } else if (route == AppRoute.Youtube.route && !youtubeAllowed) {
@@ -347,6 +358,8 @@ fun AppNavigation(
             if (mediaCenterGate.shouldShowUpgradePrompt) {
                 showLicensePurchaseQr = true
             }
+        } else if (route == AppRoute.Home.route) {
+            navigateHomeWithHeaderFocus()
         } else {
             navController.navigateSingleTop(route)
         }
@@ -362,15 +375,6 @@ fun AppNavigation(
             if (currentRoute != AppRoute.Settings.route) {
                 navController.navigateSingleTop(AppRoute.Settings.route)
             }
-        }
-    }
-    fun navigateHomeWithHeaderFocus(target: HomeHeaderFocusTarget = HomeHeaderFocusTarget.CurrentTab) {
-        homeHeaderFocusTarget = target
-        homeHeaderFocusRequest += 1
-        navController.navigate(AppRoute.Home.route) {
-            popUpTo(AppRoute.Home.route) { inclusive = false }
-            launchSingleTop = true
-            restoreState = true
         }
     }
     val openProfilePickerFromHome: () -> Unit = {
@@ -766,6 +770,10 @@ fun AppNavigation(
     NavHost(
         navController = navController,
         startDestination = AppRoute.Home.route,
+        enterTransition = { EnterTransition.None },
+        exitTransition = { ExitTransition.None },
+        popEnterTransition = { EnterTransition.None },
+        popExitTransition = { ExitTransition.None },
         modifier = modifier
             .fillMaxSize()
             .background(SmartVisionColors.Background),

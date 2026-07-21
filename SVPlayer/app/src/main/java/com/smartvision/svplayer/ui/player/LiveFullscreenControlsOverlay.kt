@@ -103,10 +103,10 @@ internal fun LiveFullscreenControlsOverlay(
         val logoWidth = maxWidth * 0.108f
         val logoHeight = maxHeight * 0.118f
         val hitSize = maxHeight * 0.070f
-        val iconSize = maxHeight * 0.038f
+        val iconSize = maxHeight * 0.0532f
         val controlsY = maxHeight * 0.805f
         val epgOffsetY = maxHeight * 0.066f
-        val playIconSize = maxHeight * 0.047f
+        val playIconSize = maxHeight * 0.0752f
         val titleStyle = TextStyle(
             fontSize = with(density) { (maxHeight * 0.052f).toSp() },
             lineHeight = with(density) { (maxHeight * 0.060f).toSp() },
@@ -169,8 +169,9 @@ internal fun LiveFullscreenControlsOverlay(
         val previousRequester = remember { FocusRequester() }
         val nextRequester = remember { FocusRequester() }
         val exitRequester = remember { FocusRequester() }
-        VodFocusIconButton(
-            icon = Icons.Default.SkipPrevious,
+        if (!brightnessMode) {
+            VodFocusIconButton(
+                icon = Icons.Default.SkipPrevious,
             contentDescription = "Previous channel",
             focusRequester = previousRequester,
             leftFocusRequester = exitRequester,
@@ -183,8 +184,8 @@ internal fun LiveFullscreenControlsOverlay(
             modifier = Modifier.offset(x = maxWidth * 0.744f - hitSize / 2f, y = controlsY),
             forceFocused = focusedControlIndex == 1,
             onFocused = { onFocusedControlChange(1) },
-        )
-        VodFocusIconButton(
+            )
+            VodFocusIconButton(
             icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
             contentDescription = if (isPlaying) "Pause" else "Play",
             focusRequester = playFocusRequester,
@@ -195,12 +196,12 @@ internal fun LiveFullscreenControlsOverlay(
             hitSize = hitSize,
             iconSize = playIconSize,
             prominent = true,
-            solidFocusedCircle = true,
+            solidFocusedCircle = false,
             modifier = Modifier.offset(x = maxWidth * 0.793f - hitSize / 2f, y = controlsY),
             forceFocused = focusedControlIndex == 3,
             onFocused = { onFocusedControlChange(3) },
-        )
-        VodFocusIconButton(
+            )
+            VodFocusIconButton(
             icon = Icons.Default.SkipNext,
             contentDescription = "Next channel",
             focusRequester = nextRequester,
@@ -214,7 +215,8 @@ internal fun LiveFullscreenControlsOverlay(
             modifier = Modifier.offset(x = maxWidth * 0.842f - hitSize / 2f, y = controlsY),
             forceFocused = focusedControlIndex == 5,
             onFocused = { onFocusedControlChange(5) },
-        )
+            )
+        }
         if (brightnessMode) {
             VodInlineBrightnessSlider(
                 value = brightnessValue,
@@ -242,8 +244,9 @@ internal fun LiveFullscreenControlsOverlay(
                 onFocused = { onFocusedControlChange(0) },
             )
         }
-        VodFocusIconButton(
-            icon = Icons.Outlined.FullscreenExit,
+        if (!brightnessMode) {
+            VodFocusIconButton(
+                icon = Icons.Outlined.FullscreenExit,
             contentDescription = "Exit fullscreen",
             focusRequester = exitRequester,
             leftFocusRequester = brightnessFocusRequester,
@@ -255,7 +258,8 @@ internal fun LiveFullscreenControlsOverlay(
             modifier = Modifier.offset(x = maxWidth * 0.944f - hitSize / 2f, y = controlsY),
             forceFocused = focusedControlIndex == 6,
             onFocused = { onFocusedControlChange(6) },
-        )
+            )
+        }
 
         errorText?.let { message ->
             Text(

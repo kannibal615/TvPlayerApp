@@ -7,30 +7,28 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.smartvision.svplayer.R
@@ -45,7 +43,7 @@ fun StartupExperience(
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         Image(
-            painter = painterResource(R.drawable.startup_neon_background),
+            painter = painterResource(R.drawable.startup_cinema_background),
             contentDescription = null,
             contentScale = ContentScale.FillBounds,
             modifier = Modifier.fillMaxSize(),
@@ -83,9 +81,8 @@ private fun StartupLoadingOverlay(
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier) {
-        val progressWidth = maxWidth * 0.30f
-        val progressHeight = (maxHeight * 0.010f).coerceAtLeast(MinimumProgressHeight)
-        val progressTopOffset = maxHeight * 0.65f
+        val progressSize = maxHeight * 0.105f
+        val progressTopOffset = maxHeight * 0.61f
 
         Column(
             modifier = Modifier
@@ -93,11 +90,11 @@ private fun StartupLoadingOverlay(
                 .padding(top = progressTopOffset),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            StartupProgressBar(
+            StartupProgressRing(
                 progress = progress.visibleProgress,
                 modifier = Modifier
-                    .width(progressWidth)
-                    .height(progressHeight),
+                    .width(progressSize)
+                    .height(progressSize),
             )
             Spacer(Modifier.height(18.dp))
             Text(
@@ -112,7 +109,7 @@ private fun StartupLoadingOverlay(
 }
 
 @Composable
-private fun StartupProgressBar(
+private fun StartupProgressRing(
     progress: Float,
     modifier: Modifier = Modifier,
 ) {
@@ -121,23 +118,36 @@ private fun StartupProgressBar(
         animationSpec = tween(180, easing = FastOutSlowInEasing),
         label = "startupProgress",
     )
-    val shape = RoundedCornerShape(percent = 50)
-
-    Box(
-        modifier = modifier
-            .clip(shape)
-            .background(Color(0xA00A1730)),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .fillMaxWidth(animatedProgress)
-                .clip(shape)
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(Color(0xFF126DFF), Color(0xFF20E7F5)),
-                    ),
+    Canvas(modifier = modifier) {
+        val stroke = size.minDimension * 0.075f
+        drawArc(
+            color = Color(0xFF17335F).copy(alpha = 0.70f),
+            startAngle = -90f,
+            sweepAngle = 360f,
+            useCenter = false,
+            style = Stroke(width = stroke, cap = StrokeCap.Round),
+        )
+        val sweep = (animatedProgress.coerceIn(0.02f, 1f) * 360f)
+        drawArc(
+            color = Color(0xFF159DFF).copy(alpha = 0.22f),
+            startAngle = -90f,
+            sweepAngle = sweep,
+            useCenter = false,
+            style = Stroke(width = stroke * 2.6f, cap = StrokeCap.Round),
+        )
+        drawArc(
+            brush = Brush.sweepGradient(
+                colors = listOf(
+                    Color(0xFF125BFF),
+                    Color(0xFF16D9FF),
+                    Color.White,
+                    Color(0xFF125BFF),
                 ),
+            ),
+            startAngle = -90f,
+            sweepAngle = sweep,
+            useCenter = false,
+            style = Stroke(width = stroke, cap = StrokeCap.Round),
         )
     }
 }
@@ -148,5 +158,3 @@ private fun StartupStage.label(strings: SmartVisionStrings): String = when (this
     StartupStage.PreparingHome -> strings.startupPreparingHome
     StartupStage.Starting -> strings.startupStarting
 }
-
-private val MinimumProgressHeight: Dp = 5.dp

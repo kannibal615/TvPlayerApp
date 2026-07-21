@@ -109,12 +109,17 @@ data class SeriesDetailUiState(
     val errorMessage: String? = null,
     val tmdbMetadata: TmdbSeriesMetadata? = null,
     val tmdbLoading: Boolean = false,
+    val seasonPosterUrl: String? = null,
+    val seasonPosterLoading: Boolean = false,
 ) {
     val displayTitle: String
         get() = tmdbMetadata?.name.nonBlank() ?: title
 
     val displayCoverUrl: String?
         get() = tmdbMetadata?.posterUrl.nonBlank() ?: coverUrl
+
+    val displaySeasonPosterUrl: String?
+        get() = seasonPosterUrl.nonBlank() ?: displayCoverUrl
 
     val displayBackdropUrl: String?
         get() = tmdbMetadata?.backdropUrl.nonBlank() ?: backdropUrl
@@ -186,6 +191,8 @@ class SeriesDetailViewModel(
     val uiState: StateFlow<SeriesDetailUiState> = _uiState.asStateFlow()
     private var lastTmdbRequestKey: String? = null
     private var tmdbMetadataJob: Job? = null
+    private var seasonPosterRequestKey: String? = null
+    private var seasonPosterJob: Job? = null
 
     init {
         observeFavorite()
@@ -219,6 +226,8 @@ class SeriesDetailViewModel(
                 ).copy(
                     tmdbMetadata = current.tmdbMetadata,
                     tmdbLoading = current.tmdbLoading,
+                    seasonPosterUrl = current.seasonPosterUrl,
+                    seasonPosterLoading = current.seasonPosterLoading,
                 )
             }.onFailure { error ->
                 _uiState.update {
@@ -232,7 +241,44 @@ class SeriesDetailViewModel(
     }
 
     fun selectSeason(season: Int) {
-        _uiState.update { it.copy(selectedSeason = season) }
+        seasonPosterJob?.cancel()
+        seasonPosterRequestKey = null
+        _uiState.update {
+            it.copy(
+                selectedSeason = season,
+                seasonPosterUrl = null,
+                seasonPosterLoading = false,
+            )
+        }
+    }
+
+    fun loadSeasonPoster(language: String, enabled: Boolean) {
+        if (!enabled) {
+            seasonPosterJob?.cancel()
+            seasonPosterRequestKey = null
+            _uiState.update { it.copy(seasonPosterUrl = null, seasonPosterLoading = false) }
+            return
+        }
+        val current = _uiState.value
+        if (current.loading || current.tmdbMetadata == null) return
+        val selectedSeason = current.selectedSeason
+        val requestKey = "$seriesId|$selectedSeason|$language"
+        if (requestKey == seasonPosterRequestKey) return
+        seasonPosterRequestKey = requestKey
+        seasonPosterJob?.cancel()
+        seasonPosterJob = viewModelScope.launch {
+            _uiState.update { it.copy(seasonPosterLoading = true) }
+            val posterUrl = runCatching {
+                tmdbRepository.getSeriesSeasonPoster(seriesId, selectedSeason, language)
+            }.getOrNull()
+            _uiState.update { state ->
+                if (state.selectedSeason == selectedSeason) {
+                    state.copy(seasonPosterUrl = posterUrl, seasonPosterLoading = false)
+                } else {
+                    state
+                }
+            }
+        }
     }
 
     fun loadTmdbMetadata(language: String, includeAdult: Boolean, enabled: Boolean) {
@@ -333,6 +379,20 @@ fun SeriesDetailRoute(
             viewModel.loadTmdbMetadata(
                 language = settings.language,
                 includeAdult = !settings.parentalControlEnabled,
+                enabled = settings.tmdbApiEnabled,
+            )
+        }
+    }
+    LaunchedEffect(
+        state.loading,
+        state.tmdbMetadata,
+        state.selectedSeason,
+        settings.language,
+        settings.tmdbApiEnabled,
+    ) {
+        if (!state.loading) {
+            viewModel.loadSeasonPoster(
+                language = settings.language,
                 enabled = settings.tmdbApiEnabled,
             )
         }
@@ -443,7 +503,7 @@ private fun SeriesDetailScreen(
                 .fillMaxSize()
                 .padding(horizontal = DetailDimens.ScreenPadding)
                 .padding(top = 82.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -460,28 +520,45 @@ private fun SeriesDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
             }
+            Spacer(Modifier.weight(1f))
             Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(28.dp),
-                    verticalAlignment = Alignment.Top,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(28.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                SeriesEpisodeList(
+                    episodes = state.visibleEpisodes,
+                    loading = state.loading,
+                    errorMessage = state.errorMessage,
+                    firstEpisodeFocusRequester = firstEpisodeFocusRequester,
+                    onRetry = onRetry,
+                    onEpisode = { episode -> onWatchEpisode(episode.episodeId) },
+                    modifier = Modifier
+                        .width(600.dp)
+                        .height(244.dp),
+                )
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(244.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.Bottom,
                 ) {
-                    SeriesEpisodeList(
-                        episodes = state.visibleEpisodes,
-                        loading = state.loading,
-                        errorMessage = state.errorMessage,
-                        firstEpisodeFocusRequester = firstEpisodeFocusRequester,
-                        onRetry = onRetry,
-                        onEpisode = { episode -> onWatchEpisode(episode.episodeId) },
-                        modifier = Modifier
-                            .width(560.dp)
-                            .height(206.dp),
-                    )
                     SeriesSeasonDescription(
                         state = state,
                         modifier = Modifier
                             .weight(1f)
-                            .height(206.dp),
+                            .height(132.dp),
                     )
+                    SeriesCoverFrame(
+                        imageUrl = state.displaySeasonPosterUrl,
+                        title = "Saison ${state.selectedSeason}",
+                        showTitle = false,
+                        modifier = Modifier
+                            .width(142.dp)
+                            .height(213.dp),
+                    )
+                }
             }
         }
     }
@@ -576,7 +653,7 @@ private fun SeriesSeasonDescription(
             .clip(RoundedCornerShape(DetailDimens.ItemRadius))
             .background(Color(0x94111A2A))
             .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(DetailDimens.ItemRadius))
-            .padding(14.dp),
+            .padding(12.dp),
     ) {
         Text(
             text = "Saison ${state.selectedSeason}",
@@ -591,15 +668,15 @@ private fun SeriesSeasonDescription(
             style = DetailMetaStyle,
             maxLines = 1,
         )
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(6.dp))
         Text(
             text = state.displayPlot ?: state.categoryLabel,
             color = SmartVisionColors.TextSecondary,
             style = DetailBodyStyle,
-            maxLines = 5,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             DetailBadge(text = state.categoryLabel)
             state.displayCreator?.let {

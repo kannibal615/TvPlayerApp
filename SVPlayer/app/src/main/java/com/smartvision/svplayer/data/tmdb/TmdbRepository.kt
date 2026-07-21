@@ -19,6 +19,7 @@ class TmdbRepository(
 ) {
     private val tokenConfigured = readAccessToken.isNotBlank()
     private val imageResolver = TmdbImageResolver()
+    private val seasonPosterCache = mutableMapOf<SeasonPosterCacheKey, String?>()
     private var lastCleanupAt: Long = 0L
 
     val isConfigured: Boolean
@@ -112,6 +113,32 @@ class TmdbRepository(
         mediaDao.upsertTmdbSeriesMetadata(entity)
         cleanupStaleMetadataIfNeeded()
         entity.toTmdbSeriesMetadata()
+    }
+
+    suspend fun getSeriesSeasonPoster(
+        contentId: Int,
+        seasonNumber: Int,
+        language: String,
+    ): String? = withContext(Dispatchers.IO) {
+        if (seasonNumber < 0) return@withContext null
+        val settings = settingsRepository.settings.first()
+        if (!TmdbAccessPolicy.canRequestNetwork(settings.tmdbApiEnabled, tokenConfigured)) return@withContext null
+        val tmdbId = mediaDao.getTmdbContentMapping(activeProfileId(), "series", contentId)?.tmdbId
+            ?: return@withContext null
+        val tmdbLanguage = language.toTmdbLanguage()
+        val cacheKey = SeasonPosterCacheKey(tmdbId, seasonNumber, tmdbLanguage)
+        synchronized(seasonPosterCache) {
+            if (seasonPosterCache.containsKey(cacheKey)) return@withContext seasonPosterCache[cacheKey]
+        }
+        val posterUrl = runCatching {
+            api.getSeriesSeasonDetails(
+                seriesId = tmdbId,
+                seasonNumber = seasonNumber,
+                language = tmdbLanguage,
+            ).posterUrl(imageResolver)
+        }.getOrNull()
+        synchronized(seasonPosterCache) { seasonPosterCache[cacheKey] = posterUrl }
+        posterUrl
     }
 
     private suspend fun cachedMovieEntity(contentId: Int, language: String): TmdbMovieMetadataEntity? {
@@ -325,6 +352,15 @@ class TmdbRepository(
         val adult: Boolean = false,
     )
 }
+
+private data class SeasonPosterCacheKey(
+    val tmdbId: Int,
+    val seasonNumber: Int,
+    val language: String,
+)
+
+internal fun TmdbSeriesSeasonDetailsDto.posterUrl(imageResolver: TmdbImageResolver = TmdbImageResolver()): String? =
+    imageResolver.posterUrl(posterPath)
 
 internal object TmdbAccessPolicy {
     fun canUse(apiEnabled: Boolean): Boolean = apiEnabled

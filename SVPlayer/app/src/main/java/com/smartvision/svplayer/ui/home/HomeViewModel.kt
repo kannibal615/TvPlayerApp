@@ -506,7 +506,7 @@ class HomeViewModel(
         }
     }
 
-    fun refreshCatalogCounts() {
+    fun refreshCatalogCounts(preserveReadyState: Boolean = false) {
         val attempt = currentHomeLoadAttempt()
         val token = attempt.token
         val requestId = ++catalogCountsRequestId
@@ -515,9 +515,9 @@ class HomeViewModel(
         loadGate.update { gate ->
             if (gate.profileId == token.profileId && gate.catalogRevision == token.catalogRevision) {
                 gate.copy(
-                    loadedCatalogRevision = -1L,
-                    catalogCounts = CatalogContentCounts(),
-                    catalogCountsLoading = true,
+                    loadedCatalogRevision = refreshedHomeRevision(gate.loadedCatalogRevision, preserveReadyState),
+                    catalogCounts = if (preserveReadyState) gate.catalogCounts else CatalogContentCounts(),
+                    catalogCountsLoading = !preserveReadyState,
                 )
             } else {
                 gate
@@ -559,7 +559,7 @@ class HomeViewModel(
         }
     }
 
-    fun refreshTrending(forceRefresh: Boolean = false) {
+    fun refreshTrending(forceRefresh: Boolean = false, preserveReadyState: Boolean = false) {
         if (!forceRefresh && trendingRefreshJob?.isActive == true) return
         val attempt = currentHomeLoadAttempt()
         val token = attempt.token
@@ -568,7 +568,9 @@ class HomeViewModel(
         trendingLoadedAttempt = null
         loadGate.update { gate ->
             if (gate.profileId == token.profileId && gate.catalogRevision == token.catalogRevision) {
-                gate.copy(loadedCatalogRevision = -1L)
+                gate.copy(
+                    loadedCatalogRevision = refreshedHomeRevision(gate.loadedCatalogRevision, preserveReadyState),
+                )
             } else {
                 gate
             }
@@ -577,7 +579,9 @@ class HomeViewModel(
             // PERF_DIAG: tells whether trends are consumed from startup cache or recomputed on Home.
             val startedAt = SystemClock.elapsedRealtime()
             val cached = if (forceRefresh) null else homeContentRepository.getCachedTrending()
-            trendingLoading.value = cached == null
+            if (!preserveReadyState) {
+                trendingLoading.value = cached == null
+            }
             if (cached != null) {
                 ensureCurrent(attempt, requestId, trendingRequestId)
                 trendingMovies.value = ScopedHomeItems(token, cached.movies)
@@ -622,7 +626,9 @@ class HomeViewModel(
                     )
                 }
             }
-            awaitMinimumHomeLoading(startedAt)
+            if (!preserveReadyState) {
+                awaitMinimumHomeLoading(startedAt)
+            }
             ensureCurrent(attempt, requestId, trendingRequestId)
             trendingLoading.value = false
             markTrendingLoaded(attempt)
@@ -903,6 +909,9 @@ private suspend fun awaitMinimumHomeLoading(startedAtMs: Long) {
     val remainingMs = MinimumHomeSkeletonMillis - (SystemClock.elapsedRealtime() - startedAtMs)
     if (remainingMs > 0L) delay(remainingMs)
 }
+
+internal fun refreshedHomeRevision(currentRevision: Long, preserveReadyState: Boolean): Long =
+    if (preserveReadyState) currentRevision else -1L
 
 private val EpisodeBadgeRegex =
     Regex("""(?i)\bS(?:aison)?\s*0*(\d{1,3})\s*[-_. ]*E(?:pisode)?\s*0*(\d{1,3})\b""")

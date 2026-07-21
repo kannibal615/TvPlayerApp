@@ -8,7 +8,7 @@
     <item>
         <bitmap
             android:gravity="fill"
-            android:src="@drawable/startup_neon_background" />
+            android:src="@drawable/startup_cinema_background" />
     </item>
     <item
         android:width="374dp"
