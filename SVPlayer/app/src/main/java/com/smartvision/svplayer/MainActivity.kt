@@ -131,6 +131,7 @@ class MainActivity : ComponentActivity() {
         var startupLanguage by remember { mutableStateOf("English") }
         var visualPhase by remember { mutableStateOf(StartupVisualPhase.LogoOnly) }
         var startupProgress by remember { mutableStateOf(StartupProgressSnapshot()) }
+        var initialSurfaceReady by remember { mutableStateOf(false) }
         val strings = smartVisionStrings(startupLanguage)
 
         LaunchedEffect(startupComplete) {
@@ -188,6 +189,32 @@ class MainActivity : ComponentActivity() {
                 event = "startup_checks_complete",
                 startedAtMs = startupChecksStart,
             )
+            appContainer = container
+            val surfacePreloadStartedAt = SystemClock.elapsedRealtime()
+            while (
+                !initialSurfaceReady &&
+                SystemClock.elapsedRealtime() - surfacePreloadStartedAt < InitialSurfacePreloadTimeoutMillis
+            ) {
+                delay(16)
+            }
+            Log.i(
+                TAG_STARTUP,
+                "initial surface preloaded: ready=$initialSurfaceReady durationMs=${SystemClock.elapsedRealtime() - surfacePreloadStartedAt}",
+            )
+            PerformanceDiagnosticRecorder.recordDuration(
+                sheet = PerformanceDiagnosticRecorder.SHEET_STARTUP_STEPS,
+                event = "initial_surface_preloaded",
+                startedAtMs = surfacePreloadStartedAt,
+                fields = mapOf("ready" to initialSurfaceReady),
+            )
+            startupProgress = StartupProgressSnapshot(
+                stage = StartupStage.Starting,
+                completedSteps = startupStepCount(),
+                totalSteps = startupStepCount(),
+            )
+            if (visualPhase == StartupVisualPhase.Loading) {
+                delay(CompletedProgressHoldMillis)
+            }
             val elapsed = SystemClock.elapsedRealtime() - startupStartedAt
             if (elapsed < StartupMinimumLogoOnlyMillis) {
                 delay(StartupMinimumLogoOnlyMillis - elapsed)
@@ -201,7 +228,6 @@ class MainActivity : ComponentActivity() {
                 event = "theme_switched_to_app",
                 fields = mapOf("background" to "#020714"),
             )
-            appContainer = container
             startupComplete = true
             Log.i(TAG_STARTUP, "startup complete: rendering AppNavigation")
             PerformanceDiagnosticRecorder.record(
@@ -211,13 +237,24 @@ class MainActivity : ComponentActivity() {
         }
 
         val readyContainer = appContainer
-        if (startupComplete && readyContainer != null) {
+        if (readyContainer != null) {
             CompositionLocalProvider(LocalAppContainer provides readyContainer) {
-                AppNavigation(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(AppOpaqueBackground),
-                )
+                androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
+                    AppNavigation(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(AppOpaqueBackground),
+                        onInitialSurfaceReady = { initialSurfaceReady = true },
+                    )
+                    if (!startupComplete) {
+                        StartupExperience(
+                            phase = visualPhase,
+                            progress = startupProgress,
+                            strings = strings,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
             }
         } else {
             StartupExperience(
@@ -272,14 +309,14 @@ class MainActivity : ComponentActivity() {
             )
             update(StartupStage.PreparingHome, 2)
             container.clearStartupCatalogWork(container.startupCatalogWork.value.requestedAtMs)
-            update(StartupStage.Starting, totalSteps)
+            update(StartupStage.PreparingHome, totalSteps - 1)
         }.onFailure { error ->
             Log.w(TAG_STARTUP, "startup checks failed: ${error.javaClass.simpleName}", error)
-            updateStatus(StartupProgressSnapshot(StartupStage.Starting, totalSteps, totalSteps))
+            updateStatus(StartupProgressSnapshot(StartupStage.PreparingHome, totalSteps - 1, totalSteps))
         }
     }
 
-    private fun startupStepCount(): Int = 3
+    private fun startupStepCount(): Int = 4
 
     companion object {
         private const val TAG = "SmartVisionFocus"
@@ -288,6 +325,8 @@ class MainActivity : ComponentActivity() {
         const val ACTION_SHOW_XTREAM_CONNECTION_ALERT = "com.smartvision.svplayer.SHOW_XTREAM_CONNECTION_ALERT"
         private const val REQUEST_NOTIFICATIONS = 7041
         private const val FirstFrameStartupDelayMillis = 60L
+        private const val InitialSurfacePreloadTimeoutMillis = 2_500L
+        private const val CompletedProgressHoldMillis = 140L
         private val AppOpaqueBackground = Color(0xFF020714)
     }
 }

@@ -45,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -116,6 +117,7 @@ fun ProfilePickerScreen(
     onSelectionTransitionFinished: (Long, String) -> Unit,
     onLockedFeature: () -> Unit,
     onVerifyPin: (String) -> Boolean,
+    onFirstFrameReady: () -> Unit = {},
 ) {
     val settings by LocalAppContainer.current.settingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = PlayerSettings(),
@@ -148,12 +150,18 @@ fun ProfilePickerScreen(
     val centeringProgress = remember { Animatable(0f) }
     val homeRevealProgress = remember { Animatable(0f) }
     val latestTransitionFinished by rememberUpdatedState(onSelectionTransitionFinished)
+    val latestFirstFrameReady by rememberUpdatedState(onFirstFrameReady)
     val selectionInProgress = selectionLoadingProfileId != null
     val selectedProfile = remember(orderedProfiles, selectionLoadingProfileId) {
         orderedProfiles.firstOrNull { it.id == selectionLoadingProfileId }
     }
     val firstProfileId = orderedProfiles.firstOrNull()?.id
     val addProfileIndex = orderedProfiles.size + 1
+
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        latestFirstFrameReady()
+    }
 
     fun requestPickerFocus(index: Int, focusKey: String, requester: FocusRequester) {
         lastFocusKey = focusKey

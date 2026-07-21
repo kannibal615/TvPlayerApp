@@ -68,9 +68,6 @@ import com.smartvision.svplayer.ui.catalog.CatalogMetaStyle
 import com.smartvision.svplayer.ui.catalog.CatalogPanelTitleWithCount
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.catalog.CatalogSortButton
-import com.smartvision.svplayer.ui.catalog.CategoryFilterBar
-import com.smartvision.svplayer.ui.catalog.CategoryFilterEmptyState
-import com.smartvision.svplayer.ui.catalog.CategoryFilterIconButton
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
@@ -321,7 +318,6 @@ fun MoviesScreen(
             ) {
                 MovieCategoryList(
                     state = state,
-                    strings = strings,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     currentTabFocusRequester = currentTabFocusRequester,
                     listState = categoryListState,
@@ -342,12 +338,6 @@ fun MoviesScreen(
                     onBrandRight = { category ->
                         category.brandGroup?.let { brand ->
                             categoryFocusTargetId = viewModel.expandBrandGroup(brand)?.id
-                        }
-                    },
-                    onApplyFilter = { code ->
-                        if (inputReady) {
-                            categoryFocusTargetId = viewModel.applyCategoryFilter(code)?.id
-                            pendingFirstMovieFocusCategoryId = null
                         }
                     },
                     onRight = { behaviorScope.launch { focusMovieColumn() } },
@@ -456,7 +446,6 @@ private fun MovieItemUi.toBehaviorContent(): BehaviorContent =
 @Composable
 private fun MovieCategoryList(
     state: MoviesScreenState,
-    strings: SmartVisionStrings,
     selectedCategoryFocusRequester: FocusRequester,
     currentTabFocusRequester: FocusRequester,
     listState: LazyListState,
@@ -464,7 +453,6 @@ private fun MovieCategoryList(
     onCategory: (MovieCategoryUi) -> Unit,
     onBrandToggle: (MovieCategoryUi) -> Unit,
     onBrandRight: (MovieCategoryUi) -> Unit,
-    onApplyFilter: (String?) -> Unit,
     onRight: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -474,8 +462,6 @@ private fun MovieCategoryList(
         ?: state.selectedCategoryId?.takeIf { id -> visibleCategories.any { it.id == id } }
         ?: visibleCategories.firstOrNull { it.brandGroup == state.selectedBrand }?.id
         ?: visibleCategories.firstOrNull()?.id
-    val activeFilterFocusRequester = remember { FocusRequester() }
-
     LaunchedEffect(resolvedFocusCategoryId, visibleCategories.map(MovieCategoryUi::id)) {
         val index = visibleCategories.indexOfFirst { it.id == resolvedFocusCategoryId }
         if (index >= 0) {
@@ -489,28 +475,8 @@ private fun MovieCategoryList(
 
     MediaCatalogPanel(
         title = "Categories",
-        trailing = {
-            CategoryFilterIconButton(
-                filters = state.categoryFilters,
-                activeFilterCode = state.activeCategoryFilterCode,
-                strings = strings,
-                categoryListFocusRequester = selectedCategoryFocusRequester,
-                headerFocusRequester = currentTabFocusRequester,
-                onApplyFilter = onApplyFilter,
-            )
-        },
         modifier = modifier,
     ) {
-        CategoryFilterBar(
-            filters = state.categoryFilters,
-            activeFilterCode = state.activeCategoryFilterCode,
-            strings = strings,
-            activeFilterFocusRequester = activeFilterFocusRequester,
-            categoryListFocusRequester = selectedCategoryFocusRequester,
-            headerFocusRequester = currentTabFocusRequester,
-            onApplyFilter = onApplyFilter,
-        )
-        Spacer(Modifier.height(6.dp))
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -528,7 +494,7 @@ private fun MovieCategoryList(
                     icon = movieCategoryIcon(category.label).takeUnless { category.isBrandGroup },
                     selected = category.id == state.selectedCategoryId || brandSelected,
                     focusRequester = if (category.id == resolvedFocusCategoryId) selectedCategoryFocusRequester else null,
-                    upFocusRequester = activeFilterFocusRequester.takeIf { index == 0 },
+                    upFocusRequester = currentTabFocusRequester.takeIf { index == 0 },
                     onRight = { if (category.isBrandGroup) onBrandRight(category) else onRight() },
                     onClick = { if (category.isBrandGroup) onBrandToggle(category) else onCategory(category) },
                     brandLogoRes = category.brandGroup?.logoResource(),
@@ -536,15 +502,6 @@ private fun MovieCategoryList(
                     indentLevel = if (category.parentBrand != null) 1 else 0,
                 )
             }
-        }
-        if (visibleCategories.isEmpty()) {
-            CategoryFilterEmptyState(
-                message = strings.liveTvCategoryFilterEmpty,
-                allLabel = strings.liveTvCategoryFilterAll,
-                focusRequester = selectedCategoryFocusRequester,
-                upFocusRequester = activeFilterFocusRequester,
-                onShowAll = { onApplyFilter(null) },
-            )
         }
     }
 }

@@ -566,8 +566,8 @@ private fun SmartVisionLogo() {
 
 private val HeaderTabWidth = 58.dp
 private val HeaderTabSpacing = 12.dp
-private val HeaderTabIconSize = 30.dp
-private val HeaderFocusSurfaceSize = 44.dp
+private val HeaderTabIconSize = 34.dp
+private val HeaderFocusSurfaceSize = 40.dp
 
 @Composable
 fun HeaderTabButton(
@@ -601,7 +601,7 @@ fun HeaderTabButton(
         },
         label = "headerMenuScale",
     ) { focused ->
-        if (focused) 1.07f else 1f
+        if (focused) 1.03f else 1f
     }
     val iconAlpha by transition.animateFloat(
         transitionSpec = {
@@ -695,7 +695,7 @@ fun HeaderTabButton(
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .offset(y = (-3).dp)
+                        .offset(y = (-1).dp)
                         .size(HeaderFocusSurfaceSize),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -705,11 +705,11 @@ fun HeaderTabButton(
                             .graphicsLayer { alpha = focusSurfaceAlpha }
                             .background(
                                 Color.White.copy(alpha = 0.09f),
-                                RoundedCornerShape(12.dp),
+                                RoundedCornerShape(10.dp),
                             )
                             .border(
-                                BorderStroke(1.5.dp, Color.White.copy(alpha = 0.88f)),
-                                RoundedCornerShape(12.dp),
+                                BorderStroke(1.25.dp, Color.White.copy(alpha = 0.88f)),
+                                RoundedCornerShape(10.dp),
                             ),
                     )
                     HeaderTabGlyph(

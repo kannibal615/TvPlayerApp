@@ -523,25 +523,6 @@ class DefaultCatalogRepository(
             movies.map { movie -> movie.toDomain(categoryNames[movie.categoryId] ?: "Films", imageBaseHost) }
         }
 
-    override suspend fun getMoviesByCategoryIdsPage(
-        categoryIds: List<String>,
-        query: String,
-        offset: Int,
-        limit: Int,
-    ): List<Movie> = withContext(Dispatchers.IO) {
-        if (categoryIds.isEmpty() || !isXtreamCatalogConfigured()) return@withContext emptyList()
-        val profileId = activeProfileId()
-        val safeLimit = limit.coerceIn(1, CatalogPageMaxLimit)
-        val safeOffset = offset.coerceAtLeast(0)
-        val categoryNames = categoryDao.getByType(profileId, MediaSection.Movies.storageName).associate { it.id to it.name }
-        val pattern = query.trim().takeIf { it.isNotBlank() }?.toSqlLikeContainsPattern()
-        val movies = pattern?.let {
-            mediaDao.searchMoviesByCategoriesPage(profileId, categoryIds, it, safeLimit, safeOffset)
-        } ?: mediaDao.getMoviesByCategoriesPage(profileId, categoryIds, safeLimit, safeOffset)
-        val imageBaseHost = imageBaseHost()
-        movies.map { movie -> movie.toDomain(categoryNames[movie.categoryId] ?: "Films", imageBaseHost) }
-    }
-
     override suspend fun getSeriesPage(categoryId: String?, offset: Int, limit: Int): List<TvSeries> =
         withContext(Dispatchers.IO) {
             if (!isXtreamCatalogConfigured()) return@withContext emptyList()
@@ -581,25 +562,6 @@ class DefaultCatalogRepository(
                 ?: mediaDao.searchSeriesPage(profileId, pattern, safeLimit, safeOffset)
             series.map { item -> item.toDomain(categoryNames[item.categoryId] ?: "Series", imageBaseHost) }
         }
-
-    override suspend fun getSeriesByCategoryIdsPage(
-        categoryIds: List<String>,
-        query: String,
-        offset: Int,
-        limit: Int,
-    ): List<TvSeries> = withContext(Dispatchers.IO) {
-        if (categoryIds.isEmpty() || !isXtreamCatalogConfigured()) return@withContext emptyList()
-        val profileId = activeProfileId()
-        val safeLimit = limit.coerceIn(1, CatalogPageMaxLimit)
-        val safeOffset = offset.coerceAtLeast(0)
-        val categoryNames = categoryDao.getByType(profileId, MediaSection.Series.storageName).associate { it.id to it.name }
-        val pattern = query.trim().takeIf { it.isNotBlank() }?.toSqlLikeContainsPattern()
-        val series = pattern?.let {
-            mediaDao.searchSeriesByCategoriesPage(profileId, categoryIds, it, safeLimit, safeOffset)
-        } ?: mediaDao.getSeriesByCategoriesPage(profileId, categoryIds, safeLimit, safeOffset)
-        val imageBaseHost = imageBaseHost()
-        series.map { item -> item.toDomain(categoryNames[item.categoryId] ?: "Series", imageBaseHost) }
-    }
 
     override suspend fun getAllLiveChannelsPage(offset: Int, limit: Int): List<LiveChannel> =
         getLiveChannelsPage(categoryId = null, offset = offset, limit = limit)

@@ -65,13 +65,11 @@ interface CatalogRepository {
     suspend fun getNextLiveChannel(streamId: Int): LiveChannel?
     suspend fun getMoviesPage(categoryId: String?, offset: Int, limit: Int): List<Movie>
     suspend fun searchMoviesPage(categoryId: String?, query: String, offset: Int, limit: Int): List<Movie>
-    suspend fun getMoviesByCategoryIdsPage(categoryIds: List<String>, query: String, offset: Int, limit: Int): List<Movie>
     suspend fun getMovieById(streamId: Int): Movie?
     suspend fun getPreviousMovie(streamId: Int): Movie?
     suspend fun getNextMovie(streamId: Int): Movie?
     suspend fun getSeriesPage(categoryId: String?, offset: Int, limit: Int): List<TvSeries>
     suspend fun searchSeriesPage(categoryId: String?, query: String, offset: Int, limit: Int): List<TvSeries>
-    suspend fun getSeriesByCategoryIdsPage(categoryIds: List<String>, query: String, offset: Int, limit: Int): List<TvSeries>
     suspend fun getAllLiveChannelsPage(offset: Int, limit: Int): List<LiveChannel>
     suspend fun getAllMoviesPage(offset: Int, limit: Int): List<Movie>
     suspend fun getAllSeriesPage(offset: Int, limit: Int): List<TvSeries>

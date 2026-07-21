@@ -31,6 +31,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -130,8 +131,10 @@ import kotlinx.coroutines.launch
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
     modifier: Modifier = Modifier,
+    onInitialSurfaceReady: () -> Unit = {},
 ) {
     val container = LocalAppContainer.current
+    val latestInitialSurfaceReady by rememberUpdatedState(onInitialSurfaceReady)
     val scope = rememberCoroutineScope()
     val activationViewModel: ActivationViewModel = viewModel(
         factory = viewModelFactory {
@@ -243,6 +246,13 @@ fun AppNavigation(
     )
     val maskHomeBeforeProfileSelection =
         (profilePickerWanted || openProfilePickerAfterHome) && profileSelectionRequest == null
+
+    LaunchedEffect(profilePickerWanted, activationState.localStateReady) {
+        if (!profilePickerWanted && activationState.localStateReady) {
+            withFrameNanos { }
+            latestInitialSurfaceReady()
+        }
+    }
     val profilePermissions = remember(activeProfile?.type) {
         ProfilePermissions.forType(activeProfile?.type ?: ProfileType.ADMIN)
     }
@@ -1284,6 +1294,7 @@ fun AppNavigation(
                 }
             },
             onVerifyPin = container.settingsRepository::verifyParentalPin,
+            onFirstFrameReady = latestInitialSurfaceReady,
             onSelectProfile = requestProfileSelection,
             onSaveProfile = { profile ->
                 val wasActiveProfile =
