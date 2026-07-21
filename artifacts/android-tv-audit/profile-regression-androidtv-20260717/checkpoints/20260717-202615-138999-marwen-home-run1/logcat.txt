@@ -1,6 +1,0 @@
---------- beginning of main
-07-17 20:26:01.912  3153  3177 I vision.svplaye: Background young concurrent copying GC freed 131353(7231KB) AllocSpace objects, 44(1016KB) LOS objects, 45% free, 10MB/18MB, paused 104us total 110.656ms
-07-17 20:26:10.157  3153  3176 I vision.svplaye: Compiler allocated 7143KB to compile void com.smartvision.svplayer.ui.navigation.AppNavigationKt.AppNavigation(androidx.navigation.NavHostController, androidx.compose.runtime.Composer, int, int)
-07-17 20:26:16.376  3153  3153 V MediaPlayer: resetDrmState:  mDrmInfo=null mDrmProvisioningThread=null mPrepareDrmInProgress=false mActiveDrmScheme=false
-07-17 20:26:16.376  3153  3153 V MediaPlayer: cleanDrmObj: mDrmObj=null mDrmSessionId=null
-07-17 20:26:16.386  3153  3153 W MediaPlayer: mediaplayer went away with unhandled events

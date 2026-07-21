@@ -1,1 +1,0 @@
-[90mperfetto_cmd.cc:142     [0m [31mCould not open /sdcard/Download/lot1b-config.pb (errno: 13, Permission denied)[0m

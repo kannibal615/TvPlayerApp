@@ -1,1 +1,0 @@
-UI hierchary dumped to: /data/local/tmp/codex-ui-10552.xml
