@@ -90,8 +90,6 @@ import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.youtube.YoutubePlaybackMode
-import java.util.Collections
-import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
@@ -759,17 +757,6 @@ private fun Long.previewStartAt(ratio: Double): Long =
     takeIf { it > 0L && it != C.TIME_UNSET }
         ?.let { (it * ratio).roundToLong().coerceIn(0L, (it - 1_000L).coerceAtLeast(0L)) }
         ?: 0L
-
-private object UnsupportedTrendingPreviewCache {
-    private val urlHashes = Collections.newSetFromMap(ConcurrentHashMap<Int, Boolean>())
-
-    fun isUnsupported(url: String?): Boolean =
-        !url.isNullOrBlank() && url.hashCode() in urlHashes
-
-    fun markUnsupported(url: String) {
-        urlHashes += url.hashCode()
-    }
-}
 
 private const val TrendingFocusStabilityMillis = 550L
 private const val HomeCardFocusedScale = 1.04f

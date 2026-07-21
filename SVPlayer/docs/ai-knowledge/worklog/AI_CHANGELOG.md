@@ -3239,3 +3239,8 @@ Fichiers code concernes:
 - Films et Series n'envoient plus les bounds du mini-player Preview vers le player fullscreen; l'ouverture VOD devient directe, sans animation mini-player vers fullscreen.
 - Home > Continue Watching force aussi les titres `SERIE` sur une seule ligne avec ellipsis.
 - Le skeleton VOD corrige la coupure en bas du panneau droit Preview en supprimant l'espacement apres le dernier placeholder.
+
+## 2026-07-21 - Resilience des dossiers catalogue
+
+- Protege les dossiers Room Live TV, Films et Series contre un snapshot de categories Xtream vide ou inexploitable lorsque les medias de la section sont encore presents.
+- Traite un catalogue avec medias sans dossiers comme incomplet afin de relancer la synchronisation automatique et reparer les profils deja affectes.

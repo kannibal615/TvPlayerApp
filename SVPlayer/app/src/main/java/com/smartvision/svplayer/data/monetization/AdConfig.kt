@@ -23,12 +23,6 @@ interface AdConfigProvider {
     suspend fun refresh(): AdConfig = current()
 }
 
-class StaticAdConfigProvider(
-    private val config: AdConfig = AdConfig(),
-) : AdConfigProvider {
-    override fun current(): AdConfig = config
-}
-
 interface AdConfigApiService {
     @GET("api/app/ads-config")
     suspend fun getAdConfig(): RemoteAdConfig

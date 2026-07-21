@@ -749,10 +749,19 @@ class DefaultCatalogRepository(
         val syncState = syncStateDao.get(profileId)
         syncState?.status == "success" &&
             when (accountManager.activePlaylistSource.value) {
-                PlaylistSource.Xtream -> mediaDao.countLiveStreams(profileId) > 0 ||
-                    mediaDao.countMovies(profileId) > 0 ||
-                    mediaDao.countSeries(profileId) > 0
-                PlaylistSource.M3u -> mediaDao.countLiveStreams(profileId) > 0
+                PlaylistSource.Xtream -> {
+                    val liveCount = mediaDao.countLiveStreams(profileId)
+                    val movieCount = mediaDao.countMovies(profileId)
+                    val seriesCount = mediaDao.countSeries(profileId)
+                    (liveCount > 0 || movieCount > 0 || seriesCount > 0) &&
+                        (liveCount == 0 || categoryDao.countByType(profileId, MediaSection.Live.storageName) > 0) &&
+                        (movieCount == 0 || categoryDao.countByType(profileId, MediaSection.Movies.storageName) > 0) &&
+                        (seriesCount == 0 || categoryDao.countByType(profileId, MediaSection.Series.storageName) > 0)
+                }
+                PlaylistSource.M3u -> {
+                    val liveCount = mediaDao.countLiveStreams(profileId)
+                    liveCount > 0 && categoryDao.countByType(profileId, MediaSection.Live.storageName) > 0
+                }
             }
     }
 
@@ -1265,7 +1274,6 @@ class DefaultCatalogRepository(
                 yield()
             }
 
-            categoryDao.deleteByType(profileId, section.storageName)
             val normalizedAcceptedCategoryIds = acceptedCategoryIds.mapNotNullTo(linkedSetOf()) {
                 it.normalizedCategoryId()
             }
@@ -1275,12 +1283,7 @@ class DefaultCatalogRepository(
             val visibleCategories = matchedCategories.ifEmpty {
                 categories.takeIf { keptItems > 0 }.orEmpty()
             }
-            upsertMappedInBatches(
-                visibleCategories,
-                { it.toEntity(profileId, section) },
-            ) { entities ->
-                categoryDao.upsertAll(entities)
-            }
+            replaceCategories(categoryDao, profileId, section, visibleCategories, keptItems)
         }
         metrics = metrics.copy(durationMs = SystemClock.elapsedRealtime() - filterStartedAt)
         Log.i(
@@ -1347,14 +1350,16 @@ class DefaultCatalogRepository(
         }
         if (!kidsProfile) database.withTransaction {
             val acceptedCategoryIds = liveStreams.mapNotNull { it.categoryId.normalizedCategoryId() }.toSet()
-            categoryDao.deleteByType(profileId, MediaSection.Live.storageName)
             val matchedCategories = liveCategories.filter {
                 it.id.normalizedCategoryId() in acceptedCategoryIds
             }
-            upsertMappedInBatches(
+            replaceCategories(
+                categoryDao,
+                profileId,
+                MediaSection.Live,
                 matchedCategories.ifEmpty { liveCategories.takeIf { liveStreams.isNotEmpty() }.orEmpty() },
-                { it.toEntity(profileId, MediaSection.Live) },
-            ) { entities -> categoryDao.upsertAll(entities) }
+                liveStreams.size,
+            )
         }
         if (kidsProfile) updateSectionProgress(
             "Analyse des categories Kids Live TV...",
@@ -1521,14 +1526,16 @@ class DefaultCatalogRepository(
         movies = movies.filter { ContentPrefixPolicy.accepts(it.name, selectedPrefixes) }
         if (!kidsProfile) database.withTransaction {
             val acceptedCategoryIds = movies.mapNotNull { it.categoryId.normalizedCategoryId() }.toSet()
-            categoryDao.deleteByType(profileId, MediaSection.Movies.storageName)
             val matchedCategories = movieCategories.filter {
                 it.id.normalizedCategoryId() in acceptedCategoryIds
             }
-            upsertMappedInBatches(
+            replaceCategories(
+                categoryDao,
+                profileId,
+                MediaSection.Movies,
                 matchedCategories.ifEmpty { movieCategories.takeIf { movies.isNotEmpty() }.orEmpty() },
-                { it.toEntity(profileId, MediaSection.Movies) },
-            ) { entities -> categoryDao.upsertAll(entities) }
+                movies.size,
+            )
         }
         if (kidsProfile) updateSectionProgress(
             "Analyse des categories Kids Films...",
@@ -1687,14 +1694,16 @@ class DefaultCatalogRepository(
         val series = downloadedSeries.filter { ContentPrefixPolicy.accepts(it.name, selectedPrefixes) }
         if (!kidsProfile) database.withTransaction {
             val acceptedCategoryIds = series.mapNotNull { it.categoryId.normalizedCategoryId() }.toSet()
-            categoryDao.deleteByType(profileId, MediaSection.Series.storageName)
             val matchedCategories = seriesCategories.filter {
                 it.id.normalizedCategoryId() in acceptedCategoryIds
             }
-            upsertMappedInBatches(
+            replaceCategories(
+                categoryDao,
+                profileId,
+                MediaSection.Series,
                 matchedCategories.ifEmpty { seriesCategories.takeIf { series.isNotEmpty() }.orEmpty() },
-                { it.toEntity(profileId, MediaSection.Series) },
-            ) { entities -> categoryDao.upsertAll(entities) }
+                series.size,
+            )
         }
         if (kidsProfile) updateSectionProgress(
             "Analyse des categories Kids Series...",
@@ -2264,6 +2273,23 @@ private fun Float.toTrendingRatingLabel(): String? =
                 .trimEnd('0')
                 .trimEnd('.')
         }
+
+private suspend fun replaceCategories(
+    categoryDao: CategoryDao,
+    profileId: String,
+    section: MediaSection,
+    categories: List<XtreamCategoryDto>,
+    retainedItemCount: Int,
+) {
+    val usableCategories = categories.filter { it.id.normalizedCategoryId() != null }
+    if (!CatalogCategoryPersistencePolicy.shouldReplace(usableCategories.size, retainedItemCount)) return
+    categoryDao.deleteByType(profileId, section.storageName)
+    upsertMappedInBatches(
+        items = usableCategories,
+        mapper = { it.toEntity(profileId, section) },
+        upsert = categoryDao::upsertAll,
+    )
+}
 
 private suspend fun <Remote, Local> upsertMappedInBatches(
     items: List<Remote>,

@@ -17,6 +17,9 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE profileId = :profileId AND type = :type ORDER BY name LIMIT :limit")
     suspend fun getByTypeLimit(profileId: String, type: String, limit: Int): List<CategoryEntity>
 
+    @Query("SELECT COUNT(*) FROM categories WHERE profileId = :profileId AND type = :type")
+    suspend fun countByType(profileId: String, type: String): Int
+
     @Query("DELETE FROM categories WHERE profileId = :profileId AND type = :type")
     suspend fun deleteByType(profileId: String, type: String)
 
