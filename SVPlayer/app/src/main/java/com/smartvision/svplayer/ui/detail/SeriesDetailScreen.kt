@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,7 +25,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tv
@@ -391,11 +388,10 @@ private fun SeriesDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     val firstEpisodeFocusRequester = remember { FocusRequester() }
-    val playFocusRequester = remember { FocusRequester() }
-    val favoriteFocusRequester = remember { FocusRequester() }
+    val seasonFocusRequester = remember { FocusRequester() }
     val retryFocusRequester = remember { FocusRequester() }
     val currentTabFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(state.loading, state.errorMessage, state.firstEpisode?.episodeId) {
+    LaunchedEffect(state.loading, state.errorMessage, state.selectedSeason, state.seasons) {
         if (state.loading) {
             delay(80)
             runCatching { currentTabFocusRequester.requestFocus() }
@@ -404,9 +400,8 @@ private fun SeriesDetailScreen(
         delay(120)
         runCatching {
             when {
-                state.firstEpisode != null -> playFocusRequester.requestFocus()
                 state.errorMessage != null -> retryFocusRequester.requestFocus()
-                else -> favoriteFocusRequester.requestFocus()
+                else -> seasonFocusRequester.requestFocus()
             }
         }
     }
@@ -426,16 +421,14 @@ private fun SeriesDetailScreen(
             notificationBadgeCount = notificationBadgeCount,
             currentTabFocusRequester = currentTabFocusRequester,
             contentDownFocusRequester = when {
-                state.firstEpisode != null -> playFocusRequester
                 state.errorMessage != null -> retryFocusRequester
-                else -> favoriteFocusRequester
+                else -> seasonFocusRequester
             },
             onContentDown = {
                 runCatching {
                     when {
-                        state.firstEpisode != null -> playFocusRequester.requestFocus()
                         state.errorMessage != null -> retryFocusRequester.requestFocus()
-                        else -> favoriteFocusRequester.requestFocus()
+                        else -> seasonFocusRequester.requestFocus()
                     }
                 }
             },
@@ -459,21 +452,12 @@ private fun SeriesDetailScreen(
             ) {
                     SeriesHeroInfo(
                         state = state,
-                        onWatchEpisode = { state.firstEpisode?.episodeId?.let(onWatchEpisode) },
                         onRetry = onRetry,
-                        onFavorite = onFavorite,
-                        playFocusRequester = playFocusRequester,
-                        favoriteFocusRequester = favoriteFocusRequester,
+                        onSeason = onSeason,
+                        seasonFocusRequester = seasonFocusRequester,
                         retryFocusRequester = retryFocusRequester,
                         headerFocusRequester = currentTabFocusRequester,
-                        modifier = Modifier.width(720.dp),
-                    )
-                    Spacer(Modifier.weight(1f))
-                    SeriesCoverFrame(
-                        imageUrl = state.displayCoverUrl,
-                        title = state.displayTitle,
-                        showTitle = false,
-                        modifier = Modifier.width(190.dp).aspectRatio(0.68f),
+                        modifier = Modifier.fillMaxWidth(),
                     )
             }
             Row(
@@ -481,11 +465,6 @@ private fun SeriesDetailScreen(
                     horizontalArrangement = Arrangement.spacedBy(28.dp),
                     verticalAlignment = Alignment.Top,
                 ) {
-                    SeriesSeasonPanel(
-                        state = state,
-                        onSeason = onSeason,
-                        modifier = Modifier.width(520.dp),
-                    )
                     SeriesEpisodeList(
                         episodes = state.visibleEpisodes,
                         loading = state.loading,
@@ -494,8 +473,14 @@ private fun SeriesDetailScreen(
                         onRetry = onRetry,
                         onEpisode = { episode -> onWatchEpisode(episode.episodeId) },
                         modifier = Modifier
+                            .width(560.dp)
+                            .height(206.dp),
+                    )
+                    SeriesSeasonDescription(
+                        state = state,
+                        modifier = Modifier
                             .weight(1f)
-                            .height(190.dp),
+                            .height(206.dp),
                     )
             }
         }
@@ -505,11 +490,9 @@ private fun SeriesDetailScreen(
 @Composable
 private fun SeriesHeroInfo(
     state: SeriesDetailUiState,
-    onWatchEpisode: () -> Unit,
     onRetry: () -> Unit,
-    onFavorite: () -> Unit,
-    playFocusRequester: FocusRequester,
-    favoriteFocusRequester: FocusRequester,
+    onSeason: (Int) -> Unit,
+    seasonFocusRequester: FocusRequester,
     retryFocusRequester: FocusRequester,
     headerFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
@@ -549,35 +532,24 @@ private fun SeriesHeroInfo(
             text = state.displayPlot ?: "Serie disponible depuis le catalogue Xtream.",
             color = SmartVisionColors.TextSecondary,
             style = DetailBodyStyle,
-            maxLines = 6,
+            maxLines = 4,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(650.dp),
+            modifier = Modifier.width(720.dp),
         )
-        Spacer(Modifier.height(22.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            DetailActionButton(
-                text = "Reprendre",
-                icon = Icons.Default.PlayArrow,
-                onClick = onWatchEpisode,
-                primary = true,
-                enabled = state.firstEpisode != null,
-                focusRequester = playFocusRequester,
-                bringIntoViewOnFocus = false,
-                modifier = Modifier
-                    .focusProperties { up = headerFocusRequester }
-                    .width(162.dp)
-                    .height(DetailDimens.ActionHeight),
-            )
-            DetailActionButton(
-                text = if (state.isFavorite) "Retirer des favoris" else "Ajouter aux favoris",
-                icon = Icons.Default.FavoriteBorder,
-                onClick = onFavorite,
-                focusRequester = favoriteFocusRequester,
-                modifier = Modifier
-                    .focusProperties { up = headerFocusRequester }
-                    .width(190.dp)
-                    .height(DetailDimens.ActionHeight),
-            )
+        Spacer(Modifier.height(18.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            state.seasons.forEachIndexed { index, season ->
+                SeasonTab(
+                    text = "Saison $season",
+                    selected = season == state.selectedSeason,
+                    onClick = { onSeason(season) },
+                    focusRequester = seasonFocusRequester.takeIf { index == 0 || season == state.selectedSeason },
+                    upFocusRequester = headerFocusRequester,
+                    modifier = Modifier
+                        .width(92.dp)
+                        .height(DetailDimens.ActionHeight),
+                )
+            }
             if (state.errorMessage != null) {
                 DetailActionButton(
                     text = "Reessayer",
@@ -595,60 +567,43 @@ private fun SeriesHeroInfo(
 }
 
 @Composable
-private fun SeriesSeasonPanel(
+private fun SeriesSeasonDescription(
     state: SeriesDetailUiState,
-    onSeason: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            state.seasons.take(5).forEach { season ->
-                SeasonTab(
-                    text = "Saison $season",
-                    selected = season == state.selectedSeason,
-                    onClick = { onSeason(season) },
-                    modifier = Modifier
-                        .width(78.dp)
-                        .height(30.dp),
-                )
-            }
-        }
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(DetailDimens.ItemRadius))
+            .background(Color(0x94111A2A))
+            .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(DetailDimens.ItemRadius))
+            .padding(14.dp),
+    ) {
+        Text(
+            text = "Saison ${state.selectedSeason}",
+            color = SmartVisionColors.TextPrimary,
+            style = DetailTitleStyle,
+            maxLines = 1,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "${state.visibleEpisodes.size} episodes",
+            color = SmartVisionColors.TextSecondary,
+            style = DetailMetaStyle,
+            maxLines = 1,
+        )
         Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            SeriesCoverFrame(
-                imageUrl = state.displayCoverUrl,
-                title = state.displayTitle,
-                modifier = Modifier
-                    .width(238.dp)
-                    .aspectRatio(1.75f),
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Saison ${state.selectedSeason}",
-                    color = SmartVisionColors.TextPrimary,
-                    style = DetailTitleStyle,
-                    maxLines = 1,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "${state.visibleEpisodes.size} episodes",
-                    color = SmartVisionColors.TextSecondary,
-                    style = DetailMetaStyle,
-                    maxLines = 1,
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = state.displayPlot ?: state.categoryLabel,
-                    color = SmartVisionColors.TextSecondary,
-                    style = DetailMetaStyle,
-                    maxLines = 5,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    DetailBadge(text = state.categoryLabel)
-                    state.displayCreator?.let { DetailBadge(text = it, color = Color(0xFF18253A)) }
-                }
+        Text(
+            text = state.displayPlot ?: state.categoryLabel,
+            color = SmartVisionColors.TextSecondary,
+            style = DetailBodyStyle,
+            maxLines = 5,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            DetailBadge(text = state.categoryLabel)
+            state.displayCreator?.let {
+                DetailBadge(text = it, color = Color(0xFF18253A))
             }
         }
     }
@@ -718,6 +673,8 @@ private fun SeasonTab(
     text: String,
     selected: Boolean,
     onClick: () -> Unit,
+    focusRequester: FocusRequester? = null,
+    upFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     val focusState = rememberTvFocusState()
@@ -738,8 +695,16 @@ private fun SeasonTab(
     Box(
         modifier = modifier
             .detailBringIntoViewOnFocus()
+            .then(
+                if (upFocusRequester != null) {
+                    Modifier.focusProperties { up = upFocusRequester }
+                } else {
+                    Modifier
+                },
+            )
             .tvFocusTarget(
                 state = focusState,
+                focusRequester = focusRequester,
                 pressed = pressed,
                 focusedScale = 1.05f,
                 glowColor = SmartVisionColors.Primary,

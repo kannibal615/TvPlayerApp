@@ -624,6 +624,7 @@ fun HeaderTabButton(
                     state = focusState,
                     focusRequester = focusRequester,
                     pressed = pressed,
+                    selected = selected,
                     cornerRadius = 8.dp,
                 )
                 .clickable(

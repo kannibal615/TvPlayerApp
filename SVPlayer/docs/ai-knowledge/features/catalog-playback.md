@@ -1,11 +1,11 @@
 # Catalogue, Playlist et Lecture
 
-Derniere mise a jour: 2026-07-20.
+Derniere mise a jour: 2026-07-21.
 
 ## Presentation Films et Series - 2026-07-17
 
 - Depuis le 2026-07-21, les lecteurs fullscreen Films et Series s'ouvrent directement depuis le mini-player Preview: `AppNavigation` ne transmet plus de bounds d'entree au player VOD.
-- Le skeleton de chargement VOD garde le ratio 3 colonnes `24/42/34`; le panneau droit Preview ne place plus d'espacement apres le dernier placeholder afin d'eviter une coupure en bas de colonne.
+- Le skeleton de chargement VOD garde le ratio 3 colonnes `24/42/34`; le panneau droit Preview borne maintenant ses placeholders dans une colonne `fillMaxSize`, avec lignes detail ponderees, afin d'eviter l'ecrasement/deformation en bas a droite.
 - Les lignes centrales conservent leur hauteur `56 dp` et utilisent un titre `15 sp`.
 - Le sous-titre Film ne duplique plus le genre et se termine par l'annee sur quatre chiffres lorsqu'elle est connue.
 - Le sous-titre Serie retire createur/realisateur, place la duree avant l'annee et utilise le cover catalogue si le backdrop TMDB manque.
@@ -14,6 +14,8 @@ Derniere mise a jour: 2026-07-20.
 Les colonnes centrales Live TV, Movies et Series utilisent une recherche compacte: un bouton carre ouvre le champ et le clavier TV uniquement apres validation. `DPAD_DOWN` est intercepte avant `BasicTextField`, attend la composition de la liste filtree puis restaure le dernier element pertinent encore present ou le premier resultat; si la recherche ne retourne rien, le focus reste sur le champ. Leur filtre partage le visuel `FilterList` de la colonne Categories Live et le titre indique le nombre d'elements du dossier actif. Les lignes Movies affichent note, genre, annee et duree; leur matching TMDB retire d'abord les prefixes fournisseur courts (`EX -`, `VOD -`, etc.) et l'annee entre parentheses, puis isole chaque echec d'enrichissement afin que les lignes suivantes continuent. Les lignes Series enrichissent progressivement backdrop paysage, saisons et episodes sans attendre un clic. Si Room ne contient pas encore les episodes d'une serie, leur comptage Xtream est charge en arriere-plan avec concurrence bornee. Le poster final du mini-player Series n'utilise plus le cover portrait comme fallback paysage.
 
 La fiche Movie formate la duree en `xh xxm`, masque le badge d'extension conteneur et agrandit le casting informatif non focusable avec portraits `2:3` et noms, sans ajouter de scroll global.
+
+Depuis le 2026-07-21, les fiches Detail Film et Detail Serie reutilisent `ui/home/TvHeader.kt` via `DetailHeader`, sans header visuel parallele. La fiche Detail Serie remplace les actions hero `Reprendre`/`Favoris` par les boutons de saisons disponibles, place la liste des episodes en bas a gauche, et affiche la description de la saison selectionnee a droite sans poster. La gestion favoris reste disponible dans le panneau Preview Series du catalogue.
 
 Depuis le 2026-07-17, l'EPG XMLTV est cache par URL afin d'isoler les profils. Le parseur respecte l'offset XMLTV, rejette les programmes termines ou sans horaire exploitable et conserve au plus le programme courant puis les programmes futurs. La lecture refiltre avec l'heure courante: la preview Live TV ne montre donc plus d'emission terminee. Toute synchronisation catalogue reussie declenche au meme endroit un rafraichissement EPG stale-aware non bloquant; le Worker reseau horaire et le refresh au clic chaine restent actifs, sans double telechargement M3U.
 

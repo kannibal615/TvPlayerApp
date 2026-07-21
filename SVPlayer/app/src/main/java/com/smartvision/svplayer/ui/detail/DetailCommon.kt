@@ -4,7 +4,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -45,7 +43,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,15 +50,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
-import com.smartvision.svplayer.R
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
-import com.smartvision.svplayer.ui.home.HeaderActionSeparator
-import com.smartvision.svplayer.ui.home.HeaderControls
-import com.smartvision.svplayer.ui.home.HeaderTabButton
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
+import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import kotlinx.coroutines.launch
@@ -183,54 +177,22 @@ fun DetailHeader(
     contentDownFocusRequester: FocusRequester? = null,
     onContentDown: (() -> Unit)? = null,
 ) {
-    Row(
-        modifier = modifier.height(DetailDimens.HeaderHeight),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        DetailLogo()
-        Spacer(Modifier.width(28.dp))
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            tabs.forEach { tab ->
-                HeaderTabButton(
-                    tab = tab,
-                    currentRoute = currentRoute,
-                    onNavigate = onNavigate,
-                    height = 34.dp,
-                    horizontalPadding = 6.dp,
-                    focusRequester = currentTabFocusRequester.takeIf { tab.route == currentRoute },
-                    downFocusRequester = contentDownFocusRequester,
-                    onDown = onContentDown,
-                )
-            }
-        }
-        HeaderActionSeparator()
-        HeaderControls(
-            onNotifications = onNotifications,
-            onLicenseKey = onLicenseKey,
-            onProfile = onProfile,
-            onSettings = onSettings,
-            showLicenseKey = showLicenseKey,
-            hasNewNotifications = hasNewNotifications,
-            notificationBadgeCount = notificationBadgeCount,
-            downFocusRequester = contentDownFocusRequester,
-            onDown = onContentDown,
-        )
-    }
-}
-
-@Composable
-private fun DetailLogo() {
-    Image(
-        painter = painterResource(R.drawable.smartvision_logo_wide),
-        contentDescription = "SmartVision IPTV Player",
-        contentScale = ContentScale.Fit,
-        modifier = Modifier
-            .width(178.dp)
-            .fillMaxHeight(),
+    TvHeader(
+        currentRoute = currentRoute,
+        tabs = tabs,
+        onNavigate = onNavigate,
+        onSync = onSync,
+        onSettings = onSettings,
+        onProfile = onProfile,
+        onNotifications = onNotifications,
+        onLicenseKey = onLicenseKey,
+        showLicenseKey = showLicenseKey,
+        hasNewNotifications = hasNewNotifications,
+        notificationBadgeCount = notificationBadgeCount,
+        modifier = modifier,
+        currentTabFocusRequester = currentTabFocusRequester,
+        contentDownFocusRequester = contentDownFocusRequester,
+        onContentDown = onContentDown,
     )
 }
 

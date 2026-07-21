@@ -226,13 +226,13 @@ fun HomeCategoryCard(
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(HomeCategoryCardLayout.TitleSubtitleSpacing))
-            Text(
+            /* Text(
                 text = category.subtitle,
                 color = SmartVisionColors.TextSecondary,
                 style = SmartVisionType.Label,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-            )
+            ) */
             Spacer(
                 Modifier.height(
                     if (compactWorkLayout) {
@@ -430,8 +430,8 @@ private object HomeCategoryCardLayout {
     val HorizontalPadding = 20.dp
     val TopPadding = 8.dp
     val BottomPadding = 18.dp
-    val TitleFontSize = 42.sp
-    val TitleLineHeight = 51.sp
+    val TitleFontSize = 46.sp
+    val TitleLineHeight = 58.sp
     val CountFontSize = 27.sp
     val CountLineHeight = 32.sp
     val CompactCountFontSize = 24.sp

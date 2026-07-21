@@ -48,6 +48,7 @@ fun Modifier.tvFocusTarget(
     focusRequester: FocusRequester? = null,
     enabled: Boolean = true,
     pressed: Boolean = false,
+    selected: Boolean = false,
     focusedScale: Float = SmartVisionDimensions.FocusScale,
     glowColor: Color = SmartVisionColors.CyanAccent,
     cornerRadius: Dp = SmartVisionDimensions.CardRadius,
@@ -102,7 +103,22 @@ fun Modifier.tvFocusTarget(
             scaleY = scale
         }
         .drawBehind {
+            if (selected && enabled) {
+                drawRoundRect(
+                    color = style.selectedBackground,
+                    cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+                )
+                drawRoundRect(
+                    color = style.selectedAccent,
+                    cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+                    style = Stroke(width = with(density) { style.borderWidth.toPx() }),
+                )
+            }
             if (state.isFocused && enabled) {
+                drawRoundRect(
+                    color = style.background,
+                    cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+                )
                 if (style.effect == TvFocusEffect.NeonGlow || style.effect == TvFocusEffect.GoldSweep) {
                     drawRoundRect(
                         brush = Brush.radialGradient(
@@ -130,6 +146,13 @@ fun Modifier.tvFocusTarget(
                         style = Stroke(width = borderPx),
                     )
                 }
+                if (style.effect != TvFocusEffect.GoldSweep) {
+                    drawRoundRect(
+                        color = style.accent,
+                        cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+                        style = Stroke(width = borderPx),
+                    )
+                }
             }
         }
         .onFocusChanged { focusState ->
@@ -142,6 +165,7 @@ fun Modifier.tvFocusable(
     focusRequester: FocusRequester? = null,
     enabled: Boolean = true,
     pressed: Boolean = false,
+    selected: Boolean = false,
     focusedScale: Float = SmartVisionDimensions.FocusScale,
     glowColor: Color = SmartVisionColors.CyanAccent,
     cornerRadius: Dp = SmartVisionDimensions.CardRadius,
@@ -150,6 +174,7 @@ fun Modifier.tvFocusable(
     focusRequester = focusRequester,
     enabled = enabled,
     pressed = pressed,
+    selected = selected,
     focusedScale = focusedScale,
     glowColor = glowColor,
     cornerRadius = cornerRadius,

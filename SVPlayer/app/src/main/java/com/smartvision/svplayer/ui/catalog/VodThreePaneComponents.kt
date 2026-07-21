@@ -578,31 +578,38 @@ private fun VodSkeletonPreviewPanel(
             }
         },
     ) {
-        Box(
-            modifier = Modifier
-                .width(82.dp)
-                .height(18.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(shimmerBrush),
-        )
-        Spacer(Modifier.height(10.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(5.dp))
-                .background(shimmerBrush),
-        )
-        Spacer(Modifier.height(10.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            repeat(5) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(26.dp)
-                        .clip(RoundedCornerShape(5.dp))
-                        .background(shimmerBrush),
-                )
+        Column(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .width(82.dp)
+                    .height(18.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(shimmerBrush),
+            )
+            Spacer(Modifier.height(10.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(shimmerBrush),
+            )
+            Spacer(Modifier.height(10.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                repeat(4) { index ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(if (index == 3) 0.72f else 1f)
+                            .weight(1f)
+                            .clip(RoundedCornerShape(5.dp))
+                            .background(shimmerBrush),
+                    )
+                }
             }
         }
     }
@@ -628,6 +635,7 @@ fun VodPreviewPanel(
     seriesEpisodes: List<VodPreviewEpisode> = emptyList(),
     selectedSeriesEpisodeId: Int? = null,
     onSeriesEpisodeSelected: (Int) -> Unit = {},
+    onSeriesEpisodePlay: (Int) -> Unit = {},
     seasonsLabel: String = "Seasons",
     episodesLoadingLabel: String = "Loading...",
     episodesEmptyLabel: String = "No episodes available.",
@@ -857,7 +865,8 @@ fun VodPreviewPanel(
                         SeriesPreviewEpisodeRow(
                             episode = episode,
                             selected = episode.id == selectedSeriesEpisodeId,
-                            onClick = { onSeriesEpisodeSelected(episode.id) },
+                            onFocused = { onSeriesEpisodeSelected(episode.id) },
+                            onClick = { onSeriesEpisodePlay(episode.id) },
                             resumeLabel = resumeLabel,
                             progressLabel = progressLabel,
                         )
@@ -981,6 +990,7 @@ private fun SeriesSeasonSelector(
 private fun SeriesPreviewEpisodeRow(
     episode: VodPreviewEpisode,
     selected: Boolean,
+    onFocused: () -> Unit,
     onClick: () -> Unit,
     resumeLabel: String,
     progressLabel: String,
@@ -1010,6 +1020,9 @@ private fun SeriesPreviewEpisodeRow(
                 shape,
             )
             .tvFocusTarget(state = focusState, focusedScale = 1.015f)
+            .onFocusChanged { focus ->
+                if (focus.isFocused) onFocused()
+            }
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {

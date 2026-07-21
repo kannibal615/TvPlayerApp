@@ -399,6 +399,11 @@ fun SeriesScreen(
                     },
                     selectedSeriesEpisodeId = state.selectedPreviewEpisode?.episodeId,
                     onSeriesEpisodeSelected = viewModel::selectPreviewEpisode,
+                    onSeriesEpisodePlay = { episodeId ->
+                        state.selectedSeries?.let { series ->
+                            onWatchEpisode(episodeId, series.seriesId)
+                        }
+                    },
                     seasonsLabel = strings.seasonsLabel,
                     episodesLoadingLabel = strings.episodesLoading,
                     episodesEmptyLabel = strings.episodesEmpty,

@@ -1,6 +1,6 @@
 # UI TV, Focus et Navigation Telecommande
 
-Derniere mise a jour: 2026-07-20.
+Derniere mise a jour: 2026-07-21.
 
 ## Back plein ecran Live et controles - 2026-07-17
 
@@ -9,11 +9,11 @@ Derniere mise a jour: 2026-07-20.
 - Les indices de focus Live correspondent uniquement aux controles rendus `0..6`; l'index `7` ne doit pas etre retabli car il cree un arret D-pad invisible entre luminosite et chaine precedente.
 - L'overlay episode place `Detail serie` immediatement a droite de `Suivant`, puis `Sortie plein ecran`; le libelle devient visible au focus. L'action sauvegarde/libere le player avant de remplacer la route par la fiche serie.
 
-Le header principal boucle horizontalement entre son premier onglet et sa derniere action visible, dans les deux sens; en profil Kids, l'avatar est la derniere action. Ses onglets centraux utilisent les PNG custom glass regeneres sur fond transparent (`header_icon_*`), sans rail sous les icones; le focus passe par le `tvFocusTarget` standard de l'application. L'icone fait `44 dp` hors focus puis `32 dp` quand le libelle apparait au focus ou si l'onglet est la route active. Le separateur apres YouTube et le bloc droite global restent inchanges. Home applique la meme boucle aux trois cards Categories ainsi qu'aux rangees Continue Watching et Tendances, avec scroll vers la carte opposee avant la demande de focus.
+Le header principal boucle horizontalement entre son premier onglet et sa derniere action visible, dans les deux sens; en profil Kids, l'avatar est la derniere action. Ses onglets centraux utilisent les PNG custom glass regeneres sur fond transparent (`header_icon_*`), sans rail sous les icones; le focus passe par le `tvFocusTarget` standard de l'application. L'icone fait `44 dp` hors focus puis `32 dp` quand le libelle apparait au focus ou si l'onglet est la route active. Depuis le 2026-07-21, `tvFocusTarget` accepte aussi un etat `selected` et les onglets actifs du header affichent le background/border de selection global meme quand le focus reel est dans le contenu. Le separateur apres YouTube et le bloc droite global restent inchanges. Home applique la meme boucle aux trois cards Categories ainsi qu'aux rangees Continue Watching et Tendances, avec scroll vers la carte opposee avant la demande de focus.
 
 Depuis Home, OK sur Live TV, Movies ou Series utilise la navigation NavHost standard. Aucun `SharedTransitionLayout`, bounds partage, zoom ou verrouillage D-pad/OK/Back n'est applique aux cards categories. Les protections Xtream et synchronisation restent gerees avant le callback de navigation.
 
-Les mini-players Movies/Series ouvrent maintenant le fullscreen directement depuis la preview sans publier de bounds de transition vers `AppNavigation`. Le mini-player Live ne publie plus de bounds de transition non plus: son lecteur s'ouvre directement et le D-pad/OK/Back n'est plus bloque par une animation d'entree ou de sortie.
+Les mini-players Movies/Series ouvrent maintenant le fullscreen directement depuis la preview sans publier de bounds de transition vers `AppNavigation`. Le mini-player Live ne publie plus de bounds de transition non plus: son lecteur s'ouvre directement et le D-pad/OK/Back n'est plus bloque par une animation d'entree ou de sortie. Dans la preview Series, le focus sur une ligne episode met encore a jour l'episode selectionne, mais OK/clic lance directement le player plein ecran de cet episode.
 
 Depuis le 2026-07-21, les titres Series de Home > Continue Watching restent forces sur une seule ligne avec ellipsis, comme Live TV et Films, pour garder les cards paysage stables.
 

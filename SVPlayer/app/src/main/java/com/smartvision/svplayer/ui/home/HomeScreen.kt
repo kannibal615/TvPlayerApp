@@ -920,8 +920,8 @@ private fun homeCategories(strings: SmartVisionStrings): List<HomeCategory> = li
         type = HomeCategoryType.Live,
         badge = "LIVE",
         title = strings.liveTv,
-        subtitle = strings.liveTvSubtitle,
-        actionLabel = strings.watchNow,
+        subtitle = strings.emptySubtitle,
+        actionLabel = strings.liveTvSubtitle,
         visualStyle = HomeVisualStyle.Signal,
     ),
     HomeCategory(
@@ -929,8 +929,8 @@ private fun homeCategories(strings: SmartVisionStrings): List<HomeCategory> = li
         type = HomeCategoryType.Movies,
         badge = "VOD",
         title = strings.movies,
-        subtitle = strings.moviesSubtitle,
-        actionLabel = strings.explore,
+        subtitle = strings.emptySubtitle,
+        actionLabel = strings.moviesSubtitle,
         visualStyle = HomeVisualStyle.Cinema,
     ),
     HomeCategory(
@@ -938,8 +938,8 @@ private fun homeCategories(strings: SmartVisionStrings): List<HomeCategory> = li
         type = HomeCategoryType.Series,
         badge = "SERIES",
         title = strings.series,
-        subtitle = strings.seriesSubtitle,
-        actionLabel = strings.explore,
+        subtitle = strings.emptySubtitle,
+        actionLabel = strings.seriesSubtitle,
         visualStyle = HomeVisualStyle.Series,
     ),
 )
