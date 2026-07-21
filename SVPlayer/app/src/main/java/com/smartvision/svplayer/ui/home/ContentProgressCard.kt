@@ -120,6 +120,7 @@ fun ContentProgressCard(
     )
     val isLive = item.mediaType == "LIVE"
     val isMovie = item.mediaType == "MOVIE" || item.mediaType == "FILM"
+    val isSeries = item.mediaType == "SERIE"
     val previewActive = enablePreview &&
         focusState.isFocused &&
         !blocked &&
@@ -312,23 +313,23 @@ fun ContentProgressCard(
                         fontSize = when {
                             isLive && titleSizeStep > 0 -> 10.sp
                             isLive -> 12.sp
-                            isMovie && titleSizeStep >= 2 -> 10.sp
+                            (isMovie || isSeries) && titleSizeStep >= 2 -> 10.sp
                             titleSizeStep > 0 -> 12.sp
                             else -> 15.sp
                         },
                         lineHeight = when {
                             isLive && titleSizeStep > 0 -> 12.sp
                             isLive -> 14.sp
-                            isMovie && titleSizeStep >= 2 -> 12.sp
+                            (isMovie || isSeries) && titleSizeStep >= 2 -> 12.sp
                             titleSizeStep > 0 -> 14.sp
                             else -> 17.sp
                         },
                     ),
                     fontWeight = FontWeight.Bold,
-                    maxLines = if (isLive || isMovie) 1 else 2,
+                    maxLines = if (isLive || isMovie || isSeries) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                     onTextLayout = { result ->
-                        val maxStep = if (isMovie) 2 else 1
+                        val maxStep = if (isMovie || isSeries) 2 else 1
                         if (result.hasVisualOverflow && titleSizeStep < maxStep) {
                             titleSizeStep += 1
                         }

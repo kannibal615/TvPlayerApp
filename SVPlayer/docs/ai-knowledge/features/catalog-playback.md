@@ -4,6 +4,8 @@ Derniere mise a jour: 2026-07-20.
 
 ## Presentation Films et Series - 2026-07-17
 
+- Depuis le 2026-07-21, les lecteurs fullscreen Films et Series s'ouvrent directement depuis le mini-player Preview: `AppNavigation` ne transmet plus de bounds d'entree au player VOD.
+- Le skeleton de chargement VOD garde le ratio 3 colonnes `24/42/34`; le panneau droit Preview ne place plus d'espacement apres le dernier placeholder afin d'eviter une coupure en bas de colonne.
 - Les lignes centrales conservent leur hauteur `56 dp` et utilisent un titre `15 sp`.
 - Le sous-titre Film ne duplique plus le genre et se termine par l'annee sur quatre chiffres lorsqu'elle est connue.
 - Le sous-titre Serie retire createur/realisateur, place la duree avant l'annee et utilise le cover catalogue si le backdrop TMDB manque.

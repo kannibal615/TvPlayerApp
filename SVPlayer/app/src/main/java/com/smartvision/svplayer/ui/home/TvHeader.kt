@@ -43,8 +43,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
@@ -578,11 +576,12 @@ fun HeaderTabButton(
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
     val selected = tab.route == currentRoute
     val emphasized = selected || focusState.isFocused
     val animationsEnabled = LocalTvAnimationsEnabled.current
     val width = 66.dp
-    val targetIconSize = if (emphasized) 28.dp else 38.dp
+    val targetIconSize = if (emphasized) 32.dp else 44.dp
     val iconSize by animateDpAsState(
         targetValue = targetIconSize,
         animationSpec = if (animationsEnabled) tween(130) else snap(),
@@ -621,14 +620,12 @@ fun HeaderTabButton(
                         else -> false
                     }
                 }
-                .then(
-                    if (focusRequester != null) {
-                        Modifier.focusRequester(focusRequester)
-                    } else {
-                        Modifier
-                    },
+                .tvFocusTarget(
+                    state = focusState,
+                    focusRequester = focusRequester,
+                    pressed = pressed,
+                    cornerRadius = 8.dp,
                 )
-                .onFocusChanged { focusState.isFocused = it.isFocused || it.hasFocus }
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,

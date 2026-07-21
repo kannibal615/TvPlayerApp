@@ -252,8 +252,6 @@ fun AppNavigation(
     val context = LocalContext.current
     val activity = context as? Activity
     val livePlaybackSession = remember(context) { LivePlaybackSession(context) }
-    var moviePreviewBounds by remember { mutableStateOf<Rect?>(null) }
-    var seriesPreviewBounds by remember { mutableStateOf<Rect?>(null) }
     var moviePlayerEnterBounds by remember { mutableStateOf<Rect?>(null) }
     var seriesPlayerEnterBounds by remember { mutableStateOf<Rect?>(null) }
     DisposableEffect(livePlaybackSession) {
@@ -908,10 +906,9 @@ fun AppNavigation(
                 onReturnFocusConsumed = { movieReturnFocusId = null },
                 onOpenMovieDetails = { movieId -> navController.navigate("movie_detail/$movieId") },
                 onWatchMovie = { movieId ->
-                    moviePlayerEnterBounds = moviePreviewBounds
+                    moviePlayerEnterBounds = null
                     navController.navigate("movie_player/$movieId")
                 },
-                onPreviewBoundsChanged = { moviePreviewBounds = it },
             )
         }
         composable(AppRoute.Series.route) {
@@ -936,10 +933,9 @@ fun AppNavigation(
                 onOpenSeriesDetails = { seriesId -> navController.navigate("series_detail/$seriesId") },
                 onWatchEpisode = { episodeId, seriesId ->
                     episodeReturnFocusSeriesId = seriesId
-                    seriesPlayerEnterBounds = seriesPreviewBounds
+                    seriesPlayerEnterBounds = null
                     navController.navigate("episode_player/$episodeId")
                 },
-                onPreviewBoundsChanged = { seriesPreviewBounds = it },
             )
         }
         composable(AppRoute.Media.route) {

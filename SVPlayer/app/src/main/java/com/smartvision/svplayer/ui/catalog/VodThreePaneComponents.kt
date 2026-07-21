@@ -594,15 +594,16 @@ private fun VodSkeletonPreviewPanel(
                 .background(shimmerBrush),
         )
         Spacer(Modifier.height(10.dp))
-        repeat(5) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(26.dp)
-                    .clip(RoundedCornerShape(5.dp))
-                    .background(shimmerBrush),
-            )
-            Spacer(Modifier.height(6.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            repeat(5) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(26.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(shimmerBrush),
+                )
+            }
         }
     }
 }

@@ -3221,6 +3221,13 @@ Fichiers code concernes:
 - Les rangees Historique et Tendances portent leur padding horizontal interne a `20 dp`, ce qui laisse dessiner entierement le halo de la premiere card sans perdre les cinq cards paysage visibles.
 ## 2026-07-20 - Header principal PNG transparents
 
-- Remplace les glyphes Canvas du header principal par six PNG `header_icon_*` transparents.
-- Supprime le rail lumineux sous les onglets et le glow de focus local du header central.
-- Agrandit les icones hors focus a la taille des boutons du bloc droit; au focus/selection, l'icone se reduit pour afficher le libelle sans augmenter la hauteur du header.
+- Remplace les glyphes Canvas du header principal par six PNG `header_icon_*` regeneres et detoures en alpha reel.
+- Supprime le rail lumineux sous les onglets centraux.
+- Retablit le focus standard `tvFocusTarget` de l'application sur les onglets.
+- Agrandit les icones a `44 dp` hors focus; au focus/selection, l'icone passe a `32 dp` pour afficher le libelle sans augmenter la hauteur du header.
+
+## 2026-07-21 - Films/Series fullscreen direct et skeleton VOD
+
+- Films et Series n'envoient plus les bounds du mini-player Preview vers le player fullscreen; l'ouverture VOD devient directe, sans animation mini-player vers fullscreen.
+- Home > Continue Watching force aussi les titres `SERIE` sur une seule ligne avec ellipsis.
+- Le skeleton VOD corrige la coupure en bas du panneau droit Preview en supprimant l'espacement apres le dernier placeholder.

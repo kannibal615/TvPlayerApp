@@ -9,11 +9,13 @@ Derniere mise a jour: 2026-07-20.
 - Les indices de focus Live correspondent uniquement aux controles rendus `0..6`; l'index `7` ne doit pas etre retabli car il cree un arret D-pad invisible entre luminosite et chaine precedente.
 - L'overlay episode place `Detail serie` immediatement a droite de `Suivant`, puis `Sortie plein ecran`; le libelle devient visible au focus. L'action sauvegarde/libere le player avant de remplacer la route par la fiche serie.
 
-Le header principal boucle horizontalement entre son premier onglet et sa derniere action visible, dans les deux sens; en profil Kids, l'avatar est la derniere action. Ses onglets centraux utilisent les PNG custom glass sur fond transparent (`header_icon_*`), sans rail sous les icones ni glow de focus local; l'icone est grande hors focus puis reduite quand le libelle apparait au focus ou si l'onglet est la route active. Le separateur apres YouTube et le bloc droite global restent inchanges. Home applique la meme boucle aux trois cards Categories ainsi qu'aux rangees Continue Watching et Tendances, avec scroll vers la carte opposee avant la demande de focus.
+Le header principal boucle horizontalement entre son premier onglet et sa derniere action visible, dans les deux sens; en profil Kids, l'avatar est la derniere action. Ses onglets centraux utilisent les PNG custom glass regeneres sur fond transparent (`header_icon_*`), sans rail sous les icones; le focus passe par le `tvFocusTarget` standard de l'application. L'icone fait `44 dp` hors focus puis `32 dp` quand le libelle apparait au focus ou si l'onglet est la route active. Le separateur apres YouTube et le bloc droite global restent inchanges. Home applique la meme boucle aux trois cards Categories ainsi qu'aux rangees Continue Watching et Tendances, avec scroll vers la carte opposee avant la demande de focus.
 
 Depuis Home, OK sur Live TV, Movies ou Series utilise la navigation NavHost standard. Aucun `SharedTransitionLayout`, bounds partage, zoom ou verrouillage D-pad/OK/Back n'est applique aux cards categories. Les protections Xtream et synchronisation restent gerees avant le callback de navigation.
 
-Les mini-players Movies/Series publient leurs bounds reels a la navigation et gardent leur mouvement centre puis expansion/repli. Le mini-player Live ne publie plus de bounds de transition: son lecteur s'ouvre directement et le D-pad/OK/Back n'est plus bloque par une animation d'entree ou de sortie.
+Les mini-players Movies/Series ouvrent maintenant le fullscreen directement depuis la preview sans publier de bounds de transition vers `AppNavigation`. Le mini-player Live ne publie plus de bounds de transition non plus: son lecteur s'ouvre directement et le D-pad/OK/Back n'est plus bloque par une animation d'entree ou de sortie.
+
+Depuis le 2026-07-21, les titres Series de Home > Continue Watching restent forces sur une seule ligne avec ellipsis, comme Live TV et Films, pour garder les cards paysage stables.
 
 Les recherches Live TV, Movies et Series sont repliees en bouton carre icon-only. OK les transforme en champ, demande le focus de saisie et ouvre le clavier; Back ou la perte de focus referme le champ. Le filtre adjacent reprend le bouton `FilterList` carre utilise par Categories Live TV.
 
@@ -232,7 +234,7 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 
 ## 12. Historique court
 
-- 2026-07-20: refonte du header principal: les onglets centraux utilisent des PNG custom transparents, sans rail ni glow de focus local; les icones font la taille du bloc d'actions droit hors focus puis se reduisent pour afficher le label au focus/selection. La hauteur mesuree reste `44 dp`.
+- 2026-07-20: refonte du header principal: les onglets centraux utilisent des PNG custom regeneres et detoures en alpha reel, sans rail sous les icones; le focus revient au `tvFocusTarget` standard. Les icones font `44 dp` hors focus puis `32 dp` pour afficher le label au focus/selection. La hauteur mesuree reste `44 dp`.
 - 2026-07-18: les previews Home utilisent une identite de session scopee par rangee (`continue:*`, `trending-movies:*`, `trending-series:*`). Une meme video dans plusieurs rangees garde des surfaces distinctes; un blur/dispose ne peut arreter que la session dont la card est proprietaire.
 - 2026-07-18: les loaders de synchronisation des cards Home ne modifient ni leur taille ni leurs cibles D-pad; les cards en attente et terminees conservent leur comportement de focus normal.
 - 2026-07-20: Who's Watching couvre le demarrage avec un masque opaque au-dessus de Home tant qu'aucun profil n'est selectionne; le picker reste visible pendant le staging Home pour eviter tout ecran vide. Les mouvements gauche/droite retirent le scale de focus simple et les mesures de bounds continues; le wrap lazy protege reste `Add Profile` <-> premier profil.
