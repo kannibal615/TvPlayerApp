@@ -55,6 +55,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.smartvision.svplayer.BuildConfig
+import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.config.ProfileType
@@ -80,9 +81,9 @@ import com.smartvision.svplayer.ui.appconfig.AppConfigViewModel
 import com.smartvision.svplayer.ui.appconfig.ConsentDialog
 import com.smartvision.svplayer.ui.detail.MovieDetailRoute
 import com.smartvision.svplayer.ui.detail.SeriesDetailRoute
+import com.smartvision.svplayer.ui.home.HeaderIconStyle
 import com.smartvision.svplayer.ui.home.HomeHeaderFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
-import com.smartvision.svplayer.ui.home.HomeHeaderTabKind
 import com.smartvision.svplayer.ui.home.HomeScreen
 import com.smartvision.svplayer.ui.home.HomeViewModel
 import com.smartvision.svplayer.ui.home.visibleForProfile
@@ -1625,12 +1626,17 @@ private enum class AppRoute(val route: String) {
 }
 
 private fun headerTabs(strings: SmartVisionStrings) = listOf(
-    HomeHeaderTab(strings.home, AppRoute.Home.route, kind = HomeHeaderTabKind.Home),
-    HomeHeaderTab(strings.liveTv, AppRoute.Live.route, kind = HomeHeaderTabKind.LiveTv),
-    HomeHeaderTab(strings.movies, AppRoute.Movies.route, kind = HomeHeaderTabKind.Movies),
-    HomeHeaderTab(strings.series, AppRoute.Series.route, kind = HomeHeaderTabKind.Series),
-    HomeHeaderTab(strings.media, AppRoute.Media.route, kind = HomeHeaderTabKind.Media),
-    HomeHeaderTab("YouTube", AppRoute.Youtube.route, useYoutubeLogo = true, kind = HomeHeaderTabKind.Youtube),
+    HomeHeaderTab(strings.home, AppRoute.Home.route, R.drawable.ic_header_home),
+    HomeHeaderTab(strings.liveTv, AppRoute.Live.route, R.drawable.ic_header_live_tv),
+    HomeHeaderTab(strings.movies, AppRoute.Movies.route, R.drawable.ic_header_movies),
+    HomeHeaderTab(strings.series, AppRoute.Series.route, R.drawable.ic_header_series),
+    HomeHeaderTab(strings.media, AppRoute.Media.route, R.drawable.ic_header_media),
+    HomeHeaderTab(
+        label = "YouTube",
+        route = AppRoute.Youtube.route,
+        iconRes = R.drawable.ic_header_youtube,
+        iconStyle = HeaderIconStyle.OriginalColors,
+    ),
 )
 
 private fun activationPortalBaseUrl(): String =

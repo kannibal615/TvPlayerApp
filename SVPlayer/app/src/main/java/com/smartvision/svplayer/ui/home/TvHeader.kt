@@ -1,8 +1,15 @@
 package com.smartvision.svplayer.ui.home
 
-import androidx.compose.animation.core.animateDpAsState
+import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.animateDp
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -33,7 +40,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,9 +50,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -55,6 +69,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -82,20 +97,15 @@ import kotlinx.coroutines.delay
 data class HomeHeaderTab(
     val label: String,
     val route: String,
-    val icon: ImageVector? = null,
-    val useYoutubeLogo: Boolean = false,
+    @DrawableRes val iconRes: Int,
+    val iconStyle: HeaderIconStyle = HeaderIconStyle.Monochrome,
     val locked: Boolean = false,
     val warning: Boolean = false,
-    val kind: HomeHeaderTabKind? = null,
 )
 
-enum class HomeHeaderTabKind {
-    Home,
-    LiveTv,
-    Movies,
-    Series,
-    Media,
-    Youtube,
+sealed interface HeaderIconStyle {
+    data object Monochrome : HeaderIconStyle
+    data object OriginalColors : HeaderIconStyle
 }
 
 enum class HomeHeaderFocusTarget {
@@ -205,36 +215,71 @@ private fun HeaderTabsRail(
     onContentDown: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
+    var railBounds by remember { mutableStateOf<Rect?>(null) }
+    var focusedRoute by remember { mutableStateOf<String?>(null) }
+    val tabBounds = remember { mutableStateMapOf<String, Rect>() }
+    val targetBounds = focusedRoute?.let { route ->
+        val rootTabBounds = tabBounds[route]
+        val rootRailBounds = railBounds
+        if (rootTabBounds != null && rootRailBounds != null) {
+            Rect(
+                left = rootTabBounds.left - rootRailBounds.left,
+                top = rootTabBounds.top - rootRailBounds.top,
+                right = rootTabBounds.right - rootRailBounds.left,
+                bottom = rootTabBounds.bottom - rootRailBounds.top,
+            )
+        } else {
+            null
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .padding(start = 2.dp, end = 8.dp),
+            .padding(start = 2.dp, end = 8.dp)
+            .onGloballyPositioned { coordinates ->
+                val nextBounds = coordinates.boundsInRoot()
+                if (railBounds != nextBounds) railBounds = nextBounds
+            },
         contentAlignment = Alignment.Center,
     ) {
+        SharedHeaderFocusIndicator(
+            targetBounds = targetBounds,
+            modifier = Modifier.align(Alignment.TopStart),
+        )
         Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.spacedBy(HeaderTabSpacing, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             tabs.forEachIndexed { index, tab ->
-                HeaderTabButton(
-                    tab = tab,
-                    currentRoute = currentRoute,
-                    onNavigate = onNavigate,
-                    height = SmartVisionDimensions.HomeHeaderHeight,
-                    horizontalPadding = 2.dp,
-                    focusRequester = when {
-                        index == 0 -> firstTabRequester
-                        tab.route == currentRoute -> currentTabFocusRequester
-                        else -> null
-                    },
-                    onLeft = if (index == 0) {
-                        { runCatching { lastControlRequester.requestFocus() } }
-                    } else {
-                        null
-                    },
-                    downFocusRequester = contentDownFocusRequester,
-                    onDown = onContentDown,
-                )
+                key(tab.route) {
+                    HeaderTabButton(
+                        tab = tab,
+                        onNavigate = onNavigate,
+                        height = SmartVisionDimensions.HomeHeaderHeight,
+                        focusRequester = when {
+                            index == 0 -> firstTabRequester
+                            tab.route == currentRoute -> currentTabFocusRequester
+                            else -> null
+                        },
+                        onLeft = if (index == 0) {
+                            { runCatching { lastControlRequester.requestFocus() } }
+                        } else {
+                            null
+                        },
+                        downFocusRequester = contentDownFocusRequester,
+                        onDown = onContentDown,
+                        onBoundsChanged = { bounds ->
+                            if (tabBounds[tab.route] != bounds) tabBounds[tab.route] = bounds
+                        },
+                        onFocusStateChanged = { focused ->
+                            when {
+                                focused -> focusedRoute = tab.route
+                                focusedRoute == tab.route -> focusedRoute = null
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -561,102 +606,252 @@ private fun SmartVisionLogo() {
     )
 }
 
+private val HeaderTabWidth = 58.dp
+private val HeaderTabSpacing = 12.dp
+private val HeaderTabIconSize = 24.dp
+private val HeaderHaloWidth = 106.dp
+private val HeaderHaloHeight = 92.dp
+private val HeaderElectricBlue = Color(0xFF168CFF)
+
+@Composable
+private fun SharedHeaderFocusIndicator(
+    targetBounds: Rect?,
+    modifier: Modifier = Modifier,
+) {
+    val animationsEnabled = LocalTvAnimationsEnabled.current
+    val density = LocalDensity.current
+    val haloWidthPx = with(density) { HeaderHaloWidth.toPx() }
+    val haloHeightPx = with(density) { HeaderHaloHeight.toPx() }
+    val targetOffset = targetBounds?.let { bounds ->
+        Offset(
+            x = bounds.center.x - haloWidthPx / 2f,
+            y = bounds.center.y - haloHeightPx / 2f,
+        )
+    }
+    val position = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
+    var hasPosition by remember { mutableStateOf(false) }
+
+    LaunchedEffect(targetOffset, animationsEnabled) {
+        targetOffset ?: return@LaunchedEffect
+        if (!hasPosition || !animationsEnabled) {
+            position.snapTo(targetOffset)
+            hasPosition = true
+        } else {
+            position.animateTo(
+                targetValue = targetOffset,
+                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+            )
+        }
+    }
+
+    val haloAlpha by animateFloatAsState(
+        targetValue = if (targetBounds != null) 0.85f else 0f,
+        animationSpec = if (animationsEnabled) {
+            tween(
+                durationMillis = if (targetBounds != null) 190 else 160,
+                easing = FastOutSlowInEasing,
+            )
+        } else {
+            snap()
+        },
+        label = "headerSharedHaloAlpha",
+    )
+
+    Box(
+        modifier = modifier
+            .size(width = HeaderHaloWidth, height = HeaderHaloHeight)
+            .graphicsLayer {
+                translationX = position.value.x
+                translationY = position.value.y
+                alpha = haloAlpha
+            }
+            .drawWithCache {
+                val haloBrush = Brush.radialGradient(
+                    colors = listOf(
+                        HeaderElectricBlue,
+                        HeaderElectricBlue.copy(alpha = 0.42f),
+                        Color.Transparent,
+                    ),
+                    center = Offset(size.width / 2f, size.height / 2f),
+                    radius = size.maxDimension / 2f,
+                )
+                onDrawBehind { drawRect(brush = haloBrush) }
+            },
+    )
+}
+
 @Composable
 fun HeaderTabButton(
     tab: HomeHeaderTab,
-    currentRoute: String,
     onNavigate: (String) -> Unit,
     height: Dp,
-    horizontalPadding: Dp,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
     downFocusRequester: FocusRequester? = null,
     onDown: (() -> Unit)? = null,
     onLeft: (() -> Unit)? = null,
+    onBoundsChanged: (Rect) -> Unit = {},
+    onFocusStateChanged: (Boolean) -> Unit = {},
 ) {
-    val focusState = rememberTvFocusState()
+    var isFocused by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val selected = tab.route == currentRoute
-    val emphasized = selected || focusState.isFocused
     val animationsEnabled = LocalTvAnimationsEnabled.current
-    val width = 66.dp
-    val targetIconSize = if (emphasized) 32.dp else 44.dp
-    val iconSize by animateDpAsState(
-        targetValue = targetIconSize,
-        animationSpec = if (animationsEnabled) tween(130) else snap(),
-        label = "headerTabIconSize",
+    val density = LocalDensity.current
+    val transition = updateTransition(
+        targetState = isFocused,
+        label = "headerMenuFocus",
     )
+    val scale by transition.animateFloat(
+        transitionSpec = {
+            if (animationsEnabled) {
+                tween(
+                    durationMillis = if (targetState) 200 else 170,
+                    easing = FastOutSlowInEasing,
+                )
+            } else {
+                snap()
+            }
+        },
+        label = "headerMenuScale",
+    ) { focused ->
+        if (focused) 1.15f else 1f
+    }
+    val iconAlpha by transition.animateFloat(
+        transitionSpec = {
+            if (animationsEnabled) tween(if (targetState) 180 else 160) else snap()
+        },
+        label = "headerIconAlpha",
+    ) { focused ->
+        if (focused) 1f else 0.80f
+    }
+    val barAlpha by transition.animateFloat(
+        transitionSpec = {
+            if (animationsEnabled) tween(if (targetState) 180 else 140) else snap()
+        },
+        label = "headerFocusBarAlpha",
+    ) { focused ->
+        if (focused) 1f else 0f
+    }
+    val barScaleX by transition.animateFloat(
+        transitionSpec = {
+            if (animationsEnabled) tween(if (targetState) 180 else 140, easing = FastOutSlowInEasing) else snap()
+        },
+        label = "headerFocusBarScale",
+    ) { focused ->
+        if (focused) 1f else 0.62f
+    }
+    val labelAlpha by transition.animateFloat(
+        transitionSpec = {
+            if (animationsEnabled) tween(if (targetState) 180 else 140) else snap()
+        },
+        label = "headerMenuLabelAlpha",
+    ) { focused ->
+        if (focused) 1f else 0f
+    }
+    val labelOffset by transition.animateDp(
+        transitionSpec = {
+            if (animationsEnabled) tween(if (targetState) 180 else 140, easing = FastOutSlowInEasing) else snap()
+        },
+        label = "headerMenuLabelOffset",
+    ) { focused ->
+        if (focused) 0.dp else 6.dp
+    }
+    val labelOffsetPx = with(density) { labelOffset.toPx() }
+    val requesterModifier = focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier
+    val muted = tab.locked || tab.warning
 
     Box(
         modifier = modifier
             .height(height + if (tab.locked) 8.dp else 0.dp)
-            .width(width)
+            .width(HeaderTabWidth)
             .padding(top = if (tab.locked) 8.dp else 0.dp),
         contentAlignment = Alignment.BottomCenter,
     ) {
         Box(
             modifier = Modifier
                 .height(height)
-                .width(width)
-                .then(
-                    if (downFocusRequester != null) {
-                        Modifier.focusProperties { down = downFocusRequester }
-                    } else {
-                        Modifier
-                    },
-                )
-                .onPreviewKeyEvent { event ->
-                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                    when {
-                        event.key == Key.DirectionDown && onDown != null -> {
-                            onDown()
-                            true
-                        }
-                        event.key == Key.DirectionLeft && onLeft != null -> {
-                            onLeft()
-                            true
-                        }
-                        else -> false
-                    }
-                }
-                .tvFocusTarget(
-                    state = focusState,
-                    focusRequester = focusRequester,
-                    pressed = pressed,
-                    selected = selected,
-                    cornerRadius = 8.dp,
-                )
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    onClick = { onNavigate(tab.route) },
-                )
-                .focusable(interactionSource = interactionSource)
-                .padding(horizontal = horizontalPadding)
-                .alpha(if (tab.locked || tab.warning) 0.48f else 1f),
+                .width(HeaderTabWidth)
+                .onGloballyPositioned { coordinates ->
+                    onBoundsChanged(coordinates.boundsInRoot())
+                },
             contentAlignment = Alignment.Center,
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        alpha = if (muted) 0.48f else 1f
+                    }
+                    .then(requesterModifier)
+                    .then(
+                        if (downFocusRequester != null) {
+                            Modifier.focusProperties { down = downFocusRequester }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                        when {
+                            event.key == Key.DirectionDown && onDown != null -> {
+                                onDown()
+                                true
+                            }
+                            event.key == Key.DirectionLeft && onLeft != null -> {
+                                onLeft()
+                                true
+                            }
+                            else -> false
+                        }
+                    }
+                    .onFocusChanged { focusState ->
+                        val nextFocused = focusState.isFocused || focusState.hasFocus
+                        if (isFocused != nextFocused) {
+                            isFocused = nextFocused
+                            onFocusStateChanged(nextFocused)
+                        }
+                    }
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = { onNavigate(tab.route) },
+                    )
+                    .focusable(interactionSource = interactionSource),
             ) {
                 HeaderTabGlyph(
-                    kind = tab.kind ?: tab.inferredKind(),
-                    warning = tab.warning,
-                    modifier = Modifier.size(iconSize),
+                    tab = tab,
+                    iconAlpha = iconAlpha,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = 2.dp)
+                        .size(HeaderTabIconSize),
                 )
-                if (emphasized) {
-                    Text(
-                        text = tab.label,
-                        color = SmartVisionColors.TextPrimary,
-                        fontSize = 9.sp,
-                        lineHeight = 9.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                    )
-                }
+                HeaderFocusBar(
+                    alpha = barAlpha,
+                    scaleX = barScaleX,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = 27.dp),
+                )
+                Text(
+                    text = tab.label,
+                    color = SmartVisionColors.TextPrimary,
+                    fontSize = 9.sp,
+                    lineHeight = 9.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .width(HeaderTabWidth)
+                        .height(10.dp)
+                        .graphicsLayer {
+                            alpha = labelAlpha
+                            translationY = labelOffsetPx
+                        },
+                )
             }
         }
         if (tab.warning) {
@@ -666,7 +861,7 @@ fun HeaderTabButton(
                 tint = SmartVisionColors.Warning,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset(x = (-7).dp, y = 2.dp)
+                    .offset(x = (-5).dp, y = 2.dp)
                     .zIndex(5f)
                     .size(14.dp),
             )
@@ -687,34 +882,51 @@ fun HeaderTabButton(
 }
 
 @Composable
-private fun HeaderTabGlyph(
-    kind: HomeHeaderTabKind,
-    warning: Boolean,
+private fun HeaderFocusBar(
+    alpha: Float,
+    scaleX: Float,
     modifier: Modifier = Modifier,
 ) {
-    val resId = when (kind) {
-        HomeHeaderTabKind.Home -> R.drawable.header_icon_home
-        HomeHeaderTabKind.LiveTv -> R.drawable.header_icon_live_tv
-        HomeHeaderTabKind.Movies -> R.drawable.header_icon_movies
-        HomeHeaderTabKind.Series -> R.drawable.header_icon_series
-        HomeHeaderTabKind.Media -> R.drawable.header_icon_media
-        HomeHeaderTabKind.Youtube -> R.drawable.header_icon_youtube
+    Box(
+        modifier = modifier
+            .size(width = 36.dp, height = 7.dp)
+            .graphicsLayer {
+                this.alpha = alpha
+                this.scaleX = scaleX
+            }
+            .drawWithCache {
+                val glowBrush = Brush.radialGradient(
+                    colors = listOf(HeaderElectricBlue.copy(alpha = 0.58f), Color.Transparent),
+                    center = Offset(size.width / 2f, size.height / 2f),
+                    radius = size.width / 2f,
+                )
+                onDrawBehind { drawRect(brush = glowBrush) }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 28.dp, height = 3.dp)
+                .background(HeaderElectricBlue, RoundedCornerShape(50)),
+        )
     }
-    Image(
-        painter = painterResource(resId),
-        contentDescription = null,
-        contentScale = ContentScale.Fit,
-        modifier = modifier.alpha(if (warning) 0.54f else 1f),
-    )
 }
 
-private fun HomeHeaderTab.inferredKind(): HomeHeaderTabKind = when {
-    useYoutubeLogo || label.equals("YouTube", ignoreCase = true) -> HomeHeaderTabKind.Youtube
-    route.contains("live", ignoreCase = true) -> HomeHeaderTabKind.LiveTv
-    route.contains("movie", ignoreCase = true) || route.contains("film", ignoreCase = true) -> HomeHeaderTabKind.Movies
-    route.contains("series", ignoreCase = true) -> HomeHeaderTabKind.Series
-    route.contains("media", ignoreCase = true) -> HomeHeaderTabKind.Media
-    else -> HomeHeaderTabKind.Home
+@Composable
+private fun HeaderTabGlyph(
+    tab: HomeHeaderTab,
+    iconAlpha: Float,
+    modifier: Modifier = Modifier,
+) {
+    Icon(
+        painter = painterResource(tab.iconRes),
+        contentDescription = tab.label,
+        tint = when (tab.iconStyle) {
+            HeaderIconStyle.Monochrome -> Color.White.copy(alpha = iconAlpha)
+            HeaderIconStyle.OriginalColors -> Color.Unspecified
+        },
+        modifier = modifier,
+    )
 }
 
 private data class HeaderDateTimeText(
