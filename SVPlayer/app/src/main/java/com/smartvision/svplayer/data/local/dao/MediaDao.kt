@@ -147,6 +147,9 @@ interface MediaDao {
     @Query("SELECT * FROM movies WHERE profileId = :profileId AND categoryId = :categoryId ORDER BY number, title LIMIT :limit OFFSET :offset")
     suspend fun getMoviesByCategoryPage(profileId: String, categoryId: String, limit: Int, offset: Int): List<MovieEntity>
 
+    @Query("SELECT * FROM movies WHERE profileId = :profileId AND categoryId IN (:categoryIds) ORDER BY number, title LIMIT :limit OFFSET :offset")
+    suspend fun getMoviesByCategoriesPage(profileId: String, categoryIds: List<String>, limit: Int, offset: Int): List<MovieEntity>
+
     @Query(
         "SELECT * FROM movies WHERE profileId = :profileId " +
             "AND (title LIKE :pattern ESCAPE '\\' OR COALESCE(genre, '') LIKE :pattern ESCAPE '\\' OR COALESCE(year, '') LIKE :pattern ESCAPE '\\') " +
@@ -160,6 +163,13 @@ interface MediaDao {
             "ORDER BY number, title LIMIT :limit OFFSET :offset",
     )
     suspend fun searchMoviesByCategoryPage(profileId: String, categoryId: String, pattern: String, limit: Int, offset: Int): List<MovieEntity>
+
+    @Query(
+        "SELECT * FROM movies WHERE profileId = :profileId AND categoryId IN (:categoryIds) " +
+            "AND (title LIKE :pattern ESCAPE '\\' OR COALESCE(genre, '') LIKE :pattern ESCAPE '\\' OR COALESCE(year, '') LIKE :pattern ESCAPE '\\') " +
+            "ORDER BY number, title LIMIT :limit OFFSET :offset",
+    )
+    suspend fun searchMoviesByCategoriesPage(profileId: String, categoryIds: List<String>, pattern: String, limit: Int, offset: Int): List<MovieEntity>
 
     @Query("SELECT * FROM movies WHERE profileId = :profileId AND streamId IN (:streamIds)")
     suspend fun getMoviesByIds(profileId: String, streamIds: List<Int>): List<MovieEntity>
@@ -247,6 +257,9 @@ interface MediaDao {
     @Query("SELECT * FROM series WHERE profileId = :profileId AND categoryId = :categoryId ORDER BY number, title LIMIT :limit OFFSET :offset")
     suspend fun getSeriesByCategoryPage(profileId: String, categoryId: String, limit: Int, offset: Int): List<SeriesEntity>
 
+    @Query("SELECT * FROM series WHERE profileId = :profileId AND categoryId IN (:categoryIds) ORDER BY number, title LIMIT :limit OFFSET :offset")
+    suspend fun getSeriesByCategoriesPage(profileId: String, categoryIds: List<String>, limit: Int, offset: Int): List<SeriesEntity>
+
     @Query(
         "SELECT * FROM series WHERE profileId = :profileId " +
             "AND (title LIKE :pattern ESCAPE '\\' OR COALESCE(genre, '') LIKE :pattern ESCAPE '\\' OR COALESCE(year, '') LIKE :pattern ESCAPE '\\') " +
@@ -260,6 +273,13 @@ interface MediaDao {
             "ORDER BY number, title LIMIT :limit OFFSET :offset",
     )
     suspend fun searchSeriesByCategoryPage(profileId: String, categoryId: String, pattern: String, limit: Int, offset: Int): List<SeriesEntity>
+
+    @Query(
+        "SELECT * FROM series WHERE profileId = :profileId AND categoryId IN (:categoryIds) " +
+            "AND (title LIKE :pattern ESCAPE '\\' OR COALESCE(genre, '') LIKE :pattern ESCAPE '\\' OR COALESCE(year, '') LIKE :pattern ESCAPE '\\') " +
+            "ORDER BY number, title LIMIT :limit OFFSET :offset",
+    )
+    suspend fun searchSeriesByCategoriesPage(profileId: String, categoryIds: List<String>, pattern: String, limit: Int, offset: Int): List<SeriesEntity>
 
     @Query("SELECT * FROM series WHERE profileId = :profileId AND seriesId IN (:seriesIds)")
     suspend fun getSeriesByIds(profileId: String, seriesIds: List<Int>): List<SeriesEntity>

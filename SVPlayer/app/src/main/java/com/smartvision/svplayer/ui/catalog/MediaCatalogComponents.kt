@@ -30,6 +30,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material.icons.filled.Warning
@@ -359,6 +361,9 @@ fun CatalogCategoryRow(
     focusRequester: FocusRequester? = null,
     upFocusRequester: FocusRequester? = null,
     onRight: (() -> Unit)? = null,
+    brandLogoRes: Int? = null,
+    expanded: Boolean? = null,
+    indentLevel: Int = 0,
 ) {
     val focusState = rememberTvFocusState()
     val interactionSource = remember { MutableInteractionSource() }
@@ -436,7 +441,7 @@ fun CatalogCategoryRow(
                 onClick = onClick,
             )
             .focusable(interactionSource = interactionSource)
-            .padding(horizontal = 12.dp),
+            .padding(start = 12.dp + (indentLevel * 18).dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
@@ -448,21 +453,44 @@ fun CatalogCategoryRow(
             )
             Spacer(Modifier.width(10.dp))
         }
-        Text(
-            text = label,
-            color = SmartVisionColors.TextPrimary,
-            style = CatalogItemTitleStyle,
-            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = count?.toString().orEmpty(),
-            color = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
-            style = CatalogMetaStyle,
-            maxLines = 1,
-        )
+        if (brandLogoRes != null) {
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    painter = painterResource(brandLogoRes),
+                    contentDescription = label,
+                    modifier = Modifier.height(28.dp).width(124.dp),
+                    contentScale = ContentScale.Fit,
+                )
+            }
+        } else {
+            Text(
+                text = label,
+                color = SmartVisionColors.TextPrimary,
+                style = CatalogItemTitleStyle,
+                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        if (expanded != null) {
+            Icon(
+                imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = null,
+                tint = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+                modifier = Modifier.size(18.dp),
+            )
+        } else {
+            Text(
+                text = count?.toString().orEmpty(),
+                color = if (active) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+                style = CatalogMetaStyle,
+                maxLines = 1,
+            )
+        }
     }
 }
 

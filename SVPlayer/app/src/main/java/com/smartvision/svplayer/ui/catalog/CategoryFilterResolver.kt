@@ -1,4 +1,4 @@
-package com.smartvision.svplayer.ui.live
+package com.smartvision.svplayer.ui.catalog
 
 import java.util.Locale
 
@@ -16,6 +16,13 @@ data class CategoryFilterIdentity(
 data class CategoryFilter(
     val identity: CategoryFilterIdentity,
     val categoryCount: Int,
+)
+
+data class CatalogCategoryFilterEntry(
+    val id: String,
+    val label: String,
+    val count: Int?,
+    val special: Boolean = false,
 )
 
 object CategoryCodeParser {
@@ -81,12 +88,12 @@ object CategoryFilterResolver {
     }
 
     fun buildFilters(
-        categories: List<LiveTvCategory>,
+        categories: List<CatalogCategoryFilterEntry>,
         locale: Locale = Locale.getDefault(),
     ): List<CategoryFilter> {
         val firstSeen = linkedMapOf<String, Pair<CategoryFilterIdentity, Int>>()
         categories.asSequence()
-            .filterNot { it.id in SpecialLiveCategoryIds }
+            .filterNot(CatalogCategoryFilterEntry::special)
             .forEach { category ->
                 val code = CategoryCodeParser.parse(category.label) ?: return@forEach
                 val identity = resolve(code, locale)
@@ -98,16 +105,30 @@ object CategoryFilterResolver {
             .sortedBy { it.identity.priority }
     }
 
-    fun filterCategories(categories: List<LiveTvCategory>, normalizedCode: String?): List<LiveTvCategory> {
-        if (normalizedCode == null) return categories
-        val all = categories.firstOrNull { it.id == AllLiveCategoryId }
-        val filtered = categories.filter { category ->
-            if (category.id in SpecialLiveCategoryIds) return@filter false
+    fun matchingCategoryIds(
+        categories: List<CatalogCategoryFilterEntry>,
+        normalizedCode: String?,
+    ): Set<String> {
+        if (normalizedCode == null) {
+            return categories.asSequence().filterNot(CatalogCategoryFilterEntry::special).mapTo(linkedSetOf()) { it.id }
+        }
+        return categories.asSequence().filter { category ->
+            if (category.special) return@filter false
             val code = CategoryCodeParser.parse(category.label) ?: return@filter false
             resolve(code, Locale.ROOT).normalizedCode == normalizedCode
-        }
-        val filteredAll = all?.copy(count = filtered.sumOf { it.count ?: 0 })
-        return listOfNotNull(filteredAll) + filtered
+        }.mapTo(linkedSetOf()) { it.id }
+    }
+
+    fun filterEntries(
+        categories: List<CatalogCategoryFilterEntry>,
+        normalizedCode: String?,
+        allCategoryId: String,
+    ): List<CatalogCategoryFilterEntry> {
+        if (normalizedCode == null) return categories
+        val matchingIds = matchingCategoryIds(categories, normalizedCode)
+        val all = categories.firstOrNull { it.id == allCategoryId }
+            ?.copy(count = categories.filter { it.id in matchingIds }.sumOf { it.count ?: 0 })
+        return listOfNotNull(all) + categories.filter { it.id in matchingIds }
     }
 }
 

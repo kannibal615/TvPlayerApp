@@ -134,6 +134,9 @@ import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.catalog.CatalogPanelTitleWithCount
 import com.smartvision.svplayer.ui.catalog.CatalogSortButton
+import com.smartvision.svplayer.ui.catalog.CategoryFilterBar
+import com.smartvision.svplayer.ui.catalog.CategoryFilterEmptyState
+import com.smartvision.svplayer.ui.catalog.CategoryFilterIconButton
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle

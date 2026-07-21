@@ -1,4 +1,4 @@
-package com.smartvision.svplayer.ui.live
+package com.smartvision.svplayer.ui.catalog
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background

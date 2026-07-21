@@ -1,12 +1,9 @@
 package com.smartvision.svplayer.ui.home
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
@@ -42,7 +39,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,14 +46,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -215,38 +208,12 @@ private fun HeaderTabsRail(
     onContentDown: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    var railBounds by remember { mutableStateOf<Rect?>(null) }
-    var focusedRoute by remember { mutableStateOf<String?>(null) }
-    val tabBounds = remember { mutableStateMapOf<String, Rect>() }
-    val targetBounds = focusedRoute?.let { route ->
-        val rootTabBounds = tabBounds[route]
-        val rootRailBounds = railBounds
-        if (rootTabBounds != null && rootRailBounds != null) {
-            Rect(
-                left = rootTabBounds.left - rootRailBounds.left,
-                top = rootTabBounds.top - rootRailBounds.top,
-                right = rootTabBounds.right - rootRailBounds.left,
-                bottom = rootTabBounds.bottom - rootRailBounds.top,
-            )
-        } else {
-            null
-        }
-    }
-
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .padding(start = 2.dp, end = 8.dp)
-            .onGloballyPositioned { coordinates ->
-                val nextBounds = coordinates.boundsInRoot()
-                if (railBounds != nextBounds) railBounds = nextBounds
-            },
+            .padding(start = 2.dp, end = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        SharedHeaderFocusIndicator(
-            targetBounds = targetBounds,
-            modifier = Modifier.align(Alignment.TopStart),
-        )
         Row(
             horizontalArrangement = Arrangement.spacedBy(HeaderTabSpacing, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
@@ -269,15 +236,6 @@ private fun HeaderTabsRail(
                         },
                         downFocusRequester = contentDownFocusRequester,
                         onDown = onContentDown,
-                        onBoundsChanged = { bounds ->
-                            if (tabBounds[tab.route] != bounds) tabBounds[tab.route] = bounds
-                        },
-                        onFocusStateChanged = { focused ->
-                            when {
-                                focused -> focusedRoute = tab.route
-                                focusedRoute == tab.route -> focusedRoute = null
-                            }
-                        },
                     )
                 }
             }
@@ -608,77 +566,8 @@ private fun SmartVisionLogo() {
 
 private val HeaderTabWidth = 58.dp
 private val HeaderTabSpacing = 12.dp
-private val HeaderTabIconSize = 24.dp
-private val HeaderHaloWidth = 106.dp
-private val HeaderHaloHeight = 92.dp
-private val HeaderElectricBlue = Color(0xFF168CFF)
-
-@Composable
-private fun SharedHeaderFocusIndicator(
-    targetBounds: Rect?,
-    modifier: Modifier = Modifier,
-) {
-    val animationsEnabled = LocalTvAnimationsEnabled.current
-    val density = LocalDensity.current
-    val haloWidthPx = with(density) { HeaderHaloWidth.toPx() }
-    val haloHeightPx = with(density) { HeaderHaloHeight.toPx() }
-    val targetOffset = targetBounds?.let { bounds ->
-        Offset(
-            x = bounds.center.x - haloWidthPx / 2f,
-            y = bounds.center.y - haloHeightPx / 2f,
-        )
-    }
-    val position = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
-    var hasPosition by remember { mutableStateOf(false) }
-
-    LaunchedEffect(targetOffset, animationsEnabled) {
-        targetOffset ?: return@LaunchedEffect
-        if (!hasPosition || !animationsEnabled) {
-            position.snapTo(targetOffset)
-            hasPosition = true
-        } else {
-            position.animateTo(
-                targetValue = targetOffset,
-                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
-            )
-        }
-    }
-
-    val haloAlpha by animateFloatAsState(
-        targetValue = if (targetBounds != null) 0.85f else 0f,
-        animationSpec = if (animationsEnabled) {
-            tween(
-                durationMillis = if (targetBounds != null) 190 else 160,
-                easing = FastOutSlowInEasing,
-            )
-        } else {
-            snap()
-        },
-        label = "headerSharedHaloAlpha",
-    )
-
-    Box(
-        modifier = modifier
-            .size(width = HeaderHaloWidth, height = HeaderHaloHeight)
-            .graphicsLayer {
-                translationX = position.value.x
-                translationY = position.value.y
-                alpha = haloAlpha
-            }
-            .drawWithCache {
-                val haloBrush = Brush.radialGradient(
-                    colors = listOf(
-                        HeaderElectricBlue,
-                        HeaderElectricBlue.copy(alpha = 0.42f),
-                        Color.Transparent,
-                    ),
-                    center = Offset(size.width / 2f, size.height / 2f),
-                    radius = size.maxDimension / 2f,
-                )
-                onDrawBehind { drawRect(brush = haloBrush) }
-            },
-    )
-}
+private val HeaderTabIconSize = 30.dp
+private val HeaderFocusSurfaceSize = 44.dp
 
 @Composable
 fun HeaderTabButton(
@@ -690,8 +579,6 @@ fun HeaderTabButton(
     downFocusRequester: FocusRequester? = null,
     onDown: (() -> Unit)? = null,
     onLeft: (() -> Unit)? = null,
-    onBoundsChanged: (Rect) -> Unit = {},
-    onFocusStateChanged: (Boolean) -> Unit = {},
 ) {
     var isFocused by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
@@ -714,7 +601,7 @@ fun HeaderTabButton(
         },
         label = "headerMenuScale",
     ) { focused ->
-        if (focused) 1.15f else 1f
+        if (focused) 1.07f else 1f
     }
     val iconAlpha by transition.animateFloat(
         transitionSpec = {
@@ -722,23 +609,15 @@ fun HeaderTabButton(
         },
         label = "headerIconAlpha",
     ) { focused ->
-        if (focused) 1f else 0.80f
+        if (focused) 1f else 0.82f
     }
-    val barAlpha by transition.animateFloat(
+    val focusSurfaceAlpha by transition.animateFloat(
         transitionSpec = {
-            if (animationsEnabled) tween(if (targetState) 180 else 140) else snap()
+            if (animationsEnabled) tween(if (targetState) 180 else 150) else snap()
         },
-        label = "headerFocusBarAlpha",
+        label = "headerFocusSurfaceAlpha",
     ) { focused ->
         if (focused) 1f else 0f
-    }
-    val barScaleX by transition.animateFloat(
-        transitionSpec = {
-            if (animationsEnabled) tween(if (targetState) 180 else 140, easing = FastOutSlowInEasing) else snap()
-        },
-        label = "headerFocusBarScale",
-    ) { focused ->
-        if (focused) 1f else 0.62f
     }
     val labelAlpha by transition.animateFloat(
         transitionSpec = {
@@ -770,10 +649,7 @@ fun HeaderTabButton(
         Box(
             modifier = Modifier
                 .height(height)
-                .width(HeaderTabWidth)
-                .onGloballyPositioned { coordinates ->
-                    onBoundsChanged(coordinates.boundsInRoot())
-                },
+                .width(HeaderTabWidth),
             contentAlignment = Alignment.Center,
         ) {
             Box(
@@ -807,11 +683,7 @@ fun HeaderTabButton(
                         }
                     }
                     .onFocusChanged { focusState ->
-                        val nextFocused = focusState.isFocused || focusState.hasFocus
-                        if (isFocused != nextFocused) {
-                            isFocused = nextFocused
-                            onFocusStateChanged(nextFocused)
-                        }
+                        isFocused = focusState.isFocused || focusState.hasFocus
                     }
                     .clickable(
                         interactionSource = interactionSource,
@@ -820,21 +692,32 @@ fun HeaderTabButton(
                     )
                     .focusable(interactionSource = interactionSource),
             ) {
-                HeaderTabGlyph(
-                    tab = tab,
-                    iconAlpha = iconAlpha,
+                Box(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .offset(y = 2.dp)
-                        .size(HeaderTabIconSize),
-                )
-                HeaderFocusBar(
-                    alpha = barAlpha,
-                    scaleX = barScaleX,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .offset(y = 27.dp),
-                )
+                        .offset(y = (-3).dp)
+                        .size(HeaderFocusSurfaceSize),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .graphicsLayer { alpha = focusSurfaceAlpha }
+                            .background(
+                                Color.White.copy(alpha = 0.09f),
+                                RoundedCornerShape(12.dp),
+                            )
+                            .border(
+                                BorderStroke(1.5.dp, Color.White.copy(alpha = 0.88f)),
+                                RoundedCornerShape(12.dp),
+                            ),
+                    )
+                    HeaderTabGlyph(
+                        tab = tab,
+                        iconAlpha = iconAlpha,
+                        modifier = Modifier.size(HeaderTabIconSize),
+                    )
+                }
                 Text(
                     text = tab.label,
                     color = SmartVisionColors.TextPrimary,
@@ -878,37 +761,6 @@ fun HeaderTabButton(
                     .size(18.dp),
             )
         }
-    }
-}
-
-@Composable
-private fun HeaderFocusBar(
-    alpha: Float,
-    scaleX: Float,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .size(width = 36.dp, height = 7.dp)
-            .graphicsLayer {
-                this.alpha = alpha
-                this.scaleX = scaleX
-            }
-            .drawWithCache {
-                val glowBrush = Brush.radialGradient(
-                    colors = listOf(HeaderElectricBlue.copy(alpha = 0.58f), Color.Transparent),
-                    center = Offset(size.width / 2f, size.height / 2f),
-                    radius = size.width / 2f,
-                )
-                onDrawBehind { drawRect(brush = glowBrush) }
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(width = 28.dp, height = 3.dp)
-                .background(HeaderElectricBlue, RoundedCornerShape(50)),
-        )
     }
 }
 

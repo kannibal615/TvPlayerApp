@@ -18,6 +18,9 @@ import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
 import com.smartvision.svplayer.ui.catalog.AllCategoryPolicy
+import com.smartvision.svplayer.ui.catalog.CatalogCategoryFilterEntry
+import com.smartvision.svplayer.ui.catalog.CategoryFilter
+import com.smartvision.svplayer.ui.catalog.CategoryFilterResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
@@ -100,7 +103,15 @@ data class LiveTvUiState(
     val displayedChannels: List<LiveTvChannel>
         get() = channels.sortedWith(sortMode.comparator())
     val visibleCategories: List<LiveTvCategory>
-        get() = CategoryFilterResolver.filterCategories(categories, activeCategoryFilterCode)
+        get() {
+            val filteredEntries = CategoryFilterResolver.filterEntries(
+                categories = categories.map(LiveTvCategory::toFilterEntry),
+                normalizedCode = activeCategoryFilterCode,
+                allCategoryId = AllLiveCategoryId,
+            )
+            val byId = categories.associateBy(LiveTvCategory::id)
+            return filteredEntries.mapNotNull { entry -> byId[entry.id]?.copy(count = entry.count) }
+        }
 
     val selectedCategory: LiveTvCategory?
         get() = categories.firstOrNull { it.id == selectedCategoryId }
@@ -230,10 +241,18 @@ class LiveTvViewModel(
                 historyCount = historyProgress.size,
                 historySignals = historyCategorySignals,
             )
-            val filters = CategoryFilterResolver.buildFilters(visibleCategories)
+            val filters = CategoryFilterResolver.buildFilters(visibleCategories.map { category -> category.toFilterEntry() })
             val activeFilterCode = it.activeCategoryFilterCode
                 ?.takeIf { code -> filters.any { filter -> filter.identity.normalizedCode == code } }
-            val filteredCategories = CategoryFilterResolver.filterCategories(visibleCategories, activeFilterCode)
+            val filteredEntries = CategoryFilterResolver.filterEntries(
+                categories = visibleCategories.map(LiveTvCategory::toFilterEntry),
+                normalizedCode = activeFilterCode,
+                allCategoryId = AllLiveCategoryId,
+            )
+            val categoriesById = visibleCategories.associateBy(LiveTvCategory::id)
+            val filteredCategories = filteredEntries.mapNotNull { entry ->
+                categoriesById[entry.id]?.copy(count = entry.count)
+            }
             val existingSelection = it.selectedCategoryId
                 ?.takeIf { selectedId -> userSelectedCategory && filteredCategories.any { category -> category.id == selectedId } }
             val initialCategory = existingSelection
@@ -266,8 +285,7 @@ class LiveTvViewModel(
         val validCode = normalizedCode?.takeIf { code ->
             current.categoryFilters.any { it.identity.normalizedCode == code }
         }
-        val firstCategory = CategoryFilterResolver.filterCategories(current.categories, validCode)
-            .firstOrNull { it.id == AllLiveCategoryId }
+        val firstCategory = current.categories.firstOrNull { it.id == AllLiveCategoryId }
         _uiState.update { state ->
             state.copy(
                 activeCategoryFilterCode = validCode,
@@ -881,6 +899,14 @@ private const val FavoriteLiveCategoryId = "__favorites_live__"
 private const val HistoryLiveCategoryId = "__history_live__"
 internal const val AllLiveCategoryId = "__all_live__"
 internal val SpecialLiveCategoryIds = setOf(AllLiveCategoryId, FavoriteLiveCategoryId, HistoryLiveCategoryId)
+
+private fun LiveTvCategory.toFilterEntry(): CatalogCategoryFilterEntry =
+    CatalogCategoryFilterEntry(
+        id = id,
+        label = label,
+        count = count,
+        special = id in SpecialLiveCategoryIds,
+    )
 
 private fun List<LiveTvCategory>.withSpecialCategories(
     allCount: Int?,

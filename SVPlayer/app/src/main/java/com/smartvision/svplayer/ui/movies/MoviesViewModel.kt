@@ -19,6 +19,11 @@ import com.smartvision.svplayer.domain.repository.CatalogRepository
 import com.smartvision.svplayer.domain.repository.SettingsRepository
 import com.smartvision.svplayer.ui.settings.allowsContent
 import com.smartvision.svplayer.ui.catalog.AllCategoryPolicy
+import com.smartvision.svplayer.ui.catalog.CatalogCategoryFilterEntry
+import com.smartvision.svplayer.ui.catalog.CategoryFilter
+import com.smartvision.svplayer.ui.catalog.CategoryFilterResolver
+import com.smartvision.svplayer.ui.catalog.StreamingBrand
+import com.smartvision.svplayer.ui.catalog.StreamingCategoryGroupPolicy
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -37,7 +42,12 @@ data class MovieCategoryUi(
     val id: String,
     val label: String,
     val count: Int?,
-)
+    val brandGroup: StreamingBrand? = null,
+    val parentBrand: StreamingBrand? = null,
+    val expanded: Boolean? = null,
+) {
+    val isBrandGroup: Boolean get() = brandGroup != null
+}
 
 data class MovieItemUi(
     val streamId: Int,
@@ -76,6 +86,9 @@ data class MoviesScreenState(
     val currentOffset: Int = 0,
     val errorMessage: String? = null,
     val categories: List<MovieCategoryUi> = emptyList(),
+    val categoryFilters: List<CategoryFilter> = emptyList(),
+    val activeCategoryFilterCode: String? = null,
+    val expandedBrand: StreamingBrand? = null,
     val selectedCategoryId: String? = null,
     val contentSearchQuery: String = "",
     val movies: List<MovieItemUi> = emptyList(),
@@ -85,8 +98,15 @@ data class MoviesScreenState(
 ) {
     val displayedMovies: List<MovieItemUi>
         get() = movies.sortedWith(sortMode.comparator())
+    val filteredCategories: List<MovieCategoryUi>
+        get() = categories.filteredFor(activeCategoryFilterCode)
+    val visibleCategories: List<MovieCategoryUi>
+        get() = filteredCategories.withStreamingGroups(expandedBrand)
     val selectedCategory: MovieCategoryUi?
-        get() = categories.firstOrNull { it.id == selectedCategoryId }
+        get() = filteredCategories.firstOrNull { it.id == selectedCategoryId }
+
+    val selectedBrand: StreamingBrand?
+        get() = selectedCategory?.let { StreamingCategoryGroupPolicy.brandFor(it.label) }
 
     val selectedMovie: MovieItemUi?
         get() = movies.firstOrNull { it.streamId == selectedMovieId }
@@ -137,10 +157,11 @@ class MoviesViewModel(
     }
 
     private fun reloadCatalogAfterRevision() {
+        val previousFilterCode = _uiState.value.activeCategoryFilterCode
         moviesJob?.cancel()
         cancelTmdbMetadataJobs()
         localCategories = emptyList()
-        _uiState.value = MoviesScreenState(categoriesLoading = true)
+        _uiState.value = MoviesScreenState(categoriesLoading = true, activeCategoryFilterCode = previousFilterCode)
         loadCategories()
     }
 
@@ -153,7 +174,8 @@ class MoviesViewModel(
             return
         }
         viewModelScope.launch {
-            _uiState.value = MoviesScreenState(categoriesLoading = true)
+            val previousFilterCode = _uiState.value.activeCategoryFilterCode
+            _uiState.value = MoviesScreenState(categoriesLoading = true, activeCategoryFilterCode = previousFilterCode)
             var initialApplied = false
             runCatching { catalogRepository.getInitialMovieCategoriesSnapshot(InitialCategoryLimit) }
                 .onSuccess { categories ->
@@ -193,10 +215,16 @@ class MoviesViewModel(
                 historyCount = historyProgress.size,
                 historySignals = historyCategorySignals,
             )
-            val initialCategory = visibleCategories.initialCategoryForPlaylist()
+            val filters = CategoryFilterResolver.buildFilters(visibleCategories.map(MovieCategoryUi::toFilterEntry))
+            val activeFilterCode = it.activeCategoryFilterCode
+                ?.takeIf { code -> filters.any { filter -> filter.identity.normalizedCode == code } }
+            val initialCategory = visibleCategories.filteredFor(activeFilterCode).initialCategoryForPlaylist()
             it.copy(
                 categoriesLoading = false,
                 categories = visibleCategories,
+                categoryFilters = filters,
+                activeCategoryFilterCode = activeFilterCode,
+                expandedBrand = null,
                 selectedCategoryId = initialCategory?.id,
                 errorMessage = null,
             )
@@ -207,6 +235,36 @@ class MoviesViewModel(
             AllMovieCategoryId, null -> loadAllMovies()
             else -> _uiState.value.selectedCategoryId?.let(::loadMovies)
         }
+    }
+
+    fun applyCategoryFilter(normalizedCode: String?): MovieCategoryUi? {
+        val current = _uiState.value
+        val validCode = normalizedCode?.takeIf { code ->
+            current.categoryFilters.any { it.identity.normalizedCode == code }
+        }
+        _uiState.update {
+            it.copy(
+                activeCategoryFilterCode = validCode,
+                expandedBrand = null,
+                selectedCategoryId = null,
+                movies = emptyList(),
+                focusedMovieId = null,
+                selectedMovieId = null,
+            )
+        }
+        loadAllMovies()
+        return _uiState.value.visibleCategories.firstOrNull { it.id == AllMovieCategoryId }
+    }
+
+    fun toggleBrandGroup(brand: StreamingBrand) {
+        _uiState.update { state ->
+            state.copy(expandedBrand = StreamingCategoryGroupPolicy.toggleExpanded(state.expandedBrand, brand))
+        }
+    }
+
+    fun expandBrandGroup(brand: StreamingBrand): MovieCategoryUi? {
+        _uiState.update { it.copy(expandedBrand = brand) }
+        return _uiState.value.visibleCategories.firstOrNull { it.parentBrand == brand }
     }
 
     fun selectCategory(category: MovieCategoryUi) {
@@ -500,7 +558,18 @@ class MoviesViewModel(
                 )
             }
             runCatching {
-                val page = if (query.isNotBlank()) {
+                val currentState = _uiState.value
+                val filteredCategoryIds = currentState.activeCategoryFilterCode?.let {
+                    currentState.filteredProviderCategoryIds()
+                }
+                val page = if (categoryId == null && filteredCategoryIds != null) {
+                    catalogRepository.getMoviesByCategoryIdsPage(
+                        categoryIds = filteredCategoryIds,
+                        query = query,
+                        offset = startOffset,
+                        limit = MovieItemsPageSize,
+                    )
+                } else if (query.isNotBlank()) {
                     catalogRepository.searchMoviesPage(categoryId, query, startOffset, MovieItemsPageSize)
                 } else if (categoryId == null) {
                     catalogRepository.getAllMoviesPage(startOffset, MovieItemsPageSize)
@@ -658,6 +727,58 @@ private const val FavoriteMovieCategoryId = "__favorites_movies__"
 private const val HistoryMovieCategoryId = "__history_movies__"
 private const val AllMovieCategoryId = "__all_movies__"
 private val SpecialMovieCategoryIds = setOf(AllMovieCategoryId, FavoriteMovieCategoryId, HistoryMovieCategoryId)
+
+private fun MovieCategoryUi.toFilterEntry(): CatalogCategoryFilterEntry =
+    CatalogCategoryFilterEntry(
+        id = id,
+        label = label,
+        count = count,
+        special = id in SpecialMovieCategoryIds || isBrandGroup,
+    )
+
+private fun List<MovieCategoryUi>.filteredFor(normalizedCode: String?): List<MovieCategoryUi> {
+    val entries = CategoryFilterResolver.filterEntries(
+        categories = map(MovieCategoryUi::toFilterEntry),
+        normalizedCode = normalizedCode,
+        allCategoryId = AllMovieCategoryId,
+    )
+    val byId = associateBy(MovieCategoryUi::id)
+    return entries.mapNotNull { entry -> byId[entry.id]?.copy(count = entry.count) }
+}
+
+private fun List<MovieCategoryUi>.withStreamingGroups(expandedBrand: StreamingBrand?): List<MovieCategoryUi> {
+    val special = filter { it.id in SpecialMovieCategoryIds }
+    val grouped = StreamingCategoryGroupPolicy.group(
+        categories = filterNot { it.id in SpecialMovieCategoryIds },
+        labelOf = MovieCategoryUi::label,
+    )
+    return buildList {
+        addAll(special)
+        StreamingBrand.entries.forEach { brand ->
+            val children = grouped.groups[brand].orEmpty()
+            if (children.isNotEmpty()) {
+                val expanded = expandedBrand == brand
+                add(
+                    MovieCategoryUi(
+                        id = brand.groupId("movies"),
+                        label = brand.displayName,
+                        count = null,
+                        brandGroup = brand,
+                        expanded = expanded,
+                    ),
+                )
+                if (expanded) addAll(children.map { it.copy(parentBrand = brand) })
+            }
+        }
+        addAll(grouped.remaining)
+    }
+}
+
+private fun MoviesScreenState.filteredProviderCategoryIds(): List<String> =
+    filteredCategories.asSequence()
+        .filterNot { it.id in SpecialMovieCategoryIds || it.isBrandGroup }
+        .map(MovieCategoryUi::id)
+        .toList()
 
 private fun List<MovieCategoryUi>.withSpecialCategories(
     allCount: Int?,

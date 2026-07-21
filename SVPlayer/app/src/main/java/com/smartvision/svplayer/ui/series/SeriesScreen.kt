@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.smartvision.svplayer.BuildConfig
+import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.config.PlaylistSource
 import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.core.ui.viewModelFactory
@@ -67,6 +68,9 @@ import com.smartvision.svplayer.ui.catalog.CatalogMetaStyle
 import com.smartvision.svplayer.ui.catalog.CatalogPanelTitleWithCount
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.catalog.CatalogSortButton
+import com.smartvision.svplayer.ui.catalog.CategoryFilterBar
+import com.smartvision.svplayer.ui.catalog.CategoryFilterEmptyState
+import com.smartvision.svplayer.ui.catalog.CategoryFilterIconButton
 import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogHeader
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
@@ -76,6 +80,7 @@ import com.smartvision.svplayer.ui.catalog.VodContentRow
 import com.smartvision.svplayer.ui.catalog.VodPreviewContent
 import com.smartvision.svplayer.ui.catalog.VodPreviewEpisode
 import com.smartvision.svplayer.ui.catalog.VodPreviewPanel
+import com.smartvision.svplayer.ui.catalog.StreamingBrand
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
@@ -138,6 +143,7 @@ fun SeriesScreen(
     var inputReady by remember { mutableStateOf(false) }
     var returnFocusHandled by remember { mutableStateOf(false) }
     var pendingFirstSeriesFocusCategoryId by remember { mutableStateOf<String?>(null) }
+    var categoryFocusTargetId by remember { mutableStateOf<String?>(null) }
     var seriesToDelete by remember { mutableStateOf<SeriesItemUi?>(null) }
     var deletedSeriesIdAwaitingFocus by remember { mutableStateOf<Int?>(null) }
     var pendingPreviewSeriesId by remember { mutableStateOf<Int?>(null) }
@@ -171,10 +177,16 @@ fun SeriesScreen(
     }
 
     suspend fun focusSelectedCategory() {
-        val selectedIndex = state.categories.indexOfFirst { it.id == state.selectedCategoryId }
+        val categories = state.visibleCategories
+        val targetId = categoryFocusTargetId
+            ?.takeIf { id -> categories.any { it.id == id } }
+            ?: state.selectedCategoryId?.takeIf { id -> categories.any { it.id == id } }
+            ?: categories.firstOrNull { it.brandGroup == state.selectedBrand }?.id
+            ?: categories.firstOrNull()?.id
+        val selectedIndex = categories.indexOfFirst { it.id == targetId }
             .takeIf { it >= 0 }
             ?: 0
-        if (state.categories.isEmpty()) return
+        if (categories.isEmpty()) return
         categoryListState.scrollToItem(selectedIndex)
         if (!categoryListState.awaitItemVisible(selectedIndex)) return
         withFrameNanos { }
@@ -310,13 +322,33 @@ fun SeriesScreen(
             ) {
                 SeriesCategoryList(
                     state = state,
+                    strings = strings,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     currentTabFocusRequester = currentTabFocusRequester,
                     listState = categoryListState,
+                    focusCategoryId = categoryFocusTargetId,
                     onCategory = { category ->
                         if (inputReady) {
+                            categoryFocusTargetId = category.id
                             pendingFirstSeriesFocusCategoryId = category.id
                             viewModel.selectCategory(category)
+                        }
+                    },
+                    onBrandToggle = { category ->
+                        category.brandGroup?.let { brand ->
+                            categoryFocusTargetId = category.id
+                            viewModel.toggleBrandGroup(brand)
+                        }
+                    },
+                    onBrandRight = { category ->
+                        category.brandGroup?.let { brand ->
+                            categoryFocusTargetId = viewModel.expandBrandGroup(brand)?.id
+                        }
+                    },
+                    onApplyFilter = { code ->
+                        if (inputReady) {
+                            categoryFocusTargetId = viewModel.applyCategoryFilter(code)?.id
+                            pendingFirstSeriesFocusCategoryId = null
                         }
                     },
                     onRight = { behaviorScope.launch { focusSeriesColumn() } },
@@ -455,20 +487,61 @@ private fun SeriesItemUi.toBehaviorContent(): BehaviorContent =
 @Composable
 private fun SeriesCategoryList(
     state: SeriesScreenState,
+    strings: SmartVisionStrings,
     selectedCategoryFocusRequester: FocusRequester,
     currentTabFocusRequester: FocusRequester,
     listState: LazyListState,
+    focusCategoryId: String?,
     onCategory: (SeriesCategoryUi) -> Unit,
+    onBrandToggle: (SeriesCategoryUi) -> Unit,
+    onBrandRight: (SeriesCategoryUi) -> Unit,
+    onApplyFilter: (String?) -> Unit,
     onRight: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val focusCategoryId = state.categories.firstOrNull { it.id == state.selectedCategoryId }?.id
-        ?: state.categories.firstOrNull()?.id
+    val visibleCategories = state.visibleCategories
+    val resolvedFocusCategoryId = focusCategoryId
+        ?.takeIf { id -> visibleCategories.any { it.id == id } }
+        ?: state.selectedCategoryId?.takeIf { id -> visibleCategories.any { it.id == id } }
+        ?: visibleCategories.firstOrNull { it.brandGroup == state.selectedBrand }?.id
+        ?: visibleCategories.firstOrNull()?.id
+    val activeFilterFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(resolvedFocusCategoryId, visibleCategories.map(SeriesCategoryUi::id)) {
+        val index = visibleCategories.indexOfFirst { it.id == resolvedFocusCategoryId }
+        if (index >= 0) {
+            listState.scrollToItem(index)
+            if (listState.awaitItemVisible(index)) {
+                withFrameNanos { }
+                runCatching { selectedCategoryFocusRequester.requestFocus() }
+            }
+        }
+    }
 
     MediaCatalogPanel(
         title = "Categories",
+        trailing = {
+            CategoryFilterIconButton(
+                filters = state.categoryFilters,
+                activeFilterCode = state.activeCategoryFilterCode,
+                strings = strings,
+                categoryListFocusRequester = selectedCategoryFocusRequester,
+                headerFocusRequester = currentTabFocusRequester,
+                onApplyFilter = onApplyFilter,
+            )
+        },
         modifier = modifier,
     ) {
+        CategoryFilterBar(
+            filters = state.categoryFilters,
+            activeFilterCode = state.activeCategoryFilterCode,
+            strings = strings,
+            activeFilterFocusRequester = activeFilterFocusRequester,
+            categoryListFocusRequester = selectedCategoryFocusRequester,
+            headerFocusRequester = currentTabFocusRequester,
+            onApplyFilter = onApplyFilter,
+        )
+        Spacer(Modifier.height(6.dp))
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -476,22 +549,42 @@ private fun SeriesCategoryList(
             contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
         ) {
             itemsIndexed(
-                state.categories,
+                visibleCategories,
                 key = { _, category -> category.id },
             ) { index, category ->
+                val brandSelected = category.isBrandGroup && category.brandGroup == state.selectedBrand
                 CatalogCategoryRow(
                     label = category.label,
                     count = category.count,
-                    icon = seriesCategoryIcon(category.label),
-                    selected = category.id == state.selectedCategoryId,
-                    focusRequester = if (category.id == focusCategoryId) selectedCategoryFocusRequester else null,
-                    upFocusRequester = currentTabFocusRequester.takeIf { index == 0 },
-                    onRight = onRight,
-                    onClick = { onCategory(category) },
+                    icon = seriesCategoryIcon(category.label).takeUnless { category.isBrandGroup },
+                    selected = category.id == state.selectedCategoryId || brandSelected,
+                    focusRequester = if (category.id == resolvedFocusCategoryId) selectedCategoryFocusRequester else null,
+                    upFocusRequester = activeFilterFocusRequester.takeIf { index == 0 },
+                    onRight = { if (category.isBrandGroup) onBrandRight(category) else onRight() },
+                    onClick = { if (category.isBrandGroup) onBrandToggle(category) else onCategory(category) },
+                    brandLogoRes = category.brandGroup?.logoResource(),
+                    expanded = category.expanded,
+                    indentLevel = if (category.parentBrand != null) 1 else 0,
                 )
             }
         }
+        if (visibleCategories.isEmpty()) {
+            CategoryFilterEmptyState(
+                message = strings.liveTvCategoryFilterEmpty,
+                allLabel = strings.liveTvCategoryFilterAll,
+                focusRequester = selectedCategoryFocusRequester,
+                upFocusRequester = activeFilterFocusRequester,
+                onShowAll = { onApplyFilter(null) },
+            )
+        }
     }
+}
+
+private fun StreamingBrand.logoResource(): Int = when (this) {
+    StreamingBrand.Netflix -> R.drawable.brand_netflix_placeholder
+    StreamingBrand.Prime -> R.drawable.brand_prime_placeholder
+    StreamingBrand.Apple -> R.drawable.brand_apple_placeholder
+    StreamingBrand.Disney -> R.drawable.brand_disney_placeholder
 }
 
 @Composable

@@ -19,6 +19,8 @@ Depuis le 2026-07-21, les titres Series de Home > Continue Watching restent forc
 
 Les recherches Live TV, Movies et Series sont repliees en bouton carre icon-only. OK les transforme en champ, demande le focus de saisie et ouvre le clavier; Back ou la perte de focus referme le champ. Le filtre adjacent reprend le bouton `FilterList` carre utilise par Categories Live TV.
 
+Depuis le 2026-07-21, les colonnes Categories Movies/Series reprennent aussi la barre de drapeaux et la popup de Live TV. Les dossiers virtuels NETFLIX/PRIME/APPLE/DISNEY forment un accordeon exclusif: OK ouvre/replie sans charger la colonne centrale; Droite ouvre si necessaire puis focalise le premier sous-dossier. Droite sur un sous-dossier conserve le routage vers la colonne centrale. Si l'enfant selectionne est replie, son parent garde le style selectionne et le contenu central reste affiche. Un changement de filtre ferme l'accordeon, selectionne `ALL` et restaure le focus sur une cible composee apres scroll.
+
 ## Profils Kids et dialogues
 
 - Le picker utilise des cles `profile.id` stables dans une `LazyRow`. Le focus initial cible le profil actif, sinon ADMIN, sinon le premier profil; Compose revele automatiquement les cartes hors ecran.

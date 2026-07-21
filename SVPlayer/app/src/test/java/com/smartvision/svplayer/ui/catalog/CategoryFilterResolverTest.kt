@@ -1,4 +1,4 @@
-package com.smartvision.svplayer.ui.live
+package com.smartvision.svplayer.ui.catalog
 
 import java.util.Locale
 import org.junit.Assert.assertEquals
@@ -36,8 +36,8 @@ class CategoryFilterResolverTest {
         val filters = CategoryFilterResolver.buildFilters(categories, Locale.FRENCH)
         assertEquals(listOf("AR", "IT", "ZZ"), filters.map { it.identity.normalizedCode })
         assertEquals(2, filters.first { it.identity.normalizedCode == "IT" }.categoryCount)
-        assertEquals(listOf("1", "2"), CategoryFilterResolver.filterCategories(categories, "IT").map { it.id })
-        assertEquals(categories, CategoryFilterResolver.filterCategories(categories, null))
+        assertEquals(setOf("1", "2"), CategoryFilterResolver.matchingCategoryIds(categories, "IT"))
+        assertEquals(setOf("1", "2", "3", "4", "5"), CategoryFilterResolver.matchingCategoryIds(categories, null))
     }
 
     @Test fun `playlist change naturally rebuilds available filters`() {
@@ -48,16 +48,18 @@ class CategoryFilterResolverTest {
     }
 
     @Test fun `active filter moves first while all category remains available`() {
-        val all = category(AllLiveCategoryId, "ALL")
+        val all = category("__all__", "ALL", special = true)
         val categories = listOf(all, category("1", "|DE| NEWS"), category("2", "|FR| CINEMA"))
         val filters = CategoryFilterResolver.buildFilters(categories, Locale.FRENCH)
         val ordered = orderFiltersForBar(filters, "FR")
 
         assertEquals("FR", ordered.first().identity.normalizedCode)
-        assertEquals(listOf(AllLiveCategoryId, "2"), CategoryFilterResolver.filterCategories(categories, "FR").map { it.id })
-        assertTrue(CategoryFilterResolver.filterCategories(categories, "FR").first().id == AllLiveCategoryId)
+        val filtered = CategoryFilterResolver.filterEntries(categories, "FR", "__all__")
+        assertEquals(listOf("__all__", "2"), filtered.map { it.id })
+        assertEquals(1, filtered.first().count)
+        assertTrue(filtered.first().id == "__all__")
     }
 
-    private fun category(id: String, label: String) =
-        LiveTvCategory(id, label, 1, LiveTvCategoryKind.Generic)
+    private fun category(id: String, label: String, special: Boolean = false) =
+        CatalogCategoryFilterEntry(id, label, 1, special)
 }

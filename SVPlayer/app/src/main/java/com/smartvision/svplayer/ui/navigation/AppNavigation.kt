@@ -81,7 +81,6 @@ import com.smartvision.svplayer.ui.appconfig.AppConfigViewModel
 import com.smartvision.svplayer.ui.appconfig.ConsentDialog
 import com.smartvision.svplayer.ui.detail.MovieDetailRoute
 import com.smartvision.svplayer.ui.detail.SeriesDetailRoute
-import com.smartvision.svplayer.ui.home.HeaderIconStyle
 import com.smartvision.svplayer.ui.home.HomeHeaderFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.home.HomeScreen
@@ -1635,7 +1634,6 @@ private fun headerTabs(strings: SmartVisionStrings) = listOf(
         label = "YouTube",
         route = AppRoute.Youtube.route,
         iconRes = R.drawable.ic_header_youtube,
-        iconStyle = HeaderIconStyle.OriginalColors,
     ),
 )
 
