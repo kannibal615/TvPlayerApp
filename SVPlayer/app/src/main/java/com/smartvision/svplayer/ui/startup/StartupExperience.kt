@@ -81,7 +81,7 @@ private fun StartupLoadingOverlay(
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier) {
-        val progressSize = maxHeight * 0.105f
+        val progressSize = maxHeight * 0.088f
         val progressTopOffset = maxHeight * 0.61f
 
         Column(
@@ -119,7 +119,7 @@ private fun StartupProgressRing(
         label = "startupProgress",
     )
     Canvas(modifier = modifier) {
-        val stroke = size.minDimension * 0.075f
+        val stroke = size.minDimension * 0.038f
         drawArc(
             color = Color(0xFF17335F).copy(alpha = 0.70f),
             startAngle = -90f,
@@ -133,7 +133,7 @@ private fun StartupProgressRing(
             startAngle = -90f,
             sweepAngle = sweep,
             useCenter = false,
-            style = Stroke(width = stroke * 2.6f, cap = StrokeCap.Round),
+            style = Stroke(width = stroke * 1.8f, cap = StrokeCap.Round),
         )
         drawArc(
             brush = Brush.sweepGradient(

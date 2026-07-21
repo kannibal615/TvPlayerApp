@@ -510,15 +510,23 @@ private fun SeriesDetailScreen(
                 horizontalArrangement = Arrangement.spacedBy(28.dp),
                 verticalAlignment = Alignment.Top,
             ) {
-                    SeriesHeroInfo(
-                        state = state,
-                        onRetry = onRetry,
-                        onSeason = onSeason,
-                        seasonFocusRequester = seasonFocusRequester,
-                        retryFocusRequester = retryFocusRequester,
-                        headerFocusRequester = currentTabFocusRequester,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                SeriesHeroInfo(
+                    state = state,
+                    onRetry = onRetry,
+                    onSeason = onSeason,
+                    seasonFocusRequester = seasonFocusRequester,
+                    retryFocusRequester = retryFocusRequester,
+                    headerFocusRequester = currentTabFocusRequester,
+                    modifier = Modifier.weight(1f),
+                )
+                SeriesCoverFrame(
+                    imageUrl = state.displaySeasonPosterUrl,
+                    title = "Saison ${state.selectedSeason}",
+                    showTitle = false,
+                    modifier = Modifier
+                        .width(142.dp)
+                        .height(213.dp),
+                )
             }
             Spacer(Modifier.weight(1f))
             Row(
@@ -537,28 +545,12 @@ private fun SeriesDetailScreen(
                         .width(600.dp)
                         .height(244.dp),
                 )
-                Row(
+                SeriesSeasonDescription(
+                    state = state,
                     modifier = Modifier
                         .weight(1f)
                         .height(244.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.Bottom,
-                ) {
-                    SeriesSeasonDescription(
-                        state = state,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(132.dp),
-                    )
-                    SeriesCoverFrame(
-                        imageUrl = state.displaySeasonPosterUrl,
-                        title = "Saison ${state.selectedSeason}",
-                        showTitle = false,
-                        modifier = Modifier
-                            .width(142.dp)
-                            .height(213.dp),
-                    )
-                }
+                )
             }
         }
     }
@@ -673,7 +665,7 @@ private fun SeriesSeasonDescription(
             text = state.displayPlot ?: state.categoryLabel,
             color = SmartVisionColors.TextSecondary,
             style = DetailBodyStyle,
-            maxLines = 2,
+            maxLines = 7,
             overflow = TextOverflow.Ellipsis,
         )
         Spacer(Modifier.height(6.dp))

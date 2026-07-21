@@ -134,6 +134,7 @@ fun AppNavigation(
     navController: NavHostController = rememberNavController(),
     modifier: Modifier = Modifier,
     onInitialSurfaceReady: () -> Unit = {},
+    initialSurfaceVisible: Boolean = true,
 ) {
     val container = LocalAppContainer.current
     val latestInitialSurfaceReady by rememberUpdatedState(onInitialSurfaceReady)
@@ -1303,6 +1304,7 @@ fun AppNavigation(
             },
             onVerifyPin = container.settingsRepository::verifyParentalPin,
             onFirstFrameReady = latestInitialSurfaceReady,
+            initialContentVisible = initialSurfaceVisible,
             onSelectProfile = requestProfileSelection,
             onSaveProfile = { profile ->
                 val wasActiveProfile =

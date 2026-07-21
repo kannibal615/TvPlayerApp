@@ -222,6 +222,7 @@ private fun HeaderTabsRail(
                 key(tab.route) {
                     HeaderTabButton(
                         tab = tab,
+                        active = tab.route == currentRoute,
                         onNavigate = onNavigate,
                         height = SmartVisionDimensions.HomeHeaderHeight,
                         focusRequester = when {
@@ -572,6 +573,7 @@ private val HeaderFocusSurfaceSize = 40.dp
 @Composable
 fun HeaderTabButton(
     tab: HomeHeaderTab,
+    active: Boolean = false,
     onNavigate: (String) -> Unit,
     height: Dp,
     modifier: Modifier = Modifier,
@@ -580,36 +582,23 @@ fun HeaderTabButton(
     onDown: (() -> Unit)? = null,
     onLeft: (() -> Unit)? = null,
 ) {
-    var isFocused by remember { mutableStateOf(false) }
+    val focusState = rememberTvFocusState()
+    val isFocused = focusState.isFocused
     val interactionSource = remember { MutableInteractionSource() }
     val animationsEnabled = LocalTvAnimationsEnabled.current
+    val focusStyle = LocalTvFocusStyle.current
     val density = LocalDensity.current
     val transition = updateTransition(
         targetState = isFocused,
         label = "headerMenuFocus",
     )
-    val scale by transition.animateFloat(
-        transitionSpec = {
-            if (animationsEnabled) {
-                tween(
-                    durationMillis = if (targetState) 200 else 170,
-                    easing = FastOutSlowInEasing,
-                )
-            } else {
-                snap()
-            }
-        },
-        label = "headerMenuScale",
-    ) { focused ->
-        if (focused) 1.03f else 1f
-    }
     val iconAlpha by transition.animateFloat(
         transitionSpec = {
             if (animationsEnabled) tween(if (targetState) 180 else 160) else snap()
         },
         label = "headerIconAlpha",
     ) { focused ->
-        if (focused) 1f else 0.82f
+        if (focused || active) 1f else 0.82f
     }
     val focusSurfaceAlpha by transition.animateFloat(
         transitionSpec = {
@@ -617,7 +606,11 @@ fun HeaderTabButton(
         },
         label = "headerFocusSurfaceAlpha",
     ) { focused ->
-        if (focused) 1f else 0f
+        when {
+            focused -> 1f
+            active -> 0.82f
+            else -> 0f
+        }
     }
     val labelAlpha by transition.animateFloat(
         transitionSpec = {
@@ -625,7 +618,11 @@ fun HeaderTabButton(
         },
         label = "headerMenuLabelAlpha",
     ) { focused ->
-        if (focused) 1f else 0f
+        when {
+            focused -> 1f
+            active -> 0.92f
+            else -> 0f
+        }
     }
     val labelOffset by transition.animateDp(
         transitionSpec = {
@@ -633,7 +630,7 @@ fun HeaderTabButton(
         },
         label = "headerMenuLabelOffset",
     ) { focused ->
-        if (focused) 0.dp else 6.dp
+        if (focused || active) 0.dp else 6.dp
     }
     val labelOffsetPx = with(density) { labelOffset.toPx() }
     val requesterModifier = focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier
@@ -656,8 +653,6 @@ fun HeaderTabButton(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
                         alpha = if (muted) 0.48f else 1f
                     }
                     .then(requesterModifier)
@@ -682,9 +677,10 @@ fun HeaderTabButton(
                             else -> false
                         }
                     }
-                    .onFocusChanged { focusState ->
-                        isFocused = focusState.isFocused || focusState.hasFocus
-                    }
+                    .tvFocusTarget(
+                        state = focusState,
+                        cornerRadius = 10.dp,
+                    )
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,
@@ -704,11 +700,14 @@ fun HeaderTabButton(
                             .matchParentSize()
                             .graphicsLayer { alpha = focusSurfaceAlpha }
                             .background(
-                                Color.White.copy(alpha = 0.09f),
+                                if (isFocused) focusStyle.background else focusStyle.activeBackground,
                                 RoundedCornerShape(10.dp),
                             )
                             .border(
-                                BorderStroke(1.25.dp, Color.White.copy(alpha = 0.88f)),
+                                BorderStroke(
+                                    if (isFocused) focusStyle.borderWidth else 1.25.dp,
+                                    if (isFocused) focusStyle.accent else focusStyle.activeAccent,
+                                ),
                                 RoundedCornerShape(10.dp),
                             ),
                     )

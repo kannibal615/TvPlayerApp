@@ -245,6 +245,7 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .background(AppOpaqueBackground),
                         onInitialSurfaceReady = { initialSurfaceReady = true },
+                        initialSurfaceVisible = startupComplete,
                     )
                     if (!startupComplete) {
                         StartupExperience(

@@ -442,7 +442,7 @@ fun CatalogCategoryRow(
                 onClick = onClick,
             )
             .focusable(interactionSource = interactionSource)
-            .padding(start = 12.dp + (indentLevel * 18).dp, end = 12.dp),
+            .padding(start = 12.dp + (indentLevel * 8).dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
@@ -457,7 +457,7 @@ fun CatalogCategoryRow(
         if (brandLogoRes != null) {
             Box(
                 modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.Center,
+                contentAlignment = Alignment.CenterStart,
             ) {
                 Image(
                     painter = painterResource(brandLogoRes),

@@ -66,7 +66,7 @@ fun ProfileAvatarImage(
 fun ProfileAvatarLoadingIndicator(
     color: Color,
     modifier: Modifier = Modifier,
-    strokeWidth: Dp = 4.dp,
+    strokeWidth: Dp = 2.25.dp,
 ) {
     val transition = rememberInfiniteTransition(label = "profile-avatar-loader")
     val phase by transition.animateFloat(
@@ -86,8 +86,15 @@ fun ProfileAvatarLoadingIndicator(
         val radius = minOf(loaderWidth, loaderHeight) * ProfileAvatarCornerFraction
         val perimeter = 2f * (loaderWidth + loaderHeight - 4f * radius) +
             2f * Math.PI.toFloat() * radius
-        val segment = perimeter * 0.28f
+        val segment = perimeter * 0.22f
         val gap = (perimeter - segment).coerceAtLeast(1f)
+        drawRoundRect(
+            color = color.copy(alpha = 0.16f),
+            topLeft = Offset(inset, inset),
+            size = Size(loaderWidth, loaderHeight),
+            cornerRadius = CornerRadius(radius),
+            style = Stroke(width = strokePx * 0.72f, cap = StrokeCap.Round),
+        )
         drawRoundRect(
             color = color,
             topLeft = Offset(inset, inset),

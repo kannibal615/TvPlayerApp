@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import java.util.Locale
 
 internal val VodProgressStart = Color(0xFF009DFF)
@@ -453,6 +454,8 @@ internal fun VodReferenceProgressBar(
 ) {
     val safeDuration = durationMs.coerceAtLeast(1L)
     val progress = (progressOverride ?: (positionMs.toFloat() / safeDuration.toFloat())).coerceIn(0f, 1f)
+    val focusStyle = LocalTvFocusStyle.current
+    val visibleTrackHeight = if (focused) trackHeight * 1.65f else trackHeight
     Row(
         modifier = modifier
             .focusRequester(focusRequester)
@@ -480,7 +483,7 @@ internal fun VodReferenceProgressBar(
     ) {
         Text(
             text = leftLabel,
-            color = Color.White.copy(alpha = 0.94f),
+            color = if (focused) focusStyle.accent else Color.White.copy(alpha = 0.94f),
             style = timeStyle,
             maxLines = 1,
             modifier = Modifier.width(elapsedWidth),
@@ -491,17 +494,26 @@ internal fun VodReferenceProgressBar(
                 .height(thumbSize),
             contentAlignment = Alignment.CenterStart,
         ) {
+            if (focused) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(trackHeight * 4.2f)
+                        .clip(CircleShape)
+                        .background(focusStyle.accent.copy(alpha = 0.18f)),
+                )
+            }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(trackHeight)
+                    .height(visibleTrackHeight)
                     .clip(CircleShape)
-                    .background(VodTrackColor),
+                    .background(if (focused) Color.White.copy(alpha = 0.34f) else VodTrackColor),
             )
             Box(
                 modifier = Modifier
                     .fillMaxWidth(progress)
-                    .height(trackHeight)
+                    .height(visibleTrackHeight)
                     .clip(CircleShape)
                     .background(
                         Brush.horizontalGradient(
@@ -516,20 +528,20 @@ internal fun VodReferenceProgressBar(
                 contentAlignment = Alignment.CenterEnd,
             ) {
                 if (focused) {
-                    VodFocusHalo(thumbSize * 3.6f)
+                    VodFocusHalo(thumbSize * 4.2f, color = focusStyle.accent)
                 }
                 Box(
                     modifier = Modifier
-                        .size(if (focused) thumbSize * 1.12f else thumbSize)
+                        .size(if (focused) thumbSize * 1.42f else thumbSize)
                         .clip(CircleShape)
-                        .background(Color(0xFFF7F7F7)),
+                        .background(if (focused) focusStyle.accent else Color(0xFFF7F7F7)),
                 )
             }
         }
         Spacer(Modifier.width(endGap))
         Text(
             text = rightLabel,
-            color = Color.White.copy(alpha = 0.94f),
+            color = if (focused) focusStyle.accent else Color.White.copy(alpha = 0.94f),
             style = timeStyle,
             textAlign = TextAlign.End,
             maxLines = 1,
@@ -717,15 +729,15 @@ internal fun VodInlineBrightnessSlider(
 }
 
 @Composable
-internal fun VodFocusHalo(size: Dp) {
+internal fun VodFocusHalo(size: Dp, color: Color = VodFocusBlue) {
     Box(
         modifier = Modifier
             .size(size)
             .background(
                 Brush.radialGradient(
-                    0.00f to VodFocusBlue.copy(alpha = 0.72f),
-                    0.34f to VodFocusBlue.copy(alpha = 0.38f),
-                    0.68f to VodFocusBlue.copy(alpha = 0.13f),
+                    0.00f to color.copy(alpha = 0.72f),
+                    0.34f to color.copy(alpha = 0.38f),
+                    0.68f to color.copy(alpha = 0.13f),
                     1.00f to Color.Transparent,
                 ),
             ),

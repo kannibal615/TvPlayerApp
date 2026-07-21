@@ -118,6 +118,7 @@ fun ProfilePickerScreen(
     onLockedFeature: () -> Unit,
     onVerifyPin: (String) -> Boolean,
     onFirstFrameReady: () -> Unit = {},
+    initialContentVisible: Boolean = true,
 ) {
     val settings by LocalAppContainer.current.settingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = PlayerSettings(),
@@ -147,6 +148,7 @@ fun ProfilePickerScreen(
     var pickerRootBounds by remember { mutableStateOf<Rect?>(null) }
     var profileCardBounds by remember { mutableStateOf<Map<String, Rect>>(emptyMap()) }
     var centeredAtMs by remember { mutableStateOf(0L) }
+    var firstFrameReported by remember { mutableStateOf(false) }
     val centeringProgress = remember { Animatable(0f) }
     val homeRevealProgress = remember { Animatable(0f) }
     val latestTransitionFinished by rememberUpdatedState(onSelectionTransitionFinished)
@@ -157,11 +159,6 @@ fun ProfilePickerScreen(
     }
     val firstProfileId = orderedProfiles.firstOrNull()?.id
     val addProfileIndex = orderedProfiles.size + 1
-
-    LaunchedEffect(Unit) {
-        withFrameNanos { }
-        latestFirstFrameReady()
-    }
 
     fun requestPickerFocus(index: Int, focusKey: String, requester: FocusRequester) {
         lastFocusKey = focusKey
@@ -266,6 +263,10 @@ fun ProfilePickerScreen(
             .fillMaxSize()
             .onGloballyPositioned { coordinates ->
                 pickerRootBounds = coordinates.boundsInRoot()
+                if (!firstFrameReported && coordinates.size.width > 0 && coordinates.size.height > 0) {
+                    firstFrameReported = true
+                    latestFirstFrameReady()
+                }
             },
     ) {
         val screenWidth = maxWidth
@@ -334,7 +335,7 @@ fun ProfilePickerScreen(
                 .align(Alignment.TopStart)
                 .padding(start = screenWidth * 0.038f, top = screenHeight * 0.045f)
                 .width((screenWidth * 0.15f).coerceIn(180.dp, 285.dp))
-                .graphicsLayer { alpha = secondaryContentAlpha * revealAlpha },
+                .graphicsLayer { alpha = secondaryContentAlpha * revealAlpha * if (initialContentVisible) 1f else 0f },
         )
 
         Column(
@@ -349,14 +350,14 @@ fun ProfilePickerScreen(
                 fontSize = (screenHeight.value * 0.055f).coerceIn(36f, 58f).sp,
                 lineHeight = 62.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.graphicsLayer { alpha = secondaryContentAlpha * revealAlpha },
+                modifier = Modifier.graphicsLayer { alpha = secondaryContentAlpha * revealAlpha * if (initialContentVisible) 1f else 0f },
             )
             Spacer(Modifier.height(5.dp))
             Text(
                 text = strings.chooseYourProfile,
                 color = Color(0xFFB7C4DF),
                 fontSize = (screenHeight.value * 0.026f).coerceIn(20f, 28f).sp,
-                modifier = Modifier.graphicsLayer { alpha = secondaryContentAlpha * revealAlpha },
+                modifier = Modifier.graphicsLayer { alpha = secondaryContentAlpha * revealAlpha * if (initialContentVisible) 1f else 0f },
             )
             Spacer(Modifier.height((screenHeight * 0.045f).coerceIn(22.dp, 46.dp)))
 
@@ -399,6 +400,7 @@ fun ProfilePickerScreen(
                         avatarSize = avatarSize,
                         profileNameHeight = profileNameHeight,
                         itemIndex = index,
+                        revealEnabled = initialContentVisible,
                         adminBadge = strings.adminBadge,
                         editDescription = strings.editProfile,
                         onCardFocused = { lastFocusKey = profile.id },
@@ -442,6 +444,7 @@ fun ProfilePickerScreen(
                         avatarSize = avatarSize,
                         profileNameHeight = profileNameHeight,
                         itemIndex = orderedProfiles.size,
+                        revealEnabled = initialContentVisible,
                         onFocused = { lastFocusKey = AddKidsFocusKey },
                         contentAlpha = secondaryContentAlpha * revealAlpha,
                         onClick = {
@@ -465,6 +468,7 @@ fun ProfilePickerScreen(
                         avatarSize = avatarSize,
                         profileNameHeight = profileNameHeight,
                         itemIndex = orderedProfiles.size + 1,
+                        revealEnabled = initialContentVisible,
                         onFocused = { lastFocusKey = AddProfileFocusKey },
                         contentAlpha = secondaryContentAlpha * revealAlpha,
                         onClick = {
@@ -565,6 +569,7 @@ private fun ProfilePickerCard(
     avatarSize: androidx.compose.ui.unit.Dp,
     profileNameHeight: androidx.compose.ui.unit.Dp,
     itemIndex: Int,
+    revealEnabled: Boolean,
     adminBadge: String,
     editDescription: String,
     onCardFocused: () -> Unit,
@@ -585,9 +590,13 @@ private fun ProfilePickerCard(
         label = "profile-card-scale",
     )
     val reveal = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        delay((itemIndex.coerceAtMost(7) * 40L))
-        reveal.animateTo(1f, tween(220))
+    LaunchedEffect(revealEnabled) {
+        if (!revealEnabled) {
+            reveal.snapTo(0f)
+        } else {
+            delay((itemIndex.coerceAtMost(7) * 40L))
+            reveal.animateTo(1f, tween(220, easing = FastOutSlowInEasing))
+        }
     }
     val shape = RoundedCornerShape(20.dp)
     val borderColor = when {
@@ -668,7 +677,7 @@ private fun ProfilePickerCard(
                     if (selected) {
                         ProfileAvatarLoadingIndicator(
                             color = SmartVisionColors.CyanAccent,
-                            strokeWidth = 4.dp,
+                            strokeWidth = 2.25.dp,
                             modifier = Modifier.size(avatarSize),
                         )
                     }
@@ -800,7 +809,7 @@ private fun SelectedProfileTransition(
                     if (loadingAlpha > 0f && cardAvatarVisible) {
                         ProfileAvatarLoadingIndicator(
                             color = SmartVisionColors.CyanAccent,
-                            strokeWidth = 4.dp,
+                            strokeWidth = 2.25.dp,
                             modifier = Modifier
                                 .size(avatarSize)
                                 .graphicsLayer { alpha = loadingAlpha },
@@ -886,7 +895,7 @@ private fun SelectedProfileTransition(
                 if (flyingLoadingAlpha > 0f) {
                     ProfileAvatarLoadingIndicator(
                         color = SmartVisionColors.CyanAccent,
-                        strokeWidth = 4.dp,
+                        strokeWidth = 2.25.dp,
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer { alpha = flyingLoadingAlpha },
@@ -988,6 +997,7 @@ private fun AddProfileCard(
     avatarSize: androidx.compose.ui.unit.Dp,
     profileNameHeight: androidx.compose.ui.unit.Dp,
     itemIndex: Int,
+    revealEnabled: Boolean,
     onFocused: () -> Unit,
     contentAlpha: Float,
     onClick: () -> Unit,
@@ -995,9 +1005,13 @@ private fun AddProfileCard(
     val interactionSource = remember { MutableInteractionSource() }
     var focused by remember { mutableStateOf(false) }
     val reveal = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        delay((itemIndex.coerceAtMost(7) * 40L))
-        reveal.animateTo(1f, tween(220))
+    LaunchedEffect(revealEnabled) {
+        if (!revealEnabled) {
+            reveal.snapTo(0f)
+        } else {
+            delay((itemIndex.coerceAtMost(7) * 40L))
+            reveal.animateTo(1f, tween(220, easing = FastOutSlowInEasing))
+        }
     }
     val shape = RoundedCornerShape(20.dp)
     Box(

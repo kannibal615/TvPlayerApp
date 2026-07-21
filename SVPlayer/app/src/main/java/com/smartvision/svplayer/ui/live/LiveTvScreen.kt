@@ -249,6 +249,7 @@ fun LiveTvScreen(
     val firstChannelFocusRequester = remember { FocusRequester() }
     val epgDetailsFocusRequester = remember { FocusRequester() }
     val firstPreviewActionFocusRequester = remember { FocusRequester() }
+    val miniPlayerFocusRequester = remember { FocusRequester() }
     val headerLiveFocusRequester = remember { FocusRequester() }
     val searchFocusRequester = remember { FocusRequester() }
     val categoryListState = rememberLazyListState()
@@ -522,6 +523,9 @@ fun LiveTvScreen(
                     },
                     onCategory = { category ->
                         if (inputReady) {
+                            if (category.id != state.selectedCategoryId) {
+                                playbackSession.stop()
+                            }
                             pendingFirstChannelFocusCategoryId = category.id
                             viewModel.selectCategory(
                                 category = category,
@@ -531,6 +535,7 @@ fun LiveTvScreen(
                     },
                     onApplyFilter = { code ->
                         if (inputReady) {
+                            playbackSession.stop()
                             val firstCategory = viewModel.applyCategoryFilter(code)
                             categoryFocusTargetId = firstCategory?.id
                             lastFocusedCategoryId = firstCategory?.id
@@ -555,9 +560,12 @@ fun LiveTvScreen(
                         ?: visibleChannels.firstOrNull()?.streamId,
                     headerFocusRequester = headerLiveFocusRequester,
                     searchQuery = state.channelSearchQuery,
-                    onSearchQueryChange = viewModel::updateChannelSearchQuery,
+                    onSearchQueryChange = { query ->
+                        if (query != state.channelSearchQuery) playbackSession.stop()
+                        viewModel.updateChannelSearchQuery(query)
+                    },
                     onSortSelected = viewModel::setSortMode,
-                    previewActionFocusRequester = firstPreviewActionFocusRequester.takeIf {
+                    previewActionFocusRequester = miniPlayerFocusRequester.takeIf {
                         state.selectedChannel != null
                     },
                     onChannelFocused = viewModel::focusChannel,
@@ -601,6 +609,7 @@ fun LiveTvScreen(
                     idleVastAdLoader = container.idleVastAdLoader,
                     monetizationManager = container.monetizationManager,
                     firstActionFocusRequester = firstPreviewActionFocusRequester,
+                    miniPlayerFocusRequester = miniPlayerFocusRequester,
                     epgDetailsFocusRequester = epgDetailsFocusRequester,
                     headerFocusRequester = headerLiveFocusRequester,
                     onRestoreChannelFocus = ::restoreChannelFocus,
@@ -916,6 +925,7 @@ private fun PreviewPanel(
     idleVastAdLoader: IdleVastAdLoader,
     monetizationManager: MonetizationManager,
     firstActionFocusRequester: FocusRequester,
+    miniPlayerFocusRequester: FocusRequester,
     epgDetailsFocusRequester: FocusRequester,
     headerFocusRequester: FocusRequester,
     onRestoreChannelFocus: () -> Unit,
@@ -939,7 +949,7 @@ private fun PreviewPanel(
                         icon = Icons.Default.PlayArrow,
                         primary = true,
                         focusRequester = firstActionFocusRequester,
-                        downFocusRequester = epgDetailsFocusRequester.takeIf { channel.epgPrograms.isNotEmpty() },
+                        downFocusRequester = miniPlayerFocusRequester,
                         onLeft = onRestoreChannelFocus,
                         upFocusRequester = headerFocusRequester,
                         onFocused = onPreviewFocused,
@@ -949,7 +959,7 @@ private fun PreviewPanel(
                         onClick = onFavorite,
                         icon = if (channel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         selected = channel.isFavorite,
-                        downFocusRequester = epgDetailsFocusRequester.takeIf { channel.epgPrograms.isNotEmpty() },
+                        downFocusRequester = miniPlayerFocusRequester,
                         onLeft = onRestoreChannelFocus,
                         upFocusRequester = headerFocusRequester,
                         onFocused = onPreviewFocused,
@@ -960,7 +970,7 @@ private fun PreviewPanel(
                             onClick = onDeleteHistory,
                             icon = Icons.Default.Delete,
                             danger = true,
-                            downFocusRequester = epgDetailsFocusRequester.takeIf { channel.epgPrograms.isNotEmpty() },
+                            downFocusRequester = miniPlayerFocusRequester,
                             onLeft = onRestoreChannelFocus,
                             upFocusRequester = headerFocusRequester,
                             onFocused = onPreviewFocused,
@@ -1001,6 +1011,11 @@ private fun PreviewPanel(
                 categoryLabel = selectedCategoryLabel.orEmpty(),
                 streamUnavailableLabel = strings.liveTvStreamUnavailable,
                 playbackSession = playbackSession,
+                focusRequester = miniPlayerFocusRequester,
+                upFocusRequester = firstActionFocusRequester,
+                downFocusRequester = epgDetailsFocusRequester.takeIf { channel.epgPrograms.isNotEmpty() },
+                onLeft = onRestoreChannelFocus,
+                onFocused = onPreviewFocused,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1.88f),
@@ -1948,14 +1963,50 @@ private fun VideoPreviewFrame(
     categoryLabel: String,
     streamUnavailableLabel: String,
     playbackSession: LivePlaybackSession,
+    focusRequester: FocusRequester,
+    upFocusRequester: FocusRequester,
+    downFocusRequester: FocusRequester?,
+    onLeft: () -> Unit,
+    onFocused: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(5.dp)
+    val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
     Box(
         modifier = modifier
+            .focusProperties {
+                up = upFocusRequester
+                if (downFocusRequester != null) down = downFocusRequester
+            }
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft) {
+                    onLeft()
+                    true
+                } else {
+                    false
+                }
+            }
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                focusedScale = 1.015f,
+                cornerRadius = 5.dp,
+            )
+            .onFocusChanged { focus ->
+                if (focus.isFocused || focus.hasFocus) onFocused()
+            }
+            .zIndex(if (focusState.isFocused) 2f else 0f)
+            .focusable()
             .clip(shape)
             .background(Color.Black)
-            .border(BorderStroke(1.dp, SmartVisionColors.Border), shape),
+            .border(
+                BorderStroke(
+                    if (focusState.isFocused) focusStyle.borderWidth else 1.dp,
+                    if (focusState.isFocused) focusStyle.accent else SmartVisionColors.Border,
+                ),
+                shape,
+            ),
     ) {
         MiniPreviewPlayer(
             streamId = channel.streamId,

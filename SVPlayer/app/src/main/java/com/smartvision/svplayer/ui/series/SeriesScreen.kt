@@ -136,6 +136,7 @@ fun SeriesScreen(
     val returnSeriesFocusRequester = remember { FocusRequester() }
     val seriesSearchFocusRequester = remember { FocusRequester() }
     val previewPlayFocusRequester = remember { FocusRequester() }
+    val previewPlayerFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
     var returnFocusHandled by remember { mutableStateOf(false) }
@@ -220,7 +221,7 @@ fun SeriesScreen(
         val seriesId = pendingPreviewSeriesId ?: return@LaunchedEffect
         if (state.selectedSeriesId != seriesId) return@LaunchedEffect
         withFrameNanos { }
-        runCatching { previewPlayFocusRequester.requestFocus() }
+        runCatching { previewPlayerFocusRequester.requestFocus() }
         pendingPreviewSeriesId = null
     }
 
@@ -393,6 +394,7 @@ fun SeriesScreen(
                         loading = state.episodesLoading,
                     ),
                     playFocusRequester = previewPlayFocusRequester,
+                    previewFocusRequester = previewPlayerFocusRequester,
                     onPlay = {
                         val series = state.selectedSeries
                         val episode = state.selectedPreviewEpisode

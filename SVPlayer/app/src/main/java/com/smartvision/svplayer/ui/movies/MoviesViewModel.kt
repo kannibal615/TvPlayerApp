@@ -92,7 +92,7 @@ data class MoviesScreenState(
     val sortMode: MovieSortMode = MovieSortMode.DEFAULT,
 ) {
     val displayedMovies: List<MovieItemUi>
-        get() = movies.sortedWith(sortMode.comparator())
+        get() = if (sortMode == MovieSortMode.DEFAULT) movies else movies.sortedWith(sortMode.comparator())
     val visibleCategories: List<MovieCategoryUi>
         get() = categories.withStreamingGroups(expandedBrand)
     val selectedCategory: MovieCategoryUi?
@@ -322,6 +322,7 @@ class MoviesViewModel(
         viewModelScope.launch {
             userContentRepository.observeFavoriteIds(UserContentType.Movie).collect { ids ->
                 favoriteIds = ids
+                val emptySelectedFavorites = ids.isEmpty() && _uiState.value.selectedCategoryId == FavoriteMovieCategoryId
                 val favoriteSelection = if (_uiState.value.selectedCategoryId == FavoriteMovieCategoryId) {
                     favoriteMovies(_uiState.value.contentSearchQuery)
                 } else {
@@ -346,6 +347,7 @@ class MoviesViewModel(
                     )
                 }
                 favoriteSelection?.let(::loadTmdbMetadataForMovies)
+                if (emptySelectedFavorites) loadAllMovies()
             }
         }
     }
@@ -365,6 +367,7 @@ class MoviesViewModel(
                     } ?: playerSettings.allowsContent(item.title, item.subtitle)
                 }
                 historyCategorySignals = userContentRepository.resolveCategorySignals(historyProgress)
+                val emptySelectedHistory = historyProgress.isEmpty() && _uiState.value.selectedCategoryId == HistoryMovieCategoryId
                 val refreshedHistoryMovies = historyMovies(_uiState.value.contentSearchQuery)
                 _uiState.update { state ->
                     state.copy(
@@ -381,6 +384,7 @@ class MoviesViewModel(
                 if (_uiState.value.selectedCategoryId == HistoryMovieCategoryId) {
                     loadTmdbMetadataForMovies(refreshedHistoryMovies)
                 }
+                if (emptySelectedHistory) loadAllMovies()
             }
         }
     }
@@ -528,7 +532,7 @@ class MoviesViewModel(
                 val page = if (query.isNotBlank()) {
                     catalogRepository.searchMoviesPage(categoryId, query, startOffset, MovieItemsPageSize)
                 } else if (categoryId == null) {
-                    catalogRepository.getAllMoviesPage(startOffset, MovieItemsPageSize)
+                    loadAllMoviesInCategoryOrder(startOffset, MovieItemsPageSize)
                 } else {
                     catalogRepository.getMoviesPage(categoryId, startOffset, MovieItemsPageSize)
                 }
@@ -582,6 +586,34 @@ class MoviesViewModel(
                 }
             }
         }
+    }
+
+    private suspend fun loadAllMoviesInCategoryOrder(offset: Int, limit: Int): List<Movie> {
+        val realCategories = _uiState.value.categories.filterNot { it.id in SpecialMovieCategoryIds }
+        val grouped = StreamingCategoryGroupPolicy.group(realCategories, MovieCategoryUi::label)
+        val orderedCategories = buildList {
+            StreamingBrand.entries.forEach { brand -> addAll(grouped.groups[brand].orEmpty()) }
+            addAll(grouped.remaining)
+        }
+        if (orderedCategories.isEmpty()) {
+            return catalogRepository.getAllMoviesPage(offset, limit)
+        }
+        var remainingOffset = offset
+        val result = mutableListOf<Movie>()
+        for (category in orderedCategories) {
+            val categoryCount = category.count
+            if (categoryCount != null && remainingOffset >= categoryCount) {
+                remainingOffset -= categoryCount
+                continue
+            }
+            val pageLimit = limit - result.size
+            if (pageLimit <= 0) break
+            val page = catalogRepository.getMoviesPage(category.id, remainingOffset, pageLimit)
+            result += page
+            remainingOffset = 0
+            if (result.size >= limit) break
+        }
+        return result
     }
 
     private fun loadTmdbMetadataForMovies(movies: List<MovieItemUi>) {
@@ -718,24 +750,19 @@ private fun List<MovieCategoryUi>.withSpecialCategories(
     historyCount: Int,
     historySignals: List<CategoryHistorySignal> = emptyList(),
 ): List<MovieCategoryUi> =
-    listOf(
-        MovieCategoryUi(
+    buildList {
+        add(MovieCategoryUi(
             id = AllMovieCategoryId,
             label = "ALL",
             count = allCount,
-        ),
-        MovieCategoryUi(
-            id = FavoriteMovieCategoryId,
-            label = "Favoris",
-            count = favoriteCount,
-        ),
-        MovieCategoryUi(
-            id = HistoryMovieCategoryId,
-            label = "Historique",
-            count = historyCount,
-        ),
-    ) + filterNot { it.id in SpecialMovieCategoryIds || AllCategoryPolicy.isEquivalent(it.label) }
-        .sortedByHistorySignals(historySignals) { it.id }
+        ))
+        if (favoriteCount > 0) add(MovieCategoryUi(FavoriteMovieCategoryId, "Favoris", favoriteCount))
+        if (historyCount > 0) add(MovieCategoryUi(HistoryMovieCategoryId, "Historique", historyCount))
+        addAll(
+            filterNot { it.id in SpecialMovieCategoryIds || AllCategoryPolicy.isEquivalent(it.label) }
+                .sortedByHistorySignals(historySignals) { it.id },
+        )
+    }
 
 private fun List<MovieCategoryUi>.initialCategoryForPlaylist(): MovieCategoryUi? =
     firstOrNull { it.id == AllMovieCategoryId && (it.count ?: 0) > 0 }

@@ -135,6 +135,7 @@ fun MoviesScreen(
     val returnMovieFocusRequester = remember { FocusRequester() }
     val movieSearchFocusRequester = remember { FocusRequester() }
     val previewPlayFocusRequester = remember { FocusRequester() }
+    val previewPlayerFocusRequester = remember { FocusRequester() }
     val behaviorScope = rememberCoroutineScope()
     var inputReady by remember { mutableStateOf(false) }
     var returnFocusHandled by remember { mutableStateOf(false) }
@@ -219,7 +220,7 @@ fun MoviesScreen(
         val movieId = pendingPreviewMovieId ?: return@LaunchedEffect
         if (state.selectedMovieId != movieId) return@LaunchedEffect
         withFrameNanos { }
-        runCatching { previewPlayFocusRequester.requestFocus() }
+        runCatching { previewPlayerFocusRequester.requestFocus() }
         pendingPreviewMovieId = null
     }
 
@@ -388,6 +389,7 @@ fun MoviesScreen(
                     title = "Preview",
                     content = state.selectedMovie?.toPreviewContent(),
                     playFocusRequester = previewPlayFocusRequester,
+                    previewFocusRequester = previewPlayerFocusRequester,
                     onPlay = { state.selectedMovie?.let { onWatchMovie(it.streamId) } },
                     onDetails = { state.selectedMovie?.let { onOpenMovieDetails(it.streamId) } },
                     onFavorite = { state.selectedMovie?.let(viewModel::toggleFavorite) },

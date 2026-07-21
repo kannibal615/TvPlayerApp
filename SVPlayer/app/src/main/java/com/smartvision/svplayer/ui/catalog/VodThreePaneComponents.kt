@@ -620,6 +620,7 @@ fun VodPreviewPanel(
     title: String,
     content: VodPreviewContent?,
     playFocusRequester: FocusRequester,
+    previewFocusRequester: FocusRequester? = null,
     onPlay: () -> Unit,
     onDetails: () -> Unit,
     onFavorite: () -> Unit,
@@ -644,7 +645,10 @@ fun VodPreviewPanel(
     onNavigateLeft: (() -> Unit)? = null,
     onPreviewBoundsChanged: (Rect) -> Unit = {},
 ) {
-    val miniPlayerFocusRequester = remember { FocusRequester() }
+    val internalMiniPlayerFocusRequester = remember { FocusRequester() }
+    val miniPlayerFocusRequester = previewFocusRequester ?: internalMiniPlayerFocusRequester
+    val miniPlayerFocusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
     val isSeriesPreview = content?.id?.startsWith("series-") == true
     val availableSeasons = remember(seriesEpisodes) {
         seriesEpisodes.map { it.seasonNumber }.distinct().sorted()
@@ -745,7 +749,6 @@ fun VodPreviewPanel(
                         .fillMaxWidth()
                         .aspectRatio(16f / 9f)
                         .onGloballyPositioned { onPreviewBoundsChanged(it.boundsInRoot()) }
-                        .focusRequester(miniPlayerFocusRequester)
                         .onPreviewKeyEvent { event ->
                             if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionUp) {
                                 runCatching { playFocusRequester.requestFocus() }
@@ -754,10 +757,23 @@ fun VodPreviewPanel(
                                 false
                             }
                         }
+                        .tvFocusTarget(
+                            state = miniPlayerFocusState,
+                            focusRequester = miniPlayerFocusRequester,
+                            focusedScale = 1.015f,
+                            cornerRadius = MediaCatalogDimens.ItemRadius,
+                        )
+                        .zIndex(if (miniPlayerFocusState.isFocused) 2f else 0f)
                         .focusable()
                         .clip(RoundedCornerShape(MediaCatalogDimens.ItemRadius))
                         .background(Color.Black)
-                        .border(BorderStroke(1.dp, SmartVisionColors.Border), RoundedCornerShape(MediaCatalogDimens.ItemRadius)),
+                        .border(
+                            BorderStroke(
+                                if (miniPlayerFocusState.isFocused) focusStyle.borderWidth else 1.dp,
+                                if (miniPlayerFocusState.isFocused) focusStyle.accent else SmartVisionColors.Border,
+                            ),
+                            RoundedCornerShape(MediaCatalogDimens.ItemRadius),
+                        ),
                 ) {
                     SegmentedVodMiniPlayer(
                         content = content,

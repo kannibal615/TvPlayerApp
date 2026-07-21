@@ -101,7 +101,7 @@ data class LiveTvUiState(
     val sortMode: LiveSortMode = LiveSortMode.DEFAULT,
 ) {
     val displayedChannels: List<LiveTvChannel>
-        get() = channels.sortedWith(sortMode.comparator())
+        get() = if (sortMode == LiveSortMode.DEFAULT) channels else channels.sortedWith(sortMode.comparator())
     val visibleCategories: List<LiveTvCategory>
         get() {
             val filteredEntries = CategoryFilterResolver.filterEntries(
@@ -492,6 +492,7 @@ class LiveTvViewModel(
         viewModelScope.launch {
             userContentRepository.observeFavoriteIds(UserContentType.Live).collect { ids ->
                 favoriteIds = ids
+                val emptySelectedFavorites = ids.isEmpty() && _uiState.value.selectedCategoryId == FavoriteLiveCategoryId
                 val favoriteSelection = if (_uiState.value.selectedCategoryId == FavoriteLiveCategoryId) {
                     favoriteChannels()
                 } else {
@@ -515,6 +516,7 @@ class LiveTvViewModel(
                             ?.takeIf { selectedId -> refreshedChannels.any { it.streamId == selectedId } },
                     )
                 }
+                if (emptySelectedFavorites) loadAllChannels()
                 refreshAutomaticInitialSelectionIfNeeded()
             }
         }
@@ -526,6 +528,7 @@ class LiveTvViewModel(
                 historyProgress = progress.map { userContentRepository.enrichProgress(it) }
                     .distinctBy { it.contentId }
                 historyCategorySignals = userContentRepository.resolveCategorySignals(historyProgress)
+                val emptySelectedHistory = historyProgress.isEmpty() && _uiState.value.selectedCategoryId == HistoryLiveCategoryId
                 _uiState.update { state ->
                     val history = historyChannels()
                     val pendingFocusId = pendingHistoryFocusAfterDelete?.takeIf { id ->
@@ -558,6 +561,7 @@ class LiveTvViewModel(
                         selectedChannelId = selectedHistoryId,
                     )
                 }
+                if (emptySelectedHistory) loadAllChannels()
                 refreshAutomaticInitialSelectionIfNeeded()
             }
         }
@@ -777,7 +781,15 @@ class LiveTvViewModel(
                         .map { category -> category.id }
                         .toList()
                 }.orEmpty()
-                val page = if (categoryId == null && filteredCategoryIds.isNotEmpty()) {
+                val orderedAllCategories = _uiState.value.visibleCategories
+                    .filterNot { category -> category.id in SpecialLiveCategoryIds }
+                val page = if (categoryId == null && searchQuery.isBlank()) {
+                    loadAllChannelsInCategoryOrder(
+                        categories = orderedAllCategories,
+                        offset = startOffset,
+                        limit = LiveItemsPageSize,
+                    )
+                } else if (categoryId == null && filteredCategoryIds.isNotEmpty()) {
                     catalogRepository.getLiveChannelsByCategoryIdsPage(
                         categoryIds = filteredCategoryIds,
                         query = searchQuery,
@@ -852,6 +864,32 @@ class LiveTvViewModel(
         }
     }
 
+    private suspend fun loadAllChannelsInCategoryOrder(
+        categories: List<LiveTvCategory>,
+        offset: Int,
+        limit: Int,
+    ): List<LocalLiveChannel> {
+        if (categories.isEmpty()) {
+            return catalogRepository.getAllLiveChannelsPage(offset, limit)
+        }
+        var remainingOffset = offset
+        val result = mutableListOf<LocalLiveChannel>()
+        for (category in categories) {
+            val categoryCount = category.count
+            if (categoryCount != null && remainingOffset >= categoryCount) {
+                remainingOffset -= categoryCount
+                continue
+            }
+            val pageLimit = limit - result.size
+            if (pageLimit <= 0) break
+            val page = catalogRepository.getLiveChannelsPage(category.id, remainingOffset, pageLimit)
+            result += page
+            remainingOffset = 0
+            if (result.size >= limit) break
+        }
+        return result
+    }
+
     private fun cancelChannelsLoad(clearChannels: Boolean) {
         channelsJob?.cancel()
         channelsJob = null
@@ -914,27 +952,26 @@ private fun List<LiveTvCategory>.withSpecialCategories(
     historyCount: Int,
     historySignals: List<CategoryHistorySignal> = emptyList(),
 ): List<LiveTvCategory> =
-    listOf(
-        LiveTvCategory(
-            id = AllLiveCategoryId,
-            label = "ALL",
-            count = allCount,
-            kind = LiveTvCategoryKind.Generic,
-        ),
-        LiveTvCategory(
-            id = FavoriteLiveCategoryId,
-            label = "Favoris",
-            count = favoriteCount,
-            kind = LiveTvCategoryKind.Generic,
-        ),
-        LiveTvCategory(
-            id = HistoryLiveCategoryId,
-            label = "Historique",
-            count = historyCount,
-            kind = LiveTvCategoryKind.Generic,
-        ),
-    ) + filterNot { it.id in SpecialLiveCategoryIds || AllCategoryPolicy.isEquivalent(it.label) }
-        .sortedByHistorySignals(historySignals) { it.id }
+    buildList {
+        add(
+            LiveTvCategory(
+                id = AllLiveCategoryId,
+                label = "ALL",
+                count = allCount,
+                kind = LiveTvCategoryKind.Generic,
+            ),
+        )
+        if (favoriteCount > 0) {
+            add(LiveTvCategory(FavoriteLiveCategoryId, "Favoris", favoriteCount, LiveTvCategoryKind.Generic))
+        }
+        if (historyCount > 0) {
+            add(LiveTvCategory(HistoryLiveCategoryId, "Historique", historyCount, LiveTvCategoryKind.Generic))
+        }
+        addAll(
+            filterNot { it.id in SpecialLiveCategoryIds || AllCategoryPolicy.isEquivalent(it.label) }
+                .sortedByHistorySignals(historySignals) { it.id },
+        )
+    }
 
 private suspend fun <T> runCatchingNonCancellation(block: suspend () -> T): Result<T> =
     try {

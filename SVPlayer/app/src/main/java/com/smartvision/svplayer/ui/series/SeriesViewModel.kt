@@ -109,7 +109,7 @@ data class SeriesScreenState(
     val sortMode: SeriesSortMode = SeriesSortMode.DEFAULT,
 ) {
     val displayedSeries: List<SeriesItemUi>
-        get() = series.sortedWith(sortMode.comparator())
+        get() = if (sortMode == SeriesSortMode.DEFAULT) series else series.sortedWith(sortMode.comparator())
     val visibleCategories: List<SeriesCategoryUi>
         get() = categories.withStreamingGroups(expandedBrand)
     val selectedCategory: SeriesCategoryUi?
@@ -376,11 +376,13 @@ class SeriesViewModel(
         viewModelScope.launch {
             userContentRepository.observeFavoriteIds(UserContentType.Series).collect { ids ->
                 favoriteIds = ids
+                val emptySelectedFavorites = ids.isEmpty() && _uiState.value.selectedCategoryId == FavoriteSeriesCategoryId
                 val favoriteSelection = if (_uiState.value.selectedCategoryId == FavoriteSeriesCategoryId) {
                     favoriteSeries(_uiState.value.contentSearchQuery)
                 } else {
                     null
                 }
+                if (emptySelectedFavorites) loadAllSeries()
                 _uiState.update { state ->
                     val refreshedSeries = favoriteSelection
                         ?: state.series.map { it.copy(isFavorite = it.seriesId in ids) }
@@ -427,6 +429,7 @@ class SeriesViewModel(
                     } ?: playerSettings.allowsContent(item.title, item.subtitle)
                 }
                 historyCategorySignals = userContentRepository.resolveCategorySignals(historyProgress)
+                val emptySelectedHistory = historyProgress.isEmpty() && _uiState.value.selectedCategoryId == HistorySeriesCategoryId
                 _uiState.update { state ->
                     val history = historySeries(state.contentSearchQuery)
                     state.copy(
@@ -440,6 +443,7 @@ class SeriesViewModel(
                         focusedSeriesId = if (state.selectedCategoryId == HistorySeriesCategoryId) history.firstOrNull()?.seriesId else state.focusedSeriesId,
                     )
                 }
+                if (emptySelectedHistory) loadAllSeries()
             }
         }
     }
@@ -603,7 +607,7 @@ class SeriesViewModel(
                 val page = if (query.isNotBlank()) {
                     catalogRepository.searchSeriesPage(categoryId, query, startOffset, SeriesItemsPageSize)
                 } else if (categoryId == null) {
-                    catalogRepository.getAllSeriesPage(startOffset, SeriesItemsPageSize)
+                    loadAllSeriesInCategoryOrder(startOffset, SeriesItemsPageSize)
                 } else {
                     catalogRepository.getSeriesPage(categoryId, startOffset, SeriesItemsPageSize)
                 }
@@ -649,6 +653,34 @@ class SeriesViewModel(
                 }
             }
         }
+    }
+
+    private suspend fun loadAllSeriesInCategoryOrder(offset: Int, limit: Int): List<TvSeries> {
+        val realCategories = _uiState.value.categories.filterNot { it.id in SpecialSeriesCategoryIds }
+        val grouped = StreamingCategoryGroupPolicy.group(realCategories, SeriesCategoryUi::label)
+        val orderedCategories = buildList {
+            StreamingBrand.entries.forEach { brand -> addAll(grouped.groups[brand].orEmpty()) }
+            addAll(grouped.remaining)
+        }
+        if (orderedCategories.isEmpty()) {
+            return catalogRepository.getAllSeriesPage(offset, limit)
+        }
+        var remainingOffset = offset
+        val result = mutableListOf<TvSeries>()
+        for (category in orderedCategories) {
+            val categoryCount = category.count
+            if (categoryCount != null && remainingOffset >= categoryCount) {
+                remainingOffset -= categoryCount
+                continue
+            }
+            val pageLimit = limit - result.size
+            if (pageLimit <= 0) break
+            val page = catalogRepository.getSeriesPage(category.id, remainingOffset, pageLimit)
+            result += page
+            remainingOffset = 0
+            if (result.size >= limit) break
+        }
+        return result
     }
 
     private fun loadVisibleMetadata(series: List<SeriesItemUi>) {
@@ -897,24 +929,19 @@ private fun List<SeriesCategoryUi>.withSpecialCategories(
     historyCount: Int,
     historySignals: List<CategoryHistorySignal> = emptyList(),
 ): List<SeriesCategoryUi> =
-    listOf(
-        SeriesCategoryUi(
+    buildList {
+        add(SeriesCategoryUi(
             id = AllSeriesCategoryId,
             label = "ALL",
             count = allCount,
-        ),
-        SeriesCategoryUi(
-            id = FavoriteSeriesCategoryId,
-            label = "Favoris",
-            count = favoriteCount,
-        ),
-        SeriesCategoryUi(
-            id = HistorySeriesCategoryId,
-            label = "Historique",
-            count = historyCount,
-        ),
-    ) + filterNot { it.id in SpecialSeriesCategoryIds || AllCategoryPolicy.isEquivalent(it.label) }
-        .sortedByHistorySignals(historySignals) { it.id }
+        ))
+        if (favoriteCount > 0) add(SeriesCategoryUi(FavoriteSeriesCategoryId, "Favoris", favoriteCount))
+        if (historyCount > 0) add(SeriesCategoryUi(HistorySeriesCategoryId, "Historique", historyCount))
+        addAll(
+            filterNot { it.id in SpecialSeriesCategoryIds || AllCategoryPolicy.isEquivalent(it.label) }
+                .sortedByHistorySignals(historySignals) { it.id },
+        )
+    }
 
 private fun List<SeriesCategoryUi>.initialCategoryForPlaylist(): SeriesCategoryUi? =
     firstOrNull { it.id == AllSeriesCategoryId && (it.count ?: 0) > 0 }

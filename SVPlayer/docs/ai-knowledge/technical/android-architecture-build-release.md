@@ -6,7 +6,8 @@ Derniere mise a jour: 2026-07-21.
 
 - `MainActivity` reste l'unique launcher; `Theme.SVPlayer.Splash` fournit la preview systeme et `StartupGate`/`StartupExperience` assurent la continuite Compose. Ne pas ajouter de `SplashActivity`.
 - `splash_background.xml` et `StartupExperience` utilisent le meme fond 1920 x 1080 `startup_cinema_background` et le meme logo officiel `smartvision_logo_wide`, avec taille/position identiques pour eviter flash et double logo.
-- La progression reelle est rendue par un cercle bleu/cyan anime avec halo discret; le statut reste sous le cercle. Il n'existe plus de barre lineaire.
+- La progression reelle est rendue par un cercle bleu/cyan anime, fin et compact, avec halo discret; le statut reste sous le cercle. Il n'existe plus de barre lineaire.
+- Le contenu initial est precompose pendant le splash. Pour Who's Watching, le signal `initial surface ready` exige un layout non nul et l'animation des cartes ne demarre qu'au handoff visible; la duree du splash n'est pas raccourcie.
 
 ## Persistance profils v15
 
