@@ -2,6 +2,14 @@
 
 Derniere mise a jour: 2026-07-21.
 
+## Corrections focus audit TV - 2026-07-21
+
+- `AppNavigation` desactive son Back global sur les routes qui possedent leur propre `BackHandler` (Settings, Profile, Manage Profiles, Notifications et YouTube). Une seule couche decide donc du retour.
+- Au retour d'un lecteur Episode, le focus revient sur l'episode exact qui a ete lance. Au retour du lecteur YouTube, la categorie, le scroll et la video source sont preserves.
+- Dans Live TV, Haut depuis une action superieure de preview cible explicitement l'onglet Live courant du header.
+- Dans Gerer les profils, les cartes d'ajout effacent la cible profil precedente et Bas ne peut plus entrer dans ses actions Modifier/Supprimer.
+- La route active du header utilise un trait d'accent discret sans reproduire la surface ni le libelle du focus. Les choix de fond Settings utilisent deux colonnes afin de conserver leurs libelles complets.
+
 ## Back plein ecran Live et controles - 2026-07-17
 
 - Back ferme d'abord un etat secondaire ouvert: EPG/settings, luminosite, liste d'episodes ou compte a rebours d'episode suivant.

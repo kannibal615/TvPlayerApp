@@ -2,6 +2,13 @@
 
 Derniere mise a jour: 2026-07-21.
 
+## Correctifs audit ecrans - 2026-07-21
+
+- YouTube conserve la liste, le scroll et la video source apres fermeture du player, sans recharger automatiquement Tendances.
+- Le detail Series memorise l'identifiant de l'episode lance et restaure ce focus exact apres Back.
+- Gerer les profils dissocie les actions d'ajout de la derniere carte profil selectionnee; aucune action obsolete n'est rendue ou joignable depuis ces cartes.
+- Les libelles visibles speciaux Catalogue, Preview, Film et usage de licence passent tous par la langue active. Les cartes de choix de fond Settings sont elargies par une grille a deux colonnes.
+
 ## Cartes Home et preview partagee - 2026-07-17
 
 - Un chargement a froid de Continue/Tendances conserve son skeleton au moins `650 ms`; un snapshot memoire s'affiche directement.

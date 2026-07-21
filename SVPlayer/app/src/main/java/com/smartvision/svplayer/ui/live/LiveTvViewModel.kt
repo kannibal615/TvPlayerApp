@@ -364,12 +364,6 @@ class LiveTvViewModel(
         loadChannels(category.id, autoPreviewFirstChannel)
     }
 
-    fun focusChannel(channel: LiveTvChannel) {
-        _uiState.update { state ->
-            state.copy(focusedChannelId = channel.streamId)
-        }
-    }
-
     fun updateChannelSearchQuery(query: String) {
         val current = _uiState.value
         if (current.channelSearchQuery == query) return
@@ -933,8 +927,8 @@ private const val LiveItemsPageSize = 96
 private const val EpgCategoryScanPageSize = 500
 private const val InitialCategoryLimit = 20
 private val EpgRefreshMinAgeMs = TimeUnit.HOURS.toMillis(1)
-private const val FavoriteLiveCategoryId = "__favorites_live__"
-private const val HistoryLiveCategoryId = "__history_live__"
+internal const val FavoriteLiveCategoryId = "__favorites_live__"
+internal const val HistoryLiveCategoryId = "__history_live__"
 internal const val AllLiveCategoryId = "__all_live__"
 internal val SpecialLiveCategoryIds = setOf(AllLiveCategoryId, FavoriteLiveCategoryId, HistoryLiveCategoryId)
 

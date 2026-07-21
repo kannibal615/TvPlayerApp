@@ -198,6 +198,7 @@ fun AppNavigation(
     var movieReturnFocusId by remember { mutableStateOf<Int?>(null) }
     var seriesReturnFocusId by remember { mutableStateOf<Int?>(null) }
     var episodeReturnFocusSeriesId by remember { mutableStateOf<Int?>(null) }
+    var episodeDetailReturnFocusId by remember { mutableStateOf<Int?>(null) }
     var homeHeaderFocusRequest by remember { mutableStateOf(0) }
     var homeHeaderFocusTarget by remember { mutableStateOf(HomeHeaderFocusTarget.CurrentTab) }
     var profilePickerCompleted by remember { mutableStateOf(false) }
@@ -1206,6 +1207,8 @@ fun AppNavigation(
                 ) {
                     SeriesDetailRoute(
                     seriesId = seriesId,
+                    returnFocusEpisodeId = episodeDetailReturnFocusId,
+                    onReturnFocusConsumed = { episodeDetailReturnFocusId = null },
                     currentRoute = AppRoute.Series.route,
                     tabs = tabs,
                     onNavigate = navigateFromHeader,
@@ -1219,6 +1222,7 @@ fun AppNavigation(
                     notificationBadgeCount = notificationBadgeCount,
                     onWatchEpisode = { episodeId ->
                         episodeReturnFocusSeriesId = seriesId
+                        episodeDetailReturnFocusId = episodeId
                         seriesPlayerEnterBounds = null
                         navController.navigate("episode_player/$episodeId")
                     },
@@ -1232,7 +1236,14 @@ fun AppNavigation(
         currentRoute.startsWith("movie_player/") ||
         currentRoute.startsWith("episode_player/") ||
         currentRoute.startsWith("media_player/")
-    BackHandler(enabled = !playerRouteActive) {
+    val routeOwnsBackHandler = currentRoute in setOf(
+        AppRoute.Settings.route,
+        AppRoute.Profile.route,
+        AppRoute.ManageProfiles.route,
+        AppRoute.Notifications.route,
+        AppRoute.Youtube.route,
+    )
+    BackHandler(enabled = !playerRouteActive && !routeOwnsBackHandler) {
         if (currentRoute == AppRoute.Settings.route) {
             navigateHomeWithHeaderFocus(HomeHeaderFocusTarget.Settings)
         } else if (currentRoute == AppRoute.Profile.route) {

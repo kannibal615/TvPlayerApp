@@ -890,8 +890,8 @@ private data class CachedSeriesMetadata(
 private const val SeriesItemsPageSize = 72
 private const val TmdbEnrichmentConcurrency = 2
 private const val InitialCategoryLimit = 20
-private const val FavoriteSeriesCategoryId = "__favorites_series__"
-private const val HistorySeriesCategoryId = "__history_series__"
+internal const val FavoriteSeriesCategoryId = "__favorites_series__"
+internal const val HistorySeriesCategoryId = "__history_series__"
 private const val AllSeriesCategoryId = "__all_series__"
 private val SpecialSeriesCategoryIds = setOf(AllSeriesCategoryId, FavoriteSeriesCategoryId, HistorySeriesCategoryId)
 

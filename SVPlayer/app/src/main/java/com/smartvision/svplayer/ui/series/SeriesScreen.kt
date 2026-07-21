@@ -320,6 +320,7 @@ fun SeriesScreen(
             ) {
                 SeriesCategoryList(
                     state = state,
+                    strings = strings,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     currentTabFocusRequester = currentTabFocusRequester,
                     listState = categoryListState,
@@ -388,10 +389,11 @@ fun SeriesScreen(
                         .fillMaxHeight(),
                 )
                 VodPreviewPanel(
-                    title = "Preview",
+                    title = strings.liveTvPreview,
                     content = state.selectedSeries?.toPreviewContent(
                         episode = state.selectedPreviewEpisode,
                         loading = state.episodesLoading,
+                        subtitleOverride = state.selectedCategory?.localizedLabel(strings),
                     ),
                     playFocusRequester = previewPlayFocusRequester,
                     previewFocusRequester = previewPlayerFocusRequester,
@@ -403,13 +405,15 @@ fun SeriesScreen(
                     onDetails = { state.selectedSeries?.let { onOpenSeriesDetails(it.seriesId) } },
                     onFavorite = { state.selectedSeries?.let(viewModel::toggleFavorite) },
                     onDeleteHistory = { state.selectedSeries?.let { seriesToDelete = it } },
-                    showDeleteHistory = state.selectedCategory?.label == "Historique",
+                    showDeleteHistory = state.selectedCategoryId == HistorySeriesCategoryId,
                     showFreeAdsPreview = showFreeAdsPreview,
                     idleAdEnabled = state.series.isNotEmpty(),
                     idleVastAdLoader = container.idleVastAdLoader,
                     monetizationManager = container.monetizationManager,
                     premiumPurchaseUrl = premiumPurchaseUrl,
                     tvCode = tvCode,
+                    premiumTitle = strings.premiumPurchaseTitle,
+                    premiumSubtitle = strings.premiumPreviewSubtitle,
                     seriesEpisodes = state.episodes.map { episode ->
                         VodPreviewEpisode(
                             id = episode.episodeId,
@@ -479,6 +483,7 @@ private fun SeriesItemUi.toBehaviorContent(): BehaviorContent =
 @Composable
 private fun SeriesCategoryList(
     state: SeriesScreenState,
+    strings: SmartVisionStrings,
     selectedCategoryFocusRequester: FocusRequester,
     currentTabFocusRequester: FocusRequester,
     listState: LazyListState,
@@ -522,7 +527,7 @@ private fun SeriesCategoryList(
             ) { index, category ->
                 val brandSelected = category.isBrandGroup && category.brandGroup == state.selectedBrand
                 CatalogCategoryRow(
-                    label = category.label,
+                    label = category.localizedLabel(strings),
                     count = category.count,
                     icon = seriesCategoryIcon(category.label).takeUnless { category.isBrandGroup },
                     selected = category.id == state.selectedCategoryId || brandSelected,
@@ -537,6 +542,12 @@ private fun SeriesCategoryList(
             }
         }
     }
+}
+
+private fun SeriesCategoryUi.localizedLabel(strings: SmartVisionStrings): String = when (id) {
+    FavoriteSeriesCategoryId -> strings.favorites
+    HistorySeriesCategoryId -> strings.history
+    else -> label
 }
 
 private fun StreamingBrand.logoResource(): Int = when (this) {
@@ -734,11 +745,12 @@ private fun SeriesList(
 private fun SeriesItemUi.toPreviewContent(
     episode: SeriesEpisodeUi?,
     loading: Boolean,
+    subtitleOverride: String? = null,
 ): VodPreviewContent =
     VodPreviewContent(
         id = "series-$seriesId-${episode?.episodeId ?: "loading"}",
         title = title,
-        subtitle = subtitle,
+        subtitle = subtitleOverride ?: subtitle,
         imageUrl = backdropUrl,
         backdropUrl = backdropUrl,
         streamUrl = episode?.streamUrl,

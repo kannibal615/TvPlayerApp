@@ -740,6 +740,7 @@ private fun ProfileScreen(
 @Composable
 internal fun LicensePanel(
     state: ProfileUiState,
+    strings: SmartVisionStrings,
     onRefresh: () -> Unit,
     onShowLicenseQr: () -> Unit,
     onShowPrivacyOptions: () -> Unit,
@@ -760,7 +761,7 @@ internal fun LicensePanel(
         Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             TvButton(
-                text = state.usageMode.primaryCta,
+                text = state.usageMode.localizedPrimaryCta(strings),
                 onClick = onShowLicenseQr,
                 leadingIcon = Icons.Default.Key,
                 modifier = Modifier
@@ -3750,6 +3751,13 @@ private fun PlaylistSource.displayLabel(): String =
         PlaylistSource.Xtream -> "Xtream Codes"
         PlaylistSource.M3u -> "Playlist M3U"
     }
+
+private fun UsageMode.localizedPrimaryCta(strings: SmartVisionStrings): String = when (this) {
+    UsageMode.Trial -> strings.usageUpgradePremium
+    UsageMode.Premium -> strings.usageExtend
+    UsageMode.FreeAds -> strings.usageRemoveAds
+    UsageMode.Unknown -> strings.usageBuyLicense
+}
 
 private fun PlaylistProfileStatus.displayLabel(): String =
     when (this) {

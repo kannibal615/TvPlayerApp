@@ -2,6 +2,11 @@
 
 Derniere mise a jour: 2026-07-21.
 
+## Compatibilite Android 9 - 2026-07-21
+
+- Les regles R8 release conservent le detecteur Android et le cache de constructeurs d'exceptions de `kotlinx.coroutines`. Cela empeche l'optimisation de choisir le chemin JVM `ClassValue` indisponible sur Android 9 et conserve le fallback `WeakMap` prevu par la bibliotheque.
+- Le correctif ne change ni le minSdk, ni les versions de dependances, ni le schema Room. Sa validation terrain doit etre reprise sur un appareil Android 9 quand une cible sera disponible.
+
 ## Splash de demarrage
 
 - `MainActivity` reste l'unique launcher; `Theme.SVPlayer.Splash` fournit la preview systeme et `StartupGate`/`StartupExperience` assurent la continuite Compose. Ne pas ajouter de `SplashActivity`.

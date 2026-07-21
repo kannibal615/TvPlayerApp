@@ -28,7 +28,7 @@ fun CategoryEntity.toDomain(type: MediaSection, count: Int): Category =
     Category(id = id, name = name, type = type, count = count)
 
 fun XtreamCategoryDto.toEntity(profileId: String, type: MediaSection): CategoryEntity? {
-    val safeId = id?.takeIf { it.isNotBlank() } ?: return null
+    val safeId = id.normalizedCategoryId() ?: return null
     return CategoryEntity(profileId = profileId, id = safeId, type = type.storageName, name = name.orEmpty().ifBlank { "Sans categorie" })
 }
 
@@ -39,7 +39,7 @@ fun XtreamLiveStreamDto.toEntity(profileId: String, imageBaseHost: String? = nul
         streamId = safeId,
         number = number ?: safeId,
         name = name.orEmpty().ifBlank { "Chaine $safeId" },
-        categoryId = categoryId,
+        categoryId = categoryId.normalizedCategoryId(),
         logoUrl = normalizeCatalogImageUrl(icon, imageBaseHost),
         epgChannelId = epgChannelId,
     )
@@ -52,7 +52,7 @@ fun XtreamMovieDto.toEntity(profileId: String, imageBaseHost: String? = null): M
         streamId = safeId,
         number = number ?: safeId,
         title = name.orEmpty().ifBlank { "Film $safeId" },
-        categoryId = categoryId,
+        categoryId = categoryId.normalizedCategoryId(),
         posterUrl = normalizeCatalogImageUrl(icon, imageBaseHost),
         year = added?.take(4),
         genre = null,
@@ -71,7 +71,7 @@ fun XtreamSeriesDto.toEntity(profileId: String, imageBaseHost: String? = null): 
         seriesId = safeId,
         number = number ?: safeId,
         title = name.orEmpty().ifBlank { "Serie $safeId" },
-        categoryId = categoryId,
+        categoryId = categoryId.normalizedCategoryId(),
         posterUrl = normalizeCatalogImageUrl(cover, imageBaseHost),
         year = releaseDate?.take(4),
         genre = genre,
@@ -84,6 +84,9 @@ fun XtreamSeriesDto.toEntity(profileId: String, imageBaseHost: String? = null): 
 
 private fun String?.toEpochSecondsOrZero(): Long =
     this?.trim()?.toLongOrNull()?.coerceAtLeast(0L) ?: 0L
+
+internal fun String?.normalizedCategoryId(): String? =
+    this?.trim()?.takeIf(String::isNotEmpty)
 
 fun XtreamEpisodeDto.toEntity(profileId: String, seriesId: Int, seasonNumber: Int): EpisodeEntity? {
     val safeId = id?.toIntOrNull() ?: return null

@@ -1,0 +1,302 @@
+--------- beginning of main
+07-21 20:24:38.450 15386 21800 I chatty  : uid=10247(com.smartvision.svplayer) expire 4 lines
+07-21 20:24:58.095 15386 21929 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-21 20:24:58.154 15386 21195 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-21 20:24:58.143 15386 15386 I chatty  : uid=10247(com.smartvision.svplayer) expire 6 lines
+07-21 20:25:00.194 15386 15403 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 11 lines
+07-21 20:25:19.416 15386 15403 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-21 20:25:37.236 15386 15403 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-21 20:25:42.565 15386 15415 I chatty  : uid=10247(com.smartvision.svplayer) Profile Saver expire 2 lines
+07-21 20:25:56.331 15386 15403 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-21 20:26:19.765 15386 15403 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-21 20:26:43.615 15386 15403 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-21 20:27:07.201 15386 15403 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-21 20:27:31.310 15386 15403 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-21 20:27:43.583 15386 15386 I chatty  : uid=10247(com.smartvision.svplayer) expire 10 lines
+07-21 20:27:43.741 15386 22360 I chatty  : uid=10247(com.smartvision.svplayer) OkHttp Dispatch expire 1 line
+07-21 20:27:43.869 15386 15393 I chatty  : uid=10247(com.smartvision.svplayer) Jit thread pool expire 3 lines
+07-21 20:27:44.342 15386 22472 I chatty  : uid=10247(com.smartvision.svplayer) OkHttp Dispatch expire 1 line
+07-21 20:27:44.347 15386 22470 I chatty  : uid=10247(com.smartvision.svplayer) OkHttp Dispatch expire 1 line
+07-21 20:27:44.360 15386 22474 I chatty  : uid=10247(com.smartvision.svplayer) OkHttp Dispatch expire 1 line
+07-21 20:27:44.396 15386 22475 I chatty  : uid=10247(com.smartvision.svplayer) OkHttp Dispatch expire 1 line
+07-21 20:27:44.403 15386 22476 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-21 20:27:49.090 15386 15403 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-21 20:28:00.383 15386 15403 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 10 lines
+07-21 20:28:11.804 15386 15403 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 12 lines
+07-21 20:28:15.250 15386 22487 I chatty  : uid=10247(com.smartvision.svplayer) DefaultDispatch expire 1 line
+07-21 20:28:22.291 15386 15403 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 14 lines
+07-21 20:28:23.771 15386 16020 I chatty  : uid=10247(com.smartvision.svplayer) AmazonKeyEventL expire 1 line
+07-21 20:28:31.336 15386 22484 I chatty  : uid=10247(com.smartvision.svplayer) DefaultDispatch expire 1 line
+07-21 20:28:31.563 15386 22645 I chatty  : uid=10247(com.smartvision.svplayer) CrAsyncTask #2 expire 2 lines
+07-21 20:28:31.578 15386 15386 I chatty  : uid=10247(com.smartvision.svplayer) expire 95 lines
+07-21 20:28:31.879 15386 22709 I chatty  : uid=10247(com.smartvision.svplayer) Chrome_ProcessL expire 1 line
+07-21 20:28:32.561 15386 22733 I chatty  : uid=10247(com.smartvision.svplayer) AudioThread expire 2 lines
+07-21 20:28:32.618 15386 15386 I chatty  : uid=10247(com.smartvision.svplayer) expire 344 lines
+07-21 20:28:32.664 15386 15386 I vision.svplaye:   at void androidx.compose.ui.platform.AndroidUiFrameClock$withFrameNanos$2$callback$1.doFrame(long) (AndroidUiFrameClock.android.kt:39)
+07-21 20:28:32.664 15386 15386 I vision.svplaye:   at void androidx.compose.ui.platform.AndroidUiDispatcher.performFrameDispatch(long) (AndroidUiDispatcher.android.kt:108)
+07-21 20:28:32.664 15386 15386 I vision.svplaye:   at void androidx.compose.ui.platform.AndroidUiDispatcher.access$performFrameDispatch(androidx.compose.ui.platform.AndroidUiDispatcher, long) (AndroidUiDispatcher.android.kt:41)
+07-21 20:28:32.664 15386 15386 I vision.svplaye:   at void androidx.compose.ui.platform.AndroidUiDispatcher$dispatchCallback$1.doFrame(long) (AndroidUiDispatcher.android.kt:69)
+07-21 20:28:32.664 15386 15386 I vision.svplaye:   at void android.view.Choreographer$CallbackRecord.run(long) (Choreographer.java:968)
+07-21 20:28:32.664 15386 15386 I vision.svplaye:   at void android.view.Choreographer.doCallbacks(int, long) (Choreographer.java:781)
+07-21 20:28:32.665 15386 15386 I vision.svplaye:   at void android.view.Choreographer.doFrame(long, int) (Choreographer.java:703)
+07-21 20:28:32.665 15386 15386 I vision.svplaye:   at void android.view.Choreographer$FrameDisplayEventReceiver.run() (Choreographer.java:956)
+07-21 20:28:32.665 15386 15386 I vision.svplaye:   at void android.os.Handler.handleCallback(android.os.Message) (Handler.java:873)
+07-21 20:28:32.665 15386 15386 I vision.svplaye:   at void android.os.Handler.dispatchMessage(android.os.Message) (Handler.java:99)
+07-21 20:28:32.665 15386 15386 I vision.svplaye:   at void android.os.Looper.loop() (Looper.java:211)
+07-21 20:28:32.665 15386 15386 I vision.svplaye:   at void android.app.ActivityThread.main(java.lang.String[]) (ActivityThread.java:6777)
+07-21 20:28:32.665 15386 15386 I vision.svplaye:   at java.lang.Object java.lang.reflect.Method.invoke(java.lang.Object, java.lang.Object[]) (Method.java:-2)
+07-21 20:28:32.665 15386 15386 I vision.svplaye:   at void com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run() (RuntimeInit.java:493)
+07-21 20:28:32.665 15386 15386 I vision.svplaye:   at void com.android.internal.os.ZygoteInit.main(java.lang.String[]) (ZygoteInit.java:858)
+07-21 20:28:32.665 15386 15386 I vision.svplaye: 
+07-21 20:28:32.681 15386 15386 I vision.svplaye: Rejecting re-init on previously-failed class java.lang.Class<org.chromium.content.browser.device_posture.WindowLayoutInfoListener$$ExternalSyntheticLambda1>: java.lang.NoClassDefFoundError: Failed resolution of: Landroidx/window/extensions/core/util/function/Consumer;
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at java.lang.Object J.N.OIIIIJJJOOOOOOOOOOZZZZZZ(int, int, int, int, long, long, long, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, boolean, boolean, boolean, boolean, boolean, boolean) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):-2)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at org.chromium.content_public.browser.NavigationHandle org.chromium.content.browser.framehost.NavigationControllerImpl.loadUrl(org.chromium.content_public.browser.LoadUrlParams) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):95)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void org.chromium.android_webview.AwContents.loadUrl(org.chromium.content_public.browser.LoadUrlParams) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):55)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void org.chromium.android_webview.AwContents.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):137)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void com.android.webview.chromium.WebViewChromium.loadDataWithBaseURLNoPost(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):24)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void com.android.webview.chromium.WebViewChromium.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):32)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void android.webkit.WebView.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (WebView.java:1091)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at kotlin.Unit com.smartvision.svplayer.ui.youtube.YoutubeWebPlayerKt.YoutubeWebPlayer$lambda$35$lambda$34(com.smartvision.svplayer.ui.youtube.YoutubePlaybackMode, java.lang.String, double, boolean, com.smartvision.svplayer.ui.youtube.YoutubePlayerCommand, int, androidx.compose.runtime.MutableIntState, com.smartvision.svplayer.ui.youtube.YoutubeTvWebView) (YoutubeWebPlayer.kt:99)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at kotlin.Unit com.smartvision.svplayer.ui.youtube.YoutubeWebPlayerKt.$r8$lambda$Ztu2XwUaPZZl2ZARxlnqTnfzA2A(com.smartvision.svplayer.ui.youtube.YoutubePlaybackMode, java.lang.String, double, boolean, com.smartvision.svplayer.ui.youtube.YoutubePlayerCommand, int, androidx.compose.runtime.MutableIntState, com.smartvision.svplayer.ui.youtube.YoutubeTvWebView) (YoutubeWebPlayer.kt:-1)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.ui.youtube.YoutubeWebPlayerKt$$ExternalSyntheticLambda3.invoke(java.lang.Object) (D8$$SyntheticClass:0)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.ui.viewinterop.ViewFactoryHolder$updateBlock$1.invoke() (AndroidView.android.kt:361)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at java.lang.Object androidx.compose.ui.viewinterop.ViewFactoryHolder$updateBlock$1.invoke() (AndroidView.android.kt:361)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at java.lang.Object androidx.compose.runtime.snapshots.Snapshot$Companion.observe(kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0) (Snapshot.kt:2496)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.snapshots.SnapshotStateObserver$ObservedScopeMap.observe(java.lang.Object, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0) (SnapshotStateObserver.kt:460)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.snapshots.SnapshotStateObserver.observeReads(java.lang.Object, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0) (SnapshotStateObserver.kt:244)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.ui.node.OwnerSnapshotObserver.observeReads$ui_release(androidx.compose.ui.node.OwnerScope, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0) (OwnerSnapshotObserver.kt:124)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.ui.viewinterop.AndroidViewHolder$runUpdate$1.invoke() (AndroidViewHolder.android.kt:211)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at java.lang.Object androidx.compose.ui.viewinterop.AndroidViewHolder$runUpdate$1.invoke() (AndroidViewHolder.android.kt:205)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.ui.viewinterop.AndroidViewHolder.onAttachedToWindow() (AndroidViewHolder.android.kt:311)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void android.view.View.dispatchAttachedToWindow(android.view.View$AttachInfo, int) (View.java:18361)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void android.view.ViewGroup.dispatchAttachedToWindow(android.view.View$AttachInfo, int) (ViewGroup.java:3397)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void android.view.ViewGroup.addViewInner(android.view.View, int, android.view.ViewGroup$LayoutParams, boolean) (ViewGroup.java:5077)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void android.view.ViewGroup.addView(android.view.View, int, android.view.ViewGroup$LayoutParams) (ViewGroup.java:4865)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void android.view.ViewGroup.addView(android.view.View, int) (ViewGroup.java:4805)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void android.view.ViewGroup.addView(android.view.View) (ViewGroup.java:4778)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.ui.platform.AndroidComposeView.addAndroidView(androidx.compose.ui.viewinterop.AndroidViewHolder, androidx.compose.ui.node.LayoutNode) (AndroidComposeView.android.kt:1397)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.ui.viewinterop.AndroidViewHolder$layoutNode$1$3.invoke(androidx.compose.ui.node.Owner) (AndroidViewHolder.android.kt:451)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at java.lang.Object androidx.compose.ui.viewinterop.AndroidViewHolder$layoutNode$1$3.invoke(java.lang.Object) (AndroidViewHolder.android.kt:450)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.ui.node.LayoutNode.attach$ui_release(androidx.compose.ui.node.Owner) (LayoutNode.kt:554)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.ui.node.LayoutNode.attach$ui_release(androidx.compose.ui.node.Owner) (LayoutNode.kt:545)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.ui.node.LayoutNode.insertAt$ui_release(int, androidx.compose.ui.node.LayoutNode) (LayoutNode.kt:310)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.ui.node.UiApplier.insertBottomUp(int, androidx.compose.ui.node.LayoutNode) (UiApplier.android.kt:29)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.ui.node.UiApplier.insertBottomUp(int, java.lang.Object) (UiApplier.android.kt:21)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.changelist.Operation$PostInsertNodeFixup.execute(androidx.compose.runtime.changelist.OperationArgContainer, androidx.compose.runtime.Applier, androidx.compose.runtime.SlotWriter, androidx.compose.runtime.RememberManager) (Operation.kt:746)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.changelist.Operations.executeAndFlushAllPendingOperations(androidx.compose.runtime.Applier, androidx.compose.runtime.SlotWriter, androidx.compose.runtime.RememberManager) (Operations.kt:349)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.changelist.FixupList.executeAndFlushAllPendingFixups(androidx.compose.runtime.Applier, androidx.compose.runtime.SlotWriter, androidx.compose.runtime.RememberManager) (FixupList.kt:53)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.changelist.Operation$InsertSlotsWithFixups.execute(androidx.compose.runtime.changelist.OperationArgContainer, androidx.compose.runtime.Applier, androidx.compose.runtime.SlotWriter, androidx.compose.runtime.RememberManager) (Operation.kt:665)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.changelist.Operations.executeAndFlushAllPendingOperations(androidx.compose.runtime.Applier, androidx.compose.runtime.SlotWriter, androidx.compose.runtime.RememberManager) (Operations.kt:349)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.changelist.ChangeList.executeAndFlushAllPendingChanges(androidx.compose.runtime.Applier, androidx.compose.runtime.SlotWriter, androidx.compose.runtime.RememberManager) (ChangeList.kt:88)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.CompositionImpl.applyChangesInLocked(androidx.compose.runtime.changelist.ChangeList) (Composition.kt:1036)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.CompositionImpl.applyChanges() (Composition.kt:1067)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.Recomposer$runRecomposeAndApplyChanges$2$1.invoke(long) (Recomposer.kt:684)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at java.lang.Object androidx.compose.runtime.Recomposer$runRecomposeAndApplyChanges$2$1.invoke(java.lang.Object) (Recomposer.kt:591)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.ui.platform.AndroidUiFrameClock$withFrameNanos$2$callback$1.doFrame(long) (AndroidUiFrameClock.android.kt:39)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.ui.platform.AndroidUiDispatcher.performFrameDispatch(long) (AndroidUiDispatcher.android.kt:108)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.ui.platform.AndroidUiDispatcher.access$performFrameDispatch(androidx.compose.ui.platform.AndroidUiDispatcher, long) (AndroidUiDispatcher.android.kt:41)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void androidx.compose.ui.platform.AndroidUiDispatcher$dispatchCallback$1.doFrame(long) (AndroidUiDispatcher.android.kt:69)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void android.view.Choreographer$CallbackRecord.run(long) (Choreographer.java:968)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void android.view.Choreographer.doCallbacks(int, long) (Choreographer.java:781)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void android.view.Choreographer.doFrame(long, int) (Choreographer.java:703)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void android.view.Choreographer$FrameDisplayEventReceiver.run() (Choreographer.java:956)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void android.os.Handler.handleCallback(android.os.Message) (Handler.java:873)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void android.os.Handler.dispatchMessage(android.os.Message) (Handler.java:99)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void android.os.Looper.loop() (Looper.java:211)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void android.app.ActivityThread.main(java.lang.String[]) (ActivityThread.java:6777)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at java.lang.Object java.lang.reflect.Method.invoke(java.lang.Object, java.lang.Object[]) (Method.java:-2)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run() (RuntimeInit.java:493)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void com.android.internal.os.ZygoteInit.main(java.lang.String[]) (ZygoteInit.java:858)
+07-21 20:28:32.681 15386 15386 I vision.svplaye: Caused by: java.lang.ClassNotFoundException: Didn't find class "androidx.window.extensions.core.util.function.Consumer" on path: DexPathList[[zip file "/system/priv-app/MetricsApi/MetricsApi.apk", zip file "/data/app/com.amazon.webview.chromium-KBc03qHOZbjfu3DAmaKnZA==/base.apk"],nativeLibraryDirectories=[/data/app/com.amazon.webview.chromium-KBc03qHOZbjfu3DAmaKnZA==/lib/arm, /data/app/com.amazon.webview.chromium-KBc03qHOZbjfu3DAmaKnZA==/base.apk!/lib/armeabi-v7a, /system/priv-app/MetricsApi/MetricsApi.apk!/lib/armeabi-v7a, /system/lib]]
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at java.lang.Class dalvik.system.BaseDexClassLoader.findClass(java.lang.String) (BaseDexClassLoader.java:134)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at java.lang.Class java.lang.ClassLoader.loadClass(java.lang.String, boolean) (ClassLoader.java:379)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at java.lang.Class java.lang.ClassLoader.loadClass(java.lang.String) (ClassLoader.java:312)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at java.lang.Object J.N.OIIIIJJJOOOOOOOOOOZZZZZZ(int, int, int, int, long, long, long, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, boolean, boolean, boolean, boolean, boolean, boolean) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):-2)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at org.chromium.content_public.browser.NavigationHandle org.chromium.content.browser.framehost.NavigationControllerImpl.loadUrl(org.chromium.content_public.browser.LoadUrlParams) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):95)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void org.chromium.android_webview.AwContents.loadUrl(org.chromium.content_public.browser.LoadUrlParams) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):55)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void org.chromium.android_webview.AwContents.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):137)
+07-21 20:28:32.681 15386 15386 I vision.svplaye:   at void com.android.webview.chromium.WebViewChromium.loadDataWithBaseURLNoPost(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):24)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void com.android.webview.chromium.WebViewChromium.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):32)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void android.webkit.WebView.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (WebView.java:1091)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at kotlin.Unit com.smartvision.svplayer.ui.youtube.YoutubeWebPlayerKt.YoutubeWebPlayer$lambda$35$lambda$34(com.smartvision.svplayer.ui.youtube.YoutubePlaybackMode, java.lang.String, double, boolean, com.smartvision.svplayer.ui.youtube.YoutubePlayerCommand, int, androidx.compose.runtime.MutableIntState, com.smartvision.svplayer.ui.youtube.YoutubeTvWebView) (YoutubeWebPlayer.kt:99)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at kotlin.Unit com.smartvision.svplayer.ui.youtube.YoutubeWebPlayerKt.$r8$lambda$Ztu2XwUaPZZl2ZARxlnqTnfzA2A(com.smartvision.svplayer.ui.youtube.YoutubePlaybackMode, java.lang.String, double, boolean, com.smartvision.svplayer.ui.youtube.YoutubePlayerCommand, int, androidx.compose.runtime.MutableIntState, com.smartvision.svplayer.ui.youtube.YoutubeTvWebView) (YoutubeWebPlayer.kt:-1)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.ui.youtube.YoutubeWebPlayerKt$$ExternalSyntheticLambda3.invoke(java.lang.Object) (D8$$SyntheticClass:0)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.ui.viewinterop.ViewFactoryHolder$updateBlock$1.invoke() (AndroidView.android.kt:361)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at java.lang.Object androidx.compose.ui.viewinterop.ViewFactoryHolder$updateBlock$1.invoke() (AndroidView.android.kt:361)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at java.lang.Object androidx.compose.runtime.snapshots.Snapshot$Companion.observe(kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0) (Snapshot.kt:2496)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.snapshots.SnapshotStateObserver$ObservedScopeMap.observe(java.lang.Object, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0) (SnapshotStateObserver.kt:460)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.snapshots.SnapshotStateObserver.observeReads(java.lang.Object, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0) (SnapshotStateObserver.kt:244)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.ui.node.OwnerSnapshotObserver.observeReads$ui_release(androidx.compose.ui.node.OwnerScope, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0) (OwnerSnapshotObserver.kt:124)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.ui.viewinterop.AndroidViewHolder$runUpdate$1.invoke() (AndroidViewHolder.android.kt:211)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at java.lang.Object androidx.compose.ui.viewinterop.AndroidViewHolder$runUpdate$1.invoke() (AndroidViewHolder.android.kt:205)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.ui.viewinterop.AndroidViewHolder.onAttachedToWindow() (AndroidViewHolder.android.kt:311)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void android.view.View.dispatchAttachedToWindow(android.view.View$AttachInfo, int) (View.java:18361)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void android.view.ViewGroup.dispatchAttachedToWindow(android.view.View$AttachInfo, int) (ViewGroup.java:3397)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void android.view.ViewGroup.addViewInner(android.view.View, int, android.view.ViewGroup$LayoutParams, boolean) (ViewGroup.java:5077)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void android.view.ViewGroup.addView(android.view.View, int, android.view.ViewGroup$LayoutParams) (ViewGroup.java:4865)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void android.view.ViewGroup.addView(android.view.View, int) (ViewGroup.java:4805)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void android.view.ViewGroup.addView(android.view.View) (ViewGroup.java:4778)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.ui.platform.AndroidComposeView.addAndroidView(androidx.compose.ui.viewinterop.AndroidViewHolder, androidx.compose.ui.node.LayoutNode) (AndroidComposeView.android.kt:1397)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.ui.viewinterop.AndroidViewHolder$layoutNode$1$3.invoke(androidx.compose.ui.node.Owner) (AndroidViewHolder.android.kt:451)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at java.lang.Object androidx.compose.ui.viewinterop.AndroidViewHolder$layoutNode$1$3.invoke(java.lang.Object) (AndroidViewHolder.android.kt:450)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.ui.node.LayoutNode.attach$ui_release(androidx.compose.ui.node.Owner) (LayoutNode.kt:554)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.ui.node.LayoutNode.attach$ui_release(androidx.compose.ui.node.Owner) (LayoutNode.kt:545)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.ui.node.LayoutNode.insertAt$ui_release(int, androidx.compose.ui.node.LayoutNode) (LayoutNode.kt:310)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.ui.node.UiApplier.insertBottomUp(int, androidx.compose.ui.node.LayoutNode) (UiApplier.android.kt:29)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.ui.node.UiApplier.insertBottomUp(int, java.lang.Object) (UiApplier.android.kt:21)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.changelist.Operation$PostInsertNodeFixup.execute(androidx.compose.runtime.changelist.OperationArgContainer, androidx.compose.runtime.Applier, androidx.compose.runtime.SlotWriter, androidx.compose.runtime.RememberManager) (Operation.kt:746)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.changelist.Operations.executeAndFlushAllPendingOperations(androidx.compose.runtime.Applier, androidx.compose.runtime.SlotWriter, androidx.compose.runtime.RememberManager) (Operations.kt:349)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.changelist.FixupList.executeAndFlushAllPendingFixups(androidx.compose.runtime.Applier, androidx.compose.runtime.SlotWriter, androidx.compose.runtime.RememberManager) (FixupList.kt:53)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.changelist.Operation$InsertSlotsWithFixups.execute(androidx.compose.runtime.changelist.OperationArgContainer, androidx.compose.runtime.Applier, androidx.compose.runtime.SlotWriter, androidx.compose.runtime.RememberManager) (Operation.kt:665)
+07-21 20:28:32.682 15386 15386 I vision.svplaye:   at void androidx.compose.runtime.changelist.Operations.executeAndFlushAllPendingOperations(androidx.compose.runtime.Applier, androidx.compose.runtime.SlotWriter, androidx.compose.runtime.RememberManager) (Operations.kt:349)
+07-21 20:28:32.833 15386 15403 I vision.svplaye: Background concurrent copying GC freed 308132(9MB) AllocSpace objects, 6(184KB) LOS objects, 15% free, 31MB/37MB, paused 323us total 685.603ms
+07-21 20:28:33.213 15386 22783 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:33.293 15386 15386 I Choreographer: Skipped 132 frames!  The application may be doing too much work on its main thread.
+07-21 20:28:33.314 15386 15489 I OpenGLRenderer: Davey! duration=2277ms; Flags=1, IntendedVsync=14868848013412, Vsync=14868881380112, OldestInputEvent=14868803000000, NewestInputEvent=14868803000000, HandleInputStart=14868887398807, AnimationStart=14868887418038, PerformTraversalsStart=14870752788346, DrawStart=14870894099192, SyncQueued=14870968692346, SyncStart=14870968838577, IssueDrawCommandsStart=14870974645346, SwapBuffers=14871122611961, FrameCompleted=14871125804269, DequeueBufferDuration=618000, QueueBufferDuration=2333000, 
+07-21 20:28:33.337 15386 22740 I cr_VAUtil:  AWV: Skipping the restricted video decoder:OMX.MTK.VIDEO.DECODER.AWESOME.hdcp.secure
+07-21 20:28:33.358 15386 22740 I chatty  : uid=10247(com.smartvision.svplayer) ThreadPoolSingl identical 4 lines
+07-21 20:28:33.363 15386 22740 I cr_VAUtil:  AWV: Skipping the restricted video decoder:OMX.MTK.VIDEO.DECODER.AWESOME.hdcp.secure
+07-21 20:28:33.390 15386 15489 I OpenGLRenderer: Davey! duration=2305ms; Flags=0, IntendedVsync=14868898031458, Vsync=14871100233658, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=14871106987115, AnimationStart=14871107122730, PerformTraversalsStart=14871162634654, DrawStart=14871164194192, SyncQueued=14871184892269, SyncStart=14871185019192, IssueDrawCommandsStart=14871185505500, SwapBuffers=14871197449192, FrameCompleted=14871203464884, DequeueBufferDuration=483000, QueueBufferDuration=4933000, 
+07-21 20:28:33.431 15386 15386 I cr_AWVDeploymentClient: onServiceConnected
+07-21 20:28:33.695 15386 22727 E System  : TRACE Starting certificate trust
+07-21 20:28:34.222 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:34.222 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:34.227 15386 15403 I vision.svplaye: Background concurrent copying GC freed 231406(8MB) AllocSpace objects, 6(192KB) LOS objects, 14% free, 34MB/40MB, paused 3.809ms total 915.030ms
+07-21 20:28:34.682 15386 15386 E cr_AWVDeploymentClient: Chromium Version = v138 key doesn't exist. So, default version config will be used.
+07-21 20:28:34.684 15386 15386 I cr_AWVDeploymentClient: awv-force-overlay-colorspace-for-hdr can't be enabled on device other than mm-tablet
+07-21 20:28:34.684 15386 15386 I cr_AWVDeploymentClient: remove-text-selection-handle-keyboard can't be enabled on device other than mm-tablet-mmftv
+07-21 20:28:34.684 15386 15386 I cr_AWVDeploymentClient: disable-download can't be enabled on device other than mm
+07-21 20:28:34.684 15386 15386 I cr_AWVDeploymentClient: enable-loose-resolution-check-for-h264-hw-decoder can't be enabled on device other than mm-tablet-mmftv
+07-21 20:28:34.684 15386 15386 I cr_AWVDeploymentClient: enable-swap-width-height-for-h264-hw-decoder can't be enabled on device other than mm-tablet-mmftv
+07-21 20:28:34.684 15386 15386 I cr_AWVDeploymentClient: disable-webview-sandboxed-renderer can't be enabled on device other than tablet
+07-21 20:28:34.691 15386 15386 E cr_AWVDeploymentClient: Default device config doesn't exist
+07-21 20:28:34.691 15386 15386 I WebViewExtAmazonConfig: Appending switch disable-streaming-for-exo
+07-21 20:28:34.691 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=disable-streaming-for-exo value=
+07-21 20:28:34.691 15386 15386 I WebViewExtAmazonConfig: Appending switch hide-keyboard-on-ime-go
+07-21 20:28:34.691 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=hide-keyboard-on-ime-go value=
+07-21 20:28:34.691 15386 15386 I WebViewExtAmazonConfig: Appending switch awv-gamepad-button-a-opens-keyboard
+07-21 20:28:34.691 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=awv-gamepad-button-a-opens-keyboard value=
+07-21 20:28:34.691 15386 15386 I WebViewExtAmazonConfig: Appending switch set-engine-options-allow-list with value --enable-awv-mode,--enable-system-key-events-processing,--amazon-player-type=exoplayer,--should-use-utc-time-dash,--exo-live-seek-offset-ms=0,--exo-skip-initial-seek-to-0,--exo-handle-seek-after-end,--enable-preparsed-js-caching,--max-overscroll-distance=0,--disable-vibration,--disable-audio-focus-handling,--disable-webkit-media-source,--enable-devtools-experiments
+07-21 20:28:34.691 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=set-engine-options-allow-list value=--enable-awv-mode,--enable-system-key-events-processing,--amazon-player-type=exoplayer,--should-use-utc-time-dash,--exo-live-seek-offset-ms=0,--exo-skip-initial-seek-to-0,--exo-handle-seek-after-end,--enable-preparsed-js-caching,--max-overscroll-distance=0,--disable-vibration,--disable-audio-focus-handling,--disable-webkit-media-source,--enable-devtools-experiments
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Appending switch keyboard-previous-next-then-close
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=keyboard-previous-next-then-close value=
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Appending switch delay-metadata-ready-for-exo
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=delay-metadata-ready-for-exo value=
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Appending switch awv-surfaceview-enable-scale-metrics
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=awv-surfaceview-enable-scale-metrics value=
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Appending switch enable-media-element-key-handling
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=enable-media-element-key-handling value=
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Appending switch enable-show-hide-password-ime-fix
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=enable-show-hide-password-ime-fix value=
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Appending switch awv-secure-laurl
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=awv-secure-laurl value=
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Appending switch disable-remote-gamepad-classifying
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=disable-remote-gamepad-classifying value=
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Appending switch awv-chrome-inspect-fix-white-video
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=awv-chrome-inspect-fix-white-video value=
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Appending switch ignore-previous-start-time-buffer
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=ignore-previous-start-time-buffer value=
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Appending switch disable-soft-keyboard-element-focused
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=disable-soft-keyboard-element-focused value=
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Appending switch delay-setting-surface-exo
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=delay-setting-surface-exo value=
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Appending switch awv-video-renderer-estimated-refresh-rate
+07-21 20:28:34.692 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=awv-video-renderer-estimated-refresh-rate value=
+07-21 20:28:34.696 15386 15386 I WebViewExtAmazon: Reducing mse-buffer size due to low memory device (<=1GB RAM)
+07-21 20:28:34.696 15386 15386 I WebViewExtAmazonConfig: Appending switch mse-video-buffer-size-limit-mb with value 30
+07-21 20:28:34.696 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=mse-video-buffer-size-limit-mb value=30
+07-21 20:28:34.696 15386 15386 I WebViewExtAmazonConfig: Appending switch mse-audio-buffer-size-limit-mb with value 2
+07-21 20:28:34.696 15386 15386 I WebViewExtAmazonConfig: Saving renderer process switch key=mse-audio-buffer-size-limit-mb value=2
+07-21 20:28:34.697 15386 15386 I cr_AWVDeploymentClient: disconnectRemote
+07-21 20:28:34.897 15386 15393 I vision.svplaye: Compiler allocated 4MB to compile void com.smartvision.svplayer.ui.youtube.YoutubeScreenKt.YoutubeScreen(java.lang.String, java.util.List, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, boolean, boolean, int, androidx.compose.ui.Modifier, androidx.compose.runtime.Composer, int, int, int)
+07-21 20:28:35.062 15386 22727 E System  : TRACE Starting certificate trust
+07-21 20:28:35.120 15386 22727 E System  : TRACE Starting certificate trust
+07-21 20:28:35.223 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:35.223 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:35.771 15386 15403 I vision.svplaye: Background concurrent copying GC freed 332400(11MB) AllocSpace objects, 12(240KB) LOS objects, 13% free, 36MB/42MB, paused 210us total 1.095s
+07-21 20:28:36.223 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:36.224 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:36.354 15386 22727 E System  : TRACE Starting certificate trust
+07-21 20:28:36.462 15386 22727 E System  : TRACE Starting certificate trust
+07-21 20:28:36.709 15386 22784 E cr_MediaCodecUtil: Encoder for type video/x-vnd.on2.vp8 is not supported on this device [requireSoftware=false, requireHardware=true].
+07-21 20:28:37.264 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:37.266 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:37.344 15386 15403 I vision.svplaye: Background concurrent copying GC freed 458182(13MB) AllocSpace objects, 1(20KB) LOS objects, 14% free, 36MB/42MB, paused 406us total 974.127ms
+07-21 20:28:38.172 15386 22727 E System  : TRACE Starting certificate trust
+07-21 20:28:38.267 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:38.267 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:38.746 15386 22727 E System  : TRACE Starting certificate trust
+07-21 20:28:38.974 15386 15386 I chromium: [INFO:amazon_webview/native/amazon_media_web_contents_observer.cc:71] SendAwvMessageHandles: Creating new AWV Browser message manager for player_id: [0:GlobalRenderFrameHostId(2, 4)]
+07-21 20:28:39.268 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:39.277 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:39.404 15386 15403 I vision.svplaye: Background concurrent copying GC freed 440256(13MB) AllocSpace objects, 0(0B) LOS objects, 13% free, 36MB/42MB, paused 2.335ms total 1.297s
+07-21 20:28:40.277 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:40.278 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:40.754 15386 15386 I Choreographer: Skipped 37 frames!  The application may be doing too much work on its main thread.
+07-21 20:28:40.924 15386 15489 I OpenGLRenderer: Davey! duration=796ms; Flags=0, IntendedVsync=14877940524521, Vsync=14878557808471, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=14878568095885, AnimationStart=14878568136962, PerformTraversalsStart=14878596980500, DrawStart=14878597222577, SyncQueued=14878634919808, SyncStart=14878635057269, IssueDrawCommandsStart=14878635662269, SwapBuffers=14878735715116, FrameCompleted=14878736989500, DequeueBufferDuration=345000, QueueBufferDuration=526000, 
+07-21 20:28:41.098 15386 22733 I libOpenSLES: Emulating old channel mask behavior (ignoring positional mask 0x3, using default mask 0x3 based on channel count of 2)
+07-21 20:28:41.099 15386 22733 I libOpenSLES: AUDIOINFO: format:0x5 sample_rate:48000 channels:2 content_type:0x3 stream_type:0x3 selectedDeviceId:0
+07-21 20:28:41.279 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:41.279 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:41.290 15386 22728 E System  : TRACE Starting certificate trust
+07-21 20:28:41.672 15386 15403 I vision.svplaye: Background concurrent copying GC freed 441377(13MB) AllocSpace objects, 0(0B) LOS objects, 14% free, 35MB/41MB, paused 302us total 1.558s
+07-21 20:28:42.280 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:42.280 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:43.286 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:43.287 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:44.287 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:44.288 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:44.488 15386 22733 W cr_media: Requires MODIFY_AUDIO_SETTINGS and RECORD_AUDIO. No audio device will be available for recording
+07-21 20:28:44.517 15386 22783 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:44.652 15386 22763 E libc    : Access denied finding property "vendor.product.pvr.debug_level"
+07-21 20:28:44.652 15386 22763 E IMGSRV  : :1555: HWPerfSetSurfaceInfo: Cannot write HWPerf Surface Parameters. Max RTS IDs (8) reached.
+07-21 20:28:44.672 15386 22763 I chatty  : uid=10247(com.smartvision.svplayer) Chrome_InProcGp identical 2 lines
+07-21 20:28:44.673 15386 22763 E IMGSRV  : :1555: HWPerfSetSurfaceInfo: Cannot write HWPerf Surface Parameters. Max RTS IDs (8) reached.
+07-21 20:28:44.643 15386 15386 W Chrome_InProcGp: type=1400 audit(0.0:1320): avc: denied { open } for path="/dev/__properties__/u:object_r:vendor_default_prop:s0" dev="tmpfs" ino=12836 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:vendor_default_prop:s0 tclass=file permissive=0
+07-21 20:28:44.793 15386 22763 E IMGSRV  : :1555: HWPerfSetSurfaceInfo: Cannot write HWPerf Surface Parameters. Max RTS IDs (8) reached.
+07-21 20:28:44.831 15386 22763 I chatty  : uid=10247(com.smartvision.svplayer) Chrome_InProcGp identical 6 lines
+07-21 20:28:44.831 15386 22763 E IMGSRV  : :1555: HWPerfSetSurfaceInfo: Cannot write HWPerf Surface Parameters. Max RTS IDs (8) reached.
+07-21 20:28:44.950 15386 22763 E IMGSRV  : :1555: HWPerfSetSurfaceInfo: Cannot write HWPerf Surface Parameters. Max RTS IDs (8) reached.
+07-21 20:28:44.951 15386 22763 I chatty  : uid=10247(com.smartvision.svplayer) Chrome_InProcGp identical 2 lines
+07-21 20:28:44.951 15386 22763 E IMGSRV  : :1555: HWPerfSetSurfaceInfo: Cannot write HWPerf Surface Parameters. Max RTS IDs (8) reached.
+07-21 20:28:45.304 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:45.310 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:46.131 15386 15403 I vision.svplaye: Background concurrent copying GC freed 398600(12MB) AllocSpace objects, 1(20KB) LOS objects, 13% free, 38MB/44MB, paused 571us total 2.908s
+07-21 20:28:46.315 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:46.316 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:47.317 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:47.318 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:47.492 15386 22727 E System  : TRACE Starting certificate trust
+07-21 20:28:48.321 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:48.321 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:49.187 15386 15403 I vision.svplaye: Background concurrent copying GC freed 571568(18MB) AllocSpace objects, 0(0B) LOS objects, 15% free, 32MB/38MB, paused 254us total 1.452s
+07-21 20:28:49.324 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:49.325 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:50.325 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:50.326 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:50.672 15386 15403 I vision.svplaye: Background concurrent copying GC freed 429186(12MB) AllocSpace objects, 0(0B) LOS objects, 16% free, 30MB/36MB, paused 269us total 764.916ms
+07-21 20:28:51.333 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:51.334 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:52.032 15386 15403 I vision.svplaye: Background concurrent copying GC freed 358359(10MB) AllocSpace objects, 0(0B) LOS objects, 16% free, 31MB/37MB, paused 609us total 718.374ms
+07-21 20:28:52.334 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:52.335 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:53.335 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:53.336 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:53.416 15386 15403 I vision.svplaye: Background concurrent copying GC freed 370832(10MB) AllocSpace objects, 0(0B) LOS objects, 16% free, 30MB/36MB, paused 200us total 723.355ms
+07-21 20:28:54.337 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:54.337 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:54.808 15386 15403 I vision.svplaye: Background concurrent copying GC freed 340386(9MB) AllocSpace objects, 0(0B) LOS objects, 16% free, 30MB/36MB, paused 222us total 842.191ms
+07-21 20:28:55.340 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:55.340 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:55.794 15386 15403 I vision.svplaye: Background concurrent copying GC freed 339942(9MB) AllocSpace objects, 0(0B) LOS objects, 17% free, 29MB/35MB, paused 319us total 404.305ms
+07-21 20:28:56.341 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:56.342 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:56.841 15386 15403 I vision.svplaye: Background concurrent copying GC freed 305757(8MB) AllocSpace objects, 0(0B) LOS objects, 16% free, 29MB/35MB, paused 314us total 482.217ms
+07-21 20:28:57.343 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:57.344 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:57.926 15386 15403 I vision.svplaye: Background concurrent copying GC freed 324008(9MB) AllocSpace objects, 0(0B) LOS objects, 17% free, 28MB/34MB, paused 339us total 382.807ms
+07-21 20:28:58.344 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:58.345 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:28:59.138 15386 15403 I vision.svplaye: Background concurrent copying GC freed 275320(7MB) AllocSpace objects, 0(0B) LOS objects, 17% free, 28MB/34MB, paused 303us total 421.352ms
+07-21 20:28:59.345 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:28:59.346 15386 22786 E CameraManagerGlobal: Camera service is unavailable

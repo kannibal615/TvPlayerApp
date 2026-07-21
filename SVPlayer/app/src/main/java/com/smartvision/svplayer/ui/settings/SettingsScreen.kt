@@ -363,6 +363,7 @@ private fun SettingsMenuLayout(
                 SettingsSection.License -> {
                     LicensePanel(
                         state = licenseState,
+                        strings = strings,
                         onRefresh = onRefreshLicense,
                         onShowLicenseQr = onShowLicenseQr,
                         onShowPrivacyOptions = {},
@@ -514,7 +515,7 @@ private fun SettingsMenuLayout(
                                 SettingsOption("BlueTransparent", strings.focusBackgroundBlue),
                                 SettingsOption("GoldTransparent", strings.focusBackgroundGold),
                                 SettingsOption("WhiteTransparent", strings.focusBackgroundWhite),
-                            ), settings.focusBackground, onSetFocusBackground)
+                            ), settings.focusBackground, onSetFocusBackground, columns = 2)
                         } },
                     )
                     Spacer(Modifier.height(8.dp))

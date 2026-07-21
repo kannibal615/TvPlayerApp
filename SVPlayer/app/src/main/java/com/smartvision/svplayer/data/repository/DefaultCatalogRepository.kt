@@ -1266,7 +1266,15 @@ class DefaultCatalogRepository(
             }
 
             categoryDao.deleteByType(profileId, section.storageName)
-            val visibleCategories = categories.filter { it.id in acceptedCategoryIds }
+            val normalizedAcceptedCategoryIds = acceptedCategoryIds.mapNotNullTo(linkedSetOf()) {
+                it.normalizedCategoryId()
+            }
+            val matchedCategories = categories.filter {
+                it.id.normalizedCategoryId() in normalizedAcceptedCategoryIds
+            }
+            val visibleCategories = matchedCategories.ifEmpty {
+                categories.takeIf { keptItems > 0 }.orEmpty()
+            }
             upsertMappedInBatches(
                 visibleCategories,
                 { it.toEntity(profileId, section) },
@@ -1338,10 +1346,13 @@ class DefaultCatalogRepository(
             ContentPrefixPolicy.accepts(it.name, selectedPrefixes)
         }
         if (!kidsProfile) database.withTransaction {
-            val acceptedCategoryIds = liveStreams.mapNotNull { it.categoryId }.toSet()
+            val acceptedCategoryIds = liveStreams.mapNotNull { it.categoryId.normalizedCategoryId() }.toSet()
             categoryDao.deleteByType(profileId, MediaSection.Live.storageName)
+            val matchedCategories = liveCategories.filter {
+                it.id.normalizedCategoryId() in acceptedCategoryIds
+            }
             upsertMappedInBatches(
-                liveCategories.filter { it.id in acceptedCategoryIds },
+                matchedCategories.ifEmpty { liveCategories.takeIf { liveStreams.isNotEmpty() }.orEmpty() },
                 { it.toEntity(profileId, MediaSection.Live) },
             ) { entities -> categoryDao.upsertAll(entities) }
         }
@@ -1509,10 +1520,13 @@ class DefaultCatalogRepository(
         val selectedPrefixes = selectedContentPrefixes(profileId)
         movies = movies.filter { ContentPrefixPolicy.accepts(it.name, selectedPrefixes) }
         if (!kidsProfile) database.withTransaction {
-            val acceptedCategoryIds = movies.mapNotNull { it.categoryId }.toSet()
+            val acceptedCategoryIds = movies.mapNotNull { it.categoryId.normalizedCategoryId() }.toSet()
             categoryDao.deleteByType(profileId, MediaSection.Movies.storageName)
+            val matchedCategories = movieCategories.filter {
+                it.id.normalizedCategoryId() in acceptedCategoryIds
+            }
             upsertMappedInBatches(
-                movieCategories.filter { it.id in acceptedCategoryIds },
+                matchedCategories.ifEmpty { movieCategories.takeIf { movies.isNotEmpty() }.orEmpty() },
                 { it.toEntity(profileId, MediaSection.Movies) },
             ) { entities -> categoryDao.upsertAll(entities) }
         }
@@ -1672,10 +1686,13 @@ class DefaultCatalogRepository(
         val selectedPrefixes = selectedContentPrefixes(profileId)
         val series = downloadedSeries.filter { ContentPrefixPolicy.accepts(it.name, selectedPrefixes) }
         if (!kidsProfile) database.withTransaction {
-            val acceptedCategoryIds = series.mapNotNull { it.categoryId }.toSet()
+            val acceptedCategoryIds = series.mapNotNull { it.categoryId.normalizedCategoryId() }.toSet()
             categoryDao.deleteByType(profileId, MediaSection.Series.storageName)
+            val matchedCategories = seriesCategories.filter {
+                it.id.normalizedCategoryId() in acceptedCategoryIds
+            }
             upsertMappedInBatches(
-                seriesCategories.filter { it.id in acceptedCategoryIds },
+                matchedCategories.ifEmpty { seriesCategories.takeIf { series.isNotEmpty() }.orEmpty() },
                 { it.toEntity(profileId, MediaSection.Series) },
             ) { entities -> categoryDao.upsertAll(entities) }
         }

@@ -2,6 +2,13 @@
 
 Derniere mise a jour: 2026-07-21.
 
+## Corrections audit TV - 2026-07-21
+
+- Les identifiants de categorie fournisseur sont normalises avant persistance et comparaison. Si des contenus sont conserves mais qu'aucune categorie distante ne correspond, la synchronisation preserve les categories distantes au lieu de produire un catalogue sans dossiers. La reparation devient visible a la synchronisation catalogue suivante.
+- Un Film ou Episode bloque en buffering effectue une seule relance bornee. Un second blocage arrete le spinner, affiche une erreur actionnable et permet une nouvelle tentative avec le bouton de lecture.
+- La navigation dans la liste Live ne publie plus chaque simple focus dans l'etat global du ViewModel et les lignes n'animent plus leur bordure/scale; la selection, la preview et les actions restent inchangees.
+- Les dossiers speciaux Favoris/Historique et les actions principales Film/Profile sont fournis par `SmartVisionStrings`, afin que l'interface anglaise ne conserve pas de libelles francais visibles.
+
 ## Presentation Films et Series - 2026-07-17
 
 - Depuis le 2026-07-21, le dossier `ALL` de Live TV, Movies et Series charge la colonne centrale dans l'ordre visuel des dossiers reels, y compris l'ordre fixe des groupes Netflix/Prime/Apple/Disney. Le tri `DEFAULT` preserve cet ordre de chargement; les recherches et les tris utilisateur explicites conservent leurs chemins dedies.

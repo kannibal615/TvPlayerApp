@@ -1,0 +1,428 @@
+{
+  "title": "Audit general approfondi SmartVision sur Fire TV",
+  "summary": "Audit en lecture seule de la version installee 0.1.120 (215). Douze anomalies reproductibles ont ete retenues: neuf majeures et trois mineures. Aucun crash ni ANR n'a ete observe, mais les categories fournisseur sont absentes dans les trois catalogues, un film incompatible reste bloque sur un spinner, la navigation Live mesuree est fortement janky et plusieurs retours D-pad ne restaurent pas le bon contexte.",
+  "run": {
+    "date": "2026-07-21",
+    "device": "Amazon Fire TV AFTSSS (identifiant ADB masque)",
+    "android": "Android 9 / API 28",
+    "display": "1920x1080, densite 320 dpi",
+    "package": "com.smartvision.svplayer",
+    "installed_version": "0.1.120 (215)",
+    "method": "ADB, captures, logcat, dumpsys gfxinfo/meminfo, lecture source ciblee",
+    "safety": "Aucun changement de code, build, installation, deploiement ou mutation volontaire des donnees"
+  },
+  "coverage": [
+    {"screen": "Demarrage / selecteur de profil", "status": "partiel", "notes": "3 lancements forces mesures; selecteur visible a 8 s; selection du profil existant validee. Creation/edition non soumise."},
+    {"screen": "Home / header", "status": "couvert", "notes": "Chargement, compteurs, hero, cartes, retour header/contenu, boucle horizontale et etats visuels."},
+    {"screen": "Live TV", "status": "couvert coeur", "notes": "Liste, apercu, plein ecran, overlay, Back, historique, recherche ouverte/fermee. Favori et filtres persistants non modifies."},
+    {"screen": "Movies", "status": "partiel", "notes": "Liste, apercu, detail, lancement plein ecran et erreur lecteur sur un film. Echantillon contenu limite a un film."},
+    {"screen": "Series", "status": "partiel", "notes": "Liste, apercu, detail, saison, dialogue reprise, lecture episode et retour. Echantillon limite a une serie/episode."},
+    {"screen": "Media Center", "status": "partiel bloque", "notes": "Navigation des zones et etat vide valides. Lecture, import, export, renommage, deplacement et suppression bloques par l'absence de fichiers."},
+    {"screen": "YouTube", "status": "couvert coeur", "notes": "Grille, lancement, chargement, overlay, lecture et retour valides sur une video."},
+    {"screen": "Settings", "status": "couvert lecture seule", "notes": "Licence, preferences, personnalisation, mises a jour et donnees locales parcourues sans changer d'option ni lancer d'action destructive."},
+    {"screen": "Notifications", "status": "couvert etat vide", "notes": "Quatre categories et retour testes; aucune notification disponible pour tester ouverture, marquage ou purge."},
+    {"screen": "Profil / gestion / controle parental", "status": "partiel", "notes": "Navigation, gestion et dialogue PIN testes sans saisir de PIN ni modifier, verrouiller ou supprimer un profil."},
+    {"screen": "Activation / onboarding Xtream / consentement", "status": "non atteint", "notes": "Session deja active; deconnexion ou effacement non autorises dans cet audit."},
+    {"screen": "Mode Kids / changement de profil", "status": "non execute", "notes": "Evite pour ne pas changer le profil actif ni declencher de synchronisation persistante."},
+    {"screen": "Offline / reseau degrade / endurance", "status": "non execute", "notes": "Pas de coupure reseau ni de campagne longue afin de ne pas modifier l'environnement du Fire TV."}
+  ],
+  "issues": [
+    {
+      "id": "TV-FUNC-001",
+      "severity": "majeur",
+      "category": "fonctionnel",
+      "screen": "Live TV / Movies / Series",
+      "title": "Les categories fournisseur disparaissent dans les trois catalogues",
+      "repro_steps": [
+        "Ouvrir Live TV depuis le header et attendre la fin du chargement des 13726 chaines.",
+        "Observer la colonne Categories, puis refaire le controle dans Movies (26933) et Series (12028).",
+        "Verifier que seuls ALL et les categories speciales locales restent visibles."
+      ],
+      "actual": "Live n'affiche que ALL, Favoris et Historique; Movies et Series n'affichent que ALL et Historique. Aucune categorie reelle du fournisseur n'est accessible malgre plus de 52000 contenus charges.",
+      "expected": "Les categories fournisseur associees aux contenus doivent etre visibles, comptabilisees et focusables dans chaque catalogue, en plus des categories speciales locales.",
+      "impact": "La navigation et le filtrage deviennent pratiquement inutilisables sur des catalogues de plusieurs dizaines de milliers d'elements.",
+      "reproducibility": "3/3 ecrans, 1 session complete",
+      "confidence": "elevee sur le symptome; moyenne sur la cause",
+      "evidence": [
+        "checkpoints/20260721-200839-378913-live-mini-player-first-ok/screenshot.png",
+        "checkpoints/20260721-201507-158718-movies-first-item-ok/screenshot.png",
+        "checkpoints/20260721-202138-320246-series-first-item-preview/screenshot.png"
+      ],
+      "suspected_area": [
+        "data/repository/DefaultCatalogRepository.kt:1229-1269, 1341-1344, 1512-1515, 1675-1678",
+        "ui/live/LiveTvViewModel.kt, ui/movies/MoviesViewModel.kt, ui/series/SeriesViewModel.kt"
+      ],
+      "recommendation": "Tracer les nombres de categories recues, acceptees et inserees par section et profil. Corriger la correspondance entre categoryId des medias et id fournisseur avant le delete/upsert atomique; ne pas remplacer un jeu de categories valide par un resultat filtre anormalement vide.",
+      "acceptance_criteria": [
+        "Chaque ecran affiche toutes les categories fournisseur non vides avec un compteur coherent.",
+        "Selectionner une categorie reduit la liste aux contenus correspondants et conserve le focus.",
+        "Une synchronisation puis un redemarrage ne suppriment plus ces categories.",
+        "ALL, Favoris et Historique continuent de fonctionner sans regression."
+      ],
+      "notes": "Priorite P0 fonctionnelle. Verifier aussi le payload Xtream reel avant de conclure a une cause uniquement locale."
+    },
+    {
+      "id": "TV-PLAY-001",
+      "severity": "majeur",
+      "category": "lecture",
+      "screen": "Movies / lecteur plein ecran",
+      "title": "Une erreur decodeur/source laisse le lecteur sur un spinner noir sans message",
+      "repro_steps": [
+        "Ouvrir Movies et lancer le premier film teste depuis l'apercu.",
+        "Attendre au moins 17 secondes sur le lecteur plein ecran.",
+        "Observer l'ecran et les erreurs Media3 dans logcat."
+      ],
+      "actual": "Le lecteur reste noir avec un spinner. Logcat signale un HEVC 3840x2080 depassant les capacites du decodeur OMX.MTK puis des reponses HTTP 551; aucune erreur ni action de retour/reessai n'est affichee a l'utilisateur.",
+      "expected": "Une erreur terminale de compatibilite ou de source doit arreter le spinner, expliquer que le contenu ne peut pas etre lu et proposer Retour/Reessayer ou une variante compatible disponible.",
+      "impact": "L'utilisateur pense que l'application est bloquee et ne sait pas si le probleme vient du reseau, du contenu ou de l'appareil.",
+      "reproducibility": "1/1 contenu teste; depend du flux",
+      "confidence": "elevee",
+      "evidence": [
+        "checkpoints/20260721-201654-686516-movie-player-after-17s/screenshot.png",
+        "checkpoints/20260721-201654-686516-movie-player-after-17s/logcat.txt"
+      ],
+      "suspected_area": [
+        "ui/player/FullScreenPlayerScreen.kt",
+        "gestion d'erreur et strategie de retry Media3"
+      ],
+      "recommendation": "Distinguer buffering, erreur recuperable et erreur terminale. Apres echec decodeur ou retries source bornes, afficher un panneau d'erreur focusable et liberer la boucle de chargement. Ajouter un precontrole des capacites pour les variantes 4K HEVC lorsque les metadonnees sont disponibles.",
+      "acceptance_criteria": [
+        "Le spinner ne reste jamais indefiniment apres une erreur terminale.",
+        "Le message et les boutons sont lisibles et utilisables au D-pad.",
+        "Back revient au film source avec son focus restaure.",
+        "Les flux compatibles continuent de demarrer normalement."
+      ],
+      "notes": "Priorite P0 lecteur. Le test ne permet pas de generaliser l'echec a tous les films."
+    },
+    {
+      "id": "TV-PERF-001",
+      "severity": "majeur",
+      "category": "performance",
+      "screen": "Live TV avec apercu actif",
+      "title": "La navigation Live presente un jank massif et une forte charge sur le Fire TV",
+      "repro_steps": [
+        "Ouvrir Live TV et demarrer l'apercu de la premiere chaine.",
+        "Remettre dumpsys gfxinfo a zero.",
+        "Parcourir la liste au D-pad vers le bas puis vers le haut et relever gfxinfo/meminfo/top."
+      ],
+      "actual": "Sur la fenetre controlee, 1359/1359 frames sont classees janky, avec p50 57 ms, p90 73 ms, 772 vsync manques et 975 deadlines manquees. Le processus atteint 273 MB PSS et un instantane CPU a 148 % pendant l'apercu.",
+      "expected": "La navigation D-pad doit rester fluide et reactive pendant l'apercu, avec un budget de frame stable et sans surcharge CPU durable.",
+      "impact": "Latence de focus, animation saccadee et risque accru de chauffe, swap ou fermeture sous pression memoire sur un Fire Stick limite.",
+      "reproducibility": "1 mesure controlee apres une longue session; jank visuellement perceptible",
+      "confidence": "elevee sur les mesures; moyenne sur l'attribution exacte",
+      "evidence": [
+        "performance-summary.md",
+        "checkpoints/20260721-200839-378913-live-mini-player-first-ok/gfxinfo-framestats.txt"
+      ],
+      "suspected_area": [
+        "ui/live/LiveTvScreen.kt et composants trois panneaux",
+        "cycle de vie de l'apercu Media3, animations de focus et recompositions"
+      ],
+      "recommendation": "Capturer une trace Perfetto ciblee avant modification, puis reduire les recompositions et allocations liees au focus, stabiliser les cles/listes et isoler le rendu Media3. Comparer avec apercu desactive pour separer UI et video.",
+      "acceptance_criteria": [
+        "Une campagne D-pad equivalente ne montre plus 100 % de frames janky.",
+        "Les percentiles et le temps de reponse focus s'ameliorent nettement sur le meme appareil.",
+        "L'apercu continue de demarrer/s'arreter correctement sans fuite de player.",
+        "La memoire se stabilise apres plusieurs allers-retours Live/Home."
+      ],
+      "notes": "Priorite P0/P1. Les statistiques incluent le rendu video continu; confirmer la cause avec Perfetto."
+    },
+    {
+      "id": "TV-NAV-001",
+      "severity": "majeur",
+      "category": "navigation-focus",
+      "screen": "Notifications / Settings / navigation globale",
+      "title": "Les BackHandler imbriques rendent le retour non deterministe",
+      "repro_steps": [
+        "Depuis Home, ouvrir Notifications et descendre sur Notification history.",
+        "Appuyer sur Back: le premier appui peut rester visuellement sur place.",
+        "Appuyer de nouveau sur Back: Home apparait directement avec le dialogue Exit SmartVision.",
+        "Dans Settings > Personalization, entrer dans les controles puis appuyer sur Back et constater que l'ecran peut rester ouvert."
+      ],
+      "actual": "Le retour Notifications peut demander deux appuis puis ouvrir immediatement le dialogue de sortie de Home. Dans Settings, un Back a egalement ete consomme sans retour visible.",
+      "expected": "Un seul Back depuis Notifications ou Settings doit revenir a Home, restaurer le focus sur l'icone d'origine et ne jamais ouvrir le dialogue de sortie dans le meme geste.",
+      "impact": "Risque de sortie accidentelle et perte de confiance dans la navigation de base a la telecommande.",
+      "reproducibility": "Notifications 1/1 sequence; Settings 1/1 sequence",
+      "confidence": "elevee",
+      "evidence": [
+        "checkpoints/20260721-204428-458483-notifications-back/screenshot.png",
+        "checkpoints/20260721-204540-074014-notifications-back-second/screenshot.png",
+        "checkpoints/20260721-204200-890571-settings-back-home/screenshot.png"
+      ],
+      "suspected_area": [
+        "ui/notifications/NotificationsScreen.kt:169",
+        "ui/settings/SettingsScreen.kt:152",
+        "ui/navigation/AppNavigation.kt:1235-1247"
+      ],
+      "recommendation": "Definir un seul proprietaire du Back par niveau de route. Supprimer la concurrence entre BackHandler d'ecran et BackHandler global, puis centraliser le retour top-level vers Home avec une requete de focus unique.",
+      "acceptance_criteria": [
+        "Un Back unique depuis Notifications, Settings et Profil revient a Home.",
+        "Le dialogue Exit n'apparait que depuis Home sur un nouvel appui distinct.",
+        "Le focus revient respectivement sur Notifications, Settings ou Profil.",
+        "Les Back des lecteurs et dialogues restent inchanges."
+      ],
+      "notes": "Priorite P0 navigation. Tester chaque route top-level apres correction."
+    },
+    {
+      "id": "TV-NAV-002",
+      "severity": "majeur",
+      "category": "navigation-focus",
+      "screen": "Series detail / episode player",
+      "title": "Le retour d'un episode restaure la saison au lieu de l'episode lance",
+      "repro_steps": [
+        "Ouvrir une serie, choisir la saison et lancer le premier episode.",
+        "Valider Resume dans le dialogue et attendre la lecture.",
+        "Appuyer une fois sur Back pour revenir au detail."
+      ],
+      "actual": "Le detail revient correctement mais le focus est place sur Saison 1, pas sur la ligne d'episode lancee.",
+      "expected": "Le retour doit restaurer la saison, le scroll et le focus exact de l'episode source.",
+      "impact": "Dans une saison longue, l'utilisateur perd sa position et doit reparcourir la liste apres chaque lecture.",
+      "reproducibility": "1/1 episode teste",
+      "confidence": "elevee",
+      "evidence": [
+        "checkpoints/20260721-202455-412695-episode-back-detail-focus/screenshot.png"
+      ],
+      "suspected_area": [
+        "ui/detail/SeriesDetailScreen.kt:450-464, 724-728",
+        "ui/navigation/AppNavigation.kt route episode_player"
+      ],
+      "recommendation": "Memoriser l'episode source et son index/season avant navigation, exposer un FocusRequester par episode visible et restaurer le scroll avant la demande de focus apres popBackStack.",
+      "acceptance_criteria": [
+        "Back restaure exactement l'episode lance, meme hors premiere ligne.",
+        "Le scroll et la saison selectionnee sont conserves.",
+        "Le focus initial d'une ouverture fraiche reste coherent.",
+        "La reprise et le redemarrage d'episode ne regressent pas."
+      ],
+      "notes": "Priorite P1."
+    },
+    {
+      "id": "TV-NAV-003",
+      "severity": "majeur",
+      "category": "navigation-focus",
+      "screen": "YouTube",
+      "title": "Back du lecteur YouTube perd la video source et remet le focus sur la categorie",
+      "repro_steps": [
+        "Ouvrir YouTube, aller de Trending vers la premiere video et lancer la lecture.",
+        "Attendre le demarrage puis appuyer sur Back.",
+        "Comparer la grille et le focus avec l'etat avant lecture."
+      ],
+      "actual": "Le focus revient sur Trending au lieu de la video lancee; la grille est rechargee/reordonnee et son nombre d'elements est passe de 50 a 83 pendant le parcours.",
+      "expected": "Back doit revenir a la meme video, au meme scroll et a une grille stable, sauf rafraichissement explicitement demande.",
+      "impact": "L'utilisateur perd le contexte et ne peut pas reprendre facilement sa navigation dans les suggestions.",
+      "reproducibility": "1/1 video testee",
+      "confidence": "elevee",
+      "evidence": [
+        "checkpoints/20260721-202820-926751-youtube-first-video-ok/screenshot.png",
+        "checkpoints/20260721-202932-768235-youtube-player-after-18s/screenshot.png",
+        "checkpoints/20260721-203116-345624-youtube-back-grid/screenshot.png"
+      ],
+      "suspected_area": [
+        "ui/youtube/YoutubeScreen.kt:173-175, 247, 267-281"
+      ],
+      "recommendation": "Conserver le videoId et l'index/scroll source. A la fermeture du player, restaurer ce requester precis et ne pas forcer simultanement le requester de categorie Trending. Separer chargement incremental et rafraichissement de grille.",
+      "acceptance_criteria": [
+        "Back remet le focus sur la video lancee.",
+        "Le scroll horizontal/vertical et l'ordre visible sont conserves.",
+        "Le chargement incremental n'ecrase pas la liste courante.",
+        "Les retours depuis suggestions et plein ecran suivent la meme regle."
+      ],
+      "notes": "Priorite P1. Le demarrage initial de la video a aussi demande environ 18 s lors de ce test unique."
+    },
+    {
+      "id": "TV-NAV-004",
+      "severity": "majeur",
+      "category": "navigation-focus",
+      "screen": "Live TV",
+      "title": "Haut depuis un controle superieur Live saute vers YouTube au lieu de l'onglet Live",
+      "repro_steps": [
+        "Ouvrir Live TV et placer le focus sur le controle filtre/tri en haut de la colonne centrale.",
+        "Appuyer sur Haut.",
+        "Observer l'onglet du header qui recoit le focus."
+      ],
+      "actual": "Le focus saute sur YouTube alors que Live reste seulement marque comme route active.",
+      "expected": "Haut depuis les controles superieurs Live doit revenir sur l'onglet Live du header, conformement au routage explicite des ecrans principaux.",
+      "impact": "Un appui directionnel banal cible une destination sans rapport et peut provoquer une navigation accidentelle.",
+      "reproducibility": "1/1 sequence",
+      "confidence": "elevee",
+      "evidence": [
+        "checkpoints/20260721-201318-107902-live-filter-up/screenshot.png"
+      ],
+      "suspected_area": [
+        "ui/live/LiveTvScreen.kt focusProperties des controles superieurs",
+        "ui/home/TvHeader.kt requesters de l'onglet courant"
+      ],
+      "recommendation": "Relier explicitement la propriete up des boutons recherche/filtre Live au currentTabFocusRequester Live, sans laisser la recherche spatiale choisir l'onglet aligne horizontalement.",
+      "acceptance_criteria": [
+        "Haut depuis chaque controle superieur Live cible l'onglet Live.",
+        "Bas depuis Live restaure la cible de contenu attendue.",
+        "Movies et Series respectent la meme regle avec leur propre onglet.",
+        "La boucle horizontale du header reste intacte."
+      ],
+      "notes": "Priorite P1."
+    },
+    {
+      "id": "TV-PROFILE-001",
+      "severity": "majeur",
+      "category": "navigation-focus",
+      "screen": "Profil > Manage profiles",
+      "title": "Depuis Add kids profile, Bas cible Edit sur le profil precedent",
+      "repro_steps": [
+        "Ouvrir Profil puis Manage profiles.",
+        "Parcourir les profils existants jusqu'a Add kids profile.",
+        "Appuyer sur Bas sans valider la creation."
+      ],
+      "actual": "Le focus quitte la carte Add kids profile et arrive sur Edit dans le panneau d'actions du dernier profil existant; son detail et Delete restent visibles pendant que la carte d'ajout etait la cible precedente.",
+      "expected": "Une carte d'ajout ne doit jamais router vers les actions d'un autre profil. Bas doit etre bloque, rester sur la carte ou cibler une action de creation clairement associee.",
+      "impact": "Risque d'editer, verrouiller ou supprimer le mauvais profil, particulierement grave avec une telecommande et des profils enfants.",
+      "reproducibility": "1/1 sequence",
+      "confidence": "elevee",
+      "evidence": [
+        "Capture locale protegee non exportee car elle contient des noms de profils",
+        "ui/profile/ProfileAreaScreen.kt:534-548, 582-617",
+        "ui/profile/ProfileManagementPolicy.kt:39-48"
+      ],
+      "suspected_area": [
+        "ui/profile/ProfileAreaScreen.kt: focusedProfileId n'est pas efface sur les cartes add et aucun down explicite n'est defini"
+      ],
+      "recommendation": "Representer explicitement la cible de focus courante (profil ou action d'ajout), masquer/desactiver le panneau d'actions quand une carte add est focussee et definir les focusProperties down des deux cartes d'ajout.",
+      "acceptance_criteria": [
+        "Bas depuis Add kids/Add profile ne cible jamais Edit/Lock/Delete d'un profil existant.",
+        "Le panneau de detail correspond toujours a la cible focussee ou est clairement neutralise.",
+        "Les actions destructives restent inaccessibles tant qu'un profil n'est pas explicitement selectionne.",
+        "Le retour de focus apres edition/suppression reste coherent."
+      ],
+      "notes": "Priorite P0 UX/securite fonctionnelle."
+    },
+    {
+      "id": "TV-I18N-001",
+      "severity": "majeur",
+      "category": "internationalisation",
+      "screen": "Global",
+      "title": "La langue anglaise laisse de nombreux libelles francais dans l'interface",
+      "repro_steps": [
+        "Utiliser l'application avec les textes principaux en anglais.",
+        "Ouvrir Live, Movies, Series, les apercus et les details.",
+        "Comparer les titres anglais avec Favoris, Historique, Apercu, Passer Premium ou Regarder."
+      ],
+      "actual": "Des chaines de texte francaises coexistent avec les titres et actions anglais dans un meme ecran.",
+      "expected": "Toutes les chaines visibles de l'application doivent provenir de SmartVisionStrings et suivre la langue active, hors clavier/systeme Fire OS.",
+      "impact": "Experience incoherente, comprehension reduite et impression de produit non finalise pour les utilisateurs non francophones.",
+      "reproducibility": "systematique sur plusieurs ecrans",
+      "confidence": "elevee",
+      "evidence": [
+        "checkpoints/20260721-200839-378913-live-mini-player-first-ok/screenshot.png",
+        "checkpoints/20260721-201507-158718-movies-first-item-ok/screenshot.png",
+        "checkpoints/20260721-201942-187284-movie-detail-via-info/screenshot.png"
+      ],
+      "suspected_area": [
+        "ui/live/LiveTvViewModel.kt, ui/movies/MoviesViewModel.kt, ui/series/SeriesViewModel.kt",
+        "ui/detail/MovieDetailScreen.kt:459-471",
+        "composants VodThreePane: chaines Apercu/Passer Premium"
+      ],
+      "recommendation": "Inventorier les literals UI restants, les remplacer par SmartVisionStrings et ajouter une verification des ecrans cles dans chaque langue supportee. Ne pas localiser les noms de contenus fournisseur.",
+      "acceptance_criteria": [
+        "Aucun libelle francais applicatif ne reste en mode anglais sur les parcours audites.",
+        "Le mode francais conserve les traductions attendues.",
+        "Les categories speciales, apercus, details, erreurs et dialogues sont couverts.",
+        "Les textes fournisseur et le clavier systeme ne sont pas alteres."
+      ],
+      "notes": "Priorite P1 qualite globale."
+    },
+    {
+      "id": "TV-VIS-001",
+      "severity": "mineur",
+      "category": "visuel-focus",
+      "screen": "Header global",
+      "title": "La route active ressemble a un second focus",
+      "repro_steps": [
+        "Sur Home, descendre le focus sur une carte de contenu.",
+        "Observer que Home reste encadre en cyan avec son label.",
+        "Remonter au header et deplacer le focus sur Live TV."
+      ],
+      "actual": "La route active conserve fond, bordure et label presque comme une cible focussee, tandis que le vrai focus est en or ailleurs; deux elements semblent actifs simultanement.",
+      "expected": "La route active doit rester identifiable mais suffisamment secondaire pour qu'un seul element lise visuellement comme le focus telecommande.",
+      "impact": "Ambiguite immediate de focus, particulierement sur la nouvelle barre d'onglets.",
+      "reproducibility": "systematique",
+      "confidence": "elevee",
+      "evidence": [
+        "checkpoints/20260721-200138-678927-home-header-right-live/screenshot.png",
+        "checkpoints/20260721-200158-970500-home-header-down-content/screenshot.png"
+      ],
+      "suspected_area": [
+        "ui/home/TvHeader.kt:595-624, 698-712"
+      ],
+      "recommendation": "Conserver un indicateur actif plus discret (teinte d'icone ou soulignement fin) et reserver fond, cadre fort, label/scale complets au focus reel. Respecter la personnalisation active/selected sans supprimer l'information de route.",
+      "acceptance_criteria": [
+        "A tout instant, la cible du D-pad est visuellement non ambigue.",
+        "La route active reste reconnaissable sans imiter le focus.",
+        "Les couleurs de personnalisation et le mode Kids restent compatibles.",
+        "Notifications, avatar et Settings ne regressent pas."
+      ],
+      "notes": "Priorite P2 finition, mais directement liee au signalement de double focus."
+    },
+    {
+      "id": "TV-VIS-002",
+      "severity": "mineur",
+      "category": "visuel",
+      "screen": "Settings > Personalization",
+      "title": "Des libelles d'options sont tronques dans les cartes de personnalisation",
+      "repro_steps": [
+        "Ouvrir Settings puis Personalization.",
+        "Observer la ligne Focus background et ses trois options.",
+        "Verifier le texte des variantes Transparent."
+      ],
+      "actual": "Les options affichent des formes tronquees telles que Transpar/Transpare, sans ellipsis ni libelle complet.",
+      "expected": "Chaque variante doit etre lisible en entier ou disposer d'un traitement d'ellipsis/tooltip coherent pour un ecran 1080p.",
+      "impact": "L'utilisateur ne peut pas distinguer clairement les choix de personnalisation.",
+      "reproducibility": "systematique a 1920x1080",
+      "confidence": "elevee",
+      "evidence": [
+        "checkpoints/20260721-204046-945877-settings-personalization-right/screenshot.png"
+      ],
+      "suspected_area": [
+        "ui/settings/SettingsScreen.kt composants de Personalization"
+      ],
+      "recommendation": "Ajuster largeur, taille ou libelles localises des boutons afin d'afficher les variantes completement a 1080p, puis verifier les langues les plus longues.",
+      "acceptance_criteria": [
+        "Tous les libelles sont complets a 1080p.",
+        "Le focus et l'etat selectionne restent distincts.",
+        "Le scroll vertical continue d'amener les cartes basses a l'ecran.",
+        "Aucune option n'est decalee ou chevauchee."
+      ],
+      "notes": "Priorite P2."
+    },
+    {
+      "id": "TV-STAB-001",
+      "severity": "mineur",
+      "category": "compatibilite-stabilite",
+      "screen": "Demarrage / diagnostics reseau",
+      "title": "Android 9 journalise des echecs repetes autour de java.lang.ClassValue",
+      "repro_steps": [
+        "Vider logcat et forcer l'arret/demarrage de l'application sur le Fire TV API 28.",
+        "Attendre le selecteur de profil puis Home.",
+        "Rechercher NoClassDefFoundError et ClassValueCtorCache dans les logs."
+      ],
+      "actual": "Chaque demarrage rejoue plusieurs traces Rejecting re-init et ClassNotFoundException pour java.lang.ClassValue depuis kotlinx.coroutines.internal.ClassValueCtorCache. L'application continue et aucun crash n'est observe.",
+      "expected": "La pile release API 28 doit utiliser un chemin de compatibilite silencieux et les diagnostics ne doivent pas generer de traces d'echec repetees.",
+      "impact": "Bruit de logs, cout de demarrage possible et risque que certains rapports reseau/diagnostics echouent silencieusement sur Android 9.",
+      "reproducibility": "3/3 demarrages forces",
+      "confidence": "moyenne; impact fonctionnel non prouve",
+      "evidence": [
+        "checkpoints/20260721-210204-939718-startup-run3-after-8s/logcat.txt",
+        "checkpoints/20260721-195908-826244-startup-cold-initial/logcat.txt"
+      ],
+      "suspected_area": [
+        "versions kotlinx-coroutines / Retrofit et configuration R8-desugaring API 28",
+        "DeviceDiagnosticsReporter au demarrage"
+      ],
+      "recommendation": "Identifier l'appel qui initialise ce cache, verifier les versions de dependances et la compatibilite API 28, puis confirmer si les requetes de diagnostics aboutissent. Eviter de masquer l'erreur sans prouver le chemin de fallback.",
+      "acceptance_criteria": [
+        "Aucun NoClassDefFoundError ClassValue au demarrage sur API 28.",
+        "Les diagnostics/requetes concernes reussissent ou echouent avec un message maitrise.",
+        "Les versions Android plus recentes ne regressent pas.",
+        "Le buffer crash reste vide sur les trois demarrages de controle."
+      ],
+      "notes": "Priorite P2 diagnostic."
+    }
+  ]
+}

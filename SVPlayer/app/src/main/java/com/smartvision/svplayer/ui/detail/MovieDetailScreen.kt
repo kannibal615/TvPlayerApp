@@ -66,6 +66,8 @@ import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
+import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
+import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -279,6 +281,7 @@ fun MovieDetailRoute(
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val strings = smartVisionStrings(settings.language)
     val behaviorScope = rememberCoroutineScope()
     LaunchedEffect(state.movieId, state.categoryLabel) {
         container.behaviorReporter.report(
@@ -305,6 +308,7 @@ fun MovieDetailRoute(
     }
     MovieDetailScreen(
         state = state,
+        strings = strings,
         currentRoute = currentRoute,
         tabs = tabs,
         onNavigate = onNavigate,
@@ -335,6 +339,7 @@ fun MovieDetailRoute(
 @Composable
 private fun MovieDetailScreen(
     state: MovieDetailUiState,
+    strings: SmartVisionStrings,
     currentRoute: String,
     tabs: List<HomeHeaderTab>,
     onNavigate: (String) -> Unit,
@@ -393,6 +398,7 @@ private fun MovieDetailScreen(
         ) {
             MovieDetailInfo(
                 state = state,
+                strings = strings,
                 onWatchMovie = onWatchMovie,
                 onRetry = onRetry,
                 onFavorite = onFavorite,
@@ -412,6 +418,7 @@ private fun MovieDetailScreen(
 @Composable
 private fun MovieDetailInfo(
     state: MovieDetailUiState,
+    strings: SmartVisionStrings,
     onWatchMovie: () -> Unit,
     onRetry: () -> Unit,
     onFavorite: () -> Unit,
@@ -456,7 +463,7 @@ private fun MovieDetailInfo(
         Spacer(Modifier.height(24.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             DetailActionButton(
-                text = "Regarder",
+                text = strings.watchNow,
                 icon = Icons.Default.PlayArrow,
                 onClick = onWatchMovie,
                 primary = true,
@@ -468,7 +475,7 @@ private fun MovieDetailInfo(
                     .height(DetailDimens.ActionHeight),
             )
             DetailActionButton(
-                text = if (state.isFavorite) "Retirer des favoris" else "Ajouter aux favoris",
+                text = if (state.isFavorite) strings.liveTvRemoveFavorite else strings.liveTvFavorite,
                 icon = Icons.Default.FavoriteBorder,
                 onClick = onFavorite,
                 modifier = Modifier

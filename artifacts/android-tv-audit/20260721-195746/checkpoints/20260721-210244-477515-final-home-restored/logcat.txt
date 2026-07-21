@@ -1,0 +1,207 @@
+--------- beginning of main
+07-21 21:01:45.101 29851 29851 I chatty  : uid=10247(com.smartvision.svplayer) expire 4 lines
+07-21 21:01:45.103 29851 29864 I chatty  : uid=10247(com.smartvision.svplayer) Signal Catcher expire 1 line
+07-21 21:01:46.209 29851 29851 I chatty  : uid=10247(com.smartvision.svplayer) expire 27 lines
+07-21 21:01:46.918 29851 29914 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread expire 6 lines
+07-21 21:01:46.957 29851 29851 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-21 21:01:47.072 29851 29914 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread expire 3 lines
+07-21 21:01:47.789 29851 29851 I chatty  : uid=10247(com.smartvision.svplayer) expire 2 lines
+07-21 21:01:47.802 29851 29948 I chatty  : uid=10247(com.smartvision.svplayer) DefaultDispatch expire 21 lines
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at boolean okio.NioSystemFileSystem$$ExternalSyntheticApiModelOutline0.m(java.lang.reflect.Method) (D8$$SyntheticClass:0)
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at boolean retrofit2.Reflection$Android24.isDefaultMethod(java.lang.reflect.Method) (Reflection.java:76)
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at java.lang.Object retrofit2.Retrofit$1.invoke(java.lang.Object, java.lang.reflect.Method, java.lang.Object[]) (Retrofit.java:175)
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at java.lang.Object java.lang.reflect.Proxy.invoke(java.lang.reflect.Proxy, java.lang.reflect.Method, java.lang.Object[]) (Proxy.java:1006)
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsApiService.upsert(com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsRequest, kotlin.coroutines.Continuation) ((null):-1)
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter.report(java.lang.String, java.util.Map, kotlin.coroutines.Continuation) (DeviceDiagnosticsReporter.kt:45)
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter.access$report(com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter, java.lang.String, java.util.Map, kotlin.coroutines.Continuation) (DeviceDiagnosticsReporter.kt:14)
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter$reportAutostartAsync$1.invokeSuspend(java.lang.Object) (DeviceDiagnosticsReporter.kt:29)
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at void kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(java.lang.Object) (ContinuationImpl.kt:33)
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.DispatchedTask.run() (DispatchedTask.kt:100)
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.internal.LimitedDispatcher$Worker.run() (LimitedDispatcher.kt:124)
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.TaskImpl.run() (Tasks.kt:89)
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(kotlinx.coroutines.scheduling.Task) (CoroutineScheduler.kt:586)
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(kotlinx.coroutines.scheduling.Task) (CoroutineScheduler.kt:820)
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker() (CoroutineScheduler.kt:717)
+07-21 21:01:47.804 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run() (CoroutineScheduler.kt:704)
+07-21 21:01:47.804 29851 29948 I vision.svplaye: 
+07-21 21:01:47.806 29851 29948 I vision.svplaye: Rejecting re-init on previously-failed class java.lang.Class<kotlinx.coroutines.internal.ClassValueCtorCache$cache$1>: java.lang.NoClassDefFoundError: Failed resolution of: Ljava/lang/ClassValue;
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at boolean okio.NioSystemFileSystem$$ExternalSyntheticApiModelOutline0.m(java.lang.reflect.Method) (D8$$SyntheticClass:0)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at boolean retrofit2.Reflection$Android24.isDefaultMethod(java.lang.reflect.Method) (Reflection.java:76)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at java.lang.Object retrofit2.Retrofit$1.invoke(java.lang.Object, java.lang.reflect.Method, java.lang.Object[]) (Retrofit.java:175)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at java.lang.Object java.lang.reflect.Proxy.invoke(java.lang.reflect.Proxy, java.lang.reflect.Method, java.lang.Object[]) (Proxy.java:1006)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsApiService.upsert(com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsRequest, kotlin.coroutines.Continuation) ((null):-1)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter.report(java.lang.String, java.util.Map, kotlin.coroutines.Continuation) (DeviceDiagnosticsReporter.kt:45)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter.access$report(com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter, java.lang.String, java.util.Map, kotlin.coroutines.Continuation) (DeviceDiagnosticsReporter.kt:14)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter$reportAutostartAsync$1.invokeSuspend(java.lang.Object) (DeviceDiagnosticsReporter.kt:29)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(java.lang.Object) (ContinuationImpl.kt:33)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.DispatchedTask.run() (DispatchedTask.kt:100)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.internal.LimitedDispatcher$Worker.run() (LimitedDispatcher.kt:124)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.TaskImpl.run() (Tasks.kt:89)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(kotlinx.coroutines.scheduling.Task) (CoroutineScheduler.kt:586)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(kotlinx.coroutines.scheduling.Task) (CoroutineScheduler.kt:820)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker() (CoroutineScheduler.kt:717)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run() (CoroutineScheduler.kt:704)
+07-21 21:01:47.806 29851 29948 I vision.svplaye: Caused by: java.lang.ClassNotFoundException: Didn't find class "java.lang.ClassValue" on path: DexPathList[[zip file "/data/app/com.smartvision.svplayer-Alb43iGo7TmWe0QbMUKrYw==/base.apk"],nativeLibraryDirectories=[/data/app/com.smartvision.svplayer-Alb43iGo7TmWe0QbMUKrYw==/lib/arm, /data/app/com.smartvision.svplayer-Alb43iGo7TmWe0QbMUKrYw==/base.apk!/lib/armeabi-v7a, /system/lib]]
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at java.lang.Class dalvik.system.BaseDexClassLoader.findClass(java.lang.String) (BaseDexClassLoader.java:134)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at java.lang.Class java.lang.ClassLoader.loadClass(java.lang.String, boolean) (ClassLoader.java:379)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at java.lang.Class java.lang.ClassLoader.loadClass(java.lang.String) (ClassLoader.java:312)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at boolean okio.NioSystemFileSystem$$ExternalSyntheticApiModelOutline0.m(java.lang.reflect.Method) (D8$$SyntheticClass:0)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at boolean retrofit2.Reflection$Android24.isDefaultMethod(java.lang.reflect.Method) (Reflection.java:76)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at java.lang.Object retrofit2.Retrofit$1.invoke(java.lang.Object, java.lang.reflect.Method, java.lang.Object[]) (Retrofit.java:175)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at java.lang.Object java.lang.reflect.Proxy.invoke(java.lang.reflect.Proxy, java.lang.reflect.Method, java.lang.Object[]) (Proxy.java:1006)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsApiService.upsert(com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsRequest, kotlin.coroutines.Continuation) ((null):-1)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter.report(java.lang.String, java.util.Map, kotlin.coroutines.Continuation) (DeviceDiagnosticsReporter.kt:45)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter.access$report(com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter, java.lang.String, java.util.Map, kotlin.coroutines.Continuation) (DeviceDiagnosticsReporter.kt:14)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter$reportAutostartAsync$1.invokeSuspend(java.lang.Object) (DeviceDiagnosticsReporter.kt:29)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(java.lang.Object) (ContinuationImpl.kt:33)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.DispatchedTask.run() (DispatchedTask.kt:100)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.internal.LimitedDispatcher$Worker.run() (LimitedDispatcher.kt:124)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.TaskImpl.run() (Tasks.kt:89)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(kotlinx.coroutines.scheduling.Task) (CoroutineScheduler.kt:586)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(kotlinx.coroutines.scheduling.Task) (CoroutineScheduler.kt:820)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker() (CoroutineScheduler.kt:717)
+07-21 21:01:47.806 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run() (CoroutineScheduler.kt:704)
+07-21 21:01:47.806 29851 29948 I vision.svplaye: 
+07-21 21:01:47.807 29851 29948 I vision.svplaye: Rejecting re-init on previously-failed class java.lang.Class<kotlinx.coroutines.internal.ClassValueCtorCache$cache$1>: java.lang.NoClassDefFoundError: Failed resolution of: Ljava/lang/ClassValue;
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at boolean okio.NioSystemFileSystem$$ExternalSyntheticApiModelOutline0.m(java.lang.reflect.Method) (D8$$SyntheticClass:0)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at boolean retrofit2.Reflection$Android24.isDefaultMethod(java.lang.reflect.Method) (Reflection.java:76)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at java.lang.Object retrofit2.Retrofit$1.invoke(java.lang.Object, java.lang.reflect.Method, java.lang.Object[]) (Retrofit.java:175)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at java.lang.Object java.lang.reflect.Proxy.invoke(java.lang.reflect.Proxy, java.lang.reflect.Method, java.lang.Object[]) (Proxy.java:1006)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsApiService.upsert(com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsRequest, kotlin.coroutines.Continuation) ((null):-1)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter.report(java.lang.String, java.util.Map, kotlin.coroutines.Continuation) (DeviceDiagnosticsReporter.kt:45)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter.access$report(com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter, java.lang.String, java.util.Map, kotlin.coroutines.Continuation) (DeviceDiagnosticsReporter.kt:14)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter$reportAutostartAsync$1.invokeSuspend(java.lang.Object) (DeviceDiagnosticsReporter.kt:29)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(java.lang.Object) (ContinuationImpl.kt:33)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.DispatchedTask.run() (DispatchedTask.kt:100)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.internal.LimitedDispatcher$Worker.run() (LimitedDispatcher.kt:124)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.TaskImpl.run() (Tasks.kt:89)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(kotlinx.coroutines.scheduling.Task) (CoroutineScheduler.kt:586)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(kotlinx.coroutines.scheduling.Task) (CoroutineScheduler.kt:820)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker() (CoroutineScheduler.kt:717)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run() (CoroutineScheduler.kt:704)
+07-21 21:01:47.807 29851 29948 I vision.svplaye: Caused by: java.lang.ClassNotFoundException: Didn't find class "java.lang.ClassValue" on path: DexPathList[[zip file "/data/app/com.smartvision.svplayer-Alb43iGo7TmWe0QbMUKrYw==/base.apk"],nativeLibraryDirectories=[/data/app/com.smartvision.svplayer-Alb43iGo7TmWe0QbMUKrYw==/lib/arm, /data/app/com.smartvision.svplayer-Alb43iGo7TmWe0QbMUKrYw==/base.apk!/lib/armeabi-v7a, /system/lib]]
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at java.lang.Class dalvik.system.BaseDexClassLoader.findClass(java.lang.String) (BaseDexClassLoader.java:134)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at java.lang.Class java.lang.ClassLoader.loadClass(java.lang.String, boolean) (ClassLoader.java:379)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at java.lang.Class java.lang.ClassLoader.loadClass(java.lang.String) (ClassLoader.java:312)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at boolean okio.NioSystemFileSystem$$ExternalSyntheticApiModelOutline0.m(java.lang.reflect.Method) (D8$$SyntheticClass:0)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at boolean retrofit2.Reflection$Android24.isDefaultMethod(java.lang.reflect.Method) (Reflection.java:76)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at java.lang.Object retrofit2.Retrofit$1.invoke(java.lang.Object, java.lang.reflect.Method, java.lang.Object[]) (Retrofit.java:175)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at java.lang.Object java.lang.reflect.Proxy.invoke(java.lang.reflect.Proxy, java.lang.reflect.Method, java.lang.Object[]) (Proxy.java:1006)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsApiService.upsert(com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsRequest, kotlin.coroutines.Continuation) ((null):-1)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter.report(java.lang.String, java.util.Map, kotlin.coroutines.Continuation) (DeviceDiagnosticsReporter.kt:45)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter.access$report(com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter, java.lang.String, java.util.Map, kotlin.coroutines.Continuation) (DeviceDiagnosticsReporter.kt:14)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at java.lang.Object com.smartvision.svplayer.data.diagnostics.DeviceDiagnosticsReporter$reportAutostartAsync$1.invokeSuspend(java.lang.Object) (DeviceDiagnosticsReporter.kt:29)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(java.lang.Object) (ContinuationImpl.kt:33)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.DispatchedTask.run() (DispatchedTask.kt:100)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.internal.LimitedDispatcher$Worker.run() (LimitedDispatcher.kt:124)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.TaskImpl.run() (Tasks.kt:89)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(kotlinx.coroutines.scheduling.Task) (CoroutineScheduler.kt:586)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(kotlinx.coroutines.scheduling.Task) (CoroutineScheduler.kt:820)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker() (CoroutineScheduler.kt:717)
+07-21 21:01:47.807 29851 29948 I vision.svplaye:   at void kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run() (CoroutineScheduler.kt:704)
+07-21 21:01:47.807 29851 29948 I vision.svplaye: 
+07-21 21:01:47.838 29851 29851 I SVStartup: startup stage: PreparingHome
+07-21 21:01:47.839 29851 29851 I SVStartup: startup stage: PreparingHome
+07-21 21:01:48.014 29851 29954 E System  : TRACE Starting certificate trust
+07-21 21:01:48.015 29851 29953 E System  : TRACE Starting certificate trust
+07-21 21:01:48.052 29851 29851 I ExoPlayerImpl: Init 3ad4b82 [AndroidXMedia3/1.6.1] [sheldonp, AFTSSS, Amazon, 28]
+07-21 21:01:48.719 29851 29861 I vision.svplaye: JIT allocated 118KB for stack maps of void com.smartvision.svplayer.ui.navigation.AppNavigationKt.AppNavigation(androidx.navigation.NavHostController, androidx.compose.ui.Modifier, kotlin.jvm.functions.Function0, boolean, androidx.compose.runtime.Composer, int, int)
+07-21 21:01:50.478 29851 29868 I vision.svplaye: Background concurrent copying GC freed 142421(5MB) AllocSpace objects, 0(0B) LOS objects, 43% free, 7MB/13MB, paused 217us total 157.286ms
+07-21 21:01:50.572 29851 29887 I vision.svplaye: Waiting for a blocking GC ProfileSaver
+07-21 21:01:50.665 29851 29887 I vision.svplaye: WaitForGcToComplete blocked ProfileSaver on AddRemoveAppImageSpace for 92.441ms
+07-21 21:01:51.387 29851 29851 I SVStartup: initial surface preloaded: ready=true durationMs=3547
+07-21 21:01:51.467 29851 29851 I SVStartup: state localReady=true checking=false activated=true playableSource=true route=home
+07-21 21:01:51.605 29851 29914 I OpenGLRenderer: Davey! duration=3753ms; Flags=0, IntendedVsync=16865664967120, Vsync=16865664967120, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=16865665318619, AnimationStart=16865665346849, PerformTraversalsStart=16867484814388, DrawStart=16868846291773, SyncQueued=16869193356927, SyncStart=16869193415311, IssueDrawCommandsStart=16869198267773, SwapBuffers=16869416712773, FrameCompleted=16869418524234, DequeueBufferDuration=400000, QueueBufferDuration=888000, 
+07-21 21:01:51.655 29851 29851 I SVStartup: startup complete: rendering AppNavigation
+07-21 21:01:51.784 29851 29851 I SVHomeLoad: counts ready profile=de993c35 revision=0 live=13726 movies=26933 series=12028
+07-21 21:01:52.388 29851 29914 I OpenGLRenderer: Davey! duration=999ms; Flags=1, IntendedVsync=16869201864145, Vsync=16869585581195, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=16869602189234, AnimationStart=16869602255388, PerformTraversalsStart=16870058793465, DrawStart=16870152864465, SyncQueued=16870184329234, SyncStart=16870184433003, IssueDrawCommandsStart=16870185106465, SwapBuffers=16870200282850, FrameCompleted=16870201544388, DequeueBufferDuration=399000, QueueBufferDuration=381000, 
+07-21 21:01:52.403 29851 29851 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 21:01:52.543 29851 29851 I Choreographer: Skipped 42 frames!  The application may be doing too much work on its main thread.
+07-21 21:01:52.826 29851 29868 I vision.svplaye: NativeAlloc concurrent copying GC freed 38008(2MB) AllocSpace objects, 0(0B) LOS objects, 47% free, 6MB/12MB, paused 1.720ms total 184.214ms
+07-21 21:01:53.085 29851 29868 I vision.svplaye: NativeAlloc concurrent copying GC freed 26006(1118KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5MB/11MB, paused 174us total 118.968ms
+07-21 21:01:53.282 29851 29868 I vision.svplaye: NativeAlloc concurrent copying GC freed 1326(74KB) AllocSpace objects, 0(0B) LOS objects, 50% free, 5MB/11MB, paused 184us total 102.171ms
+07-21 21:01:54.169 29851 29914 I OpenGLRenderer: Davey! duration=2330ms; Flags=0, IntendedVsync=16869652324018, Vsync=16870353024718, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=16870356495004, AnimationStart=16870356545773, PerformTraversalsStart=16871313642773, DrawStart=16871313912773, SyncQueued=16871942083619, SyncStart=16871942179465, IssueDrawCommandsStart=16871943215850, SwapBuffers=16871980929696, FrameCompleted=16871982875773, DequeueBufferDuration=562000, QueueBufferDuration=1162000, 
+07-21 21:01:54.242 29851 29851 I SmartVisionAds: Passage en FREE_WITH_ADS
+07-21 21:01:54.242 29851 29851 I SmartVisionAds: Statut monetisation actuel: FREE_WITH_ADS
+07-21 21:01:54.247 29851 29851 I Choreographer: Skipped 101 frames!  The application may be doing too much work on its main thread.
+07-21 21:01:54.397 29851 29914 I OpenGLRenderer: Davey! duration=1840ms; Flags=0, IntendedVsync=16870369704119, Vsync=16872054722469, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=16872060363619, AnimationStart=16872060403927, PerformTraversalsStart=16872134943388, DrawStart=16872135216081, SyncQueued=16872153891234, SyncStart=16872154236542, IssueDrawCommandsStart=16872154723619, SwapBuffers=16872209495465, FrameCompleted=16872210671850, DequeueBufferDuration=407000, QueueBufferDuration=502000, 
+07-21 21:01:55.535 29851 29851 I SVHomeLoad: ready profile=de993c35 revision=0
+07-21 21:01:55.536 29851 29851 I SVHomeLoad: trending ready profile=de993c35 revision=0
+07-21 21:01:56.135 29851 29868 I vision.svplaye: NativeAlloc concurrent copying GC freed 61125(2MB) AllocSpace objects, 2(68KB) LOS objects, 47% free, 6MB/12MB, paused 8.361ms total 147.784ms
+07-21 21:01:56.343 29851 29861 I vision.svplaye: Compiler allocated 4MB to compile void com.smartvision.svplayer.ui.home.TrendingContentRowKt.TrendingPreviewCard(com.smartvision.svplayer.data.mock.ContinueItem, java.lang.String, boolean, kotlin.jvm.functions.Function0, androidx.compose.ui.Modifier, androidx.compose.ui.focus.FocusRequester, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, boolean, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, boolean, java.lang.String, com.smartvision.svplayer.ui.home.HomePreviewController, androidx.compose.runtime.Composer, int, int, int)
+07-21 21:01:56.494 29851 29868 I vision.svplaye: NativeAlloc concurrent copying GC freed 1545(145KB) AllocSpace objects, 1(20KB) LOS objects, 45% free, 7MB/13MB, paused 349us total 262.506ms
+07-21 21:01:56.882 29851 29868 I vision.svplaye: NativeAlloc concurrent copying GC freed 7379(467KB) AllocSpace objects, 11(220KB) LOS objects, 44% free, 7MB/13MB, paused 155us total 187.713ms
+07-21 21:01:57.451 29851 29914 I OpenGLRenderer: Davey! duration=2040ms; Flags=0, IntendedVsync=16873222608561, Vsync=16873356075361, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=16873369583465, AnimationStart=16873369619619, PerformTraversalsStart=16873628334081, DrawStart=16873628701619, SyncQueued=16875190537004, SyncStart=16875190635773, IssueDrawCommandsStart=16875191744696, SwapBuffers=16875245408235, FrameCompleted=16875262734696, DequeueBufferDuration=964000, QueueBufferDuration=10332000, 
+07-21 21:01:57.470 29851 29851 I Choreographer: Skipped 113 frames!  The application may be doing too much work on its main thread.
+07-21 21:01:57.802 29851 29914 I OpenGLRenderer: Davey! duration=2225ms; Flags=0, IntendedVsync=16873389442946, Vsync=16875274661496, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=16875284112696, AnimationStart=16875284239927, PerformTraversalsStart=16875521046235, DrawStart=16875526856927, SyncQueued=16875602963235, SyncStart=16875603143465, IssueDrawCommandsStart=16875603870465, SwapBuffers=16875612371312, FrameCompleted=16875615086465, DequeueBufferDuration=372000, QueueBufferDuration=1751000, 
+07-21 21:01:58.832 29851 29851 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 21:01:59.439 29851 29868 I vision.svplaye: NativeAlloc concurrent copying GC freed 70715(2MB) AllocSpace objects, 12(240KB) LOS objects, 41% free, 8MB/14MB, paused 277us total 227.012ms
+07-21 21:01:59.595 29851 29851 I Choreographer: Skipped 44 frames!  The application may be doing too much work on its main thread.
+07-21 21:01:59.622 29851 29861 I vision.svplaye: Compiler allocated 4MB to compile void com.smartvision.svplayer.ui.home.ContentProgressCardKt.ContentProgressCard(com.smartvision.svplayer.data.mock.ContinueItem, java.lang.String, kotlin.jvm.functions.Function0, androidx.compose.ui.Modifier, androidx.compose.ui.focus.FocusRequester, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, boolean, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, boolean, java.lang.String, java.lang.String, boolean, java.lang.String, com.smartvision.svplayer.ui.home.HomePreviewController, androidx.compose.runtime.Composer, int, int, int)
+07-21 21:01:59.622 29851 29914 I OpenGLRenderer: Davey! duration=859ms; Flags=0, IntendedVsync=16876575973821, Vsync=16876642707221, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=16876653749619, AnimationStart=16876653880542, PerformTraversalsStart=16876820578542, DrawStart=16876820873465, SyncQueued=16877382910773, SyncStart=16877383080465, IssueDrawCommandsStart=16877384145850, SwapBuffers=16877430529927, FrameCompleted=16877435683312, DequeueBufferDuration=561000, QueueBufferDuration=738000, 
+07-21 21:01:59.738 29851 29914 I OpenGLRenderer: Davey! duration=891ms; Flags=0, IntendedVsync=16876659399745, Vsync=16877393467145, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=16877408686850, AnimationStart=16877408733004, PerformTraversalsStart=16877488936465, DrawStart=16877489344619, SyncQueued=16877541389696, SyncStart=16877541530465, IssueDrawCommandsStart=16877542372004, SwapBuffers=16877549911542, FrameCompleted=16877551273773, DequeueBufferDuration=344000, QueueBufferDuration=449000, 
+07-21 21:02:01.274 29851 29868 I vision.svplaye: Background concurrent copying GC freed 173631(5MB) AllocSpace objects, 11(228KB) LOS objects, 40% free, 8MB/14MB, paused 216us total 155.954ms
+07-21 21:02:02.371 29851 29868 I vision.svplaye: Background concurrent copying GC freed 189066(5MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 169us total 134.831ms
+07-21 21:02:03.371 29851 29868 I vision.svplaye: Background concurrent copying GC freed 195922(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 171us total 133.973ms
+07-21 21:02:04.330 29851 29868 I vision.svplaye: Background concurrent copying GC freed 194822(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 212us total 129.842ms
+07-21 21:02:05.270 29851 29868 I vision.svplaye: Background concurrent copying GC freed 196575(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 176us total 124.926ms
+07-21 21:02:06.210 29851 29868 I vision.svplaye: Background concurrent copying GC freed 193435(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 246us total 125.035ms
+07-21 21:02:07.293 29851 29868 I vision.svplaye: Background concurrent copying GC freed 193573(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 194us total 143.032ms
+07-21 21:02:08.446 29851 29868 I vision.svplaye: Background concurrent copying GC freed 194093(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 170us total 141.832ms
+07-21 21:02:09.564 29851 29868 I vision.svplaye: Background concurrent copying GC freed 193914(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 183us total 131.515ms
+07-21 21:02:10.638 29851 29868 I vision.svplaye: Background concurrent copying GC freed 193304(5MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 185us total 134.962ms
+07-21 21:02:11.570 29851 29868 I vision.svplaye: Background concurrent copying GC freed 200565(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 169us total 130.687ms
+07-21 21:02:12.507 29851 29868 I vision.svplaye: Background concurrent copying GC freed 197395(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 173us total 134.636ms
+07-21 21:02:13.438 29851 29868 I vision.svplaye: Background concurrent copying GC freed 200463(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 171us total 136.701ms
+07-21 21:02:14.360 29851 29868 I vision.svplaye: Background concurrent copying GC freed 199116(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 197us total 130.015ms
+07-21 21:02:15.305 29851 29868 I vision.svplaye: Background concurrent copying GC freed 198513(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 289us total 126.809ms
+07-21 21:02:16.232 29851 29868 I vision.svplaye: Background concurrent copying GC freed 198802(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 186us total 128.500ms
+07-21 21:02:17.179 29851 29868 I vision.svplaye: Background concurrent copying GC freed 198354(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 187us total 126.805ms
+07-21 21:02:18.117 29851 29868 I vision.svplaye: Background concurrent copying GC freed 198548(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 195us total 126.592ms
+07-21 21:02:19.053 29851 29868 I vision.svplaye: Background concurrent copying GC freed 199745(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 178us total 126.785ms
+07-21 21:02:19.981 29851 29868 I vision.svplaye: Background concurrent copying GC freed 199295(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 339us total 132.308ms
+07-21 21:02:21.053 29851 29868 I vision.svplaye: Background concurrent copying GC freed 196214(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 206us total 144.035ms
+07-21 21:02:22.033 29851 29868 I vision.svplaye: Background concurrent copying GC freed 195501(6MB) AllocSpace objects, 1(20KB) LOS objects, 40% free, 8MB/14MB, paused 241us total 141.816ms
+07-21 21:02:22.979 29851 29868 I vision.svplaye: Background concurrent copying GC freed 197611(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 205us total 134.180ms
+07-21 21:02:23.931 29851 29868 I vision.svplaye: Background concurrent copying GC freed 197783(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 164us total 131.670ms
+07-21 21:02:24.878 29851 29868 I vision.svplaye: Background concurrent copying GC freed 193986(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 190us total 134.135ms
+07-21 21:02:25.831 29851 29868 I vision.svplaye: Background concurrent copying GC freed 197716(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 174us total 127.142ms
+07-21 21:02:26.814 29851 29868 I vision.svplaye: Background concurrent copying GC freed 194895(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 186us total 126.261ms
+07-21 21:02:27.770 29851 29868 I vision.svplaye: Background concurrent copying GC freed 196161(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 165us total 132.175ms
+07-21 21:02:28.717 29851 29868 I vision.svplaye: Background concurrent copying GC freed 197254(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 181us total 133.853ms
+07-21 21:02:29.662 29851 29868 I vision.svplaye: Background concurrent copying GC freed 196055(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 189us total 131.700ms
+07-21 21:02:30.622 29851 29868 I vision.svplaye: Background concurrent copying GC freed 198007(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 185us total 131.151ms
+07-21 21:02:31.605 29851 29868 I vision.svplaye: Background concurrent copying GC freed 197604(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 181us total 136.930ms
+07-21 21:02:32.555 29851 29868 I vision.svplaye: Background concurrent copying GC freed 196890(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 185us total 134.396ms
+07-21 21:02:33.501 29851 29868 I vision.svplaye: Background concurrent copying GC freed 196055(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 173us total 138.482ms
+07-21 21:02:34.439 29851 29868 I vision.svplaye: Background concurrent copying GC freed 198546(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 209us total 128.451ms
+07-21 21:02:35.407 29851 29868 I vision.svplaye: Background concurrent copying GC freed 196837(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 182us total 128.003ms
+07-21 21:02:36.371 29851 29868 I vision.svplaye: Background concurrent copying GC freed 194463(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 166us total 127.782ms
+07-21 21:02:37.315 29851 29868 I vision.svplaye: Background concurrent copying GC freed 195457(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 173us total 135.667ms
+07-21 21:02:38.271 29851 29868 I vision.svplaye: Background concurrent copying GC freed 195899(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 154us total 131.641ms
+07-21 21:02:39.221 29851 29868 I vision.svplaye: Background concurrent copying GC freed 197177(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 178us total 134.001ms
+07-21 21:02:40.166 29851 29868 I vision.svplaye: Background concurrent copying GC freed 195643(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 177us total 132.700ms
+07-21 21:02:41.116 29851 29868 I vision.svplaye: Background concurrent copying GC freed 196443(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 242us total 127.683ms
+07-21 21:02:42.061 29851 29868 I vision.svplaye: Background concurrent copying GC freed 195578(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 204us total 127.942ms
+07-21 21:02:43.013 29851 29868 I vision.svplaye: Background concurrent copying GC freed 195095(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 178us total 134.025ms
+07-21 21:02:43.955 29851 29868 I vision.svplaye: Background concurrent copying GC freed 197189(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 181us total 130.091ms
+07-21 21:02:44.896 29851 29868 I vision.svplaye: Background concurrent copying GC freed 194820(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 180us total 128.388ms
+07-21 21:02:45.845 29851 29868 I vision.svplaye: Background concurrent copying GC freed 196052(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 193us total 126.464ms
+07-21 21:02:46.896 29851 29868 I vision.svplaye: Background concurrent copying GC freed 195051(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 165us total 131.966ms
+07-21 21:02:47.455 29851 30213 W AmazonKeyEventLogging: remote_perf key event latency detected [Source: ViewRootImpl, KeyCode: KEYCODE_XXXX, IsDown: 0, Repeat: 0, EventTime: 16925027, Latency: 240, DeviceId: -1, AppPackage: com.smartvision.svplayer]
+07-21 21:02:48.071 29851 29868 I vision.svplaye: NativeAlloc concurrent copying GC freed 104965(3MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 178us total 218.328ms
+07-21 21:02:50.256 29851 29868 I vision.svplaye: Background concurrent copying GC freed 188245(6MB) AllocSpace objects, 0(0B) LOS objects, 40% free, 8MB/14MB, paused 469us total 171.786ms
+07-21 21:02:52.110 29851 29868 I vision.svplaye: Background concurrent copying GC freed 195162(6MB) AllocSpace objects, 0(0B) LOS objects, 41% free, 8MB/14MB, paused 179us total 131.597ms
+07-21 21:02:53.990 29851 29868 I vision.svplaye: Background concurrent copying GC freed 192244(5MB) AllocSpace objects, 0(0B) LOS objects, 41% free, 8MB/14MB, paused 178us total 130.899ms
+07-21 21:02:53.999 29851 29866 W MediaPlayer-JNI: MediaPlayer finalized without being released
+07-21 21:02:55.797 29851 29868 I vision.svplaye: Background concurrent copying GC freed 183223(5MB) AllocSpace objects, 0(0B) LOS objects, 41% free, 8MB/14MB, paused 153us total 126.772ms
+07-21 21:02:57.717 29851 29868 I vision.svplaye: Background concurrent copying GC freed 192365(6MB) AllocSpace objects, 0(0B) LOS objects, 41% free, 8MB/14MB, paused 235us total 132.447ms
+07-21 21:02:59.621 29851 29868 I vision.svplaye: Background concurrent copying GC freed 192309(5MB) AllocSpace objects, 0(0B) LOS objects, 41% free, 8MB/14MB, paused 174us total 127.685ms
+07-21 21:03:01.531 29851 29868 I vision.svplaye: Background concurrent copying GC freed 193695(6MB) AllocSpace objects, 0(0B) LOS objects, 41% free, 8MB/14MB, paused 383us total 140.122ms
+07-21 21:03:03.453 29851 29868 I vision.svplaye: Background concurrent copying GC freed 194454(6MB) AllocSpace objects, 0(0B) LOS objects, 41% free, 8MB/14MB, paused 191us total 145.701ms
+07-21 21:03:05.288 29851 29868 I vision.svplaye: Background concurrent copying GC freed 191891(5MB) AllocSpace objects, 0(0B) LOS objects, 41% free, 8MB/14MB, paused 170us total 128.339ms
+07-21 21:03:07.106 29851 29868 I vision.svplaye: Background concurrent copying GC freed 194786(5MB) AllocSpace objects, 0(0B) LOS objects, 41% free, 8MB/14MB, paused 161us total 127.606ms
+07-21 21:03:08.927 29851 29868 I vision.svplaye: Background concurrent copying GC freed 196025(6MB) AllocSpace objects, 0(0B) LOS objects, 41% free, 8MB/14MB, paused 150us total 122.739ms
+07-21 21:03:10.729 29851 29868 I vision.svplaye: Background concurrent copying GC freed 195847(6MB) AllocSpace objects, 0(0B) LOS objects, 41% free, 8MB/14MB, paused 139us total 121.957ms
+07-21 21:03:12.574 29851 29868 I vision.svplaye: Background concurrent copying GC freed 195374(6MB) AllocSpace objects, 0(0B) LOS objects, 41% free, 8MB/14MB, paused 145us total 129.173ms
+07-21 21:03:14.388 29851 29868 I vision.svplaye: Background concurrent copying GC freed 195343(5MB) AllocSpace objects, 0(0B) LOS objects, 41% free, 8MB/14MB, paused 198us total 126.381ms

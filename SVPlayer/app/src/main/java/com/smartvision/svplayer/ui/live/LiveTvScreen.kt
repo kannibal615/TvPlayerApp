@@ -568,7 +568,6 @@ fun LiveTvScreen(
                     previewActionFocusRequester = miniPlayerFocusRequester.takeIf {
                         state.selectedChannel != null
                     },
-                    onChannelFocused = viewModel::focusChannel,
                     onChannelFocusObserved = { channel ->
                         currentFocusZone = LiveTvFocusZone.Channels
                         lastFocusedChannelId = channel.streamId
@@ -600,7 +599,7 @@ fun LiveTvScreen(
                 PreviewPanel(
                     channel = state.selectedChannel,
                     strings = strings,
-                    selectedCategoryLabel = state.selectedCategory?.label,
+                    selectedCategoryLabel = state.selectedCategory?.localizedLabel(strings),
                     showHistoryDelete = state.isHistoryCategory && state.selectedChannel != null,
                     showFreeAdsPreview = showFreeAdsPreview,
                     idleAdContentUrl = state.channels.firstOrNull()?.streamUrl,
@@ -729,6 +728,7 @@ private fun CategoryList(
             ) { category ->
                 CategoryRow(
                     category = category,
+                    displayLabel = category.localizedLabel(strings),
                     selected = category.id == state.selectedCategoryId,
                     focusRequester = if (category.id == focusCategoryId) {
                         selectedCategoryFocusRequester
@@ -768,7 +768,6 @@ private fun ChannelList(
     onSearchQueryChange: (String) -> Unit,
     onSortSelected: (LiveSortMode) -> Unit,
     previewActionFocusRequester: FocusRequester?,
-    onChannelFocused: (LiveTvChannel) -> Unit,
     onChannelFocusObserved: (LiveTvChannel) -> Unit,
     onRestoreCategoryFocus: () -> Unit,
     onRestoreSearchFocus: () -> Unit,
@@ -885,7 +884,6 @@ private fun ChannelList(
                         rightFocusRequester = previewActionFocusRequester,
                         onUp = onRestoreSearchFocus.takeIf { index == 0 },
                         onFocused = {
-                            onChannelFocused(channel)
                             onChannelFocusObserved(channel)
                         },
                         onClick = { onChannelClick(channel) },
@@ -952,6 +950,7 @@ private fun PreviewPanel(
                         downFocusRequester = miniPlayerFocusRequester,
                         onLeft = onRestoreChannelFocus,
                         upFocusRequester = headerFocusRequester,
+                        onUp = { runCatching { headerFocusRequester.requestFocus() } },
                         onFocused = onPreviewFocused,
                     )
                     PreviewIconButton(
@@ -962,6 +961,7 @@ private fun PreviewPanel(
                         downFocusRequester = miniPlayerFocusRequester,
                         onLeft = onRestoreChannelFocus,
                         upFocusRequester = headerFocusRequester,
+                        onUp = { runCatching { headerFocusRequester.requestFocus() } },
                         onFocused = onPreviewFocused,
                     )
                     if (showHistoryDelete) {
@@ -973,6 +973,7 @@ private fun PreviewPanel(
                             downFocusRequester = miniPlayerFocusRequester,
                             onLeft = onRestoreChannelFocus,
                             upFocusRequester = headerFocusRequester,
+                            onUp = { runCatching { headerFocusRequester.requestFocus() } },
                             onFocused = onPreviewFocused,
                         )
                     }
@@ -1540,6 +1541,7 @@ private fun PreviewIconButton(
     downFocusRequester: FocusRequester? = null,
     onLeft: (() -> Unit)? = null,
     upFocusRequester: FocusRequester? = null,
+    onUp: (() -> Unit)? = null,
     onFocused: (() -> Unit)? = null,
 ) {
     val focusState = rememberTvFocusState()
@@ -1586,11 +1588,17 @@ private fun PreviewIconButton(
                 },
             )
             .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft && onLeft != null) {
-                    onLeft()
-                    true
-                } else {
-                    false
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when {
+                    event.key == Key.DirectionLeft && onLeft != null -> {
+                        onLeft()
+                        true
+                    }
+                    event.key == Key.DirectionUp && onUp != null -> {
+                        onUp()
+                        true
+                    }
+                    else -> false
                 }
             }
             .tvFocusTarget(
@@ -1636,6 +1644,7 @@ private fun PreviewIconButton(
 @Composable
 private fun CategoryRow(
     category: LiveTvCategory,
+    displayLabel: String,
     selected: Boolean,
     focusRequester: FocusRequester?,
     upFocusRequester: FocusRequester?,
@@ -1738,7 +1747,7 @@ private fun CategoryRow(
             Spacer(Modifier.width(10.dp))
         }
         Text(
-            text = category.label,
+            text = displayLabel,
             color = SmartVisionColors.TextPrimary,
             style = LiveTvItemTitleStyle,
             fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
@@ -1776,6 +1785,12 @@ private fun CategoryRow(
     }
 }
 
+private fun LiveTvCategory.localizedLabel(strings: SmartVisionStrings): String = when (id) {
+    FavoriteLiveCategoryId -> strings.favorites
+    HistoryLiveCategoryId -> strings.history
+    else -> label
+}
+
 @Composable
 private fun ChannelRow(
     channel: LiveTvChannel,
@@ -1795,15 +1810,11 @@ private fun ChannelRow(
     val active = selected || focusState.isFocused
     val shape = RoundedCornerShape(LiveTvDimens.ItemRadius)
     val focusStyle = LocalTvFocusStyle.current
-    val borderColor by animateColorAsState(
-        targetValue = when {
-            focusState.isFocused -> focusStyle.accent
-            selected -> focusStyle.selectedAccent
-            else -> SmartVisionColors.Border
-        },
-        animationSpec = tween(SmartVisionDimensions.FocusAnimationMillis),
-        label = "channelBorder",
-    )
+    val borderColor = when {
+        focusState.isFocused -> focusStyle.accent
+        selected -> focusStyle.selectedAccent
+        else -> SmartVisionColors.Border
+    }
 
     Row(
         modifier = Modifier
@@ -1846,7 +1857,7 @@ private fun ChannelRow(
                     state = focusState,
                     focusRequester = rowFocusRequester,
                     pressed = pressed,
-                    focusedScale = 1.035f,
+                    focusedScale = 1f,
                     glowColor = focusStyle.accent,
                     cornerRadius = LiveTvDimens.ItemRadius,
                 )

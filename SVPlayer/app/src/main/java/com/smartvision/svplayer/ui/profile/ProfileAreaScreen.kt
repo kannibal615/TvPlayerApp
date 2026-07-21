@@ -533,6 +533,7 @@ private fun ManageProfilesContent(
     }
     var selectedProfileId by rememberSaveable { mutableStateOf<String?>(null) }
     var focusedProfileId by remember { mutableStateOf<String?>(null) }
+    var addActionFocused by remember { mutableStateOf(false) }
     var editorProfile by remember { mutableStateOf<PlaylistProfile?>(null) }
     var editorCreateType by remember { mutableStateOf<ProfileType?>(null) }
     var showEditor by remember { mutableStateOf(false) }
@@ -545,7 +546,7 @@ private fun ManageProfilesContent(
     val addKidsRequester = remember { FocusRequester() }
     val addStandardRequester = remember { FocusRequester() }
     val detailsId = ProfileManagementPolicy.detailsProfileId(focusedProfileId, selectedProfileId, activeProfileId, profileIds)
-    val detailsProfile = profiles.firstOrNull { it.id == detailsId }
+    val detailsProfile = profiles.firstOrNull { it.id == detailsId }.takeUnless { addActionFocused }
     val adminProfile = profiles.firstOrNull { it.type == ProfileType.ADMIN }
 
     LaunchedEffect(profiles, restoreProfileId, showEditor, lockProfile, deleteProfile) {
@@ -581,6 +582,7 @@ private fun ManageProfilesContent(
                             .focusRequester(requester)
                             .onFocusChanged {
                                 if (it.isFocused) {
+                                    addActionFocused = false
                                     focusedProfileId = profile.id
                                     scope.launch { profileListState.animateScrollToItem(index) }
                                 }
@@ -611,9 +613,17 @@ private fun ManageProfilesContent(
                         },
                         modifier = Modifier
                             .focusRequester(if (profiles.isEmpty()) firstCardRequester else addKidsRequester)
+                            .onFocusChanged { focus ->
+                                if (focus.isFocused) {
+                                    addActionFocused = true
+                                    focusedProfileId = null
+                                    selectedProfileId = null
+                                }
+                            }
                             .focusProperties {
                                 if (profiles.isEmpty()) left = menuRequester
                                 right = addStandardRequester
+                                down = FocusRequester.Cancel
                             },
                     )
                 }
@@ -630,7 +640,17 @@ private fun ManageProfilesContent(
                         },
                         modifier = Modifier
                             .focusRequester(addStandardRequester)
-                            .focusProperties { left = if (profiles.isEmpty()) firstCardRequester else addKidsRequester },
+                            .onFocusChanged { focus ->
+                                if (focus.isFocused) {
+                                    addActionFocused = true
+                                    focusedProfileId = null
+                                    selectedProfileId = null
+                                }
+                            }
+                            .focusProperties {
+                                left = if (profiles.isEmpty()) firstCardRequester else addKidsRequester
+                                down = FocusRequester.Cancel
+                            },
                     )
                 }
             }

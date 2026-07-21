@@ -189,9 +189,8 @@ class YoutubeViewModel(
         }
     }
 
-    fun closePlayerToTrending() {
+    fun closePlayer() {
         _uiState.update { it.copy(playerSuggestions = emptyList(), suggestionsLoading = false, playerSuggestionsEndReached = false) }
-        loadCategory("trending")
     }
 
     fun recordPlayerBehavior(eventType: String, video: YoutubeVideoUi?) {

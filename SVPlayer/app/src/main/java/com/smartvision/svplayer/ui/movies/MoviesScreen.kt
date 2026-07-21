@@ -319,6 +319,7 @@ fun MoviesScreen(
             ) {
                 MovieCategoryList(
                     state = state,
+                    strings = strings,
                     selectedCategoryFocusRequester = selectedCategoryFocusRequester,
                     currentTabFocusRequester = currentTabFocusRequester,
                     listState = categoryListState,
@@ -386,21 +387,25 @@ fun MoviesScreen(
                         .fillMaxHeight(),
                 )
                 VodPreviewPanel(
-                    title = "Preview",
-                    content = state.selectedMovie?.toPreviewContent(),
+                    title = strings.liveTvPreview,
+                    content = state.selectedMovie?.toPreviewContent(
+                        subtitleOverride = state.selectedCategory?.localizedLabel(strings),
+                    ),
                     playFocusRequester = previewPlayFocusRequester,
                     previewFocusRequester = previewPlayerFocusRequester,
                     onPlay = { state.selectedMovie?.let { onWatchMovie(it.streamId) } },
                     onDetails = { state.selectedMovie?.let { onOpenMovieDetails(it.streamId) } },
                     onFavorite = { state.selectedMovie?.let(viewModel::toggleFavorite) },
                     onDeleteHistory = { state.selectedMovie?.let { movieToDelete = it } },
-                    showDeleteHistory = state.selectedCategory?.label == "Historique",
+                    showDeleteHistory = state.selectedCategoryId == HistoryMovieCategoryId,
                     showFreeAdsPreview = showFreeAdsPreview,
                     idleAdEnabled = state.movies.isNotEmpty(),
                     idleVastAdLoader = container.idleVastAdLoader,
                     monetizationManager = container.monetizationManager,
                     premiumPurchaseUrl = premiumPurchaseUrl,
                     tvCode = tvCode,
+                    premiumTitle = strings.premiumPurchaseTitle,
+                    premiumSubtitle = strings.premiumPreviewSubtitle,
                     seasonsLabel = strings.seasonsLabel,
                     episodesLoadingLabel = strings.episodesLoading,
                     episodesEmptyLabel = strings.episodesEmpty,
@@ -448,6 +453,7 @@ private fun MovieItemUi.toBehaviorContent(): BehaviorContent =
 @Composable
 private fun MovieCategoryList(
     state: MoviesScreenState,
+    strings: SmartVisionStrings,
     selectedCategoryFocusRequester: FocusRequester,
     currentTabFocusRequester: FocusRequester,
     listState: LazyListState,
@@ -491,7 +497,7 @@ private fun MovieCategoryList(
             ) { index, category ->
                 val brandSelected = category.isBrandGroup && category.brandGroup == state.selectedBrand
                 CatalogCategoryRow(
-                    label = category.label,
+                    label = category.localizedLabel(strings),
                     count = category.count,
                     icon = movieCategoryIcon(category.label).takeUnless { category.isBrandGroup },
                     selected = category.id == state.selectedCategoryId || brandSelected,
@@ -506,6 +512,12 @@ private fun MovieCategoryList(
             }
         }
     }
+}
+
+private fun MovieCategoryUi.localizedLabel(strings: SmartVisionStrings): String = when (id) {
+    FavoriteMovieCategoryId -> strings.favorites
+    HistoryMovieCategoryId -> strings.history
+    else -> label
 }
 
 private fun StreamingBrand.logoResource(): Int = when (this) {
@@ -696,11 +708,11 @@ private fun MovieList(
     }
 }
 
-private fun MovieItemUi.toPreviewContent(): VodPreviewContent =
+private fun MovieItemUi.toPreviewContent(subtitleOverride: String? = null): VodPreviewContent =
     VodPreviewContent(
         id = "movie-$streamId",
         title = title,
-        subtitle = subtitle,
+        subtitle = subtitleOverride ?: subtitle,
         imageUrl = posterUrl,
         backdropUrl = backdropUrl,
         streamUrl = streamUrl,

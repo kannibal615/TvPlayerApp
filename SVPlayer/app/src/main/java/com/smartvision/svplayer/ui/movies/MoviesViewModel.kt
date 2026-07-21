@@ -711,8 +711,8 @@ private const val MovieItemsPageSize = 72
 private const val TmdbMetadataUpdateBatchSize = 12
 private const val TmdbEnrichmentConcurrency = 2
 private const val InitialCategoryLimit = 20
-private const val FavoriteMovieCategoryId = "__favorites_movies__"
-private const val HistoryMovieCategoryId = "__history_movies__"
+internal const val FavoriteMovieCategoryId = "__favorites_movies__"
+internal const val HistoryMovieCategoryId = "__history_movies__"
 private const val AllMovieCategoryId = "__all_movies__"
 private val SpecialMovieCategoryIds = setOf(AllMovieCategoryId, FavoriteMovieCategoryId, HistoryMovieCategoryId)
 

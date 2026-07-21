@@ -329,6 +329,8 @@ class SeriesDetailViewModel(
 @Composable
 fun SeriesDetailRoute(
     seriesId: Int,
+    returnFocusEpisodeId: Int? = null,
+    onReturnFocusConsumed: () -> Unit = {},
     currentRoute: String,
     tabs: List<HomeHeaderTab>,
     onNavigate: (String) -> Unit,
@@ -399,6 +401,8 @@ fun SeriesDetailRoute(
     }
     SeriesDetailScreen(
         state = state,
+        returnFocusEpisodeId = returnFocusEpisodeId,
+        onReturnFocusConsumed = onReturnFocusConsumed,
         currentRoute = currentRoute,
         tabs = tabs,
         onNavigate = onNavigate,
@@ -430,6 +434,8 @@ fun SeriesDetailRoute(
 @Composable
 private fun SeriesDetailScreen(
     state: SeriesDetailUiState,
+    returnFocusEpisodeId: Int?,
+    onReturnFocusConsumed: () -> Unit,
     currentRoute: String,
     tabs: List<HomeHeaderTab>,
     onNavigate: (String) -> Unit,
@@ -448,15 +454,19 @@ private fun SeriesDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     val firstEpisodeFocusRequester = remember { FocusRequester() }
+    val episodeFocusRequesters = remember(state.visibleEpisodes.map { it.episodeId }) {
+        state.visibleEpisodes.associate { episode -> episode.episodeId to FocusRequester() }
+    }
     val seasonFocusRequester = remember { FocusRequester() }
     val retryFocusRequester = remember { FocusRequester() }
     val currentTabFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(state.loading, state.errorMessage, state.selectedSeason, state.seasons) {
+    LaunchedEffect(state.loading, state.errorMessage, state.selectedSeason, state.seasons, returnFocusEpisodeId) {
         if (state.loading) {
             delay(80)
             runCatching { currentTabFocusRequester.requestFocus() }
             return@LaunchedEffect
         }
+        if (returnFocusEpisodeId != null) return@LaunchedEffect
         delay(120)
         runCatching {
             when {
@@ -464,6 +474,14 @@ private fun SeriesDetailScreen(
                 else -> seasonFocusRequester.requestFocus()
             }
         }
+    }
+
+    LaunchedEffect(returnFocusEpisodeId, state.visibleEpisodes.map { it.episodeId }) {
+        val episodeId = returnFocusEpisodeId ?: return@LaunchedEffect
+        val requester = episodeFocusRequesters[episodeId] ?: return@LaunchedEffect
+        delay(140)
+        runCatching { requester.requestFocus() }
+        onReturnFocusConsumed()
     }
 
     DetailBackground(imageUrl = state.backgroundUrl, modifier = modifier) {
@@ -539,6 +557,7 @@ private fun SeriesDetailScreen(
                     loading = state.loading,
                     errorMessage = state.errorMessage,
                     firstEpisodeFocusRequester = firstEpisodeFocusRequester,
+                    episodeFocusRequesters = episodeFocusRequesters,
                     onRetry = onRetry,
                     onEpisode = { episode -> onWatchEpisode(episode.episodeId) },
                     modifier = Modifier
@@ -685,6 +704,7 @@ private fun SeriesEpisodeList(
     loading: Boolean,
     errorMessage: String?,
     firstEpisodeFocusRequester: FocusRequester,
+    episodeFocusRequesters: Map<Int, FocusRequester>,
     onRetry: () -> Unit,
     onEpisode: (SeriesDetailEpisodeUi) -> Unit,
     modifier: Modifier = Modifier,
@@ -724,11 +744,8 @@ private fun SeriesEpisodeList(
                 items(episodes, key = { it.episodeId }) { episode ->
                     DetailEpisodeRow(
                         episode = episode,
-                        focusRequester = if (episode.episodeId == episodes.first().episodeId) {
-                            firstEpisodeFocusRequester
-                        } else {
-                            null
-                        },
+                        focusRequester = episodeFocusRequesters[episode.episodeId]
+                            ?: firstEpisodeFocusRequester.takeIf { episode.episodeId == episodes.first().episodeId },
                         onClick = { onEpisode(episode) },
                     )
                 }

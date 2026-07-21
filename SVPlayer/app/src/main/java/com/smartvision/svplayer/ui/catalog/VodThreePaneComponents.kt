@@ -633,6 +633,8 @@ fun VodPreviewPanel(
     monetizationManager: MonetizationManager? = null,
     premiumPurchaseUrl: String = "",
     tvCode: String = "",
+    premiumTitle: String = "Upgrade to SmartVision Premium",
+    premiumSubtitle: String = "Scan the QR code with your phone",
     seriesEpisodes: List<VodPreviewEpisode> = emptyList(),
     selectedSeriesEpisodeId: Int? = null,
     onSeriesEpisodeSelected: (Int) -> Unit = {},
@@ -720,6 +722,8 @@ fun VodPreviewPanel(
                     VodPremiumPreviewCard(
                         purchaseUrl = premiumPurchaseUrl,
                         tvCode = tvCode,
+                        title = premiumTitle,
+                        subtitle = premiumSubtitle,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -1128,6 +1132,8 @@ private fun VodIdlePreviewPrompt(
 private fun VodPremiumPreviewCard(
     purchaseUrl: String,
     tvCode: String,
+    title: String,
+    subtitle: String,
     modifier: Modifier = Modifier,
 ) {
     val bitmap = remember(purchaseUrl) { createVodPreviewQrBitmap(purchaseUrl.ifBlank { "https://smartvisions.net" }, 384) }
@@ -1178,7 +1184,7 @@ private fun VodPremiumPreviewCard(
             )
         }
         Text(
-            text = "Passer Premium",
+            text = title,
             color = gold,
             style = CatalogPreviewTitleStyle.copy(fontSize = 19.sp, lineHeight = 23.sp),
             fontWeight = FontWeight.Light,
@@ -1187,7 +1193,7 @@ private fun VodPremiumPreviewCard(
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            text = "Scannez le QR code depuis votre telephone",
+            text = subtitle,
             color = SmartVisionColors.TextPrimary,
             style = CatalogMetaStyle.copy(fontSize = 13.sp, lineHeight = 17.sp),
             textAlign = TextAlign.Center,

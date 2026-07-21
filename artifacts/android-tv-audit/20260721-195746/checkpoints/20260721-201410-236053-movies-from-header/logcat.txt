@@ -1,0 +1,305 @@
+--------- beginning of main
+07-21 20:09:34.785 15386 17471 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-21 20:09:34.845 15386 17482 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-21 20:09:36.851 15386 15403 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 1 line
+07-21 20:09:39.829 15386 17471 I chatty  : uid=10247(com.smartvision.svplayer) expire 2 lines
+07-21 20:09:39.945 15386 17482 I chatty  : uid=10247(com.smartvision.svplayer) expire 2 lines
+07-21 20:09:41.507 15386 15386 I chatty  : uid=10247(com.smartvision.svplayer) expire 3 lines
+07-21 20:09:49.905 15386 17471 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-21 20:09:50.016 15386 17482 I chatty  : uid=10247(com.smartvision.svplayer) expire 1 line
+07-21 20:09:51.902 15386 15403 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 1 line
+07-21 20:09:54.938 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 4714
+07-21 20:09:55.068 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:09:56.553 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:09:59.983 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 4486
+07-21 20:10:00.127 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:10:01.590 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:10:05.056 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 4160
+07-21 20:10:05.180 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:10:06.635 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:10:07.013 15386 15403 I vision.svplaye: Background concurrent copying GC freed 207318(5MB) AllocSpace objects, 1(20KB) LOS objects, 12% free, 40MB/46MB, paused 167us total 295.838ms
+07-21 20:10:10.109 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 5152
+07-21 20:10:10.240 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:10:11.644 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:10:15.143 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 4545
+07-21 20:10:15.286 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:10:16.649 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:10:20.185 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 4671
+07-21 20:10:20.330 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:10:21.663 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:10:22.027 15386 15403 I vision.svplaye: Background concurrent copying GC freed 195800(5MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 41MB/47MB, paused 167us total 289.784ms
+07-21 20:10:25.221 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 4460
+07-21 20:10:25.344 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:10:26.677 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:10:30.261 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 5709
+07-21 20:10:30.445 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:10:31.727 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:10:35.299 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 4290
+07-21 20:10:35.498 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:10:36.718 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:10:37.075 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214592(6MB) AllocSpace objects, 1(20KB) LOS objects, 12% free, 41MB/47MB, paused 164us total 277.284ms
+07-21 20:10:40.381 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 4504
+07-21 20:10:40.512 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:10:41.761 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:10:45.429 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 3985
+07-21 20:10:45.554 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:10:46.765 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:10:50.503 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 3626
+07-21 20:10:50.555 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:10:51.791 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:10:52.143 15386 15403 I vision.svplaye: Background concurrent copying GC freed 203443(5MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 41MB/47MB, paused 175us total 276.067ms
+07-21 20:10:55.541 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 4938
+07-21 20:10:55.613 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:10:56.814 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:11:00.625 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 4255
+07-21 20:11:00.665 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:11:01.825 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:11:05.664 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 4150
+07-21 20:11:05.726 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:11:06.838 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:11:08.101 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214873(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 40MB/46MB, paused 172us total 285.397ms
+07-21 20:11:10.706 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 5591
+07-21 20:11:10.828 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:11:11.860 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:11:15.742 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 5283
+07-21 20:11:15.885 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:11:16.896 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:11:20.818 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 3990
+07-21 20:11:20.899 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:11:21.923 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:11:22.278 15386 15403 I vision.svplaye: Background concurrent copying GC freed 200876(5MB) AllocSpace objects, 1(20KB) LOS objects, 12% free, 41MB/47MB, paused 168us total 279.661ms
+07-21 20:11:25.869 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 4400
+07-21 20:11:25.943 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:11:26.937 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:11:30.908 15386 17471 I MediaCodecLogger: 15386.HW.video.avc.bitrateInKbps = 3598
+07-21 20:11:30.990 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:11:31.935 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:11:32.855 15386 17471 I MediaCodec: [OMX.MTK.VIDEO.DECODER.AVC] setting surface generation to 15755268
+07-21 20:11:33.001 15386 15386 I SVStartup: state localReady=true checking=false activated=true playableSource=true route=live_tv
+07-21 20:11:33.581 15386 15403 I vision.svplaye: NativeAlloc concurrent copying GC freed 151694(4MB) AllocSpace objects, 4(208KB) LOS objects, 12% free, 42MB/48MB, paused 1.797ms total 367.909ms
+07-21 20:11:33.699 15386 15386 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-21 20:11:35.019 15386 15386 I Choreographer: Skipped 36 frames!  The application may be doing too much work on its main thread.
+07-21 20:11:35.061 15386 17471 I MediaCodec: [OMX.MTK.VIDEO.DECODER.AVC] setting surface generation to 15755269
+07-21 20:11:35.067 15386 17471 I MediaCodecLogger: the latest buffer is 2222 old with packageName com.smartvision.svplayer. Possible resume detected
+07-21 20:11:35.068 15386 17471 I MediaCodecLogger: 15386.HW.video.avc Dropped 60 frames
+07-21 20:11:35.104 15386 15403 I vision.svplaye: Background concurrent copying GC freed 148826(5MB) AllocSpace objects, 2(48KB) LOS objects, 12% free, 42MB/48MB, paused 170us total 337.070ms
+07-21 20:11:35.942 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4809
+07-21 20:11:36.037 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:11:37.003 15386 15403 I vision.svplaye: Background concurrent copying GC freed 189903(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 198us total 379.612ms
+07-21 20:11:38.774 15386 15403 I vision.svplaye: Background concurrent copying GC freed 216851(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 276us total 347.056ms
+07-21 20:11:40.328 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214492(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 278us total 316.059ms
+07-21 20:11:40.984 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 5841
+07-21 20:11:41.096 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:11:41.893 15386 15403 I vision.svplaye: Background concurrent copying GC freed 217307(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 234us total 318.305ms
+07-21 20:11:43.463 15386 15403 I vision.svplaye: Background concurrent copying GC freed 217180(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 196us total 351.069ms
+07-21 20:11:44.999 15386 15403 I vision.svplaye: Background concurrent copying GC freed 220619(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 214us total 313.618ms
+07-21 20:11:46.022 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4191
+07-21 20:11:46.153 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:11:46.566 15386 15403 I vision.svplaye: Background concurrent copying GC freed 215613(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 185us total 318.565ms
+07-21 20:11:48.100 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211354(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 226us total 343.774ms
+07-21 20:11:49.820 15386 15403 I vision.svplaye: Background concurrent copying GC freed 218068(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 307us total 363.885ms
+07-21 20:11:51.057 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4630
+07-21 20:11:51.167 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:11:51.394 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211375(6MB) AllocSpace objects, 1(20KB) LOS objects, 12% free, 43MB/49MB, paused 412us total 319.248ms
+07-21 20:11:52.957 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211006(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 171us total 311.085ms
+07-21 20:11:54.505 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212760(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 169us total 307.774ms
+07-21 20:11:56.092 15386 15403 I vision.svplaye: Background concurrent copying GC freed 207909(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 167us total 332.318ms
+07-21 20:11:56.097 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4784
+07-21 20:11:56.210 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:11:57.355 15386 15415 I vision.svplaye: Waiting for a blocking GC ProfileSaver
+07-21 20:11:57.677 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212216(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 290us total 321.676ms
+07-21 20:11:57.677 15386 15415 I vision.svplaye: WaitForGcToComplete blocked ProfileSaver on HeapTrim for 321.898ms
+07-21 20:11:59.704 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212834(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 224us total 351.419ms
+07-21 20:12:01.134 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4033
+07-21 20:12:01.217 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:12:01.593 15386 15403 I vision.svplaye: Background concurrent copying GC freed 208291(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 190us total 308.185ms
+07-21 20:12:03.291 15386 15403 I vision.svplaye: Background concurrent copying GC freed 210604(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 238us total 323.921ms
+07-21 20:12:05.029 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214222(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 186us total 312.775ms
+07-21 20:12:06.226 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4521
+07-21 20:12:06.268 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:12:06.627 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211843(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 195us total 343.634ms
+07-21 20:12:08.463 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214705(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 211us total 382.872ms
+07-21 20:12:10.167 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214949(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 205us total 334.116ms
+07-21 20:12:11.267 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 3856
+07-21 20:12:11.319 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:12:11.762 15386 15403 I vision.svplaye: Background concurrent copying GC freed 213139(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 160us total 321.162ms
+07-21 20:12:13.350 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212551(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 165us total 329.587ms
+07-21 20:12:15.433 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211213(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 208us total 536.420ms
+07-21 20:12:16.304 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 5585
+07-21 20:12:16.359 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:12:16.371 15386 16020 W AmazonKeyEventLogging: remote_perf key event latency detected [Source: ViewRootImpl, KeyCode: KEYCODE_XXXX, IsDown: 1, Repeat: 0, EventTime: 13893954, Latency: 229, DeviceId: -1, AppPackage: com.smartvision.svplayer]
+07-21 20:12:16.418 15386 16020 W AmazonKeyEventLogging: remote_perf key event latency detected [Source: ViewRootImpl, KeyCode: KEYCODE_XXXX, IsDown: 0, Repeat: 0, EventTime: 13893954, Latency: 275, DeviceId: -1, AppPackage: com.smartvision.svplayer]
+07-21 20:12:17.694 15386 15403 I vision.svplaye: Background concurrent copying GC freed 216578(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 260us total 327.660ms
+07-21 20:12:19.294 15386 15403 I vision.svplaye: Background concurrent copying GC freed 230557(7MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 197us total 310.496ms
+07-21 20:12:21.088 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212001(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 212us total 321.203ms
+07-21 20:12:21.341 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4026
+07-21 20:12:21.363 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:12:22.704 15386 15403 I vision.svplaye: Background concurrent copying GC freed 201383(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 179us total 292.413ms
+07-21 20:12:24.468 15386 15403 I vision.svplaye: Background concurrent copying GC freed 209732(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 191us total 294.860ms
+07-21 20:12:26.381 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4663
+07-21 20:12:26.405 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:12:26.467 15386 15403 I vision.svplaye: Background concurrent copying GC freed 194797(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 334us total 329.491ms
+07-21 20:12:28.029 15386 15403 I vision.svplaye: Background concurrent copying GC freed 215850(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 183us total 310.557ms
+07-21 20:12:29.880 15386 15403 I vision.svplaye: Background concurrent copying GC freed 207581(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 213us total 478.355ms
+07-21 20:12:29.990 15386 16020 W AmazonKeyEventLogging: remote_perf key event latency detected [Source: ViewRootImpl, KeyCode: KEYCODE_XXXX, IsDown: 0, Repeat: 0, EventTime: 13907581, Latency: 221, DeviceId: -1, AppPackage: com.smartvision.svplayer]
+07-21 20:12:31.422 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4350
+07-21 20:12:31.457 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:12:31.492 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212852(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 203us total 320.225ms
+07-21 20:12:33.156 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212250(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 201us total 319.076ms
+07-21 20:12:34.933 15386 15403 I vision.svplaye: Background concurrent copying GC freed 209372(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 259us total 298.689ms
+07-21 20:12:36.482 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:12:36.501 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 3463
+07-21 20:12:36.527 15386 15403 I vision.svplaye: Background concurrent copying GC freed 215557(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 172us total 312.131ms
+07-21 20:12:38.932 15386 15403 I vision.svplaye: Background concurrent copying GC freed 225917(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 286us total 697.974ms
+07-21 20:12:41.039 15386 15403 I vision.svplaye: Background concurrent copying GC freed 227036(7MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 311us total 369.353ms
+07-21 20:12:41.551 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4199
+07-21 20:12:41.552 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:12:42.826 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212269(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 526us total 335.200ms
+07-21 20:12:44.533 15386 15403 I vision.svplaye: Background concurrent copying GC freed 215201(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 262us total 343.118ms
+07-21 20:12:46.086 15386 15403 I vision.svplaye: Background concurrent copying GC freed 216360(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 193us total 300.525ms
+07-21 20:12:46.563 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:12:46.583 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4620
+07-21 20:12:47.831 15386 15403 I vision.svplaye: Background concurrent copying GC freed 215252(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 209us total 377.916ms
+07-21 20:12:49.463 15386 15403 I vision.svplaye: Background concurrent copying GC freed 216664(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 190us total 302.320ms
+07-21 20:12:51.011 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214783(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 530us total 292.395ms
+07-21 20:12:51.612 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:12:51.622 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4372
+07-21 20:12:52.597 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211232(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 208us total 304.804ms
+07-21 20:12:54.277 15386 15403 I vision.svplaye: Background concurrent copying GC freed 205379(6MB) AllocSpace objects, 1(20KB) LOS objects, 12% free, 42MB/48MB, paused 170us total 300.894ms
+07-21 20:12:55.875 15386 15403 I vision.svplaye: Background concurrent copying GC freed 209514(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 282us total 329.848ms
+07-21 20:12:56.647 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:12:56.655 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 5809
+07-21 20:12:57.447 15386 15403 I vision.svplaye: Background concurrent copying GC freed 209104(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 238us total 315.677ms
+07-21 20:12:59.055 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212927(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 177us total 302.355ms
+07-21 20:13:00.621 15386 15403 I vision.svplaye: Background concurrent copying GC freed 210160(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 276us total 312.968ms
+07-21 20:13:01.698 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4138
+07-21 20:13:01.708 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:13:02.166 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212436(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 184us total 290.813ms
+07-21 20:13:03.769 15386 15403 I vision.svplaye: Background concurrent copying GC freed 206307(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 439us total 304.350ms
+07-21 20:13:05.374 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211022(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 695us total 315.831ms
+07-21 20:13:06.764 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:13:06.783 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4182
+07-21 20:13:06.988 15386 15403 I vision.svplaye: Background concurrent copying GC freed 213651(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 204us total 307.916ms
+07-21 20:13:08.565 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211529(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 42MB/48MB, paused 204us total 318.532ms
+07-21 20:13:09.918 15386 15403 I vision.svplaye: Background concurrent copying GC freed 172195(5MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 180us total 311.606ms
+07-21 20:13:11.700 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211507(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 193us total 294.316ms
+07-21 20:13:11.816 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:13:11.855 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4600
+07-21 20:13:13.257 15386 15403 I vision.svplaye: Background concurrent copying GC freed 208807(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 291us total 308.634ms
+07-21 20:13:14.835 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212180(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 176us total 298.073ms
+07-21 20:13:16.457 15386 15403 I vision.svplaye: Background concurrent copying GC freed 207151(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 212us total 324.790ms
+07-21 20:13:16.840 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:13:16.911 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4348
+07-21 20:13:18.067 15386 15415 I vision.svplaye: Waiting for a blocking GC ProfileSaver
+07-21 20:13:18.122 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211417(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 199us total 339.755ms
+07-21 20:13:18.122 15386 15415 I vision.svplaye: WaitForGcToComplete blocked ProfileSaver on HeapTrim for 55.336ms
+07-21 20:13:19.716 15386 15403 I vision.svplaye: Background concurrent copying GC freed 210386(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 212us total 336.080ms
+07-21 20:13:21.647 15386 16020 W AmazonKeyEventLogging: remote_perf key event latency detected [Source: ViewRootImpl, KeyCode: KEYCODE_XXXX, IsDown: 1, Repeat: 0, EventTime: 13959232, Latency: 227, DeviceId: -1, AppPackage: com.smartvision.svplayer]
+07-21 20:13:21.757 15386 16020 W AmazonKeyEventLogging: remote_perf key event latency detected [Source: ViewRootImpl, KeyCode: KEYCODE_XXXX, IsDown: 0, Repeat: 0, EventTime: 13959232, Latency: 337, DeviceId: -1, AppPackage: com.smartvision.svplayer]
+07-21 20:13:21.899 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:13:21.912 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211538(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 218us total 431.434ms
+07-21 20:13:21.981 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4993
+07-21 20:13:24.139 15386 15403 I vision.svplaye: Background concurrent copying GC freed 201398(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 182us total 476.897ms
+07-21 20:13:25.969 15386 15403 I vision.svplaye: Background concurrent copying GC freed 220439(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 582us total 380.937ms
+07-21 20:13:26.918 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:13:27.061 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 5049
+07-21 20:13:27.675 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212923(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 220us total 312.988ms
+07-21 20:13:29.236 15386 15403 I vision.svplaye: Background concurrent copying GC freed 213900(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 169us total 304.270ms
+07-21 20:13:31.104 15386 15403 I vision.svplaye: Background concurrent copying GC freed 215097(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 202us total 379.545ms
+07-21 20:13:31.969 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:13:32.149 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4628
+07-21 20:13:32.644 15386 15403 I vision.svplaye: Background concurrent copying GC freed 213349(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 227us total 298.784ms
+07-21 20:13:34.220 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214303(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 207us total 301.018ms
+07-21 20:13:35.751 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214307(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 210us total 294.685ms
+07-21 20:13:37.039 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:13:37.192 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4719
+07-21 20:13:37.463 15386 15403 I vision.svplaye: Background concurrent copying GC freed 208785(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 189us total 359.476ms
+07-21 20:13:39.050 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211566(6MB) AllocSpace objects, 1(20KB) LOS objects, 12% free, 43MB/49MB, paused 440us total 298.734ms
+07-21 20:13:40.622 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211307(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 210us total 293.710ms
+07-21 20:13:42.053 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 94
+07-21 20:13:42.197 15386 15403 I vision.svplaye: Background concurrent copying GC freed 209016(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 172us total 289.857ms
+07-21 20:13:42.224 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 3435
+07-21 20:13:43.725 15386 15403 I vision.svplaye: Background concurrent copying GC freed 207027(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 335us total 291.779ms
+07-21 20:13:45.313 15386 15403 I vision.svplaye: Background concurrent copying GC freed 206227(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 171us total 301.855ms
+07-21 20:13:46.924 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212834(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 172us total 309.251ms
+07-21 20:13:47.103 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:13:47.263 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 3957
+07-21 20:13:48.498 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211163(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 218us total 311.152ms
+07-21 20:13:50.087 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211008(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 181us total 303.801ms
+07-21 20:13:51.640 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211320(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 191us total 303.674ms
+07-21 20:13:52.133 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:13:52.302 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4446
+07-21 20:13:53.197 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212740(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 174us total 291.629ms
+07-21 20:13:54.776 15386 15403 I vision.svplaye: Background concurrent copying GC freed 208889(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 248us total 299.639ms
+07-21 20:13:56.326 15386 15403 I vision.svplaye: Background concurrent copying GC freed 210635(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 180us total 317.191ms
+07-21 20:13:57.146 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:13:57.339 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4634
+07-21 20:13:57.895 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211996(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 190us total 302.684ms
+07-21 20:13:59.435 15386 15403 I vision.svplaye: Background concurrent copying GC freed 208205(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 180us total 289.770ms
+07-21 20:14:01.041 15386 15403 I vision.svplaye: Background concurrent copying GC freed 210030(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 174us total 293.634ms
+07-21 20:14:02.174 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:14:02.428 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 5599
+07-21 20:14:02.611 15386 15403 I vision.svplaye: Background concurrent copying GC freed 209432(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 166us total 294.803ms
+07-21 20:14:04.209 15386 15403 I vision.svplaye: Background concurrent copying GC freed 208497(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 335us total 303.054ms
+07-21 20:14:05.804 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211659(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 196us total 330.530ms
+07-21 20:14:07.244 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:14:07.349 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211025(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 159us total 289.195ms
+07-21 20:14:07.467 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4739
+07-21 20:14:08.952 15386 15403 I vision.svplaye: Background concurrent copying GC freed 210569(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 208us total 333.452ms
+07-21 20:14:10.518 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211662(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 216us total 305.954ms
+07-21 20:14:12.155 15386 15403 I vision.svplaye: Background concurrent copying GC freed 210394(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 157us total 333.542ms
+07-21 20:14:12.300 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:14:12.500 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4749
+07-21 20:14:13.979 15386 15403 I vision.svplaye: Background concurrent copying GC freed 210136(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 196us total 312.586ms
+07-21 20:14:15.578 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212642(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 329us total 319.591ms
+07-21 20:14:17.351 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:14:17.353 15386 15403 I vision.svplaye: Background concurrent copying GC freed 213526(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 268us total 331.505ms
+07-21 20:14:17.546 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4405
+07-21 20:14:18.971 15386 15403 I vision.svplaye: Background concurrent copying GC freed 203473(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 175us total 310.826ms
+07-21 20:14:20.663 15386 15403 I vision.svplaye: Background concurrent copying GC freed 207994(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 300us total 377.131ms
+07-21 20:14:22.246 15386 15403 I vision.svplaye: Background concurrent copying GC freed 209434(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 194us total 293.486ms
+07-21 20:14:22.408 15386 17482 I MediaCodecLogger: 15386.SW.audio.mp4a.bitrateInKbps = 93
+07-21 20:14:22.582 15386 17471 I MediaCodecLogger: W.mcfd54.15386.HW.video.avc.bitrateInKbps = 4722
+07-21 20:14:23.818 15386 15403 I vision.svplaye: Background concurrent copying GC freed 210541(6MB) AllocSpace objects, 0(0B) LOS objects, 12% free, 43MB/49MB, paused 170us total 314.582ms
+07-21 20:14:24.726 15386 15697 I MediaCodecLogger: Flushing: W.mcfd54.15386.HW.video.avc.framerate = 25.000 fps
+07-21 20:14:24.748 15386 15386 I SVStartup: state localReady=true checking=false activated=true playableSource=true route=movies
+07-21 20:14:24.773 15386 17471 I MediaCodecLogger: 684 frames were dropped in SurfaceFlinger or HWC.
+07-21 20:14:24.783 15386 15386 W ExoPlayer:Audio: type=1400 audit(0.0:1185): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=12650 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-21 20:14:24.794 15386 18967 E libc    : Access denied finding property "media.metrics.enabled"
+07-21 20:14:24.895 15386 15697 I MediaCodecLogger: 15386.HW.video.avc.TotalVideoPlaybackTimeMs = 340280
+07-21 20:14:24.895 15386 15697 I MediaCodecLogger: 15386.HW.video.avc.StreamAvgFramerate = 25.000
+07-21 20:14:24.895 15386 15697 I MediaCodecLogger: 15386.HW.video.avc.videoResolution.FHD = 340280
+07-21 20:14:24.895 15386 15697 I MediaCodecLogger: 15386.HW.video.avc.StreamFramerate = 25.000
+07-21 20:14:24.895 15386 15697 I MediaCodecLogger: 15386.HW.video.avc.AspectRatio = 1.778
+07-21 20:14:24.895 15386 15697 I MediaCodecLogger: 15386.HW.video.avc.TwoConsecutiveFramesDropped = 2
+07-21 20:14:24.895 15386 15697 I MediaCodecLogger: 15386.HW.video.avc.FiveConsecutiveFramesDropped = 1
+07-21 20:14:24.895 15386 15697 I MediaCodecLogger: 15386.HW.video.avc.TenConsecutiveFramesDropped = 5
+07-21 20:14:24.896 15386 15697 I MediaCodecLogger: 15386.HW.video.avc.TotalFramesDropped = 744
+07-21 20:14:24.896 15386 15697 I MediaCodecLogger: 15386.HW.video.avc.MaxConsecutiveFramesDropped = 54
+07-21 20:14:24.896 15386 15697 I MediaCodecLogger: 15386.HW.video.avc.ASAP-P5Ms = 311
+07-21 20:14:24.896 15386 15697 I MediaCodecLogger: 15386.HW.video.avc.ASAP-P2Ms = 20
+07-21 20:14:24.896 15386 15697 I MediaCodecLogger: 15386.HW.video.avc.ASAP-P3Ms = 46
+07-21 20:14:24.896 15386 15697 I MediaCodecLogger: 15386.HW.video.avc.FirstFrameReadyMs = 142
+07-21 20:14:24.896 15386 15697 I MediaCodecLogger: 15386.HW.video.avc.StreamAvgBitrateInKbps = 4527
+07-21 20:14:24.893 15386 15386 W ExoPlayer:Playb: type=1400 audit(0.0:1186): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=12650 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-21 20:14:24.903 15386 15697 E libc    : Access denied finding property "media.metrics.enabled"
+07-21 20:14:24.917 15386 15697 I MediaCodecLogger: 15386.SW.audio.mp4a.TotalAudioPlaybackTimeMs = 340372
+07-21 20:14:24.917 15386 15697 I MediaCodecLogger: 15386.SW.audio.mp4a.StreamAvgBitrateInKbps = 93
+07-21 20:14:24.918 15386 15697 E libc    : Access denied finding property "media.metrics.enabled"
+07-21 20:14:24.913 15386 15386 W ExoPlayer:Playb: type=1400 audit(0.0:1187): avc: denied { read } for name="u:object_r:media_prop:s0" dev="tmpfs" ino=12650 scontext=u:r:untrusted_app:s0:c247,c256,c512,c768 tcontext=u:object_r:media_prop:s0 tclass=file permissive=0
+07-21 20:14:25.109 15386 15393 I vision.svplaye: JIT allocated 54KB for stack maps of void com.smartvision.svplayer.ui.movies.MoviesScreenKt.MoviesScreen(com.smartvision.svplayer.ui.i18n.SmartVisionStrings, java.lang.String, java.util.List, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, boolean, boolean, int, java.lang.Integer, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function1, androidx.compose.ui.Modifier, androidx.compose.runtime.Composer, int, int, int)
+07-21 20:14:25.116 15386 15393 I vision.svplaye: Compiler allocated 5MB to compile void com.smartvision.svplayer.ui.movies.MoviesScreenKt.MoviesScreen(com.smartvision.svplayer.ui.i18n.SmartVisionStrings, java.lang.String, java.util.List, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, boolean, boolean, int, java.lang.Integer, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function1, androidx.compose.ui.Modifier, androidx.compose.runtime.Composer, int, int, int)
+07-21 20:14:25.350 15386 15403 I vision.svplaye: NativeAlloc concurrent copying GC freed 134570(4MB) AllocSpace objects, 266(17MB) LOS objects, 18% free, 26MB/32MB, paused 179us total 299.177ms
+07-21 20:14:25.384 15386 15386 I Choreographer: Skipped 37 frames!  The application may be doing too much work on its main thread.
+07-21 20:14:25.411 15386 15489 I OpenGLRenderer: Davey! duration=764ms; Flags=0, IntendedVsync=14022459731598, Vsync=14022559831698, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=14022565135911, AnimationStart=14022565167449, PerformTraversalsStart=14022978498988, DrawStart=14022978869065, SyncQueued=14023174995449, SyncStart=14023175100526, IssueDrawCommandsStart=14023176212141, SwapBuffers=14023222866757, FrameCompleted=14023223963911, DequeueBufferDuration=337000, QueueBufferDuration=453000, 
+07-21 20:14:25.620 15386 15489 I OpenGLRenderer: Davey! duration=856ms; Flags=0, IntendedVsync=14022576465956, Vsync=14023193749906, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=14023198076911, AnimationStart=14023198111449, PerformTraversalsStart=14023386648680, DrawStart=14023386956449, SyncQueued=14023409863065, SyncStart=14023409997988, IssueDrawCommandsStart=14023411560680, SwapBuffers=14023432446680, FrameCompleted=14023433393142, DequeueBufferDuration=359000, QueueBufferDuration=344000, 
+07-21 20:14:26.059 15386 15386 I SmartVisionAds: Statut monetisation actuel: FREE_WITH_ADS
+07-21 20:14:26.821 15386 15403 I vision.svplaye: Background concurrent copying GC freed 122512(5MB) AllocSpace objects, 4(668KB) LOS objects, 17% free, 27MB/33MB, paused 204us total 336.811ms
+07-21 20:14:28.149 15386 15403 I vision.svplaye: Background concurrent copying GC freed 247618(9MB) AllocSpace objects, 7(320KB) LOS objects, 18% free, 25MB/31MB, paused 490us total 445.692ms
+07-21 20:14:29.872 15386 15403 I vision.svplaye: Background concurrent copying GC freed 226604(7MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 200us total 280.495ms
+07-21 20:14:31.622 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212189(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 197us total 280.960ms
+07-21 20:14:33.369 15386 15403 I vision.svplaye: Background concurrent copying GC freed 215876(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 208us total 276.242ms
+07-21 20:14:35.113 15386 15403 I vision.svplaye: Background concurrent copying GC freed 210809(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 236us total 269.115ms
+07-21 20:14:36.856 15386 15403 I vision.svplaye: Background concurrent copying GC freed 213061(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 180us total 268.143ms
+07-21 20:14:38.594 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211590(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 199us total 269.975ms
+07-21 20:14:40.348 15386 15403 I vision.svplaye: Background concurrent copying GC freed 209927(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 229us total 271.313ms

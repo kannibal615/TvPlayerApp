@@ -606,11 +606,7 @@ fun HeaderTabButton(
         },
         label = "headerFocusSurfaceAlpha",
     ) { focused ->
-        when {
-            focused -> 1f
-            active -> 0.82f
-            else -> 0f
-        }
+        if (focused) 1f else 0f
     }
     val labelAlpha by transition.animateFloat(
         transitionSpec = {
@@ -618,11 +614,7 @@ fun HeaderTabButton(
         },
         label = "headerMenuLabelAlpha",
     ) { focused ->
-        when {
-            focused -> 1f
-            active -> 0.92f
-            else -> 0f
-        }
+        if (focused) 1f else 0f
     }
     val labelOffset by transition.animateDp(
         transitionSpec = {
@@ -734,6 +726,15 @@ fun HeaderTabButton(
                             translationY = labelOffsetPx
                         },
                 )
+                if (active && !isFocused) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .width(18.dp)
+                            .height(2.dp)
+                            .background(focusStyle.activeAccent, RoundedCornerShape(50)),
+                    )
+                }
             }
         }
         if (tab.warning) {

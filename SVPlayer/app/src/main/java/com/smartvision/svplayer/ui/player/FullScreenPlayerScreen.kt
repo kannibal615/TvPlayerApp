@@ -187,6 +187,7 @@ private const val MinimumLiveHistoryMs = 5_000L
 private const val PlayerReleaseDelayMs = 80L
 private const val ResumePromptMinimumPositionMs = 1_000L
 private const val NextEpisodeResumeGuardMs = 15_000L
+private const val VodStallCheckMs = 12_000L
 
 internal val LiveAspectModes = listOf(
     LiveAspectMode("Auto", AspectRatioFrameLayout.RESIZE_MODE_FIT),
@@ -1005,6 +1006,14 @@ private fun FullScreenPlayerScreen(
         showOverlay(requestPlayFocus = true)
     }
 
+    fun retryPlayback() {
+        errorText = null
+        buffering = true
+        fallbackTried = false
+        stalledRefreshCount = 0
+        prepareContentWithoutAd()
+    }
+
     fun refreshStalledPlayback() {
         if (adGateActive || exiting) return
         if (playback.contentType == UserContentType.LocalMedia) {
@@ -1756,7 +1765,12 @@ private fun FullScreenPlayerScreen(
     LaunchedEffect(buffering, playback.url, adGateActive, exiting) {
         if (!buffering || adGateActive || exiting) return@LaunchedEffect
         val startPosition = player.currentPosition.coerceAtLeast(0L)
-        delay(bufferConfig.stalledPlaybackTimeoutMs)
+        val stallCheckMs = if (playback.contentType in setOf(UserContentType.Movie, UserContentType.Episode)) {
+            minOf(bufferConfig.stalledPlaybackTimeoutMs, VodStallCheckMs)
+        } else {
+            bufferConfig.stalledPlaybackTimeoutMs
+        }
+        delay(stallCheckMs)
         val currentPosition = player.currentPosition.coerceAtLeast(0L)
         val stillStalled = buffering &&
             !adGateActive &&
@@ -1768,7 +1782,21 @@ private fun FullScreenPlayerScreen(
                 message = "Flux bloque en buffering",
                 context = "contentType=${playback.contentType} streamId=${playback.streamId} position=$currentPosition startPosition=$startPosition attempt=${stalledRefreshCount + 1}",
             )
-            refreshStalledPlayback()
+            val vodTerminalStall = playback.contentType in setOf(UserContentType.Movie, UserContentType.Episode) &&
+                stalledRefreshCount >= 1
+            if (vodTerminalStall) {
+                buffering = false
+                errorText = strings?.liveTvStreamUnavailable ?: "Stream unavailable"
+                showOverlay(requestPlayFocus = true)
+                xtreamConnectionManager.markPlaybackUnavailable(
+                    source = "player_vod_buffering",
+                    contentType = playback.contentType,
+                    streamId = playback.streamId,
+                    detail = "VOD stalled after retry",
+                )
+            } else {
+                refreshStalledPlayback()
+            }
         }
     }
 
@@ -2139,7 +2167,7 @@ private fun FullScreenPlayerScreen(
                         showOverlay(requestPlayFocus = false)
                     },
                     onPlayPause = {
-                        toggleLivePlayback()
+                        if (errorText != null) retryPlayback() else toggleLivePlayback()
                         showOverlay(requestPlayFocus = false)
                     },
                     onSeekForward = {
@@ -2216,7 +2244,8 @@ private fun FullScreenPlayerScreen(
                         showOverlay()
                     },
                     onPlayPause = {
-                        if (player.isPlaying) player.pause() else player.play()
+                        if (errorText != null) retryPlayback()
+                        else if (player.isPlaying) player.pause() else player.play()
                         showOverlay()
                     },
                     onRestart = ::restartFromBeginning,
@@ -2248,7 +2277,9 @@ private fun FullScreenPlayerScreen(
                     brightnessMode = brightnessMode,
                     brightnessValue = brightnessValue,
                     onPlayPause = {
-                        if (player.isPlaying) {
+                        if (errorText != null) {
+                            retryPlayback()
+                        } else if (player.isPlaying) {
                             player.pause()
                         } else {
                             player.play()

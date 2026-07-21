@@ -170,16 +170,15 @@ fun YoutubeScreen(
     var pendingYoutubeClear by remember { mutableStateOf<YoutubeClearTarget?>(null) }
     var completedVideoId by remember { mutableStateOf<String?>(null) }
     var pendingAutoAdvanceFromVideoId by remember { mutableStateOf<String?>(null) }
-    var restoreVideoFocusAfterPlayer by remember { mutableStateOf(false) }
-    var restoreCategoryFocusAfterPlayer by remember { mutableStateOf(false) }
+    var restoreVideoFocusId by remember { mutableStateOf<String?>(null) }
     val contentFocusRequester = when {
         playingVideo != null -> playerFocusRequester
         state.videos.isNotEmpty() -> firstVideoFocusRequester
         else -> null
     }
 
-    LaunchedEffect(state.categories.size, state.selectedCategoryId, playingVideo?.videoId) {
-        if (playingVideo == null && state.categories.isNotEmpty()) {
+    LaunchedEffect(state.categories.size, state.selectedCategoryId, playingVideo?.videoId, restoreVideoFocusId) {
+        if (playingVideo == null && state.categories.isNotEmpty() && restoreVideoFocusId == null) {
             val selectedIndex = state.categories.indexOfFirst { it.id == state.selectedCategoryId }
                 .coerceAtLeast(0)
             categoryListState.scrollToItem(selectedIndex)
@@ -198,11 +197,11 @@ fun YoutubeScreen(
             youtubeFullScreen = false
             runCatching { playerFocusRequester.requestFocus() }
         } else {
+            restoreVideoFocusId = playingVideo?.videoId
             youtubeFullScreen = false
             playingVideo = null
             youtubeResumeSeconds = 0.0
-            viewModel.closePlayerToTrending()
-            restoreCategoryFocusAfterPlayer = true
+            viewModel.closePlayer()
         }
     }
 
@@ -240,11 +239,11 @@ fun YoutubeScreen(
     }
 
     fun closeMiniPlayer() {
+        restoreVideoFocusId = playingVideo?.videoId
         youtubeFullScreen = false
         playingVideo = null
         youtubeResumeSeconds = 0.0
-        viewModel.closePlayerToTrending()
-        restoreCategoryFocusAfterPlayer = true
+        viewModel.closePlayer()
     }
 
     LaunchedEffect(pendingAutoAdvanceFromVideoId, state.playerSuggestions.size, playingVideo?.videoId) {
@@ -261,24 +260,6 @@ fun YoutubeScreen(
     LaunchedEffect(state.youtubeAutoplayEnabled, playingVideo?.videoId, state.playerSuggestions.size) {
         if (state.youtubeAutoplayEnabled && playingVideo != null && state.playerSuggestions.size < YoutubeAutoplayQueueTarget) {
             viewModel.ensureAutoplayQueue(playingVideo)
-        }
-    }
-
-    LaunchedEffect(restoreVideoFocusAfterPlayer, state.videos.size) {
-        if (restoreVideoFocusAfterPlayer && playingVideo == null && state.videos.isNotEmpty()) {
-            withFrameNanos { }
-            delay(80)
-            runCatching { firstVideoFocusRequester.requestFocus() }
-            restoreVideoFocusAfterPlayer = false
-        }
-    }
-
-    LaunchedEffect(restoreCategoryFocusAfterPlayer, state.selectedCategoryId, playingVideo) {
-        if (restoreCategoryFocusAfterPlayer && playingVideo == null && state.selectedCategoryId == "trending") {
-            withFrameNanos { }
-            delay(120)
-            runCatching { selectedCategoryFocusRequester.requestFocus() }
-            restoreCategoryFocusAfterPlayer = false
         }
     }
 
@@ -404,6 +385,8 @@ fun YoutubeScreen(
                     state = state,
                     strings = strings,
                 firstVideoFocusRequester = firstVideoFocusRequester,
+                restoreVideoFocusId = restoreVideoFocusId,
+                onRestoreVideoFocusConsumed = { restoreVideoFocusId = null },
                 playerFocusRequester = playerFocusRequester,
                 playerSuggestionFocusRequester = visiblePlayerSuggestionFocusRequester,
                 searchFocusRequester = searchFocusRequester,
@@ -753,6 +736,8 @@ private fun YoutubeVideoGrid(
     state: YoutubeScreenState,
     strings: SmartVisionStrings,
     firstVideoFocusRequester: FocusRequester,
+    restoreVideoFocusId: String?,
+    onRestoreVideoFocusConsumed: () -> Unit,
     playerFocusRequester: FocusRequester,
     playerSuggestionFocusRequester: FocusRequester,
     searchFocusRequester: FocusRequester,
@@ -784,6 +769,11 @@ private fun YoutubeVideoGrid(
     modifier: Modifier = Modifier,
 ) {
     val gridState = rememberLazyGridState()
+    val videoFocusRequesters = remember(state.videos.map { it.videoId }) {
+        state.videos.mapIndexed { index, video ->
+            video.videoId to if (index == 0) firstVideoFocusRequester else FocusRequester()
+        }.toMap()
+    }
     val firstSuggestionFocusRequester = remember { FocusRequester() }
     var searchFocused by remember { mutableStateOf(false) }
     var suggestionsFocused by remember { mutableStateOf(false) }
@@ -800,6 +790,19 @@ private fun YoutubeVideoGrid(
 
     LaunchedEffect(state.selectedCategoryId) {
         if (gridState.layoutInfo.totalItemsCount > 0) gridState.scrollToItem(0)
+    }
+
+    LaunchedEffect(restoreVideoFocusId, state.videos.map { it.videoId }, playingVideo) {
+        if (playingVideo != null) return@LaunchedEffect
+        val videoId = restoreVideoFocusId ?: return@LaunchedEffect
+        val index = state.videos.indexOfFirst { it.videoId == videoId }
+        val requester = videoFocusRequesters[videoId]
+        if (index < 0 || requester == null) return@LaunchedEffect
+        gridState.scrollToItem(index)
+        withFrameNanos { }
+        delay(100)
+        runCatching { requester.requestFocus() }
+        onRestoreVideoFocusConsumed()
     }
 
     LaunchedEffect(gridState, state.videos.size, state.nextPageToken, playingVideo?.videoId) {
@@ -924,7 +927,7 @@ private fun YoutubeVideoGrid(
                         YoutubeVideoCard(
                             video = video,
                             selected = video.videoId == state.selectedVideoId,
-                            focusRequester = firstVideoFocusRequester.takeIf { index == 0 },
+                            focusRequester = videoFocusRequesters[video.videoId],
                             leftFocusRequester = selectedCategoryFocusRequester.takeIf {
                                 index % YoutubeGridColumns == 0
                             },

@@ -1,0 +1,25 @@
+{
+  "label": "settings-initial-hardware-key",
+  "captured_at": "2026-07-21T18:32:17.656296+00:00",
+  "serial": "192.168.1.33:5555",
+  "package": "com.smartvision.svplayer",
+  "pid": "15386",
+  "keys": [],
+  "settle_ms": 500,
+  "capture_elapsed_ms": 7310.9,
+  "focus": [
+    "mCurrentFocus=Window{88cf9ca u0 com.amazon.tv.settings.v2/com.amazon.tv.settings.v2.hud.HudActivity}",
+    "mFocusedApp=AppWindowToken{485d909 token=Token{9028a10 ActivityRecord{4c4ced3 u0 com.amazon.tv.settings.v2/.hud.HudActivity t8833}}}",
+    "mResumedActivity: ActivityRecord{4c4ced3 u0 com.amazon.tv.settings.v2/.hud.HudActivity t8833}"
+  ],
+  "ui_dump_status": "UI hierchary dumped to: /data/local/tmp/codex-ui-1380.xml",
+  "files": [
+    "activity.txt",
+    "gfxinfo-framestats.txt",
+    "logcat.txt",
+    "screenshot.png",
+    "ui-dump-status.txt",
+    "ui.xml",
+    "window.txt"
+  ]
+}

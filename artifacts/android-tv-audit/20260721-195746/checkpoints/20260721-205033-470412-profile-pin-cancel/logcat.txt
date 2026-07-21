@@ -1,0 +1,251 @@
+--------- beginning of main
+07-21 20:49:18.545 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:18.545 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:19.547 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:19.547 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:20.191 15386 15403 I vision.svplaye: Background concurrent copying GC freed 215134(6MB) AllocSpace objects, 0(0B) LOS objects, 20% free, 23MB/29MB, paused 210us total 306.500ms
+07-21 20:49:20.345 15386 15386 I SVStartup: state localReady=true checking=false activated=true playableSource=true route=profile
+07-21 20:49:20.548 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:20.548 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:20.649 15386 15403 I vision.svplaye: NativeAlloc concurrent copying GC freed 45155(1482KB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 173us total 264.066ms
+07-21 20:49:20.950 15386 15403 I vision.svplaye: NativeAlloc concurrent copying GC freed 5134(450KB) AllocSpace objects, 3(128KB) LOS objects, 19% free, 24MB/30MB, paused 172us total 300.424ms
+07-21 20:49:21.549 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:21.550 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:22.550 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:22.550 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:22.844 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211658(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 197us total 271.555ms
+07-21 20:49:23.551 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:23.551 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:24.551 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:24.552 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:24.677 15386 15403 I vision.svplaye: Background concurrent copying GC freed 224384(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 215us total 289.951ms
+07-21 20:49:25.552 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:25.552 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:26.391 15386 15415 I vision.svplaye: Waiting for a blocking GC ProfileSaver
+07-21 20:49:26.403 15386 15403 I vision.svplaye: Background concurrent copying GC freed 221082(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 190us total 263.724ms
+07-21 20:49:26.406 15386 15415 I vision.svplaye: WaitForGcToComplete blocked ProfileSaver on HeapTrim for 14.665ms
+07-21 20:49:26.553 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:26.555 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:27.556 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:27.556 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:28.118 15386 15403 I vision.svplaye: Background concurrent copying GC freed 219793(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 195us total 284.116ms
+07-21 20:49:28.556 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:28.557 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:29.557 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:29.557 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:29.809 15386 15403 I vision.svplaye: Background concurrent copying GC freed 218744(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 184us total 288.937ms
+07-21 20:49:30.558 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:30.558 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:31.538 15386 15403 I vision.svplaye: Background concurrent copying GC freed 222331(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 189us total 270.456ms
+07-21 20:49:31.558 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:31.559 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:32.560 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:32.560 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:33.221 15386 15403 I vision.svplaye: Background concurrent copying GC freed 217947(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 215us total 273.348ms
+07-21 20:49:33.561 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:33.561 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:34.561 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:34.562 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:35.035 15386 15403 I vision.svplaye: Background concurrent copying GC freed 216411(6MB) AllocSpace objects, 1(20KB) LOS objects, 19% free, 24MB/30MB, paused 204us total 277.545ms
+07-21 20:49:35.562 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:35.562 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:36.563 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:36.563 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:36.825 15386 15403 I vision.svplaye: Background concurrent copying GC freed 216916(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 199us total 284.637ms
+07-21 20:49:37.563 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:37.564 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:38.564 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:38.564 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:38.621 15386 15403 I vision.svplaye: Background concurrent copying GC freed 218936(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 192us total 280.752ms
+07-21 20:49:39.565 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:39.565 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:40.397 15386 15403 I vision.svplaye: Background concurrent copying GC freed 216811(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 186us total 271.845ms
+07-21 20:49:40.565 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:40.566 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:41.566 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:41.567 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:42.231 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214931(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 191us total 261.033ms
+07-21 20:49:42.567 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:42.567 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:43.567 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:43.568 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:44.131 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212955(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 182us total 271.986ms
+07-21 20:49:44.568 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:44.574 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:45.574 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:45.575 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:46.513 15386 15403 I vision.svplaye: Background concurrent copying GC freed 210835(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 199us total 280.119ms
+07-21 20:49:46.575 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:46.575 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:47.576 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:47.576 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:48.454 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214097(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 266us total 264.742ms
+07-21 20:49:48.577 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:48.577 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:49.577 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:49.579 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:50.241 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214924(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 207us total 272.181ms
+07-21 20:49:50.579 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:50.579 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:51.580 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:51.580 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:52.021 15386 15403 I vision.svplaye: Background concurrent copying GC freed 215869(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 188us total 275.461ms
+07-21 20:49:52.580 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:52.581 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:53.581 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:53.582 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:53.812 15386 15403 I vision.svplaye: Background concurrent copying GC freed 216977(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 200us total 266.583ms
+07-21 20:49:54.582 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:54.583 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:55.583 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:55.584 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:55.596 15386 15403 I vision.svplaye: Background concurrent copying GC freed 216335(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 196us total 265.191ms
+07-21 20:49:56.584 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:56.584 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:57.384 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214565(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 231us total 269.094ms
+07-21 20:49:57.584 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:57.585 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:58.585 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:58.586 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:49:59.197 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214712(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 213us total 282.755ms
+07-21 20:49:59.586 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:49:59.587 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:00.587 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:00.589 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:01.196 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212994(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 209us total 283.094ms
+07-21 20:50:01.589 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:01.590 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:02.590 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:02.591 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:03.037 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214636(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 201us total 264.615ms
+07-21 20:50:03.591 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:03.591 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:04.592 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:04.592 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:05.004 15386 15403 I vision.svplaye: Background concurrent copying GC freed 211249(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 251us total 299.333ms
+07-21 20:50:05.592 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:05.593 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:06.593 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:06.594 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:07.580 15386 15403 I vision.svplaye: Background concurrent copying GC freed 195605(5MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 166us total 290.922ms
+07-21 20:50:07.594 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:07.594 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:08.595 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:08.595 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:09.595 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:09.595 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:10.122 15386 15403 I vision.svplaye: Background concurrent copying GC freed 209781(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 223us total 339.343ms
+07-21 20:50:10.596 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:10.596 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:11.597 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:11.597 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:12.030 15386 15403 I vision.svplaye: Background concurrent copying GC freed 187093(6MB) AllocSpace objects, 1(20KB) LOS objects, 18% free, 25MB/31MB, paused 181us total 267.089ms
+07-21 20:50:12.597 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:12.598 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:12.959 15386 15386 I Choreographer: Skipped 87 frames!  The application may be doing too much work on its main thread.
+07-21 20:50:12.960 15386 16020 W AmazonKeyEventLogging: remote_perf key event latency detected [Source: ViewRootImpl, KeyCode: KEYCODE_XXXX, IsDown: 0, Repeat: 0, EventTime: 16169307, Latency: 1465, DeviceId: 6, AppPackage: com.smartvision.svplayer]
+07-21 20:50:12.967 15386 15403 I vision.svplaye: Background concurrent copying GC freed 159956(7MB) AllocSpace objects, 0(0B) LOS objects, 18% free, 25MB/31MB, paused 166us total 261.672ms
+07-21 20:50:13.500 15386 15386 I Choreographer: Skipped 31 frames!  The application may be doing too much work on its main thread.
+07-21 20:50:13.526 15386 15489 I OpenGLRenderer: Davey! duration=2026ms; Flags=0, IntendedVsync=16169311584179, Vsync=16170763035629, OldestInputEvent=16169307000000, NewestInputEvent=16169307000000, HandleInputStart=16170777458654, AnimationStart=16170777568423, PerformTraversalsStart=16170854694654, DrawStart=16170854887270, SyncQueued=16171293735193, SyncStart=16171293888193, IssueDrawCommandsStart=16171294504654, SwapBuffers=16171336772731, FrameCompleted=16171338148346, DequeueBufferDuration=297000, QueueBufferDuration=587000, 
+07-21 20:50:13.593 15386 15403 I vision.svplaye: NativeAlloc concurrent copying GC freed 42256(2MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 25MB/31MB, paused 182us total 300.617ms
+07-21 20:50:13.598 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:13.598 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:14.599 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:14.599 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:15.548 15386 15403 I vision.svplaye: Background concurrent copying GC freed 198696(6MB) AllocSpace objects, 1(16KB) LOS objects, 19% free, 25MB/31MB, paused 201us total 305.045ms
+07-21 20:50:15.599 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:15.600 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:16.600 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:16.600 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:17.515 15386 15403 I vision.svplaye: Background concurrent copying GC freed 222102(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 260us total 309.726ms
+07-21 20:50:17.601 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:17.601 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:18.601 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:18.602 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:19.436 15386 15403 I vision.svplaye: Background concurrent copying GC freed 213382(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 24MB/30MB, paused 253us total 300.693ms
+07-21 20:50:19.602 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:19.603 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:20.603 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:20.604 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:21.396 15386 15403 I vision.svplaye: Background concurrent copying GC freed 212641(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 25MB/31MB, paused 201us total 308.676ms
+07-21 20:50:21.604 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:21.604 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:22.604 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:22.605 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:23.224 15386 15403 I vision.svplaye: Background concurrent copying GC freed 210509(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 25MB/31MB, paused 183us total 292.579ms
+07-21 20:50:23.605 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:23.605 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:24.606 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:24.606 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:24.993 15386 15403 I vision.svplaye: Background concurrent copying GC freed 216132(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 25MB/31MB, paused 212us total 278.802ms
+07-21 20:50:25.607 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:25.607 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:26.607 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:26.608 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:26.750 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214797(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 25MB/31MB, paused 264us total 288.291ms
+07-21 20:50:27.608 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:27.608 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:28.549 15386 15403 I vision.svplaye: Background concurrent copying GC freed 215909(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 25MB/31MB, paused 214us total 294.441ms
+07-21 20:50:28.609 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:28.609 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:29.609 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:29.610 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:30.319 15386 15403 I vision.svplaye: Background concurrent copying GC freed 213005(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 25MB/31MB, paused 194us total 293.359ms
+07-21 20:50:30.610 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:30.611 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:31.611 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:31.611 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:32.102 15386 15403 I vision.svplaye: Background concurrent copying GC freed 216981(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 25MB/31MB, paused 242us total 287.061ms
+07-21 20:50:32.612 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:32.612 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:33.612 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:33.613 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:33.882 15386 15403 I vision.svplaye: Background concurrent copying GC freed 215119(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 25MB/31MB, paused 199us total 277.978ms
+07-21 20:50:34.613 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:34.613 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:35.614 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:35.620 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:35.696 15386 15403 I vision.svplaye: Background concurrent copying GC freed 214608(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 25MB/31MB, paused 212us total 298.472ms
+07-21 20:50:36.621 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:36.621 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:37.563 15386 15403 I vision.svplaye: Background concurrent copying GC freed 208372(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 25MB/31MB, paused 515us total 290.418ms
+07-21 20:50:37.621 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:37.622 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:38.622 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:38.622 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:39.247 15386 15403 I vision.svplaye: Background concurrent copying GC freed 171503(5MB) AllocSpace objects, 10(200KB) LOS objects, 18% free, 25MB/31MB, paused 276us total 328.989ms
+07-21 20:50:39.623 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:39.623 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:40.623 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:40.624 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:41.209 15386 15403 I vision.svplaye: Background concurrent copying GC freed 215112(6MB) AllocSpace objects, 0(0B) LOS objects, 18% free, 25MB/31MB, paused 233us total 320.698ms
+07-21 20:50:41.624 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:41.625 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:42.625 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:42.626 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:43.128 15386 15403 I vision.svplaye: Background concurrent copying GC freed 216166(6MB) AllocSpace objects, 0(0B) LOS objects, 18% free, 25MB/31MB, paused 214us total 295.986ms
+07-21 20:50:43.626 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:43.627 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:44.627 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:44.628 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:44.834 15386 15403 I vision.svplaye: Background concurrent copying GC freed 226824(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 25MB/31MB, paused 250us total 295.508ms
+07-21 20:50:45.628 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:45.628 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:46.612 15386 15403 I vision.svplaye: Background concurrent copying GC freed 221666(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 25MB/31MB, paused 294us total 282.104ms
+07-21 20:50:46.629 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:46.629 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:47.629 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:47.630 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:48.324 15386 15403 I vision.svplaye: Background concurrent copying GC freed 216446(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 25MB/31MB, paused 180us total 280.143ms
+07-21 20:50:48.630 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:48.630 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:49.631 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:49.631 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:50.025 15386 15403 I vision.svplaye: Background concurrent copying GC freed 220140(6MB) AllocSpace objects, 0(0B) LOS objects, 19% free, 25MB/31MB, paused 232us total 280.975ms
+07-21 20:50:50.631 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:50.632 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:51.632 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:51.633 15386 22786 E CameraManagerGlobal: Camera service is unavailable
+07-21 20:50:51.724 15386 15403 I vision.svplaye: Background concurrent copying GC freed 218419(6MB) AllocSpace objects, 0(0B) LOS objects, 18% free, 25MB/31MB, paused 187us total 297.578ms
+07-21 20:50:52.633 15386 22786 I CameraManagerGlobal: Connecting to camera service
+07-21 20:50:52.633 15386 22786 E CameraManagerGlobal: Camera service is unavailable
