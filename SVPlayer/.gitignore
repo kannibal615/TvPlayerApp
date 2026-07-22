@@ -6,7 +6,8 @@
 .idea/
 /build/
 /app/build/
-
+/local.properties
+/keystore/
 /captures/
 /logs/
 /diagnostics/
