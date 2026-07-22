@@ -304,6 +304,7 @@ data class HomeCategoryWorkOverlay(
 
 @Composable
 private fun CategoryPerimeterLoader(modifier: Modifier = Modifier) {
+    val loadingColor = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current
     val transition = rememberInfiniteTransition(label = "home-category-loader")
     val phase by transition.animateFloat(
         initialValue = 0f,
@@ -319,7 +320,7 @@ private fun CategoryPerimeterLoader(modifier: Modifier = Modifier) {
         val segment = perimeter * HomeCategoryCardLayout.LoaderSegmentFraction
         val gap = (perimeter - segment).coerceAtLeast(1f)
         drawRoundRect(
-            color = SmartVisionColors.CyanAccent,
+            color = loadingColor,
             cornerRadius = CornerRadius(SmartVisionDimensions.HomeCardRadius.toPx()),
             style = Stroke(
                 width = 4.dp.toPx(),
@@ -336,7 +337,11 @@ private fun CategoryPerimeterLoader(modifier: Modifier = Modifier) {
 @Composable
 private fun CategoryWorkProgress(workOverlay: HomeCategoryWorkOverlay) {
     val progress = workOverlay.progress.coerceIn(0f, 1f)
-    val statusColor = if (workOverlay.error) SmartVisionColors.Warning else SmartVisionColors.CyanAccent
+    val statusColor = if (workOverlay.error) {
+        SmartVisionColors.Warning
+    } else {
+        com.smartvision.svplayer.ui.theme.LocalLoadingColor.current
+    }
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),

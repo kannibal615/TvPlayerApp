@@ -170,6 +170,7 @@ fun ProfileRoute(
     multiProfileAccess: PremiumFeatureGateResult,
     onLockedFeature: () -> Unit,
     onSyncCatalog: suspend () -> Result<Unit>,
+    onSynchronizeOnHome: () -> Unit,
     onActivationChanged: () -> Unit,
     startDestination: ProfileAreaDestination = ProfileAreaDestination.INFO,
     onOpenInfo: () -> Unit,
@@ -351,6 +352,7 @@ fun ProfileRoute(
                 container.catalogRepository.synchronize(profileId)
             }
         },
+        onSynchronizeOnHome = onSynchronizeOnHome,
         onSetAutostartEnabled = { value -> scope.launch { container.settingsRepository.setAutostartEnabled(value) } },
         onSetBackgroundSyncEnabled = { value ->
             scope.launch {

@@ -1,6 +1,12 @@
 package com.smartvision.svplayer.ui.profile
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -62,6 +68,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -93,6 +103,7 @@ import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.settings.SynchronizationPreferencesContent
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import com.smartvision.svplayer.ui.theme.appScreenBackground
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
@@ -139,6 +150,7 @@ internal fun ProfileAreaScreen(
     onRequestGlobalProfilePicker: () -> Unit,
     onDeleteProfile: (String) -> Unit,
     onSynchronizeProfile: (String) -> Unit,
+    onSynchronizeOnHome: () -> Unit,
     onSetAutostartEnabled: (Boolean) -> Unit,
     onSetBackgroundSyncEnabled: (Boolean) -> Unit,
     onSetSyncFrequency: (String) -> Unit,
@@ -172,7 +184,7 @@ internal fun ProfileAreaScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(
+            .appScreenBackground(
                 Brush.radialGradient(
                     listOf(
                         SmartVisionColors.PrimaryDark.copy(alpha = 0.42f),
@@ -326,6 +338,15 @@ internal fun ProfileAreaScreen(
                     title = strings.sync,
                     icon = Icons.Default.CloudSync,
                     modifier = Modifier.weight(1f).fillMaxHeight(),
+                    trailing = {
+                        TvButton(
+                            text = strings.synchronizeNow,
+                            onClick = onSynchronizeOnHome,
+                            enabled = syncStatus !is SyncStatus.Running && activeProfile?.isConfigured == true,
+                            variant = TvButtonVariant.Secondary,
+                            modifier = Modifier.width(150.dp).height(38.dp),
+                        )
+                    },
                 ) {
                     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                         SynchronizationPreferencesContent(
@@ -441,49 +462,30 @@ private fun ProfileInfoContent(
                 )
             }
         }
-        TvSectionCard(strings.catalog, Icons.Default.PlaylistPlay, Modifier.fillMaxWidth()) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                CatalogMetric(strings.liveTv, state.account.liveCount, Icons.Default.LiveTv, SmartVisionColors.CyanAccent, Modifier.weight(1f))
-                CatalogMetric(strings.movies, state.account.movieCount, Icons.Default.Movie, Color(0xFFFFB340), Modifier.weight(1f))
-                CatalogMetric(strings.series, state.account.seriesCount, Icons.Default.Tv, Color(0xFFB46CFF), Modifier.weight(1f))
-                val hiddenValue = when {
-                    parentalHiddenLoading -> null
-                    parentalHiddenError -> null
-                    else -> ProfileManagementPolicy.hiddenItemCount(
-                        state.account.kidsExcludedCount,
-                        parentalHiddenCount ?: 0,
-                    )
-                }
-                CatalogMetric(
-                    strings.hiddenItems,
-                    hiddenValue,
-                    Icons.Default.VisibilityOff,
-                    Color(0xFFFF668F),
-                    Modifier.weight(1f),
-                    unavailable = parentalHiddenError,
-                )
-            }
-            if (!state.refreshing && state.account.liveCount + state.account.movieCount + state.account.seriesCount == 0) {
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    if (state.account.catalogSyncStatus == "error") strings.catalogUnavailable else strings.catalogEmpty,
-                    color = SmartVisionColors.TextSecondary,
-                    style = SmartVisionType.Caption,
-                )
-            }
+        val statusText = when {
+            syncing -> strings.synchronizationInProgress
+            syncStatus is SyncStatus.Error || state.account.catalogSyncStatus == "error" -> strings.synchronizationError
+            syncDue -> strings.synchronizationNeeded
+            else -> strings.synchronizationUpToDate
         }
-        TvSectionCard(strings.sync, Icons.Default.CloudSync, Modifier.fillMaxWidth()) {
+        val statusColor = when {
+            syncing -> com.smartvision.svplayer.ui.theme.LocalLoadingColor.current
+            syncStatus is SyncStatus.Error || state.account.catalogSyncStatus == "error" -> SmartVisionColors.Error
+            syncDue -> Color(0xFFFFB340)
+            else -> Color(0xFF20D878)
+        }
+        TvSectionCard(
+            title = strings.sync,
+            icon = Icons.Default.CloudSync,
+            modifier = Modifier.fillMaxWidth(),
+            headerTrailing = {
+                Text(statusText, color = statusColor, style = SmartVisionType.Caption, fontWeight = FontWeight.SemiBold)
+            },
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(strings.lastSynchronization, color = SmartVisionColors.CyanAccent, style = SmartVisionType.Caption)
                     Text(activeProfile.lastSyncAt?.asProfileAreaDate() ?: strings.syncNever, color = SmartVisionColors.TextPrimary, style = SmartVisionType.Body)
-                    val status = when {
-                        syncing -> strings.synchronizationInProgress
-                        syncStatus is SyncStatus.Error || state.account.catalogSyncStatus == "error" -> strings.synchronizationError
-                        syncDue -> strings.synchronizationNeeded
-                        else -> strings.synchronizationUpToDate
-                    }
-                    Text(status, color = if (syncDue) Color(0xFFFFB340) else Color(0xFF20D878), style = SmartVisionType.Caption)
                     if (syncStatus is SyncStatus.Running && syncStatus.message.isNotBlank()) {
                         Text(syncStatus.message, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1)
                     }
@@ -508,6 +510,38 @@ private fun ProfileInfoContent(
                         left = menuRequester
                         up = changeRequester
                     },
+                )
+            }
+        }
+        val catalogProgress = (syncStatus as? SyncStatus.Running)?.catalogProgress
+        TvSectionCard(strings.catalog, Icons.Default.PlaylistPlay, Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                CatalogMetric(strings.liveTv, state.account.liveCount, Icons.Default.LiveTv, SmartVisionColors.CyanAccent, Modifier.weight(1f), syncProgress = catalogProgress?.live)
+                CatalogMetric(strings.movies, state.account.movieCount, Icons.Default.Movie, Color(0xFFFFB340), Modifier.weight(1f), syncProgress = catalogProgress?.movies)
+                CatalogMetric(strings.series, state.account.seriesCount, Icons.Default.Tv, Color(0xFFB46CFF), Modifier.weight(1f), syncProgress = catalogProgress?.series)
+                val hiddenValue = when {
+                    parentalHiddenLoading -> null
+                    parentalHiddenError -> null
+                    else -> ProfileManagementPolicy.hiddenItemCount(
+                        state.account.kidsExcludedCount,
+                        parentalHiddenCount ?: 0,
+                    )
+                }
+                CatalogMetric(
+                    strings.hiddenItems,
+                    hiddenValue,
+                    Icons.Default.VisibilityOff,
+                    Color(0xFFFF668F),
+                    Modifier.weight(1f),
+                    unavailable = parentalHiddenError,
+                )
+            }
+            if (!state.refreshing && state.account.liveCount + state.account.movieCount + state.account.seriesCount == 0) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    if (state.account.catalogSyncStatus == "error") strings.catalogUnavailable else strings.catalogEmpty,
+                    color = SmartVisionColors.TextSecondary,
+                    style = SmartVisionType.Caption,
                 )
             }
         }
@@ -850,27 +884,93 @@ private fun AddProfileCard(label: String, avatarDrawableRes: Int, onClick: () ->
 }
 
 @Composable
-private fun CatalogMetric(label: String, value: Int?, icon: ImageVector, accent: Color, modifier: Modifier, unavailable: Boolean = false) {
-    Column(
-        modifier.background(SmartVisionColors.Surface, RoundedCornerShape(8.dp))
-            .border(1.dp, SmartVisionColors.Border, RoundedCornerShape(8.dp)).padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
-            Text(label, color = accent, style = SmartVisionType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun CatalogMetric(
+    label: String,
+    value: Int?,
+    icon: ImageVector,
+    accent: Color,
+    modifier: Modifier,
+    unavailable: Boolean = false,
+    syncProgress: SyncStatus.SyncSectionProgress? = null,
+) {
+    Box(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(SmartVisionColors.Surface, RoundedCornerShape(8.dp))
+                .border(1.dp, SmartVisionColors.Border, RoundedCornerShape(8.dp))
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
+                Text(label, color = accent, style = SmartVisionType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (value == null && !unavailable) CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                strokeWidth = 2.dp,
+                color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
+            ) else Text(if (unavailable) "--" else "%,d".format(value ?: 0), color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            if (syncProgress != null) {
+                val progress = syncProgress.fraction
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(syncProgress.message.orEmpty(), color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    Text("${syncProgress.percent}%", color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current, style = SmartVisionType.Caption, fontWeight = FontWeight.Bold)
+                }
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth().height(4.dp),
+                    color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
+                    trackColor = Color.White.copy(alpha = 0.14f),
+                )
+                val details = listOfNotNull(
+                    syncProgress.currentItems.takeIf { it > 0 }?.toString(),
+                    syncProgress.totalItems?.takeIf { it > 0 }?.let { "/ $it" },
+                ).joinToString(" ")
+                if (details.isNotBlank()) Text(details, color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
+            }
         }
-        if (value == null && !unavailable) CircularProgressIndicator(
-            modifier = Modifier.size(22.dp),
-            strokeWidth = 2.dp,
-            color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
-        )
-        else Text(if (unavailable) "--" else "%,d".format(value ?: 0), color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold, fontSize = 18.sp,)
+        if (syncProgress != null && !syncProgress.completed) {
+            ProfileMetricPerimeterLoader(Modifier.matchParentSize())
+        }
     }
 }
 
 @Composable
-private fun AreaPanel(title: String, icon: ImageVector, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+private fun ProfileMetricPerimeterLoader(modifier: Modifier = Modifier) {
+    val loadingColor = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current
+    val transition = rememberInfiniteTransition(label = "profile-catalog-loader")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1_150, easing = LinearEasing)),
+        label = "profile-catalog-loader-phase",
+    )
+    Canvas(modifier) {
+        val perimeter = 2f * (size.width + size.height)
+        drawRoundRect(
+            color = loadingColor,
+            cornerRadius = CornerRadius(8.dp.toPx()),
+            style = Stroke(
+                width = 3.dp.toPx(),
+                cap = StrokeCap.Round,
+                pathEffect = PathEffect.dashPathEffect(
+                    floatArrayOf(perimeter * 0.42f, perimeter * 0.58f),
+                    phase = -phase * perimeter,
+                ),
+            ),
+        )
+    }
+}
+
+@Composable
+private fun AreaPanel(
+    title: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    trailing: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Column(
         modifier = modifier,
     ) {
@@ -878,6 +978,10 @@ private fun AreaPanel(title: String, icon: ImageVector, modifier: Modifier = Mod
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 Icon(icon, null, tint = SmartVisionColors.CyanAccent, modifier = Modifier.size(23.dp))
                 Text(title, color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.SemiBold)
+                if (trailing != null) {
+                    Spacer(Modifier.weight(1f))
+                    trailing()
+                }
             }
             Spacer(Modifier.height(8.dp))
         }

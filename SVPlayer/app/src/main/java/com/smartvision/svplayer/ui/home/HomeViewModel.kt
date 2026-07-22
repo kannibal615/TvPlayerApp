@@ -484,7 +484,7 @@ class HomeViewModel(
                 )
                 return@launch
             }
-            runCatching { homeSlidesRepository.refresh() }
+            runCatching { homeSlidesRepository.refresh(forceRefresh = forceRefresh) }
                 .onSuccess { refreshed ->
                     slides.value = refreshed
                     PerformanceDiagnosticRecorder.recordDuration(

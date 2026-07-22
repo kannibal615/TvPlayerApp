@@ -50,18 +50,20 @@ class HomeSlidesRepository(
 
     fun getCachedSlides(): List<HomeSlide>? = cachedSlides
 
-    suspend fun refresh(): List<HomeSlide> {
+    suspend fun refresh(forceRefresh: Boolean = false): List<HomeSlide> {
         val currentCache = cachedSlides
         val lastRefreshAt = preferences.getLong(KEY_LAST_REFRESH_AT, 0L)
-        if (!currentCache.isNullOrEmpty() && System.currentTimeMillis() - lastRefreshAt < CACHE_MAX_AGE_MS) {
+        if (!forceRefresh && currentCache != null && System.currentTimeMillis() - lastRefreshAt < CACHE_MAX_AGE_MS) {
             return currentCache
         }
         return try {
             val response = api.getHomeSlides()
             check(response.success) { "Slides indisponibles." }
             val remoteSlides = response.slides
-                .filter { it.title.isNotBlank() }
             val localSlides = cacheSlideImages(remoteSlides, currentCache.orEmpty())
+            if (remoteSlides.isEmpty()) {
+                cacheDirectory.listFiles()?.forEach(File::delete)
+            }
             localSlides.also {
                     cachedSlides = it
                     persistSlides(it)
@@ -108,7 +110,6 @@ class HomeSlidesRepository(
     private fun loadPersistedSlides(): List<HomeSlide>? = runCatching {
         val json = preferences.getString(KEY_SLIDES, null) ?: return@runCatching null
         gson.fromJson<List<HomeSlide>>(json, object : TypeToken<List<HomeSlide>>() {}.type)
-            ?.takeIf { slides -> slides.isNotEmpty() }
     }.getOrNull()
 
     private fun persistSlides(slides: List<HomeSlide>) {

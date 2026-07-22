@@ -212,6 +212,8 @@ data class PlayerSettings(
     val focusActiveColor: String = "ElectricBlue",
     val focusParentColor: String = "White",
     val loadingColor: String = "CyanNeon",
+    val appBackgroundType: String = "Default",
+    val appBackgroundValue: String = "",
     val animationsEnabled: Boolean = true,
     val videoRatio: String = "Fit",
     val bufferMode: String = "Standard",

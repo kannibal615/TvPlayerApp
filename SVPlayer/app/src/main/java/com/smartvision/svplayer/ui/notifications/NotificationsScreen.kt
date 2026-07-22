@@ -83,6 +83,7 @@ import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import com.smartvision.svplayer.ui.theme.appScreenBackground
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
@@ -214,7 +215,7 @@ private fun NotificationsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(
+            .appScreenBackground(
                 Brush.radialGradient(
                     listOf(SmartVisionColors.PrimaryDark.copy(alpha = 0.42f), SmartVisionColors.Background, Color(0xFF01040C)),
                     radius = 1550f,

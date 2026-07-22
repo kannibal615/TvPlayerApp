@@ -76,6 +76,8 @@ class DefaultSettingsRepository(
                 focusActiveColor = preferences[FOCUS_ACTIVE_COLOR] ?: "ElectricBlue",
                 focusParentColor = preferences[FOCUS_PARENT_COLOR] ?: "White",
                 loadingColor = preferences[LOADING_COLOR] ?: "CyanNeon",
+                appBackgroundType = preferences[APP_BACKGROUND_TYPE] ?: "Default",
+                appBackgroundValue = preferences[APP_BACKGROUND_VALUE] ?: "",
                 animationsEnabled = preferences[ANIMATIONS] ?: true,
                 videoRatio = preferences[profileStringKey(VIDEO_RATIO_KEY, profileId)] ?: preferences[VIDEO_RATIO] ?: "Fit",
                 bufferMode = preferences[profileStringKey(BUFFER_MODE_KEY, profileId)] ?: preferences[BUFFER_MODE] ?: "Standard",
@@ -161,6 +163,14 @@ class DefaultSettingsRepository(
 
     override suspend fun setLoadingColor(value: String) {
         dataStore.edit { it[LOADING_COLOR] = value }
+    }
+
+    override suspend fun setAppBackground(type: String, value: String) {
+        val normalizedType = type.takeIf { it in setOf("Default", "Preset", "Local", "Url") } ?: "Default"
+        dataStore.edit {
+            it[APP_BACKGROUND_TYPE] = normalizedType
+            it[APP_BACKGROUND_VALUE] = if (normalizedType == "Default") "" else value.trim()
+        }
     }
 
     override suspend fun setAnimationsEnabled(value: Boolean) {
@@ -254,6 +264,8 @@ class DefaultSettingsRepository(
         val FOCUS_ACTIVE_COLOR = stringPreferencesKey("focus_active_color")
         val FOCUS_PARENT_COLOR = stringPreferencesKey("focus_parent_color")
         val LOADING_COLOR = stringPreferencesKey("loading_color")
+        val APP_BACKGROUND_TYPE = stringPreferencesKey("app_background_type")
+        val APP_BACKGROUND_VALUE = stringPreferencesKey("app_background_value")
         val ANIMATIONS = booleanPreferencesKey("animations_enabled")
         val VIDEO_RATIO = stringPreferencesKey("video_ratio")
         val BUFFER_MODE = stringPreferencesKey("buffer_mode")

@@ -188,6 +188,7 @@ function handle_admin_action(PDO $pdo, string $action): void
         case 'delete_code': admin_delete_code($pdo); break;
         case 'purge_devices': admin_purge_devices($pdo); break;
         case 'save_slide': admin_save_slide($pdo); break;
+        case 'delete_slide': admin_delete_slide($pdo); break;
         case 'save_payment_packs': admin_save_payment_packs($pdo); break;
         case 'save_gammal_webhook_settings': admin_save_gammal_webhook_settings($pdo); break;
         case 'save_ads_settings': admin_save_ads_settings($pdo); break;
@@ -821,15 +822,12 @@ function admin_purge_devices(PDO $pdo): void
 
 function admin_save_slide(PDO $pdo): void
 {
-    $slideId = admin_positive_int($_POST['slide_id'] ?? null);
+    $slideId = filter_var($_POST['slide_id'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]) ?: 0;
     $sortOrder = filter_var($_POST['sort_order'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 9999]]);
     if ($sortOrder === false) {
         throw new InvalidArgumentException('Ordre de slide invalide.');
     }
     $title = smartvision_text_substr(trim((string) ($_POST['title'] ?? '')), 0, 120);
-    if ($title === '') {
-        throw new InvalidArgumentException('Titre de slide obligatoire.');
-    }
     $subtitle = clean_optional_text($_POST['subtitle'] ?? null, 255);
     $buttonLabel = clean_optional_text($_POST['button_label'] ?? null, 60);
     $buttonRoute = clean_optional_text($_POST['button_route'] ?? null, 120);
@@ -839,30 +837,68 @@ function admin_save_slide(PDO $pdo): void
         $status = 'disabled';
     }
 
-    $statement = $pdo->prepare(
-        "UPDATE home_slider_ads
-         SET sort_order = :sort_order,
-             title = :title,
-             subtitle = :subtitle,
-             button_label = :button_label,
-             button_route = :button_route,
-             image_url = :image_url,
-             status = :status,
-             updated_at = NOW()
-         WHERE id = :id"
-    );
-    $statement->execute([
-        'sort_order' => (int) $sortOrder,
-        'title' => $title,
-        'subtitle' => $subtitle,
-        'button_label' => $buttonLabel,
-        'button_route' => $buttonRoute,
-        'image_url' => $imageUrl,
-        'status' => $status,
-        'id' => $slideId,
-    ]);
+    $pdo->beginTransaction();
+    try {
+        if ($slideId > 0) {
+            $currentStatement = $pdo->prepare('SELECT sort_order FROM home_slider_ads WHERE id = :id FOR UPDATE');
+            $currentStatement->execute(['id' => $slideId]);
+            $oldOrder = $currentStatement->fetchColumn();
+            if ($oldOrder === false) {
+                throw new InvalidArgumentException('Slide introuvable.');
+            }
+            $oldOrder = (int) $oldOrder;
+            if ($oldOrder !== (int) $sortOrder) {
+                $pdo->prepare('UPDATE home_slider_ads SET sort_order = -id WHERE id = :id')->execute(['id' => $slideId]);
+                if ((int) $sortOrder < $oldOrder) {
+                    $shift = $pdo->prepare('UPDATE home_slider_ads SET sort_order = sort_order + 1 WHERE sort_order >= :new_order AND sort_order < :old_order ORDER BY sort_order DESC');
+                } else {
+                    $shift = $pdo->prepare('UPDATE home_slider_ads SET sort_order = sort_order - 1 WHERE sort_order > :old_order AND sort_order <= :new_order ORDER BY sort_order ASC');
+                }
+                $shift->execute(['new_order' => (int) $sortOrder, 'old_order' => $oldOrder]);
+            }
+            $statement = $pdo->prepare(
+                "UPDATE home_slider_ads SET sort_order = :sort_order, title = :title, subtitle = :subtitle,
+                 button_label = :button_label, button_route = :button_route, image_url = :image_url,
+                 status = :status, updated_at = NOW() WHERE id = :id"
+            );
+            $statement->execute(['sort_order' => (int) $sortOrder, 'title' => $title, 'subtitle' => $subtitle, 'button_label' => $buttonLabel, 'button_route' => $buttonRoute, 'image_url' => $imageUrl, 'status' => $status, 'id' => $slideId]);
+        } else {
+            $shift = $pdo->prepare('UPDATE home_slider_ads SET sort_order = sort_order + 1 WHERE sort_order >= :sort_order ORDER BY sort_order DESC');
+            $shift->execute(['sort_order' => (int) $sortOrder]);
+            $statement = $pdo->prepare(
+                "INSERT INTO home_slider_ads (sort_order, title, subtitle, button_label, button_route, image_url, status)
+                 VALUES (:sort_order, :title, :subtitle, :button_label, :button_route, :image_url, :status)"
+            );
+            $statement->execute(['sort_order' => (int) $sortOrder, 'title' => $title, 'subtitle' => $subtitle, 'button_label' => $buttonLabel, 'button_route' => $buttonRoute, 'image_url' => $imageUrl, 'status' => $status]);
+            $slideId = (int) $pdo->lastInsertId();
+        }
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $exception;
+    }
     audit_admin_action($pdo, 'home_slide_saved', 'home_slider_ads', (string) $slideId);
-    set_admin_flash('success', 'Slide publicitaire mis a jour.');
+    set_admin_flash('success', 'Slide Home enregistre.');
+}
+
+function admin_delete_slide(PDO $pdo): void
+{
+    $slideId = admin_positive_int($_POST['slide_id'] ?? null);
+    $pdo->beginTransaction();
+    try {
+        $statement = $pdo->prepare('SELECT sort_order FROM home_slider_ads WHERE id = :id FOR UPDATE');
+        $statement->execute(['id' => $slideId]);
+        $sortOrder = $statement->fetchColumn();
+        if ($sortOrder === false) throw new InvalidArgumentException('Slide introuvable.');
+        $pdo->prepare('DELETE FROM home_slider_ads WHERE id = :id')->execute(['id' => $slideId]);
+        $pdo->prepare('UPDATE home_slider_ads SET sort_order = sort_order - 1 WHERE sort_order > :sort_order ORDER BY sort_order ASC')->execute(['sort_order' => (int) $sortOrder]);
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $exception;
+    }
+    audit_admin_action($pdo, 'home_slide_deleted', 'home_slider_ads', (string) $slideId);
+    set_admin_flash('success', 'Slide Home supprime.');
 }
 
 function admin_send_notification(PDO $pdo): void
@@ -2628,9 +2664,10 @@ function render_admin_dashboard(
         <?php endif; ?>
 
         <?php if ($page === 'slides'): ?>
-        <section class="admin-panel" id="slides"><div class="admin-panel-heading"><div><h2>Slides publicitaires Home</h2><p>Images, textes et boutons exposes par l API /api/home_slides.php.</p></div></div><div class="slide-admin-grid">
-        <?php if ($slides === []): ?><p class="admin-empty">Aucun slide configure. Rejouez l installation SQL.</p><?php endif; ?>
-        <?php foreach ($slides as $slide): ?><form method="post" class="slide-card"><input type="hidden" name="redirect_page" value="slides"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="save_slide"><input type="hidden" name="slide_id" value="<?= (int) $slide['id'] ?>"><label>Ordre<input name="sort_order" type="number" min="0" max="9999" value="<?= (int) $slide['sort_order'] ?>"></label><label>Titre<input name="title" maxlength="120" value="<?= admin_escape($slide['title'] ?: '') ?>"></label><label>Sous-titre<textarea name="subtitle" maxlength="255"><?= admin_escape($slide['subtitle'] ?: '') ?></textarea></label><label>Bouton<input name="button_label" maxlength="60" value="<?= admin_escape($slide['button_label'] ?: '') ?>"></label><label>Route bouton<input name="button_route" maxlength="120" value="<?= admin_escape($slide['button_route'] ?: '') ?>"></label><label>Image URL<input name="image_url" maxlength="500" value="<?= admin_escape($slide['image_url'] ?: '') ?>"></label><label>Etat<select name="status"><option value="active"<?= $slide['status'] === 'active' ? ' selected' : '' ?>>Actif</option><option value="disabled"<?= $slide['status'] === 'disabled' ? ' selected' : '' ?>>Desactive</option></select></label><button class="admin-button primary" type="submit">Enregistrer le slide</button><small class="muted">MAJ <?= admin_escape($slide['updated_at'] ?: '-') ?></small></form><?php endforeach; ?>
+        <section class="admin-panel" id="slides"><div class="admin-panel-heading"><div><h2>Slides Home</h2><p>Ajout, ordre et activation des images exposees par /api/home_slides.php. Si aucune image n'est active, le hero reste vide.</p></div></div><div class="slide-admin-grid">
+        <form method="post" class="slide-card"><input type="hidden" name="redirect_page" value="slides"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="save_slide"><input type="hidden" name="slide_id" value="0"><label>Ordre<input name="sort_order" type="number" min="0" max="9999" value="<?= count($slides) ?>"></label><label>Titre optionnel<input name="title" maxlength="120"></label><label>Sous-titre<textarea name="subtitle" maxlength="255"></textarea></label><label>Bouton<input name="button_label" maxlength="60"></label><label>Route bouton<input name="button_route" maxlength="120" value="home"></label><label>Image URL<input name="image_url" maxlength="500" required></label><label>Etat<select name="status"><option value="active">Actif</option><option value="disabled">Desactive</option></select></label><button class="admin-button primary" type="submit">Ajouter le slide</button></form>
+        <?php if ($slides === []): ?><p class="admin-empty">Aucun slide configure : le hero Home restera vide.</p><?php endif; ?>
+        <?php foreach ($slides as $slide): ?><form method="post" class="slide-card"><input type="hidden" name="redirect_page" value="slides"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="slide_id" value="<?= (int) $slide['id'] ?>"><label>Ordre<input name="sort_order" type="number" min="0" max="9999" value="<?= (int) $slide['sort_order'] ?>"></label><label>Titre optionnel<input name="title" maxlength="120" value="<?= admin_escape($slide['title'] ?: '') ?>"></label><label>Sous-titre<textarea name="subtitle" maxlength="255"><?= admin_escape($slide['subtitle'] ?: '') ?></textarea></label><label>Bouton<input name="button_label" maxlength="60" value="<?= admin_escape($slide['button_label'] ?: '') ?>"></label><label>Route bouton<input name="button_route" maxlength="120" value="<?= admin_escape($slide['button_route'] ?: '') ?>"></label><label>Image URL<input name="image_url" maxlength="500" value="<?= admin_escape($slide['image_url'] ?: '') ?>"></label><label>Etat<select name="status"><option value="active"<?= $slide['status'] === 'active' ? ' selected' : '' ?>>Actif</option><option value="disabled"<?= $slide['status'] === 'disabled' ? ' selected' : '' ?>>Desactive</option></select></label><button name="action" value="save_slide" class="admin-button primary" type="submit">Enregistrer</button><button name="action" value="delete_slide" class="admin-button danger" type="submit" onclick="return confirm('Supprimer ce slide ?')">Supprimer</button><small class="muted">MAJ <?= admin_escape($slide['updated_at'] ?: '-') ?></small></form><?php endforeach; ?>
         </div></section>
         <?php endif; ?>
 

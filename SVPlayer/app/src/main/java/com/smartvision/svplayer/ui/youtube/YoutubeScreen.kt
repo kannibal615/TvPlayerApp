@@ -121,6 +121,7 @@ import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import com.smartvision.svplayer.ui.theme.appScreenBackground
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
@@ -311,7 +312,7 @@ fun YoutubeScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(
+            .appScreenBackground(
                 Brush.radialGradient(
                     colors = listOf(
                         Color(0xFF3A1020).copy(alpha = 0.42f),

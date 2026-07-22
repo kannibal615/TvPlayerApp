@@ -83,8 +83,10 @@ import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.focus.awaitItemVisible
+import com.smartvision.svplayer.ui.focus.remoteMultiPressShortcuts
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import com.smartvision.svplayer.ui.theme.appScreenBackground
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
@@ -246,7 +248,7 @@ fun SeriesScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(
+            .appScreenBackground(
                 Brush.radialGradient(
                     colors = listOf(
                         SmartVisionColors.PrimaryDark.copy(alpha = 0.34f),
@@ -353,6 +355,7 @@ fun SeriesScreen(
                     listState = seriesListState,
                     searchFocusRequester = seriesSearchFocusRequester,
                     firstSeriesFocusRequester = firstSeriesFocusRequester,
+                    headerFocusRequester = currentTabFocusRequester,
                     focusedSeriesFocusRequester = focusedSeriesFocusRequester,
                     returnSeriesFocusRequester = returnSeriesFocusRequester,
                     returnFocusSeriesId = returnFocusSeriesId,
@@ -564,6 +567,7 @@ private fun SeriesList(
     listState: LazyListState,
     searchFocusRequester: FocusRequester,
     firstSeriesFocusRequester: FocusRequester,
+    headerFocusRequester: FocusRequester,
     focusedSeriesFocusRequester: FocusRequester,
     returnSeriesFocusRequester: FocusRequester,
     returnFocusSeriesId: Int?,
@@ -583,6 +587,8 @@ private fun SeriesList(
     modifier: Modifier = Modifier,
 ) {
     val sortFocusRequester = remember { FocusRequester() }
+    val lastSeriesFocusRequester = remember { FocusRequester() }
+    val shortcutScope = rememberCoroutineScope()
 
     LaunchedEffect(
         focusFirstAfterCategoryId,
@@ -697,7 +703,35 @@ private fun SeriesList(
 
             else -> LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .remoteMultiPressShortcuts(
+                        onStart = {
+                            shortcutScope.launch {
+                                listState.scrollToItem(0)
+                                if (listState.awaitItemVisible(0)) {
+                                    withFrameNanos { }
+                                    runCatching { firstSeriesFocusRequester.requestFocus() }
+                                }
+                            }
+                        },
+                        onEnd = {
+                            shortcutScope.launch {
+                                val index = state.displayedSeries.lastIndex
+                                if (index >= 0) {
+                                    listState.scrollToItem(index)
+                                    if (listState.awaitItemVisible(index)) {
+                                        withFrameNanos { }
+                                        runCatching {
+                                            if (index == 0) firstSeriesFocusRequester.requestFocus()
+                                            else lastSeriesFocusRequester.requestFocus()
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        onHeader = { runCatching { headerFocusRequester.requestFocus() } },
+                    ),
                 verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
                 contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
             ) {
@@ -726,6 +760,7 @@ private fun SeriesList(
                         focusRequester = when {
                             series.seriesId == returnFocusSeriesId -> returnSeriesFocusRequester
                             index == 0 -> firstSeriesFocusRequester
+                            index == state.displayedSeries.lastIndex && index > 0 -> lastSeriesFocusRequester
                             series.seriesId == state.focusedSeriesId -> focusedSeriesFocusRequester
                             else -> itemFocusRequester
                         },

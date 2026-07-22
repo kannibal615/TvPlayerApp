@@ -56,8 +56,10 @@ import com.smartvision.svplayer.domain.model.SyncStatus
 import com.smartvision.svplayer.startup.StartupCatalogWorkKind
 import com.smartvision.svplayer.sync.SyncFrequencyPolicy
 import com.smartvision.svplayer.ui.focus.awaitItemVisible
+import com.smartvision.svplayer.ui.focus.remoteMultiPressShortcuts
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import com.smartvision.svplayer.ui.theme.appScreenBackground
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -103,6 +105,8 @@ fun HomeScreen(
     val scrollState = rememberScrollState()
     var verticalFocusJob by remember { mutableStateOf<Job?>(null) }
     val startupWorkRequest by container.startupCatalogWork.collectAsStateWithLifecycle()
+    val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
+    val activeM3uUrl by container.accountManager.m3uUrl.collectAsStateWithLifecycle()
     val activeProfileId = state.profileId
     val kidsMode = activeProfile?.type == ProfileType.KIDS
     var catalogWorkUiState by remember { mutableStateOf(HomeCatalogWorkUiState.Idle) }
@@ -496,7 +500,13 @@ fun HomeScreen(
         viewModel.refreshSlides()
     }
 
-    LaunchedEffect(visibleToUser) {
+    LaunchedEffect(
+        visibleToUser,
+        activeProfile?.id,
+        activeProfile?.isConfigured,
+        activePlaylistSource,
+        activeM3uUrl,
+    ) {
         if (!visibleToUser) {
             verticalFocusJob?.cancel()
             previewController.stop()
@@ -601,8 +611,46 @@ fun HomeScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .remoteMultiPressShortcuts(
+                enabled = visibleToUser && !catalogSyncActive,
+                onStart = {
+                    focusScope.launch {
+                        scrollState.animateScrollTo(0)
+                        withFrameNanos { }
+                        runCatching { liveFocusRequester.requestFocus() }
+                    }
+                },
+                onEnd = {
+                    focusScope.launch {
+                        val target = when {
+                            state.trendingSeries.isNotEmpty() -> {
+                                scrollState.animateScrollTo(scrollState.maxValue)
+                                seriesTrendItemFocusRequesters[state.trendingSeries.last().id]
+                            }
+                            state.trendingMovies.isNotEmpty() -> {
+                                scrollState.animateScrollTo(scrollState.maxValue)
+                                movieTrendItemFocusRequesters[state.trendingMovies.last().id]
+                            }
+                            state.continueWatching.isNotEmpty() -> {
+                                scrollState.animateScrollTo(scrollState.maxValue)
+                                continueItemFocusRequesters[state.continueWatching.last().id]
+                            }
+                            else -> seriesFocusRequester
+                        }
+                        withFrameNanos { }
+                        runCatching { target?.requestFocus() }
+                    }
+                },
+                onHeader = {
+                    focusScope.launch {
+                        scrollState.animateScrollTo(0)
+                        withFrameNanos { }
+                        runCatching { homeTabFocusRequester.requestFocus() }
+                    }
+                },
+            )
             .onPreviewKeyEvent { !visibleToUser || catalogSyncActive }
-            .background(
+            .appScreenBackground(
                 Brush.radialGradient(
                     colors = listOf(
                         Color(0xFF123B70).copy(alpha = 0.72f),
@@ -1139,11 +1187,11 @@ private suspend fun shouldRequestPostHomeCatalogSync(
     container: com.smartvision.svplayer.core.data.AppContainer,
 ): Boolean {
     if (container.catalogRepository.syncStatus.value is SyncStatus.Running) return false
+    val activeProfile = container.accountManager.activeProfile() ?: return false
     val source = container.accountManager.activePlaylistSource.value
     if (source == PlaylistSource.Xtream && !container.accountManager.current().isConfigured) return false
     if (source == PlaylistSource.M3u && container.accountManager.m3uUrl.value.isBlank()) return false
-    val activeProfile = container.accountManager.activeProfile()
-    if (activeProfile != null && !container.accountManager.isCatalogCurrent(activeProfile)) return true
+    if (!container.accountManager.isCatalogCurrent(activeProfile)) return true
     val hasLocalCatalog = container.catalogRepository.hasLocalCatalogForActiveProfile()
     val settings = container.settingsRepository.settings.first()
     val lastSync = container.syncStateDao.get(container.accountManager.activeProfileIdOrDefault())?.lastSync

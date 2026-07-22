@@ -47,24 +47,24 @@ fun HomeHeroBanner(
     profileKey: String = "",
     modifier: Modifier = Modifier,
 ) {
-    val fallbackSlides = remember(strings) { defaultHomeHeroSlides(strings) }
-    val slides = remember(remoteSlides, fallbackSlides, kidsMode) {
-        if (kidsMode) {
-            listOf(
-                fallbackSlides.first().copy(
-                    imageRes = R.drawable.kids_home_hero,
-                    imageUrl = "",
-                ),
-            )
-        } else remoteSlides.takeIf { it.isNotEmpty() }
-            ?.mapIndexed { index, slide ->
-                slide.toHeroSlide(fallbackSlides[index % fallbackSlides.size])
-            }
-            ?: fallbackSlides
+    val localizedSlides = remember(strings) { defaultHomeHeroSlides(strings) }
+    val slides = remember(remoteSlides, localizedSlides, kidsMode) {
+        remoteSlides.mapIndexed { index, slide ->
+            slide.toHeroSlide(localizedSlides[index % localizedSlides.size])
+        }
+    }
+    val shape = RoundedCornerShape(SmartVisionDimensions.HomePanelRadius)
+    if (slides.isEmpty()) {
+        Box(
+            modifier = modifier
+                .height(SmartVisionDimensions.HomeHeroHeight)
+                .clip(shape)
+                .background(Color.Transparent),
+        )
+        return
     }
     var slideIndex by remember(profileKey, kidsMode) { mutableIntStateOf(0) }
     val slide = slides[slideIndex.coerceIn(slides.indices)]
-    val shape = RoundedCornerShape(SmartVisionDimensions.HomePanelRadius)
 
     LaunchedEffect(profileKey, kidsMode, slides.size) {
         if (slideIndex !in slides.indices) slideIndex = 0
@@ -89,13 +89,6 @@ fun HomeHeroBanner(
                 placeholder = painterResource(slide.imageRes),
                 error = painterResource(slide.imageRes),
                 fallback = painterResource(slide.imageRes),
-                modifier = Modifier.fillMaxSize(),
-            )
-        } else {
-            Image(
-                painter = painterResource(slide.imageRes),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
         }

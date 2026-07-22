@@ -78,6 +78,7 @@ import com.smartvision.svplayer.domain.model.ParentalControlScope
 import com.smartvision.svplayer.domain.model.SyncStatus
 import com.smartvision.svplayer.domain.repository.CatalogContentCounts
 import com.smartvision.svplayer.startup.BackgroundSyncScheduler
+import com.smartvision.svplayer.startup.StartupCatalogWorkKind
 import com.smartvision.svplayer.sync.CatalogSyncScheduler
 import com.smartvision.svplayer.ui.activation.ActivationScreen
 import com.smartvision.svplayer.ui.activation.ActivationViewModel
@@ -88,6 +89,7 @@ import com.smartvision.svplayer.ui.detail.MovieDetailRoute
 import com.smartvision.svplayer.ui.detail.SeriesDetailRoute
 import com.smartvision.svplayer.ui.home.HomeHeaderFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
+import com.smartvision.svplayer.ui.home.HeaderIconStyle
 import com.smartvision.svplayer.ui.home.HomeScreen
 import com.smartvision.svplayer.ui.home.HomeViewModel
 import com.smartvision.svplayer.ui.home.visibleForProfile
@@ -125,6 +127,8 @@ import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.LocalLoadingColor
 import com.smartvision.svplayer.ui.theme.SmartVisionLoadingColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
+import com.smartvision.svplayer.ui.theme.AppBackgroundSurface
+import com.smartvision.svplayer.ui.theme.LocalAppBackgroundActive
 import com.smartvision.svplayer.ui.update.AppUpdateDialog
 import com.smartvision.svplayer.ui.update.AppUpdateViewModel
 import com.smartvision.svplayer.ui.youtube.YoutubeScreen
@@ -772,6 +776,7 @@ fun AppNavigation(
         LocalTvFocusStyle provides focusStyle,
         LocalTvAnimationsEnabled provides playerSettings.animationsEnabled,
         LocalLoadingColor provides loadingColor,
+        LocalAppBackgroundActive provides (playerSettings.appBackgroundType != "Default"),
     ) {
     val routeAllowedForProfile = currentRoute.isAllowedFor(profilePermissions)
     LaunchedEffect(currentRoute, profilePermissions) {
@@ -786,6 +791,8 @@ fun AppNavigation(
         Box(Modifier.fillMaxSize().background(SmartVisionColors.Background))
         return@CompositionLocalProvider
     }
+    Box(Modifier.fillMaxSize()) {
+    AppBackgroundSurface(settings = playerSettings, modifier = Modifier.fillMaxSize())
     NavHost(
         navController = navController,
         startDestination = AppRoute.Home.route,
@@ -794,8 +801,7 @@ fun AppNavigation(
         popEnterTransition = { EnterTransition.None },
         popExitTransition = { ExitTransition.None },
         modifier = modifier
-            .fillMaxSize()
-            .background(SmartVisionColors.Background),
+            .fillMaxSize(),
     ) {
         composable(AppRoute.Home.route) {
             key(activeProfileId) {
@@ -866,6 +872,14 @@ fun AppNavigation(
                     }
                 },
                 onSyncCatalog = syncCatalog,
+                onSynchronizeOnHome = {
+                    container.requestStartupCatalogWork(StartupCatalogWorkKind.Synchronize)
+                    navController.navigate(AppRoute.Home.route) {
+                        popUpTo(AppRoute.Home.route) { inclusive = false }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
                 onActivationChanged = activationViewModel::checkNow,
                 startDestination = com.smartvision.svplayer.ui.profile.ProfileAreaDestination.INFO,
                 onOpenInfo = {},
@@ -892,6 +906,14 @@ fun AppNavigation(
                     if (multiProfileGate.shouldShowUpgradePrompt) showLicensePurchaseQr = true
                 },
                 onSyncCatalog = syncCatalog,
+                onSynchronizeOnHome = {
+                    container.requestStartupCatalogWork(StartupCatalogWorkKind.Synchronize)
+                    navController.navigate(AppRoute.Home.route) {
+                        popUpTo(AppRoute.Home.route) { inclusive = false }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
                 onActivationChanged = activationViewModel::checkNow,
                 startDestination = com.smartvision.svplayer.ui.profile.ProfileAreaDestination.MANAGE,
                 onOpenInfo = { navController.navigateSingleTop(AppRoute.Profile.route) },
@@ -1258,6 +1280,7 @@ fun AppNavigation(
                 }
             }
         }
+    }
     }
 
     val playerRouteActive = currentRoute.startsWith("player/") ||
@@ -1697,6 +1720,7 @@ private fun headerTabs(strings: SmartVisionStrings) = listOf(
         label = "YouTube",
         route = AppRoute.Youtube.route,
         iconRes = R.drawable.ic_header_youtube,
+        iconStyle = HeaderIconStyle.OriginalColors,
     ),
 )
 

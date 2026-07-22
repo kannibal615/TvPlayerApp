@@ -82,8 +82,10 @@ import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
 import com.smartvision.svplayer.ui.focus.awaitItemVisible
+import com.smartvision.svplayer.ui.focus.remoteMultiPressShortcuts
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import com.smartvision.svplayer.ui.theme.appScreenBackground
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
@@ -245,7 +247,7 @@ fun MoviesScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(
+            .appScreenBackground(
                 Brush.radialGradient(
                     colors = listOf(
                         SmartVisionColors.PrimaryDark.copy(alpha = 0.34f),
@@ -352,6 +354,7 @@ fun MoviesScreen(
                     listState = movieListState,
                     searchFocusRequester = movieSearchFocusRequester,
                     firstMovieFocusRequester = firstMovieFocusRequester,
+                    headerFocusRequester = currentTabFocusRequester,
                     focusedMovieFocusRequester = focusedMovieFocusRequester,
                     returnMovieFocusRequester = returnMovieFocusRequester,
                     returnFocusMovieId = returnFocusMovieId,
@@ -534,6 +537,7 @@ private fun MovieList(
     listState: LazyListState,
     searchFocusRequester: FocusRequester,
     firstMovieFocusRequester: FocusRequester,
+    headerFocusRequester: FocusRequester,
     focusedMovieFocusRequester: FocusRequester,
     returnMovieFocusRequester: FocusRequester,
     returnFocusMovieId: Int?,
@@ -552,6 +556,8 @@ private fun MovieList(
     modifier: Modifier = Modifier,
 ) {
     val sortFocusRequester = remember { FocusRequester() }
+    val lastMovieFocusRequester = remember { FocusRequester() }
+    val shortcutScope = rememberCoroutineScope()
 
     LaunchedEffect(
         focusFirstAfterCategoryId,
@@ -666,7 +672,35 @@ private fun MovieList(
 
             else -> LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .remoteMultiPressShortcuts(
+                        onStart = {
+                            shortcutScope.launch {
+                                listState.scrollToItem(0)
+                                if (listState.awaitItemVisible(0)) {
+                                    withFrameNanos { }
+                                    runCatching { firstMovieFocusRequester.requestFocus() }
+                                }
+                            }
+                        },
+                        onEnd = {
+                            shortcutScope.launch {
+                                val index = state.displayedMovies.lastIndex
+                                if (index >= 0) {
+                                    listState.scrollToItem(index)
+                                    if (listState.awaitItemVisible(index)) {
+                                        withFrameNanos { }
+                                        runCatching {
+                                            if (index == 0) firstMovieFocusRequester.requestFocus()
+                                            else lastMovieFocusRequester.requestFocus()
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        onHeader = { runCatching { headerFocusRequester.requestFocus() } },
+                    ),
                 verticalArrangement = Arrangement.spacedBy(MediaCatalogDimens.ListGap),
                 contentPadding = PaddingValues(bottom = MediaCatalogDimens.ListGap),
             ) {
@@ -692,6 +726,7 @@ private fun MovieList(
                         focusRequester = when {
                             movie.streamId == returnFocusMovieId -> returnMovieFocusRequester
                             index == 0 -> firstMovieFocusRequester
+                            index == state.displayedMovies.lastIndex && index > 0 -> lastMovieFocusRequester
                             movie.streamId == state.focusedMovieId -> focusedMovieFocusRequester
                             else -> itemFocusRequester
                         },

@@ -142,6 +142,7 @@ import com.smartvision.svplayer.ui.catalog.MediaCatalogDimens
 import com.smartvision.svplayer.ui.catalog.MediaCatalogPanel
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.awaitItemVisible
+import com.smartvision.svplayer.ui.focus.remoteMultiPressShortcuts
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.home.HomeHeaderTab
@@ -149,6 +150,7 @@ import com.smartvision.svplayer.ui.home.TvHeader
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.player.LivePlaybackSession
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import com.smartvision.svplayer.ui.theme.appScreenBackground
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import kotlinx.coroutines.Job
@@ -368,6 +370,20 @@ fun LiveTvScreen(
         }
     }
 
+    fun focusChannelBoundary(atEnd: Boolean) {
+        focusScope.launch {
+            val targetIndex = if (atEnd) visibleChannels.lastIndex else 0
+            val target = visibleChannels.getOrNull(targetIndex) ?: return@launch
+            channelFocusTargetId = target.streamId
+            lastFocusedChannelId = target.streamId
+            channelListState.scrollToItem(targetIndex)
+            if (!channelListState.awaitItemVisible(targetIndex)) return@launch
+            withFrameNanos { }
+            currentFocusZone = LiveTvFocusZone.Channels
+            runCatching { firstChannelFocusRequester.requestFocus() }
+        }
+    }
+
     fun focusFirstChannelAfterCategorySelection(categoryId: String) {
         focusScope.launch {
             val firstChannel = visibleChannels.firstOrNull() ?: return@launch
@@ -441,7 +457,7 @@ fun LiveTvScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(
+            .appScreenBackground(
                 Brush.radialGradient(
                     colors = listOf(
                         SmartVisionColors.PrimaryDark.copy(alpha = 0.36f),
@@ -577,6 +593,8 @@ fun LiveTvScreen(
                     onRestoreSearchFocus = ::restoreSearchFocus,
                     onRestoreChannelFocus = ::restoreChannelFocus,
                     onRestoreHeaderFocus = ::restoreHeaderFocus,
+                    onShortcutStart = { focusChannelBoundary(false) },
+                    onShortcutEnd = { focusChannelBoundary(true) },
                     onChannelClick = { channel ->
                         if (inputReady) {
                             val openFullPlayer = viewModel.activateChannel(channel)
@@ -783,6 +801,8 @@ private fun ChannelList(
     onRestoreSearchFocus: () -> Unit,
     onRestoreChannelFocus: () -> Unit,
     onRestoreHeaderFocus: () -> Unit,
+    onShortcutStart: () -> Unit,
+    onShortcutEnd: () -> Unit,
     onChannelClick: (LiveTvChannel) -> Unit,
     onLoadNextPage: () -> Unit,
     onRetry: () -> Unit,
@@ -881,7 +901,13 @@ private fun ChannelList(
 
             else -> LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .remoteMultiPressShortcuts(
+                        onStart = onShortcutStart,
+                        onEnd = onShortcutEnd,
+                        onHeader = onRestoreHeaderFocus,
+                    ),
                 verticalArrangement = Arrangement.spacedBy(LiveTvDimens.ListGap),
                 contentPadding = PaddingValues(top = LiveTvDimens.ChannelListTopPadding, bottom = LiveTvDimens.ListGap),
             ) {
@@ -2437,7 +2463,12 @@ private fun MiniPreviewPlayer(
     val latestStreamUrl by rememberUpdatedState(streamUrl)
     val latestFallbackStreamUrl by rememberUpdatedState(fallbackStreamUrl)
     val audioScope = rememberCoroutineScope()
-    var buffering by remember { mutableStateOf(true) }
+    var buffering by remember(streamId, streamUrl) {
+        mutableStateOf(
+            !playbackSession.matches(streamId, streamUrl) ||
+                playerIsBuffering(playbackSession.player.playbackState),
+        )
+    }
     var errorText by remember { mutableStateOf<String?>(null) }
     var fallbackTried by remember(streamUrl) { mutableStateOf(false) }
     val volumeFadeJob = remember { arrayOfNulls<Job>(1) }
@@ -2450,11 +2481,12 @@ private fun MiniPreviewPlayer(
         volumeFadeJob[0] = audioScope.launch { player.fadeInMiniPlayerVolume() }
     }
 
-    LaunchedEffect(streamUrl) {
+    LaunchedEffect(streamId, streamUrl) {
         fallbackTried = false
         errorText = null
-        buffering = true
+        buffering = !playbackSession.matches(streamId, streamUrl) || playerIsBuffering(player.playbackState)
         playbackSession.playPreview(streamId, streamUrl)
+        buffering = playerIsBuffering(player.playbackState)
         player.volume = 0f
         restartPreviewAudioFade()
     }
@@ -2462,7 +2494,7 @@ private fun MiniPreviewPlayer(
     DisposableEffect(player) {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
-                buffering = playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE
+                buffering = playerIsBuffering(playbackState)
                 if (playbackState == Player.STATE_READY) {
                     errorText = null
                 }
@@ -2486,6 +2518,7 @@ private fun MiniPreviewPlayer(
             }
         }
         player.addListener(listener)
+        buffering = playerIsBuffering(player.playbackState)
         onDispose {
             volumeFadeJob[0]?.cancel()
             player.removeListener(listener)
@@ -2530,6 +2563,9 @@ private fun MiniPreviewPlayer(
         }
     }
 }
+
+private fun playerIsBuffering(playbackState: Int): Boolean =
+    playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE
 
 private suspend fun ExoPlayer.fadeInMiniPlayerVolume() {
     delay(MiniPlayerAudioStartDelayMillis)

@@ -25,6 +25,7 @@ interface SettingsRepository {
     suspend fun setFocusActiveColor(value: String)
     suspend fun setFocusParentColor(value: String)
     suspend fun setLoadingColor(value: String)
+    suspend fun setAppBackground(type: String, value: String)
     suspend fun setAnimationsEnabled(value: Boolean)
     suspend fun setVideoRatio(value: String)
     suspend fun setBufferMode(value: String)
