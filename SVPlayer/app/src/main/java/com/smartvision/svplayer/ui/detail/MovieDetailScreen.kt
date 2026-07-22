@@ -490,7 +490,7 @@ private fun MovieDetailInfo(
         if (state.loading) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(
-                    color = SmartVisionColors.Primary,
+                    color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
                     strokeWidth = 3.dp,
                     modifier = Modifier.size(28.dp),
                 )

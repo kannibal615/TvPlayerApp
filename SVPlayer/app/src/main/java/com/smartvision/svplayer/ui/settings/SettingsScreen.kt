@@ -208,10 +208,14 @@ fun SettingsScreen(
             onSetFocusStyle = { value -> scope.launch { container.settingsRepository.setFocusStyle(value) } },
             onSetFocusColor = { value -> scope.launch { container.settingsRepository.setFocusColor(value) } },
             onSetFocusEffect = { value -> scope.launch { container.settingsRepository.setFocusEffect(value) } },
+            onSetFocusHaloDistance = { value -> scope.launch { container.settingsRepository.setFocusHaloDistance(value) } },
+            onSetFocusHaloColor = { value -> scope.launch { container.settingsRepository.setFocusHaloColor(value) } },
+            onSetFocusHaloOpacity = { value -> scope.launch { container.settingsRepository.setFocusHaloOpacity(value) } },
             onSetFocusBackground = { value -> scope.launch { container.settingsRepository.setFocusBackground(value) } },
             onSetFocusSelectedColor = { value -> scope.launch { container.settingsRepository.setFocusSelectedColor(value) } },
             onSetFocusActiveColor = { value -> scope.launch { container.settingsRepository.setFocusActiveColor(value) } },
             onSetFocusParentColor = { value -> scope.launch { container.settingsRepository.setFocusParentColor(value) } },
+            onSetLoadingColor = { value -> scope.launch { container.settingsRepository.setLoadingColor(value) } },
             onSetVideoRatio = { value -> scope.launch { container.settingsRepository.setVideoRatio(value) } },
             onSetAnimations = { value -> scope.launch { container.settingsRepository.setAnimationsEnabled(value) } },
             onSetBufferMode = { value -> scope.launch { container.settingsRepository.setBufferMode(value) } },
@@ -280,10 +284,14 @@ private fun SettingsMenuLayout(
     onSetFocusStyle: (String) -> Unit,
     onSetFocusColor: (String) -> Unit,
     onSetFocusEffect: (String) -> Unit,
+    onSetFocusHaloDistance: (String) -> Unit,
+    onSetFocusHaloColor: (String) -> Unit,
+    onSetFocusHaloOpacity: (String) -> Unit,
     onSetFocusBackground: (String) -> Unit,
     onSetFocusSelectedColor: (String) -> Unit,
     onSetFocusActiveColor: (String) -> Unit,
     onSetFocusParentColor: (String) -> Unit,
+    onSetLoadingColor: (String) -> Unit,
     onSetVideoRatio: (String) -> Unit,
     onSetAnimations: (Boolean) -> Unit,
     onSetBufferMode: (String) -> Unit,
@@ -508,6 +516,7 @@ private fun SettingsMenuLayout(
                                 SettingsOption("Frame", strings.focusFrame),
                                 SettingsOption("NeonGlow", strings.focusNeonGlow),
                                 SettingsOption("GoldSweep", strings.focusGoldSweep),
+                                SettingsOption("Halo", strings.focusHalo),
                             ), settings.focusEffect, onSetFocusEffect)
                         } },
                         second = { CompactSettingsCard(strings.focusBackground) {
@@ -516,6 +525,24 @@ private fun SettingsMenuLayout(
                                 SettingsOption("GoldTransparent", strings.focusBackgroundGold),
                                 SettingsOption("WhiteTransparent", strings.focusBackgroundWhite),
                             ), settings.focusBackground, onSetFocusBackground, columns = 2)
+                        } },
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    SettingsCardRow(
+                        first = { CompactSettingsCard(strings.focusHaloDistance) {
+                            SettingsChoice(strings.focusHaloDistance, listOf(
+                                SettingsOption("Near", strings.focusHaloNear),
+                                SettingsOption("Medium", strings.focusHaloMedium),
+                                SettingsOption("Far", strings.focusHaloFar),
+                            ), settings.focusHaloDistance, onSetFocusHaloDistance)
+                        } },
+                        second = { CompactSettingsCard(strings.focusHaloColor) {
+                            SettingsChoice(strings.focusHaloColor, focusRoleColorOptions(strings), settings.focusHaloColor, onSetFocusHaloColor, columns = 2)
+                            SettingsChoice(strings.focusHaloOpacity, listOf(
+                                SettingsOption("Low", strings.focusHaloOpacityLow),
+                                SettingsOption("Medium", strings.focusHaloOpacityMedium),
+                                SettingsOption("High", strings.focusHaloOpacityHigh),
+                            ), settings.focusHaloOpacity, onSetFocusHaloOpacity)
                         } },
                     )
                     Spacer(Modifier.height(8.dp))
@@ -549,6 +576,13 @@ private fun SettingsMenuLayout(
                                 enabled = settings.showHeaderClock,
                             )
                         } },
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    SettingsCardRow(
+                        first = { CompactSettingsCard(strings.loadingColor) {
+                            SettingsChoice(strings.loadingColor, focusRoleColorOptions(strings), settings.loadingColor, onSetLoadingColor, columns = 2)
+                        } },
+                        second = { Spacer(Modifier.fillMaxWidth()) },
                     )
                     Spacer(Modifier.height(8.dp))
                     TvSectionCard(strings.focusLivePreview, Icons.Default.Info, Modifier.fillMaxWidth(), horizontalPadding = 12.dp, verticalPadding = 10.dp) {

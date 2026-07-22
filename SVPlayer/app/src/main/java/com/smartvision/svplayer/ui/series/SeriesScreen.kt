@@ -412,8 +412,9 @@ fun SeriesScreen(
                     monetizationManager = container.monetizationManager,
                     premiumPurchaseUrl = premiumPurchaseUrl,
                     tvCode = tvCode,
-                    premiumTitle = strings.premiumPurchaseTitle,
-                    premiumSubtitle = strings.premiumPreviewSubtitle,
+                    premiumTitle = strings.liveTvPremiumModeTitle,
+                    premiumSubtitle = strings.liveTvPremiumModeSubtitle,
+                    premiumCodeLabel = strings.liveTvPremiumCodeLabel,
                     seriesEpisodes = state.episodes.map { episode ->
                         VodPreviewEpisode(
                             id = episode.episodeId,

@@ -487,7 +487,7 @@ private fun QrCard(
         contentAlignment = Alignment.Center,
     ) {
         when {
-            loading -> CircularProgressIndicator(color = SmartVisionColors.Primary)
+            loading -> CircularProgressIndicator(color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current)
             content.isBlank() -> Icon(Icons.Default.QrCode2, contentDescription = null, tint = Color(0xFF10203A), modifier = Modifier.size(92.dp))
             else -> {
                 val bitmap = remember(content) { createQrBitmap(content, 520) }

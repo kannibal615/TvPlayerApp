@@ -719,7 +719,7 @@ private fun SeriesEpisodeList(
         Spacer(Modifier.height(7.dp))
         when {
             loading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = SmartVisionColors.Primary, strokeWidth = 3.dp, modifier = Modifier.size(34.dp))
+                CircularProgressIndicator(color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current, strokeWidth = 3.dp, modifier = Modifier.size(34.dp))
             }
 
             errorMessage != null && episodes.isEmpty() -> DetailActionButton(

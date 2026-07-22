@@ -742,7 +742,7 @@ fun LocalMediaPlayerRoute(
                     .background(Color.Black),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator(color = SmartVisionColors.Primary, strokeWidth = 3.dp)
+                CircularProgressIndicator(color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current, strokeWidth = 3.dp)
             }
         }
         playback == null -> {
@@ -2100,7 +2100,7 @@ private fun FullScreenPlayerScreen(
 
         if (buffering && !adGateActive && !resumePromptVisible) {
             CircularProgressIndicator(
-                color = SmartVisionColors.Primary,
+                color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
                 strokeWidth = 3.dp,
                 modifier = Modifier
                     .align(Alignment.Center)

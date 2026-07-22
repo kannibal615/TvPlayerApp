@@ -308,7 +308,7 @@ private fun NotificationsScreen(
                 Spacer(Modifier.height(8.dp))
                 when {
                     state.loading && state.notifications.isEmpty() -> CircularProgressIndicator(
-                        color = SmartVisionColors.CyanAccent,
+                        color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
                         modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 120.dp),
                     )
                     state.errorMessage != null && state.notifications.isEmpty() -> NotificationEmptyState(

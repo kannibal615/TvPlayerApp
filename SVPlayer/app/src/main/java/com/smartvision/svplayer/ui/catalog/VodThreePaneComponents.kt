@@ -107,7 +107,7 @@ import com.smartvision.svplayer.data.monetization.smartVisionMediaSourceFactory
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
-import com.smartvision.svplayer.ui.live.PremiumPreviewQr
+import com.smartvision.svplayer.ui.components.PremiumPreviewQr
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -636,6 +636,7 @@ fun VodPreviewPanel(
     tvCode: String = "",
     premiumTitle: String = "Upgrade to SmartVision Premium",
     premiumSubtitle: String = "Scan the QR code with your phone",
+    premiumCodeLabel: String = "TV CODE :",
     seriesEpisodes: List<VodPreviewEpisode> = emptyList(),
     selectedSeriesEpisodeId: Int? = null,
     onSeriesEpisodeSelected: (Int) -> Unit = {},
@@ -725,7 +726,7 @@ fun VodPreviewPanel(
                         tvCode = tvCode,
                         title = premiumTitle,
                         subtitle = premiumSubtitle,
-                        codeLabel = "Code TV",
+                        codeLabel = premiumCodeLabel,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -1342,7 +1343,7 @@ private fun VodIdlePreviewAdFrame(
         } else {
             if (!configLoaded) {
                 CircularProgressIndicator(
-                    color = SmartVisionColors.Primary,
+                    color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
                     strokeWidth = 3.dp,
                     modifier = Modifier.size(30.dp),
                 )
@@ -1508,7 +1509,7 @@ private fun VodIdlePreviewVastPlayer(
 
         if (loading && !adFailed) {
             CircularProgressIndicator(
-                color = SmartVisionColors.Primary,
+                color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
                 strokeWidth = 3.dp,
                 modifier = Modifier.size(30.dp),
             )
@@ -1805,7 +1806,7 @@ private fun SegmentedVodMiniPlayer(
 
         if (buffering && !showPoster && errorText == null) {
             CircularProgressIndicator(
-                color = SmartVisionColors.Primary,
+                color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
                 strokeWidth = 3.dp,
                 modifier = Modifier.size(30.dp),
             )

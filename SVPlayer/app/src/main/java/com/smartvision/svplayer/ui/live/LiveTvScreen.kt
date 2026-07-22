@@ -18,8 +18,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -131,6 +131,7 @@ import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
+import com.smartvision.svplayer.ui.components.PremiumPreviewQr
 import com.smartvision.svplayer.ui.catalog.CatalogSearchField
 import com.smartvision.svplayer.ui.catalog.CatalogPanelTitleWithCount
 import com.smartvision.svplayer.ui.catalog.CatalogSortButton
@@ -900,7 +901,7 @@ private fun ChannelList(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
                                 strokeWidth = 2.dp,
-                                color = SmartVisionColors.Primary,
+                                color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
                             )
                         }
                     }
@@ -1073,7 +1074,7 @@ private fun IdlePreviewSmartVisionPrompt(
 }
 
 @Composable
-fun PremiumPreviewQr(
+private fun LegacyPremiumPreviewQr(
     purchaseUrl: String,
     tvCode: String,
     title: String,
@@ -1301,7 +1302,7 @@ private fun IdlePreviewAdFrame(
         } else {
             if (!configLoaded) {
                 CircularProgressIndicator(
-                    color = SmartVisionColors.Primary,
+                    color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
                     strokeWidth = 3.dp,
                     modifier = Modifier.size(30.dp),
                 )
@@ -1467,7 +1468,7 @@ private fun IdlePreviewVastPlayer(
 
         if (loading && !adFailed) {
             CircularProgressIndicator(
-                color = SmartVisionColors.Primary,
+                color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
                 strokeWidth = 3.dp,
                 modifier = Modifier.size(30.dp),
             )
@@ -2500,7 +2501,7 @@ private fun MiniPreviewPlayer(
 
         if (buffering) {
             CircularProgressIndicator(
-                color = SmartVisionColors.Primary,
+                color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
                 strokeWidth = 3.dp,
                 modifier = Modifier.size(30.dp),
             )

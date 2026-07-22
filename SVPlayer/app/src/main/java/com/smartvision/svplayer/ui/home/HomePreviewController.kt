@@ -8,7 +8,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -28,6 +27,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -38,7 +38,7 @@ class HomePreviewController(context: Context) {
     val activePreviewId = _activePreviewId.asStateFlow()
     private val _firstFramePreviewId = MutableStateFlow<String?>(null)
     val firstFramePreviewId = _firstFramePreviewId.asStateFlow()
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var scope = newPreviewScope()
     private var audioFadeJob: Job? = null
     private var segmentJob: Job? = null
 
@@ -49,6 +49,7 @@ class HomePreviewController(context: Context) {
         startPositionMs: Long = 0L,
         mode: HomePreviewMode = HomePreviewMode.None,
     ) {
+        if (!scope.isActive) scope = newPreviewScope()
         if (_activePreviewId.value == previewId && player?.isPlaying == true) return
         stop()
         val nextPlayer = ExoPlayer.Builder(appContext).build().apply {
@@ -136,6 +137,9 @@ class HomePreviewController(context: Context) {
             }
         }
     }
+
+    private fun newPreviewScope(): CoroutineScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 }
 
 internal fun homePreviewSessionId(namespace: String, contentId: String): String =
@@ -165,7 +169,6 @@ fun HomePreviewSurface(
     modifier: Modifier = Modifier,
 ) {
     val activePreviewId by controller.activePreviewId.collectAsStateWithLifecycle()
-    val firstFramePreviewId by controller.firstFramePreviewId.collectAsStateWithLifecycle()
     if (activePreviewId != previewId) return
     AndroidView(
         factory = { context ->
@@ -174,6 +177,9 @@ fun HomePreviewSurface(
             }
         },
         update = { view -> view.player = controller.playerFor(previewId) },
-        modifier = modifier.alpha(if (firstFramePreviewId == previewId) 1f else 0f),
+        // SurfaceView alpha transitions are unreliable on several Fire TV chipsets:
+        // decoding succeeds but the surface can remain transparent after first frame.
+        // Poster/overlay visibility is still driven by firstFramePreviewId in the card.
+        modifier = modifier,
     )
 }

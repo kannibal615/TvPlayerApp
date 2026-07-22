@@ -491,7 +491,11 @@ private fun ProfileInfoContent(
                 if (syncStatus is SyncStatus.Running) {
                     val progress = if (syncStatus.totalItems > 0) syncStatus.completedItems.toFloat() / syncStatus.totalItems else 0f
                     Column(Modifier.width(150.dp).padding(end = 14.dp)) {
-                        LinearProgressIndicator(progress = { progress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+                        LinearProgressIndicator(
+                            progress = { progress.coerceIn(0f, 1f) },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
+                        )
                         Text("${(progress * 100).toInt()}%", color = SmartVisionColors.TextSecondary, style = SmartVisionType.Caption)
                     }
                 }
@@ -856,7 +860,11 @@ private fun CatalogMetric(label: String, value: Int?, icon: ImageVector, accent:
             Icon(icon, null, tint = accent, modifier = Modifier.size(18.dp))
             Text(label, color = accent, style = SmartVisionType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        if (value == null && !unavailable) CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = accent)
+        if (value == null && !unavailable) CircularProgressIndicator(
+            modifier = Modifier.size(22.dp),
+            strokeWidth = 2.dp,
+            color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
+        )
         else Text(if (unavailable) "--" else "%,d".format(value ?: 0), color = SmartVisionColors.TextPrimary, style = SmartVisionType.TitleS, fontWeight = FontWeight.Bold, fontSize = 18.sp,)
     }
 }

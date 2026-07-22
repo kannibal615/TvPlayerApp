@@ -68,10 +68,14 @@ class DefaultSettingsRepository(
                 focusStyle = preferences[FOCUS_STYLE] ?: "Default",
                 focusColor = preferences[FOCUS_COLOR] ?: "White",
                 focusEffect = preferences[FOCUS_EFFECT] ?: "Frame",
+                focusHaloDistance = preferences[FOCUS_HALO_DISTANCE] ?: "Medium",
+                focusHaloColor = preferences[FOCUS_HALO_COLOR] ?: "CyanNeon",
+                focusHaloOpacity = preferences[FOCUS_HALO_OPACITY] ?: "Medium",
                 focusBackground = preferences[FOCUS_BACKGROUND] ?: "BlueTransparent",
                 focusSelectedColor = preferences[FOCUS_SELECTED_COLOR] ?: "CyanNeon",
                 focusActiveColor = preferences[FOCUS_ACTIVE_COLOR] ?: "ElectricBlue",
                 focusParentColor = preferences[FOCUS_PARENT_COLOR] ?: "White",
+                loadingColor = preferences[LOADING_COLOR] ?: "CyanNeon",
                 animationsEnabled = preferences[ANIMATIONS] ?: true,
                 videoRatio = preferences[profileStringKey(VIDEO_RATIO_KEY, profileId)] ?: preferences[VIDEO_RATIO] ?: "Fit",
                 bufferMode = preferences[profileStringKey(BUFFER_MODE_KEY, profileId)] ?: preferences[BUFFER_MODE] ?: "Standard",
@@ -127,6 +131,18 @@ class DefaultSettingsRepository(
         dataStore.edit { it[FOCUS_EFFECT] = value }
     }
 
+    override suspend fun setFocusHaloDistance(value: String) {
+        dataStore.edit { it[FOCUS_HALO_DISTANCE] = value }
+    }
+
+    override suspend fun setFocusHaloColor(value: String) {
+        dataStore.edit { it[FOCUS_HALO_COLOR] = value }
+    }
+
+    override suspend fun setFocusHaloOpacity(value: String) {
+        dataStore.edit { it[FOCUS_HALO_OPACITY] = value }
+    }
+
     override suspend fun setFocusBackground(value: String) {
         dataStore.edit { it[FOCUS_BACKGROUND] = value }
     }
@@ -141,6 +157,10 @@ class DefaultSettingsRepository(
 
     override suspend fun setFocusParentColor(value: String) {
         dataStore.edit { it[FOCUS_PARENT_COLOR] = value }
+    }
+
+    override suspend fun setLoadingColor(value: String) {
+        dataStore.edit { it[LOADING_COLOR] = value }
     }
 
     override suspend fun setAnimationsEnabled(value: Boolean) {
@@ -226,10 +246,14 @@ class DefaultSettingsRepository(
         val FOCUS_STYLE = stringPreferencesKey("focus_style")
         val FOCUS_COLOR = stringPreferencesKey("focus_color")
         val FOCUS_EFFECT = stringPreferencesKey("focus_effect")
+        val FOCUS_HALO_DISTANCE = stringPreferencesKey("focus_halo_distance")
+        val FOCUS_HALO_COLOR = stringPreferencesKey("focus_halo_color")
+        val FOCUS_HALO_OPACITY = stringPreferencesKey("focus_halo_opacity")
         val FOCUS_BACKGROUND = stringPreferencesKey("focus_background")
         val FOCUS_SELECTED_COLOR = stringPreferencesKey("focus_selected_color")
         val FOCUS_ACTIVE_COLOR = stringPreferencesKey("focus_active_color")
         val FOCUS_PARENT_COLOR = stringPreferencesKey("focus_parent_color")
+        val LOADING_COLOR = stringPreferencesKey("loading_color")
         val ANIMATIONS = booleanPreferencesKey("animations_enabled")
         val VIDEO_RATIO = stringPreferencesKey("video_ratio")
         val BUFFER_MODE = stringPreferencesKey("buffer_mode")

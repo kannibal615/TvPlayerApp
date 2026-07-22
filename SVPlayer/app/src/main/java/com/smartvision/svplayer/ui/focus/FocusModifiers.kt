@@ -23,6 +23,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -115,6 +116,19 @@ fun Modifier.tvFocusTarget(
                 )
             }
             if (state.isFocused && enabled) {
+                if (style.effect == TvFocusEffect.Halo) {
+                    val distancePx = with(density) { style.haloDistance.toPx() }
+                    listOf(0.35f to 0.72f, 0.68f to 0.44f, 1f to 0.22f).forEach { (spreadFraction, alphaFraction) ->
+                        val spread = distancePx * spreadFraction
+                        drawRoundRect(
+                            color = style.haloColor.copy(alpha = style.haloAlpha * alphaFraction),
+                            topLeft = Offset(-spread, -spread),
+                            size = Size(size.width + spread * 2f, size.height + spread * 2f),
+                            cornerRadius = CornerRadius(cornerRadiusPx + spread, cornerRadiusPx + spread),
+                            style = Stroke(width = max(1f, distancePx * 0.34f)),
+                        )
+                    }
+                }
                 drawRoundRect(
                     color = style.background,
                     cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),

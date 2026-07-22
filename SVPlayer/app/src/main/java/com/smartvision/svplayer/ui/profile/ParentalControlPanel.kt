@@ -384,7 +384,7 @@ fun ParentalControlPanel(
                             Modifier.fillMaxWidth().height(90.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            CircularProgressIndicator(color = SmartVisionColors.CyanAccent, modifier = Modifier.size(28.dp))
+                            CircularProgressIndicator(color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current, modifier = Modifier.size(28.dp))
                         }
                         state.resultsError && state.folders.isEmpty() && state.items.isEmpty() -> Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                             ResultInfoText(strings.parentalResultsError)

@@ -12,6 +12,9 @@ data class TvFocusStyle(
     val scale: Float,
     val borderWidth: Dp,
     val glowAlpha: Float,
+    val haloDistance: Dp = 8.dp,
+    val haloColor: Color = SmartVisionColors.CyanAccent,
+    val haloAlpha: Float = 0.48f,
     val accent: Color,
     val background: Color,
     val selectedAccent: Color = SmartVisionColors.CyanAccent,
@@ -27,6 +30,7 @@ enum class TvFocusEffect {
     Frame,
     NeonGlow,
     GoldSweep,
+    Halo,
 }
 
 object TvFocusStyles {
@@ -76,11 +80,15 @@ object TvFocusStyles {
         selectedColorKey: String? = null,
         activeColorKey: String? = null,
         parentColorKey: String? = null,
+        haloDistanceKey: String? = null,
+        haloColorKey: String? = null,
+        haloOpacityKey: String? = null,
     ): TvFocusStyle {
         val base = fromKey(styleKey)
         val effect = when {
             effectKey.equals("NeonGlow", ignoreCase = true) -> TvFocusEffect.NeonGlow
             effectKey.equals("GoldSweep", ignoreCase = true) -> TvFocusEffect.GoldSweep
+            effectKey.equals("Halo", ignoreCase = true) -> TvFocusEffect.Halo
             else -> TvFocusEffect.Frame
         }
         val color = when {
@@ -104,16 +112,28 @@ object TvFocusStyles {
             activeBackground = roleColor(activeColorKey, Color(0xFF2F6BFF)).copy(alpha = 0.30f),
             parentAccent = roleColor(parentColorKey, SmartVisionColors.FocusWhite),
             parentBackground = roleColor(parentColorKey, SmartVisionColors.FocusWhite).copy(alpha = 0.12f),
+            haloDistance = when {
+                haloDistanceKey.equals("Near", ignoreCase = true) -> 4.dp
+                haloDistanceKey.equals("Far", ignoreCase = true) -> 14.dp
+                else -> 8.dp
+            },
+            haloColor = roleColor(haloColorKey, Color(0xFF19F3FF)),
+            haloAlpha = when {
+                haloOpacityKey.equals("Low", ignoreCase = true) -> 0.24f
+                haloOpacityKey.equals("High", ignoreCase = true) -> 0.72f
+                else -> 0.48f
+            },
             glowAlpha = when (effect) {
                 TvFocusEffect.Frame -> 0.10f
                 TvFocusEffect.NeonGlow -> 0.46f
                 TvFocusEffect.GoldSweep -> 0.20f
+                TvFocusEffect.Halo -> 0.10f
             },
         )
     }
 
     val FocusColors = listOf("White", "CyanNeon", "ElectricBlue")
-    val FocusEffects = listOf("Frame", "NeonGlow", "GoldSweep")
+    val FocusEffects = listOf("Frame", "NeonGlow", "GoldSweep", "Halo")
     val FocusBackgrounds = listOf("BlueTransparent", "GoldTransparent", "WhiteTransparent")
 
     private fun roleColor(key: String?, fallback: Color): Color = when {

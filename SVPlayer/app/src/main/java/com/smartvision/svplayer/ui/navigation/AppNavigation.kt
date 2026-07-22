@@ -119,6 +119,8 @@ import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.LocalTvAnimationsEnabled
 import com.smartvision.svplayer.ui.focus.TvFocusStyles
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
+import com.smartvision.svplayer.ui.theme.LocalLoadingColor
+import com.smartvision.svplayer.ui.theme.SmartVisionLoadingColors
 import com.smartvision.svplayer.ui.theme.SmartVisionType
 import com.smartvision.svplayer.ui.update.AppUpdateDialog
 import com.smartvision.svplayer.ui.update.AppUpdateViewModel
@@ -175,6 +177,9 @@ fun AppNavigation(
         playerSettings.focusSelectedColor,
         playerSettings.focusActiveColor,
         playerSettings.focusParentColor,
+        playerSettings.focusHaloDistance,
+        playerSettings.focusHaloColor,
+        playerSettings.focusHaloOpacity,
     ) {
         TvFocusStyles.fromKeys(
             playerSettings.focusStyle,
@@ -184,7 +189,13 @@ fun AppNavigation(
             playerSettings.focusSelectedColor,
             playerSettings.focusActiveColor,
             playerSettings.focusParentColor,
+            playerSettings.focusHaloDistance,
+            playerSettings.focusHaloColor,
+            playerSettings.focusHaloOpacity,
         )
+    }
+    val loadingColor = remember(playerSettings.loadingColor) {
+        SmartVisionLoadingColors.fromKey(playerSettings.loadingColor)
     }
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route ?: AppRoute.Home.route
@@ -488,6 +499,7 @@ fun AppNavigation(
         CompositionLocalProvider(
             LocalTvFocusStyle provides focusStyle,
             LocalTvAnimationsEnabled provides playerSettings.animationsEnabled,
+            LocalLoadingColor provides loadingColor,
         ) {
             Box(
                 modifier = Modifier
@@ -755,6 +767,7 @@ fun AppNavigation(
     CompositionLocalProvider(
         LocalTvFocusStyle provides focusStyle,
         LocalTvAnimationsEnabled provides playerSettings.animationsEnabled,
+        LocalLoadingColor provides loadingColor,
     ) {
     val routeAllowedForProfile = currentRoute.isAllowedFor(profilePermissions)
     LaunchedEffect(currentRoute, profilePermissions) {
@@ -1463,7 +1476,7 @@ private fun XtreamConnectionAlertDialog(
         title = "Connexion Xtream indisponible",
         onDismiss = onContinue,
         width = 720.dp,
-        tone = TvDialogTone.Warning,
+        tone = TvDialogTone.Destructive,
         icon = Icons.Default.Warning,
     ) {
         Text(

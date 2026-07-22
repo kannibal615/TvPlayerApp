@@ -1977,7 +1977,7 @@ private fun XtreamSynchronizationDialog(
                     leadingContent = if (blocking) {
                         {
                             CircularProgressIndicator(
-                                color = SmartVisionColors.CyanAccent,
+                                color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
                                 strokeWidth = 2.dp,
                                 modifier = Modifier.size(18.dp),
                             )
@@ -2097,7 +2097,7 @@ private fun XtreamSyncCountCard(
                         .fillMaxWidth()
                         .height(5.dp)
                         .clip(RoundedCornerShape(50)),
-                    color = if (progress.completed) Color(0xFF7CFFB2) else SmartVisionColors.CyanAccent,
+                    color = if (progress.completed) Color(0xFF7CFFB2) else com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
                     trackColor = Color.White.copy(alpha = 0.10f),
                 )
             }
@@ -3570,7 +3570,7 @@ private fun PremiumQrCard(
             contentAlignment = Alignment.Center,
         ) {
             when {
-                loading -> CircularProgressIndicator(color = SmartVisionColors.Primary)
+                loading -> CircularProgressIndicator(color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current)
                 qrUrl.isBlank() -> Icon(
                     Icons.Default.QrCode2,
                     contentDescription = null,

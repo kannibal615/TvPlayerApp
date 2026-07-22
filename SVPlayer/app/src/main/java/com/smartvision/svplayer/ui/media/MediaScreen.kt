@@ -1893,7 +1893,7 @@ private fun MediaLocalMiniPlayer(
         )
         if (buffering) {
             CircularProgressIndicator(
-                color = SmartVisionColors.CyanAccent,
+                color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
                 strokeWidth = 2.dp,
                 modifier = Modifier.size(26.dp),
             )

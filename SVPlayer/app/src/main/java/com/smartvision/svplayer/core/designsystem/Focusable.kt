@@ -37,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -111,6 +112,18 @@ fun FocusableCard(
             }
             .drawBehind {
                 if (focused) {
+                    if (focusStyle.effect == TvFocusEffect.Halo) {
+                        val distance = focusStyle.haloDistance.toPx()
+                        listOf(0.35f to 0.72f, 0.68f to 0.44f, 1f to 0.22f).forEach { (spreadFraction, alphaFraction) ->
+                            val spread = distance * spreadFraction
+                            drawRoundRect(
+                                color = focusStyle.haloColor.copy(alpha = focusStyle.haloAlpha * alphaFraction),
+                                topLeft = Offset(-spread, -spread),
+                                size = Size(size.width + spread * 2f, size.height + spread * 2f),
+                                style = Stroke(width = (distance * 0.34f).coerceAtLeast(1f)),
+                            )
+                        }
+                    }
                     if (focusStyle.effect == TvFocusEffect.NeonGlow || focusStyle.effect == TvFocusEffect.GoldSweep) {
                         drawCircle(
                             brush = Brush.radialGradient(

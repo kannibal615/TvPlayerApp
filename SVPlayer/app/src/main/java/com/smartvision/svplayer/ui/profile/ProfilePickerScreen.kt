@@ -87,7 +87,11 @@ import com.smartvision.svplayer.core.data.LocalAppContainer
 import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.ui.components.NumericPinDialog
+import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
+import com.smartvision.svplayer.ui.focus.rememberTvFocusState
+import com.smartvision.svplayer.ui.focus.tvFocusTarget
 import com.smartvision.svplayer.ui.i18n.smartVisionStrings
+import com.smartvision.svplayer.ui.theme.LocalLoadingColor
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -105,7 +109,6 @@ private const val PrecomposedPickerAlpha = 0.001f
 private val ProfileCardHorizontalPadding = 14.dp
 private val ProfileCardVerticalPadding = 20.dp
 private val ProfileAvatarNameSpacing = 12.dp
-private val ProfileSelectionBorder = Color(0xFFF5F7F8)
 
 @Composable
 fun ProfilePickerScreen(
@@ -597,6 +600,9 @@ private fun ProfilePickerCard(
     onEdit: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
+    val loadingColor = LocalLoadingColor.current
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
         targetValue = when {
@@ -608,9 +614,9 @@ private fun ProfilePickerCard(
     )
     val shape = RoundedCornerShape(20.dp)
     val borderColor = when {
-        selected -> ProfileSelectionBorder
-        focused -> Color(0xFF61A8FF)
-        active -> Color(0xFF20D4C7)
+        selected -> focusStyle.selectedAccent
+        focused -> focusStyle.accent
+        active -> focusStyle.activeAccent
         else -> Color(0xFF53698D).copy(alpha = 0.72f)
     }
 
@@ -631,11 +637,17 @@ private fun ProfilePickerCard(
                 .onGloballyPositioned { coordinates ->
                     onCardBoundsChanged(coordinates.boundsInRoot())
                 }
+                .tvFocusTarget(
+                    state = focusState,
+                    focusRequester = cardFocusRequester,
+                    enabled = enabled,
+                    cornerRadius = 20.dp,
+                )
                 .shadow(
-                    if (focused || selected) 12.dp else 3.dp,
+                    if (focused || selected) focusStyle.haloDistance else 3.dp,
                     shape,
-                    ambientColor = SmartVisionColors.CardFocusGlow,
-                    spotColor = SmartVisionColors.CardFocusGlow,
+                    ambientColor = focusStyle.haloColor.copy(alpha = focusStyle.haloAlpha),
+                    spotColor = focusStyle.haloColor.copy(alpha = focusStyle.haloAlpha),
                 )
                 .clip(shape)
                 .background(
@@ -647,7 +659,6 @@ private fun ProfilePickerCard(
                     ),
                 )
                 .border(BorderStroke(if (focused || selected) 2.5.dp else 1.5.dp, borderColor), shape)
-                .focusRequester(cardFocusRequester)
                 .then(if (editEnabled) Modifier.focusProperties { down = editFocusRequester } else Modifier)
                 .onFocusChanged {
                     focused = it.isFocused
@@ -686,7 +697,7 @@ private fun ProfilePickerCard(
                     }
                     if (selected) {
                         ProfileAvatarLoadingIndicator(
-                            color = SmartVisionColors.CyanAccent,
+                            color = loadingColor,
                             strokeWidth = 3.25.dp,
                             modifier = Modifier.size(avatarSize),
                         )
@@ -736,6 +747,8 @@ private fun SelectedProfileTransition(
     homeRevealProgress: Float,
 ) {
     val density = LocalDensity.current
+    val focusStyle = LocalTvFocusStyle.current
+    val loadingColor = LocalLoadingColor.current
     val cardWidthPx = with(density) { cardWidth.toPx() }
     val cardHeightPx = with(density) { cardHeight.toPx() }
     val avatarSizePx = with(density) { avatarSize.toPx() }
@@ -781,8 +794,8 @@ private fun SelectedProfileTransition(
                     .shadow(
                         elevation = 30.dp,
                         shape = shape,
-                        ambientColor = SmartVisionColors.CardFocusGlow,
-                        spotColor = SmartVisionColors.CardFocusGlow,
+                        ambientColor = focusStyle.haloColor.copy(alpha = focusStyle.haloAlpha),
+                        spotColor = focusStyle.haloColor.copy(alpha = focusStyle.haloAlpha),
                     )
                     .clip(shape)
                     .background(
@@ -794,7 +807,7 @@ private fun SelectedProfileTransition(
                         ),
                     )
                     .border(
-                        BorderStroke(1.5.dp, ProfileSelectionBorder),
+                        BorderStroke(1.5.dp, focusStyle.selectedAccent),
                         shape,
                     ),
             )
@@ -821,7 +834,7 @@ private fun SelectedProfileTransition(
                     }
                     if (loadingAlpha > 0f && cardAvatarVisible) {
                         ProfileAvatarLoadingIndicator(
-                            color = SmartVisionColors.CyanAccent,
+                            color = loadingColor,
                             strokeWidth = 2.25.dp,
                             modifier = Modifier
                                 .size(avatarSize)
@@ -896,8 +909,8 @@ private fun SelectedProfileTransition(
                     .shadow(
                         elevation = transitionLerp(24f, 0f, pathProgress).dp,
                         shape = ProfileAvatarShape,
-                        ambientColor = SmartVisionColors.CardFocusGlow,
-                        spotColor = SmartVisionColors.CardFocusGlow,
+                        ambientColor = focusStyle.haloColor.copy(alpha = focusStyle.haloAlpha),
+                        spotColor = focusStyle.haloColor.copy(alpha = focusStyle.haloAlpha),
                     ),
                 contentAlignment = Alignment.Center,
             ) {
@@ -907,7 +920,7 @@ private fun SelectedProfileTransition(
                 )
                 if (flyingLoadingAlpha > 0f) {
                     ProfileAvatarLoadingIndicator(
-                        color = SmartVisionColors.CyanAccent,
+                        color = loadingColor,
                         strokeWidth = 2.25.dp,
                         modifier = Modifier
                             .fillMaxSize()
@@ -971,14 +984,16 @@ private fun PickerEditButton(
     modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
     var focused by remember { mutableStateOf(false) }
     Box(
         modifier = modifier
             .size(38.dp)
             .clip(CircleShape)
-            .background(if (focused) Color(0xFF0A7BEA) else Color(0xFF020B1D).copy(alpha = 0.84f))
-            .border(1.dp, if (focused) Color.White else Color.White.copy(alpha = 0.25f), CircleShape)
-            .focusRequester(focusRequester)
+            .background(if (focused) focusStyle.background else Color(0xFF020B1D).copy(alpha = 0.84f))
+            .border(1.dp, if (focused) focusStyle.accent else Color.White.copy(alpha = 0.25f), CircleShape)
+            .tvFocusTarget(state = focusState, focusRequester = focusRequester, enabled = enabled, cornerRadius = 19.dp)
             .focusProperties { up = cardFocusRequester }
             .onFocusChanged {
                 focused = it.isFocused
@@ -1014,6 +1029,8 @@ private fun AddProfileCard(
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val focusState = rememberTvFocusState()
+    val focusStyle = LocalTvFocusStyle.current
     var focused by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(20.dp)
     Box(
@@ -1023,11 +1040,17 @@ private fun AddProfileCard(
             .graphicsLayer {
                 alpha = contentAlpha
             }
+            .tvFocusTarget(
+                state = focusState,
+                focusRequester = focusRequester,
+                enabled = enabled,
+                cornerRadius = 20.dp,
+            )
             .shadow(
-                if (focused) 12.dp else 3.dp,
+                if (focused) focusStyle.haloDistance else 3.dp,
                 shape,
-                ambientColor = SmartVisionColors.CardFocusGlow,
-                spotColor = SmartVisionColors.CardFocusGlow,
+                ambientColor = focusStyle.haloColor.copy(alpha = focusStyle.haloAlpha),
+                spotColor = focusStyle.haloColor.copy(alpha = focusStyle.haloAlpha),
             )
             .clip(shape)
             .background(
@@ -1038,8 +1061,7 @@ private fun AddProfileCard(
                     ),
                 ),
             )
-            .border(BorderStroke(if (focused) 2.5.dp else 1.5.dp, if (focused) Color(0xFF61A8FF) else Color(0xFF53698D).copy(alpha = 0.72f)), shape)
-            .focusRequester(focusRequester)
+            .border(BorderStroke(if (focused) focusStyle.borderWidth else 1.5.dp, if (focused) focusStyle.accent else Color(0xFF53698D).copy(alpha = 0.72f)), shape)
             .onFocusChanged {
                 focused = it.isFocused
                 if (it.isFocused) onFocused()

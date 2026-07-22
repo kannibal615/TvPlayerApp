@@ -887,7 +887,7 @@ fun CatalogPosterFrame(
         if (showBadge && badge.isNotBlank()) {
             CatalogBadge(
                 text = badge,
-                color = SmartVisionColors.Primary,
+                color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(8.dp),
@@ -1023,7 +1023,7 @@ fun CatalogLoading(
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator(
-                color = SmartVisionColors.Primary,
+                color = com.smartvision.svplayer.ui.theme.LocalLoadingColor.current,
                 strokeWidth = 3.dp,
                 modifier = Modifier.size(38.dp),
             )
