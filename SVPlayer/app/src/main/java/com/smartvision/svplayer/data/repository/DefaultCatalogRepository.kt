@@ -80,6 +80,18 @@ import kotlinx.coroutines.yield
 import kotlinx.coroutines.withTimeout
 import java.util.concurrent.ConcurrentHashMap
 
+internal fun <T> buildCenteredWindow(
+    previousNearestFirst: List<T>,
+    current: T,
+    nextNearestFirst: List<T>,
+    radius: Int,
+): List<T> {
+    val safeRadius = radius.coerceAtLeast(0)
+    return previousNearestFirst.take(safeRadius).asReversed() +
+        current +
+        nextNearestFirst.take(safeRadius)
+}
+
 class DefaultCatalogRepository(
     private val database: SVDatabase,
     private val api: XtreamApiService,
@@ -507,6 +519,36 @@ class DefaultCatalogRepository(
             mediaDao.getLiveStream(profileId, streamId)
                 ?.let { stream -> stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost) }
                 ?.withEpg(epgRepository, accountManager.epgUrl.value)
+        }
+
+    override suspend fun getLiveChannelWindow(streamId: Int, radius: Int): List<LiveChannel> =
+        withContext(Dispatchers.IO) {
+            if (!isLiveCatalogConfigured()) return@withContext emptyList()
+            val safeRadius = radius.coerceIn(0, 10)
+            val profileId = activeProfileId()
+            val current = mediaDao.getLiveStream(profileId, streamId) ?: return@withContext emptyList()
+            val categoryNames = categoryDao.getByType(profileId, MediaSection.Live.storageName)
+                .associate { it.id to it.name }
+            val imageBaseHost = imageBaseHost()
+            val previous = mediaDao.getPreviousLiveStreams(
+                profileId = profileId,
+                categoryId = current.categoryId,
+                number = current.number,
+                name = current.name,
+                streamId = current.streamId,
+                limit = safeRadius,
+            )
+            val next = mediaDao.getNextLiveStreams(
+                profileId = profileId,
+                categoryId = current.categoryId,
+                number = current.number,
+                name = current.name,
+                streamId = current.streamId,
+                limit = safeRadius,
+            )
+            buildCenteredWindow(previous, current, next, safeRadius).map { stream ->
+                stream.toDomain(categoryNames[stream.categoryId] ?: "Live TV", imageBaseHost)
+            }
         }
 
     override suspend fun getPreviousLiveChannel(streamId: Int): LiveChannel? =

@@ -188,6 +188,8 @@ private const val PlayerReleaseDelayMs = 80L
 private const val ResumePromptMinimumPositionMs = 1_000L
 private const val NextEpisodeResumeGuardMs = 15_000L
 private const val VodStallCheckMs = 12_000L
+private const val LiveZapGuideRadius = 2
+private const val LiveZapGuideDurationMs = 3_000L
 
 internal val LiveAspectModes = listOf(
     LiveAspectMode("Auto", AspectRatioFrameLayout.RESIZE_MODE_FIT),
@@ -213,6 +215,7 @@ data class FullScreenPlayback(
     val parentContentId: Int? = null,
     val previousItem: AdjacentPlayback? = null,
     val nextItem: AdjacentPlayback? = null,
+    val liveChannelWindow: List<LiveZapGuideItem> = emptyList(),
     val nextEpisode: NextEpisodePlayback? = null,
     val seriesEpisodes: List<PlayerEpisodeItem> = emptyList(),
     val seasonNumber: Int? = null,
@@ -236,6 +239,13 @@ data class AdjacentPlayback(
     val streamId: Int,
     val title: String,
     val label: String,
+)
+
+data class LiveZapGuideItem(
+    val streamId: Int,
+    val title: String,
+    val label: String,
+    val imageUrl: String?,
 )
 
 data class NextEpisodePlayback(
@@ -294,6 +304,17 @@ internal fun resolveLiveRemoteAction(
         LiveRemoteAction.ZapNext
     }
 }
+
+internal fun shouldOpenLiveSettingsPanel(
+    keyCode: Int,
+    overlayVisible: Boolean,
+    secondaryPanelOpen: Boolean,
+    brightnessMode: Boolean,
+): Boolean =
+    keyCode == AndroidKeyEvent.KEYCODE_MENU &&
+        overlayVisible &&
+        !secondaryPanelOpen &&
+        !brightnessMode
 
 internal enum class PlayerBackAction {
     Ignore,
@@ -482,12 +503,15 @@ class FullScreenPlayerViewModel(
 
     private suspend fun refreshLivePlaybackFromLocalCatalog() {
         val current = catalogRepository.getLiveChannelById(contentId) ?: return
-        val previous = catalogRepository.getPreviousLiveChannel(contentId)
-        val next = catalogRepository.getNextLiveChannel(contentId)
+        val channelWindow = catalogRepository.getLiveChannelWindow(contentId, radius = LiveZapGuideRadius)
+        val currentIndex = channelWindow.indexOfFirst { it.streamId == contentId }
+        val previous = channelWindow.getOrNull(currentIndex - 1)
+        val next = channelWindow.getOrNull(currentIndex + 1)
         val epgPrograms = epgRepository.loadPrograms(epgUrlProvider(), current.epgChannelId, current.name).toFullScreenPrograms()
         _uiState.value = current.toFullScreenPlayback(
             previous = previous,
             next = next,
+            channelWindow = channelWindow,
             epgPrograms = epgPrograms,
             fallback = _uiState.value,
         )
@@ -660,6 +684,7 @@ fun FullScreenPlayerRoute(
     onRecorderLocked: () -> Unit = {},
     livePlaybackSession: LivePlaybackSession? = null,
     enterFromBounds: Rect? = null,
+    showZapGuideOnEnter: Boolean = false,
 ) {
     val container = LocalAppContainer.current
     val viewModel: FullScreenPlayerViewModel = viewModel(
@@ -708,6 +733,7 @@ fun FullScreenPlayerRoute(
         onRecorderLocked = onRecorderLocked,
         livePlaybackSession = livePlaybackSession,
         enterFromBounds = enterFromBounds,
+        showZapGuideOnEnter = showZapGuideOnEnter,
     )
 }
 
@@ -807,6 +833,7 @@ private fun FullScreenPlayerScreen(
     onRecorderLocked: () -> Unit = {},
     livePlaybackSession: LivePlaybackSession? = null,
     enterFromBounds: Rect? = null,
+    showZapGuideOnEnter: Boolean = false,
 ) {
     val context = LocalContext.current
     val container = LocalAppContainer.current
@@ -836,6 +863,9 @@ private fun FullScreenPlayerScreen(
     var durationMs by remember { mutableLongStateOf(0L) }
     var bufferedPositionMs by remember { mutableLongStateOf(0L) }
     var activeMenu by remember { mutableStateOf(PlayerOverlayMenu.None) }
+    var zapGuideVisible by remember(playback.streamId, showZapGuideOnEnter) {
+        mutableStateOf(showZapGuideOnEnter)
+    }
     var playbackSpeed by remember { mutableStateOf(1f) }
     var liveAspectMode by remember(playback.streamId, playerSettings.videoRatio) {
         mutableStateOf(
@@ -1350,12 +1380,7 @@ private fun FullScreenPlayerScreen(
     fun handleLiveChannelKey(keyCode: Int, repeatCount: Int = 0): Boolean {
         if (playback.contentType != UserContentType.Live) return false
         if (adGateActive) return true
-        if (
-            activeMenu == PlayerOverlayMenu.None &&
-            overlayVisible &&
-            !brightnessMode &&
-            (keyCode == AndroidKeyEvent.KEYCODE_DPAD_DOWN || keyCode == AndroidKeyEvent.KEYCODE_MENU)
-        ) {
+        if (shouldOpenLiveSettingsPanel(keyCode, overlayVisible, activeMenu != PlayerOverlayMenu.None, brightnessMode)) {
             activeMenu = PlayerOverlayMenu.Settings
             overlayVisible = false
             return true
@@ -1713,6 +1738,14 @@ private fun FullScreenPlayerScreen(
             overlayVisible = false
             vodProgressFocused = false
             liveProgressFocused = false
+        }
+    }
+
+    LaunchedEffect(showZapGuideOnEnter, playback.streamId, playback.liveChannelWindow) {
+        if (showZapGuideOnEnter && playback.liveChannelWindow.isNotEmpty()) {
+            zapGuideVisible = true
+            delay(LiveZapGuideDurationMs)
+            zapGuideVisible = false
         }
     }
 
@@ -2114,6 +2147,21 @@ private fun FullScreenPlayerScreen(
                 durationMs = adDurationMs,
                 skipDelayMs = adSkipDelayMs,
                 onSkip = { finishAdAndStartContent(skipped = true) },
+            )
+        }
+
+        if (
+            zapGuideVisible &&
+            playback.contentType == UserContentType.Live &&
+            playback.liveChannelWindow.isNotEmpty() &&
+            !adGateActive
+        ) {
+            LiveZapGuide(
+                channels = playback.liveChannelWindow,
+                currentStreamId = playback.streamId,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 32.dp),
             )
         }
 
@@ -4255,6 +4303,7 @@ private fun List<EpgProgram>.toFullScreenPrograms(): List<FullScreenEpgProgram> 
 private fun LiveChannel.toFullScreenPlayback(
     previous: LiveChannel?,
     next: LiveChannel?,
+    channelWindow: List<LiveChannel>,
     epgPrograms: List<FullScreenEpgProgram>,
     fallback: FullScreenPlayback,
 ): FullScreenPlayback {
@@ -4274,6 +4323,7 @@ private fun LiveChannel.toFullScreenPlayback(
         overlayRightText = number.toLiveChannelNumber(streamId),
         previousItem = previous?.toAdjacentPlayback(),
         nextItem = next?.toAdjacentPlayback(),
+        liveChannelWindow = channelWindow.map { it.toLiveZapGuideItem() },
         resumePositionMs = fallback.resumePositionMs,
         epgPrograms = epgPrograms,
     )
@@ -4284,6 +4334,14 @@ private fun LiveChannel.toAdjacentPlayback(): AdjacentPlayback =
         streamId = streamId,
         title = name.cleanTitle(),
         label = number.toLiveChannelNumber(streamId),
+    )
+
+private fun LiveChannel.toLiveZapGuideItem(): LiveZapGuideItem =
+    LiveZapGuideItem(
+        streamId = streamId,
+        title = name.cleanTitle(),
+        label = number.toLiveChannelNumber(streamId),
+        imageUrl = logoUrl,
     )
 
 private fun Movie.toFullScreenPlayback(

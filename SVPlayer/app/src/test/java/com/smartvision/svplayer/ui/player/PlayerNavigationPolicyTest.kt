@@ -68,5 +68,25 @@ class PlayerNavigationPolicyTest {
             LiveRemoteAction.ZapPrevious,
             resolveLiveRemoteAction(KeyEvent.KEYCODE_DPAD_UP, secondaryPanelOpen = false),
         )
+        assertEquals(
+            LiveRemoteAction.ZapNext,
+            resolveLiveRemoteAction(KeyEvent.KEYCODE_DPAD_DOWN, secondaryPanelOpen = false),
+        )
+    }
+
+    @Test
+    fun onlyMenuOpensLiveSettingsFromTheMainOverlay() {
+        assertEquals(
+            false,
+            shouldOpenLiveSettingsPanel(KeyEvent.KEYCODE_DPAD_DOWN, true, false, false),
+        )
+        assertEquals(
+            true,
+            shouldOpenLiveSettingsPanel(KeyEvent.KEYCODE_MENU, true, false, false),
+        )
+        assertEquals(
+            false,
+            shouldOpenLiveSettingsPanel(KeyEvent.KEYCODE_MENU, false, false, false),
+        )
     }
 }

@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -52,10 +50,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -72,7 +68,7 @@ internal fun CategoryFilterBar(
     strings: SmartVisionStrings,
     activeFilterFocusRequester: FocusRequester,
     categoryListFocusRequester: FocusRequester,
-    headerFocusRequester: FocusRequester,
+    filterButtonFocusRequester: FocusRequester,
     onApplyFilter: (String?) -> Unit,
 ) {
     val items = remember(filters, activeFilterCode, strings.liveTvCategoryFilterAll) {
@@ -95,7 +91,7 @@ internal fun CategoryFilterBar(
             if (state.canScrollBackward) {
                 CategoryFilterLeftArrowChip(
                     categoryListFocusRequester = categoryListFocusRequester,
-                    headerFocusRequester = headerFocusRequester,
+                    filterButtonFocusRequester = filterButtonFocusRequester,
                     onClick = { scope.launch { state.animateScrollToItem((state.firstVisibleItemIndex - VisibleFilterStep).coerceAtLeast(0)) } },
                 )
             }
@@ -114,7 +110,7 @@ internal fun CategoryFilterBar(
                         selected = selected,
                         modifier = if (selected) Modifier.focusRequester(activeFilterFocusRequester) else Modifier,
                         categoryListFocusRequester = categoryListFocusRequester,
-                        headerFocusRequester = headerFocusRequester,
+                        filterButtonFocusRequester = filterButtonFocusRequester,
                         onFocused = { scope.launch { state.animateScrollToItem(index) } },
                         onClick = { onApplyFilter(item.code) },
                     )
@@ -129,33 +125,30 @@ internal fun orderFiltersForBar(filters: List<CategoryFilter>, activeFilterCode:
 
 @Composable
 internal fun CategoryFilterIconButton(
-    filters: List<CategoryFilter>,
-    activeFilterCode: String?,
     strings: SmartVisionStrings,
+    expanded: Boolean,
+    focusRequester: FocusRequester,
+    activeFilterFocusRequester: FocusRequester,
     categoryListFocusRequester: FocusRequester,
     headerFocusRequester: FocusRequester,
-    onApplyFilter: (String?) -> Unit,
+    onToggle: () -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
-    var popupOpen by remember { mutableStateOf(false) }
-    val requester = remember { FocusRequester() }
     Box(
         Modifier.size(30.dp).clip(RoundedCornerShape(7.dp))
             .background(if (focused) SmartVisionColors.Primary.copy(alpha = 0.24f) else Color.Transparent)
             .border(1.dp, if (focused) SmartVisionColors.CyanAccent else SmartVisionColors.Border, RoundedCornerShape(7.dp))
-            .focusRequester(requester).focusProperties { down = categoryListFocusRequester; up = headerFocusRequester }
+            .focusRequester(focusRequester)
+            .focusProperties {
+                down = if (expanded) activeFilterFocusRequester else categoryListFocusRequester
+                up = headerFocusRequester
+            }
             .onFocusChanged { focused = it.isFocused }.focusable()
-            .clickable(remember { MutableInteractionSource() }, null) { popupOpen = true }
+            .clickable(remember { MutableInteractionSource() }, null, onClick = onToggle)
             .semantics { contentDescription = strings.liveTvCategoryFilterOpen },
         contentAlignment = Alignment.Center,
     ) {
         Icon(Icons.Default.FilterList, strings.liveTvCategoryFilterOpen, tint = SmartVisionColors.TextPrimary, modifier = Modifier.size(18.dp))
-    }
-    if (popupOpen) {
-        CategoryFilterPopup(filters, activeFilterCode, strings, onDismiss = {
-            popupOpen = false
-            runCatching { requester.requestFocus() }
-        }, onApply = { code -> popupOpen = false; onApplyFilter(code) })
     }
 }
 
@@ -167,7 +160,7 @@ private fun CategoryFilterChip(
     selected: Boolean,
     modifier: Modifier,
     categoryListFocusRequester: FocusRequester,
-    headerFocusRequester: FocusRequester,
+    filterButtonFocusRequester: FocusRequester,
     onFocused: () -> Unit,
     onClick: () -> Unit,
 ) {
@@ -184,7 +177,7 @@ private fun CategoryFilterChip(
                 .clip(RoundedCornerShape(7.dp))
                 .background(if (selected) SmartVisionColors.Primary.copy(alpha = 0.72f) else Color(0xB40B1B31))
                 .border(BorderStroke(if (focused) focusStyle.borderWidth else 1.dp, if (focused) focusStyle.accent else SmartVisionColors.Border), RoundedCornerShape(7.dp))
-                .focusProperties { down = categoryListFocusRequester; up = headerFocusRequester }
+                .focusProperties { down = categoryListFocusRequester; up = filterButtonFocusRequester }
                 .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused() }
                 .onPreviewKeyEvent { event ->
                     if (event.type == KeyEventType.KeyDown &&
@@ -219,53 +212,17 @@ private fun CategoryFilterChip(
 }
 
 @Composable
-private fun CategoryFilterLeftArrowChip(enabled: Boolean = true, categoryListFocusRequester: FocusRequester, headerFocusRequester: FocusRequester, onClick: () -> Unit) {
+private fun CategoryFilterLeftArrowChip(enabled: Boolean = true, categoryListFocusRequester: FocusRequester, filterButtonFocusRequester: FocusRequester, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     Box(Modifier.size(34.dp).clip(RoundedCornerShape(7.dp)).background(Color(0xB40B1B31))
         .border(1.dp, if (focused) SmartVisionColors.CyanAccent else SmartVisionColors.Border, RoundedCornerShape(7.dp))
-        .focusProperties { down = categoryListFocusRequester; up = headerFocusRequester }
+        .focusProperties { down = categoryListFocusRequester; up = filterButtonFocusRequester }
         .onFocusChanged { focused = it.isFocused }.focusable(enabled).clickable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
         Icon(Icons.Default.ChevronLeft, null, tint = SmartVisionColors.TextPrimary.copy(alpha = if (enabled) 1f else 0.3f))
     }
 }
 
 private const val VisibleFilterStep = 4
-
-@Composable
-private fun CategoryFilterPopup(filters: List<CategoryFilter>, activeCode: String?, strings: SmartVisionStrings, onDismiss: () -> Unit, onApply: (String?) -> Unit) {
-    val all = CategoryFilterIdentity("", "", strings.liveTvCategoryFilterAll, CategoryFilterType.REGION, null, 0)
-    val entries = listOf(CategoryFilter(all, 0)) + filters
-    val firstRequester = remember { FocusRequester() }
-    Dialog(onDismissRequest = onDismiss) {
-        LazyColumn(Modifier.width(420.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFA07101E))
-            .border(1.dp, SmartVisionColors.Border, RoundedCornerShape(12.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            itemsIndexed(entries) { index, filter ->
-                val code = filter.identity.normalizedCode.ifBlank { null }
-                var focused by remember { mutableStateOf(false) }
-                Row(Modifier.fillMaxWidth().height(48.dp).then(if (index == 0) Modifier.focusRequester(firstRequester) else Modifier)
-                    .clip(RoundedCornerShape(8.dp)).background(if (code == activeCode) SmartVisionColors.Primary.copy(alpha = 0.65f) else Color(0xB40B1B31))
-                    .border(1.dp, if (focused) SmartVisionColors.CyanAccent else SmartVisionColors.Border, RoundedCornerShape(8.dp))
-                    .onFocusChanged { focused = it.isFocused }.focusable().clickable { onApply(code) }.padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    if (code == "AR") {
-                        androidx.compose.foundation.Image(
-                            painter = painterResource(R.drawable.ic_filter_ar),
-                            contentDescription = filter.identity.displayName,
-                            modifier = Modifier.size(28.dp),
-                        )
-                        Spacer(Modifier.width(10.dp))
-                    } else {
-                        Text(if (code == null) "•" else FlagResolver.visual(filter.identity), color = SmartVisionColors.TextPrimary, fontSize = 20.sp, modifier = Modifier.width(38.dp))
-                    }
-                    Text(filter.identity.displayName, color = SmartVisionColors.TextPrimary, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    if (code != null) Text(filter.identity.sourceCode, color = SmartVisionColors.TextSecondary, modifier = Modifier.width(42.dp))
-                    if (code != null) Text("${filter.categoryCount} ${strings.liveTvCategoryFilterFolders}", color = SmartVisionColors.TextSecondary, fontSize = 12.sp)
-                }
-            }
-        }
-    }
-    LaunchedEffect(Unit) { delay(80); runCatching { firstRequester.requestFocus() } }
-}
 
 @Composable
 internal fun CategoryFilterEmptyState(message: String, allLabel: String, focusRequester: FocusRequester, upFocusRequester: FocusRequester, onShowAll: () -> Unit) {

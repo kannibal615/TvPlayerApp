@@ -682,6 +682,8 @@ private fun CategoryList(
 ) {
     val visibleCategories = state.visibleCategories
     val activeFilterFocusRequester = remember { FocusRequester() }
+    val filterButtonFocusRequester = remember { FocusRequester() }
+    var filtersExpanded by remember { mutableStateOf(false) }
     LaunchedEffect(focusCategoryId, visibleCategories.size) {
         val index = visibleCategories.indexOfFirst { it.id == focusCategoryId }
         if (index >= 0) {
@@ -697,26 +699,29 @@ private fun CategoryList(
         title = strings.liveTvCategories,
         trailing = {
             CategoryFilterIconButton(
-                filters = state.categoryFilters,
-                activeFilterCode = state.activeCategoryFilterCode,
                 strings = strings,
+                expanded = filtersExpanded,
+                focusRequester = filterButtonFocusRequester,
+                activeFilterFocusRequester = activeFilterFocusRequester,
                 categoryListFocusRequester = selectedCategoryFocusRequester,
                 headerFocusRequester = headerFocusRequester,
-                onApplyFilter = onApplyFilter,
+                onToggle = { filtersExpanded = !filtersExpanded },
             )
         },
         modifier = modifier,
     ) {
-        CategoryFilterBar(
-            filters = state.categoryFilters,
-            activeFilterCode = state.activeCategoryFilterCode,
-            strings = strings,
-            activeFilterFocusRequester = activeFilterFocusRequester,
-            categoryListFocusRequester = selectedCategoryFocusRequester,
-            headerFocusRequester = headerFocusRequester,
-            onApplyFilter = onApplyFilter,
-        )
-        Spacer(Modifier.height(6.dp))
+        if (filtersExpanded) {
+            CategoryFilterBar(
+                filters = state.categoryFilters,
+                activeFilterCode = state.activeCategoryFilterCode,
+                strings = strings,
+                activeFilterFocusRequester = activeFilterFocusRequester,
+                categoryListFocusRequester = selectedCategoryFocusRequester,
+                filterButtonFocusRequester = filterButtonFocusRequester,
+                onApplyFilter = onApplyFilter,
+            )
+            Spacer(Modifier.height(6.dp))
+        }
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -736,7 +741,11 @@ private fun CategoryList(
                     } else {
                         null
                     },
-                    upFocusRequester = activeFilterFocusRequester.takeIf { category.id == visibleCategories.firstOrNull()?.id },
+                    upFocusRequester = if (category.id == visibleCategories.firstOrNull()?.id) {
+                        if (filtersExpanded) activeFilterFocusRequester else filterButtonFocusRequester
+                    } else {
+                        null
+                    },
                     onFocused = { onFocused(category) },
                     onRight = onRestoreChannelFocus,
                     onClick = { onCategory(category) },
@@ -748,7 +757,7 @@ private fun CategoryList(
                 message = strings.liveTvCategoryFilterEmpty,
                 allLabel = strings.liveTvCategoryFilterAll,
                 focusRequester = selectedCategoryFocusRequester,
-                upFocusRequester = activeFilterFocusRequester,
+                upFocusRequester = if (filtersExpanded) activeFilterFocusRequester else filterButtonFocusRequester,
                 onShowAll = { onApplyFilter(null) },
             )
         }

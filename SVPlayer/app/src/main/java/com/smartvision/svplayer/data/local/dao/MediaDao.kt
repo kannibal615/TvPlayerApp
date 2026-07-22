@@ -107,6 +107,38 @@ interface MediaDao {
             "WHERE profileId = :profileId " +
             "AND ((:categoryId IS NULL AND categoryId IS NULL) OR categoryId = :categoryId) " +
             "AND (number < :number OR (number = :number AND name < :name) OR (number = :number AND name = :name AND streamId < :streamId)) " +
+            "ORDER BY number DESC, name DESC, streamId DESC LIMIT :limit",
+    )
+    suspend fun getPreviousLiveStreams(
+        profileId: String,
+        categoryId: String?,
+        number: Int,
+        name: String,
+        streamId: Int,
+        limit: Int,
+    ): List<LiveStreamEntity>
+
+    @Query(
+        "SELECT * FROM live_streams " +
+            "WHERE profileId = :profileId " +
+            "AND ((:categoryId IS NULL AND categoryId IS NULL) OR categoryId = :categoryId) " +
+            "AND (number > :number OR (number = :number AND name > :name) OR (number = :number AND name = :name AND streamId > :streamId)) " +
+            "ORDER BY number ASC, name ASC, streamId ASC LIMIT :limit",
+    )
+    suspend fun getNextLiveStreams(
+        profileId: String,
+        categoryId: String?,
+        number: Int,
+        name: String,
+        streamId: Int,
+        limit: Int,
+    ): List<LiveStreamEntity>
+
+    @Query(
+        "SELECT * FROM live_streams " +
+            "WHERE profileId = :profileId " +
+            "AND ((:categoryId IS NULL AND categoryId IS NULL) OR categoryId = :categoryId) " +
+            "AND (number < :number OR (number = :number AND name < :name) OR (number = :number AND name = :name AND streamId < :streamId)) " +
             "ORDER BY number DESC, name DESC, streamId DESC LIMIT 1",
     )
     suspend fun getPreviousLiveStream(profileId: String, categoryId: String?, number: Int, name: String, streamId: Int): LiveStreamEntity?

@@ -1,5 +1,20 @@
 # Troubleshooting
 
+## 2026-07-22 - Modifier.weight resolu vers une API Compose interne en Release
+
+Problem:
+- `assembleRelease` echoue avec `Cannot access 'RowColumnParentData?.weight': it is internal in file` sur un nouveau composable.
+
+Context:
+- L'import `androidx.compose.foundation.layout.weight` peut etre resolu vers un symbole interne avec la version Compose/Kotlin du projet.
+- L'erreur apparait pendant `:app:compileReleaseKotlin`, meme pour un usage standard dans une `Row`.
+
+Working solution:
+- Retirer l'import et remplacer le poids par une largeur bornee lorsque la geometrie TV parente est fixe, comme dans `LiveZapGuide.kt`.
+
+Avoid next time:
+- Ne pas ajouter directement `Modifier.weight` dans un nouveau composable de ce checkout sans valider la compilation Release; preferer les dimensions TV existantes quand le panneau est fixe.
+
 ## 2026-07-18 - Who's Watching bloque sur Preparing Home apres plusieurs changements de profil
 
 Problem:

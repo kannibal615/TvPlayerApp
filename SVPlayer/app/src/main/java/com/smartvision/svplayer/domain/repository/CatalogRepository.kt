@@ -61,6 +61,7 @@ interface CatalogRepository {
     suspend fun countLiveChannels(categoryId: String?, query: String): Int
     suspend fun countLiveChannelsByCategoryIds(categoryIds: List<String>, query: String): Int
     suspend fun getLiveChannelById(streamId: Int): LiveChannel?
+    suspend fun getLiveChannelWindow(streamId: Int, radius: Int): List<LiveChannel>
     suspend fun getPreviousLiveChannel(streamId: Int): LiveChannel?
     suspend fun getNextLiveChannel(streamId: Int): LiveChannel?
     suspend fun getMoviesPage(categoryId: String?, offset: Int, limit: Int): List<Movie>

@@ -53,10 +53,12 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.data.LocalAppContainer
@@ -1060,8 +1062,17 @@ fun AppNavigation(
                 },
             )
         }
-        composable("player/{channelId}") { entry ->
+        composable(
+            route = "player/{channelId}?zapGuide={zapGuide}",
+            arguments = listOf(
+                navArgument("zapGuide") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
+            ),
+        ) { entry ->
             val channelId = entry.arguments?.getString("channelId")?.toIntOrNull()
+            val showZapGuide = entry.arguments?.getBoolean("zapGuide") ?: false
             if (xtreamCatalogBlocked) {
                 LaunchedEffect(Unit) { showXtreamConnectionDialog = true }
                 PlaceholderRouteScreen("Lecture live", "Connexion Xtream indisponible.")
@@ -1077,13 +1088,14 @@ fun AppNavigation(
                         navController.popBackStack()
                     },
                     onPlayLive = { nextChannelId ->
-                        navController.navigate("player/$nextChannelId") {
-                            popUpTo("player/{channelId}") { inclusive = true }
+                        navController.navigate("player/$nextChannelId?zapGuide=true") {
+                            popUpTo("player/{channelId}?zapGuide={zapGuide}") { inclusive = true }
                         }
                     },
                     recorderAccess = recorderGate,
                     strings = strings,
                     livePlaybackSession = livePlaybackSession,
+                    showZapGuideOnEnter = showZapGuide,
                     onRecorderLocked = {
                         if (recorderGate.shouldShowUpgradePrompt) {
                             showLicensePurchaseQr = true
