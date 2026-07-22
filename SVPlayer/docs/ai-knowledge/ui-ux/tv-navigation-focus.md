@@ -28,6 +28,8 @@ Les mini-players Movies/Series ouvrent maintenant le fullscreen directement depu
 
 Depuis le 2026-07-21, les surfaces video des mini-players Live TV, Movies et Series sont des cibles de focus visuelles non cliquables. Droite depuis la colonne centrale les atteint, leur cadre reprend `TvFocusStyle`, puis Haut/Bas/Gauche continue vers les actions, l'EPG ou la liste selon l'ecran. La barre de progression fullscreen Movies/Series rend egalement le focus par un rail plus epais, un halo et un curseur dans la couleur d'accent, sans modifier sa zone de seek.
 
+Depuis le 2026-07-22, le bloc Premium/QR sous le mini-player des ecrans Movies et Series reprend le rendu Live TV: fond navy/noir radial, couronne et filets or, QR blanc borde et code TV encadre par les filets. Il reste purement informatif et non focusable.
+
 Depuis le 2026-07-21, les titres Series de Home > Continue Watching restent forces sur une seule ligne avec ellipsis, comme Live TV et Films, pour garder les cards paysage stables.
 
 Les recherches Live TV, Movies et Series sont repliees en bouton carre icon-only. OK les transforme en champ, demande le focus de saisie et ouvre le clavier; Back ou la perte de focus referme le champ. Le filtre adjacent reprend le bouton `FilterList` carre utilise par Categories Live TV.

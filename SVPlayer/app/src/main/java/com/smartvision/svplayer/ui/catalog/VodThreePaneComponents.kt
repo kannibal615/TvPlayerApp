@@ -1138,6 +1138,7 @@ private fun VodPremiumPreviewCard(
 ) {
     val bitmap = remember(purchaseUrl) { createVodPreviewQrBitmap(purchaseUrl.ifBlank { "https://smartvisions.net" }, 384) }
     val gold = Color(0xFFFFD47A)
+    val deepNavy = Color(0xFF020914)
     val shape = RoundedCornerShape(5.dp)
     Column(
         modifier = modifier
@@ -1148,7 +1149,7 @@ private fun VodPremiumPreviewCard(
                 Brush.radialGradient(
                     colors = listOf(
                         Color(0xFF0A1828),
-                        Color(0xFF020914),
+                        deepNavy,
                         Color.Black,
                     ),
                     center = androidx.compose.ui.geometry.Offset(220f, 0f),
@@ -1156,7 +1157,8 @@ private fun VodPremiumPreviewCard(
                 ),
             )
             .border(BorderStroke(0.5.dp, gold.copy(alpha = 0.58f)), shape)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .padding(bottom = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(
@@ -1206,6 +1208,7 @@ private fun VodPremiumPreviewCard(
                 .size(120.dp)
                 .clip(RoundedCornerShape(5.dp))
                 .background(Color.White)
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.82f)), RoundedCornerShape(10.dp))
                 .padding(5.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -1221,21 +1224,36 @@ private fun VodPremiumPreviewCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
+            Box(
+                modifier = Modifier
+                    .weight(0.7f)
+                    .height(1.dp)
+                    .background(Brush.horizontalGradient(listOf(Color.Transparent, gold.copy(alpha = 0.48f)))),
+            )
             Text(
                 text = "Code TV",
                 color = gold.copy(alpha = 0.94f),
                 style = CatalogMetaStyle.copy(fontSize = 13.sp, lineHeight = 17.sp),
                 fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
                 maxLines = 1,
+                modifier = Modifier.padding(horizontal = 10.dp),
             )
-            Spacer(Modifier.width(10.dp))
             Text(
                 text = tvCode.ifBlank { "------" },
                 color = gold,
                 style = CatalogPreviewTitleStyle.copy(fontSize = 20.sp, lineHeight = 23.sp),
                 fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(end = 10.dp),
+            )
+            Box(
+                modifier = Modifier
+                    .weight(0.7f)
+                    .height(1.dp)
+                    .background(Brush.horizontalGradient(listOf(gold.copy(alpha = 0.48f), Color.Transparent))),
             )
         }
     }

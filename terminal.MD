@@ -15,7 +15,9 @@ cd SVPlayer
 
 # ###########################################################################
 
-
+cd "C:\Users\ONEDEV\Desktop\IPTV APP NATIVE ANDROID\TvPlayerApp\SVPlayer"
+$env:Path += ";C:\Windows\System32\WindowsPowerShell\v1.0"
+.\scripts\release_prod.ps1
 
 
 
