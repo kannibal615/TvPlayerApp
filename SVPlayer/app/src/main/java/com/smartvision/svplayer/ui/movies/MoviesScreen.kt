@@ -297,6 +297,7 @@ fun MoviesScreen(
         if (accounts.isEmpty()) {
             XtreamQrSetupPanel(
                 activationRepository = container.activationRepository,
+                strings = strings,
                 title = "Configurer votre catalogue de films",
                 onManualAccount = { account ->
                     val accountId = container.accountManager.upsert(account)

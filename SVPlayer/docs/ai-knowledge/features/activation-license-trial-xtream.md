@@ -11,6 +11,16 @@ Derniere mise a jour: 2026-07-10.
 - Le panneau affiche statut, expiration, type, code TV, identifiant appareil, etat publicitaire et conseil de renouvellement.
 - Le QR Premium et le code TV sont visibles directement a droite du panneau; le dialogue Premium existant reste utilise quand l utilisateur valide l action principale.
 
+## Dialogue Identifiants Xtream - 2026-07-22
+
+- `XtreamQrSetupPanel` est le composant actif partage par le gate global sans source, l alerte Xtream et les etats vides Live TV, Movies et Series.
+- son rendu reprend le fond officiel `startup_cinema_background` du splash et une carte centree compacte `680 x 410 dp` avant mise a l echelle TV;
+- la colonne gauche conserve la saisie serveur/utilisateur/mot de passe et la validation existante;
+- le panneau droit conserve la session de configuration web, affiche le QR et expose maintenant `ActivationSession.shortCode` comme code TV;
+- la navigation D-pad place le focus initial sur le serveur, descend dans les trois champs puis vers Continuer, et remonte du bouton vers le mot de passe;
+- l ouverture modale globale utilise `DialogProperties(usePlatformDefaultWidth = false)` afin que le fond du splash occupe tout l ecran tandis que la carte reste loin des bords;
+- les copies visibles de ce dialogue sont centralisees en anglais et francais dans `SmartVisionStrings.kt`.
+
 ## 1. Objectif
 
 Documenter le flux d'acces SmartVision: enregistrement device, activation, licence premium, essai gratuit, mode gratuit avec pubs et configuration Xtream.

@@ -298,6 +298,7 @@ fun SeriesScreen(
         if (accounts.isEmpty()) {
             XtreamQrSetupPanel(
                 activationRepository = container.activationRepository,
+                strings = strings,
                 title = "Configurer votre catalogue de series",
                 onManualAccount = { account ->
                     val accountId = container.accountManager.upsert(account)

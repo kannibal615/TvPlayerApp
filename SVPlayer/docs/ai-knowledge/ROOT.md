@@ -349,6 +349,7 @@ Fichiers detailles:
 - `docs/ai-knowledge/decisions/2026-06-29-documentation-update-policy.md`
 - `docs/ai-knowledge/decisions/2026-07-03-home-trending-preview-cache.md`
 - `docs/ai-knowledge/decisions/2026-07-05-premium-feature-gate-recorder-media.md`
+- `docs/ai-knowledge/decisions/2026-07-22-dialog-visual-standard-v1.md`
 
 Dependances:
 - tous les domaines

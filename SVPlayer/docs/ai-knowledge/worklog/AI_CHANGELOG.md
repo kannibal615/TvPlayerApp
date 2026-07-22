@@ -1,5 +1,7 @@
 # AI Changelog
 
+- 2026-07-22: `XtreamQrSetupPanel` adopte le standard visuel valide `Generated image 2.png`: fond officiel du splash, carte compacte centree, formulaire a gauche, QR et code TV a droite, focus D-pad bleu/blanc et copies EN/FR centralisees. `:app:compileReleaseKotlin` reussi, sans test Fire Stick.
+
 - 2026-07-22: le controleur mini-player Home detache explicitement l ancienne `PlayerView` avant d attacher la surface active au player partage; la liberation d une ancienne card ne peut plus conserver ou retirer la mauvaise surface.
 
 - 2026-07-22: Home vide l etat Hero puis force `api/home_slides.php` a l entree. `Admin > Personnalisation` regroupe les images Hero multiples et le fond global expose par `api/app_config.php > appearance`; le choix local de fond est retire des Parametres TV.

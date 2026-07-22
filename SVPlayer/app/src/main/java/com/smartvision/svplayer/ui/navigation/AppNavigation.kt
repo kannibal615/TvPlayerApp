@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -657,6 +658,7 @@ fun AppNavigation(
         }
         XtreamQrSetupPanel(
             activationRepository = container.activationRepository,
+            strings = strings,
             title = strings.configureXtreamTitle,
             onManualAccount = { account ->
                 val accountId = container.accountManager.upsert(account)
@@ -1456,32 +1458,30 @@ fun AppNavigation(
     }
 
     if (showXtreamSetupDialog) {
-        Dialog(onDismissRequest = { showXtreamSetupDialog = false }) {
-            Box(
-                modifier = Modifier
-                    .width(1100.dp)
-                    .height(640.dp),
-            ) {
-                XtreamQrSetupPanel(
-                    activationRepository = container.activationRepository,
-                    title = strings.configureXtreamTitle,
-                    onManualAccount = { account ->
-                        val accountId = container.accountManager.upsert(account)
-                        container.accountManager.select(accountId)
-                        container.xtreamRepository.clearCaches()
-                        container.catalogRepository.invalidateLocalCatalogCache()
-                        val connection = container.xtreamConnectionManager.verifyQuick("credentials_edit")
-                        if (connection.isConnected) {
-                            showXtreamSetupDialog = false
-                            showXtreamConnectionDialog = false
-                            container.synchronizeCatalog().getOrThrow()
-                        } else {
-                            throw IllegalStateException(connection.message)
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+        Dialog(
+            onDismissRequest = { showXtreamSetupDialog = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            XtreamQrSetupPanel(
+                activationRepository = container.activationRepository,
+                strings = strings,
+                title = strings.configureXtreamTitle,
+                onManualAccount = { account ->
+                    val accountId = container.accountManager.upsert(account)
+                    container.accountManager.select(accountId)
+                    container.xtreamRepository.clearCaches()
+                    container.catalogRepository.invalidateLocalCatalogCache()
+                    val connection = container.xtreamConnectionManager.verifyQuick("credentials_edit")
+                    if (connection.isConnected) {
+                        showXtreamSetupDialog = false
+                        showXtreamConnectionDialog = false
+                        container.synchronizeCatalog().getOrThrow()
+                    } else {
+                        throw IllegalStateException(connection.message)
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 

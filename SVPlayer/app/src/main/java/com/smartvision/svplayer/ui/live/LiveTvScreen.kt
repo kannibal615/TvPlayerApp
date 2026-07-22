@@ -494,6 +494,7 @@ fun LiveTvScreen(
         if (!hasPlayableSource) {
             XtreamQrSetupPanel(
                 activationRepository = container.activationRepository,
+                strings = strings,
                 title = strings.liveTvConfigureChannels,
                 onManualAccount = { account ->
                     val accountId = container.accountManager.upsert(account)

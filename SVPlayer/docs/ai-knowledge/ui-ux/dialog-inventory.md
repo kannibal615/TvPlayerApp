@@ -27,7 +27,7 @@ Les ecrans de fin d essai et d activation pleine page ne sont pas des dialogues 
 | PIN parental - creation/changement | Saisie puis confirmation du nouveau PIN. | Profil et Controle parental | memes fichiers que ci-dessus | Meme composant avec mode `Create`. | Ajouter titres/aides et etats d erreur communs. |
 | QR Premium / Remove ads global | Achat Premium depuis une feature verrouillee ou une action Licence. Peut aussi accepter un code licence. | Global `AppNavigation`, Parametres Licence, Profil historique | `ui/profile/ProfileScreen.kt` (`SmartVisionQrDialog`, `PremiumQrOnlyDialog`, `PremiumLicenseDialog`) | Deux grands dialogues Premium custom. | Une seule famille Premium; QR, code TV, saisie code optionnelle et fermeture coherents. |
 | Connexion Xtream indisponible | Avertit que le catalogue est bloque; propose reessayer/configurer. | Home, Live TV, Movies, Series, YouTube/Media gates | `ui/navigation/AppNavigation.kt` (`XtreamConnectionAlertDialog`) | `TvDialogSurface`. | Garder comme reference pour alertes reseau. |
-| Configuration Xtream par QR | Affiche le QR de configuration Playlist/Xtream depuis l alerte globale. | Global | bloc `Dialog` dans `ui/navigation/AppNavigation.kt` | `Dialog` custom autour de `XtreamQrSetupPanel`. | Creer un shell QR commun, focus fermeture et taille TV uniques. |
+| Configuration Xtream par QR | Saisie les identifiants sur la TV ou affiche le QR et le code TV pour une configuration web. | Global, Home sans source, Live TV, Movies, Series | `ui/activation/XtreamQrSetupPanel.kt`; ouverture modale dans `ui/navigation/AppNavigation.kt` | Premier dialogue conforme au standard visuel SmartVision v1. | Reference de proportions, fond, surface, focus et composition pour les prochaines migrations. |
 | Sort catalogue | Liste les choix de tri et restaure le focus sur le bouton. | Movies / Series via composant catalogue | `ui/catalog/CatalogSortButton.kt` | `Dialog` local compact. | Migrer vers un menu modal standard compact. |
 | Reprendre la lecture | Demande reprise ou lecture depuis le debut pour VOD/episode. | Player plein ecran | `ui/player/FullScreenPlayerScreen.kt` (`ResumePlaybackDialog`) | `Dialog` custom. | Normaliser bouton principal/secondaire et focus par defaut. |
 | Synchronisation Xtream | Montre progression, compteurs, phases et erreurs pendant la synchro. | Profil > Synchronisation | `ui/profile/ProfileScreen.kt` (`XtreamSynchronizationDialog`) | `Dialog` custom non dismissable pendant travail. | Creer variante `Progress` du shell commun. |
@@ -75,6 +75,23 @@ Les ecrans de fin d essai et d activation pleine page ne sont pas des dialogues 
 3. Conserver trois composants specialises au-dessus de ce shell: `NumericPinDialog`, consentement scroll obligatoire et editeur de profil complexe.
 4. Fusionner les familles dupliquees: Premium QR/licence, QR Xtream/Media, formulaires URL/nom/mot-cle et suppressions profil.
 5. Pour chaque variante, imposer: focus initial visible, ordre D-pad, bouton Annuler accessible, Back ferme la surface la plus proche, action destructive rouge, et restauration du focus appelant.
+
+## Standard visuel SmartVision v1 - dialogue Xtream
+
+Le dialogue `XtreamQrSetupPanel` est la premiere reference approuvee pour l uniformisation progressive des dialogues. La maquette de validation est `Generated image 2.png` fournie le 2026-07-22.
+
+Regles visuelles a reutiliser:
+
+- fond plein ecran: ressource officielle `R.drawable.startup_cinema_background`, recouverte d un voile bleu-noir leger;
+- surface centree: gabarit virtuel `680 x 410 dp` avant `ScaledActivationLayout(0.88)`, soit environ 60 % de la largeur et 65 % de la hauteur sur la cible TV de reference;
+- marges de securite: `64 dp` horizontales et `40 dp` verticales autour de la zone centree;
+- surface principale: rayon `18 dp`, bordure bleu ardoise fine, degrade `#0A1A31 -> #030D1C`;
+- composition Xtream: colonne formulaire flexible, espace `24 dp`, panneau QR fixe de `220 x 340 dp`;
+- hierarchie: logo officiel, titre court, trois champs, une seule action principale; supprimer les explications et etapes secondaires non indispensables;
+- focus TV: halo bleu electrique externe, cadre blanc interne de `2 dp`, fond bleu sombre sans changement de dimensions;
+- QR: carte blanche `174 dp`, bordure bleu clair, code court de session affiche dans un cartouche distinct;
+- rythme: espacements bases sur `8 / 12 / 14 / 24 dp`, textes principaux blancs et textes secondaires gris bleute;
+- les prochains dialogues doivent reprendre le fond, la surface, le focus, les marges et la hierarchie, mais adapter leur composition au contenu au lieu de recopier deux colonnes quand elles ne sont pas utiles.
 
 ## Priorite de revue recommandee
 
