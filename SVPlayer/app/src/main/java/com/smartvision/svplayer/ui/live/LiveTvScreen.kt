@@ -1050,7 +1050,7 @@ private fun IdlePreviewSmartVisionPrompt(
         verticalArrangement = Arrangement.Center,
     ) {
         Image(
-            painter = painterResource(R.drawable.smartvision_logo_wide),
+            painter = painterResource(R.drawable.smartvision_logo_1),
             contentDescription = "SmartVision IPTV Player",
             contentScale = ContentScale.Fit,
             modifier = Modifier

@@ -3720,7 +3720,7 @@ private fun PlayerVerticalSeparator() {
 @Composable
 private fun PlayerLogo(modifier: Modifier = Modifier) {
     Image(
-        painter = painterResource(R.drawable.smartvision_logo_wide),
+        painter = painterResource(R.drawable.smartvision_logo_1),
         contentDescription = "SmartVision",
         contentScale = ContentScale.Fit,
         modifier = modifier

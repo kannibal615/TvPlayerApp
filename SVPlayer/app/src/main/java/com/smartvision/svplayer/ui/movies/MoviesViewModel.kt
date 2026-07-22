@@ -7,12 +7,14 @@ import com.smartvision.svplayer.data.models.XtreamMovieStream
 import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
+import com.smartvision.svplayer.data.repository.CatalogCategoryDiagnostics
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.data.tmdb.TmdbMatcher
 import com.smartvision.svplayer.data.tmdb.TmdbRepository
 import com.smartvision.svplayer.domain.model.Category
 import com.smartvision.svplayer.domain.model.CategoryHistorySignal
 import com.smartvision.svplayer.domain.model.Movie
+import com.smartvision.svplayer.domain.model.MediaSection
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.model.sortedByHistorySignals
 import com.smartvision.svplayer.domain.repository.CatalogRepository
@@ -162,7 +164,7 @@ class MoviesViewModel(
         cancelTmdbMetadataJobs()
         val cachedCategories = catalogRepository.getCachedMovieCategories()
         if (!cachedCategories.isNullOrEmpty()) {
-            applyCategories(cachedCategories)
+            applyCategories(cachedCategories, source = "memory_cache")
             return
         }
         viewModelScope.launch {
@@ -172,11 +174,11 @@ class MoviesViewModel(
                 .onSuccess { categories ->
                     if (categories.isNotEmpty()) {
                         initialApplied = true
-                        applyCategories(categories)
+                        applyCategories(categories, source = "room_initial")
                     }
                 }
             runCatching { catalogRepository.getMovieCategoriesSnapshot() }
-                .onSuccess { categories -> applyCategories(categories) }
+                .onSuccess { categories -> applyCategories(categories, source = "room_full") }
                 .onFailure { error ->
                     if (!initialApplied) {
                         _uiState.value = MoviesScreenState(
@@ -188,11 +190,20 @@ class MoviesViewModel(
         }
     }
 
-    private fun applyCategories(categoriesSnapshot: List<Category>) {
+    private fun applyCategories(categoriesSnapshot: List<Category>, source: String) {
         localCategories = categoriesSnapshot
-        val categories = localCategories.map { it.toUiCategory() }
+        val allowedCategories = localCategories.map { it.toUiCategory() }
             .filter { category -> playerSettings.allowsContent(category.label) }
-        if (categories.isEmpty()) {
+        if (allowedCategories.isEmpty()) {
+            CatalogCategoryDiagnostics.viewModelProjection(
+                section = MediaSection.Movies,
+                source = source,
+                rawCategories = categoriesSnapshot.size,
+                allowedCategories = 0,
+                stateCategories = 0,
+                renderedCategories = 0,
+                parentalEnabled = playerSettings.parentalControlEnabled,
+            )
             _uiState.value = MoviesScreenState(
                 categoriesLoading = false,
                 errorMessage = "Aucune categorie Films retournee par Xtream.",
@@ -200,7 +211,7 @@ class MoviesViewModel(
             return
         }
         _uiState.update {
-            val visibleCategories = categories.withSpecialCategories(
+            val visibleCategories = allowedCategories.withSpecialCategories(
                 allCount = catalogTotalCount(),
                 favoriteCount = favoriteIds.size,
                 historyCount = historyProgress.size,
@@ -215,7 +226,29 @@ class MoviesViewModel(
                 errorMessage = null,
             )
         }
-        when (_uiState.value.selectedCategoryId) {
+        val state = _uiState.value
+        CatalogCategoryDiagnostics.viewModelProjection(
+            section = MediaSection.Movies,
+            source = source,
+            rawCategories = categoriesSnapshot.size,
+            allowedCategories = allowedCategories.size,
+            stateCategories = state.categories.size,
+            renderedCategories = state.visibleCategories.size,
+            parentalEnabled = playerSettings.parentalControlEnabled,
+        )
+        val providerCategories = state.categories.filterNot { it.id in SpecialMovieCategoryIds }
+        val platformGrouping = StreamingCategoryGroupPolicy.group(providerCategories, MovieCategoryUi::label)
+        CatalogCategoryDiagnostics.platformGrouping(
+            section = MediaSection.Movies,
+            source = source,
+            providerCategories = providerCategories.size,
+            platformFolders = platformGrouping.groups.size,
+            groupedCategories = platformGrouping.groups.values.sumOf { it.size },
+            remainingCategories = platformGrouping.remaining.size,
+            renderedCategories = state.visibleCategories.size,
+            expanded = state.expandedBrand != null,
+        )
+        when (state.selectedCategoryId) {
             HistoryMovieCategoryId -> loadHistoryMovies()
             FavoriteMovieCategoryId -> loadFavoriteMovies()
             AllMovieCategoryId, null -> loadAllMovies()
@@ -596,7 +629,20 @@ class MoviesViewModel(
             addAll(grouped.remaining)
         }
         if (orderedCategories.isEmpty()) {
-            return catalogRepository.getAllMoviesPage(offset, limit)
+            return catalogRepository.getAllMoviesPage(offset, limit).also { page ->
+                CatalogCategoryDiagnostics.allCategoryOrder(
+                    section = MediaSection.Movies,
+                    source = "all_page",
+                    providerCategories = realCategories.size,
+                    platformFolders = grouped.groups.size,
+                    groupedCategories = 0,
+                    orderedCategories = 0,
+                    offset = offset,
+                    limit = limit,
+                    returnedItems = page.size,
+                    fallback = true,
+                )
+            }
         }
         var remainingOffset = offset
         val result = mutableListOf<Movie>()
@@ -613,7 +659,20 @@ class MoviesViewModel(
             remainingOffset = 0
             if (result.size >= limit) break
         }
-        return result
+        return result.also { page ->
+            CatalogCategoryDiagnostics.allCategoryOrder(
+                section = MediaSection.Movies,
+                source = "all_page",
+                providerCategories = realCategories.size,
+                platformFolders = grouped.groups.size,
+                groupedCategories = grouped.groups.values.sumOf { it.size },
+                orderedCategories = orderedCategories.size,
+                offset = offset,
+                limit = limit,
+                returnedItems = page.size,
+                fallback = false,
+            )
+        }
     }
 
     private fun loadTmdbMetadataForMovies(movies: List<MovieItemUi>) {
@@ -749,8 +808,9 @@ private fun List<MovieCategoryUi>.withSpecialCategories(
     favoriteCount: Int,
     historyCount: Int,
     historySignals: List<CategoryHistorySignal> = emptyList(),
-): List<MovieCategoryUi> =
-    buildList {
+): List<MovieCategoryUi> {
+    val providerCategories = filterNot { it.id in SpecialMovieCategoryIds || AllCategoryPolicy.isEquivalent(it.label) }
+    return buildList {
         add(MovieCategoryUi(
             id = AllMovieCategoryId,
             label = "ALL",
@@ -758,11 +818,9 @@ private fun List<MovieCategoryUi>.withSpecialCategories(
         ))
         if (favoriteCount > 0) add(MovieCategoryUi(FavoriteMovieCategoryId, "Favoris", favoriteCount))
         if (historyCount > 0) add(MovieCategoryUi(HistoryMovieCategoryId, "Historique", historyCount))
-        addAll(
-            filterNot { it.id in SpecialMovieCategoryIds || AllCategoryPolicy.isEquivalent(it.label) }
-                .sortedByHistorySignals(historySignals) { it.id },
-        )
+        addAll(providerCategories.sortedByHistorySignals(historySignals) { it.id })
     }
+}
 
 private fun List<MovieCategoryUi>.initialCategoryForPlaylist(): MovieCategoryUi? =
     firstOrNull { it.id == AllMovieCategoryId && (it.count ?: 0) > 0 }

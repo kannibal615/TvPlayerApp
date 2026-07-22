@@ -328,7 +328,7 @@ fun ProfilePickerScreen(
         )
 
         Image(
-            painter = painterResource(R.drawable.smartvision_logo_wide),
+            painter = painterResource(R.drawable.smartvision_logo_1),
             contentDescription = null,
             contentScale = ContentScale.Fit,
             modifier = Modifier

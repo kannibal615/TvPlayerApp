@@ -3244,3 +3244,20 @@ Fichiers code concernes:
 
 - Protege les dossiers Room Live TV, Films et Series contre un snapshot de categories Xtream vide ou inexploitable lorsque les medias de la section sont encore presents.
 - Traite un catalogue avec medias sans dossiers comme incomplet afin de relancer la synchronisation automatique et reparer les profils deja affectes.
+
+## 2026-07-22 - Snapshot catalogue Xtream atomique
+
+- Live TV, Films et Series construisent et valident le snapshot categories + medias avant toute mutation Room, puis remplacent les deux tables dans une transaction unique par section.
+
+## 2026-07-22 - Telemetrie diagnostic categories
+
+- Ajout du tag Logcat sanitise `SVCatalogCategories`: lecture cache/Room, ecriture atomique, rejet de snapshot et projection ViewModel des categories Live TV, Films et Series.
+- Les compteurs permettent de localiser sans exposer de donnees fournisseur une disparition entre persistance, cache, filtrage parental/dossiers speciaux et liste rendue.
+- Extension aux groupes plateformes VOD et a la pagination `ALL`, afin de verifier que les sous-categories regroupes et l'ordre des elements suivent la liste de dossiers reelle.
+- Une relecture immediate de l'endpoint categories est tentee lorsqu'il ne fournit aucun identifiant exploitable; si le snapshot reste invalide, l'import est annule, les donnees locales coherentes sont conservees et le statut de synchronisation signale l'erreur precise.
+- Le tri `ALL`, les dossiers marques Films/Series et la regle de masquage des Favoris/Historique vides ne sont pas modifies.
+
+## 2026-07-22 - Restauration des dossiers categories
+
+- Correction du recepteur Kotlin dans `withSpecialCategories` Live TV, Films et Series : les categories autorisees etaient bien lues depuis Room, mais `filterNot` etait appele dans `buildList` et reutilisait le builder deja compose des seuls dossiers speciaux.
+- Les groupes plateformes et le tri `ALL` retrouvent ainsi la liste complete de categories fournisseurs; la telemetrie conserve les compteurs de validation sur appareil.

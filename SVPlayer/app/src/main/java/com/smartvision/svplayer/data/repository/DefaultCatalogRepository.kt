@@ -257,54 +257,132 @@ class DefaultCatalogRepository(
         localCatalogSnapshotCache.getSeries(activeProfileId())
 
     override fun getCachedLiveCategories(): List<Category>? =
-        localCatalogSnapshotCache.getLiveCategories(activeProfileId())
+        activeProfileId().let { profileId ->
+            localCatalogSnapshotCache.getLiveCategories(profileId)?.also { categories ->
+                CatalogCategoryDiagnostics.repositoryRead(
+                    section = MediaSection.Live,
+                    profileId = profileId,
+                    source = "memory_cache",
+                    categories = categories,
+                    configured = isLiveCatalogConfigured(),
+                )
+            }
+        }
 
     override fun getCachedMovieCategories(): List<Category>? =
-        localCatalogSnapshotCache.getMovieCategories(activeProfileId())
+        activeProfileId().let { profileId ->
+            localCatalogSnapshotCache.getMovieCategories(profileId)?.also { categories ->
+                CatalogCategoryDiagnostics.repositoryRead(
+                    section = MediaSection.Movies,
+                    profileId = profileId,
+                    source = "memory_cache",
+                    categories = categories,
+                    configured = isXtreamCatalogConfigured(),
+                )
+            }
+        }
 
     override fun getCachedSeriesCategories(): List<Category>? =
-        localCatalogSnapshotCache.getSeriesCategories(activeProfileId())
+        activeProfileId().let { profileId ->
+            localCatalogSnapshotCache.getSeriesCategories(profileId)?.also { categories ->
+                CatalogCategoryDiagnostics.repositoryRead(
+                    section = MediaSection.Series,
+                    profileId = profileId,
+                    source = "memory_cache",
+                    categories = categories,
+                    configured = isXtreamCatalogConfigured(),
+                )
+            }
+        }
 
     override suspend fun getLiveCategoriesSnapshot(): List<Category> = withContext(Dispatchers.IO) {
         val profileId = activeProfileId()
-        localCatalogSnapshotCache.getLiveCategories(profileId)?.let { return@withContext it }
-        localCatalogSnapshotCache.putLiveCategories(profileId, observeLiveCategories().first())
+        localCatalogSnapshotCache.getLiveCategories(profileId)?.let {
+            CatalogCategoryDiagnostics.repositoryRead(MediaSection.Live, profileId, "memory_snapshot", it, isLiveCatalogConfigured())
+            return@withContext it
+        }
+        observeLiveCategories().first().also { categories ->
+            CatalogCategoryDiagnostics.repositoryRead(MediaSection.Live, profileId, "room_flow", categories, isLiveCatalogConfigured())
+        }.let { localCatalogSnapshotCache.putLiveCategories(profileId, it) }
     }
 
     override suspend fun getMovieCategoriesSnapshot(): List<Category> = withContext(Dispatchers.IO) {
         val profileId = activeProfileId()
-        localCatalogSnapshotCache.getMovieCategories(profileId)?.let { return@withContext it }
-        localCatalogSnapshotCache.putMovieCategories(profileId, observeMovieCategories().first())
+        localCatalogSnapshotCache.getMovieCategories(profileId)?.let {
+            CatalogCategoryDiagnostics.repositoryRead(MediaSection.Movies, profileId, "memory_snapshot", it, isXtreamCatalogConfigured())
+            return@withContext it
+        }
+        observeMovieCategories().first().also { categories ->
+            CatalogCategoryDiagnostics.repositoryRead(MediaSection.Movies, profileId, "room_flow", categories, isXtreamCatalogConfigured())
+        }.let { localCatalogSnapshotCache.putMovieCategories(profileId, it) }
     }
 
     override suspend fun getSeriesCategoriesSnapshot(): List<Category> = withContext(Dispatchers.IO) {
         val profileId = activeProfileId()
-        localCatalogSnapshotCache.getSeriesCategories(profileId)?.let { return@withContext it }
-        localCatalogSnapshotCache.putSeriesCategories(profileId, observeSeriesCategories().first())
+        localCatalogSnapshotCache.getSeriesCategories(profileId)?.let {
+            CatalogCategoryDiagnostics.repositoryRead(MediaSection.Series, profileId, "memory_snapshot", it, isXtreamCatalogConfigured())
+            return@withContext it
+        }
+        observeSeriesCategories().first().also { categories ->
+            CatalogCategoryDiagnostics.repositoryRead(MediaSection.Series, profileId, "room_flow", categories, isXtreamCatalogConfigured())
+        }.let { localCatalogSnapshotCache.putSeriesCategories(profileId, it) }
     }
 
     override suspend fun getInitialLiveCategoriesSnapshot(limit: Int): List<Category> = withContext(Dispatchers.IO) {
-        if (!isLiveCatalogConfigured()) return@withContext emptyList()
+        if (!isLiveCatalogConfigured()) {
+            CatalogCategoryDiagnostics.roomSnapshot(MediaSection.Live, activeProfileId(), "initial_unconfigured", 0, 0)
+            return@withContext emptyList()
+        }
         val profileId = activeProfileId()
         val counts = mediaDao.observeLiveStreamCountsByCategory(profileId).first().associate { it.categoryId to it.count }
-        categoryDao.getByTypeLimit(profileId, MediaSection.Live.storageName, limit)
+        val categories = categoryDao.getByTypeLimit(profileId, MediaSection.Live.storageName, limit)
             .map { it.toDomain(MediaSection.Live, counts[it.id] ?: 0) }
+        CatalogCategoryDiagnostics.roomSnapshot(
+            MediaSection.Live,
+            profileId,
+            "initial_limit_$limit",
+            categoryDao.countByType(profileId, MediaSection.Live.storageName),
+            categories.size,
+        )
+        categories
     }
 
     override suspend fun getInitialMovieCategoriesSnapshot(limit: Int): List<Category> = withContext(Dispatchers.IO) {
-        if (!isXtreamCatalogConfigured()) return@withContext emptyList()
+        if (!isXtreamCatalogConfigured()) {
+            CatalogCategoryDiagnostics.roomSnapshot(MediaSection.Movies, activeProfileId(), "initial_unconfigured", 0, 0)
+            return@withContext emptyList()
+        }
         val profileId = activeProfileId()
         val counts = mediaDao.observeMovieCountsByCategory(profileId).first().associate { it.categoryId to it.count }
-        categoryDao.getByTypeLimit(profileId, MediaSection.Movies.storageName, limit)
+        val categories = categoryDao.getByTypeLimit(profileId, MediaSection.Movies.storageName, limit)
             .map { it.toDomain(MediaSection.Movies, counts[it.id] ?: 0) }
+        CatalogCategoryDiagnostics.roomSnapshot(
+            MediaSection.Movies,
+            profileId,
+            "initial_limit_$limit",
+            categoryDao.countByType(profileId, MediaSection.Movies.storageName),
+            categories.size,
+        )
+        categories
     }
 
     override suspend fun getInitialSeriesCategoriesSnapshot(limit: Int): List<Category> = withContext(Dispatchers.IO) {
-        if (!isXtreamCatalogConfigured()) return@withContext emptyList()
+        if (!isXtreamCatalogConfigured()) {
+            CatalogCategoryDiagnostics.roomSnapshot(MediaSection.Series, activeProfileId(), "initial_unconfigured", 0, 0)
+            return@withContext emptyList()
+        }
         val profileId = activeProfileId()
         val counts = mediaDao.observeSeriesCountsByCategory(profileId).first().associate { it.categoryId to it.count }
-        categoryDao.getByTypeLimit(profileId, MediaSection.Series.storageName, limit)
+        val categories = categoryDao.getByTypeLimit(profileId, MediaSection.Series.storageName, limit)
             .map { it.toDomain(MediaSection.Series, counts[it.id] ?: 0) }
+        CatalogCategoryDiagnostics.roomSnapshot(
+            MediaSection.Series,
+            profileId,
+            "initial_limit_$limit",
+            categoryDao.countByType(profileId, MediaSection.Series.storageName),
+            categories.size,
+        )
+        categories
     }
 
     override suspend fun getLiveCatalogSnapshot(): LocalCatalogSnapshot<LiveChannel> = withContext(Dispatchers.IO) {
@@ -1089,6 +1167,7 @@ class DefaultCatalogRepository(
             } else if (!seriesCompleted && seriesPhase != SyncStatus.SyncSectionPhase.WAITING) {
                 seriesPhase = SyncStatus.SyncSectionPhase.ERROR
             }
+            val failureMessage = (error as? InvalidXtreamSectionSnapshotException)?.message ?: "Erreur reseau"
             val previousSyncState = syncStateDao.get(profileId)
             syncStateDao.upsert(
                 SyncStateEntity(
@@ -1096,14 +1175,14 @@ class DefaultCatalogRepository(
                     id = "catalog",
                     lastSync = previousSyncState?.lastSync,
                     status = "error",
-                    message = "Erreur reseau",
+                    message = failureMessage,
                     kidsExcludedLive = previousSyncState?.kidsExcludedLive ?: 0,
                     kidsExcludedMovies = previousSyncState?.kidsExcludedMovies ?: 0,
                     kidsExcludedSeries = previousSyncState?.kidsExcludedSeries ?: 0,
                 ),
             )
             _syncStatus.value = SyncStatus.Error(
-                message = "Erreur reseau",
+                message = failureMessage,
                 catalogProgress = currentCatalogProgress(),
             )
             Result.failure(error)
@@ -1316,7 +1395,13 @@ class DefaultCatalogRepository(
             4,
         )
         logSyncMemory(stage = "before_get_live_categories")
-        val liveCategories = api.getCategories(username, password, "get_live_categories", host)
+        val liveCategories = fetchXtreamCategoriesWithRetry(
+            username = username,
+            password = password,
+            action = "get_live_categories",
+            host = host,
+            section = MediaSection.Live,
+        )
         logSyncMemory(stage = "after_get_live_categories", liveCategories = liveCategories.size)
         updateSectionProgress(
             "Import des categories Live TV...",
@@ -1347,19 +1432,6 @@ class DefaultCatalogRepository(
         val selectedPrefixes = selectedContentPrefixes(profileId)
         val liveStreams = downloadedLiveStreams.filter {
             ContentPrefixPolicy.accepts(it.name, selectedPrefixes)
-        }
-        if (!kidsProfile) database.withTransaction {
-            val acceptedCategoryIds = liveStreams.mapNotNull { it.categoryId.normalizedCategoryId() }.toSet()
-            val matchedCategories = liveCategories.filter {
-                it.id.normalizedCategoryId() in acceptedCategoryIds
-            }
-            replaceCategories(
-                categoryDao,
-                profileId,
-                MediaSection.Live,
-                matchedCategories.ifEmpty { liveCategories.takeIf { liveStreams.isNotEmpty() }.orEmpty() },
-                liveStreams.size,
-            )
         }
         if (kidsProfile) updateSectionProgress(
             "Analyse des categories Kids Live TV...",
@@ -1421,10 +1493,15 @@ class DefaultCatalogRepository(
             liveItems,
             3,
         )
-        if (!kidsProfile) database.withTransaction {
-            mediaDao.clearLiveStreams(profileId)
-            upsertMappedInBatches(
+        if (!kidsProfile) {
+            replaceXtreamSectionSnapshot(
+                database = database,
+                categoryDao = categoryDao,
+                profileId = profileId,
+                section = MediaSection.Live,
+                categories = categoriesForImportedItems(liveCategories, liveStreams.mapNotNull { it.categoryId.normalizedCategoryId() }),
                 items = liveStreams,
+                clearItems = { mediaDao.clearLiveStreams(profileId) },
                 mapper = { it.toEntity(profileId, imageBaseHost) },
                 upsert = mediaDao::upsertLiveStreams,
                 onBatchCommitted = { processed, total ->
@@ -1472,7 +1549,13 @@ class DefaultCatalogRepository(
             2,
         )
         logSyncMemory(stage = "before_get_movie_categories", live = liveItems)
-        val movieCategories = api.getCategories(username, password, "get_vod_categories", host)
+        val movieCategories = fetchXtreamCategoriesWithRetry(
+            username = username,
+            password = password,
+            action = "get_vod_categories",
+            host = host,
+            section = MediaSection.Movies,
+        )
         logSyncMemory(stage = "after_get_movie_categories", live = liveItems, movieCategories = movieCategories.size)
         updateSectionProgress(
             "Import des categories Films...",
@@ -1524,19 +1607,6 @@ class DefaultCatalogRepository(
         )
         val selectedPrefixes = selectedContentPrefixes(profileId)
         movies = movies.filter { ContentPrefixPolicy.accepts(it.name, selectedPrefixes) }
-        if (!kidsProfile) database.withTransaction {
-            val acceptedCategoryIds = movies.mapNotNull { it.categoryId.normalizedCategoryId() }.toSet()
-            val matchedCategories = movieCategories.filter {
-                it.id.normalizedCategoryId() in acceptedCategoryIds
-            }
-            replaceCategories(
-                categoryDao,
-                profileId,
-                MediaSection.Movies,
-                matchedCategories.ifEmpty { movieCategories.takeIf { movies.isNotEmpty() }.orEmpty() },
-                movies.size,
-            )
-        }
         if (kidsProfile) updateSectionProgress(
             "Analyse des categories Kids Films...",
             MediaSection.Movies,
@@ -1597,10 +1667,15 @@ class DefaultCatalogRepository(
             movieItems,
             1,
         )
-        if (!kidsProfile) database.withTransaction {
-            mediaDao.clearMovies(profileId)
-            upsertMappedInBatches(
+        if (!kidsProfile) {
+            replaceXtreamSectionSnapshot(
+                database = database,
+                categoryDao = categoryDao,
+                profileId = profileId,
+                section = MediaSection.Movies,
+                categories = categoriesForImportedItems(movieCategories, movies.mapNotNull { it.categoryId.normalizedCategoryId() }),
                 items = movies,
+                clearItems = { mediaDao.clearMovies(profileId) },
                 mapper = { it.toEntity(profileId, imageBaseHost) },
                 upsert = mediaDao::upsertMovies,
                 onBatchCommitted = { processed, total ->
@@ -1649,7 +1724,13 @@ class DefaultCatalogRepository(
             1,
         )
         logSyncMemory(stage = "before_get_series_categories", live = liveItems, movies = movieItems)
-        val seriesCategories = api.getCategories(username, password, "get_series_categories", host)
+        val seriesCategories = fetchXtreamCategoriesWithRetry(
+            username = username,
+            password = password,
+            action = "get_series_categories",
+            host = host,
+            section = MediaSection.Series,
+        )
         logSyncMemory(
             stage = "after_get_series_categories",
             live = liveItems,
@@ -1692,19 +1773,6 @@ class DefaultCatalogRepository(
         )
         val selectedPrefixes = selectedContentPrefixes(profileId)
         val series = downloadedSeries.filter { ContentPrefixPolicy.accepts(it.name, selectedPrefixes) }
-        if (!kidsProfile) database.withTransaction {
-            val acceptedCategoryIds = series.mapNotNull { it.categoryId.normalizedCategoryId() }.toSet()
-            val matchedCategories = seriesCategories.filter {
-                it.id.normalizedCategoryId() in acceptedCategoryIds
-            }
-            replaceCategories(
-                categoryDao,
-                profileId,
-                MediaSection.Series,
-                matchedCategories.ifEmpty { seriesCategories.takeIf { series.isNotEmpty() }.orEmpty() },
-                series.size,
-            )
-        }
         if (kidsProfile) updateSectionProgress(
             "Analyse des categories Kids Series...",
             MediaSection.Series,
@@ -1767,10 +1835,15 @@ class DefaultCatalogRepository(
             seriesItems,
             0,
         )
-        if (!kidsProfile) database.withTransaction {
-            mediaDao.clearSeries(profileId)
-            upsertMappedInBatches(
+        if (!kidsProfile) {
+            replaceXtreamSectionSnapshot(
+                database = database,
+                categoryDao = categoryDao,
+                profileId = profileId,
+                section = MediaSection.Series,
+                categories = categoriesForImportedItems(seriesCategories, series.mapNotNull { it.categoryId.normalizedCategoryId() }),
                 items = series,
+                clearItems = { mediaDao.clearSeries(profileId) },
                 mapper = { it.toEntity(profileId, imageBaseHost) },
                 upsert = mediaDao::upsertSeries,
                 onBatchCommitted = { processed, total ->
@@ -1797,6 +1870,20 @@ class DefaultCatalogRepository(
         )
         logSyncMemory(stage = "after_series_room_write", live = liveItems, movies = movieItems, series = seriesItems)
         return seriesItems
+    }
+
+    private suspend fun fetchXtreamCategoriesWithRetry(
+        username: String,
+        password: String,
+        action: String,
+        host: String,
+        section: MediaSection,
+    ): List<XtreamCategoryDto> {
+        val firstAttempt = api.getCategories(username, password, action, host)
+        if (firstAttempt.any { it.id.normalizedCategoryId() != null }) return firstAttempt
+
+        logSyncMemory(stage = "retry_get_${section.storageName}_categories")
+        return api.getCategories(username, password, action, host)
     }
 
     private suspend fun fetchSeriesWithFallback(
@@ -2289,6 +2376,61 @@ private suspend fun replaceCategories(
         mapper = { it.toEntity(profileId, section) },
         upsert = categoryDao::upsertAll,
     )
+}
+
+private class InvalidXtreamSectionSnapshotException(section: MediaSection) : IllegalStateException(
+    "Catalogue ${section.storageName} incomplet : categories Xtream indisponibles, donnees locales conservees",
+)
+
+private fun categoriesForImportedItems(
+    categories: List<XtreamCategoryDto>,
+    importedCategoryIds: List<String>,
+): List<XtreamCategoryDto> {
+    val acceptedCategoryIds = importedCategoryIds.toSet()
+    val matchedCategories = categories.filter { it.id.normalizedCategoryId() in acceptedCategoryIds }
+    return matchedCategories.ifEmpty { categories.takeIf { acceptedCategoryIds.isNotEmpty() }.orEmpty() }
+}
+
+private suspend fun <Remote, Local> replaceXtreamSectionSnapshot(
+    database: SVDatabase,
+    categoryDao: CategoryDao,
+    profileId: String,
+    section: MediaSection,
+    categories: List<XtreamCategoryDto>,
+    items: List<Remote>,
+    clearItems: suspend () -> Unit,
+    mapper: (Remote) -> Local?,
+    upsert: suspend (List<Local>) -> Unit,
+    onBatchCommitted: suspend (processed: Int, total: Int) -> Unit = { _, _ -> },
+) {
+    val snapshotCategories = categories.mapNotNull { it.toEntity(profileId, section) }
+    if (snapshotCategories.isEmpty() || (items.isNotEmpty() && items.none { mapper(it) != null })) {
+        CatalogCategoryDiagnostics.rejectedSnapshot(section, profileId, snapshotCategories.size, items.size)
+        throw InvalidXtreamSectionSnapshotException(section)
+    }
+
+    database.withTransaction {
+        categoryDao.deleteByType(profileId, section.storageName)
+        clearItems()
+        upsertMappedInBatches(
+            items = snapshotCategories,
+            mapper = { it },
+            upsert = categoryDao::upsertAll,
+        )
+        upsertMappedInBatches(
+            items = items,
+            mapper = mapper,
+            upsert = upsert,
+            onBatchCommitted = onBatchCommitted,
+        )
+        CatalogCategoryDiagnostics.snapshotWrite(
+            section = section,
+            profileId = profileId,
+            incomingCategories = snapshotCategories.size,
+            persistedCategories = categoryDao.countByType(profileId, section.storageName),
+            mediaItems = items.size,
+        )
+    }
 }
 
 private suspend fun <Remote, Local> upsertMappedInBatches(

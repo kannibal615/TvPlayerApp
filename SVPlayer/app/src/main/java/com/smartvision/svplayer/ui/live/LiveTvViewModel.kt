@@ -8,10 +8,12 @@ import com.smartvision.svplayer.data.local.entity.PlaybackProgressEntity
 import com.smartvision.svplayer.data.playlist.EpgRepository
 import com.smartvision.svplayer.data.repository.UserContentRepository
 import com.smartvision.svplayer.data.repository.UserContentType
+import com.smartvision.svplayer.data.repository.CatalogCategoryDiagnostics
 import com.smartvision.svplayer.data.repository.XtreamRepository
 import com.smartvision.svplayer.domain.model.Category
 import com.smartvision.svplayer.domain.model.CategoryHistorySignal
 import com.smartvision.svplayer.domain.model.LiveChannel as LocalLiveChannel
+import com.smartvision.svplayer.domain.model.MediaSection
 import com.smartvision.svplayer.domain.model.PlayerSettings
 import com.smartvision.svplayer.domain.model.sortedByHistorySignals
 import com.smartvision.svplayer.domain.repository.CatalogRepository
@@ -195,7 +197,7 @@ class LiveTvViewModel(
         if (reloadChannels) cancelChannelsLoad(clearChannels = true)
         val cachedCategories = catalogRepository.getCachedLiveCategories()
         if (!cachedCategories.isNullOrEmpty()) {
-            applyCategories(cachedCategories)
+            applyCategories(cachedCategories, source = "memory_cache")
             return
         }
         categoriesJob = viewModelScope.launch {
@@ -205,11 +207,11 @@ class LiveTvViewModel(
                 .onSuccess { categories ->
                     if (categories.isNotEmpty()) {
                         initialApplied = true
-                        applyCategories(categories)
+                        applyCategories(categories, source = "room_initial")
                     }
                 }
             runCatchingNonCancellation { catalogRepository.getLiveCategoriesSnapshot() }
-                .onSuccess { categories -> applyCategories(categories) }
+                .onSuccess { categories -> applyCategories(categories, source = "room_full") }
                 .onFailure { error ->
                     if (!initialApplied) {
                         _uiState.value = LiveTvUiState(
@@ -221,11 +223,20 @@ class LiveTvViewModel(
             }
     }
 
-    private fun applyCategories(categoriesSnapshot: List<Category>) {
+    private fun applyCategories(categoriesSnapshot: List<Category>, source: String) {
         localCategories = categoriesSnapshot
-        val categories = localCategories.map { it.toUiCategory() }
+        val allowedCategories = localCategories.map { it.toUiCategory() }
             .filter { category -> playerSettings.allowsContent(category.label) }
-        if (categories.isEmpty()) {
+        if (allowedCategories.isEmpty()) {
+            CatalogCategoryDiagnostics.viewModelProjection(
+                section = MediaSection.Live,
+                source = source,
+                rawCategories = categoriesSnapshot.size,
+                allowedCategories = 0,
+                stateCategories = 0,
+                renderedCategories = 0,
+                parentalEnabled = playerSettings.parentalControlEnabled,
+            )
             _uiState.value = LiveTvUiState(
                 categoriesLoading = false,
                 errorMessage = "Aucune categorie Live TV retournee par Xtream.",
@@ -235,7 +246,7 @@ class LiveTvViewModel(
 
         val previousSelectedCategoryId = _uiState.value.selectedCategoryId
         _uiState.update {
-            val visibleCategories = categories.withSpecialCategories(
+            val visibleCategories = allowedCategories.withSpecialCategories(
                 allCount = catalogTotalCount(),
                 favoriteCount = favoriteIds.size,
                 historyCount = historyProgress.size,
@@ -272,6 +283,15 @@ class LiveTvViewModel(
             )
         }
         val state = _uiState.value
+        CatalogCategoryDiagnostics.viewModelProjection(
+            section = MediaSection.Live,
+            source = source,
+            rawCategories = categoriesSnapshot.size,
+            allowedCategories = allowedCategories.size,
+            stateCategories = state.categories.size,
+            renderedCategories = state.visibleCategories.size,
+            parentalEnabled = playerSettings.parentalControlEnabled,
+        )
         val selectedCategoryChanged = state.selectedCategoryId != previousSelectedCategoryId
         val selectedCategoryLoadActive =
             channelsJob?.isActive == true && loadedChannelsCategoryId == state.selectedCategoryId
@@ -864,7 +884,20 @@ class LiveTvViewModel(
         limit: Int,
     ): List<LocalLiveChannel> {
         if (categories.isEmpty()) {
-            return catalogRepository.getAllLiveChannelsPage(offset, limit)
+            return catalogRepository.getAllLiveChannelsPage(offset, limit).also { page ->
+                CatalogCategoryDiagnostics.allCategoryOrder(
+                    section = MediaSection.Live,
+                    source = "all_page",
+                    providerCategories = 0,
+                    platformFolders = 0,
+                    groupedCategories = 0,
+                    orderedCategories = 0,
+                    offset = offset,
+                    limit = limit,
+                    returnedItems = page.size,
+                    fallback = true,
+                )
+            }
         }
         var remainingOffset = offset
         val result = mutableListOf<LocalLiveChannel>()
@@ -881,7 +914,20 @@ class LiveTvViewModel(
             remainingOffset = 0
             if (result.size >= limit) break
         }
-        return result
+        return result.also { page ->
+            CatalogCategoryDiagnostics.allCategoryOrder(
+                section = MediaSection.Live,
+                source = "all_page",
+                providerCategories = categories.size,
+                platformFolders = 0,
+                groupedCategories = 0,
+                orderedCategories = categories.size,
+                offset = offset,
+                limit = limit,
+                returnedItems = page.size,
+                fallback = false,
+            )
+        }
     }
 
     private fun cancelChannelsLoad(clearChannels: Boolean) {
@@ -945,8 +991,9 @@ private fun List<LiveTvCategory>.withSpecialCategories(
     favoriteCount: Int,
     historyCount: Int,
     historySignals: List<CategoryHistorySignal> = emptyList(),
-): List<LiveTvCategory> =
-    buildList {
+): List<LiveTvCategory> {
+    val providerCategories = filterNot { it.id in SpecialLiveCategoryIds || AllCategoryPolicy.isEquivalent(it.label) }
+    return buildList {
         add(
             LiveTvCategory(
                 id = AllLiveCategoryId,
@@ -961,11 +1008,9 @@ private fun List<LiveTvCategory>.withSpecialCategories(
         if (historyCount > 0) {
             add(LiveTvCategory(HistoryLiveCategoryId, "Historique", historyCount, LiveTvCategoryKind.Generic))
         }
-        addAll(
-            filterNot { it.id in SpecialLiveCategoryIds || AllCategoryPolicy.isEquivalent(it.label) }
-                .sortedByHistorySignals(historySignals) { it.id },
-        )
+        addAll(providerCategories.sortedByHistorySignals(historySignals) { it.id })
     }
+}
 
 private suspend fun <T> runCatchingNonCancellation(block: suspend () -> T): Result<T> =
     try {

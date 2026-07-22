@@ -1239,7 +1239,7 @@ private fun YoutubePlayerTopBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
-            painter = painterResource(R.drawable.smartvision_logo_wide),
+            painter = painterResource(R.drawable.smartvision_logo_1),
             contentDescription = "SmartVision",
             contentScale = ContentScale.Fit,
             modifier = Modifier

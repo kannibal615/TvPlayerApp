@@ -3554,7 +3554,7 @@ private fun PremiumQrCard(
         verticalArrangement = Arrangement.Center,
     ) {
         Image(
-            painter = painterResource(R.drawable.smartvision_logo_wide),
+            painter = painterResource(R.drawable.smartvision_logo_1),
             contentDescription = "SmartVision IPTV Player",
             modifier = Modifier
                 .width(214.dp)

@@ -361,7 +361,7 @@ private fun SmartVisionLogo(
         .height(48.dp),
 ) {
     Image(
-        painter = painterResource(R.drawable.smartvision_logo_wide),
+        painter = painterResource(R.drawable.smartvision_logo_1),
         contentDescription = "SmartVision IPTV Player",
         contentScale = ContentScale.Fit,
         modifier = modifier,

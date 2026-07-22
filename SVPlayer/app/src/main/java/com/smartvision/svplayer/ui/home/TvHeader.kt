@@ -555,7 +555,7 @@ private fun HeaderDateTime(showSeconds: Boolean) {
 @Composable
 private fun SmartVisionLogo() {
     Image(
-        painter = painterResource(R.drawable.smartvision_logo_wide),
+        painter = painterResource(R.drawable.smartvision_logo_1),
         contentDescription = "SmartVision IPTV Player",
         contentScale = ContentScale.Fit,
         modifier = Modifier
