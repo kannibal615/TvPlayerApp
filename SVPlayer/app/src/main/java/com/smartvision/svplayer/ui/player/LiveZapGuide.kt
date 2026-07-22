@@ -1,27 +1,28 @@
 package com.smartvision.svplayer.ui.player
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -32,6 +33,32 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 
+@Stable
+class LiveZapGuideState {
+    var channels by mutableStateOf<List<LiveZapGuideItem>>(emptyList())
+        private set
+    var currentStreamId by mutableIntStateOf(-1)
+        private set
+    var visible by mutableStateOf(false)
+        private set
+    private var requestId by mutableIntStateOf(0)
+
+    fun updateChannels(value: List<LiveZapGuideItem>) {
+        if (value.isNotEmpty()) channels = value
+    }
+
+    fun show(streamId: Int): Int {
+        currentStreamId = streamId
+        visible = channels.isNotEmpty()
+        requestId += 1
+        return requestId
+    }
+
+    fun hide(request: Int) {
+        if (request == requestId) visible = false
+    }
+}
+
 @Composable
 internal fun LiveZapGuide(
     channels: List<LiveZapGuideItem>,
@@ -40,16 +67,9 @@ internal fun LiveZapGuide(
 ) {
     Column(
         modifier = modifier
-            .width(320.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.Black.copy(alpha = 0.58f))
-            .border(
-                BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.72f)),
-                RoundedCornerShape(12.dp),
-            )
-            .focusProperties { canFocus = false }
-            .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .width(236.dp)
+            .focusProperties { canFocus = false },
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         channels.forEach { channel ->
             LiveZapGuideRow(
@@ -65,41 +85,34 @@ private fun LiveZapGuideRow(
     channel: LiveZapGuideItem,
     selected: Boolean,
 ) {
-    val shape = RoundedCornerShape(8.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp)
-            .clip(shape)
+            .height(40.dp)
             .background(
-                if (selected) SmartVisionColors.Primary.copy(alpha = 0.72f)
-                else SmartVisionColors.Surface.copy(alpha = 0.48f),
+                if (selected) SmartVisionColors.Primary.copy(alpha = 0.46f)
+                else Color.Black.copy(alpha = 0.22f),
             )
-            .border(
-                BorderStroke(
-                    width = if (selected) 2.dp else 1.dp,
-                    color = if (selected) SmartVisionColors.CyanAccent
-                    else SmartVisionColors.Border.copy(alpha = 0.44f),
-                ),
-                shape,
-            )
-            .focusProperties { canFocus = false }
-            .padding(horizontal = 8.dp),
+            .focusProperties { canFocus = false },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier
-                .size(width = 64.dp, height = 36.dp)
-                .clip(RoundedCornerShape(5.dp))
-                .background(Color.White.copy(alpha = 0.08f)),
+            Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .background(if (selected) SmartVisionColors.CyanAccent else Color.Transparent),
+        )
+        Spacer(Modifier.width(6.dp))
+        Box(
+            modifier = Modifier.size(width = 48.dp, height = 28.dp),
             contentAlignment = Alignment.Center,
         ) {
             if (channel.imageUrl.isNullOrBlank()) {
                 Icon(
                     imageVector = Icons.Default.Tv,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.78f),
-                    modifier = Modifier.size(22.dp),
+                    tint = Color.White.copy(alpha = 0.62f),
+                    modifier = Modifier.size(18.dp),
                 )
             } else {
                 AsyncImage(
@@ -108,29 +121,19 @@ private fun LiveZapGuideRow(
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(36.dp),
+                        .height(28.dp),
                 )
             }
         }
-
-        Spacer(Modifier.width(10.dp))
-
-        Column(modifier = Modifier.width(214.dp)) {
-            Text(
-                text = channel.label,
-                color = Color.White.copy(alpha = if (selected) 0.92f else 0.66f),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-            )
-            Text(
-                text = channel.title,
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = channel.title,
+            color = Color.White.copy(alpha = if (selected) 1f else 0.76f),
+            fontSize = 12.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.width(164.dp),
+        )
     }
 }

@@ -100,6 +100,7 @@ import com.smartvision.svplayer.ui.notifications.NotificationBadgeViewModel
 import com.smartvision.svplayer.ui.notifications.NotificationsRoute
 import com.smartvision.svplayer.ui.player.FullScreenContentKind
 import com.smartvision.svplayer.ui.player.FullScreenPlayerRoute
+import com.smartvision.svplayer.ui.player.LiveZapGuideState
 import com.smartvision.svplayer.ui.player.LivePlaybackSession
 import com.smartvision.svplayer.ui.player.LocalMediaPlayerRoute
 import com.smartvision.svplayer.ui.profile.ProfileRoute
@@ -212,6 +213,7 @@ fun AppNavigation(
     var seriesReturnFocusId by remember { mutableStateOf<Int?>(null) }
     var episodeReturnFocusSeriesId by remember { mutableStateOf<Int?>(null) }
     var episodeDetailReturnFocusId by remember { mutableStateOf<Int?>(null) }
+    val liveZapGuideState = remember { LiveZapGuideState() }
     var homeHeaderFocusRequest by remember { mutableStateOf(0) }
     var homeHeaderFocusTarget by remember { mutableStateOf(HomeHeaderFocusTarget.CurrentTab) }
     var profilePickerCompleted by remember { mutableStateOf(false) }
@@ -1096,6 +1098,7 @@ fun AppNavigation(
                     strings = strings,
                     livePlaybackSession = livePlaybackSession,
                     showZapGuideOnEnter = showZapGuide,
+                    zapGuideState = liveZapGuideState,
                     onRecorderLocked = {
                         if (recorderGate.shouldShowUpgradePrompt) {
                             showLicensePurchaseQr = true

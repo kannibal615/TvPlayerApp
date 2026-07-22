@@ -1,5 +1,7 @@
 # AI Changelog
 
+- 2026-07-22: le bouton Filtre des Categories Live bascule maintenant la barre des le premier OK. Le guide de zapping conserve son etat entre les changements rapides de chaine, relance son delai sans flash et adopte un rendu plus petit a gauche: logo et nom uniquement, sans numeros ni cadres globaux/logo.
+
 - 2026-07-22: le fullscreen Live reserve Haut/Bas au zapping, laisse l'ouverture des Parametres a Menu et affiche pendant 3 secondes un guide transparent de cinq chaines Room centre sur la lecture courante. Les filtres pays Live sont maintenant replies par defaut, sans popup, avec un parcours D-pad explicite entre header, bouton Filtre, drapeaux et categories. Aucune migration Room ni modification Movies/Series.
 
 - 2026-07-22: Who's Watching reutilise maintenant le fond cinema du Splash, conserve le focus courant sur D-pad Haut et affiche uniquement Quitter/Annuler sur Back. Les cards gagnent `6 dp` de padding vertical en haut et en bas. Le spinner Splash devient un `AnimatedVectorDrawable` autonome dans une vue Android, entierement decoratif et sans dependance a la progression ou aux recompositions de statut.

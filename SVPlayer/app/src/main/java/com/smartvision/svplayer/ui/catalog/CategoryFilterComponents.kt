@@ -143,7 +143,16 @@ internal fun CategoryFilterIconButton(
                 down = if (expanded) activeFilterFocusRequester else categoryListFocusRequester
                 up = headerFocusRequester
             }
-            .onFocusChanged { focused = it.isFocused }.focusable()
+            .onFocusChanged { focused = it.isFocused }
+            .onPreviewKeyEvent { event ->
+                if (event.key in setOf(Key.Enter, Key.NumPadEnter, Key.DirectionCenter)) {
+                    if (event.type == KeyEventType.KeyDown) onToggle()
+                    true
+                } else {
+                    false
+                }
+            }
+            .focusable()
             .clickable(remember { MutableInteractionSource() }, null, onClick = onToggle)
             .semantics { contentDescription = strings.liveTvCategoryFilterOpen },
         contentAlignment = Alignment.Center,

@@ -244,7 +244,6 @@ data class AdjacentPlayback(
 data class LiveZapGuideItem(
     val streamId: Int,
     val title: String,
-    val label: String,
     val imageUrl: String?,
 )
 
@@ -685,6 +684,7 @@ fun FullScreenPlayerRoute(
     livePlaybackSession: LivePlaybackSession? = null,
     enterFromBounds: Rect? = null,
     showZapGuideOnEnter: Boolean = false,
+    zapGuideState: LiveZapGuideState? = null,
 ) {
     val container = LocalAppContainer.current
     val viewModel: FullScreenPlayerViewModel = viewModel(
@@ -734,6 +734,7 @@ fun FullScreenPlayerRoute(
         livePlaybackSession = livePlaybackSession,
         enterFromBounds = enterFromBounds,
         showZapGuideOnEnter = showZapGuideOnEnter,
+        zapGuideState = zapGuideState,
     )
 }
 
@@ -834,6 +835,7 @@ private fun FullScreenPlayerScreen(
     livePlaybackSession: LivePlaybackSession? = null,
     enterFromBounds: Rect? = null,
     showZapGuideOnEnter: Boolean = false,
+    zapGuideState: LiveZapGuideState? = null,
 ) {
     val context = LocalContext.current
     val container = LocalAppContainer.current
@@ -863,9 +865,8 @@ private fun FullScreenPlayerScreen(
     var durationMs by remember { mutableLongStateOf(0L) }
     var bufferedPositionMs by remember { mutableLongStateOf(0L) }
     var activeMenu by remember { mutableStateOf(PlayerOverlayMenu.None) }
-    var zapGuideVisible by remember(playback.streamId, showZapGuideOnEnter) {
-        mutableStateOf(showZapGuideOnEnter)
-    }
+    val retainedZapGuideState = remember { LiveZapGuideState() }
+    val activeZapGuideState = zapGuideState ?: retainedZapGuideState
     var playbackSpeed by remember { mutableStateOf(1f) }
     var liveAspectMode by remember(playback.streamId, playerSettings.videoRatio) {
         mutableStateOf(
@@ -1741,11 +1742,15 @@ private fun FullScreenPlayerScreen(
         }
     }
 
-    LaunchedEffect(showZapGuideOnEnter, playback.streamId, playback.liveChannelWindow) {
-        if (showZapGuideOnEnter && playback.liveChannelWindow.isNotEmpty()) {
-            zapGuideVisible = true
+    LaunchedEffect(playback.liveChannelWindow) {
+        activeZapGuideState.updateChannels(playback.liveChannelWindow)
+    }
+
+    LaunchedEffect(showZapGuideOnEnter, playback.streamId) {
+        if (showZapGuideOnEnter) {
+            val request = activeZapGuideState.show(playback.streamId)
             delay(LiveZapGuideDurationMs)
-            zapGuideVisible = false
+            activeZapGuideState.hide(request)
         }
     }
 
@@ -2151,17 +2156,17 @@ private fun FullScreenPlayerScreen(
         }
 
         if (
-            zapGuideVisible &&
+            activeZapGuideState.visible &&
             playback.contentType == UserContentType.Live &&
-            playback.liveChannelWindow.isNotEmpty() &&
+            activeZapGuideState.channels.isNotEmpty() &&
             !adGateActive
         ) {
             LiveZapGuide(
-                channels = playback.liveChannelWindow,
-                currentStreamId = playback.streamId,
+                channels = activeZapGuideState.channels,
+                currentStreamId = activeZapGuideState.currentStreamId,
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .padding(start = 32.dp),
+                    .padding(start = 8.dp),
             )
         }
 
@@ -4340,7 +4345,6 @@ private fun LiveChannel.toLiveZapGuideItem(): LiveZapGuideItem =
     LiveZapGuideItem(
         streamId = streamId,
         title = name.cleanTitle(),
-        label = number.toLiveChannelNumber(streamId),
         imageUrl = logoUrl,
     )
 
