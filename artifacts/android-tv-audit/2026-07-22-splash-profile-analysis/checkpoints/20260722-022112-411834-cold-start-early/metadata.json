@@ -1,0 +1,25 @@
+{
+  "label": "cold-start-early",
+  "captured_at": "2026-07-22T00:21:21.388840+00:00",
+  "serial": "192.168.1.33:5555",
+  "package": "com.smartvision.svplayer",
+  "pid": "14413",
+  "keys": [],
+  "settle_ms": 0,
+  "capture_elapsed_ms": 8975.7,
+  "focus": [
+    "mCurrentFocus=Window{540ea9e u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}",
+    "mFocusedApp=AppWindowToken{399af9 token=Token{655dc0 ActivityRecord{144e343 u0 com.smartvision.svplayer/.MainActivity t8869}}}",
+    "mResumedActivity: ActivityRecord{144e343 u0 com.smartvision.svplayer/.MainActivity t8869}"
+  ],
+  "ui_dump_status": "ERROR: null root node returned by UiTestAutomationBridge.",
+  "files": [
+    "activity.txt",
+    "gfxinfo-framestats.txt",
+    "logcat.txt",
+    "screenshot.png",
+    "ui-dump-status.txt",
+    "ui.xml",
+    "window.txt"
+  ]
+}

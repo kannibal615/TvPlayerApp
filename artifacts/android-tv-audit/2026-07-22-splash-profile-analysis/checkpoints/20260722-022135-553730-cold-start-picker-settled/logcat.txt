@@ -1,0 +1,171 @@
+--------- beginning of main
+07-22 02:21:20.043 14413 14413 W vision.svplaye: Accessing hidden field Landroid/os/Trace;->TRACE_TAG_APP:J (light greylist, reflection)
+07-22 02:21:20.044 14413 14413 W vision.svplaye: Accessing hidden method Landroid/os/Trace;->isTagEnabled(J)Z (light greylist, reflection)
+07-22 02:21:20.674 14413 14413 W ActivityThread: handleWindowVisibility: no activity for token android.os.BinderProxy@ae3f47e
+07-22 02:21:21.033 14413 14413 I SVStartup: onCreate: MainActivity launcher with system splash theme
+07-22 02:21:21.139 14413 14413 I PerfStatsManager: start attempting to update service remote
+07-22 02:21:21.195 14413 14413 I Choreographer: Skipped 64 frames!  The application may be doing too much work on its main thread.
+07-22 02:21:22.754 14413 14937 I ConfigStore: android::hardware::configstore::V1_0::ISurfaceFlingerConfigs::hasWideColorDisplay retrieved: 0
+07-22 02:21:22.755 14413 14937 I ConfigStore: android::hardware::configstore::V1_0::ISurfaceFlingerConfigs::hasHDRDisplay retrieved: 0
+07-22 02:21:22.755 14413 14937 I OpenGLRenderer: Initialized EGL, version 1.4
+07-22 02:21:22.763 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->create(Ljava/lang/String;Landroid/view/View;)Landroid/view/RenderNode; (light greylist, linking)
+07-22 02:21:22.763 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->getScaleX()F (dark greylist, linking)
+07-22 02:21:22.763 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setClipToBounds(Z)Z (light greylist, linking)
+07-22 02:21:22.764 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setClipToOutline(Z)Z (dark greylist, linking)
+07-22 02:21:22.764 14413 14413 I chatty  : uid=10247(com.smartvision.svplayer) identical 2 lines
+07-22 02:21:22.764 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setClipToOutline(Z)Z (dark greylist, linking)
+07-22 02:21:22.764 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setLayerType(I)Z (dark greylist, linking)
+07-22 02:21:22.764 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setLayerType(I)Z (dark greylist, linking)
+07-22 02:21:22.765 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->getMatrix(Landroid/graphics/Matrix;)V (dark greylist, linking)
+07-22 02:21:22.766 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/DisplayListCanvas;->drawRenderNode(Landroid/view/RenderNode;)V (light greylist, linking)
+07-22 02:21:22.766 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->isValid()Z (light greylist, linking)
+07-22 02:21:22.766 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->start(II)Landroid/view/DisplayListCanvas; (light greylist, linking)
+07-22 02:21:22.767 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->end(Landroid/view/DisplayListCanvas;)V (light greylist, linking)
+07-22 02:21:22.767 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setAlpha(F)Z (dark greylist, linking)
+07-22 02:21:22.767 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setCameraDistance(F)Z (dark greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setLayerPaint(Landroid/graphics/Paint;)Z (dark greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setOutline(Landroid/graphics/Outline;)Z (dark greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setPivotX(F)Z (dark greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setPivotX(F)Z (dark greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setLeftTopRightBottom(IIII)Z (light greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setPivotX(F)Z (dark greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setRotationX(F)Z (dark greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setRotationY(F)Z (dark greylist, linking)
+07-22 02:21:22.769 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setRotation(F)Z (dark greylist, linking)
+07-22 02:21:22.769 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setScaleX(F)Z (dark greylist, linking)
+07-22 02:21:22.769 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setScaleY(F)Z (dark greylist, linking)
+07-22 02:21:22.769 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setElevation(F)Z (dark greylist, linking)
+07-22 02:21:22.769 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setTranslationX(F)Z (dark greylist, linking)
+07-22 02:21:22.769 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setTranslationY(F)Z (dark greylist, linking)
+07-22 02:21:22.770 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->getScaleX()F (dark greylist, linking)
+07-22 02:21:22.851 14413 14413 I Choreographer: Skipped 90 frames!  The application may be doing too much work on its main thread.
+07-22 02:21:23.162 14413 14413 W vision.svplaye: Accessing hidden method Landroid/text/SpannableStringInternal;->length()I (light greylist, linking)
+07-22 02:21:23.327 14413 14937 E ion     : ioctl c0044901 failed with code -1: Invalid argument
+07-22 02:21:23.330 14413 14937 I ConfigStore: android::hardware::configstore::V1_0::ISurfaceFlingerConfigs::vsyncEventPhaseOffsetNs retrieved: 1000000 (default)
+07-22 02:21:23.330 14413 14937 I ConfigStore: android::hardware::configstore::V1_0::ISurfaceFlingerConfigs::vsyncSfEventPhaseOffsetNs retrieved: 1000000 (default)
+07-22 02:21:23.424 14413 14937 I OpenGLRenderer: Davey! duration=2080ms; Flags=0, IntendedVsync=11678803363690, Vsync=11680304865190, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11680317407387, AnimationStart=11680317548233, PerformTraversalsStart=11680441960694, DrawStart=11680734488771, SyncQueued=11680789338464, SyncStart=11680796369464, IssueDrawCommandsStart=11680796487387, SwapBuffers=11680888309310, FrameCompleted=11680890472310, DequeueBufferDuration=0, QueueBufferDuration=1574000, 
+07-22 02:21:23.544 14413 14413 I Choreographer: Skipped 41 frames!  The application may be doing too much work on its main thread.
+07-22 02:21:23.583 14413 14937 I OpenGLRenderer: Davey! duration=727ms; Flags=0, IntendedVsync=11680321541137, Vsync=11681005558487, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11681010405617, AnimationStart=11681010594387, PerformTraversalsStart=11681045514079, DrawStart=11681046578617, SyncQueued=11681046674387, SyncStart=11681046753310, IssueDrawCommandsStart=11681046825233, SwapBuffers=11681048785387, FrameCompleted=11681049577079, DequeueBufferDuration=209000, QueueBufferDuration=353000, 
+07-22 02:21:23.708 14413 14937 I ConfigStore: android::hardware::configstore::V1_0::ISurfaceFlingerConfigs::vsyncEventPhaseOffsetNs retrieved: 1000000 (default)
+07-22 02:21:23.708 14413 14937 I ConfigStore: android::hardware::configstore::V1_0::ISurfaceFlingerConfigs::vsyncSfEventPhaseOffsetNs retrieved: 1000000 (default)
+07-22 02:21:24.111 14413 14965 W vision.svplaye: Accessing hidden method Lcom/android/org/conscrypt/OpenSSLSocketImpl;->setUseSessionTickets(Z)V (light greylist, reflection)
+07-22 02:21:24.112 14413 14965 W vision.svplaye: Accessing hidden method Lcom/android/org/conscrypt/OpenSSLSocketImpl;->setHostname(Ljava/lang/String;)V (light greylist, reflection)
+07-22 02:21:24.112 14413 14965 W vision.svplaye: Accessing hidden method Lcom/android/org/conscrypt/OpenSSLSocketImpl;->getAlpnSelectedProtocol()[B (light greylist, reflection)
+07-22 02:21:24.112 14413 14965 W vision.svplaye: Accessing hidden method Lcom/android/org/conscrypt/OpenSSLSocketImpl;->setAlpnProtocols([B)V (light greylist, reflection)
+07-22 02:21:24.131 14413 14965 W vision.svplaye: Accessing hidden method Ldalvik/system/CloseGuard;->get()Ldalvik/system/CloseGuard; (light greylist, reflection)
+07-22 02:21:24.132 14413 14965 W vision.svplaye: Accessing hidden method Ldalvik/system/CloseGuard;->open(Ljava/lang/String;)V (light greylist, reflection)
+07-22 02:21:24.132 14413 14965 W vision.svplaye: Accessing hidden method Ldalvik/system/CloseGuard;->warnIfOpen()V (light greylist, reflection)
+07-22 02:21:24.217 14413 14965 W vision.svplaye: Accessing hidden field Lsun/misc/Unsafe;->theUnsafe:Lsun/misc/Unsafe; (light greylist, reflection)
+07-22 02:21:24.871 14413 15007 W vision.svplaye: Accessing hidden field Ljava/nio/Buffer;->address:J (light greylist, reflection)
+07-22 02:21:25.048 14413 14413 I SVStartup: startup stage: Initializing
+07-22 02:21:25.050 14413 14413 I SVStartup: startup stage: CheckingActivation
+07-22 02:21:25.057 14413 14413 I SVStartup: startup stage: PreparingHome
+07-22 02:21:25.059 14413 14413 I SVStartup: startup stage: PreparingHome
+07-22 02:21:25.232 14413 14413 W vision.svplaye: Verification of void com.smartvision.svplayer.ui.navigation.AppNavigationKt.AppNavigation(androidx.navigation.NavHostController, androidx.compose.ui.Modifier, kotlin.jvm.functions.Function0, boolean, androidx.compose.runtime.Composer, int, int) took 147.350ms
+07-22 02:21:25.447 14413 15016 E System  : TRACE Starting certificate trust
+07-22 02:21:25.452 14413 15015 E System  : TRACE Starting certificate trust
+07-22 02:21:25.670 14413 14413 I ExoPlayerImpl: Init 4b951ce [AndroidXMedia3/1.6.1] [sheldonp, AFTSSS, Amazon, 28]
+07-22 02:21:25.702 14413 15022 E System  : TRACE Starting certificate trust
+07-22 02:21:25.826 14413 14440 I vision.svplaye: Background concurrent copying GC freed 41611(2MB) AllocSpace objects, 9(180KB) LOS objects, 49% free, 4MB/8MB, paused 176us total 154.627ms
+07-22 02:21:25.876 14413 14413 W vision.svplaye: Accessing hidden method Landroid/media/AudioTrack$Builder;->setOffloadedPlayback(Z)Landroid/media/AudioTrack$Builder; (dark greylist, linking)
+07-22 02:21:25.926 14413 14413 W vision.svplaye: Accessing hidden method Landroid/media/AudioTrack;->getLatency()I (light greylist, reflection)
+07-22 02:21:27.228 14413 14433 I vision.svplaye: JIT allocated 50KB for stack maps of void com.smartvision.svplayer.ui.home.TvHeaderKt.HeaderTabButton-_-WMjBM(com.smartvision.svplayer.ui.home.HomeHeaderTab, boolean, kotlin.jvm.functions.Function1, float, androidx.compose.ui.Modifier, androidx.compose.ui.focus.FocusRequester, androidx.compose.ui.focus.FocusRequester, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, androidx.compose.runtime.Composer, int, int)
+07-22 02:21:27.527 14413 14440 I vision.svplaye: NativeAlloc concurrent copying GC freed 21688(1741KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 4MB/8MB, paused 620us total 112.939ms
+07-22 02:21:28.137 14413 14440 I vision.svplaye: NativeAlloc concurrent copying GC freed 280(47KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 4MB/9MB, paused 136us total 117.663ms
+07-22 02:21:28.331 14413 14440 I vision.svplaye: NativeAlloc concurrent copying GC freed 63(33KB) AllocSpace objects, 1(24KB) LOS objects, 49% free, 4MB/9MB, paused 221us total 148.953ms
+07-22 02:21:28.676 14413 14440 I vision.svplaye: NativeAlloc concurrent copying GC freed 755(107KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 4MB/9MB, paused 188us total 116.720ms
+07-22 02:21:30.102 14413 14440 I vision.svplaye: NativeAlloc concurrent copying GC freed 80868(2MB) AllocSpace objects, 1(44KB) LOS objects, 44% free, 7MB/13MB, paused 207us total 129.292ms
+07-22 02:21:30.374 14413 14440 I vision.svplaye: NativeAlloc concurrent copying GC freed 78398(2MB) AllocSpace objects, 0(0B) LOS objects, 43% free, 7MB/13MB, paused 201us total 158.925ms
+07-22 02:21:30.669 14413 14440 I vision.svplaye: NativeAlloc concurrent copying GC freed 28830(1233KB) AllocSpace objects, 0(0B) LOS objects, 46% free, 6MB/12MB, paused 165us total 116.052ms
+07-22 02:21:31.985 14413 14413 I SVStartup: initial surface preloaded: ready=true durationMs=6924
+07-22 02:21:32.043 14413 15197 I UserMessagingPlatform: Use new ConsentDebugSettings.Builder().addTestDeviceHashedId("CFDFE390DE00E5CB0B4943D9CFED8FD8") to set this as a debug device.
+07-22 02:21:32.085 14413 14413 I SVStartup: state localReady=true checking=false activated=true playableSource=true route=home
+07-22 02:21:32.244 14413 14937 I OpenGLRenderer: Davey! duration=7176ms; Flags=0, IntendedVsync=11682533409806, Vsync=11682533409806, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11682534071925, AnimationStart=11682534085617, PerformTraversalsStart=11686664424925, DrawStart=11688867501695, SyncQueued=11689448188310, SyncStart=11689448269464, IssueDrawCommandsStart=11689449040926, SwapBuffers=11689705902772, FrameCompleted=11689710435156, DequeueBufferDuration=462000, QueueBufferDuration=3676000, 
+07-22 02:21:32.259 14413 15197 W vision.svplaye: Unknown chunk type '200'.
+07-22 02:21:32.407 14413 14413 I SVStartup: startup complete: rendering AppNavigation
+07-22 02:21:32.475 14413 15197 I WebViewFactory: Loading com.amazon.webview.chromium version 138.amazon-webview-v138-7204-tv-r29_06_09_2026.7204.244.214 (code 61576632)
+07-22 02:21:32.477 14413 15197 W vision.svplaye: Unknown chunk type '200'.
+07-22 02:21:32.623 14413 15197 E webviewchromiumloader: Failed to open relro file /data/misc/shared_relro/libwebviewchromium32.relro: No such file or directory
+07-22 02:21:32.623 14413 15197 W WebViewLibraryLoader: failed to load with relro file, proceeding without
+07-22 02:21:32.777 14413 15197 I cr_WVCFactoryProvider: version=138.0.7204.244 (61576632) minSdkVersion=26 isBundle=false multiprocess=true packageId=2
+07-22 02:21:32.792 14413 14413 I SVHomeLoad: counts ready profile=de993c35 revision=0 live=13726 movies=26939 series=12036
+07-22 02:21:32.805 14413 14413 I Choreographer: Skipped 48 frames!  The application may be doing too much work on its main thread.
+07-22 02:21:32.966 14413 15206 E chromium: [0722/022132.957049:ERROR:android_webview/browser/variations/variations_seed_loader.cc:39] Seed missing signature.
+07-22 02:21:32.973 14413 15206 I chromium: [0722/022132.967543:INFO:android_webview/browser/variations/variations_seed_loader.cc:67] Failed to open file for reading.: No such file or directory (2)
+07-22 02:21:32.974 14413 15197 I cr_AWVDeploymentClient: AWV - FTV arcus server file will be used
+07-22 02:21:32.974 14413 15197 I cr_AWVDeploymentClient: connectRemote
+07-22 02:21:33.009 14413 15197 I cr_AWVDeploymentClient: bindService status: true
+07-22 02:21:33.351 14413 15197 E cr_AWVDeploymentClient: Chromium Version = v138 key doesn't exist. So, default version config will be used.
+07-22 02:21:33.355 14413 15197 I cr_AWVDeploymentClient: awv-force-overlay-colorspace-for-hdr can't be enabled on device other than mm-tablet
+07-22 02:21:33.355 14413 15197 I cr_AWVDeploymentClient: remove-text-selection-handle-keyboard can't be enabled on device other than mm-tablet-mmftv
+07-22 02:21:33.355 14413 15197 I cr_AWVDeploymentClient: disable-download can't be enabled on device other than mm
+07-22 02:21:33.355 14413 15197 I cr_AWVDeploymentClient: enable-loose-resolution-check-for-h264-hw-decoder can't be enabled on device other than mm-tablet-mmftv
+07-22 02:21:33.356 14413 15197 I cr_AWVDeploymentClient: enable-swap-width-height-for-h264-hw-decoder can't be enabled on device other than mm-tablet-mmftv
+07-22 02:21:33.356 14413 15197 I cr_AWVDeploymentClient: disable-webview-sandboxed-renderer can't be enabled on device other than tablet
+07-22 02:21:33.409 14413 15197 E cr_AWVDeploymentClient: Default device config doesn't exist
+07-22 02:21:33.412 14413 15197 I WebViewExtAmazonFactoryProvider: Setting switch disable-features for BuiltInHlsPlayer,RenderSurfaceFor2DScaleTransform
+07-22 02:21:33.417 14413 15197 I HDRVideoUtils: VP9 Profile 2 Disabled
+07-22 02:21:33.417 14413 15197 I HDRVideoUtils: Device doesn't support HDR
+07-22 02:21:33.420 14413 15197 I WebViewExtAmazonFactoryProvider: AWV - Non-FTVE device detected
+07-22 02:21:33.427 14413 15197 W vision.svplaye: Accessing hidden method Landroid/os/Trace;->setAppTracingAllowed(Z)V (light greylist, reflection)
+07-22 02:21:33.428 14413 15197 I WebViewExtAmazonFactoryProvider: Invoke SetAppTracingAllowed true
+07-22 02:21:33.879 14413 14937 I OpenGLRenderer: Davey! duration=1888ms; Flags=1, IntendedVsync=11689457001539, Vsync=11690257802339, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11690271876156, AnimationStart=11690293068926, PerformTraversalsStart=11691075112541, DrawStart=11691281684541, SyncQueued=11691325223080, SyncStart=11691325364541, IssueDrawCommandsStart=11691326071080, SwapBuffers=11691342022849, FrameCompleted=11691345852541, DequeueBufferDuration=485000, QueueBufferDuration=675000, 
+07-22 02:21:33.887 14413 14413 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-22 02:21:33.934 14413 14433 I vision.svplaye: JIT allocated 155KB for stack maps of void com.smartvision.svplayer.ui.navigation.AppNavigationKt.AppNavigation(androidx.navigation.NavHostController, androidx.compose.ui.Modifier, kotlin.jvm.functions.Function0, boolean, androidx.compose.runtime.Composer, int, int)
+07-22 02:21:34.072 14413 14413 I SmartVisionAds: Passage en FREE_WITH_ADS
+07-22 02:21:34.072 14413 14413 I SmartVisionAds: Statut monetisation actuel: FREE_WITH_ADS
+07-22 02:21:34.076 14413 14413 I Choreographer: Skipped 73 frames!  The application may be doing too much work on its main thread.
+07-22 02:21:34.608 14413 14440 I vision.svplaye: NativeAlloc concurrent copying GC freed 47612(2MB) AllocSpace objects, 10(328KB) LOS objects, 43% free, 7MB/13MB, paused 217us total 402.493ms
+07-22 02:21:35.024 14413 14440 I vision.svplaye: NativeAlloc concurrent copying GC freed 21334(928KB) AllocSpace objects, 0(0B) LOS objects, 46% free, 6MB/12MB, paused 192us total 125.139ms
+07-22 02:21:35.239 14413 14440 I vision.svplaye: NativeAlloc concurrent copying GC freed 1223(75KB) AllocSpace objects, 0(0B) LOS objects, 46% free, 6MB/12MB, paused 211us total 153.243ms
+07-22 02:21:35.434 14413 14440 I vision.svplaye: NativeAlloc concurrent copying GC freed 32(35KB) AllocSpace objects, 0(0B) LOS objects, 45% free, 7MB/13MB, paused 201us total 113.932ms
+07-22 02:21:36.778 14413 14413 I cr_AWVDeploymentClient: onServiceConnected
+07-22 02:21:36.813 14413 14413 W chromium: [0722/022136.812351:WARNING:base/android/library_loader/library_prefetcher.cc:345] Code not ordered, madvise optimization skipped
+07-22 02:21:36.834 14413 14937 I OpenGLRenderer: Davey! duration=3985ms; Flags=0, IntendedVsync=11690314961227, Vsync=11691532845777, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11691542740156, AnimationStart=11691542919233, PerformTraversalsStart=11693001268080, DrawStart=11693002603926, SyncQueued=11694174316695, SyncStart=11694174415387, IssueDrawCommandsStart=11694175104464, SwapBuffers=11694298356387, FrameCompleted=11694300623464, DequeueBufferDuration=711000, QueueBufferDuration=1347000, 
+07-22 02:21:37.108 14413 14413 I cr_LibraryLoader: Successfully loaded native library
+07-22 02:21:37.152 14413 14413 I cr_CachingUmaRecorder: Flushed 7 samples from 7 histograms, 0 samples were dropped.
+07-22 02:21:37.275 14413 14413 I cr_CombinedPProvider: #registerProvider() provider:org.chromium.android_webview.policy.AwPolicyProvider@d94148f isPolicyCacheEnabled:false policyProvidersSize:0
+07-22 02:21:37.288 14413 14413 I cr_PolicyProvider: #setManagerAndSource() 0
+07-22 02:21:37.310 14413 15280 W cr_ChildConnAllocator: Using start index 0 for org.chromium.content.app.SandboxedProcessService
+07-22 02:21:37.327 14413 15280 W vision.svplaye: Accessing hidden method Landroid/content/Context;->bindServiceAsUser(Landroid/content/Intent;Landroid/content/ServiceConnection;ILandroid/os/Handler;Landroid/os/UserHandle;)Z (light greylist, reflection)
+07-22 02:21:37.364 14413 14413 I cr_ApkInfo: AWV - Fixing app target sdk version, was 35 now 36
+07-22 02:21:37.496 14413 14413 I cr_CombinedPProvider: #linkNativeInternal() 1
+07-22 02:21:37.558 14413 14413 I cr_AppResProvider: #getApplicationRestrictionsFromUserManager() Bundle[EMPTY_PARCEL]
+07-22 02:21:37.559 14413 14413 I cr_PolicyProvider: #notifySettingsAvailable() 0
+07-22 02:21:37.559 14413 14413 I cr_CombinedPProvider: #onSettingsAvailable() 0
+07-22 02:21:37.559 14413 14413 I cr_CombinedPProvider: #flushPolicies()
+07-22 02:21:38.154 14413 14413 I chromium: [INFO:content/browser/network_service_instance_impl.cc:329] CreateInProcessNetworkService AWV - Using default NetworkService thread priority.
+07-22 02:21:38.165 14413 14413 W chromium: [WARNING:android_webview/browser/network_service/net_helpers.cc:143] HTTP Cache size is: 20971520
+07-22 02:21:38.393 14413 15352 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:38.651 14413 14413 I Choreographer: Skipped 273 frames!  The application may be doing too much work on its main thread.
+07-22 02:21:38.804 14413 15197 E System  : TRACE Starting certificate trust
+07-22 02:21:39.396 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:39.398 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:39.451 14413 14937 I OpenGLRenderer: Davey! duration=5367ms; Flags=0, IntendedVsync=11691549532375, Vsync=11696104086925, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11696130462080, AnimationStart=11696160731695, PerformTraversalsStart=11696400394080, DrawStart=11696415021849, SyncQueued=11696520259849, SyncStart=11696520480618, IssueDrawCommandsStart=11696521232311, SwapBuffers=11696914319926, FrameCompleted=11696917580465, DequeueBufferDuration=449000, QueueBufferDuration=1263000, 
+07-22 02:21:39.518 14413 14413 I Choreographer: Skipped 48 frames!  The application may be doing too much work on its main thread.
+07-22 02:21:40.092 14413 14937 I OpenGLRenderer: Davey! duration=1387ms; Flags=0, IntendedVsync=11696170911426, Vsync=11696971712226, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11696984454234, AnimationStart=11696984683388, PerformTraversalsStart=11697253033695, DrawStart=11697254891541, SyncQueued=11697311726618, SyncStart=11697311870695, IssueDrawCommandsStart=11697312475772, SwapBuffers=11697551350618, FrameCompleted=11697558407926, DequeueBufferDuration=381000, QueueBufferDuration=577000, 
+07-22 02:21:40.379 14413 14937 I OpenGLRenderer: Davey! duration=856ms; Flags=0, IntendedVsync=11696988364968, Vsync=11697438815418, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11697442932541, AnimationStart=11697443088465, PerformTraversalsStart=11697764417772, DrawStart=11697766203388, SyncQueued=11697833669465, SyncStart=11697833795157, IssueDrawCommandsStart=11697834388465, SwapBuffers=11697843888234, FrameCompleted=11697845029080, DequeueBufferDuration=3535000, QueueBufferDuration=514000, 
+07-22 02:21:40.399 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:40.408 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:40.703 14413 14937 I OpenGLRenderer: Davey! duration=713ms; Flags=0, IntendedVsync=11697455498079, Vsync=11697872581829, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11697879259849, AnimationStart=11697879394388, PerformTraversalsStart=11698113434849, DrawStart=11698115215542, SyncQueued=11698150839542, SyncStart=11698150947465, IssueDrawCommandsStart=11698151447849, SwapBuffers=11698156479311, FrameCompleted=11698169605157, DequeueBufferDuration=431000, QueueBufferDuration=3583000, 
+07-22 02:21:41.408 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:41.409 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:41.443 14413 14413 I SVHomeLoad: ready profile=de993c35 revision=0
+07-22 02:21:41.445 14413 14413 I SVHomeLoad: trending ready profile=de993c35 revision=0
+07-22 02:21:41.743 14413 14433 I vision.svplaye: JIT allocated 55KB for stack maps of void com.smartvision.svplayer.ui.home.HomeScreenKt.HomeScreen(com.smartvision.svplayer.ui.home.HomeViewModel, com.smartvision.svplayer.ui.home.HomeUiState, com.smartvision.svplayer.core.config.PlaylistProfile, java.lang.String, java.util.List, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, boolean, boolean, int, com.smartvision.svplayer.ui.i18n.SmartVisionStrings, boolean, boolean, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function1, androidx.compose.ui.Modifier, int, com.smartvision.svplayer.ui.home.HomeHeaderFocusTarget, boolean, kotlin.jvm.functions.Function1, androidx.compose.runtime.Composer, int, int, int, int)
+07-22 02:21:42.137 14413 14440 I vision.svplaye: Background concurrent copying GC freed 70665(3MB) AllocSpace objects, 9(748KB) LOS objects, 40% free, 8MB/14MB, paused 867us total 263.622ms
+07-22 02:21:42.410 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:42.410 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:42.514 14413 14440 I vision.svplaye: NativeAlloc concurrent copying GC freed 528(76KB) AllocSpace objects, 0(0B) LOS objects, 39% free, 9MB/15MB, paused 210us total 368.776ms
+07-22 02:21:43.414 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:43.415 14413 14440 I vision.svplaye: NativeAlloc concurrent copying GC freed 7410(572KB) AllocSpace objects, 13(820KB) LOS objects, 35% free, 10MB/16MB, paused 528us total 466.814ms
+07-22 02:21:43.418 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:44.218 14413 14937 I OpenGLRenderer: Davey! duration=2977ms; Flags=0, IntendedVsync=11698706791316, Vsync=11698923674866, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11698934954003, AnimationStart=11698935087542, PerformTraversalsStart=11699387767695, DrawStart=11699390964157, SyncQueued=11701600282772, SyncStart=11701600395388, IssueDrawCommandsStart=11701602535388, SwapBuffers=11701675768234, FrameCompleted=11701684178388, DequeueBufferDuration=9640000, QueueBufferDuration=2336000, 
+07-22 02:21:44.314 14413 14413 I Choreographer: Skipped 170 frames!  The application may be doing too much work on its main thread.
+07-22 02:21:44.419 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:44.435 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:44.960 14413 14937 I OpenGLRenderer: Davey! duration=3485ms; Flags=0, IntendedVsync=11698940335449, Vsync=11701776504949, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11701781048311, AnimationStart=11701781943234, PerformTraversalsStart=11702203520234, DrawStart=11702227573003, SyncQueued=11702413243311, SyncStart=11702413436311, IssueDrawCommandsStart=11702414340234, SwapBuffers=11702423777311, FrameCompleted=11702425858003, DequeueBufferDuration=860000, QueueBufferDuration=1031000, 
+07-22 02:21:45.032 14413 14413 I Choreographer: Skipped 42 frames!  The application may be doing too much work on its main thread.
+07-22 02:21:45.359 14413 14937 I OpenGLRenderer: Davey! duration=1032ms; Flags=0, IntendedVsync=11701793209428, Vsync=11702493910128, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11702498794773, AnimationStart=11702499136542, PerformTraversalsStart=11702746005619, DrawStart=11702748222003, SyncQueued=11702796974773, SyncStart=11702797119849, IssueDrawCommandsStart=11702797898157, SwapBuffers=11702824255773, FrameCompleted=11702825632619, DequeueBufferDuration=433000, QueueBufferDuration=460000, 
+07-22 02:21:45.439 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:45.439 14413 15364 E CameraManagerGlobal: Camera service is unavailable

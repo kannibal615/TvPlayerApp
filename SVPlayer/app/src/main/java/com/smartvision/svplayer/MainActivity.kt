@@ -15,6 +15,10 @@ import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -127,6 +131,7 @@ class MainActivity : ComponentActivity() {
     private fun StartupGate() {
         var appContainer by remember { mutableStateOf<AppContainer?>(null) }
         var startupComplete by remember { mutableStateOf(false) }
+        var startupOverlayVisible by remember { mutableStateOf(true) }
         val startupStartedAt = remember { SystemClock.elapsedRealtime() }
         var startupLanguage by remember { mutableStateOf("English") }
         var visualPhase by remember { mutableStateOf(StartupVisualPhase.LogoOnly) }
@@ -154,6 +159,12 @@ class MainActivity : ComponentActivity() {
                 ) {
                     visualPhase = StartupVisualPhase.Loading
                 }
+            }
+        }
+
+        LaunchedEffect(startupComplete) {
+            if (startupComplete) {
+                startupOverlayVisible = false
             }
         }
 
@@ -237,9 +248,9 @@ class MainActivity : ComponentActivity() {
         }
 
         val readyContainer = appContainer
-        if (readyContainer != null) {
-            CompositionLocalProvider(LocalAppContainer provides readyContainer) {
-                androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
+        androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
+            if (readyContainer != null) {
+                CompositionLocalProvider(LocalAppContainer provides readyContainer) {
                     AppNavigation(
                         modifier = Modifier
                             .fillMaxSize()
@@ -247,23 +258,20 @@ class MainActivity : ComponentActivity() {
                         onInitialSurfaceReady = { initialSurfaceReady = true },
                         initialSurfaceVisible = startupComplete,
                     )
-                    if (!startupComplete) {
-                        StartupExperience(
-                            phase = visualPhase,
-                            progress = startupProgress,
-                            strings = strings,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
                 }
             }
-        } else {
-            StartupExperience(
-                phase = visualPhase,
-                progress = startupProgress,
-                strings = strings,
-                modifier = Modifier.fillMaxSize(),
-            )
+            AnimatedVisibility(
+                visible = startupOverlayVisible,
+                enter = EnterTransition.None,
+                exit = fadeOut(tween(durationMillis = StartupOverlayFadeOutMillis)),
+            ) {
+                StartupExperience(
+                    phase = visualPhase,
+                    progress = startupProgress,
+                    strings = strings,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
     }
 
@@ -328,6 +336,7 @@ class MainActivity : ComponentActivity() {
         private const val FirstFrameStartupDelayMillis = 60L
         private const val InitialSurfacePreloadTimeoutMillis = 2_500L
         private const val CompletedProgressHoldMillis = 140L
+        private const val StartupOverlayFadeOutMillis = 140
         private val AppOpaqueBackground = Color(0xFF020714)
     }
 }

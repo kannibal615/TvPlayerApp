@@ -8,7 +8,12 @@ import org.junit.Test
 class StartupVisualStateTest {
     @Test
     fun fastStartupDoesNotRevealLoading() {
-        assertFalse(shouldRevealStartupLoading(elapsedMillis = 420L, startupComplete = false))
+        assertFalse(
+            shouldRevealStartupLoading(
+                elapsedMillis = StartupLoadingRevealDelayMillis - 1L,
+                startupComplete = false,
+            ),
+        )
         assertFalse(shouldRevealStartupLoading(elapsedMillis = 720L, startupComplete = true))
     }
 

@@ -3,8 +3,11 @@ package com.smartvision.svplayer.ui.startup
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
@@ -26,6 +29,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -91,7 +95,6 @@ private fun StartupLoadingOverlay(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             StartupProgressRing(
-                progress = progress.visibleProgress,
                 modifier = Modifier
                     .width(progressSize)
                     .height(progressSize),
@@ -109,17 +112,25 @@ private fun StartupLoadingOverlay(
 }
 
 @Composable
-private fun StartupProgressRing(
-    progress: Float,
-    modifier: Modifier = Modifier,
-) {
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = tween(180, easing = FastOutSlowInEasing),
-        label = "startupProgress",
+private fun StartupProgressRing(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "startup-spinner")
+    val rotationDegrees by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "startup-spinner-rotation",
     )
-    Canvas(modifier = modifier) {
+    Canvas(
+        modifier = modifier.graphicsLayer {
+            // Status updates must not rebuild or restart this continuous loading motion.
+            rotationZ = rotationDegrees
+        },
+    ) {
         val stroke = size.minDimension * 0.038f
+        val sweep = 92f
         drawArc(
             color = Color(0xFF17335F).copy(alpha = 0.70f),
             startAngle = -90f,
@@ -127,7 +138,6 @@ private fun StartupProgressRing(
             useCenter = false,
             style = Stroke(width = stroke, cap = StrokeCap.Round),
         )
-        val sweep = (animatedProgress.coerceIn(0.02f, 1f) * 360f)
         drawArc(
             color = Color(0xFF159DFF).copy(alpha = 0.22f),
             startAngle = -90f,

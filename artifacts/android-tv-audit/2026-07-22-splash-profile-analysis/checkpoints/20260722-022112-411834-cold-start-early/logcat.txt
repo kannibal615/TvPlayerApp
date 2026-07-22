@@ -1,0 +1,45 @@
+--------- beginning of main
+07-22 02:21:13.524 14413 14413 I vision.svplaye: Late-enabling -Xcheck:jni
+07-22 02:21:13.621 14413 14434 I vision.svplaye: Bumping SignalCatcher priority from 5 to 10
+07-22 02:21:20.043 14413 14413 W vision.svplaye: Accessing hidden field Landroid/os/Trace;->TRACE_TAG_APP:J (light greylist, reflection)
+07-22 02:21:20.044 14413 14413 W vision.svplaye: Accessing hidden method Landroid/os/Trace;->isTagEnabled(J)Z (light greylist, reflection)
+07-22 02:21:20.674 14413 14413 W ActivityThread: handleWindowVisibility: no activity for token android.os.BinderProxy@ae3f47e
+07-22 02:21:21.033 14413 14413 I SVStartup: onCreate: MainActivity launcher with system splash theme
+07-22 02:21:21.139 14413 14413 I PerfStatsManager: start attempting to update service remote
+07-22 02:21:21.195 14413 14413 I Choreographer: Skipped 64 frames!  The application may be doing too much work on its main thread.
+07-22 02:21:22.754 14413 14937 I ConfigStore: android::hardware::configstore::V1_0::ISurfaceFlingerConfigs::hasWideColorDisplay retrieved: 0
+07-22 02:21:22.755 14413 14937 I ConfigStore: android::hardware::configstore::V1_0::ISurfaceFlingerConfigs::hasHDRDisplay retrieved: 0
+07-22 02:21:22.755 14413 14937 I OpenGLRenderer: Initialized EGL, version 1.4
+07-22 02:21:22.763 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->create(Ljava/lang/String;Landroid/view/View;)Landroid/view/RenderNode; (light greylist, linking)
+07-22 02:21:22.763 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->getScaleX()F (dark greylist, linking)
+07-22 02:21:22.763 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setClipToBounds(Z)Z (light greylist, linking)
+07-22 02:21:22.764 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setClipToOutline(Z)Z (dark greylist, linking)
+07-22 02:21:22.764 14413 14413 I chatty  : uid=10247(com.smartvision.svplayer) identical 1 line
+07-22 02:21:22.764 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setClipToOutline(Z)Z (dark greylist, linking)
+07-22 02:21:22.764 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setLayerType(I)Z (dark greylist, linking)
+07-22 02:21:22.764 14413 14413 I chatty  : uid=10247(com.smartvision.svplayer) identical 1 line
+07-22 02:21:22.764 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setLayerType(I)Z (dark greylist, linking)
+07-22 02:21:22.765 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->getMatrix(Landroid/graphics/Matrix;)V (dark greylist, linking)
+07-22 02:21:22.766 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/DisplayListCanvas;->drawRenderNode(Landroid/view/RenderNode;)V (light greylist, linking)
+07-22 02:21:22.766 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->isValid()Z (light greylist, linking)
+07-22 02:21:22.766 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->start(II)Landroid/view/DisplayListCanvas; (light greylist, linking)
+07-22 02:21:22.767 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->end(Landroid/view/DisplayListCanvas;)V (light greylist, linking)
+07-22 02:21:22.767 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setAlpha(F)Z (dark greylist, linking)
+07-22 02:21:22.767 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setCameraDistance(F)Z (dark greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setLayerPaint(Landroid/graphics/Paint;)Z (dark greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setOutline(Landroid/graphics/Outline;)Z (dark greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setPivotX(F)Z (dark greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setPivotX(F)Z (dark greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setLeftTopRightBottom(IIII)Z (light greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setPivotX(F)Z (dark greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setRotationX(F)Z (dark greylist, linking)
+07-22 02:21:22.768 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setRotationY(F)Z (dark greylist, linking)
+07-22 02:21:22.769 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setRotation(F)Z (dark greylist, linking)
+07-22 02:21:22.769 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setScaleX(F)Z (dark greylist, linking)
+07-22 02:21:22.769 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setScaleY(F)Z (dark greylist, linking)
+07-22 02:21:22.769 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setElevation(F)Z (dark greylist, linking)
+07-22 02:21:22.769 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setTranslationX(F)Z (dark greylist, linking)
+07-22 02:21:22.769 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setTranslationY(F)Z (dark greylist, linking)
+07-22 02:21:22.770 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->getScaleX()F (dark greylist, linking)
+07-22 02:21:22.851 14413 14413 I Choreographer: Skipped 90 frames!  The application may be doing too much work on its main thread.
+07-22 02:21:23.162 14413 14413 W vision.svplaye: Accessing hidden method Landroid/text/SpannableStringInternal;->length()I (light greylist, linking)

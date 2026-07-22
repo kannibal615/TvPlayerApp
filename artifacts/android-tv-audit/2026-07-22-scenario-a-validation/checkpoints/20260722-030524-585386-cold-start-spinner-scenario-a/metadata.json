@@ -1,0 +1,25 @@
+{
+  "label": "cold-start-spinner-scenario-a",
+  "captured_at": "2026-07-22T01:05:45.243624+00:00",
+  "serial": "192.168.1.33:5555",
+  "package": "com.smartvision.svplayer",
+  "pid": "21761",
+  "keys": [],
+  "settle_ms": 0,
+  "capture_elapsed_ms": 20657.0,
+  "focus": [
+    "mCurrentFocus=Window{118a3c2 u0 com.smartvision.svplayer/com.smartvision.svplayer.MainActivity}",
+    "mFocusedApp=AppWindowToken{15078d6 token=Token{6c9c4f1 ActivityRecord{2049498 u0 com.smartvision.svplayer/.MainActivity t8870}}}",
+    "mResumedActivity: ActivityRecord{2049498 u0 com.smartvision.svplayer/.MainActivity t8870}"
+  ],
+  "ui_dump_status": "ERROR: null root node returned by UiTestAutomationBridge.",
+  "files": [
+    "activity.txt",
+    "gfxinfo-framestats.txt",
+    "logcat.txt",
+    "screenshot.png",
+    "ui-dump-status.txt",
+    "ui.xml",
+    "window.txt"
+  ]
+}

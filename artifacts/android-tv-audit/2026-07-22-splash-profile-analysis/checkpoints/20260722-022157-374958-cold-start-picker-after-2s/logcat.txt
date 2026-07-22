@@ -1,0 +1,251 @@
+--------- beginning of main
+07-22 02:21:22.763 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->create(Ljava/lang/String;Landroid/view/View;)Landroid/view/RenderNode; (light greylist, linking)
+07-22 02:21:22.763 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->getScaleX()F (dark greylist, linking)
+07-22 02:21:22.763 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setClipToBounds(Z)Z (light greylist, linking)
+07-22 02:21:22.764 14413 14413 W vision.svplaye: Accessing hidden method Landroid/view/RenderNode;->setClipToOutline(Z)Z (dark greylist, linking)
+07-22 02:21:22.764 14413 14413 I chatty  : uid=10247(com.smartvision.svplayer) identical 43 lines
+07-22 02:21:23.327 14413 14937 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread expire 10 lines
+07-22 02:21:24.111 14413 14965 I chatty  : uid=10247(com.smartvision.svplayer) DefaultDispatch expire 8 lines
+07-22 02:21:24.871 14413 15007 I chatty  : uid=10247(com.smartvision.svplayer) DefaultDispatch expire 1 line
+07-22 02:21:25.447 14413 15016 I chatty  : uid=10247(com.smartvision.svplayer) OkHttp Dispatch expire 1 line
+07-22 02:21:25.452 14413 15015 I chatty  : uid=10247(com.smartvision.svplayer) OkHttp Dispatch expire 1 line
+07-22 02:21:25.702 14413 15022 I chatty  : uid=10247(com.smartvision.svplayer) OkHttp Dispatch expire 1 line
+07-22 02:21:25.826 14413 14440 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 12 lines
+07-22 02:21:27.228 14413 14433 I chatty  : uid=10247(com.smartvision.svplayer) Jit thread pool expire 4 lines
+07-22 02:21:32.043 14413 15197 I chatty  : uid=10247(com.smartvision.svplayer) Google consent expire 25 lines
+07-22 02:21:32.966 14413 15206 I chatty  : uid=10247(com.smartvision.svplayer) expire 2 lines
+07-22 02:21:33.887 14413 14413 I chatty  : uid=10247(com.smartvision.svplayer) expire 22 lines
+07-22 02:21:37.310 14413 15280 I chatty  : uid=10247(com.smartvision.svplayer) Chrome_ProcessL expire 2 lines
+07-22 02:21:38.393 14413 15352 I chatty  : uid=10247(com.smartvision.svplayer) ThreadPoolSingl expire 1 line
+07-22 02:21:39.396 14413 15364 I chatty  : uid=10247(com.smartvision.svplayer) pool-2-thread-1 expire 18 lines
+07-22 02:21:39.451 14413 14937 I chatty  : uid=10247(com.smartvision.svplayer) RenderThread expire 9 lines
+07-22 02:21:42.137 14413 14440 I chatty  : uid=10247(com.smartvision.svplayer) HeapTaskDaemon expire 5 lines
+07-22 02:21:44.314 14413 14413 I chatty  : uid=10247(com.smartvision.svplayer) expire 33 lines
+07-22 02:21:47.958 14413 15323 I chatty  : uid=10247(com.smartvision.svplayer) AudioThread expire 2 lines
+07-22 02:21:48.029 14413 14413 I chatty  : uid=10247(com.smartvision.svplayer) expire 162 lines
+07-22 02:21:48.046 14413 14413 I vision.svplaye:   at void com.google.android.gms.internal.consent_sdk.zzbe.zzf(com.google.android.ump.UserMessagingPlatform$OnConsentFormLoadSuccessListener, com.google.android.ump.UserMessagingPlatform$OnConsentFormLoadFailureListener) (com.google.android.ump:user-messaging-platform@@4.0.0:11)
+07-22 02:21:48.046 14413 14413 I vision.svplaye:   at void com.google.android.gms.internal.consent_sdk.zzbq.zza(com.google.android.gms.internal.consent_sdk.zzbq, com.google.android.gms.internal.consent_sdk.zzbe) (com.google.android.ump:user-messaging-platform@@4.0.0:2)
+07-22 02:21:48.046 14413 14413 I vision.svplaye:   at void com.google.android.gms.internal.consent_sdk.zzbg.run() (com.google.android.ump:user-messaging-platform@@4.0.0:-1)
+07-22 02:21:48.046 14413 14413 I vision.svplaye:   at void android.os.Handler.handleCallback(android.os.Message) (Handler.java:873)
+07-22 02:21:48.046 14413 14413 I vision.svplaye:   at void android.os.Handler.dispatchMessage(android.os.Message) (Handler.java:99)
+07-22 02:21:48.046 14413 14413 I vision.svplaye:   at void android.os.Looper.loop() (Looper.java:211)
+07-22 02:21:48.046 14413 14413 I vision.svplaye:   at void android.app.ActivityThread.main(java.lang.String[]) (ActivityThread.java:6777)
+07-22 02:21:48.046 14413 14413 I vision.svplaye:   at java.lang.Object java.lang.reflect.Method.invoke(java.lang.Object, java.lang.Object[]) (Method.java:-2)
+07-22 02:21:48.046 14413 14413 I vision.svplaye:   at void com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run() (RuntimeInit.java:493)
+07-22 02:21:48.046 14413 14413 I vision.svplaye:   at void com.android.internal.os.ZygoteInit.main(java.lang.String[]) (ZygoteInit.java:858)
+07-22 02:21:48.046 14413 14413 I vision.svplaye: 
+07-22 02:21:48.052 14413 14413 I vision.svplaye: Rejecting re-init on previously-failed class java.lang.Class<org.chromium.content.browser.device_posture.WindowLayoutInfoListener$$ExternalSyntheticLambda1>: java.lang.NoClassDefFoundError: Failed resolution of: Landroidx/window/extensions/core/util/function/Consumer;
+07-22 02:21:48.052 14413 14413 I vision.svplaye:   at java.lang.Object J.N.OIIIIJJJOOOOOOOOOOZZZZZZ(int, int, int, int, long, long, long, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, boolean, boolean, boolean, boolean, boolean, boolean) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):-2)
+07-22 02:21:48.052 14413 14413 I vision.svplaye:   at org.chromium.content_public.browser.NavigationHandle org.chromium.content.browser.framehost.NavigationControllerImpl.loadUrl(org.chromium.content_public.browser.LoadUrlParams) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):95)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void org.chromium.android_webview.AwContents.loadUrl(org.chromium.content_public.browser.LoadUrlParams) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):55)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void org.chromium.android_webview.AwContents.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):137)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void com.android.webview.chromium.WebViewChromium.loadDataWithBaseURLNoPost(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):24)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void com.android.webview.chromium.WebViewChromium.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):32)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void android.webkit.WebView.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (WebView.java:1091)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void com.google.android.gms.internal.consent_sdk.zzbe.zzf(com.google.android.ump.UserMessagingPlatform$OnConsentFormLoadSuccessListener, com.google.android.ump.UserMessagingPlatform$OnConsentFormLoadFailureListener) (com.google.android.ump:user-messaging-platform@@4.0.0:11)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void com.google.android.gms.internal.consent_sdk.zzbq.zza(com.google.android.gms.internal.consent_sdk.zzbq, com.google.android.gms.internal.consent_sdk.zzbe) (com.google.android.ump:user-messaging-platform@@4.0.0:2)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void com.google.android.gms.internal.consent_sdk.zzbg.run() (com.google.android.ump:user-messaging-platform@@4.0.0:-1)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void android.os.Handler.handleCallback(android.os.Message) (Handler.java:873)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void android.os.Handler.dispatchMessage(android.os.Message) (Handler.java:99)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void android.os.Looper.loop() (Looper.java:211)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void android.app.ActivityThread.main(java.lang.String[]) (ActivityThread.java:6777)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at java.lang.Object java.lang.reflect.Method.invoke(java.lang.Object, java.lang.Object[]) (Method.java:-2)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run() (RuntimeInit.java:493)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void com.android.internal.os.ZygoteInit.main(java.lang.String[]) (ZygoteInit.java:858)
+07-22 02:21:48.053 14413 14413 I vision.svplaye: Caused by: java.lang.ClassNotFoundException: Didn't find class "androidx.window.extensions.core.util.function.Consumer" on path: DexPathList[[zip file "/system/priv-app/MetricsApi/MetricsApi.apk", zip file "/data/app/com.amazon.webview.chromium-KBc03qHOZbjfu3DAmaKnZA==/base.apk"],nativeLibraryDirectories=[/data/app/com.amazon.webview.chromium-KBc03qHOZbjfu3DAmaKnZA==/lib/arm, /data/app/com.amazon.webview.chromium-KBc03qHOZbjfu3DAmaKnZA==/base.apk!/lib/armeabi-v7a, /system/priv-app/MetricsApi/MetricsApi.apk!/lib/armeabi-v7a, /system/lib]]
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at java.lang.Class dalvik.system.BaseDexClassLoader.findClass(java.lang.String) (BaseDexClassLoader.java:134)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at java.lang.Class java.lang.ClassLoader.loadClass(java.lang.String, boolean) (ClassLoader.java:379)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at java.lang.Class java.lang.ClassLoader.loadClass(java.lang.String) (ClassLoader.java:312)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at java.lang.Object J.N.OIIIIJJJOOOOOOOOOOZZZZZZ(int, int, int, int, long, long, long, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, boolean, boolean, boolean, boolean, boolean, boolean) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):-2)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at org.chromium.content_public.browser.NavigationHandle org.chromium.content.browser.framehost.NavigationControllerImpl.loadUrl(org.chromium.content_public.browser.LoadUrlParams) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):95)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void org.chromium.android_webview.AwContents.loadUrl(org.chromium.content_public.browser.LoadUrlParams) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):55)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void org.chromium.android_webview.AwContents.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):137)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void com.android.webview.chromium.WebViewChromium.loadDataWithBaseURLNoPost(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):24)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void com.android.webview.chromium.WebViewChromium.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):32)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void android.webkit.WebView.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (WebView.java:1091)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void com.google.android.gms.internal.consent_sdk.zzbe.zzf(com.google.android.ump.UserMessagingPlatform$OnConsentFormLoadSuccessListener, com.google.android.ump.UserMessagingPlatform$OnConsentFormLoadFailureListener) (com.google.android.ump:user-messaging-platform@@4.0.0:11)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void com.google.android.gms.internal.consent_sdk.zzbq.zza(com.google.android.gms.internal.consent_sdk.zzbq, com.google.android.gms.internal.consent_sdk.zzbe) (com.google.android.ump:user-messaging-platform@@4.0.0:2)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void com.google.android.gms.internal.consent_sdk.zzbg.run() (com.google.android.ump:user-messaging-platform@@4.0.0:-1)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void android.os.Handler.handleCallback(android.os.Message) (Handler.java:873)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void android.os.Handler.dispatchMessage(android.os.Message) (Handler.java:99)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void android.os.Looper.loop() (Looper.java:211)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void android.app.ActivityThread.main(java.lang.String[]) (ActivityThread.java:6777)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at java.lang.Object java.lang.reflect.Method.invoke(java.lang.Object, java.lang.Object[]) (Method.java:-2)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run() (RuntimeInit.java:493)
+07-22 02:21:48.053 14413 14413 I vision.svplaye:   at void com.android.internal.os.ZygoteInit.main(java.lang.String[]) (ZygoteInit.java:858)
+07-22 02:21:48.053 14413 14413 I vision.svplaye: 
+07-22 02:21:48.054 14413 14413 I vision.svplaye: Rejecting re-init on previously-failed class java.lang.Class<org.chromium.content.browser.device_posture.WindowLayoutInfoListener$$ExternalSyntheticLambda1>: java.lang.NoClassDefFoundError: Failed resolution of: Landroidx/window/extensions/core/util/function/Consumer;
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at java.lang.Object J.N.OIIIIJJJOOOOOOOOOOZZZZZZ(int, int, int, int, long, long, long, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, boolean, boolean, boolean, boolean, boolean, boolean) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):-2)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at org.chromium.content_public.browser.NavigationHandle org.chromium.content.browser.framehost.NavigationControllerImpl.loadUrl(org.chromium.content_public.browser.LoadUrlParams) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):95)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void org.chromium.android_webview.AwContents.loadUrl(org.chromium.content_public.browser.LoadUrlParams) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):55)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void org.chromium.android_webview.AwContents.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):137)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void com.android.webview.chromium.WebViewChromium.loadDataWithBaseURLNoPost(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):24)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void com.android.webview.chromium.WebViewChromium.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):32)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void android.webkit.WebView.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (WebView.java:1091)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void com.google.android.gms.internal.consent_sdk.zzbe.zzf(com.google.android.ump.UserMessagingPlatform$OnConsentFormLoadSuccessListener, com.google.android.ump.UserMessagingPlatform$OnConsentFormLoadFailureListener) (com.google.android.ump:user-messaging-platform@@4.0.0:11)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void com.google.android.gms.internal.consent_sdk.zzbq.zza(com.google.android.gms.internal.consent_sdk.zzbq, com.google.android.gms.internal.consent_sdk.zzbe) (com.google.android.ump:user-messaging-platform@@4.0.0:2)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void com.google.android.gms.internal.consent_sdk.zzbg.run() (com.google.android.ump:user-messaging-platform@@4.0.0:-1)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void android.os.Handler.handleCallback(android.os.Message) (Handler.java:873)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void android.os.Handler.dispatchMessage(android.os.Message) (Handler.java:99)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void android.os.Looper.loop() (Looper.java:211)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void android.app.ActivityThread.main(java.lang.String[]) (ActivityThread.java:6777)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at java.lang.Object java.lang.reflect.Method.invoke(java.lang.Object, java.lang.Object[]) (Method.java:-2)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run() (RuntimeInit.java:493)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void com.android.internal.os.ZygoteInit.main(java.lang.String[]) (ZygoteInit.java:858)
+07-22 02:21:48.054 14413 14413 I vision.svplaye: Caused by: java.lang.ClassNotFoundException: Didn't find class "androidx.window.extensions.core.util.function.Consumer" on path: DexPathList[[zip file "/system/priv-app/MetricsApi/MetricsApi.apk", zip file "/data/app/com.amazon.webview.chromium-KBc03qHOZbjfu3DAmaKnZA==/base.apk"],nativeLibraryDirectories=[/data/app/com.amazon.webview.chromium-KBc03qHOZbjfu3DAmaKnZA==/lib/arm, /data/app/com.amazon.webview.chromium-KBc03qHOZbjfu3DAmaKnZA==/base.apk!/lib/armeabi-v7a, /system/priv-app/MetricsApi/MetricsApi.apk!/lib/armeabi-v7a, /system/lib]]
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at java.lang.Class dalvik.system.BaseDexClassLoader.findClass(java.lang.String) (BaseDexClassLoader.java:134)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at java.lang.Class java.lang.ClassLoader.loadClass(java.lang.String, boolean) (ClassLoader.java:379)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at java.lang.Class java.lang.ClassLoader.loadClass(java.lang.String) (ClassLoader.java:312)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at java.lang.Object J.N.OIIIIJJJOOOOOOOOOOZZZZZZ(int, int, int, int, long, long, long, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, boolean, boolean, boolean, boolean, boolean, boolean) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):-2)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at org.chromium.content_public.browser.NavigationHandle org.chromium.content.browser.framehost.NavigationControllerImpl.loadUrl(org.chromium.content_public.browser.LoadUrlParams) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):95)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void org.chromium.android_webview.AwContents.loadUrl(org.chromium.content_public.browser.LoadUrlParams) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):55)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void org.chromium.android_webview.AwContents.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):137)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void com.android.webview.chromium.WebViewChromium.loadDataWithBaseURLNoPost(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):24)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void com.android.webview.chromium.WebViewChromium.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (chromium-AmazonWebView.apk-stable-@FileArg(gen/AMAZON_VERSION.json:code):32)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void android.webkit.WebView.loadDataWithBaseURL(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String) (WebView.java:1091)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void com.google.android.gms.internal.consent_sdk.zzbe.zzf(com.google.android.ump.UserMessagingPlatform$OnConsentFormLoadSuccessListener, com.google.android.ump.UserMessagingPlatform$OnConsentFormLoadFailureListener) (com.google.android.ump:user-messaging-platform@@4.0.0:11)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void com.google.android.gms.internal.consent_sdk.zzbq.zza(com.google.android.gms.internal.consent_sdk.zzbq, com.google.android.gms.internal.consent_sdk.zzbe) (com.google.android.ump:user-messaging-platform@@4.0.0:2)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void com.google.android.gms.internal.consent_sdk.zzbg.run() (com.google.android.ump:user-messaging-platform@@4.0.0:-1)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void android.os.Handler.handleCallback(android.os.Message) (Handler.java:873)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void android.os.Handler.dispatchMessage(android.os.Message) (Handler.java:99)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void android.os.Looper.loop() (Looper.java:211)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void android.app.ActivityThread.main(java.lang.String[]) (ActivityThread.java:6777)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at java.lang.Object java.lang.reflect.Method.invoke(java.lang.Object, java.lang.Object[]) (Method.java:-2)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run() (RuntimeInit.java:493)
+07-22 02:21:48.054 14413 14413 I vision.svplaye:   at void com.android.internal.os.ZygoteInit.main(java.lang.String[]) (ZygoteInit.java:858)
+07-22 02:21:48.054 14413 14413 I vision.svplaye: 
+07-22 02:21:48.253 14413 14413 I Choreographer: Skipped 122 frames!  The application may be doing too much work on its main thread.
+07-22 02:21:48.469 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:48.471 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:48.714 14413 14937 I OpenGLRenderer: Davey! duration=2500ms; Flags=0, IntendedVsync=11703678400514, Vsync=11705713769214, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11705727550465, AnimationStart=11705731300157, PerformTraversalsStart=11705902213388, DrawStart=11705928150619, SyncQueued=11706088234004, SyncStart=11706090273004, IssueDrawCommandsStart=11706092285696, SwapBuffers=11706162894927, FrameCompleted=11706180748542, DequeueBufferDuration=13354000, QueueBufferDuration=7737000, 
+07-22 02:21:49.058 14413 14413 I Choreographer: Skipped 46 frames!  The application may be doing too much work on its main thread.
+07-22 02:21:49.364 14413 14937 I OpenGLRenderer: Davey! duration=1089ms; Flags=0, IntendedVsync=11705739950479, Vsync=11706507384579, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11706527841388, AnimationStart=11706533940927, PerformTraversalsStart=11706703032234, DrawStart=11706746721619, SyncQueued=11706815883080, SyncStart=11706816050542, IssueDrawCommandsStart=11706816828388, SwapBuffers=11706827308773, FrameCompleted=11706829905619, DequeueBufferDuration=1705000, QueueBufferDuration=1580000, 
+07-22 02:21:49.488 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:49.494 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:49.591 14413 14413 E cr_AWVDeploymentClient: Chromium Version = v138 key doesn't exist. So, default version config will be used.
+07-22 02:21:49.606 14413 14413 I cr_AWVDeploymentClient: awv-force-overlay-colorspace-for-hdr can't be enabled on device other than mm-tablet
+07-22 02:21:49.607 14413 14413 I cr_AWVDeploymentClient: remove-text-selection-handle-keyboard can't be enabled on device other than mm-tablet-mmftv
+07-22 02:21:49.607 14413 14413 I cr_AWVDeploymentClient: disable-download can't be enabled on device other than mm
+07-22 02:21:49.607 14413 14413 I cr_AWVDeploymentClient: enable-loose-resolution-check-for-h264-hw-decoder can't be enabled on device other than mm-tablet-mmftv
+07-22 02:21:49.607 14413 14413 I cr_AWVDeploymentClient: enable-swap-width-height-for-h264-hw-decoder can't be enabled on device other than mm-tablet-mmftv
+07-22 02:21:49.607 14413 14413 I cr_AWVDeploymentClient: disable-webview-sandboxed-renderer can't be enabled on device other than tablet
+07-22 02:21:49.629 14413 14413 E cr_AWVDeploymentClient: Default device config doesn't exist
+07-22 02:21:49.632 14413 14413 I WebViewExtAmazonConfig: Appending switch disable-streaming-for-exo
+07-22 02:21:49.635 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=disable-streaming-for-exo value=
+07-22 02:21:49.636 14413 14413 I WebViewExtAmazonConfig: Appending switch hide-keyboard-on-ime-go
+07-22 02:21:49.636 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=hide-keyboard-on-ime-go value=
+07-22 02:21:49.636 14413 14413 I WebViewExtAmazonConfig: Appending switch awv-gamepad-button-a-opens-keyboard
+07-22 02:21:49.636 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=awv-gamepad-button-a-opens-keyboard value=
+07-22 02:21:49.636 14413 14413 I WebViewExtAmazonConfig: Appending switch set-engine-options-allow-list with value --enable-awv-mode,--enable-system-key-events-processing,--amazon-player-type=exoplayer,--should-use-utc-time-dash,--exo-live-seek-offset-ms=0,--exo-skip-initial-seek-to-0,--exo-handle-seek-after-end,--enable-preparsed-js-caching,--max-overscroll-distance=0,--disable-vibration,--disable-audio-focus-handling,--disable-webkit-media-source,--enable-devtools-experiments
+07-22 02:21:49.636 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=set-engine-options-allow-list value=--enable-awv-mode,--enable-system-key-events-processing,--amazon-player-type=exoplayer,--should-use-utc-time-dash,--exo-live-seek-offset-ms=0,--exo-skip-initial-seek-to-0,--exo-handle-seek-after-end,--enable-preparsed-js-caching,--max-overscroll-distance=0,--disable-vibration,--disable-audio-focus-handling,--disable-webkit-media-source,--enable-devtools-experiments
+07-22 02:21:49.637 14413 14413 I WebViewExtAmazonConfig: Appending switch keyboard-previous-next-then-close
+07-22 02:21:49.637 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=keyboard-previous-next-then-close value=
+07-22 02:21:49.637 14413 14413 I WebViewExtAmazonConfig: Appending switch delay-metadata-ready-for-exo
+07-22 02:21:49.637 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=delay-metadata-ready-for-exo value=
+07-22 02:21:49.637 14413 14413 I WebViewExtAmazonConfig: Appending switch awv-surfaceview-enable-scale-metrics
+07-22 02:21:49.637 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=awv-surfaceview-enable-scale-metrics value=
+07-22 02:21:49.638 14413 14413 I WebViewExtAmazonConfig: Appending switch enable-media-element-key-handling
+07-22 02:21:49.638 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=enable-media-element-key-handling value=
+07-22 02:21:49.638 14413 14413 I WebViewExtAmazonConfig: Appending switch enable-show-hide-password-ime-fix
+07-22 02:21:49.638 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=enable-show-hide-password-ime-fix value=
+07-22 02:21:49.638 14413 14413 I WebViewExtAmazonConfig: Appending switch awv-secure-laurl
+07-22 02:21:49.638 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=awv-secure-laurl value=
+07-22 02:21:49.638 14413 14413 I WebViewExtAmazonConfig: Appending switch disable-remote-gamepad-classifying
+07-22 02:21:49.638 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=disable-remote-gamepad-classifying value=
+07-22 02:21:49.639 14413 14413 I WebViewExtAmazonConfig: Appending switch awv-chrome-inspect-fix-white-video
+07-22 02:21:49.639 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=awv-chrome-inspect-fix-white-video value=
+07-22 02:21:49.639 14413 14413 I WebViewExtAmazonConfig: Appending switch ignore-previous-start-time-buffer
+07-22 02:21:49.639 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=ignore-previous-start-time-buffer value=
+07-22 02:21:49.639 14413 14413 I WebViewExtAmazonConfig: Appending switch disable-soft-keyboard-element-focused
+07-22 02:21:49.639 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=disable-soft-keyboard-element-focused value=
+07-22 02:21:49.639 14413 14413 I WebViewExtAmazonConfig: Appending switch delay-setting-surface-exo
+07-22 02:21:49.639 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=delay-setting-surface-exo value=
+07-22 02:21:49.639 14413 14413 I WebViewExtAmazonConfig: Appending switch awv-video-renderer-estimated-refresh-rate
+07-22 02:21:49.640 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=awv-video-renderer-estimated-refresh-rate value=
+07-22 02:21:49.661 14413 15340 W VideoCapabilities: Unrecognized profile 4 for video/hevc
+07-22 02:21:49.670 14413 15340 W VideoCapabilities: Unrecognized profile/level 1/32 for video/mp4v-es
+07-22 02:21:49.671 14413 15340 W VideoCapabilities: Unrecognized profile/level 32768/2 for video/mp4v-es
+07-22 02:21:49.671 14413 15340 W VideoCapabilities: Unrecognized profile/level 32768/64 for video/mp4v-es
+07-22 02:21:49.674 14413 14413 I WebViewExtAmazon: Reducing mse-buffer size due to low memory device (<=1GB RAM)
+07-22 02:21:49.674 14413 14413 I WebViewExtAmazonConfig: Appending switch mse-video-buffer-size-limit-mb with value 30
+07-22 02:21:49.674 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=mse-video-buffer-size-limit-mb value=30
+07-22 02:21:49.674 14413 14413 I WebViewExtAmazonConfig: Appending switch mse-audio-buffer-size-limit-mb with value 2
+07-22 02:21:49.675 14413 14413 I WebViewExtAmazonConfig: Saving renderer process switch key=mse-audio-buffer-size-limit-mb value=2
+07-22 02:21:49.675 14413 14413 I cr_AWVDeploymentClient: disconnectRemote
+07-22 02:21:49.779 14413 14413 I Choreographer: Skipped 41 frames!  The application may be doing too much work on its main thread.
+07-22 02:21:49.798 14413 15340 I VideoCapabilities: Unsupported profile 4 for video/mp4v-es
+07-22 02:21:49.817 14413 15340 I cr_VAUtil:  AWV: Skipping the restricted video decoder:OMX.MTK.VIDEO.DECODER.AWESOME.hdcp.secure
+07-22 02:21:49.860 14413 15340 I chatty  : uid=10247(com.smartvision.svplayer) ThreadPoolSingl identical 4 lines
+07-22 02:21:49.865 14413 15340 I cr_VAUtil:  AWV: Skipping the restricted video decoder:OMX.MTK.VIDEO.DECODER.AWESOME.hdcp.secure
+07-22 02:21:50.034 14413 14937 I OpenGLRenderer: Davey! duration=951ms; Flags=0, IntendedVsync=11706548007324, Vsync=11707232024674, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11707246136234, AnimationStart=11707251137696, PerformTraversalsStart=11707396649773, DrawStart=11707400202542, SyncQueued=11707486649004, SyncStart=11707486818311, IssueDrawCommandsStart=11707487630081, SwapBuffers=11707495621850, FrameCompleted=11707499863465, DequeueBufferDuration=495000, QueueBufferDuration=3246000, 
+07-22 02:21:50.203 14413 15314 E System  : TRACE Starting certificate trust
+07-22 02:21:50.506 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:50.507 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:51.305 14413 14413 I SVHomeLoad: continue ready profile=de993c35 revision=0
+07-22 02:21:51.508 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:51.508 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:51.757 14413 14440 I vision.svplaye: Background concurrent copying GC freed 63180(2MB) AllocSpace objects, 20(9MB) LOS objects, 29% free, 14MB/20MB, paused 246us total 171.314ms
+07-22 02:21:51.780 14413 14413 W vision.svplaye: Verification of void com.smartvision.svplayer.ui.home.ContentProgressCardKt.ContentProgressCard(com.smartvision.svplayer.data.mock.ContinueItem, java.lang.String, kotlin.jvm.functions.Function0, androidx.compose.ui.Modifier, androidx.compose.ui.focus.FocusRequester, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, boolean, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, boolean, java.lang.String, java.lang.String, boolean, java.lang.String, com.smartvision.svplayer.ui.home.HomePreviewController, androidx.compose.runtime.Composer, int, int, int) took 117.512ms
+07-22 02:21:52.040 14413 14440 I vision.svplaye: NativeAlloc concurrent copying GC freed 1020(118KB) AllocSpace objects, 5(2MB) LOS objects, 33% free, 11MB/17MB, paused 739us total 144.306ms
+07-22 02:21:52.089 14413 14433 I vision.svplaye: JIT allocated 79KB for stack maps of void com.smartvision.svplayer.ui.home.ContentProgressCardKt.ContentProgressCard(com.smartvision.svplayer.data.mock.ContinueItem, java.lang.String, kotlin.jvm.functions.Function0, androidx.compose.ui.Modifier, androidx.compose.ui.focus.FocusRequester, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, boolean, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, boolean, java.lang.String, java.lang.String, boolean, java.lang.String, com.smartvision.svplayer.ui.home.HomePreviewController, androidx.compose.runtime.Composer, int, int, int)
+07-22 02:21:52.097 14413 14433 I vision.svplaye: Compiler allocated 4MB to compile void com.smartvision.svplayer.ui.home.ContentProgressCardKt.ContentProgressCard(com.smartvision.svplayer.data.mock.ContinueItem, java.lang.String, kotlin.jvm.functions.Function0, androidx.compose.ui.Modifier, androidx.compose.ui.focus.FocusRequester, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function1, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, boolean, kotlin.jvm.functions.Function0, kotlin.jvm.functions.Function0, boolean, java.lang.String, java.lang.String, boolean, java.lang.String, com.smartvision.svplayer.ui.home.HomePreviewController, androidx.compose.runtime.Composer, int, int, int)
+07-22 02:21:52.363 14413 14440 I vision.svplaye: NativeAlloc concurrent copying GC freed 3244(192KB) AllocSpace objects, 6(120KB) LOS objects, 33% free, 12MB/18MB, paused 173us total 145.269ms
+07-22 02:21:52.509 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:52.510 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:52.622 14413 14937 I OpenGLRenderer: Davey! duration=1737ms; Flags=0, IntendedVsync=11708349845904, Vsync=11708800296354, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11708810571696, AnimationStart=11708811030850, PerformTraversalsStart=11709078801081, DrawStart=11709085095081, SyncQueued=11710057183388, SyncStart=11710057340773, IssueDrawCommandsStart=11710058205927, SwapBuffers=11710082078696, FrameCompleted=11710087868004, DequeueBufferDuration=282000, QueueBufferDuration=4963000, 
+07-22 02:21:52.624 14413 14413 I Choreographer: Skipped 76 frames!  The application may be doing too much work on its main thread.
+07-22 02:21:52.755 14413 14937 I OpenGLRenderer: Davey! duration=1403ms; Flags=0, IntendedVsync=11708817032766, Vsync=11710084967366, OldestInputEvent=9223372036854775807, NewestInputEvent=0, HandleInputStart=11710091122158, AnimationStart=11710091327542, PerformTraversalsStart=11710164253158, DrawStart=11710166767465, SyncQueued=11710210114004, SyncStart=11710210229542, IssueDrawCommandsStart=11710210997542, SwapBuffers=11710219241158, FrameCompleted=11710220909696, DequeueBufferDuration=309000, QueueBufferDuration=625000, 
+07-22 02:21:53.510 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:53.511 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:54.512 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:54.512 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:54.694 14413 14440 I vision.svplaye: Background concurrent copying GC freed 169393(5MB) AllocSpace objects, 8(400KB) LOS objects, 32% free, 12MB/18MB, paused 214us total 160.011ms
+07-22 02:21:55.513 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:55.514 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:56.308 14413 14440 I vision.svplaye: Background concurrent copying GC freed 191501(5MB) AllocSpace objects, 0(0B) LOS objects, 32% free, 12MB/18MB, paused 193us total 157.360ms
+07-22 02:21:56.515 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:56.515 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:57.516 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:57.517 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:57.865 14413 14440 I vision.svplaye: Background concurrent copying GC freed 192035(5MB) AllocSpace objects, 0(0B) LOS objects, 32% free, 12MB/18MB, paused 193us total 153.194ms
+07-22 02:21:58.517 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:58.518 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:21:59.418 14413 14440 I vision.svplaye: Background concurrent copying GC freed 192388(5MB) AllocSpace objects, 0(0B) LOS objects, 32% free, 12MB/18MB, paused 179us total 151.595ms
+07-22 02:21:59.518 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:21:59.519 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:22:00.520 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:22:00.521 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:22:01.290 14413 14440 I vision.svplaye: Background concurrent copying GC freed 193741(6MB) AllocSpace objects, 0(0B) LOS objects, 32% free, 12MB/18MB, paused 197us total 162.390ms
+07-22 02:22:01.521 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:22:01.522 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:22:02.522 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:22:02.523 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:22:03.171 14413 14440 I vision.svplaye: Background concurrent copying GC freed 192861(5MB) AllocSpace objects, 0(0B) LOS objects, 32% free, 12MB/18MB, paused 179us total 153.153ms
+07-22 02:22:03.524 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:22:03.524 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:22:04.525 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:22:04.526 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:22:04.651 14413 14440 I vision.svplaye: Background concurrent copying GC freed 194492(5MB) AllocSpace objects, 0(0B) LOS objects, 32% free, 12MB/18MB, paused 193us total 153.376ms
+07-22 02:22:05.527 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:22:05.528 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:22:06.148 14413 14440 I vision.svplaye: Background concurrent copying GC freed 195841(5MB) AllocSpace objects, 0(0B) LOS objects, 32% free, 12MB/18MB, paused 186us total 160.243ms
+07-22 02:22:06.528 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:22:06.529 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:22:07.530 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:22:07.531 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:22:07.657 14413 14440 I vision.svplaye: Background concurrent copying GC freed 196110(6MB) AllocSpace objects, 0(0B) LOS objects, 32% free, 12MB/18MB, paused 184us total 178.488ms
+07-22 02:22:08.531 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:22:08.533 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:22:09.533 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:22:09.534 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:22:09.744 14413 14440 I vision.svplaye: Background concurrent copying GC freed 197358(6MB) AllocSpace objects, 0(0B) LOS objects, 32% free, 12MB/18MB, paused 2.898ms total 178.783ms
+07-22 02:22:10.535 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:22:10.536 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:22:11.536 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:22:11.537 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:22:11.604 14413 14440 I vision.svplaye: Background concurrent copying GC freed 195866(5MB) AllocSpace objects, 0(0B) LOS objects, 32% free, 12MB/18MB, paused 203us total 179.323ms
+07-22 02:22:12.538 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:22:12.538 14413 15364 E CameraManagerGlobal: Camera service is unavailable
+07-22 02:22:13.467 14413 14440 I vision.svplaye: Background concurrent copying GC freed 194508(5MB) AllocSpace objects, 0(0B) LOS objects, 32% free, 12MB/18MB, paused 2.130ms total 194.440ms
+07-22 02:22:13.539 14413 15364 I CameraManagerGlobal: Connecting to camera service
+07-22 02:22:13.540 14413 15364 E CameraManagerGlobal: Camera service is unavailable

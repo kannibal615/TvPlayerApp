@@ -1,0 +1,189 @@
+ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
+Display #0 (activities from top to bottom):
+
+  Stack #26: type=standard mode=fullscreen
+  isSleeping=false
+  mBounds=Rect(0, 0 - 0, 0)
+    Task id #8869
+    mBounds=Rect(0, 0 - 0, 0)
+    mMinWidth=-1
+    mMinHeight=-1
+    mLastNonFullscreenBounds=null
+    * TaskRecord{1b93211 #8869 A=10247:com.smartvision.svplayer U=0 StackId=26 sz=1}
+      userId=0 effectiveUid=u0a247 mCallingUid=2000 mUserSetupComplete=true mCallingPackage=null
+      affinity=10247:com.smartvision.svplayer
+      intent={flg=0x10000000 cmp=com.smartvision.svplayer/.MainActivity}
+      realActivity=com.smartvision.svplayer/.MainActivity
+      autoRemoveRecents=false isPersistable=true numFullscreen=1 activityType=1
+      rootWasReset=false mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE
+      Activities=[ActivityRecord{144e343 u0 com.smartvision.svplayer/.MainActivity t8869}]
+      askedCompatMode=false inRecents=true isAvailable=true
+      mRootProcess=ProcessRecord{341af76 14413:com.smartvision.svplayer/u0a247}
+      stackId=26
+      hasBeenVisible=true mResizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION mSupportsPictureInPicture=false isResizeable=true lastActiveTime=11701720 (inactive for 1s)
+      * Hist #0: ActivityRecord{144e343 u0 com.smartvision.svplayer/.MainActivity t8869}
+          packageName=com.smartvision.svplayer processName=com.smartvision.svplayer
+          launchedFromUid=2000 launchedFromPackage=null userId=0
+          app=ProcessRecord{341af76 14413:com.smartvision.svplayer/u0a247}
+          Intent { flg=0x10000000 cmp=com.smartvision.svplayer/.MainActivity }
+          frontOfTask=true task=TaskRecord{1b93211 #8869 A=10247:com.smartvision.svplayer U=0 StackId=26 sz=1}
+          taskAffinity=10247:com.smartvision.svplayer
+          realActivity=com.smartvision.svplayer/.MainActivity
+          baseDir=/data/app/com.smartvision.svplayer-xaOF4djcIZQIwwmi7USL6Q==/base.apk
+          dataDir=/data/user/0/com.smartvision.svplayer
+          stateNotNeeded=false componentSpecified=true mActivityType=standard
+          compat={320dpi always-compat} labelRes=0x7f0e0001 icon=0x7f0b0000 theme=0x7f0f002b
+          mLastReportedConfigurations:
+           mGlobalConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=undefined} s.5}
+           mOverrideConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=standard} s.5}
+          CurrentConfiguration={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=standard} s.5}
+          taskDescription: label="null" icon=null iconResource=0 iconFilename=null primaryColor=ff212121
+           backgroundColor=ff303030
+           statusBarColor=ff020817
+           navigationBarColor=ff020817
+          launchFailed=false launchCount=1 lastLaunchTime=-31s63ms
+          haveState=false icicle=null
+          state=RESUMED stopped=false delayedResume=false finishing=false
+          keysPaused=false inHistory=true visible=true sleeping=false idle=true mStartingWindowState=STARTING_WINDOW_SHOWN
+          fullscreen=true noDisplay=false immersive=false launchMode=0
+          frozenBeforeDestroy=false forceNewConfig=false
+          mActivityType=standard
+          waitingVisible=false nowVisible=true lastVisibleTime=-21s815ms
+          resizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION
+          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false
+
+    Running activities (most recent first):
+      TaskRecord{1b93211 #8869 A=10247:com.smartvision.svplayer U=0 StackId=26 sz=1}
+        Run #0: ActivityRecord{144e343 u0 com.smartvision.svplayer/.MainActivity t8869}
+
+    mResumedActivity: ActivityRecord{144e343 u0 com.smartvision.svplayer/.MainActivity t8869}
+
+  Stack #0: type=home mode=fullscreen
+  isSleeping=false
+  mBounds=Rect(0, 0 - 0, 0)
+
+    Task id #8868
+    mBounds=Rect(0, 0 - 0, 0)
+    mMinWidth=-1
+    mMinHeight=-1
+    mLastNonFullscreenBounds=null
+    * TaskRecord{61d8ad6 #8868 A=10027:com.amazon.tv.launcher.home U=0 StackId=0 sz=1}
+      userId=0 effectiveUid=u0a27 mCallingUid=1000 mUserSetupComplete=true mCallingPackage=android
+      affinity=10027:com.amazon.tv.launcher.home
+      intent={act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10200000 cmp=com.amazon.tv.launcher/.ui.HomeActivity_vNext}
+      realActivity=com.amazon.tv.launcher/.ui.HomeActivity_vNext
+      autoRemoveRecents=false isPersistable=true numFullscreen=1 activityType=2
+      rootWasReset=true mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE
+      Activities=[ActivityRecord{23cbf7 u0 com.amazon.tv.launcher/.ui.HomeActivity_vNext t8868}]
+      askedCompatMode=false inRecents=true isAvailable=true
+      mRootProcess=ProcessRecord{bc7c5ab 14418:com.amazon.tv.launcher/u0a27}
+      stackId=0
+      hasBeenVisible=true mResizeMode=RESIZE_MODE_UNRESIZEABLE mSupportsPictureInPicture=false isResizeable=false lastActiveTime=11671202 (inactive for 31s)
+      * Hist #0: ActivityRecord{23cbf7 u0 com.amazon.tv.launcher/.ui.HomeActivity_vNext t8868}
+          packageName=com.amazon.tv.launcher processName=com.amazon.tv.launcher
+          launchedFromUid=1000 launchedFromPackage=android userId=0
+          app=ProcessRecord{bc7c5ab 14418:com.amazon.tv.launcher/u0a27}
+          Intent { act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10200000 cmp=com.amazon.tv.launcher/.ui.HomeActivity_vNext (has extras) }
+          frontOfTask=true task=TaskRecord{61d8ad6 #8868 A=10027:com.amazon.tv.launcher.home U=0 StackId=0 sz=1}
+          taskAffinity=10027:com.amazon.tv.launcher.home
+          realActivity=com.amazon.tv.launcher/.ui.HomeActivity_vNext
+          baseDir=/system/priv-app/com.amazon.tv.launcher/com.amazon.tv.launcher.apk
+          dataDir=/data/user/0/com.amazon.tv.launcher
+          stateNotNeeded=false componentSpecified=false mActivityType=home
+          compat={320dpi always-compat} labelRes=0x7f1102a6 icon=0x7f0801ae theme=0x7f1201fb
+          mLastReportedConfigurations:
+           mGlobalConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=undefined} s.5}
+           mOverrideConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=home} s.5}
+          CurrentConfiguration={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=home} s.5}
+          OverrideConfiguration={0.0 ?mcc?mnc ?localeList ?layoutDir ?swdp ?wdp ?hdp ?density ?lsize ?long ?ldr ?wideColorGamut ?orien ?uimode ?night ?touch ?keyb/?/? ?nav/? winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=null mWindowingMode=undefined mActivityType=home}}
+          taskDescription: label="null" icon=null iconResource=0 iconFilename=null primaryColor=ff455a64
+           backgroundColor=ff303030
+           statusBarColor=ff000000
+           navigationBarColor=ff000000
+          launchFailed=false launchCount=0 lastLaunchTime=-31s700ms
+          haveState=true icicle=Bundle[mParcelledData.dataSize=2264]
+          state=STOPPED stopped=true delayedResume=false finishing=false
+          keysPaused=false inHistory=true visible=false sleeping=false idle=true mStartingWindowState=STARTING_WINDOW_NOT_SHOWN
+          fullscreen=true noDisplay=false immersive=false launchMode=2
+          frozenBeforeDestroy=false forceNewConfig=false
+          mActivityType=home
+          waitingVisible=false nowVisible=false lastVisibleTime=-22m54s435ms
+          resizeMode=RESIZE_MODE_UNRESIZEABLE
+          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false
+
+    Running activities (most recent first):
+      TaskRecord{61d8ad6 #8868 A=10027:com.amazon.tv.launcher.home U=0 StackId=0 sz=1}
+        Run #0: ActivityRecord{23cbf7 u0 com.amazon.tv.launcher/.ui.HomeActivity_vNext t8868}
+
+    mLastPausedActivity: ActivityRecord{23cbf7 u0 com.amazon.tv.launcher/.ui.HomeActivity_vNext t8868}
+
+  Stack #13: type=standard mode=fullscreen
+  isSleeping=false
+  mBounds=Rect(0, 0 - 0, 0)
+
+    Task id #8855
+    mBounds=Rect(0, 0 - 0, 0)
+    mMinWidth=-1
+    mMinHeight=-1
+    mLastNonFullscreenBounds=null
+    * TaskRecord{a915252 #8855 A=10127:com.amazon.venezia U=0 StackId=13 sz=1}
+      userId=0 effectiveUid=u0a127 mCallingUid=u0a127 mUserSetupComplete=true mCallingPackage=com.amazon.venezia
+      affinity=10127:com.amazon.venezia
+      intent={(has data) flg=0x10008000 cmp=com.amazon.venezia/.grid.AppsGridLauncherActivity}
+      realActivity=com.amazon.venezia/.grid.AppsGridLauncherActivity
+      autoRemoveRecents=false isPersistable=true numFullscreen=1 activityType=1
+      rootWasReset=false mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE
+      Activities=[ActivityRecord{38b6d4b u0 com.amazon.venezia/.grid.AppsGridLauncherActivity t8855}]
+      askedCompatMode=false inRecents=true isAvailable=true
+      stackId=13
+      hasBeenVisible=true mResizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION mSupportsPictureInPicture=false isResizeable=true lastActiveTime=10255166 (inactive for 1447s)
+      * Hist #0: ActivityRecord{38b6d4b u0 com.amazon.venezia/.grid.AppsGridLauncherActivity t8855}
+          packageName=com.amazon.venezia processName=com.amazon.venezia
+          launchedFromUid=10127 launchedFromPackage=com.amazon.venezia userId=0
+          app=null
+          Intent { (has data) flg=0x10008000 cmp=com.amazon.venezia/.grid.AppsGridLauncherActivity (has extras) }
+          frontOfTask=true task=TaskRecord{a915252 #8855 A=10127:com.amazon.venezia U=0 StackId=13 sz=1}
+          taskAffinity=10127:com.amazon.venezia
+          realActivity=com.amazon.venezia/.grid.AppsGridLauncherActivity
+          baseDir=/system/priv-app/com.amazon.venezia/com.amazon.venezia.apk
+          dataDir=/data/user/0/com.amazon.venezia
+          stateNotNeeded=false componentSpecified=true mActivityType=standard
+          compat={320dpi always-compat} labelRes=0x7f0f006a icon=0x7f08023c theme=0x7f1002bf
+          mLastReportedConfigurations:
+           mGlobalConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=undefined} s.5}
+           mOverrideConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=standard} s.5}
+          CurrentConfiguration={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=standard} s.5}
+          taskDescription: label="null" icon=null iconResource=0 iconFilename=null primaryColor=ff455a64
+           backgroundColor=ff303030
+           statusBarColor=ff000000
+           navigationBarColor=ff000000
+          launchFailed=false launchCount=0 lastLaunchTime=-41m17s919ms
+          haveState=true icicle=Bundle[EMPTY_PARCEL]
+          state=DESTROYED stopped=true delayedResume=false finishing=false
+          keysPaused=false inHistory=true visible=false sleeping=false idle=true mStartingWindowState=STARTING_WINDOW_REMOVED
+          fullscreen=true noDisplay=false immersive=false launchMode=2
+          frozenBeforeDestroy=false forceNewConfig=false
+          mActivityType=standard
+          waitingVisible=false nowVisible=false lastVisibleTime=-24m20s768ms
+          resizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION
+          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false
+
+  ResumedActivity: ActivityRecord{144e343 u0 com.smartvision.svplayer/.MainActivity t8869}
+  mFocusedStack=ActivityStack{1b1d977 stackId=26 type=standard mode=fullscreen visible=true translucent=false, 1 tasks} mLastFocusedStack=ActivityStack{1b1d977 stackId=26 type=standard mode=fullscreen visible=true translucent=false, 1 tasks}
+  mCurTaskIdForUser={0=8869}
+  mUserStackInFront={}
+  displayId=0 stacks=3
+   mHomeStack=ActivityStack{a4193d9 stackId=0 type=home mode=fullscreen visible=false translucent=true, 1 tasks}
+  isHomeRecentsComponent=false  KeyguardController:
+    mKeyguardShowing=false
+    mAodShowing=false
+    mKeyguardGoingAway=false
+    mOccluded=false
+    mDismissingKeyguardActivity=null
+    mDismissalRequested=false
+    mVisibilityTransactionDepth=0
+  LockTaskController
+    mLockTaskModeState=NONE
+    mLockTaskModeTasks=
+    mLockTaskPackages (userId:packages)=
+      u0:[]

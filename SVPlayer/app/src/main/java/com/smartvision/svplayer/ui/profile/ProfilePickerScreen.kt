@@ -98,10 +98,13 @@ import kotlin.math.sin
 private const val AddKidsFocusKey = "action:add-kids"
 private const val AddProfileFocusKey = "action:add-profile"
 private const val ProfileCenteringDurationMs = 900
-private const val MinimumCenteredLoadingMs = 420L
+private const val MinimumCenteredLoadingMs = 3_000L
 private const val HomeRevealDurationMs = 620
+private const val InitialPickerRevealDurationMs = 140
+private const val PrecomposedPickerAlpha = 0.001f
 private val ProfileCardContentPadding = 14.dp
 private val ProfileAvatarNameSpacing = 12.dp
+private val ProfileSelectionBorder = Color(0xFFFFC857)
 
 @Composable
 fun ProfilePickerScreen(
@@ -148,6 +151,7 @@ fun ProfilePickerScreen(
     var pickerRootBounds by remember { mutableStateOf<Rect?>(null) }
     var profileCardBounds by remember { mutableStateOf<Map<String, Rect>>(emptyMap()) }
     var centeredAtMs by remember { mutableStateOf(0L) }
+    var initialProfileCardLaidOut by remember { mutableStateOf(false) }
     var firstFrameReported by remember { mutableStateOf(false) }
     val centeringProgress = remember { Animatable(0f) }
     val homeRevealProgress = remember { Animatable(0f) }
@@ -224,6 +228,18 @@ fun ProfilePickerScreen(
         latestTransitionFinished(requestId, selectedId)
     }
 
+    LaunchedEffect(initialProfileCardLaidOut, firstFrameReported) {
+        if (initialProfileCardLaidOut && !firstFrameReported) {
+            // Wait for the next frame after a real card has been laid out. The
+            // Splash handoff must not use the root container as a proxy for cards.
+            withFrameNanos { }
+            if (!firstFrameReported) {
+                firstFrameReported = true
+                latestFirstFrameReady()
+            }
+        }
+    }
+
     fun performAction(action: PickerProtectedAction) {
         when (action) {
             is PickerProtectedAction.Select -> onSelectProfile(action.profile.id)
@@ -263,10 +279,6 @@ fun ProfilePickerScreen(
             .fillMaxSize()
             .onGloballyPositioned { coordinates ->
                 pickerRootBounds = coordinates.boundsInRoot()
-                if (!firstFrameReported && coordinates.size.width > 0 && coordinates.size.height > 0) {
-                    firstFrameReported = true
-                    latestFirstFrameReady()
-                }
             },
     ) {
         val screenWidth = maxWidth
@@ -299,7 +311,15 @@ fun ProfilePickerScreen(
         val pickerContentWidth = cardWidth * pickerItemCount + itemGap * (pickerItemCount - 1).coerceAtLeast(0)
         val pickerHorizontalPadding = ((screenWidth - pickerContentWidth) * 0.5f)
             .coerceAtLeast(screenWidth * 0.05f)
-        val revealAlpha = 1f - homeRevealProgress.value
+        val initialRevealAlpha by animateFloatAsState(
+            targetValue = if (initialContentVisible) 1f else PrecomposedPickerAlpha,
+            animationSpec = tween(
+                durationMillis = if (initialContentVisible) InitialPickerRevealDurationMs else 0,
+                easing = FastOutSlowInEasing,
+            ),
+            label = "profile-picker-initial-reveal",
+        )
+        val revealAlpha = (1f - homeRevealProgress.value) * initialRevealAlpha
         val secondaryContentAlpha = if (selectionInProgress) {
             (1f - centeringProgress.value / 0.52f).coerceIn(0f, 1f)
         } else {
@@ -399,8 +419,6 @@ fun ProfilePickerScreen(
                         cardHeight = cardHeight,
                         avatarSize = avatarSize,
                         profileNameHeight = profileNameHeight,
-                        itemIndex = index,
-                        revealEnabled = initialContentVisible,
                         adminBadge = strings.adminBadge,
                         editDescription = strings.editProfile,
                         onCardFocused = { lastFocusKey = profile.id },
@@ -412,6 +430,9 @@ fun ProfilePickerScreen(
                             else -> secondaryContentAlpha
                         },
                         onCardBoundsChanged = { bounds ->
+                            if (!initialProfileCardLaidOut && bounds.width > 0f && bounds.height > 0f) {
+                                initialProfileCardLaidOut = true
+                            }
                             if (
                                 profile.id == selectionLoadingProfileId &&
                                 profileCardBounds[profile.id] != bounds
@@ -443,8 +464,6 @@ fun ProfilePickerScreen(
                         cardHeight = cardHeight,
                         avatarSize = avatarSize,
                         profileNameHeight = profileNameHeight,
-                        itemIndex = orderedProfiles.size,
-                        revealEnabled = initialContentVisible,
                         onFocused = { lastFocusKey = AddKidsFocusKey },
                         contentAlpha = secondaryContentAlpha * revealAlpha,
                         onClick = {
@@ -467,8 +486,6 @@ fun ProfilePickerScreen(
                         cardHeight = cardHeight,
                         avatarSize = avatarSize,
                         profileNameHeight = profileNameHeight,
-                        itemIndex = orderedProfiles.size + 1,
-                        revealEnabled = initialContentVisible,
                         onFocused = { lastFocusKey = AddProfileFocusKey },
                         contentAlpha = secondaryContentAlpha * revealAlpha,
                         onClick = {
@@ -568,8 +585,6 @@ private fun ProfilePickerCard(
     cardHeight: androidx.compose.ui.unit.Dp,
     avatarSize: androidx.compose.ui.unit.Dp,
     profileNameHeight: androidx.compose.ui.unit.Dp,
-    itemIndex: Int,
-    revealEnabled: Boolean,
     adminBadge: String,
     editDescription: String,
     onCardFocused: () -> Unit,
@@ -589,18 +604,9 @@ private fun ProfilePickerCard(
         animationSpec = tween(90),
         label = "profile-card-scale",
     )
-    val reveal = remember { Animatable(0f) }
-    LaunchedEffect(revealEnabled) {
-        if (!revealEnabled) {
-            reveal.snapTo(0f)
-        } else {
-            delay((itemIndex.coerceAtMost(7) * 40L))
-            reveal.animateTo(1f, tween(220, easing = FastOutSlowInEasing))
-        }
-    }
     val shape = RoundedCornerShape(20.dp)
     val borderColor = when {
-        selected -> SmartVisionColors.CyanAccent
+        selected -> ProfileSelectionBorder
         focused -> Color(0xFF61A8FF)
         active -> Color(0xFF20D4C7)
         else -> Color(0xFF53698D).copy(alpha = 0.72f)
@@ -613,8 +619,7 @@ private fun ProfilePickerCard(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-                alpha = reveal.value * contentAlpha
-                translationY = (1f - reveal.value) * 12.dp.toPx()
+                alpha = contentAlpha
             },
     ) {
         Box(
@@ -784,7 +789,7 @@ private fun SelectedProfileTransition(
                         ),
                     )
                     .border(
-                        BorderStroke(2.5.dp, SmartVisionColors.CyanAccent),
+                        BorderStroke(2.5.dp, ProfileSelectionBorder),
                         shape,
                     ),
             )
@@ -996,31 +1001,19 @@ private fun AddProfileCard(
     cardHeight: androidx.compose.ui.unit.Dp,
     avatarSize: androidx.compose.ui.unit.Dp,
     profileNameHeight: androidx.compose.ui.unit.Dp,
-    itemIndex: Int,
-    revealEnabled: Boolean,
     onFocused: () -> Unit,
     contentAlpha: Float,
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     var focused by remember { mutableStateOf(false) }
-    val reveal = remember { Animatable(0f) }
-    LaunchedEffect(revealEnabled) {
-        if (!revealEnabled) {
-            reveal.snapTo(0f)
-        } else {
-            delay((itemIndex.coerceAtMost(7) * 40L))
-            reveal.animateTo(1f, tween(220, easing = FastOutSlowInEasing))
-        }
-    }
     val shape = RoundedCornerShape(20.dp)
     Box(
         modifier = Modifier
             .width(cardWidth)
             .height(cardHeight)
             .graphicsLayer {
-                alpha = reveal.value * contentAlpha
-                translationY = (1f - reveal.value) * 12.dp.toPx()
+                alpha = contentAlpha
             }
             .shadow(
                 if (focused) 12.dp else 3.dp,
