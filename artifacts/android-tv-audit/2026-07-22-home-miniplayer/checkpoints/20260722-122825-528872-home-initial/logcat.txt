@@ -1,0 +1,504 @@
+--------- beginning of main
+07-22 12:27:23.707   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:23.709   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:23.777  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-41, data_rssi=-44, tx_ok=16751, tx_failed=343, cca_idle_pct=92
+07-22 12:27:23.777  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:27:24.709   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:24.710   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:25.710   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:25.711   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:26.243  5320  9805 I MediaCodecLogger: 5320.HW.video.vp9.bitrateInKbps = 1509
+07-22 12:27:26.463   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:27:26.495   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:27:26.498   534   645 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:27:26.712   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:26.713   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:27.713   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:27.714   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:27.780  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-42, data_rssi=-45, tx_ok=16753, tx_failed=343, cca_idle_pct=92
+07-22 12:27:27.780  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:27:28.714   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:28.715   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+--------- beginning of system
+07-22 12:27:29.362   386   452 E storaged: getDiskStats failed with result NOT_SUPPORTED and size 0
+07-22 12:27:29.715   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:29.716   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:30.717   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:30.718   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:31.334  5320  9805 I MediaCodecLogger: 5320.HW.video.vp9.bitrateInKbps = 1844
+07-22 12:27:31.718   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:31.720   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:31.774  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-41, data_rssi=-44, tx_ok=16839, tx_failed=344, cca_idle_pct=92
+07-22 12:27:31.774  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:27:31.774  1369  1369 I main.wifi_score: cca_idle 89%, bcn_rssi -41, data_rssi -44, per 1% (ok=86, failed=1), AC MCS 9, BW 2 SS 2  780mbps, AMPDU length 64, dur 1179us UDP tput 500mbps.
+07-22 12:27:31.774  1369  1369 I main.wifi_score: Score 6, mcs 90 (phyrate cur/min/avg/max= 780/780/780/780 mbps), expected  UDP throughput cur/min/avg/max= 500/472/499/500 mbps.
+07-22 12:27:32.720   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:32.721   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:33.006   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:27:33.044   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:27:33.048   534   645 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:27:33.254   326  2800 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 0; audio level: 0.842
+07-22 12:27:33.254   326  2800 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 1; audio level: 0.889
+07-22 12:27:33.254   326  2800 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 0; audio level: 0.984
+07-22 12:27:33.254   326  2800 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 1; audio level: 0.984
+07-22 12:27:33.721   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:33.723   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:34.723   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:34.725   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:34.822  1758  2165 I WeblabFeature: Refreshing treatment for: FTV_SEARCH_DECOUPLING_ALPHA_222720
+07-22 12:27:34.835  1758  1758 I AsyncWeblabTreatmentTas: Received a treatment of C_DEFAULT for : FTV_SEARCH_DECOUPLING_ALPHA_222720
+07-22 12:27:35.726   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:35.727   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:35.768  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-42, data_rssi=-45, tx_ok=17062, tx_failed=346, cca_idle_pct=92
+07-22 12:27:35.768  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:27:36.422  5320  9805 I MediaCodecLogger: 5320.HW.video.vp9.bitrateInKbps = 1062
+07-22 12:27:36.727   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:36.728   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:37.728   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:37.729   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:38.730   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:38.731   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:39.731   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:39.732   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:40.732   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:40.733   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:40.857  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-41, data_rssi=-41, tx_ok=17062, tx_failed=346, cca_idle_pct=94
+07-22 12:27:40.857  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:27:40.858  1369  1369 E wlan_stats: rtnetlink recv failure
+07-22 12:27:40.858  1369  1369 E wlan_stats: ERROR: Error fetching Kernel stats from driver
+07-22 12:27:40.858  1369  1369 I wlan_stats: BMC Stats not supported on the chip
+07-22 12:27:40.859  1369  1369 I main.wlan_stats: wlan0:rssi=-41;rssi2=-40;noise=-92;noise2=-92;s_channel=112;txframes=17408;txfails=346;txper=1%;txaggr=4 0 0 0 0 0 0 0;rxframes=68247;rxcrc=12207;rxper=15.1%;rxdrop=1188;phymod=AC;phyrate=780;lasttxrate=NSS2_MCS9_BW80;lastrxrate=6M_BW20;
+07-22 12:27:40.859  1369  1369 I main.wlan_stats: tx_packets=0;tx_bytes=0;tx_errors=0;tx_dropped=0;rx_packets=0;rx_bytes=0;rx_errors=0;rx_dropped=0;
+07-22 12:27:40.859  1369  1369 I main.wlan_stats: max_rssi=-20;min_rssi=-85;max_noise=-92;min_noise=-92;noise histogram=0 0 0 0 0 0 0 0 0 0 120144;
+07-22 12:27:40.860  1369  1369 I main.wlan_stats: ch_busy=6%;ch_idle=94%;ch_tx=0%;ch_rx=0%;total=991882;busy=62965;my_tx=514;my_rx=215;tx_ok=100%;tx_fail=0%;tx_retry=0%;rx_ok=3%;rx_fcs=97%;tx_ok=1;tx_fail=0;txretry=0;rx_ok=3;rx_fcs=96;cck_false=0;cck_crc=0;ofdm_false=216;ofdm_crc=0;
+07-22 12:27:40.860  1369  1369 I main.wlan_stats: TXRATE=1M, BW20, LP, CCK, BCC ; PER=0; PERCNT=100%;RXRATE=NSS2_MCS9, BW80, SGI, VHT, LDPC; PERCNT=100%;
+07-22 12:27:40.860  1369  1369 I main.wlan_stats: process metric stats: num of samples8; beacon rssi: ins=-41, avg=-42; data rssi: ins=-41, avg=-44; data rssi2: ins=-40, avg=-43; noise:  ins=-92, avg=-92; noise2:  ins=-92, avg=-92; idle per: ins=94, sum=759; max idle per: 98; min idle per: 92; 
+07-22 12:27:41.460  5320  9805 I MediaCodecLogger: 5320.HW.video.vp9.bitrateInKbps = 1232
+07-22 12:27:41.734   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:41.735   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:42.735   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:42.736   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:43.270   326  2800 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 0; audio level: 0.891
+07-22 12:27:43.270   326  2800 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 1; audio level: 0.888
+07-22 12:27:43.270   326  2800 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 0; audio level: 0.984
+07-22 12:27:43.270   326  2800 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 1; audio level: 0.984
+07-22 12:27:43.736   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:43.737   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:43.771  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-40, data_rssi=-44, tx_ok=17062, tx_failed=346, cca_idle_pct=94
+07-22 12:27:43.771  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:27:44.206  1679 12645 I SPCH-Cont_HealthLogger: Current State = {"AlexaCaptionsEnabled":"false","Account":"valid","ProfileValidated":"true","ProfileType":"ADULT","AlexaCaptionsSupported":"true","memoryTotalPss":"22719","DeviceFamily":"SMP","memoryTotalSharedDirty":"1848","ActiveSpeechUI":"Classic","ReleaseVersion":"661.0.0","AlexaLegalTermsAccepted":"true","AppVersion":"3.0.21991.0","AlexaExperience":"FULL","SupportsFarField":"false","short_press_overlay_state":"{\"enabled\": true, \"hintsEnabled\": false, \"isChild\": false, \"override\": 0, \"hasFullAlexa\": true}","memoryAvailable":"295796736","Gateway":"avs-alexa-18-eu.amazon.com:443","memoryLow":"false","RemoteSettingsStrategy":"VizArcus","ConnectionState":"CONNECTED","OOBECompleted":"true","memoryTotalPrivateDirty":"8563","str.auto_wake_up_always":"0"}
+07-22 12:27:44.737   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:44.738   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:45.386   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:27:45.419   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:27:45.424   534   645 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:27:45.739   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:45.739   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:46.499  5320  9805 I MediaCodecLogger: 5320.HW.video.vp9.bitrateInKbps = 1422
+07-22 12:27:46.740   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:46.741   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:47.741   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:47.742   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:47.767  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-42, data_rssi=-44, tx_ok=17215, tx_failed=349, cca_idle_pct=94
+07-22 12:27:47.767  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:27:48.742   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:48.743   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:49.743   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:49.744   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:50.745   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:50.746   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:51.536  5320  9805 I MediaCodecLogger: 5320.HW.video.vp9.bitrateInKbps = 1030
+07-22 12:27:51.746   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:51.747   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:51.765  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-42, data_rssi=-44, tx_ok=17304, tx_failed=352, cca_idle_pct=94
+07-22 12:27:51.765  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:27:52.747   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:52.748   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:53.252   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:27:53.285   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:27:53.286   326  2800 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 0; audio level: 0.809
+07-22 12:27:53.286   326  2800 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 1; audio level: 0.930
+07-22 12:27:53.286   326  2800 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 0; audio level: 0.984
+07-22 12:27:53.286   326  2800 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 1; audio level: 0.984
+07-22 12:27:53.287   534   645 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:27:53.748   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:53.750   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:54.750   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:54.751   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:55.751   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:55.752   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:55.756  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-41, data_rssi=-44, tx_ok=17508, tx_failed=356, cca_idle_pct=94
+07-22 12:27:55.756  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:27:55.756  1369  1369 I main.wifi_score: score (5m, 1h): 6, 6 (idx 4)
+07-22 12:27:55.756  1369  1369 I main.wifi_score: WAR Status: dbgTxRateCacheHitCnt=167
+07-22 12:27:56.626  5320  9805 I MediaCodecLogger: 5320.HW.video.vp9.bitrateInKbps = 1271
+07-22 12:27:56.752   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:56.754   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:57.754   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:57.755   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:58.755   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:58.756   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:59.756   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:27:59.757   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:27:59.926   534   543 I system_server: Background concurrent copying GC freed 92134(5MB) AllocSpace objects, 10(488KB) LOS objects, 28% free, 14MB/20MB, paused 453us total 249.576ms
+07-22 12:28:00.757   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:00.758   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:00.857  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-42, data_rssi=-44, tx_ok=17508, tx_failed=356, cca_idle_pct=88
+07-22 12:28:00.857  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:28:01.228   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:28:01.265   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:28:01.269   534   645 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:28:01.664  5320  9805 I MediaCodecLogger: 5320.HW.video.vp9.bitrateInKbps = 1557
+07-22 12:28:01.758   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:01.759   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:02.760   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:02.761   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:03.302   326  2800 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 0; audio level: 0.843
+07-22 12:28:03.302   326  2800 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 1; audio level: 0.805
+07-22 12:28:03.302   326  2800 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 0; audio level: 0.984
+07-22 12:28:03.302   326  2800 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 1; audio level: 0.984
+07-22 12:28:03.760  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-40, data_rssi=-44, tx_ok=17628, tx_failed=358, cca_idle_pct=88
+07-22 12:28:03.760  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:28:03.760  1369  1369 I main.wifi_score: cca_idle 85%, bcn_rssi -40, data_rssi -44, per 1% (ok=120, failed=2), AC MCS 9, BW 2 SS 2  780mbps, AMPDU length 64, dur 1179us UDP tput 500mbps.
+07-22 12:28:03.760  1369  1369 I main.wifi_score: Score 6, mcs 90 (phyrate cur/min/avg/max= 780/780/780/780 mbps), expected  UDP throughput cur/min/avg/max= 500/472/499/500 mbps.
+07-22 12:28:03.761   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:03.762   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:04.763   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:04.764   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:05.764   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:05.765   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:06.670  5320  9805 I MediaCodecLogger: 5320.HW.video.vp9.bitrateInKbps = 1726
+07-22 12:28:06.765   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:06.766   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:07.431   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:28:07.468   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:28:07.473   534   645 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:28:07.767   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:07.768   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:07.769  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-41, data_rssi=-44, tx_ok=17628, tx_failed=358, cca_idle_pct=88
+07-22 12:28:07.769  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:28:08.768   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:08.769   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:09.769   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:09.771   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:10.771   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:10.772   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:11.772   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:11.773   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:11.775  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-42, data_rssi=-44, tx_ok=17688, tx_failed=360, cca_idle_pct=88
+07-22 12:28:11.776  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:28:11.790  5320  9805 I MediaCodecLogger: 5320.HW.video.vp9.bitrateInKbps = 1699
+07-22 12:28:12.774   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:12.775   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:13.318   326  2800 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 0; audio level: 0.715
+07-22 12:28:13.318   326  2800 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 1; audio level: 0.821
+07-22 12:28:13.318   326  2800 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 0; audio level: 0.984
+07-22 12:28:13.318   326  2800 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 1; audio level: 0.984
+07-22 12:28:13.775   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:13.776   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:14.776   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:14.777   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:15.756  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-42, data_rssi=-44, tx_ok=17704, tx_failed=361, cca_idle_pct=88
+07-22 12:28:15.756  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:28:15.778   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:15.779   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:16.779   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:16.780   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:16.828  5320  9805 I MediaCodecLogger: 5320.HW.video.vp9.bitrateInKbps = 1083
+07-22 12:28:17.780   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:17.781   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:18.781   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:18.783   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:19.783   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:19.784   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:20.784   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:20.785   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:20.871  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-42, data_rssi=-45, tx_ok=17834, tx_failed=362, cca_idle_pct=93
+07-22 12:28:20.871  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:28:21.785   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:21.786   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:21.918  5320  9805 I MediaCodecLogger: 5320.HW.video.vp9.bitrateInKbps = 1244
+07-22 12:28:22.786   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:22.787   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:23.334   326  2800 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 0; audio level: 0.843
+07-22 12:28:23.334   326  2800 I Node    : dolby-audio-meter, AdapterPcmSystem adapter audio meter: channel 1; audio level: 0.850
+07-22 12:28:23.334   326  2800 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 0; audio level: 0.984
+07-22 12:28:23.334   326  2800 I Node    : dolby-audio-meter, AdapterPcmOut adapter audio meter: channel 1; audio level: 0.984
+07-22 12:28:23.767  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-41, data_rssi=-44, tx_ok=17834, tx_failed=362, cca_idle_pct=93
+07-22 12:28:23.767  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:28:23.788   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:23.789   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:24.789   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:24.790   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:25.245   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:28:25.273   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:28:25.275   534   645 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:28:25.330   534   768 I WifiDiagsUtil: event=RUN_TEST_CONTINUOUSLY
+07-22 12:28:25.338   534   768 I WifiDiagsUtil: event=logPacketStats, if_name=wlan0, rx_bytes=63081044, rx_packets=47509, tx_bytes=751602, tx_packets=6512
+07-22 12:28:25.341   534   768 I WifiDiagsUtil: event=logPacketStats, daily_rx_bytes=1935733909, daily_rx_packets=1377559, daily_tx_bytes=32817803, daily_tx_packets=472501
+07-22 12:28:25.356   534   768 I WifiDiagsUtil: event=runPingTest, ipStack=Dual Stack IPv4/IPv6
+07-22 12:28:25.356   534   768 I WifiDiagsUtil: action=IPv4 Pingtest
+07-22 12:28:25.356   534   768 I WifiDiagsUtil: event=pingTest, TARGET_TYPE=LOCALHOST, IP=XXX
+07-22 12:28:25.361   534   768 I WifiDiagsUtil: event=pingsComplete, TARGET_TYPE=LOCALHOST, IP=XXX, PKTS_TX=5, PKTS_RX=5, PKT_LOSS=0.0%, AVG_TIME=0,94
+07-22 12:28:25.362   534   768 I WifiDiagsUtil: event=pingTest, TARGET_TYPE=GATEWAY, IP=XXX, isIpv6=false
+07-22 12:28:25.378   534   768 I WifiDiagsUtil: event=pingsComplete, TARGET_TYPE=GATEWAY, IP=XXX, PKTS_TX=5, PKTS_RX=5, PKT_LOSS=0.0%, AVG_TIME=3,04
+07-22 12:28:25.378   534   768 I WifiDiagsUtil: event=pingTest, TARGET_TYPE=NAMESERVER1, IP=XXX, isIpv6=false
+07-22 12:28:25.790   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:25.791   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:26.791   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:26.792   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:26.802   343   343 I MTK_IMGX: Max buffer size (2147483647 x 2147483647), dump level:0
+07-22 12:28:26.803   343   343 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-22 12:28:26.803   343   343 I chatty  : uid=1000(system) /system/bin/surfaceflinger identical 4 lines
+07-22 12:28:26.804   343   343 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-22 12:28:26.800   343   343 W surfaceflinger: type=1400 audit(0.0:316): avc: denied { read } for name="u:object_r:vendor_default_prop:s0" dev="tmpfs" ino=1387 scontext=u:r:surfaceflinger:s0 tcontext=u:object_r:vendor_default_prop:s0 tclass=file permissive=0
+07-22 12:28:26.800   343   343 I chatty  : uid=1000(system) /system/bin/surfaceflinger identical 1 line
+07-22 12:28:26.800   343   343 W surfaceflinger: type=1400 audit(0.0:318): avc: denied { read } for name="u:object_r:vendor_default_prop:s0" dev="tmpfs" ino=1387 scontext=u:r:surfaceflinger:s0 tcontext=u:object_r:vendor_default_prop:s0 tclass=file permissive=0
+07-22 12:28:26.804   343   343 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-22 12:28:26.805   343   343 I chatty  : uid=1000(system) /system/bin/surfaceflinger identical 9 lines
+07-22 12:28:26.805   343   343 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-22 12:28:26.800   343   343 W surfaceflinger: type=1400 audit(0.0:319): avc: denied { read } for name="u:object_r:vendor_default_prop:s0" dev="tmpfs" ino=1387 scontext=u:r:surfaceflinger:s0 tcontext=u:object_r:vendor_default_prop:s0 tclass=file permissive=0
+07-22 12:28:26.800   343   343 W surfaceflinger: type=1400 audit(0.0:320): avc: denied { read } for name="u:object_r:vendor_default_prop:s0" dev="tmpfs" ino=1387 scontext=u:r:surfaceflinger:s0 tcontext=u:object_r:vendor_default_prop:s0 tclass=file permissive=0
+07-22 12:28:26.805   343   343 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-22 12:28:26.806   343   343 I chatty  : uid=1000(system) /system/bin/surfaceflinger identical 2 lines
+07-22 12:28:26.806   343   343 E libc    : Access denied finding property "vendor.dpframework.log.enable"
+07-22 12:28:26.806   343   343 E MDP     : allocate buffer fd 88 size:64
+07-22 12:28:26.806   343   343 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
+07-22 12:28:26.806   343   343 E libc    : Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+07-22 12:28:26.877 12731 12731 E ion     : ioctl c0044901 failed with code -1: Invalid argument
+07-22 12:28:26.955  5320  9805 I MediaCodecLogger: 5320.HW.video.vp9.bitrateInKbps = 1891
+07-22 12:28:27.392   534   768 I WifiDiagsUtil: event=pingsComplete, TARGET_TYPE=NAMESERVER1, IP=XXX, PKTS_TX=5, PKTS_RX=4, PKT_LOSS=20.0%, AVG_TIME=2,34
+07-22 12:28:27.392   534   768 I WifiDiagsUtil: warning=nameserverIsLocal
+07-22 12:28:27.392   534   768 I WifiDiagsUtil: event=blacklistedDnsDetected, action=skipPingTest, nameserver=8.8.8.8
+07-22 12:28:27.392   534   768 I WifiDiagsUtil: event=runHttpConnectionTestStarted, host=http://firetvcaptiveportal.com/generate_204
+07-22 12:28:27.599   534   768 I WifiDiagsUtil: event=runHttpConnectionTestSuccess, host=http://firetvcaptiveportal.com/generate_204, httpCode=204, latency=206
+07-22 12:28:27.599   534   768 I WifiDiagsUtil: event=reportNetworkStatistics, action=reportNetworkConnectivity, hasConnectivity=true
+07-22 12:28:27.599   534   768 I WifiDiagsUtil: event=GOOD_CONNECTION
+07-22 12:28:27.599   534   768 I WifiDiagsUtil: broadcastDiagsResults
+07-22 12:28:27.612   534   768 I WifiDiagsUtil: event=stateDuration, duration=903123
+07-22 12:28:27.613   534   768 I WifiDiagsUtil: event=recordDataInTestEndpointStatistics, isEmitmetric=false
+07-22 12:28:27.616   534   552 W Process : Unable to open /proc/0/status
+07-22 12:28:27.627   534   554 I ActivityManager: Start proc 12737:com.amazon.diode/u0a48 for broadcast com.amazon.diode/.events.ExternalEventReceiver
+07-22 12:28:27.642 12737 12743 I om.amazon.diod: Bumping SignalCatcher priority from 5 to 10
+07-22 12:28:27.642 12737 12737 E om.amazon.diod: Not starting debugger since process cannot load the jdwp agent.
+07-22 12:28:27.666   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:28:27.692 12737 12737 I om.amazon.diod: The ClassLoaderContext is a special shared library.
+07-22 12:28:27.696 12737 12737 W om.amazon.diod: ClassLoaderContext classpath size mismatch for position 0. expected=0, found=1 (PCL[] | PCL[/system/framework/com.amazon.identity.auth.device.jar*5371963])
+07-22 12:28:27.708   534   644 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:28:27.711   534   645 W BestClock: java.time.DateTimeException: Missing NTP fix
+07-22 12:28:27.717 12737 12737 W om.amazon.diod: ClassLoaderContext classpath size mismatch for position 0. expected=0, found=2 (PCL[] | PCL[/system/framework/com.amazon.identity.auth.device.jar*5371963:/system/priv-app/DeviceSoftwareOTAContracts/DeviceSoftwareOTAContracts.apk*1675565511])
+07-22 12:28:27.719 12737 12737 W om.amazon.diod: Found duplicate classes, falling back to extracting from APK : /system/priv-app/com.amazon.communication/com.amazon.communication.apk
+07-22 12:28:27.720 12737 12737 W om.amazon.diod: NOTE: This wastes RAM and hurts startup performance.
+07-22 12:28:27.720 12737 12737 W om.amazon.diod: Found duplicated class when checking oat files: 'Lcom/amazon/fireos/sdk/annotations/EmptyStub;' in /system/priv-app/DeviceSoftwareOTAContracts/DeviceSoftwareOTAContracts.apk and /system/priv-app/com.amazon.communication/com.amazon.communication.apk
+07-22 12:28:27.720 12737 12737 W om.amazon.diod: 
+07-22 12:28:27.745 12737 12737 W om.amazon.diod: ClassLoaderContext classpath size mismatch for position 0. expected=0, found=3 (PCL[] | PCL[/system/framework/com.amazon.identity.auth.device.jar*5371963:/system/priv-app/DeviceSoftwareOTAContracts/DeviceSoftwareOTAContracts.apk*1675565511:/system/priv-app/com.amazon.communication/com.amazon.communication.apk*2104823988])
+07-22 12:28:27.745 12737 12737 W om.amazon.diod: Found duplicate classes, falling back to extracting from APK : /system/priv-app/DeviceMessagingAndroidInternalSDK/DeviceMessagingAndroidInternalSDK.apk
+07-22 12:28:27.745 12737 12737 W om.amazon.diod: NOTE: This wastes RAM and hurts startup performance.
+07-22 12:28:27.745 12737 12737 W om.amazon.diod: Found duplicated class when checking oat files: 'Lcom/amazon/dcp/tph/TPHConstants;' in /system/priv-app/DeviceMessagingAndroidInternalSDK/DeviceMessagingAndroidInternalSDK.apk and /system/priv-app/DeviceSoftwareOTAContracts/DeviceSoftwareOTAContracts.apk
+07-22 12:28:27.745 12737 12737 W om.amazon.diod: 
+07-22 12:28:27.756 12737 12737 W om.amazon.diod: ClassLoaderContext classpath size mismatch for position 0. expected=0, found=4 (PCL[] | PCL[/system/framework/com.amazon.identity.auth.device.jar*5371963:/system/priv-app/DeviceSoftwareOTAContracts/DeviceSoftwareOTAContracts.apk*1675565511:/system/priv-app/com.amazon.communication/com.amazon.communication.apk*2104823988:/system/priv-app/DeviceMessagingAndroidInternalSDK/DeviceMessagingAndroidInternalSDK.apk*1700992038])
+07-22 12:28:27.757  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-41, data_rssi=-44, tx_ok=17990, tx_failed=363, cca_idle_pct=93
+07-22 12:28:27.757  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:28:27.761 12737 12737 I om.amazon.diod: The ClassLoaderContext is a special shared library.
+07-22 12:28:27.764 12737 12737 I om.amazon.diod: The ClassLoaderContext is a special shared library.
+07-22 12:28:27.767 12737 12737 W om.amazon.diod: ClassLoaderContext classpath size mismatch for position 0. expected=0, found=7 (PCL[] | PCL[/system/framework/com.amazon.identity.auth.device.jar*5371963:/system/priv-app/DeviceSoftwareOTAContracts/DeviceSoftwareOTAContracts.apk*1675565511:/system/priv-app/com.amazon.communication/com.amazon.communication.apk*2104823988:/system/priv-app/DeviceMessagingAndroidInternalSDK/DeviceMessagingAndroidInternalSDK.apk*1700992038:/system/priv-app/MinervaApi/MinervaApi.apk*3780395196:/system/framework/connectivity_manager_api.jar*680565771:/system/framework/org.apache.http.legacy.boot.jar*796383208])
+07-22 12:28:27.767 12737 12737 W om.amazon.diod: Found duplicate classes, falling back to extracting from APK : /system/priv-app/DeviceClientPlatformContractsFramework/DeviceClientPlatformContractsFramework.apk
+07-22 12:28:27.767 12737 12737 W om.amazon.diod: NOTE: This wastes RAM and hurts startup performance.
+07-22 12:28:27.767 12737 12737 W om.amazon.diod: Found duplicated class when checking oat files: 'Lcom/amazon/dcp/common/ThirdPartyDeviceUtils;' in /system/priv-app/DeviceClientPlatformContractsFramework/DeviceClientPlatformContractsFramework.apk and /system/priv-app/DeviceSoftwareOTAContracts/DeviceSoftwareOTAContracts.apk
+07-22 12:28:27.767 12737 12737 W om.amazon.diod: 
+07-22 12:28:27.791 12737 12737 W om.amazon.diod: resources.arsc in APK '/system/priv-app/DeviceClientPlatformContractsFramework/DeviceClientPlatformContractsFramework.apk' is compressed.
+07-22 12:28:27.792   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:27.793   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:27.838 12737 12737 I com.amazon.diode/MAPInit: Initializing MAP (130050002 / MAPAndroidLib-1.3.57531.0) for app com.amazon.diode. MAP release version: 20260522N
+07-22 12:28:27.851 12737 12737 I com.amazon.diode/MetricsHelper: FireOS Minerva metrics is supported
+07-22 12:28:27.852 12737 12737 I com.amazon.diode/MAPInit: Running MAPInit on main thread: true
+07-22 12:28:27.858 12737 12737 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+07-22 12:28:27.861 12737 12737 I chatty  : uid=10048(com.amazon.diode) identical 2 lines
+07-22 12:28:27.862 12737 12737 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+07-22 12:28:27.865 12737 12737 I com.amazon.diode/IsolatedModeSwitcher: App does not support client driven runtime isolation.
+07-22 12:28:27.865 12737 12737 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+07-22 12:28:27.866 12737 12737 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+07-22 12:28:27.867 12737 12737 I com.amazon.diode/FeatureSetCache: Caching feature IsolateApplication as false
+07-22 12:28:27.868 12737 12737 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+07-22 12:28:27.871 12737 12753 E com.amazon.diode/PlatformUtils: Could not initialize FidoAuthenticatorJSBridge because Fido client could not be initialized
+07-22 12:28:27.878 12737 12737 I com.amazon.diode/LocalKeyValueStore: Create DE shared preference, OS supports direct boot.
+07-22 12:28:27.887 12737 12737 I com.amazon.diode/TrustedPackageManager: Trying to use default signature based package trust logic. This should be on 3P device
+07-22 12:28:27.887 12737 12753 W MinervaServiceWrapper: record : MinervaService not yet bound. Buffered Metric Event String. Buffer Size: 1
+07-22 12:28:27.887 12737 12737 I com.amazon.diode/TrustedPackageManager: Setting package trust logic as: signature based package trust logic
+07-22 12:28:27.889 12737 12737 W om.amazon.diod: Class com.amazon.identity.auth.device.framework.AmazonDeviceInfo failed lock verification and will run slower.
+07-22 12:28:27.889 12737 12737 W om.amazon.diod: Common causes for lock verification issues are non-optimized dex code
+07-22 12:28:27.889 12737 12737 W om.amazon.diod: and incorrect proguard optimizations.
+07-22 12:28:27.895 12737 12753 W com.amazon.diode/WhatsAppAutoreadPluginHelper: WhatsAppAutoreadPlugin is not supported for this package: com.amazon.diode
+07-22 12:28:27.897 12737 12753 W MinervaServiceWrapper: record : MinervaService not yet bound. Buffered Metric Event String. Buffer Size: 2
+07-22 12:28:27.899 12737 12756 I com.amazon.diode/DataStorageFactoryImpl: Creating new DataStorageFactoryImpl
+07-22 12:28:27.899 12737 12756 I com.amazon.diode/MAPInitTasks: Get DataStorage instance for initialization
+07-22 12:28:27.899 12737 12756 I com.amazon.diode/DataStorageFactoryImpl: Initializing new DataStorage
+07-22 12:28:27.902 12737 12756 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+07-22 12:28:27.905 12737 12756 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+07-22 12:28:27.907 12737 12756 I com.amazon.diode/IsolatedModeSwitcher: App does not support client driven runtime isolation.
+07-22 12:28:27.908 12737 12756 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+07-22 12:28:27.909 12737 12756 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+07-22 12:28:27.917 12737 12756 I com.amazon.diode/DeviceAttributeCache: Setting device attribute CentralAPK to true
+07-22 12:28:27.920 12737 12756 I com.amazon.diode/DataStorageFactoryImpl: Creating and using new CentralAccountManagerDataStorage
+07-22 12:28:27.923 12737 12756 I com.amazon.diode/LocalKeyValueStore: Create DE shared preference, OS supports direct boot.
+07-22 12:28:27.924 12737 12756 I com.amazon.diode/LocalKeyValueStore: Create DE shared preference, OS supports direct boot.
+07-22 12:28:27.924 12737 12756 I com.amazon.diode/MAPInitTasks: Initialize DataStorage instance
+07-22 12:28:27.924 12737 12756 I com.amazon.diode/MAPInitTasks: Setup DataStorage instance
+07-22 12:28:27.925 12737 12756 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+07-22 12:28:27.927 12737 12756 I chatty  : uid=10048(com.amazon.diode) identical 1 line
+07-22 12:28:27.929 12737 12756 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+07-22 12:28:27.929 12737 12737 I com.amazon.diode.DiodeApplication: Registered receiver: com.amazon.diode.receivers.IdentifyReceiver@8d79e80 with filter: android.content.IntentFilter@d19acb9 for intent : com.amazon.diode.intent.IDENTIFY
+07-22 12:28:27.930 12737 12756 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+07-22 12:28:27.931 12737 12737 I com.amazon.diode.DiodeApplication: Registered receiver: com.amazon.diode.receivers.ActionReceiver@45d385f with filter: android.content.IntentFilter@b5822ac for intent : com.amazon.diode.intent.ACTION
+07-22 12:28:27.933 12737 12737 I com.amazon.diode.registration.Analyzers: Registered receiver: com.amazon.diode.events.ConnectivityChangeEventReceiver@87abd98 with filter: android.content.IntentFilter@d9739f1 for intent : Intent { act=android.net.conn.CONNECTIVITY_CHANGE flg=0x4200010 (has extras) }
+07-22 12:28:27.933 12737 12756 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+07-22 12:28:27.935 12737 12756 I com.amazon.diode/IsolatedModeSwitcher: App does not support client driven runtime isolation.
+07-22 12:28:27.958 12737 12737 I com.amazon.diode.events.CaptivePortalEventManager: Registered Captive Portal check for FireOS 6
+07-22 12:28:27.967 12737 12756 I com.amazon.diode/AmazonSerialNumber: MAP Client side on FireOS 7+ calls IPC to get the DSN.
+07-22 12:28:27.973  1045  2272 I com.amazon.imp/SSODeviceInfo[0]: Amazon Device Info will try to get central device serial
+07-22 12:28:27.973  1045  2272 I com.amazon.imp/AmazonDeviceSecurityFactoryImpl[0]: Use device hardware auth.
+07-22 12:28:27.978 12737 12756 I com.amazon.diode/LocalKeyValueStore: Create DE shared preference, OS supports direct boot.
+07-22 12:28:27.983 12737 12756 I chatty  : uid=10048(com.amazon.diode) identical 6 lines
+07-22 12:28:27.986 12737 12756 I com.amazon.diode/LocalKeyValueStore: Create DE shared preference, OS supports direct boot.
+07-22 12:28:28.003 12737 12737 I com.amazon.diode.events.ConnectivityChangeEventReceiver: Got external Connectivity event
+07-22 12:28:28.045 12737 12756 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+07-22 12:28:28.048 12737 12756 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+07-22 12:28:28.050 12737 12756 I com.amazon.diode/MAPInitTasks: Start update legacy authportal domain in database if needed
+07-22 12:28:28.056 12737 12756 I om.amazon.diod: Rejecting re-init on previously-failed class java.lang.Class<com.amazon.identity.auth.device.framework.LWASSOPluginHelper$LWASSODependencyImpl>: java.lang.NoClassDefFoundError: Failed resolution of: Lcom/amazon/identity/mobi/lwasso/api/LWASSODependency;
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void com.amazon.identity.auth.device.framework.MAPInitTasks.performInitOperations() (MAPInitTasks.java:125)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void com.amazon.identity.auth.device.api.MAPInit$2.run() (MAPInit.java:1)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void com.amazon.identity.auth.device.utils.ThreadUtils$1.run() (ThreadUtils.java:2)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void java.util.concurrent.ThreadPoolExecutor.runWorker(java.util.concurrent.ThreadPoolExecutor$Worker) (ThreadPoolExecutor.java:1167)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void java.util.concurrent.ThreadPoolExecutor$Worker.run() (ThreadPoolExecutor.java:641)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void java.lang.Thread.run() (Thread.java:764)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod: Caused by: java.lang.ClassNotFoundException: Didn't find class "com.amazon.identity.mobi.lwasso.api.LWASSODependency" on path: DexPathList[[zip file "/system/framework/com.amazon.identity.auth.device.jar", zip file "/system/priv-app/DeviceSoftwareOTAContracts/DeviceSoftwareOTAContracts.apk", zip file "/system/priv-app/com.amazon.communication/com.amazon.communication.apk", zip file "/system/priv-app/DeviceMessagingAndroidInternalSDK/DeviceMessagingAndroidInternalSDK.apk", zip file "/system/priv-app/MinervaApi/MinervaApi.apk", zip file "/system/framework/connectivity_manager_api.jar", zip file "/system/framework/org.apache.http.legacy.boot.jar", zip file "/system/priv-app/DeviceClientPlatformContractsFramework/DeviceClientPlatformContractsFramework.apk", zip file "/system/priv-app/com.amazon.diode/com.amazon.diode.apk"],nativeLibraryDirectories=[/system/priv-app/com.amazon.diode/lib/arm, /system/lib, /system/lib]]
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at java.lang.Class dalvik.system.BaseDexClassLoader.findClass(java.lang.String) (BaseDexClassLoader.java:134)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at java.lang.Class java.lang.ClassLoader.loadClass(java.lang.String, boolean) (ClassLoader.java:379)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at java.lang.Class java.lang.ClassLoader.loadClass(java.lang.String) (ClassLoader.java:312)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void com.amazon.identity.auth.device.framework.MAPInitTasks.performInitOperations() (MAPInitTasks.java:125)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void com.amazon.identity.auth.device.api.MAPInit$2.run() (MAPInit.java:1)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void com.amazon.identity.auth.device.utils.ThreadUtils$1.run() (ThreadUtils.java:2)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void java.util.concurrent.ThreadPoolExecutor.runWorker(java.util.concurrent.ThreadPoolExecutor$Worker) (ThreadPoolExecutor.java:1167)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void java.util.concurrent.ThreadPoolExecutor$Worker.run() (ThreadPoolExecutor.java:641)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void java.lang.Thread.run() (Thread.java:764)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod: 
+07-22 12:28:28.056 12737 12767 I com.amazon.diode.events.EventSaverService: Got external event for client CaptivePortalEventStore
+07-22 12:28:28.056 12737 12756 I om.amazon.diod: Rejecting re-init on previously-failed class java.lang.Class<com.amazon.identity.auth.device.framework.LWASSOPluginHelper$LWASSODependencyImpl>: java.lang.NoClassDefFoundError: Failed resolution of: Lcom/amazon/identity/mobi/lwasso/api/LWASSODependency;
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void com.amazon.identity.auth.device.framework.MAPInitTasks.performInitOperations() (MAPInitTasks.java:125)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void com.amazon.identity.auth.device.api.MAPInit$2.run() (MAPInit.java:1)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void com.amazon.identity.auth.device.utils.ThreadUtils$1.run() (ThreadUtils.java:2)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void java.util.concurrent.ThreadPoolExecutor.runWorker(java.util.concurrent.ThreadPoolExecutor$Worker) (ThreadPoolExecutor.java:1167)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void java.util.concurrent.ThreadPoolExecutor$Worker.run() (ThreadPoolExecutor.java:641)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void java.lang.Thread.run() (Thread.java:764)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod: Caused by: java.lang.ClassNotFoundException: Didn't find class "com.amazon.identity.mobi.lwasso.api.LWASSODependency" on path: DexPathList[[zip file "/system/framework/com.amazon.identity.auth.device.jar", zip file "/system/priv-app/DeviceSoftwareOTAContracts/DeviceSoftwareOTAContracts.apk", zip file "/system/priv-app/com.amazon.communication/com.amazon.communication.apk", zip file "/system/priv-app/DeviceMessagingAndroidInternalSDK/DeviceMessagingAndroidInternalSDK.apk", zip file "/system/priv-app/MinervaApi/MinervaApi.apk", zip file "/system/framework/connectivity_manager_api.jar", zip file "/system/framework/org.apache.http.legacy.boot.jar", zip file "/system/priv-app/DeviceClientPlatformContractsFramework/DeviceClientPlatformContractsFramework.apk", zip file "/system/priv-app/com.amazon.diode/com.amazon.diode.apk"],nativeLibraryDirectories=[/system/priv-app/com.amazon.diode/lib/arm, /system/lib, /system/lib]]
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at java.lang.Class dalvik.system.BaseDexClassLoader.findClass(java.lang.String) (BaseDexClassLoader.java:134)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at java.lang.Class java.lang.ClassLoader.loadClass(java.lang.String, boolean) (ClassLoader.java:379)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at java.lang.Class java.lang.ClassLoader.loadClass(java.lang.String) (ClassLoader.java:312)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void com.amazon.identity.auth.device.framework.MAPInitTasks.performInitOperations() (MAPInitTasks.java:125)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void com.amazon.identity.auth.device.api.MAPInit$2.run() (MAPInit.java:1)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void com.amazon.identity.auth.device.utils.ThreadUtils$1.run() (ThreadUtils.java:2)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void java.util.concurrent.ThreadPoolExecutor.runWorker(java.util.concurrent.ThreadPoolExecutor$Worker) (ThreadPoolExecutor.java:1167)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void java.util.concurrent.ThreadPoolExecutor$Worker.run() (ThreadPoolExecutor.java:641)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod:   at void java.lang.Thread.run() (Thread.java:764)
+07-22 12:28:28.056 12737 12756 I om.amazon.diod: 
+07-22 12:28:28.057 12737 12756 W com.amazon.diode/WhatsAppAutoreadPluginHelper: WhatsAppAutoreadPlugin is not supported for this package: com.amazon.diode
+07-22 12:28:28.078 12737 12759 I com.amazonaws.mobileconnectors.remoteconfiguration.clientcontextdecorator.RemoteConfigurationAAugmenting ARCUS client context with system attributes
+07-22 12:28:28.191 12737 12767 W com.amazon.diode.store.FIFOFile: Overwriting 1 elements to make room in store CaptivePortalEventStore
+07-22 12:28:28.199 12737 12767 I com.amazon.diode.events.EventSaverService: Got external event for client WifiDiagsUtil
+07-22 12:28:28.203 12737 12767 W com.amazon.diode.store.FIFOFile: Overwriting 1 elements to make room in store WifiDiagsUtil
+07-22 12:28:28.720   534   545 I ActivityManager: Process com.amazon.diode (pid 12737) has died: cch+1CEM 
+07-22 12:28:28.721   534   555 W libprocessgroup: kill(-12737, 9) failed: No such process
+07-22 12:28:28.725   272   272 I Zygote  : Process 12737 exited due to signal 9 (Killed)
+07-22 12:28:28.765   534   555 W libprocessgroup: kill(-12737, 9) failed: No such process
+07-22 12:28:28.765   534   555 I libprocessgroup: Successfully killed process cgroup uid 10048 pid 12737 in 44ms
+07-22 12:28:28.793   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:28.794   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:29.363   386   452 E storaged: getDiskStats failed with result NOT_SUPPORTED and size 0
+07-22 12:28:29.794   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:29.795   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:29.955 12775 12775 W app_process: Could not reserve sentinel fault page
+07-22 12:28:30.341 12775 12775 I app_process: The ClassLoaderContext is a special shared library.
+07-22 12:28:30.346 12775 12775 I app_process: The ClassLoaderContext is a special shared library.
+07-22 12:28:30.348 12775 12778 I app_process: Bumping SignalCatcher priority from 5 to 10
+07-22 12:28:30.795   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:30.796   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:31.088  2889  3447 I Firebat : TTS is disabled due to no spoken feedback service enabled
+07-22 12:28:31.301  1327  1600 I HandlerScheduler: Executing job - jobId: 10, currentTime: 1784716111301
+07-22 12:28:31.301  1327  1600 I MinervaServiceManager: flushAllBatches - Flushing all pending batches;
+07-22 12:28:31.302  1327  1600 I BatchCreatorManager: flushAllBatches - Flushing all pending batches for transmission;
+07-22 12:28:31.302  1327  1600 I BatchCreator: enqueueBatchForTransmission - enqueueBatchForTransmission;
+07-22 12:28:31.316  1327  1600 I MetricsTransmissionManager: loadMetricBatches, number of KPI batch file loaded: 1
+07-22 12:28:31.316  1327  1600 I MetricsTransmissionManager: transmitMetricBatches, storageManager(before execute): com.amazon.minerva.service.storage.BatchRootDirectory@dea9bda
+07-22 12:28:31.316  1327  1600 I MetricsTransmissionManager: com.amazon.minerva.service.storage.BatchRootDirectory@cfcf80b
+07-22 12:28:31.316  1327 11636 I MetricsTransmissionManager: transmitKPIMetricBatch started
+07-22 12:28:31.318   534   920 I WifiService: acquireWifiLock uid=10006 lockMode=3
+07-22 12:28:31.322  1327  1600 I MetricsTransmissionManager: loadMetricBatches, number of metrics batch file loaded: 5
+07-22 12:28:31.322  1327  1600 I HandlerScheduler: Scheduling next run - jobId: 10, nextRunTime: 1784716591322
+07-22 12:28:31.355  1045 12789 I com.amazon.imp/TokenJobQueue[0]: Begin executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token
+07-22 12:28:31.356  1045 12789 I com.amazon.imp/TokenJobQueue[0]: Scheduled running concurrent job GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+07-22 12:28:31.356  1045 12790 I com.amazon.imp/MAPApplicationInformationQueryer[0]: Populate change for remote MAP info.
+07-22 12:28:31.356  1045 12790 I com.amazon.imp/MAPApplicationInformationQueryer[0]: CacheContainsPartialResults? true
+07-22 12:28:31.359  1045 12790 I com.amazon.imp/TokenJobQueue[0]: Finish executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+07-22 12:28:31.584  1327 11636 E System  : TRACE Starting certificate trust
+07-22 12:28:31.756  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): is2g=0, is11ac=1, is11ax=0, chan_bw=80, nss=2, bcn_rssi=-42, data_rssi=-45, tx_ok=18945, tx_failed=384, cca_idle_pct=93
+07-22 12:28:31.756  1369  1369 I main.wifi_score: dump_wifi_score_ctxt(): last_tx_stats: sgi=0, pream=2, mcs=9, ss=2, bw=2
+07-22 12:28:31.796   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:31.798   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...
+07-22 12:28:31.811  1327 11636 I MetricsTransporter: MetricsTransporter - Successfully uploaded metrics; code: 200, message: OK;
+07-22 12:28:31.817   534   920 I WifiService: releaseWifiLock uid=10006
+07-22 12:28:31.818  1327 11636 I MetricsTransmissionManager: Transmission succeeded.
+07-22 12:28:31.819  1327 11636 I MetricsTransmissionManager: transmitKPIMetricBatch finished
+07-22 12:28:31.819  1327 11636 I MetricsTransmissionManager: transmitMetricBatches started
+07-22 12:28:31.821   534   920 I WifiService: acquireWifiLock uid=10006 lockMode=3
+07-22 12:28:31.829  1045 12789 I com.amazon.imp/TokenJobQueue[0]: Begin executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token
+07-22 12:28:31.829  1045 12789 I com.amazon.imp/TokenJobQueue[0]: Scheduled running concurrent job GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+07-22 12:28:31.830  1045 12790 I com.amazon.imp/MAPApplicationInformationQueryer[0]: Populate change for remote MAP info.
+07-22 12:28:31.830  1045 12790 I com.amazon.imp/MAPApplicationInformationQueryer[0]: CacheContainsPartialResults? true
+07-22 12:28:31.835  1045 12790 I com.amazon.imp/TokenJobQueue[0]: Finish executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+07-22 12:28:31.843 12775 12775 W AccessibilityNodeInfoDumper: Fetch time: 34ms
+07-22 12:28:31.846   534   920 W WindowManager: removeWindowToken: Attempted to remove non-existing token: android.os.Binder@d5644e
+07-22 12:28:31.977  1327 11636 I MetricsTransporter: MetricsTransporter - Successfully uploaded metrics; code: 200, message: OK;
+07-22 12:28:31.979   534   920 I WifiService: releaseWifiLock uid=10006
+07-22 12:28:31.980  1327 11636 I MetricsTransmissionManager: Transmission succeeded.
+07-22 12:28:31.982   534   920 I WifiService: acquireWifiLock uid=10006 lockMode=3
+07-22 12:28:31.989  1045 12789 I com.amazon.imp/TokenJobQueue[0]: Begin executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token
+07-22 12:28:31.989  1045 12789 I com.amazon.imp/TokenJobQueue[0]: Scheduled running concurrent job GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+07-22 12:28:31.989  1045 12790 I com.amazon.imp/MAPApplicationInformationQueryer[0]: Populate change for remote MAP info.
+07-22 12:28:31.989  1045 12790 I com.amazon.imp/MAPApplicationInformationQueryer[0]: CacheContainsPartialResults? true
+07-22 12:28:31.992  1045 12790 I com.amazon.imp/TokenJobQueue[0]: Finish executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+07-22 12:28:32.002  1327 11636 W MetricsTransporter: MetricsTransporter - IOException thrown when uploading metrics: %s; java.net.UnknownHostException: Unable to resolve host "78cec6f6fe9eddf35fcfeca5b4252eeaa2d4a4fc39378ddc783d84e4c938e96.us-eas.prod.service.minerva.devices.a2z.com": No address associated with hostname
+07-22 12:28:32.004   534  1677 I WifiService: releaseWifiLock uid=10006
+07-22 12:28:32.004  1327 11636 W MetricsTransmissionManager: Transmission failed on network IO error, IOException, and re-try metric batch.
+07-22 12:28:32.007   534  1677 I WifiService: acquireWifiLock uid=10006 lockMode=3
+07-22 12:28:32.014  1045 12789 I com.amazon.imp/TokenJobQueue[0]: Begin executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token
+07-22 12:28:32.014  1045 12789 I com.amazon.imp/TokenJobQueue[0]: Scheduled running concurrent job GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+07-22 12:28:32.014  1045 12790 I com.amazon.imp/MAPApplicationInformationQueryer[0]: Populate change for remote MAP info.
+07-22 12:28:32.014  1045 12790 I com.amazon.imp/MAPApplicationInformationQueryer[0]: CacheContainsPartialResults? true
+07-22 12:28:32.015  1045 12790 I com.amazon.imp/TokenJobQueue[0]: Finish executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+07-22 12:28:32.043  5320  9805 I MediaCodecLogger: 5320.HW.video.vp9.bitrateInKbps = 1157
+07-22 12:28:32.160  1327 11636 I MetricsTransporter: MetricsTransporter - Successfully uploaded metrics; code: 200, message: OK;
+07-22 12:28:32.161   534  1677 I WifiService: releaseWifiLock uid=10006
+07-22 12:28:32.162  1327 11636 I MetricsTransmissionManager: Transmission succeeded.
+07-22 12:28:32.165   534  1677 I WifiService: acquireWifiLock uid=10006 lockMode=3
+07-22 12:28:32.172  1045 12789 I com.amazon.imp/TokenJobQueue[0]: Begin executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token
+07-22 12:28:32.172  1045 12789 I com.amazon.imp/TokenJobQueue[0]: Scheduled running concurrent job GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+07-22 12:28:32.172  1045 12790 I com.amazon.imp/MAPApplicationInformationQueryer[0]: Populate change for remote MAP info.
+07-22 12:28:32.172  1045 12790 I com.amazon.imp/MAPApplicationInformationQueryer[0]: CacheContainsPartialResults? true
+07-22 12:28:32.173  1045 12790 I com.amazon.imp/TokenJobQueue[0]: Finish executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+07-22 12:28:32.314  1327 11636 I MetricsTransporter: MetricsTransporter - Successfully uploaded metrics; code: 200, message: OK;
+07-22 12:28:32.315   534  1677 I WifiService: releaseWifiLock uid=10006
+07-22 12:28:32.316  1327 11636 I MetricsTransmissionManager: Transmission succeeded.
+07-22 12:28:32.317   534  1677 I WifiService: acquireWifiLock uid=10006 lockMode=3
+07-22 12:28:32.323  1045 12789 I com.amazon.imp/TokenJobQueue[0]: Begin executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token
+07-22 12:28:32.323  1045 12789 I com.amazon.imp/TokenJobQueue[0]: Scheduled running concurrent job GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+07-22 12:28:32.323  1045 12790 I com.amazon.imp/MAPApplicationInformationQueryer[0]: Populate change for remote MAP info.
+07-22 12:28:32.324  1045 12790 I com.amazon.imp/MAPApplicationInformationQueryer[0]: CacheContainsPartialResults? true
+07-22 12:28:32.326  1045 12790 I com.amazon.imp/TokenJobQueue[0]: Finish executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+07-22 12:28:32.460  1327 11636 I MetricsTransporter: MetricsTransporter - Successfully uploaded metrics; code: 200, message: OK;
+07-22 12:28:32.463   534  1677 I WifiService: releaseWifiLock uid=10006
+07-22 12:28:32.464  1327 11636 I MetricsTransmissionManager: Transmission succeeded.
+07-22 12:28:32.464  1327 11636 I MetricsTransmissionManager: transmitMetricBatches finished
+07-22 12:28:32.465  1327 11636 I MetricsTransmissionManager: transmitMetricBatches, storageManager(after execute): com.amazon.minerva.service.storage.BatchRootDirectory@dea9bda
+07-22 12:28:32.465  1327 11636 I MetricsTransmissionManager: com.amazon.minerva.service.storage.BatchRootDirectory@cfcf80b
+07-22 12:28:32.798   367   367 W ServiceManagement: Waited one second for android.hardware.camera.provider@2.4::ICameraProvider/external/0
+07-22 12:28:32.798   367   367 I ServiceManagement: getService: Trying again for android.hardware.camera.provider@2.4::ICameraProvider/external/0...

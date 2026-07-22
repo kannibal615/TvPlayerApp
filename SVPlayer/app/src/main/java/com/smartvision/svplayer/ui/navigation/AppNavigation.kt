@@ -771,12 +771,22 @@ fun AppNavigation(
     }
     val hasNewNotifications = notificationBadgeState.hasUnread
     val notificationBadgeCount = notificationBadgeState.unreadCount
+    val effectivePlayerSettings = remember(playerSettings, appConfigState.config.appearance) {
+        val appearance = appConfigState.config.appearance
+        if (!appearance.managed) {
+            playerSettings
+        } else if (appearance.backgroundImageUrl.isBlank()) {
+            playerSettings.copy(appBackgroundType = "Default", appBackgroundValue = "")
+        } else {
+            playerSettings.copy(appBackgroundType = "Url", appBackgroundValue = appearance.backgroundImageUrl)
+        }
+    }
 
     CompositionLocalProvider(
         LocalTvFocusStyle provides focusStyle,
         LocalTvAnimationsEnabled provides playerSettings.animationsEnabled,
         LocalLoadingColor provides loadingColor,
-        LocalAppBackgroundActive provides (playerSettings.appBackgroundType != "Default"),
+        LocalAppBackgroundActive provides (effectivePlayerSettings.appBackgroundType != "Default"),
     ) {
     val routeAllowedForProfile = currentRoute.isAllowedFor(profilePermissions)
     LaunchedEffect(currentRoute, profilePermissions) {
@@ -792,7 +802,7 @@ fun AppNavigation(
         return@CompositionLocalProvider
     }
     Box(Modifier.fillMaxSize()) {
-    AppBackgroundSurface(settings = playerSettings, modifier = Modifier.fillMaxSize())
+    AppBackgroundSurface(settings = effectivePlayerSettings, modifier = Modifier.fillMaxSize())
     NavHost(
         navController = navController,
         startDestination = AppRoute.Home.route,

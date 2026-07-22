@@ -38,6 +38,7 @@ class AppConfigRepository(
             consent = consent,
             features = features,
             trending = response.trending?.toDomain() ?: defaultTrendingConfig(),
+            appearance = response.appearance?.toDomain() ?: AppAppearanceConfig(),
             acceptedConsentVersion = response.acceptedConsentVersion,
         )
     }
@@ -93,7 +94,13 @@ data class AppRuntimeConfig(
     val consent: ConsentConfig = defaultConsentConfig(),
     val features: List<FeatureAccess> = defaultFeatureAccess(),
     val trending: TrendingConfig = defaultTrendingConfig(),
+    val appearance: AppAppearanceConfig = AppAppearanceConfig(),
     val acceptedConsentVersion: String? = null,
+)
+
+data class AppAppearanceConfig(
+    val managed: Boolean = false,
+    val backgroundImageUrl: String = "",
 )
 
 data class ConsentConfig(
@@ -156,8 +163,18 @@ private fun RemoteTrendingConfig.toDomain(): TrendingConfig {
     )
 }
 
+private fun RemoteAppearanceConfig.toDomain(): AppAppearanceConfig =
+    AppAppearanceConfig(
+        managed = managed == true,
+        backgroundImageUrl = backgroundImageUrl?.trim().orEmpty(),
+    )
+
 private fun defaultRuntimeConfig(): AppRuntimeConfig =
-    AppRuntimeConfig(defaultConsentConfig(), defaultFeatureAccess(), defaultTrendingConfig())
+    AppRuntimeConfig(
+        consent = defaultConsentConfig(),
+        features = defaultFeatureAccess(),
+        trending = defaultTrendingConfig(),
+    )
 
 fun defaultTrendingConfig(): TrendingConfig =
     TrendingConfig(

@@ -48,6 +48,7 @@ try {
         'accepted_consent_version' => app_config_accepted_consent_version($pdo, $deviceId, $publicDeviceCode),
         'features' => app_config_features($pdo),
         'trending' => app_config_trending($pdo),
+        'appearance' => app_config_appearance($pdo),
     ]);
 } catch (Throwable $exception) {
     error_log('SmartVision app config failed.');
@@ -143,6 +144,22 @@ function app_config_trending(PDO $pdo): array
     }
 
     return app_config_normalize_trending($decoded);
+}
+
+function app_config_appearance(PDO $pdo): array
+{
+    $json = (string) get_setting($pdo, 'app_personalization', '');
+    $decoded = json_decode($json, true);
+    if (!is_array($decoded)) {
+        $decoded = [];
+    }
+    $enabled = (bool) ($decoded['background_enabled'] ?? false);
+    $imageUrl = trim((string) ($decoded['background_image_url'] ?? ''));
+
+    return [
+        'managed' => true,
+        'background_image_url' => $enabled ? $imageUrl : '',
+    ];
 }
 
 function app_config_normalize_trending(array $config): array

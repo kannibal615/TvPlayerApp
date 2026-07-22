@@ -1,0 +1,25 @@
+{
+  "label": "home-initial",
+  "captured_at": "2026-07-22T10:28:32.254605+00:00",
+  "serial": "192.168.1.33:5555",
+  "package": "com.smartvision.svplayer",
+  "pid": "",
+  "keys": [],
+  "settle_ms": 700,
+  "capture_elapsed_ms": 6724.4,
+  "focus": [
+    "mCurrentFocus=Window{a0b141a u0 com.amazon.firetv.youtube/dev.cobalt.app.MainActivity}",
+    "mFocusedApp=AppWindowToken{2420dfa token=Token{905a825 ActivityRecord{5c9f41c u0 com.amazon.firetv.youtube/dev.cobalt.app.MainActivity t8890}}}",
+    "mResumedActivity: ActivityRecord{5c9f41c u0 com.amazon.firetv.youtube/dev.cobalt.app.MainActivity t8890}"
+  ],
+  "ui_dump_status": "UI hierchary dumped to: /data/local/tmp/codex-ui-6796.xml",
+  "files": [
+    "activity.txt",
+    "gfxinfo-framestats.txt",
+    "logcat.txt",
+    "screenshot.png",
+    "ui-dump-status.txt",
+    "ui.xml",
+    "window.txt"
+  ]
+}

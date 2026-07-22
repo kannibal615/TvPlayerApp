@@ -131,6 +131,7 @@ import com.smartvision.svplayer.domain.access.PremiumFeatureGateResult
 import com.smartvision.svplayer.ui.components.TvButton
 import com.smartvision.svplayer.ui.components.TvButtonVariant
 import com.smartvision.svplayer.ui.components.NumericPinDialog
+import com.smartvision.svplayer.ui.components.PremiumPreviewQr
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.components.TvDialogSurface
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
@@ -750,7 +751,11 @@ internal fun LicensePanel(
     embedded: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    val content: @Composable ColumnScope.() -> Unit = {
+    val premiumPurchaseUrl = remember(state.publicDeviceCode, state.deviceId) {
+        "${activationBaseUrl()}account/?source=tv&intent=license&" +
+            "${tvDeviceQuery(state.publicDeviceCode, state.deviceId)}&plan=year_1"
+    }
+    val details: @Composable ColumnScope.() -> Unit = {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             ProfileMetric("Statut", state.activationStatusLabel, Modifier.weight(1f), state.usageMode.color)
             ProfileMetric("Expiration", state.licenseExpiresAt.ifBlank { "Non disponible" }, Modifier.weight(1f))
@@ -759,6 +764,7 @@ internal fun LicensePanel(
         ProfileInfoRow("Type", state.usageMode.description)
         ProfileInfoRow("Code TV", state.tvCode)
         ProfileInfoRow("Identifiant appareil", state.deviceId.ifBlank { "Generation..." })
+        ProfileInfoRow("Publicites", if (state.usageMode == UsageMode.FreeAds) "Actives" else "Desactivees")
         ProfileInfoRow("Renouvellement", state.usageMode.renewalHint)
         Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
@@ -780,18 +786,6 @@ internal fun LicensePanel(
                     .weight(1f)
                     .height(46.dp),
             )
-        }
-        Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            TvButton(
-                text = "Saisir une licence",
-                onClick = onShowLicenseQr,
-                leadingIcon = Icons.Default.Verified,
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(44.dp),
-            )
             if (state.usageMode == UsageMode.FreeAds && privacyOptionsRequired) {
                 TvButton(
                     text = "Confidentialite pubs",
@@ -800,9 +794,30 @@ internal fun LicensePanel(
                     variant = TvButtonVariant.Secondary,
                     modifier = Modifier
                         .weight(1f)
-                        .height(44.dp),
+                        .height(46.dp),
                 )
             }
+        }
+    }
+    val content: @Composable ColumnScope.() -> Unit = {
+        if (embedded) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(modifier = Modifier.weight(1f)) { details() }
+                PremiumPreviewQr(
+                    purchaseUrl = premiumPurchaseUrl,
+                    tvCode = state.tvCode,
+                    title = strings.premiumPurchaseTitle,
+                    subtitle = strings.premiumPurchaseSubtitle,
+                    codeLabel = "TV CODE :",
+                    modifier = Modifier.width(310.dp),
+                )
+            }
+        } else {
+            details()
         }
     }
     if (embedded) {

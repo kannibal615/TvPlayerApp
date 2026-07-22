@@ -42,6 +42,7 @@ class HomePreviewController(context: Context) {
     private var audioFadeJob: Job? = null
     private var segmentJob: Job? = null
     private var activeUrlFingerprint: Int? = null
+    private var attachedPlayerView: PlayerView? = null
     private val player = ExoPlayer.Builder(appContext).build().apply {
         volume = 0f
         repeatMode = Player.REPEAT_MODE_OFF
@@ -120,6 +121,8 @@ class HomePreviewController(context: Context) {
         player.playWhenReady = false
         player.stop()
         player.clearMediaItems()
+        attachedPlayerView?.player = null
+        attachedPlayerView = null
     }
 
     @MainThread
@@ -130,8 +133,23 @@ class HomePreviewController(context: Context) {
     }
 
     @MainThread
-    fun playerFor(previewId: String): Player? =
-        player.takeIf { _activePreviewId.value == previewId }
+    fun attach(previewId: String, view: PlayerView) {
+        if (_activePreviewId.value != previewId) {
+            if (view.player === player) view.player = null
+            return
+        }
+        if (attachedPlayerView === view && view.player === player) return
+        attachedPlayerView?.player = null
+        view.player = player
+        attachedPlayerView = view
+    }
+
+    @MainThread
+    fun detach(view: PlayerView) {
+        if (attachedPlayerView !== view) return
+        view.player = null
+        attachedPlayerView = null
+    }
 
     private fun startAudioFade() {
         audioFadeJob?.cancel()
@@ -202,11 +220,10 @@ fun HomePreviewSurface(
     if (activePreviewId != previewId) return
     AndroidView(
         factory = { context ->
-            (LayoutInflater.from(context).inflate(R.layout.home_preview_player_view, null, false) as PlayerView).apply {
-                player = controller.playerFor(previewId)
-            }
+            LayoutInflater.from(context).inflate(R.layout.home_preview_player_view, null, false) as PlayerView
         },
-        update = { view -> view.player = controller.playerFor(previewId) },
+        update = { view -> controller.attach(previewId, view) },
+        onRelease = controller::detach,
         // SurfaceView alpha transitions are unreliable on several Fire TV chipsets:
         // decoding succeeds but the surface can remain transparent after first frame.
         // Poster/overlay visibility is still driven by firstFramePreviewId in the card.

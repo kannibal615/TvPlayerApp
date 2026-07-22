@@ -1,10 +1,7 @@
 package com.smartvision.svplayer.ui.settings
 
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.text.format.DateFormat
@@ -71,7 +68,6 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -99,7 +95,6 @@ import com.smartvision.svplayer.ui.i18n.smartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
-import com.smartvision.svplayer.ui.theme.appBackgroundModel
 import com.smartvision.svplayer.ui.theme.appScreenBackground
 import com.smartvision.svplayer.ui.update.AppUpdateUiState
 import java.util.UUID
@@ -111,7 +106,6 @@ import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.ui.profile.ProfileViewModel
 import com.smartvision.svplayer.ui.profile.LicensePanel
 import com.smartvision.svplayer.ui.profile.SmartVisionQrDialog
-import coil.compose.AsyncImage
 
 @Composable
 fun SettingsScreen(
@@ -224,7 +218,6 @@ fun SettingsScreen(
             onSetFocusActiveColor = { value -> scope.launch { container.settingsRepository.setFocusActiveColor(value) } },
             onSetFocusParentColor = { value -> scope.launch { container.settingsRepository.setFocusParentColor(value) } },
             onSetLoadingColor = { value -> scope.launch { container.settingsRepository.setLoadingColor(value) } },
-            onSetAppBackground = { type, value -> scope.launch { container.settingsRepository.setAppBackground(type, value) } },
             onSetVideoRatio = { value -> scope.launch { container.settingsRepository.setVideoRatio(value) } },
             onSetAnimations = { value -> scope.launch { container.settingsRepository.setAnimationsEnabled(value) } },
             onSetBufferMode = { value -> scope.launch { container.settingsRepository.setBufferMode(value) } },
@@ -301,7 +294,6 @@ private fun SettingsMenuLayout(
     onSetFocusActiveColor: (String) -> Unit,
     onSetFocusParentColor: (String) -> Unit,
     onSetLoadingColor: (String) -> Unit,
-    onSetAppBackground: (String, String) -> Unit,
     onSetVideoRatio: (String) -> Unit,
     onSetAnimations: (Boolean) -> Unit,
     onSetBufferMode: (String) -> Unit,
@@ -599,13 +591,6 @@ private fun SettingsMenuLayout(
                         FocusStatePreview(strings = strings)
                     }
                 }
-                SettingsSection.Background -> {
-                    ApplicationBackgroundContent(
-                        settings = settings,
-                        strings = strings,
-                        onSetAppBackground = onSetAppBackground,
-                    )
-                }
                 SettingsSection.Updates -> {
                     TvSectionCard(strings.installedVersion, Icons.Default.Info, Modifier.fillMaxWidth()) {
                         SettingsInfoRow(strings.installedVersion, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
@@ -658,114 +643,6 @@ private fun SettingsMenuLayout(
     }
 }
 
-@Composable
-private fun ApplicationBackgroundContent(
-    settings: PlayerSettings,
-    strings: SmartVisionStrings,
-    onSetAppBackground: (String, String) -> Unit,
-) {
-    val context = LocalContext.current
-    val localImageRequester = remember { FocusRequester() }
-    val urlRequester = remember { FocusRequester() }
-    val applyRequester = remember { FocusRequester() }
-    var urlValue by remember(settings.appBackgroundType, settings.appBackgroundValue) {
-        mutableStateOf(settings.appBackgroundValue.takeIf { settings.appBackgroundType == "Url" }.orEmpty())
-    }
-    var invalidUrl by remember { mutableStateOf(false) }
-    val localImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            runCatching {
-                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            onSetAppBackground("Local", uri.toString())
-        }
-    }
-    val model = appBackgroundModel(settings.appBackgroundType, settings.appBackgroundValue)
-
-    TvSectionCard(strings.appBackgroundPreview, Icons.Default.Info, Modifier.fillMaxWidth()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(190.dp)
-                .background(
-                    Brush.radialGradient(
-                        listOf(Color(0xFF0A2444), SmartVisionColors.Background, Color(0xFF01040C)),
-                    ),
-                    RoundedCornerShape(8.dp),
-                )
-                .clip(RoundedCornerShape(8.dp)),
-        ) {
-            if (model != null) {
-                AsyncImage(
-                    model = model,
-                    contentDescription = strings.appBackgroundPreview,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-                Box(Modifier.fillMaxSize().background(Color(0xFF010714).copy(alpha = 0.52f)))
-            }
-        }
-    }
-    Spacer(Modifier.height(10.dp))
-    TvSectionCard(strings.appBackgroundPresets, Icons.Default.Settings, Modifier.fillMaxWidth()) {
-        SettingsChoice(
-            label = strings.appBackgroundPresets,
-            values = listOf(
-                SettingsOption("Neon", strings.appBackgroundNeon),
-                SettingsOption("Cinema", strings.appBackgroundCinema),
-                SettingsOption("Aurora", strings.appBackgroundAurora),
-            ),
-            selected = settings.appBackgroundValue.takeIf { settings.appBackgroundType == "Preset" }.orEmpty(),
-            onSelected = { onSetAppBackground("Preset", it) },
-            columns = 3,
-        )
-        Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            TvButton(
-                text = strings.appBackgroundLocal,
-                onClick = { localImageLauncher.launch(arrayOf("image/*")) },
-                focusRequester = localImageRequester,
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier.weight(1f).height(44.dp),
-            )
-            TvButton(
-                text = strings.appBackgroundReset,
-                onClick = { onSetAppBackground("Default", "") },
-                leadingIcon = Icons.Default.Refresh,
-                variant = TvButtonVariant.Secondary,
-                modifier = Modifier.weight(0.55f).height(44.dp),
-            )
-        }
-        Spacer(Modifier.height(10.dp))
-        SettingsTextField(
-            label = strings.appBackgroundUrl,
-            value = urlValue,
-            onValueChange = {
-                urlValue = it
-                invalidUrl = false
-            },
-            focusRequester = urlRequester,
-            previousFocusRequester = localImageRequester,
-            nextFocusRequester = applyRequester,
-        )
-        if (invalidUrl) {
-            Spacer(Modifier.height(5.dp))
-            Text(strings.appBackgroundUrlHint, color = SmartVisionColors.Error, style = SmartVisionType.Caption)
-        }
-        Spacer(Modifier.height(8.dp))
-        TvButton(
-            text = strings.appBackgroundApply,
-            onClick = {
-                val valid = urlValue.startsWith("https://", true) || urlValue.startsWith("http://", true)
-                invalidUrl = !valid
-                if (valid) onSetAppBackground("Url", urlValue)
-            },
-            focusRequester = applyRequester,
-            modifier = Modifier.fillMaxWidth().height(44.dp),
-        )
-    }
-}
-
 private enum class SettingsSection(
     val icon: ImageVector,
 ) {
@@ -773,7 +650,6 @@ private enum class SettingsSection(
     Preferences(Icons.Default.Settings),
     Tmdb(Icons.Default.Info),
     Personalization(Icons.Default.Settings),
-    Background(Icons.Default.Settings),
     Updates(Icons.Default.Refresh),
     Data(Icons.Default.Delete),
 }
@@ -783,7 +659,6 @@ private fun SettingsSection.label(strings: SmartVisionStrings): String = when (t
     SettingsSection.Preferences -> strings.generalPreferences
     SettingsSection.Tmdb -> strings.tmdbAttribution
     SettingsSection.Personalization -> strings.personalization
-    SettingsSection.Background -> strings.appBackground
     SettingsSection.Updates -> strings.updates
     SettingsSection.Data -> strings.localData
 }

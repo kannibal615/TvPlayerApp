@@ -119,7 +119,9 @@ class HomeViewModel(
     private val trendingSeries = MutableStateFlow(
         ScopedHomeItems(initialToken, cachedTrending?.series.orEmpty()),
     )
-    private val slides = MutableStateFlow(homeSlidesRepository.getCachedSlides().orEmpty())
+    // The admin source is authoritative. A persisted image must not briefly
+    // reappear after all Home slides have been removed remotely.
+    private val slides = MutableStateFlow<List<HomeSlide>>(emptyList())
     private val continueWatchingLoading = MutableStateFlow(cachedContinueWatching.isEmpty())
     private val trendingLoading = MutableStateFlow(cachedTrending == null)
     private val loadGate = MutableStateFlow(
@@ -473,6 +475,7 @@ class HomeViewModel(
         viewModelScope.launch {
             // PERF_DIAG: tells whether Home uses cached slides or waits for network refresh.
             val startedAt = SystemClock.elapsedRealtime()
+            if (forceRefresh) slides.value = emptyList()
             val cached = homeSlidesRepository.getCachedSlides()
             if (!forceRefresh && !cached.isNullOrEmpty()) {
                 slides.value = cached

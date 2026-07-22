@@ -497,7 +497,7 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.refreshSlides()
+        viewModel.refreshSlides(forceRefresh = true)
     }
 
     LaunchedEffect(

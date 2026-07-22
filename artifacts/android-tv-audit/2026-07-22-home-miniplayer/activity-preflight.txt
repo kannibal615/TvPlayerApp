@@ -1,0 +1,192 @@
+ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
+Display #0 (activities from top to bottom):
+
+  Stack #1: type=standard mode=fullscreen
+  isSleeping=false
+  mBounds=Rect(0, 0 - 0, 0)
+    Task id #8890
+    mBounds=Rect(0, 0 - 0, 0)
+    mMinWidth=-1
+    mMinHeight=-1
+    mLastNonFullscreenBounds=null
+    * TaskRecord{83f4ef0 #8890 A=10211:com.amazon.firetv.youtube U=0 StackId=1 sz=1}
+      userId=0 effectiveUid=u0a211 mCallingUid=1000 mUserSetupComplete=true mCallingPackage=android
+      affinity=10211:com.amazon.firetv.youtube
+      intent={act=android.intent.action.MAIN cat=[android.intent.category.LEANBACK_LAUNCHER] flg=0x10000000 pkg=com.amazon.firetv.youtube cmp=com.amazon.firetv.youtube/dev.cobalt.app.MainActivity}
+      realActivity=com.amazon.firetv.youtube/dev.cobalt.app.MainActivity
+      autoRemoveRecents=false isPersistable=true numFullscreen=1 activityType=1
+      rootWasReset=false mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE
+      Activities=[ActivityRecord{5c9f41c u0 com.amazon.firetv.youtube/dev.cobalt.app.MainActivity t8890}]
+      askedCompatMode=false inRecents=true isAvailable=true
+      mRootProcess=ProcessRecord{494c37 5320:com.amazon.firetv.youtube/u0a211}
+      stackId=1
+      hasBeenVisible=true mResizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION mSupportsPictureInPicture=false isResizeable=true lastActiveTime=1021361 (inactive for 0s)
+      * Hist #0: ActivityRecord{5c9f41c u0 com.amazon.firetv.youtube/dev.cobalt.app.MainActivity t8890}
+          packageName=com.amazon.firetv.youtube processName=com.amazon.firetv.youtube
+          launchedFromUid=1000 launchedFromPackage=android userId=0
+          app=ProcessRecord{494c37 5320:com.amazon.firetv.youtube/u0a211}
+          Intent { act=android.intent.action.MAIN cat=[android.intent.category.LEANBACK_LAUNCHER] flg=0x10000000 pkg=com.amazon.firetv.youtube cmp=com.amazon.firetv.youtube/dev.cobalt.app.MainActivity (has extras) }
+          frontOfTask=true task=TaskRecord{83f4ef0 #8890 A=10211:com.amazon.firetv.youtube U=0 StackId=1 sz=1}
+          taskAffinity=10211:com.amazon.firetv.youtube
+          realActivity=com.amazon.firetv.youtube/dev.cobalt.app.MainActivity
+          baseDir=/data/app/com.amazon.firetv.youtube-tqYn1cZauA2tqH8P1tPSQw==/base.apk
+          dataDir=/data/user/0/com.amazon.firetv.youtube
+          stateNotNeeded=false componentSpecified=true mActivityType=standard
+          compat={320dpi always-compat} labelRes=0x0 icon=0x7f0d0000 theme=0x7f1000a1
+          mLastReportedConfigurations:
+           mGlobalConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=undefined} s.5}
+           mOverrideConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=standard} s.5}
+          CurrentConfiguration={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=standard} s.5}
+          taskDescription: label="null" icon=null iconResource=0 iconFilename=null primaryColor=ff000000
+           backgroundColor=ff303030
+           statusBarColor=ff000000
+           navigationBarColor=ff000000
+          launchFailed=false launchCount=0 lastLaunchTime=-15m35s132ms
+          haveState=false icicle=null
+          state=RESUMED stopped=false delayedResume=false finishing=false
+          keysPaused=false inHistory=true visible=true sleeping=false idle=true mStartingWindowState=STARTING_WINDOW_REMOVED
+          fullscreen=true noDisplay=false immersive=false launchMode=2
+          frozenBeforeDestroy=false forceNewConfig=false
+          mActivityType=standard
+          waitingVisible=false nowVisible=true lastVisibleTime=-14m6s505ms
+          connections=[]
+          resizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION
+          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false
+
+    Running activities (most recent first):
+      TaskRecord{83f4ef0 #8890 A=10211:com.amazon.firetv.youtube U=0 StackId=1 sz=1}
+        Run #0: ActivityRecord{5c9f41c u0 com.amazon.firetv.youtube/dev.cobalt.app.MainActivity t8890}
+
+    mResumedActivity: ActivityRecord{5c9f41c u0 com.amazon.firetv.youtube/dev.cobalt.app.MainActivity t8890}
+    mLastPausedActivity: ActivityRecord{5c9f41c u0 com.amazon.firetv.youtube/dev.cobalt.app.MainActivity t8890}
+
+  Stack #0: type=home mode=fullscreen
+  isSleeping=false
+  mBounds=Rect(0, 0 - 0, 0)
+
+    Task id #8889
+    mBounds=Rect(0, 0 - 0, 0)
+    mMinWidth=-1
+    mMinHeight=-1
+    mLastNonFullscreenBounds=null
+    * TaskRecord{aa1ec69 #8889 A=10027:com.amazon.tv.launcher.home U=0 StackId=0 sz=1}
+      userId=0 effectiveUid=u0a27 mCallingUid=u0a135 mUserSetupComplete=true mCallingPackage=com.amazon.tv.settings.v2
+      affinity=10027:com.amazon.tv.launcher.home
+      intent={act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x14000000 cmp=com.amazon.tv.launcher/.ui.HomeActivity_vNext}
+      realActivity=com.amazon.tv.launcher/.ui.HomeActivity_vNext
+      autoRemoveRecents=false isPersistable=true numFullscreen=1 activityType=2
+      rootWasReset=false mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE
+      Activities=[ActivityRecord{5f61879 u0 com.amazon.tv.launcher/.ui.HomeActivity_vNext t8889}]
+      askedCompatMode=false inRecents=true isAvailable=true
+      mRootProcess=ProcessRecord{5c3fac0 1758:com.amazon.tv.launcher/u0a27}
+      stackId=0
+      hasBeenVisible=true mResizeMode=RESIZE_MODE_UNRESIZEABLE mSupportsPictureInPicture=false isResizeable=false lastActiveTime=86845 (inactive for 935s)
+      * Hist #0: ActivityRecord{5f61879 u0 com.amazon.tv.launcher/.ui.HomeActivity_vNext t8889}
+          packageName=com.amazon.tv.launcher processName=com.amazon.tv.launcher
+          launchedFromUid=10135 launchedFromPackage=com.amazon.tv.settings.v2 userId=0
+          app=ProcessRecord{5c3fac0 1758:com.amazon.tv.launcher/u0a27}
+          Intent { act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x14000000 cmp=com.amazon.tv.launcher/.ui.HomeActivity_vNext }
+          frontOfTask=true task=TaskRecord{aa1ec69 #8889 A=10027:com.amazon.tv.launcher.home U=0 StackId=0 sz=1}
+          taskAffinity=10027:com.amazon.tv.launcher.home
+          realActivity=com.amazon.tv.launcher/.ui.HomeActivity_vNext
+          baseDir=/system/priv-app/com.amazon.tv.launcher/com.amazon.tv.launcher.apk
+          dataDir=/data/user/0/com.amazon.tv.launcher
+          stateNotNeeded=false componentSpecified=false mActivityType=home
+          compat={320dpi always-compat} labelRes=0x7f1102a6 icon=0x7f0801ae theme=0x7f1201fb
+          mLastReportedConfigurations:
+           mGlobalConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=undefined} s.5}
+           mOverrideConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=home} s.5}
+          CurrentConfiguration={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=home} s.5}
+          OverrideConfiguration={0.0 ?mcc?mnc ?localeList ?layoutDir ?swdp ?wdp ?hdp ?density ?lsize ?long ?ldr ?wideColorGamut ?orien ?uimode ?night ?touch ?keyb/?/? ?nav/? winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=null mWindowingMode=undefined mActivityType=home}}
+          taskDescription: label="null" icon=null iconResource=0 iconFilename=null primaryColor=ff455a64
+           backgroundColor=ff303030
+           statusBarColor=ff000000
+           navigationBarColor=ff000000
+          launchFailed=false launchCount=0 lastLaunchTime=-16m35s946ms
+          haveState=true icicle=Bundle[mParcelledData.dataSize=2004]
+          state=STOPPED stopped=true delayedResume=false finishing=false
+          keysPaused=false inHistory=true visible=false sleeping=false idle=true mStartingWindowState=STARTING_WINDOW_NOT_SHOWN
+          fullscreen=true noDisplay=false immersive=false launchMode=2
+          frozenBeforeDestroy=false forceNewConfig=false
+          mActivityType=home
+          waitingVisible=false nowVisible=false lastVisibleTime=-15m52s688ms
+          resizeMode=RESIZE_MODE_UNRESIZEABLE
+          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false
+
+    Running activities (most recent first):
+      TaskRecord{aa1ec69 #8889 A=10027:com.amazon.tv.launcher.home U=0 StackId=0 sz=1}
+        Run #0: ActivityRecord{5f61879 u0 com.amazon.tv.launcher/.ui.HomeActivity_vNext t8889}
+
+    mLastPausedActivity: ActivityRecord{5f61879 u0 com.amazon.tv.launcher/.ui.HomeActivity_vNext t8889}
+
+  Stack #2: type=standard mode=fullscreen
+  isSleeping=false
+  mBounds=Rect(0, 0 - 0, 0)
+
+    Task id #8891
+    mBounds=Rect(0, 0 - 0, 0)
+    mMinWidth=-1
+    mMinHeight=-1
+    mLastNonFullscreenBounds=null
+    * TaskRecord{f2fd6ee #8891 A=10198:com.nst.smartersplayer U=0 StackId=2 sz=1}
+      userId=0 effectiveUid=u0a198 mCallingUid=u0a198 mUserSetupComplete=true mCallingPackage=com.nst.smartersplayer
+      affinity=10198:com.nst.smartersplayer
+      intent={flg=0x10000000 cmp=com.nst.smartersplayer/.view.activity.SplashActivity}
+      realActivity=com.nst.smartersplayer/.view.activity.SplashActivity
+      autoRemoveRecents=false isPersistable=true numFullscreen=1 activityType=1
+      rootWasReset=false mNeverRelinquishIdentity=true mReuseTask=false mLockTaskAuth=LOCK_TASK_AUTH_PINNABLE
+      Activities=[ActivityRecord{4f4537c u0 com.nst.smartersplayer/.view.activity.RoutingActivity t8891}]
+      askedCompatMode=false inRecents=true isAvailable=true
+      stackId=2
+      hasBeenVisible=true mResizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION mSupportsPictureInPicture=false isResizeable=true lastActiveTime=68128 (inactive for 954s)
+      * Hist #0: ActivityRecord{4f4537c u0 com.nst.smartersplayer/.view.activity.RoutingActivity t8891}
+          packageName=com.nst.smartersplayer processName=com.nst.smartersplayer
+          launchedFromUid=10198 launchedFromPackage=com.nst.smartersplayer userId=0
+          app=null
+          Intent { cmp=com.nst.smartersplayer/.view.activity.RoutingActivity }
+          frontOfTask=true task=TaskRecord{f2fd6ee #8891 A=10198:com.nst.smartersplayer U=0 StackId=2 sz=1}
+          taskAffinity=10198:com.nst.smartersplayer
+          realActivity=com.nst.smartersplayer/.view.activity.RoutingActivity
+          baseDir=/data/app/com.nst.smartersplayer-NBSQlDL-nBXdfy73jaoe7g==/base.apk
+          dataDir=/data/user/0/com.nst.smartersplayer
+          splitDir=[/data/app/com.nst.smartersplayer-NBSQlDL-nBXdfy73jaoe7g==/split_config.armeabi_v7a.apk, /data/app/com.nst.smartersplayer-NBSQlDL-nBXdfy73jaoe7g==/split_config.xxxhdpi.apk]
+          stateNotNeeded=false componentSpecified=true mActivityType=standard
+          compat={320dpi always-compat} labelRes=0x7f1400a2 icon=0x7f100000 theme=0x7f15000d
+          mLastReportedConfigurations:
+           mGlobalConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=undefined} s.5}
+           mOverrideConfig={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=standard} s.5}
+          CurrentConfiguration={1.0 ?mcc?mnc [fr_FR] ldltr sw540dp w960dp h540dp 320dpi lrg long land television -touch -keyb/v/h dpad/v winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1080) mWindowingMode=fullscreen mActivityType=standard} s.5}
+          taskDescription: label="null" icon=null iconResource=0 iconFilename=null primaryColor=ffffffff
+           backgroundColor=fffafafa
+           statusBarColor=ffffffff
+           navigationBarColor=ff000000
+          launchFailed=false launchCount=0 lastLaunchTime=-15m59s84ms
+          haveState=true icicle=Bundle[mParcelledData.dataSize=3876]
+          state=DESTROYED stopped=true delayedResume=false finishing=false
+          keysPaused=false inHistory=true visible=false sleeping=false idle=true mStartingWindowState=STARTING_WINDOW_NOT_SHOWN
+          fullscreen=true noDisplay=false immersive=false launchMode=0
+          frozenBeforeDestroy=false forceNewConfig=false
+          mActivityType=standard
+          waitingVisible=false nowVisible=false lastVisibleTime=-15m58s242ms
+          resizeMode=RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION
+          mLastReportedMultiWindowMode=false mLastReportedPictureInPictureMode=false
+
+  ResumedActivity: ActivityRecord{5c9f41c u0 com.amazon.firetv.youtube/dev.cobalt.app.MainActivity t8890}
+  mFocusedStack=ActivityStack{4ef378f stackId=1 type=standard mode=fullscreen visible=true translucent=false, 1 tasks} mLastFocusedStack=ActivityStack{4ef378f stackId=1 type=standard mode=fullscreen visible=true translucent=false, 1 tasks}
+  mCurTaskIdForUser={0=8894}
+  mUserStackInFront={}
+  displayId=0 stacks=3
+   mHomeStack=ActivityStack{4626a1c stackId=0 type=home mode=fullscreen visible=false translucent=true, 1 tasks}
+  isHomeRecentsComponent=false  KeyguardController:
+    mKeyguardShowing=false
+    mAodShowing=false
+    mKeyguardGoingAway=false
+    mOccluded=false
+    mDismissingKeyguardActivity=null
+    mDismissalRequested=false
+    mVisibilityTransactionDepth=0
+  LockTaskController
+    mLockTaskModeState=NONE
+    mLockTaskModeTasks=
+    mLockTaskPackages (userId:packages)=
+      u0:[]

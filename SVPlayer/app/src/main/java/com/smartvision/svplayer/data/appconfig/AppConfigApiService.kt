@@ -25,6 +25,7 @@ data class AppConfigResponse(
     @SerializedName("accepted_consent_version") val acceptedConsentVersion: String? = null,
     @SerializedName("features") val features: List<RemoteFeatureAccess> = emptyList(),
     @SerializedName("trending") val trending: RemoteTrendingConfig? = null,
+    @SerializedName("appearance") val appearance: RemoteAppearanceConfig? = null,
     @SerializedName("error") val error: String? = null,
 )
 
@@ -64,4 +65,9 @@ data class RemoteTrendingConfig(
     @SerializedName("minimum_rating") val minimumRating: Float? = null,
     @SerializedName("candidate_limit") val candidateLimit: Int? = null,
     @SerializedName("section_limit") val sectionLimit: Int? = null,
+)
+
+data class RemoteAppearanceConfig(
+    @SerializedName("managed") val managed: Boolean? = null,
+    @SerializedName("background_image_url") val backgroundImageUrl: String? = null,
 )

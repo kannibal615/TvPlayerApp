@@ -92,6 +92,7 @@ $devices = $devicesResult['rows'];
 $codes = $codesResult['rows'];
 $auditLogs = admin_load_audit($pdo);
 $slides = admin_load_slides($pdo);
+$personalization = admin_load_personalization($pdo);
 $notifications = admin_load_notifications($pdo);
 $messages = admin_load_contact_messages($pdo, $query);
 $revenueSeries = admin_revenue_series($pdo);
@@ -130,6 +131,7 @@ render_admin_dashboard(
     $devicesResult['pagination'],
     $codesResult['pagination'],
     $slides,
+    $personalization,
     $notifications,
     $messages,
     $serverStats,
@@ -152,7 +154,10 @@ render_admin_dashboard(
 function admin_current_page(mixed $page): string
 {
     $page = is_string($page) ? $page : 'overview';
-    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'payments', 'emails', 'ads', 'segments', 'anomalies', 'features', 'devices', 'diagnostics', 'notifications', 'messages', 'slides', 'server', 'audit'], true)
+    if ($page === 'slides') {
+        return 'personalization';
+    }
+    return in_array($page, ['overview', 'orders', 'customers', 'licenses', 'payments', 'emails', 'ads', 'segments', 'anomalies', 'features', 'devices', 'diagnostics', 'notifications', 'messages', 'personalization', 'server', 'audit'], true)
         ? $page
         : 'overview';
 }
@@ -189,6 +194,7 @@ function handle_admin_action(PDO $pdo, string $action): void
         case 'purge_devices': admin_purge_devices($pdo); break;
         case 'save_slide': admin_save_slide($pdo); break;
         case 'delete_slide': admin_delete_slide($pdo); break;
+        case 'save_app_personalization': admin_save_personalization($pdo); break;
         case 'save_payment_packs': admin_save_payment_packs($pdo); break;
         case 'save_gammal_webhook_settings': admin_save_gammal_webhook_settings($pdo); break;
         case 'save_ads_settings': admin_save_ads_settings($pdo); break;
@@ -899,6 +905,27 @@ function admin_delete_slide(PDO $pdo): void
     }
     audit_admin_action($pdo, 'home_slide_deleted', 'home_slider_ads', (string) $slideId);
     set_admin_flash('success', 'Slide Home supprime.');
+}
+
+function admin_save_personalization(PDO $pdo): void
+{
+    $backgroundEnabled = (string) ($_POST['background_enabled'] ?? '0') === '1';
+    $backgroundImageUrl = smartvision_text_substr(trim((string) ($_POST['background_image_url'] ?? '')), 0, 500);
+    if ($backgroundEnabled && ($backgroundImageUrl === '' || filter_var($backgroundImageUrl, FILTER_VALIDATE_URL) === false)) {
+        throw new InvalidArgumentException('URL de fond invalide. Utilisez une URL http ou https complete.');
+    }
+    if ($backgroundImageUrl !== '' && !preg_match('/^https?:\/\//i', $backgroundImageUrl)) {
+        throw new InvalidArgumentException('L image de fond doit utiliser http ou https.');
+    }
+
+    admin_save_app_settings($pdo, [
+        'app_personalization' => json_encode([
+            'background_enabled' => $backgroundEnabled,
+            'background_image_url' => $backgroundImageUrl,
+        ], JSON_UNESCAPED_SLASHES),
+    ]);
+    audit_admin_action($pdo, 'app_personalization_saved', 'app_settings', 'app_personalization');
+    set_admin_flash('success', 'Personnalisation de l application enregistree.');
 }
 
 function admin_send_notification(PDO $pdo): void
@@ -1873,6 +1900,20 @@ function admin_load_slides(PDO $pdo): array
     )->fetchAll();
 }
 
+function admin_load_personalization(PDO $pdo): array
+{
+    $json = (string) get_setting($pdo, 'app_personalization', '');
+    $decoded = json_decode($json, true);
+    if (!is_array($decoded)) {
+        $decoded = [];
+    }
+
+    return [
+        'background_enabled' => (bool) ($decoded['background_enabled'] ?? false),
+        'background_image_url' => trim((string) ($decoded['background_image_url'] ?? '')),
+    ];
+}
+
 function admin_load_notifications(PDO $pdo): array
 {
     ensure_app_notifications_table($pdo);
@@ -2181,6 +2222,7 @@ function render_admin_dashboard(
     array $devicesPagination,
     array $codesPagination,
     array $slides,
+    array $personalization,
     array $notifications,
     array $messages,
     array $serverStats,
@@ -2214,7 +2256,7 @@ function render_admin_dashboard(
         'diagnostics' => ['Diagnostics', 'Synthese, AutoSync, anomalies app, serveur et journal.'],
         'notifications' => ['Notifications', 'Messages envoyes vers toutes les TV ou vers des cibles precises.'],
         'messages' => ['Messages clients', 'Demandes envoyees depuis le formulaire de contact.'],
-        'slides' => ['Slides Home', 'Emplacements publicitaires prives visibles sur la Home.'],
+        'personalization' => ['Personnalisation', 'Centralisation des images Hero et du fond global de l application.'],
     ];
     $heading = $pages[$page] ?? $pages['overview'];
     ?><!doctype html>
@@ -2663,11 +2705,14 @@ function render_admin_dashboard(
         </tbody></table></div></section>
         <?php endif; ?>
 
-        <?php if ($page === 'slides'): ?>
-        <section class="admin-panel" id="slides"><div class="admin-panel-heading"><div><h2>Slides Home</h2><p>Ajout, ordre et activation des images exposees par /api/home_slides.php. Si aucune image n'est active, le hero reste vide.</p></div></div><div class="slide-admin-grid">
-        <form method="post" class="slide-card"><input type="hidden" name="redirect_page" value="slides"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="save_slide"><input type="hidden" name="slide_id" value="0"><label>Ordre<input name="sort_order" type="number" min="0" max="9999" value="<?= count($slides) ?>"></label><label>Titre optionnel<input name="title" maxlength="120"></label><label>Sous-titre<textarea name="subtitle" maxlength="255"></textarea></label><label>Bouton<input name="button_label" maxlength="60"></label><label>Route bouton<input name="button_route" maxlength="120" value="home"></label><label>Image URL<input name="image_url" maxlength="500" required></label><label>Etat<select name="status"><option value="active">Actif</option><option value="disabled">Desactive</option></select></label><button class="admin-button primary" type="submit">Ajouter le slide</button></form>
-        <?php if ($slides === []): ?><p class="admin-empty">Aucun slide configure : le hero Home restera vide.</p><?php endif; ?>
-        <?php foreach ($slides as $slide): ?><form method="post" class="slide-card"><input type="hidden" name="redirect_page" value="slides"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="slide_id" value="<?= (int) $slide['id'] ?>"><label>Ordre<input name="sort_order" type="number" min="0" max="9999" value="<?= (int) $slide['sort_order'] ?>"></label><label>Titre optionnel<input name="title" maxlength="120" value="<?= admin_escape($slide['title'] ?: '') ?>"></label><label>Sous-titre<textarea name="subtitle" maxlength="255"><?= admin_escape($slide['subtitle'] ?: '') ?></textarea></label><label>Bouton<input name="button_label" maxlength="60" value="<?= admin_escape($slide['button_label'] ?: '') ?>"></label><label>Route bouton<input name="button_route" maxlength="120" value="<?= admin_escape($slide['button_route'] ?: '') ?>"></label><label>Image URL<input name="image_url" maxlength="500" value="<?= admin_escape($slide['image_url'] ?: '') ?>"></label><label>Etat<select name="status"><option value="active"<?= $slide['status'] === 'active' ? ' selected' : '' ?>>Actif</option><option value="disabled"<?= $slide['status'] === 'disabled' ? ' selected' : '' ?>>Desactive</option></select></label><button name="action" value="save_slide" class="admin-button primary" type="submit">Enregistrer</button><button name="action" value="delete_slide" class="admin-button danger" type="submit" onclick="return confirm('Supprimer ce slide ?')">Supprimer</button><small class="muted">MAJ <?= admin_escape($slide['updated_at'] ?: '-') ?></small></form><?php endforeach; ?>
+        <?php if ($page === 'personalization'): ?>
+        <section class="admin-panel" id="app-background"><div class="admin-panel-heading"><div><h2>Fond global de l application</h2><p>Cette image est la source centrale utilisee derriere les ecrans TV. Desactivez-la pour conserver le fond sombre natif sans image.</p></div></div>
+        <form method="post" class="slide-card"><input type="hidden" name="redirect_page" value="personalization"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="save_app_personalization"><label>Affichage<select name="background_enabled"><option value="1"<?= !empty($personalization['background_enabled']) ? ' selected' : '' ?>>Image active</option><option value="0"<?= empty($personalization['background_enabled']) ? ' selected' : '' ?>>Aucune image</option></select></label><label>Image de fond URL<input name="background_image_url" maxlength="500" type="url" placeholder="https://..." value="<?= admin_escape((string) ($personalization['background_image_url'] ?? '')) ?>"></label><button class="admin-button primary" type="submit">Enregistrer le fond</button></form>
+        </section>
+        <section class="admin-panel" id="slides"><div class="admin-panel-heading"><div><h2>Images Hero Home</h2><p>Ajoutez une ou plusieurs images et gerez leur ordre. Si aucune image n est active, l emplacement Hero reste vide dans l application.</p></div></div><div class="slide-admin-grid">
+        <form method="post" class="slide-card"><input type="hidden" name="redirect_page" value="personalization"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="save_slide"><input type="hidden" name="slide_id" value="0"><label>Ordre<input name="sort_order" type="number" min="0" max="9999" value="<?= count($slides) ?>"></label><label>Titre optionnel<input name="title" maxlength="120"></label><label>Sous-titre<textarea name="subtitle" maxlength="255"></textarea></label><label>Bouton<input name="button_label" maxlength="60"></label><label>Route bouton<input name="button_route" maxlength="120" value="home"></label><label>Image URL<input name="image_url" maxlength="500" type="url" required></label><label>Etat<select name="status"><option value="active">Actif</option><option value="disabled">Desactive</option></select></label><button class="admin-button primary" type="submit">Ajouter l image Hero</button></form>
+        <?php if ($slides === []): ?><p class="admin-empty">Aucune image Hero configuree : l emplacement restera vide.</p><?php endif; ?>
+        <?php foreach ($slides as $slide): ?><form method="post" class="slide-card"><input type="hidden" name="redirect_page" value="personalization"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="slide_id" value="<?= (int) $slide['id'] ?>"><label>Ordre<input name="sort_order" type="number" min="0" max="9999" value="<?= (int) $slide['sort_order'] ?>"></label><label>Titre optionnel<input name="title" maxlength="120" value="<?= admin_escape($slide['title'] ?: '') ?>"></label><label>Sous-titre<textarea name="subtitle" maxlength="255"><?= admin_escape($slide['subtitle'] ?: '') ?></textarea></label><label>Bouton<input name="button_label" maxlength="60" value="<?= admin_escape($slide['button_label'] ?: '') ?>"></label><label>Route bouton<input name="button_route" maxlength="120" value="<?= admin_escape($slide['button_route'] ?: '') ?>"></label><label>Image URL<input name="image_url" maxlength="500" type="url" value="<?= admin_escape($slide['image_url'] ?: '') ?>"></label><label>Etat<select name="status"><option value="active"<?= $slide['status'] === 'active' ? ' selected' : '' ?>>Actif</option><option value="disabled"<?= $slide['status'] === 'disabled' ? ' selected' : '' ?>>Desactive</option></select></label><button name="action" value="save_slide" class="admin-button primary" type="submit">Enregistrer</button><button name="action" value="delete_slide" class="admin-button danger" type="submit" onclick="return confirm('Supprimer cette image Hero ?')">Supprimer</button><small class="muted">MAJ <?= admin_escape($slide['updated_at'] ?: '-') ?></small></form><?php endforeach; ?>
         </div></section>
         <?php endif; ?>
 
