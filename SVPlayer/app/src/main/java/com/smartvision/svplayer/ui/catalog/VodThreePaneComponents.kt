@@ -107,6 +107,7 @@ import com.smartvision.svplayer.data.monetization.smartVisionMediaSourceFactory
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
+import com.smartvision.svplayer.ui.live.PremiumPreviewQr
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
 import com.smartvision.svplayer.ui.theme.SmartVisionDimensions
 import com.smartvision.svplayer.ui.theme.SmartVisionType
@@ -719,11 +720,12 @@ fun VodPreviewPanel(
                             .aspectRatio(16f / 9f),
                     )
                     Spacer(Modifier.height(10.dp))
-                    VodPremiumPreviewCard(
+                    PremiumPreviewQr(
                         purchaseUrl = premiumPurchaseUrl,
                         tvCode = tvCode,
                         title = premiumTitle,
                         subtitle = premiumSubtitle,
+                        codeLabel = "Code TV",
                         modifier = Modifier.weight(1f),
                     )
                 }

@@ -102,7 +102,8 @@ private const val MinimumCenteredLoadingMs = 3_000L
 private const val HomeRevealDurationMs = 620
 private const val InitialPickerRevealDurationMs = 140
 private const val PrecomposedPickerAlpha = 0.001f
-private val ProfileCardContentPadding = 14.dp
+private val ProfileCardHorizontalPadding = 14.dp
+private val ProfileCardVerticalPadding = 20.dp
 private val ProfileAvatarNameSpacing = 12.dp
 private val ProfileSelectionBorder = Color(0xFFF5F7F8)
 
@@ -289,7 +290,7 @@ fun ProfilePickerScreen(
             orderedProfiles.map(PlaylistProfile::name) + listOf(strings.addKidsProfile, strings.addProfile)
         }
         val nameWidthPx = with(density) {
-            (cardWidth - ProfileCardContentPadding * 2).roundToPx()
+            (cardWidth - ProfileCardHorizontalPadding * 2).roundToPx()
         }
         val profileNameHeight = remember(profileLabels, nameWidthPx, density.fontScale) {
             profileLabels.maxOfOrNull { label ->
@@ -304,7 +305,7 @@ fun ProfilePickerScreen(
                 }
             } ?: 21.dp
         }
-        val cardHeight = ProfileCardContentPadding * 2 +
+        val cardHeight = ProfileCardVerticalPadding * 2 +
             avatarSize + ProfileAvatarNameSpacing + profileNameHeight
         val itemGap = (screenWidth * 0.016f).coerceIn(15.dp, 28.dp)
         val pickerItemCount = orderedProfiles.size + 2
@@ -327,9 +328,9 @@ fun ProfilePickerScreen(
         }
 
         Image(
-            painter = painterResource(R.drawable.startup_neon_background),
+            painter = painterResource(R.drawable.startup_cinema_background),
             contentDescription = null,
-            contentScale = ContentScale.Crop,
+            contentScale = ContentScale.FillBounds,
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = revealAlpha },
@@ -390,6 +391,7 @@ fun ProfilePickerScreen(
                             false
                         } else {
                             when {
+                                event.key == Key.DirectionUp && !lastFocusKey.startsWith("edit:") -> true
                                 event.key == Key.DirectionRight && lastFocusKey == AddProfileFocusKey ->
                                     wrapFocusToFirstProfile()
                                 event.key == Key.DirectionLeft && lastFocusKey == firstProfileId ->
@@ -653,7 +655,10 @@ private fun ProfilePickerCard(
                 }
                 .clickable(enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick)
                 .focusable(enabled = enabled, interactionSource = interactionSource)
-                .padding(ProfileCardContentPadding),
+                .padding(
+                    horizontal = ProfileCardHorizontalPadding,
+                    vertical = ProfileCardVerticalPadding,
+                ),
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -734,7 +739,7 @@ private fun SelectedProfileTransition(
     val cardWidthPx = with(density) { cardWidth.toPx() }
     val cardHeightPx = with(density) { cardHeight.toPx() }
     val avatarSizePx = with(density) { avatarSize.toPx() }
-    val cardPaddingPx = with(density) { ProfileCardContentPadding.toPx() }
+    val cardPaddingPx = with(density) { ProfileCardVerticalPadding.toPx() }
     val startLeft = startBounds.left - rootBounds.left
     val startTop = startBounds.top - rootBounds.top
     val centeredLeft = (rootBounds.width - cardWidthPx) / 2f
@@ -797,7 +802,10 @@ private fun SelectedProfileTransition(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(ProfileCardContentPadding),
+                    .padding(
+                        horizontal = ProfileCardHorizontalPadding,
+                        vertical = ProfileCardVerticalPadding,
+                    ),
             ) {
                 Box(
                     modifier = Modifier
@@ -1038,7 +1046,10 @@ private fun AddProfileCard(
             }
             .clickable(enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick)
             .focusable(enabled = enabled, interactionSource = interactionSource)
-            .padding(ProfileCardContentPadding),
+            .padding(
+                horizontal = ProfileCardHorizontalPadding,
+                vertical = ProfileCardVerticalPadding,
+            ),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

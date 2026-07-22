@@ -994,9 +994,11 @@ private fun PreviewPanel(
                     )
                     Spacer(Modifier.height(10.dp))
                     PremiumPreviewQr(
-                        strings = strings,
                         purchaseUrl = premiumPurchaseUrl,
                         tvCode = tvCode,
+                        title = strings.liveTvPremiumModeTitle,
+                        subtitle = strings.liveTvPremiumModeSubtitle,
+                        codeLabel = strings.liveTvPremiumCodeLabel,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -1071,10 +1073,12 @@ private fun IdlePreviewSmartVisionPrompt(
 }
 
 @Composable
-private fun PremiumPreviewQr(
-    strings: SmartVisionStrings,
+fun PremiumPreviewQr(
     purchaseUrl: String,
     tvCode: String,
+    title: String,
+    subtitle: String,
+    codeLabel: String,
     modifier: Modifier = Modifier,
 ) {
     val bitmap = remember(purchaseUrl) { createLivePreviewQrBitmap(purchaseUrl, 384) }
@@ -1136,7 +1140,7 @@ private fun PremiumPreviewQr(
             )
         }
         Text(
-            text = strings.liveTvPremiumModeTitle,
+            text = title,
             color = gold,
             style = LiveTvPanelTitleStyle.copy(fontSize = 19.sp, lineHeight = 23.sp),
             fontWeight = FontWeight.Light,
@@ -1145,7 +1149,7 @@ private fun PremiumPreviewQr(
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            text = strings.liveTvPremiumModeSubtitle,
+            text = subtitle,
             color = SmartVisionColors.TextPrimary,
             style = LiveTvItemTitleStyle.copy(fontSize = 13.sp, lineHeight = 17.sp),
             fontWeight = FontWeight.Normal,
@@ -1186,7 +1190,7 @@ private fun PremiumPreviewQr(
                     ),
             )
             Text(
-                text = strings.liveTvPremiumCodeLabel,
+                text = codeLabel,
                 color = gold.copy(alpha = 0.94f),
                 style = LiveTvItemTitleStyle.copy(fontSize = 13.sp, lineHeight = 17.sp),
                 fontWeight = FontWeight.Medium,

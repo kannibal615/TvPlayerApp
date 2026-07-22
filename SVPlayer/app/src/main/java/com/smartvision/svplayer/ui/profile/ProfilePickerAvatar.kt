@@ -86,7 +86,7 @@ fun ProfileAvatarLoadingIndicator(
         val radius = minOf(loaderWidth, loaderHeight) * ProfileAvatarCornerFraction
         val perimeter = 2f * (loaderWidth + loaderHeight - 4f * radius) +
             2f * Math.PI.toFloat() * radius
-        val segment = perimeter * 0.45f
+        val segment = perimeter * 0.60f
         val gap = (perimeter - segment).coerceAtLeast(1f)
         drawRoundRect(
             color = color.copy(alpha = 0.16f),

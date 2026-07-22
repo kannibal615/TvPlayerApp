@@ -1,16 +1,13 @@
 package com.smartvision.svplayer.ui.startup
 
+import android.content.Context
+import android.graphics.drawable.Animatable
+import android.widget.ImageView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -22,19 +19,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.smartvision.svplayer.R
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 
@@ -70,7 +63,6 @@ fun StartupExperience(
             modifier = Modifier.fillMaxSize(),
         ) {
             StartupLoadingOverlay(
-                progress = progress,
                 status = progress.stage.label(strings),
                 modifier = Modifier.fillMaxSize(),
             )
@@ -80,7 +72,6 @@ fun StartupExperience(
 
 @Composable
 private fun StartupLoadingOverlay(
-    progress: StartupProgressSnapshot,
     status: String,
     modifier: Modifier = Modifier,
 ) {
@@ -94,7 +85,7 @@ private fun StartupLoadingOverlay(
                 .padding(top = progressTopOffset),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            StartupProgressRing(
+            DecorativeStartupSpinner(
                 modifier = Modifier
                     .width(progressSize)
                     .height(progressSize),
@@ -112,53 +103,28 @@ private fun StartupLoadingOverlay(
 }
 
 @Composable
-private fun StartupProgressRing(modifier: Modifier = Modifier) {
-    val transition = rememberInfiniteTransition(label = "startup-spinner")
-    val rotationDegrees by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 800, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "startup-spinner-rotation",
+private fun DecorativeStartupSpinner(modifier: Modifier = Modifier) {
+    AndroidView(
+        factory = ::StartupSpinnerView,
+        modifier = modifier,
     )
-    Canvas(
-        modifier = modifier.graphicsLayer {
-            // Status updates must not rebuild or restart this continuous loading motion.
-            rotationZ = rotationDegrees
-        },
-    ) {
-        val stroke = size.minDimension * 0.038f
-        val sweep = 92f
-        drawArc(
-            color = Color(0xFF17335F).copy(alpha = 0.70f),
-            startAngle = -90f,
-            sweepAngle = 360f,
-            useCenter = false,
-            style = Stroke(width = stroke, cap = StrokeCap.Round),
-        )
-        drawArc(
-            color = Color(0xFF159DFF).copy(alpha = 0.22f),
-            startAngle = -90f,
-            sweepAngle = sweep,
-            useCenter = false,
-            style = Stroke(width = stroke * 1.8f, cap = StrokeCap.Round),
-        )
-        drawArc(
-            brush = Brush.sweepGradient(
-                colors = listOf(
-                    Color(0xFF125BFF),
-                    Color(0xFF16D9FF),
-                    Color.White,
-                    Color(0xFF125BFF),
-                ),
-            ),
-            startAngle = -90f,
-            sweepAngle = sweep,
-            useCenter = false,
-            style = Stroke(width = stroke, cap = StrokeCap.Round),
-        )
+}
+
+private class StartupSpinnerView(context: Context) : ImageView(context) {
+    init {
+        setImageResource(R.drawable.startup_spinner_animated)
+        scaleType = ScaleType.FIT_CENTER
+        contentDescription = null
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        (drawable as? Animatable)?.start()
+    }
+
+    override fun onDetachedFromWindow() {
+        (drawable as? Animatable)?.stop()
+        super.onDetachedFromWindow()
     }
 }
 

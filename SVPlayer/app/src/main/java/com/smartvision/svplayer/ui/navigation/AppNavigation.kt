@@ -1336,9 +1336,13 @@ fun AppNavigation(
         ExitConfirmationDialog(
             strings = strings,
             onDismiss = { showExitConfirmation = false },
-            onChangeProfile = {
-                showExitConfirmation = false
-                openProfilePickerFromHome()
+            onChangeProfile = if (showProfilePicker) {
+                null
+            } else {
+                {
+                    showExitConfirmation = false
+                    openProfilePickerFromHome()
+                }
             },
             onExit = { activity?.finishAffinity() },
         )
