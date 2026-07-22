@@ -1000,7 +1000,7 @@ private fun PreviewPanel(
                         monetizationManager = monetizationManager,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(1.88f),
+                            .aspectRatio(MediaCatalogDimens.PreviewVideoAspectRatio),
                     )
                     Spacer(Modifier.height(10.dp))
                     PremiumPreviewQr(
@@ -1031,7 +1031,7 @@ private fun PreviewPanel(
                 onFocused = onPreviewFocused,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1.88f),
+                    .aspectRatio(MediaCatalogDimens.PreviewVideoAspectRatio),
             )
 
             Spacer(Modifier.height(6.dp))
@@ -2847,7 +2847,7 @@ private fun LiveTvSkeletonPreviewPanel(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1.88f)
+                .aspectRatio(MediaCatalogDimens.PreviewVideoAspectRatio)
                 .clip(RoundedCornerShape(5.dp))
                 .background(shimmerBrush),
         )

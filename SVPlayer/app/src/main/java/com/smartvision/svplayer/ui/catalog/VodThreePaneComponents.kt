@@ -591,7 +591,7 @@ private fun VodSkeletonPreviewPanel(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
+                    .aspectRatio(MediaCatalogDimens.PreviewVideoAspectRatio)
                     .clip(RoundedCornerShape(5.dp))
                     .background(shimmerBrush),
             )
@@ -718,7 +718,7 @@ fun VodPreviewPanel(
                         monetizationManager = monetizationManager,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(16f / 9f),
+                            .aspectRatio(MediaCatalogDimens.PreviewVideoAspectRatio),
                     )
                     Spacer(Modifier.height(10.dp))
                     PremiumPreviewQr(
@@ -754,7 +754,7 @@ fun VodPreviewPanel(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(16f / 9f)
+                        .aspectRatio(MediaCatalogDimens.PreviewVideoAspectRatio)
                         .onGloballyPositioned { onPreviewBoundsChanged(it.boundsInRoot()) }
                         .onPreviewKeyEvent { event ->
                             if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionUp) {

@@ -117,7 +117,7 @@ Depuis le 2026-07-12, le header Categories Live TV expose des filtres rapides ge
 
 Depuis le 2026-07-22, la barre de filtres pays Live TV est repliee par defaut. Le bouton `FilterList` du titre Categories l'affiche ou la masque directement sous le header des le premier OK; l'ancienne popup redondante est retiree. Le focus suit `header -> bouton filtre -> filtre actif -> categorie selectionnee`, puis le chemin inverse avec D-pad Haut. Appliquer un filtre garde la barre ouverte.
 
-Depuis le 2026-07-21, les filtres de categories/drapeaux restent propres a Live TV. Movies et Series n'affichent plus la barre, la popup ni l'etat de filtre pays et utilisent de nouveau leur pagination/recherche Room par `ALL` ou categorie unique.
+Depuis le 2026-07-21, les filtres de categories/drapeaux restent propres a Live TV. Movies et Series n'affichent plus la barre, la popup ni l'etat de filtre pays et utilisent de nouveau leur pagination/recherche Room par `ALL` ou categorie unique. Depuis le 2026-07-22, leur mini-player, son etat vide et son skeleton reutilisent le ratio de preview Live TV `1.88`, afin d'avoir exactement la meme hauteur a largeur de panneau egale.
 
 Dans Movies et Series, les categories contenant un mot delimite `NETFLIX`, `PRIME`, `APPLE` ou `DISNEY` sont projetees dans des dossiers virtuels non vides, epingles apres Historique dans cet ordre. Un seul dossier est ouvert a la fois; ses enfants conservent identifiant, libelle, compteur, ordre et chargement existants. Les parents n'ont pas de compteur, ne chargent aucun contenu et utilisent quatre logos PNG locaux generes, centres dans la ligne sous les noms de ressources stables `brand_*_placeholder`.
 

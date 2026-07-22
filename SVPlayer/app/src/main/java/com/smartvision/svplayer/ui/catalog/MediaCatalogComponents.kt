@@ -1118,4 +1118,5 @@ object MediaCatalogDimens {
     val MediaGridGap = 8.dp
     const val MediaGridColumns = 5
     const val MediaCardAspectRatio = 1.42f
+    const val PreviewVideoAspectRatio = 1.88f
 }

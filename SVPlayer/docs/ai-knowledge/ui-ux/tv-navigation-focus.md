@@ -34,6 +34,8 @@ Depuis le 2026-07-21, les titres Series de Home > Continue Watching restent forc
 
 Les recherches Live TV, Movies et Series sont repliees en bouton carre icon-only. OK les transforme en champ, demande le focus de saisie et ouvre le clavier; Back ou la perte de focus referme le champ. Le filtre adjacent reprend le bouton `FilterList` carre utilise par Categories Live TV.
 
+Les mini-players Preview Live TV, Movies et Series partagent le ratio `1.88`. Le rendu VOD actif, son etat vide et son skeleton conservent ainsi la meme hauteur que Live TV et laissent la meme place au contenu situe dessous.
+
 Depuis le 2026-07-21, les colonnes Categories Movies/Series n'affichent plus les filtres pays/drapeaux de Live TV. Les dossiers virtuels NETFLIX/PRIME/APPLE/DISNEY restent un accordeon exclusif: OK ouvre/replie sans charger la colonne centrale; Droite ouvre si necessaire puis focalise le premier sous-dossier. Droite sur un sous-dossier conserve le routage vers la colonne centrale. Si l'enfant selectionne est replie, son parent garde le style selectionne et le contenu central reste affiche.
 
 ## Profils Kids et dialogues
