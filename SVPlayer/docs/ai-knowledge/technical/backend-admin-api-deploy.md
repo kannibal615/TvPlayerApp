@@ -2,6 +2,15 @@
 
 Derniere mise a jour: 2026-07-20.
 
+## Personnalisation admin - 2026-07-22
+
+- L ancien menu `Slides Home` est regroupe dans `Admin > Personnalisation`.
+- Ce menu gere les images Hero multiples (`home_slider_ads`) et le fond global (`app_settings.app_personalization`).
+- `api/home_slides.php` reste la source des images Hero actives et retourne une liste vide si aucune image n est active.
+- `api/app_config.php` expose `appearance.managed` et `appearance.background_image_url`; Android applique cette source admin au-dessus de l ancienne preference locale.
+- Desactiver le fond ou laisser son URL vide impose le fond sombre natif, sans image.
+- L alias admin `?page=slides` est conserve et route vers `personalization`.
+
 ## 1. Objectif
 
 Documenter le backend PHP/MySQL, les endpoints publics, le panel admin, les flux compte/paiement/email et la procedure de deploiement cPanel.

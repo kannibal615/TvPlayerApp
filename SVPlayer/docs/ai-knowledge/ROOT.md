@@ -197,11 +197,13 @@ Lire les fichiers suivants si la demande concerne:
 - i18n
 - popup
 - consentement TV
+- inventaire et standardisation des dialogues
 
 Fichiers detailles:
 - `docs/ai-knowledge/ui-ux/tv-navigation-focus.md`
 - `docs/ai-knowledge/ui-ux/screens-home-profile-settings.md`
 - `docs/ai-knowledge/ui-ux/home-trending-premium-roadmap.md` si la demande touche les cards Tendances HOME, le mini-preview, le backdrop ou le cache preview.
+- `docs/ai-knowledge/ui-ux/dialog-inventory.md` si la demande touche les dialogues, popups, confirmations, QR, PIN ou leur uniformisation.
 
 Dependances:
 - Catalogue, synchro, playlist et lecteur

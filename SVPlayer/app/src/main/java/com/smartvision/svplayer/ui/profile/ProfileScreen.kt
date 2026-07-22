@@ -811,7 +811,7 @@ internal fun LicensePanel(
                     purchaseUrl = premiumPurchaseUrl,
                     tvCode = state.tvCode,
                     title = strings.premiumPurchaseTitle,
-                    subtitle = strings.premiumPurchaseSubtitle,
+                    subtitle = strings.premiumPreviewSubtitle,
                     codeLabel = "TV CODE :",
                     modifier = Modifier.width(310.dp),
                 )

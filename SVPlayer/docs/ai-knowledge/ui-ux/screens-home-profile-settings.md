@@ -2,6 +2,15 @@
 
 Derniere mise a jour: 2026-07-21.
 
+## Hero, mini-player et personnalisation admin - 2026-07-22
+
+- Les images Hero viennent exclusivement de `Admin > Personnalisation > Images Hero Home`. Plusieurs images actives defilent toutes les `5,5 s`; sans image active, le slot Hero conserve sa hauteur mais reste transparent et sans fallback drawable.
+- L entree Home force une relecture serveur des slides et vide d abord l etat affiche. Le cache disque ne peut donc plus maintenir une ancienne image apres suppression de toutes les images dans l admin.
+- Le mini-player Home conserve un seul ExoPlayer partage, mais le controleur possede maintenant explicitement une seule `PlayerView`: chaque nouvelle card detache l ancienne surface avant attachement, et la destruction d une ancienne vue ne peut plus retirer la surface de la card active.
+- Le fond d application est administre depuis le meme ecran `Admin > Personnalisation`. La configuration `appearance` de `api/app_config.php` prime sur l ancienne preference locale; une URL vide/desactivee impose le fond sombre natif sans image.
+- `Parametres > Licence SmartVision` retire le bouton duplique `Saisir une licence`, reorganise les informations statut/expiration/appareil/publicites et affiche directement le QR Premium avec le code TV.
+- La cartographie detaillee des surfaces modales est dans `docs/ai-knowledge/ui-ux/dialog-inventory.md`.
+
 ## Correctifs audit ecrans - 2026-07-21
 
 - YouTube conserve la liste, le scroll et la video source apres fermeture du player, sans recharger automatiquement Tendances.

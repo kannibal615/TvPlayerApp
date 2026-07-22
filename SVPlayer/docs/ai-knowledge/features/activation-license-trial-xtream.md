@@ -4,6 +4,13 @@ Depuis le 2026-07-17, la page publique Playlist peut cibler plusieurs profils ex
 
 Derniere mise a jour: 2026-07-10.
 
+## Ecran Licence Settings - 2026-07-22
+
+- `Parametres > Licence SmartVision` reutilise `LicensePanel` en mode embarque.
+- Le bouton secondaire `Saisir une licence` est supprime: l action principale Premium/Remove ads reste l unique entree actionnable vers achat/saisie de code.
+- Le panneau affiche statut, expiration, type, code TV, identifiant appareil, etat publicitaire et conseil de renouvellement.
+- Le QR Premium et le code TV sont visibles directement a droite du panneau; le dialogue Premium existant reste utilise quand l utilisateur valide l action principale.
+
 ## 1. Objectif
 
 Documenter le flux d'acces SmartVision: enregistrement device, activation, licence premium, essai gratuit, mode gratuit avec pubs et configuration Xtream.

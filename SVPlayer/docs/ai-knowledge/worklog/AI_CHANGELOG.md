@@ -1,5 +1,11 @@
 # AI Changelog
 
+- 2026-07-22: le controleur mini-player Home detache explicitement l ancienne `PlayerView` avant d attacher la surface active au player partage; la liberation d une ancienne card ne peut plus conserver ou retirer la mauvaise surface.
+
+- 2026-07-22: Home vide l etat Hero puis force `api/home_slides.php` a l entree. `Admin > Personnalisation` regroupe les images Hero multiples et le fond global expose par `api/app_config.php > appearance`; le choix local de fond est retire des Parametres TV.
+
+- 2026-07-22: Licence SmartVision retire `Saisir une licence`, enrichit statut/expiration/appareil/publicites et affiche le QR Premium/code TV directement. Ajout de `ui-ux/dialog-inventory.md` pour les dialogues actifs, dormants et leur future standardisation. Validation locale: `:app:compileReleaseKotlin` et syntaxes PHP reussis, sans test appareil/ADB.
+
 - 2026-07-22: correction de l'ecart de hauteur des mini-players Movies/Series: le lecteur actif, l'etat vide et le skeleton utilisent maintenant le ratio de preview Live TV `1.88` au lieu de `16/9`.
 
 - 2026-07-22: le bouton Filtre des Categories Live bascule maintenant la barre des le premier OK. Le guide de zapping conserve son etat entre les changements rapides de chaine, relance son delai sans flash et adopte un rendu plus petit a gauche: logo et nom uniquement, sans numeros ni cadres globaux/logo.
