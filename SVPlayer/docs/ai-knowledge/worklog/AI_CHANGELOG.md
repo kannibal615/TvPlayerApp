@@ -3262,3 +3262,13 @@ Fichiers code concernes:
 
 - Correction du recepteur Kotlin dans `withSpecialCategories` Live TV, Films et Series : les categories autorisees etaient bien lues depuis Room, mais `filterNot` etait appele dans `buildList` et reutilisait le builder deja compose des seuls dossiers speciaux.
 - Les groupes plateformes et le tri `ALL` retrouvent ainsi la liste complete de categories fournisseurs; la telemetrie conserve les compteurs de validation sur appareil.
+## 2026-07-22 - Header navigation 2D and Media relocation
+
+- Header tabs now use flat, labelled 2D cards with a unified filled-icon family; YouTube retains its original red icon.
+- The existing right action controls and shared focus style are preserved in the order Notifications, Profile, Settings.
+- Media was removed from the header and added to the Profile left menu between Synchronization and Help.
+## 2026-07-22 - Header compact alignment corrections
+
+- Central navigation cards now use the same `38 dp` visual height as the global header action buttons and wrap their icon plus label instead of using a fixed width.
+- Central icons match the unfocused global-action gray and YouTube retains its original red artwork; the active-route blue underline was removed.
+- The global action order is Notifications, Settings, Profile, with the existing shared focus behavior preserved.

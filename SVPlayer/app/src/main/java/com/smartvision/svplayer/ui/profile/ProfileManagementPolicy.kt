@@ -5,6 +5,7 @@ enum class ProfileAreaDestination {
     MANAGE,
     PARENTAL,
     SYNCHRONIZATION,
+    MEDIA,
     HELP,
 }
 
@@ -19,6 +20,7 @@ object ProfileManagementPolicy {
         ProfileAreaDestination.MANAGE,
         ProfileAreaDestination.PARENTAL,
         ProfileAreaDestination.SYNCHRONIZATION,
+        ProfileAreaDestination.MEDIA,
         ProfileAreaDestination.HELP,
     )
 

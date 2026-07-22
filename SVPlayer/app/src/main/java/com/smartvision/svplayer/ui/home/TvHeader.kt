@@ -1,12 +1,6 @@
 package com.smartvision.svplayer.ui.home
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDp
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -30,7 +24,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LiveTv
+import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -62,7 +60,6 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -152,7 +149,7 @@ fun TvHeader(
     }
     val lastControlRequester = when {
         kidsMode -> profileFocusRequester ?: internalLastFocusRequester
-        else -> settingsFocusRequester ?: internalLastFocusRequester
+        else -> profileFocusRequester ?: internalLastFocusRequester
     }
     Row(
         modifier = modifier.height(SmartVisionDimensions.HomeHeaderHeight),
@@ -182,8 +179,8 @@ fun TvHeader(
             notificationBadgeCount = notificationBadgeCount,
             licenseFocusRequester = licenseFocusRequester,
             notificationsFocusRequester = notificationsFocusRequester,
-            profileFocusRequester = if (kidsMode) lastControlRequester else profileFocusRequester,
-            settingsFocusRequester = if (!kidsMode) lastControlRequester else settingsFocusRequester,
+            profileFocusRequester = lastControlRequester,
+            settingsFocusRequester = settingsFocusRequester,
             activeProfile = activeProfile,
             kidsMode = kidsMode,
             showClock = playerSettings.showHeaderClock,
@@ -284,15 +281,6 @@ fun HeaderControls(
                 focusRequester = notificationsFocusRequester,
             )
         }
-        HeaderAvatarButton(
-            profile = activeProfile,
-            onClick = onProfile,
-            downFocusRequester = downFocusRequester,
-            onDown = onDown,
-            focusRequester = profileFocusRequester,
-            onRight = onWrapToStart.takeIf { kidsMode },
-            onBoundsChanged = onProfileAvatarBoundsChanged,
-        )
         if (!kidsMode) {
             HeaderIconButton(
                 icon = Icons.Default.Settings,
@@ -301,9 +289,17 @@ fun HeaderControls(
                 downFocusRequester = downFocusRequester,
                 onDown = onDown,
                 focusRequester = settingsFocusRequester,
-                onRight = onWrapToStart,
             )
         }
+        HeaderAvatarButton(
+            profile = activeProfile,
+            onClick = onProfile,
+            downFocusRequester = downFocusRequester,
+            onDown = onDown,
+            focusRequester = profileFocusRequester,
+            onRight = onWrapToStart,
+            onBoundsChanged = onProfileAvatarBoundsChanged,
+        )
         if (showClock) {
             HeaderDateTime(showSeconds = showSeconds)
         }
@@ -565,10 +561,9 @@ private fun SmartVisionLogo() {
     )
 }
 
-private val HeaderTabWidth = 58.dp
-private val HeaderTabSpacing = 12.dp
-private val HeaderTabIconSize = 34.dp
-private val HeaderFocusSurfaceSize = 40.dp
+private val HeaderTabSpacing = 6.dp
+private val HeaderTabIconSize = 20.dp
+private val HeaderTabVisualHeight = 38.dp
 
 @Composable
 fun HeaderTabButton(
@@ -583,159 +578,79 @@ fun HeaderTabButton(
     onLeft: (() -> Unit)? = null,
 ) {
     val focusState = rememberTvFocusState()
-    val isFocused = focusState.isFocused
     val interactionSource = remember { MutableInteractionSource() }
-    val animationsEnabled = LocalTvAnimationsEnabled.current
-    val focusStyle = LocalTvFocusStyle.current
-    val density = LocalDensity.current
-    val transition = updateTransition(
-        targetState = isFocused,
-        label = "headerMenuFocus",
-    )
-    val iconAlpha by transition.animateFloat(
-        transitionSpec = {
-            if (animationsEnabled) tween(if (targetState) 180 else 160) else snap()
-        },
-        label = "headerIconAlpha",
-    ) { focused ->
-        if (focused || active) 1f else 0.82f
-    }
-    val focusSurfaceAlpha by transition.animateFloat(
-        transitionSpec = {
-            if (animationsEnabled) tween(if (targetState) 180 else 150) else snap()
-        },
-        label = "headerFocusSurfaceAlpha",
-    ) { focused ->
-        if (focused) 1f else 0f
-    }
-    val labelAlpha by transition.animateFloat(
-        transitionSpec = {
-            if (animationsEnabled) tween(if (targetState) 180 else 140) else snap()
-        },
-        label = "headerMenuLabelAlpha",
-    ) { focused ->
-        if (focused) 1f else 0f
-    }
-    val labelOffset by transition.animateDp(
-        transitionSpec = {
-            if (animationsEnabled) tween(if (targetState) 180 else 140, easing = FastOutSlowInEasing) else snap()
-        },
-        label = "headerMenuLabelOffset",
-    ) { focused ->
-        if (focused || active) 0.dp else 6.dp
-    }
-    val labelOffsetPx = with(density) { labelOffset.toPx() }
     val requesterModifier = focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier
     val muted = tab.locked || tab.warning
+    val shape = RoundedCornerShape(10.dp)
 
     Box(
         modifier = modifier
             .height(height + if (tab.locked) 8.dp else 0.dp)
-            .width(HeaderTabWidth)
             .padding(top = if (tab.locked) 8.dp else 0.dp),
-        contentAlignment = Alignment.BottomCenter,
+        contentAlignment = Alignment.Center,
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .height(height)
-                .width(HeaderTabWidth),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        alpha = if (muted) 0.48f else 1f
-                    }
-                    .then(requesterModifier)
-                    .then(
-                        if (downFocusRequester != null) {
-                            Modifier.focusProperties { down = downFocusRequester }
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .onPreviewKeyEvent { event ->
-                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                        when {
-                            event.key == Key.DirectionDown && onDown != null -> {
-                                onDown()
-                                true
-                            }
-                            event.key == Key.DirectionLeft && onLeft != null -> {
-                                onLeft()
-                                true
-                            }
-                            else -> false
-                        }
-                    }
-                    .tvFocusTarget(
-                        state = focusState,
-                        cornerRadius = 10.dp,
-                    )
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        onClick = { onNavigate(tab.route) },
-                    )
-                    .focusable(interactionSource = interactionSource),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .offset(y = (-1).dp)
-                        .size(HeaderFocusSurfaceSize),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .graphicsLayer { alpha = focusSurfaceAlpha }
-                            .background(
-                                if (isFocused) focusStyle.background else focusStyle.activeBackground,
-                                RoundedCornerShape(10.dp),
-                            )
-                            .border(
-                                BorderStroke(
-                                    if (isFocused) focusStyle.borderWidth else 1.25.dp,
-                                    if (isFocused) focusStyle.accent else focusStyle.activeAccent,
-                                ),
-                                RoundedCornerShape(10.dp),
-                            ),
-                    )
-                    HeaderTabGlyph(
-                        tab = tab,
-                        iconAlpha = iconAlpha,
-                        modifier = Modifier.size(HeaderTabIconSize),
-                    )
-                }
-                Text(
-                    text = tab.label,
-                    color = SmartVisionColors.TextPrimary,
-                    fontSize = 9.sp,
-                    lineHeight = 9.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .width(HeaderTabWidth)
-                        .height(10.dp)
-                        .graphicsLayer {
-                            alpha = labelAlpha
-                            translationY = labelOffsetPx
-                        },
+                .height(HeaderTabVisualHeight)
+                .graphicsLayer { alpha = if (muted) 0.48f else 1f }
+                .then(requesterModifier)
+                .then(
+                    if (downFocusRequester != null) {
+                        Modifier.focusProperties { down = downFocusRequester }
+                    } else {
+                        Modifier
+                    },
                 )
-                if (active && !isFocused) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .width(18.dp)
-                            .height(2.dp)
-                            .background(focusStyle.activeAccent, RoundedCornerShape(50)),
-                    )
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when {
+                        event.key == Key.DirectionDown && onDown != null -> {
+                            onDown()
+                            true
+                        }
+                        event.key == Key.DirectionLeft && onLeft != null -> {
+                            onLeft()
+                            true
+                        }
+                        else -> false
+                    }
                 }
-            }
+                .tvFocusTarget(
+                    state = focusState,
+                    cornerRadius = 10.dp,
+                )
+                .clip(shape)
+                .background(if (focusState.isFocused) SmartVisionColors.SurfaceElevated else Color(0xB8121B2D))
+                .border(
+                    BorderStroke(
+                        if (focusState.isFocused) LocalTvFocusStyle.current.borderWidth else SmartVisionDimensions.PanelBorder,
+                        if (focusState.isFocused) LocalTvFocusStyle.current.accent else SmartVisionColors.Border,
+                    ),
+                    shape,
+                )
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = { onNavigate(tab.route) },
+                )
+                .focusable(interactionSource = interactionSource)
+                .padding(horizontal = 9.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            HeaderTabGlyph(
+                tab = tab,
+                focused = focusState.isFocused,
+                modifier = Modifier.size(HeaderTabIconSize),
+            )
+            Text(
+                text = tab.label,
+                color = SmartVisionColors.TextPrimary,
+                fontSize = 12.sp,
+                lineHeight = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
         }
         if (tab.warning) {
             Icon(
@@ -767,18 +682,40 @@ fun HeaderTabButton(
 @Composable
 private fun HeaderTabGlyph(
     tab: HomeHeaderTab,
-    iconAlpha: Float,
+    focused: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Icon(
-        painter = painterResource(tab.iconRes),
-        contentDescription = tab.label,
-        tint = when (tab.iconStyle) {
-            HeaderIconStyle.Monochrome -> Color.White.copy(alpha = iconAlpha)
-            HeaderIconStyle.OriginalColors -> Color.Unspecified
-        },
-        modifier = modifier,
-    )
+    if (tab.iconStyle == HeaderIconStyle.OriginalColors) {
+        Icon(
+            painter = painterResource(tab.iconRes),
+            contentDescription = tab.label,
+            tint = Color.Unspecified,
+            modifier = modifier,
+        )
+        return
+    }
+    val filledIcon = when (tab.route) {
+        "home" -> Icons.Default.Home
+        "live_tv" -> Icons.Default.LiveTv
+        "movies" -> Icons.Default.Movie
+        "series" -> Icons.Default.VideoLibrary
+        else -> null
+    }
+    if (filledIcon != null) {
+        Icon(
+            imageVector = filledIcon,
+            contentDescription = tab.label,
+            tint = if (focused) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+            modifier = modifier,
+        )
+    } else {
+        Icon(
+            painter = painterResource(tab.iconRes),
+            contentDescription = tab.label,
+            tint = if (focused) SmartVisionColors.TextPrimary else SmartVisionColors.TextSecondary,
+            modifier = modifier,
+        )
+    }
 }
 
 private data class HeaderDateTimeText(

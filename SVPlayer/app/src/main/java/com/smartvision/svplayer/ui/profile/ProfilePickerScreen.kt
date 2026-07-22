@@ -104,7 +104,7 @@ private const val InitialPickerRevealDurationMs = 140
 private const val PrecomposedPickerAlpha = 0.001f
 private val ProfileCardContentPadding = 14.dp
 private val ProfileAvatarNameSpacing = 12.dp
-private val ProfileSelectionBorder = Color(0xFFFFC857)
+private val ProfileSelectionBorder = Color(0xFFF5F7F8)
 
 @Composable
 fun ProfilePickerScreen(
@@ -682,7 +682,7 @@ private fun ProfilePickerCard(
                     if (selected) {
                         ProfileAvatarLoadingIndicator(
                             color = SmartVisionColors.CyanAccent,
-                            strokeWidth = 2.25.dp,
+                            strokeWidth = 3.25.dp,
                             modifier = Modifier.size(avatarSize),
                         )
                     }
@@ -789,7 +789,7 @@ private fun SelectedProfileTransition(
                         ),
                     )
                     .border(
-                        BorderStroke(2.5.dp, ProfileSelectionBorder),
+                        BorderStroke(1.5.dp, ProfileSelectionBorder),
                         shape,
                     ),
             )

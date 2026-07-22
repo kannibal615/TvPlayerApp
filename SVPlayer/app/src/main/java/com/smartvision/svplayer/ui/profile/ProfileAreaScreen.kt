@@ -236,6 +236,7 @@ internal fun ProfileAreaScreen(
                                     ProfileAreaDestination.PARENTAL -> {
                                         if (pinConfigured) showParentalPin = true else showParentalPinCreation = true
                                     }
+                                    ProfileAreaDestination.MEDIA -> onNavigate("media")
                                     else -> selectedDestination = destination
                                 }
                             },
@@ -248,7 +249,7 @@ internal fun ProfileAreaScreen(
                                     right = when (destination) {
                                         ProfileAreaDestination.INFO -> infoChangeRequester
                                         ProfileAreaDestination.MANAGE -> manageFirstCardRequester
-                                    ProfileAreaDestination.PARENTAL -> parentalFirstRequester
+                                        ProfileAreaDestination.PARENTAL -> parentalFirstRequester
                                         ProfileAreaDestination.SYNCHRONIZATION -> syncFirstRequester
                                         else -> FocusRequester.Default
                                     }
@@ -341,6 +342,7 @@ internal fun ProfileAreaScreen(
                         )
                     }
                 }
+                ProfileAreaDestination.MEDIA -> Unit
                 ProfileAreaDestination.HELP -> PlaceholderArea(
                     strings.help,
                     Icons.Default.HelpOutline,
@@ -907,6 +909,7 @@ private fun ProfileAreaDestination.label(strings: SmartVisionStrings): String = 
     ProfileAreaDestination.MANAGE -> strings.manageProfiles
     ProfileAreaDestination.PARENTAL -> strings.parentalControl
     ProfileAreaDestination.SYNCHRONIZATION -> strings.sync
+    ProfileAreaDestination.MEDIA -> strings.media
     ProfileAreaDestination.HELP -> strings.help
 }
 
@@ -915,6 +918,7 @@ private fun ProfileAreaDestination.icon(): ImageVector = when (this) {
     ProfileAreaDestination.MANAGE -> Icons.Default.Groups
     ProfileAreaDestination.PARENTAL -> Icons.Default.Security
     ProfileAreaDestination.SYNCHRONIZATION -> Icons.Default.CloudSync
+    ProfileAreaDestination.MEDIA -> Icons.Default.Movie
     ProfileAreaDestination.HELP -> Icons.Default.HelpOutline
 }
 

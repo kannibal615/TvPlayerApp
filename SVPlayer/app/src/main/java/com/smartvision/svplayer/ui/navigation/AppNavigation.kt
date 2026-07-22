@@ -1661,7 +1661,6 @@ private fun headerTabs(strings: SmartVisionStrings) = listOf(
     HomeHeaderTab(strings.liveTv, AppRoute.Live.route, R.drawable.ic_header_live_tv),
     HomeHeaderTab(strings.movies, AppRoute.Movies.route, R.drawable.ic_header_movies),
     HomeHeaderTab(strings.series, AppRoute.Series.route, R.drawable.ic_header_series),
-    HomeHeaderTab(strings.media, AppRoute.Media.route, R.drawable.ic_header_media),
     HomeHeaderTab(
         label = "YouTube",
         route = AppRoute.Youtube.route,
