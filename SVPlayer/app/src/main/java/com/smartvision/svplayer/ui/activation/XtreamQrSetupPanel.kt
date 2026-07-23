@@ -272,6 +272,13 @@ fun XtreamQrSetupPanel(
                         }
                     }
 
+                    Box(
+                        modifier = Modifier
+                        .width(1.dp)
+                        .height(340.dp)
+                        .background(Color(0xFF31547C).copy(alpha = 0.72f)),
+                        )
+
                     Column(
                         modifier = Modifier
                             .width(220.dp)
@@ -292,13 +299,21 @@ fun XtreamQrSetupPanel(
                     ) {
                         Text(
                             text = strings.xtreamScanWebsite,
-                            color = SmartVisionColors.TextPrimary,
+                            color = Color(0xFF2F82FF),
                             style = SmartVisionType.TitleS,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = strings.xtreamOnMobile,
+                            color = SmartVisionColors.TextSecondary,
+                            style = SmartVisionType.Caption,
                             textAlign = TextAlign.Center,
                             maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
                         )
-                        Spacer(Modifier.height(30.dp))
+                        Spacer(Modifier.height(18.dp))
                         QrCard(
                             content = setupLink?.qrUrl.orEmpty(),
                             loading = loading,

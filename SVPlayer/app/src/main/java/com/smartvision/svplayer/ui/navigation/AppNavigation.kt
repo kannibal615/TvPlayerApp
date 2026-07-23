@@ -84,6 +84,7 @@ import com.smartvision.svplayer.sync.CatalogSyncScheduler
 import com.smartvision.svplayer.ui.activation.ActivationScreen
 import com.smartvision.svplayer.ui.activation.ActivationViewModel
 import com.smartvision.svplayer.ui.activation.XtreamQrSetupPanel
+import com.smartvision.svplayer.ui.activation.localizedMessage
 import com.smartvision.svplayer.ui.appconfig.AppConfigViewModel
 import com.smartvision.svplayer.ui.appconfig.ConsentDialog
 import com.smartvision.svplayer.ui.detail.MovieDetailRoute
@@ -271,8 +272,15 @@ fun AppNavigation(
     val maskHomeBeforeProfileSelection =
         (profilePickerWanted || openProfilePickerAfterHome) && profileSelectionRequest == null
 
-    LaunchedEffect(profilePickerWanted, activationState.localStateReady) {
-        if (!profilePickerWanted && activationState.localStateReady) {
+    LaunchedEffect(
+        profilePickerWanted,
+        activationState.localStateReady,
+        activationState.initialAccessResolved,
+    ) {
+        if (
+            !profilePickerWanted &&
+            activationState.canRevealInitialSurface
+        ) {
             withFrameNanos { }
             latestInitialSurfaceReady()
         }
@@ -540,9 +548,9 @@ fun AppNavigation(
                 "activated=${activationState.activated} playableSource=$hasPlayableSource route=$currentRoute",
         )
     }
-    if (!activationState.localStateReady) {
+    if (!activationState.canRevealInitialSurface) {
         // PERF_FIX: avoid the visible grey/blank frame between the splash handoff and Home.
-        // ActivationViewModel only needs a very short local cache read here; keep a real app background.
+        // Keep a real app background until the initial remote access decision is definitive.
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -634,13 +642,10 @@ fun AppNavigation(
         }
         ActivationScreen(
             state = activationState,
-            onRetry = activationViewModel::retry,
-            onRefreshSession = activationViewModel::refreshSession,
-            onCheckNow = activationViewModel::checkNow,
+            strings = strings,
             onActivateLicense = activationViewModel::activateLicense,
             onStartTrial = activationViewModel::startTrial,
             onContinueFreeWithAds = activationViewModel::continueFreeWithAds,
-            onShowActivationForm = activationViewModel::showActivationForm,
         )
         if (showExitConfirmation) {
             ExitConfirmationDialog(
@@ -1432,7 +1437,7 @@ fun AppNavigation(
                 activationViewModel.activateLicense(premiumLicenseCode)
             },
             submittingLicense = activationState.activationBusy,
-            error = activationState.errorMessage,
+            error = activationState.error?.localizedMessage(strings),
             onDismiss = { showLicensePurchaseQr = false },
         )
     }

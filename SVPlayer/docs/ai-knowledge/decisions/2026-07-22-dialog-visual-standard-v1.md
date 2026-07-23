@@ -24,6 +24,14 @@ Le dialogue `Identifiants Xtream`, valide a partir de la maquette utilisateur `G
 - marges de securite: `64 dp` horizontales et `40 dp` verticales;
 - implementation: `app/src/main/java/com/smartvision/svplayer/ui/activation/XtreamQrSetupPanel.kt`.
 
+## Reference Activation
+
+- depuis le 2026-07-24, activation initiale, fin d essai et licence expiree reutilisent une unique carte `ActivationScreen`;
+- le gabarit, le fond, le panneau QR et les contrats de focus sont identiques a la reference Xtream;
+- `ActivationOfferMode` change uniquement l action verte entre essai, gratuit avec pubs et appareil bloque;
+- le QR Premium et le texte utilisent uniquement le `publicDeviceCode` persistant;
+- aucun dialogue QR secondaire ne doit se superposer a cette surface.
+
 ## Consequences
 
 Les prochaines refontes de dialogues doivent reutiliser ce vocabulaire visuel et les memes contrats de focus, sans dupliquer automatiquement la disposition Xtream. La logique metier, le comportement Back, le focus initial et la restauration du focus appelant restent propres a chaque dialogue.

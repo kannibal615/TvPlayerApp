@@ -2,7 +2,18 @@
 
 Depuis le 2026-07-17, la page publique Playlist peut cibler plusieurs profils existants Admin/Normal et creer en meme temps un profil Normal. La TV publie uniquement l'inventaire non sensible id/nom/type avec son `device_token`; Kids est exclu cote app et serveur. Les livraisons portent un `config_id` idempotent, conservent le profil actif et rendent autonome un profil qui partageait les identifiants Admin avant de lui appliquer une configuration ciblee.
 
-Derniere mise a jour: 2026-07-23.
+Derniere mise a jour: 2026-07-24.
+
+## Surface unifiee Activation / Fin d essai - 2026-07-24
+
+- `ActivationScreen` utilise une seule carte pour l activation initiale, l essai expire et la licence expiree; les anciens `ActivationMainPanel`, `TrialExpiredPanel` et `ActivationPurchaseDialog` n existent plus.
+- `ActivationOfferMode` porte les trois etats UI `TrialAvailable`, `FreeWithAds` et `Blocked`. Un statut expire ne peut donc plus masquer temporairement la fin d essai puis reproposer un second essai.
+- seule l action verte varie: essai de 7 jours quand le serveur confirme sa disponibilite, ou continuation gratuite avec pubs apres expiration. L action reste desactivee pour un appareil bloque.
+- la surface reutilise le standard Xtream: fond `startup_cinema_background`, carte `680 x 410 dp`, colonne QR `220 dp`, QR `174 dp`, controles `48 dp` et focus D-pad bleu/blanc sans changement de geometrie.
+- le parcours D-pad est `action verte -> champ licence -> activer la licence`; le QR reste informatif et Back conserve la confirmation de sortie globale.
+- toutes les copies et erreurs visibles sont resolues en anglais/francais dans `SmartVisionStrings.kt`; les messages PHP bruts ne sont plus affiches directement.
+- le QR Premium et le libelle utilisent exclusivement le `publicDeviceCode` persiste. Aucun `shortCode` de session et aucun fallback `device_id` ne sont affiches ou injectes dans ce QR.
+- le contrat backend, l unicite de l essai et le demarrage du compteur apres validation Xtream restent inchanges.
 
 ## Ecran Licence Settings - 2026-07-22
 
@@ -21,6 +32,8 @@ Derniere mise a jour: 2026-07-23.
 - la navigation D-pad place le focus initial sur le serveur, descend dans les trois champs puis vers Continuer, et remonte du bouton vers le mot de passe;
 - l ouverture modale globale utilise `DialogProperties(usePlatformDefaultWidth = false)` afin que le fond du splash occupe tout l ecran tandis que la carte reste loin des bords;
 - les copies visibles de ce dialogue sont centralisees en anglais et francais dans `SmartVisionStrings.kt`.
+- le demarrage attend maintenant `initialAccessResolved` avant de reveler `ActivationScreen` ou le gate Xtream: une verification distante en cours ne peut plus faire apparaitre brievement l ancien panneau d activation avant `XtreamQrSetupPanel`;
+- l ancien composant dormant `XtreamSetupDialog` a ete supprime; `XtreamQrSetupPanel` reste l unique formulaire de configuration Xtream.
 
 ## 1. Objectif
 
@@ -53,7 +66,7 @@ Flux observe:
 - `AppNavigation` ne contient plus d'ecran intermediaire `StartupHandoffScreen`; apres `Demarrage en cours...`, la navigation est rendue directement.
 - `MainActivity` ne garde plus `splash_background` comme fond de fenetre permanent apres `setContent`, afin d'eviter un retour visuel du splash derriere Home.
 - si le splash vient de valider Xtream pour le compte courant, `AppNavigation` ne relance pas immediatement la meme verification startup.
-- `AppNavigation` attend `ActivationViewModel.localStateReady` avant de choisir entre `ActivationScreen`, QR playlist et Home; cela evite le flash transitoire de l'ecran activation apres le splash sur les appareils deja actifs.
+- `AppNavigation` attend `ActivationViewModel.canRevealInitialSurface`, qui exige l etat local pret et une decision d acces initiale resolue, avant de choisir entre `ActivationScreen`, QR playlist et Home. Le splash reste donc au premier plan pendant la verification distante et aucun panneau d activation transitoire ne peut flasher avant Xtream.
 
 ## 3. Workflow utilisateur
 
@@ -220,3 +233,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-02: `MainActivity` devient l'activite launcher avec theme splash systeme, porte les checks/preloads startup, et `StartupHandoffScreen` est supprime.
 - 2026-07-02: `MainActivity` conserve la preview splash jusqu'a la premiere frame Compose et `AppNavigation` bloque le rendu activation tant que l'etat local n'est pas pret pour eviter le flash activation avant Home.
 - 2026-07-23: les QR de configuration Xtream Android ouvrent directement `/playlist/?device={publicDeviceCode}`; le code TV persistant est affiche et pre-rempli, sans `shortCode` de session dans l URL.
+- 2026-07-23: ajout de `initialAccessResolved` pour retenir le handoff startup jusqu au verdict d activation, puis suppression de l ancien `XtreamSetupDialog` dormant afin que seul `XtreamQrSetupPanel` puisse afficher la configuration Xtream.

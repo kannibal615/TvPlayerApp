@@ -1,6 +1,6 @@
 # Inventaire des dialogues Android TV
 
-Derniere mise a jour: 2026-07-22.
+Derniere mise a jour: 2026-07-24.
 
 ## Objectif et perimetre
 
@@ -21,7 +21,6 @@ Les ecrans de fin d essai et d activation pleine page ne sont pas des dialogues 
 
 | Dialogue / variante | Fonction et declencheur | Ecran lie | Fichier principal | Construction actuelle | Point de standardisation |
 |---|---|---|---|---|---|
-| Achat depuis Activation | Affiche achat/activation Premium depuis l ecran d activation. | Activation | `ui/activation/ActivationScreen.kt` (`ActivationPurchaseDialog`) | `Dialog` custom, fermeture bloquee selon etat. | Reprendre le shell Premium commun et le meme QR que Licence. |
 | Conditions d utilisation / consentement | Affiche le texte legal distant; impose le scroll jusqu en bas avant acceptation. | Demarrage global avant navigation | `ui/appconfig/ConsentDialog.kt` | `Dialog` custom plein, scroll et focus specialises. | Conserver sa logique de lecture obligatoire, normaliser cadre/titre/boutons. |
 | PIN parental - deverrouillage | Verifie le PIN avant Profil admin, Controle parental ou profil verrouille. | Who s Watching, Profil, Gestion profils, Controle parental | `ui/components/NumericPinDialog.kt`; appels dans `ProfilePickerScreen.kt`, `ProfileScreen.kt`, `ProfileAreaScreen.kt`, `ParentalControlPanel.kt` | Dialogue specialise partage. | Unifier seulement l enveloppe; conserver clavier, erreur et shake. |
 | PIN parental - creation/changement | Saisie puis confirmation du nouveau PIN. | Profil et Controle parental | memes fichiers que ci-dessus | Meme composant avec mode `Create`. | Ajouter titres/aides et etats d erreur communs. |
@@ -57,16 +56,17 @@ Les ecrans de fin d essai et d activation pleine page ne sont pas des dialogues 
 
 | Definition | Fichier | Observation |
 |---|---|---|
-| `XtreamSetupDialog` | `ui/activation/XtreamSetupDialog.kt` | Aucun appel Kotlin actif trouve; l application utilise actuellement `XtreamQrSetupPanel` dans un autre `Dialog`. A supprimer ou reutiliser apres decision. |
 | `AccountEditorDialog` | `ui/settings/SettingsScreen.kt` | Definition sans appel actif; ancien CRUD compte local. |
 | `LiveRecordDialog` | `ui/player/FullScreenPlayerScreen.kt` | Definition sans appel direct trouve dans le code actuel; verifier avant standardisation Recorder. |
 
 ## Surfaces proches a inclure dans l etude visuelle
 
-- `ActivationScreen`: ecran pleine page, pas un dialogue, mais partage QR, code TV et actions Premium.
-- etats `TRIAL_EXPIRED` / `LICENSE_EXPIRED`: gates ou ecrans complets selon le parcours, pas des appels `Dialog(...)` autonomes.
+- `ActivationScreen`: surface pleine page unifiee, pas un `Dialog` Compose. Depuis le 2026-07-24, activation initiale, `TRIAL_EXPIRED` et `LICENSE_EXPIRED` partagent la meme carte; seule l action verte varie selon `ActivationOfferMode`.
+- le QR Premium, le code TV et la saisie licence sont integres directement dans cette carte. L ancien `ActivationPurchaseDialog` imbrique est supprime afin qu une seule surface d activation soit visible.
 - `XtreamQrSetupPanel`: panneau reutilise dans des ecrans et dans le dialogue global.
 - overlays du player: controles, panneau episodes, luminosite et parametres sont des surfaces transitoires internes, mais pas des `Dialog` Compose.
+
+Depuis le 2026-07-23, l ancien `XtreamSetupDialog` dormant est supprime. `XtreamQrSetupPanel` est l unique formulaire Xtream actif et le handoff du demarrage attend la resolution d acces avant de le reveler.
 
 ## Proposition de standardisation
 
@@ -92,6 +92,8 @@ Regles visuelles a reutiliser:
 - QR: carte blanche `174 dp`, bordure bleu clair, code court de session affiche dans un cartouche distinct;
 - rythme: espacements bases sur `8 / 12 / 14 / 24 dp`, textes principaux blancs et textes secondaires gris bleute;
 - les prochains dialogues doivent reprendre le fond, la surface, le focus, les marges et la hierarchie, mais adapter leur composition au contenu au lieu de recopier deux colonnes quand elles ne sont pas utiles.
+
+Depuis le 2026-07-24, `ActivationScreen` est la deuxieme implementation de reference: meme gabarit `680 x 410 dp`, QR `174 dp`, panneau droit `220 dp`, fond splash et focus bleu/blanc. Elle valide aussi le contrat de fusion: une seule surface Compose pour plusieurs etats metier, avec contenu stable et action primaire variable.
 
 ## Priorite de revue recommandee
 

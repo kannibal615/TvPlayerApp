@@ -1,5 +1,9 @@
 # AI Changelog
 
+- 2026-07-24: fusion de l activation initiale et de la fin d essai dans une seule surface `680 x 410 dp` inspiree du dialogue Xtream, avec fond splash, QR Premium `174 dp`, code TV persistant et parcours D-pad action verte -> licence -> activation. `ActivationOfferMode` empeche un statut expire de reproposer un second essai; les copies et erreurs sont centralisees EN/FR. `:app:assembleRelease` reussit; `testReleaseUnitTest` reste bloque par le `FakeSettingsRepository` parental preexistant qui ne suit plus cinq methodes de `SettingsRepository`.
+
+- 2026-07-23: suppression du flash activation avant le dialogue Xtream. `ActivationViewModel` expose une resolution d acces initiale explicite; `AppNavigation` conserve le startup jusqu au verdict distant, puis affiche directement Activation, Home ou l unique `XtreamQrSetupPanel`. L ancien `XtreamSetupDialog` dormant est supprime.
+
 - 2026-07-23: les QR de configuration Xtream du dialogue et du Profil utilisent maintenant le code TV persistant et l URL simple `/playlist/?device={publicDeviceCode}`. La page Playlist pre-remplit et valide ce code; le client Android courant ne cree plus de session Xtream temporaire, tandis que l ancien endpoint PHP reste compatible avec les APK existantes.
 
 - 2026-07-22: `XtreamQrSetupPanel` adopte le standard visuel valide `Generated image 2.png`: fond officiel du splash, carte compacte centree, formulaire a gauche, QR et code TV a droite, focus D-pad bleu/blanc et copies EN/FR centralisees. `:app:compileReleaseKotlin` reussi, sans test Fire Stick.
