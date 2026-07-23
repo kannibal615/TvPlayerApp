@@ -2,7 +2,7 @@
 
 Depuis le 2026-07-17, la page publique Playlist peut cibler plusieurs profils existants Admin/Normal et creer en meme temps un profil Normal. La TV publie uniquement l'inventaire non sensible id/nom/type avec son `device_token`; Kids est exclu cote app et serveur. Les livraisons portent un `config_id` idempotent, conservent le profil actif et rendent autonome un profil qui partageait les identifiants Admin avant de lui appliquer une configuration ciblee.
 
-Derniere mise a jour: 2026-07-10.
+Derniere mise a jour: 2026-07-23.
 
 ## Ecran Licence Settings - 2026-07-22
 
@@ -16,7 +16,8 @@ Derniere mise a jour: 2026-07-10.
 - `XtreamQrSetupPanel` est le composant actif partage par le gate global sans source, l alerte Xtream et les etats vides Live TV, Movies et Series.
 - son rendu reprend le fond officiel `startup_cinema_background` du splash et une carte centree compacte `680 x 410 dp` avant mise a l echelle TV;
 - la colonne gauche conserve la saisie serveur/utilisateur/mot de passe et la validation existante;
-- le panneau droit conserve la session de configuration web, affiche le QR et expose maintenant `ActivationSession.shortCode` comme code TV;
+- le panneau droit affiche le `publicDeviceCode` persistant comme code TV et genere directement le QR `/playlist/?device={publicDeviceCode}`;
+- aucun `shortCode` de session Xtream n est affiche ou place dans ce QR; la page Playlist pre-remplit le code TV puis charge les profils eligibles;
 - la navigation D-pad place le focus initial sur le serveur, descend dans les trois champs puis vers Continuer, et remonte du bouton vers le mot de passe;
 - l ouverture modale globale utilise `DialogProperties(usePlatformDefaultWidth = false)` afin que le fond du splash occupe tout l ecran tandis que la carte reste loin des bords;
 - les copies visibles de ce dialogue sont centralisees en anglais et francais dans `SmartVisionStrings.kt`.
@@ -36,7 +37,7 @@ Flux observe:
 - activation licence via `api/licenses/activate.php`;
 - essai via `api/devices/start_trial.php`;
 - mode gratuit avec pubs via `api/devices/enable_free_with_ads.php`;
-- configuration Xtream via `api/create_playlist_setup_session.php` puis portail `/xtream/`;
+- configuration Xtream courante via le QR direct `/playlist/?device={publicDeviceCode}`; `api/create_playlist_setup_session.php` et `/xtream/` restent uniquement compatibles avec les anciennes APK;
 - envoi web direct via `/playlist/` avec code TV pour pousser des identifiants Xtream et/ou une URL EPG;
 - recuperation de `playlist_config` dans `device_status.php`, incluant `epg_url` si fourni;
 - suppression distante de la config playlist via `api/clear_playlist_config.php` quand un profil local correspondant est supprime;
@@ -122,7 +123,8 @@ API Android connues:
 - `POST api/devices/register.php`
 - `POST api/create_activation_session.php`
 - `GET api/device_status.php`
-- `POST api/create_playlist_setup_session.php`
+- `GET /playlist/?device={publicDeviceCode}` pour le QR Xtream courant;
+- `POST api/create_playlist_setup_session.php` uniquement pour compatibilite avec les anciennes APK;
 - `POST api/clear_playlist_config.php`
 - `POST api/licenses/activate.php`
 - `POST api/devices/start_trial.php`
@@ -145,7 +147,8 @@ Champs importants:
 - `PlaylistWeb`: profil Android reserve aux playlists envoyees depuis `/playlist/` ou le QR web. `XtreamAccountManager` met a jour ce profil si son nom est toujours `PlaylistWeb`; si l'utilisateur le renomme, le prochain push web cree un nouveau profil `PlaylistWeb`.
 - `device_status.php` ne doit renvoyer `playlist_config` que pour un appareil actif avec `device_token` rattache a une session d'activation `validated`; un jeton `pending` cree par `register.php` ne doit jamais suffire a renvoyer les identifiants playlist.
 - Apres un enregistrement playlist web valide, `save_playlist_config.php` et `/playlist/` marquent les sessions pending de l'appareil comme `validated` afin que le token de polling courant puisse recevoir cette playlist meme si l'app a conserve un token plus ancien qu'une session recente.
-- `create_playlist_setup_session.php` cree une session deja `validated` et rattache le `device_token` courant a cette session dans `activation_session_tokens`; sinon `device_status.php` refuserait de livrer `playlist_config` malgre `playlist_configured=true`.
+- le QR Xtream Android courant ne cree plus de session temporaire: il ouvre `/playlist/` avec le code TV persistant. Lors de l envoi, `/playlist/` valide les sessions pending de l appareil afin que le `device_token` de polling puisse recevoir `playlist_config`.
+- `create_playlist_setup_session.php` reste disponible pour les anciennes APK et ne doit plus etre reutilise par le client Android courant.
 - `ActivationRepository.registerDevice()` ne doit pas remplacer un `device_token` local deja present par le nouveau jeton `pending` du register, afin de conserver la session validee et d'eviter une restauration non maitrisee apres redemarrage.
 - `multi_profile` dans `app_feature_access`: controle la creation/modification multi-profils. Les defaults autorisent Premium et essai 7 jours, et verrouillent Free Ads avec couronne cote TV.
 
@@ -216,3 +219,4 @@ Ne pas lire ce fichier si la demande concerne uniquement:
 - 2026-07-01: correction source active M3U dans le splash et le popup manuel de synchronisation; suppression du flash de l'ancien visuel splash dans `AppNavigation`.
 - 2026-07-02: `MainActivity` devient l'activite launcher avec theme splash systeme, porte les checks/preloads startup, et `StartupHandoffScreen` est supprime.
 - 2026-07-02: `MainActivity` conserve la preview splash jusqu'a la premiere frame Compose et `AppNavigation` bloque le rendu activation tant que l'etat local n'est pas pret pour eviter le flash activation avant Home.
+- 2026-07-23: les QR de configuration Xtream Android ouvrent directement `/playlist/?device={publicDeviceCode}`; le code TV persistant est affiche et pre-rempli, sans `shortCode` de session dans l URL.

@@ -199,22 +199,22 @@ class ProfileViewModel(
             it.copy(
                 qrDialog = ProfileQrState(
                     title = "Configuration Xtream",
-                    subtitle = "Generation d'un lien securise pour renseigner ou remplacer les identifiants Xtream de cette TV.",
+                    subtitle = "Preparation de la page Playlist avec le code TV de cet appareil.",
                     url = "",
                     loading = true,
                 ),
             )
         }
         viewModelScope.launch {
-            runCatching { activationRepository.createPlaylistSetupSession() }
-                .onSuccess { session ->
+            runCatching { activationRepository.getPlaylistSetupLink() }
+                .onSuccess { setupLink ->
                     transient.update {
                         it.copy(
                             qrDialog = ProfileQrState(
                                 title = "Configurer Xtream sur telephone",
-                                subtitle = "Scannez le QR code, saisissez host, utilisateur et mot de passe. La TV recevra les identifiants chiffres automatiquement.",
-                                url = session.qrUrl,
-                                code = session.shortCode,
+                                subtitle = "Scannez le QR code. Le code TV est deja renseigne sur la page Playlist.",
+                                url = setupLink.qrUrl,
+                                code = setupLink.tvCode,
                             ),
                         )
                     }

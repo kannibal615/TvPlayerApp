@@ -1,5 +1,7 @@
 # AI Changelog
 
+- 2026-07-23: les QR de configuration Xtream du dialogue et du Profil utilisent maintenant le code TV persistant et l URL simple `/playlist/?device={publicDeviceCode}`. La page Playlist pre-remplit et valide ce code; le client Android courant ne cree plus de session Xtream temporaire, tandis que l ancien endpoint PHP reste compatible avec les APK existantes.
+
 - 2026-07-22: `XtreamQrSetupPanel` adopte le standard visuel valide `Generated image 2.png`: fond officiel du splash, carte compacte centree, formulaire a gauche, QR et code TV a droite, focus D-pad bleu/blanc et copies EN/FR centralisees. `:app:compileReleaseKotlin` reussi, sans test Fire Stick.
 
 - 2026-07-22: le controleur mini-player Home detache explicitement l ancienne `PlayerView` avant d attacher la surface active au player partage; la liberation d une ancienne card ne peut plus conserver ou retirer la mauvaise surface.

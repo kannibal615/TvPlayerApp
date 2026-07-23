@@ -73,7 +73,7 @@ import com.smartvision.svplayer.R
 import com.smartvision.svplayer.core.config.XtreamAccount
 import com.smartvision.svplayer.data.activation.ActivationException
 import com.smartvision.svplayer.data.activation.ActivationRepository
-import com.smartvision.svplayer.data.activation.ActivationSession
+import com.smartvision.svplayer.data.activation.PlaylistSetupLink
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.i18n.SmartVisionStrings
 import com.smartvision.svplayer.ui.theme.SmartVisionColors
@@ -91,7 +91,7 @@ fun XtreamQrSetupPanel(
     onManualAccount: suspend (XtreamAccount) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
-    var session by remember { mutableStateOf<ActivationSession?>(null) }
+    var setupLink by remember { mutableStateOf<PlaylistSetupLink?>(null) }
     var loading by remember { mutableStateOf(true) }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -106,9 +106,9 @@ fun XtreamQrSetupPanel(
         loading = true
         error = null
         scope.launch {
-            runCatching { activationRepository.createPlaylistSetupSession() }
+            runCatching { activationRepository.getPlaylistSetupLink() }
                 .onSuccess {
-                    session = it
+                    setupLink = it
                     loading = false
                 }
                 .onFailure {
@@ -162,8 +162,8 @@ fun XtreamQrSetupPanel(
         runCatching { hostFocus.requestFocus() }
     }
 
-    LaunchedEffect(session?.shortCode) {
-        while (session != null && isActive) {
+    LaunchedEffect(setupLink?.tvCode) {
+        while (setupLink != null && isActive) {
             delay(5_000L)
             runCatching { activationRepository.checkStatus() }
         }
@@ -205,7 +205,7 @@ fun XtreamQrSetupPanel(
                             ),
                         )
                         .border(BorderStroke(1.dp, Color(0xFF2C568C)), RoundedCornerShape(18.dp))
-                        .padding(horizontal = 26.dp, vertical = 22.dp)
+                        .padding(horizontal = 26.dp, vertical = 12.dp)
                         .imePadding(),
                     horizontalArrangement = Arrangement.spacedBy(24.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -214,7 +214,7 @@ fun XtreamQrSetupPanel(
                         modifier = Modifier.weight(1f),
                     ) {
                         SmartVisionLogo()
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(20.dp))
                         Text(
                             text = title,
                             color = SmartVisionColors.TextPrimary,
@@ -293,25 +293,42 @@ fun XtreamQrSetupPanel(
                         Text(
                             text = strings.xtreamScanWebsite,
                             color = SmartVisionColors.TextPrimary,
-                            style = SmartVisionType.Label,
+                            style = SmartVisionType.TitleS,
                             textAlign = TextAlign.Center,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        Spacer(Modifier.height(18.dp))
+                        Spacer(Modifier.height(30.dp))
                         QrCard(
-                            content = session?.qrUrl.orEmpty(),
+                            content = setupLink?.qrUrl.orEmpty(),
                             loading = loading,
                             size = 174,
                         )
-                        Spacer(Modifier.height(18.dp))
-                        Row(
+                        Spacer(Modifier.height(30.dp))
+                        Text(
+                                text = "${strings.xtreamTvCode} ",
+                                color = SmartVisionColors.TextPrimary,
+                                style = SmartVisionType.Label,
+                                maxLines = 1,
+                            )
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                                text = setupLink?.tvCode?.ifBlank { "------" } ?: "------",
+                                color = SmartVisionColors.TextPrimary,
+                                style = SmartVisionType.TitleM,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+
+
+                       /*  Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(54.dp)
-                                /* .clip(RoundedCornerShape(12.dp))
+                                 .clip(RoundedCornerShape(12.dp))
                                 .background(Color(0xFF071427).copy(alpha = 0.92f))
-                                .border(BorderStroke(1.dp, Color(0xFF315D96)), RoundedCornerShape(12.dp)) */
+                                .border(BorderStroke(1.dp, Color(0xFF315D96)), RoundedCornerShape(12.dp))
                                 .padding(horizontal = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
@@ -323,14 +340,14 @@ fun XtreamQrSetupPanel(
                                 maxLines = 1,
                             )
                             Text(
-                                text = session?.shortCode?.ifBlank { "------" } ?: "------",
+                                text = setupLink?.tvCode?.ifBlank { "------" } ?: "------",
                                 color = Color(0xFF4C8DFF),
                                 style = SmartVisionType.TitleS,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                        }
+                        } */
                     }
                 }
             }
@@ -341,8 +358,8 @@ fun XtreamQrSetupPanel(
 @Composable
 private fun SmartVisionLogo(
     modifier: Modifier = Modifier
-        .width(180.dp)
-        .height(42.dp),
+        .width(200.dp)
+        .height(62.dp),
 ) {
     Image(
         painter = painterResource(R.drawable.smartvision_logo_1),
@@ -568,8 +585,8 @@ private fun QrCard(
             .size(size.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(Color.White)
-            .border(BorderStroke(2.dp, Color(0xFF8ABEFF)), RoundedCornerShape(14.dp))
-            .padding(12.dp),
+            .border(BorderStroke(1.dp, Color.White), RoundedCornerShape(14.dp))
+            .padding(10.dp),
         contentAlignment = Alignment.Center,
     ) {
         when {

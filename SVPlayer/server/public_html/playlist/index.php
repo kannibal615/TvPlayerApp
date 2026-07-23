@@ -11,7 +11,7 @@ header('Cache-Control: no-store');
 
 $message = '';
 $messageType = '';
-$postedDevice = '';
+$postedDevice = clean_public_device_code($_GET['device'] ?? null);
 $postedHost = '';
 $postedUsername = '';
 $postedEpg = '';

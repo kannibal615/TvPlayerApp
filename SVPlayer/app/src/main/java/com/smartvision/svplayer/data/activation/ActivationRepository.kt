@@ -182,37 +182,19 @@ class ActivationRepository(
         )
     }
 
-    suspend fun createPlaylistSetupSession(): ActivationSession {
-        val deviceId = ensureRegisteredDeviceId()
-        val deviceToken = dataStore.data.first()[DEVICE_TOKEN].orEmpty()
-        if (deviceToken.isBlank()) {
-            throw ActivationException("Lien de configuration indisponible. Generez une nouvelle activation.")
+    suspend fun getPlaylistSetupLink(): PlaylistSetupLink {
+        ensureRegisteredDeviceId()
+        val publicDeviceCode = dataStore.data.first()[PUBLIC_DEVICE_CODE].orEmpty()
+        if (publicDeviceCode.isBlank()) {
+            throw ActivationException("Code TV indisponible.")
         }
-
-        val response = api.createPlaylistSetupSession(
-            PlaylistSetupSessionRequest(
-                deviceId = deviceId,
-                deviceToken = deviceToken,
-            ),
-        )
-
-        if (!response.success) {
-            throw ActivationException(response.error ?: "Lien de configuration refuse.")
-        }
-
-        val shortCode = response.shortCode.orEmpty()
-        val qrUrl = response.qrUrl.orEmpty()
-        val expiresAt = response.expiresAt.orEmpty()
-        if (shortCode.isBlank() || qrUrl.isBlank() || expiresAt.isBlank()) {
-            throw ActivationException("Reponse configuration incomplete.")
-        }
-
-        return ActivationSession(
-            deviceId = response.deviceId ?: deviceId,
-            shortCode = shortCode,
-            qrUrl = qrUrl,
-            expiresAt = expiresAt,
-            pollingIntervalSeconds = response.pollingInterval?.coerceAtLeast(1) ?: 5,
+        val baseUrl = BuildConfig.ACTIVATION_BASE_URL
+            .ifBlank { "https://smartvisions.net/" }
+            .trim()
+            .trimEnd('/')
+        return PlaylistSetupLink(
+            tvCode = publicDeviceCode,
+            qrUrl = "$baseUrl/playlist/?device=$publicDeviceCode",
         )
     }
 
@@ -504,6 +486,11 @@ data class ActivationSession(
     val qrUrl: String,
     val expiresAt: String,
     val pollingIntervalSeconds: Int,
+)
+
+data class PlaylistSetupLink(
+    val tvCode: String,
+    val qrUrl: String,
 )
 
 data class RemoteActivationStatus(
