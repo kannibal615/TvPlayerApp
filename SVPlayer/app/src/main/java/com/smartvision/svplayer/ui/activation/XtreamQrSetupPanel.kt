@@ -276,7 +276,7 @@ fun XtreamQrSetupPanel(
                         modifier = Modifier
                             .width(220.dp)
                             .height(340.dp)
-                            .clip(RoundedCornerShape(18.dp))
+/*                             .clip(RoundedCornerShape(18.dp))
                             .background(
                                 Brush.verticalGradient(
                                     listOf(
@@ -285,33 +285,33 @@ fun XtreamQrSetupPanel(
                                     ),
                                 ),
                             )
-                            .border(BorderStroke(1.dp, Color(0xFF28599B)), RoundedCornerShape(18.dp))
-                            .padding(horizontal = 14.dp, vertical = 14.dp),
+                            .border(BorderStroke(1.dp, Color(0xFF28599B)), RoundedCornerShape(18.dp)) */
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
                         Text(
                             text = strings.xtreamScanWebsite,
-                            color = SmartVisionColors.TextSecondary,
+                            color = SmartVisionColors.TextPrimary,
                             style = SmartVisionType.Label,
                             textAlign = TextAlign.Center,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(14.dp))
                         QrCard(
                             content = session?.qrUrl.orEmpty(),
                             loading = loading,
                             size = 174,
                         )
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(18.dp))
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(54.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                /* .clip(RoundedCornerShape(12.dp))
                                 .background(Color(0xFF071427).copy(alpha = 0.92f))
-                                .border(BorderStroke(1.dp, Color(0xFF315D96)), RoundedCornerShape(12.dp))
+                                .border(BorderStroke(1.dp, Color(0xFF315D96)), RoundedCornerShape(12.dp)) */
                                 .padding(horizontal = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
@@ -345,7 +345,7 @@ private fun SmartVisionLogo(
         .height(42.dp),
 ) {
     Image(
-        painter = painterResource(R.drawable.smartvision_logo_wide),
+        painter = painterResource(R.drawable.smartvision_logo_1),
         contentDescription = "SmartVision IPTV Player",
         contentScale = ContentScale.Fit,
         modifier = modifier,
