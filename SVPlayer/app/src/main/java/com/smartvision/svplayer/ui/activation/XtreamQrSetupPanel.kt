@@ -298,7 +298,7 @@ fun XtreamQrSetupPanel(
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        Spacer(Modifier.height(14.dp))
+                        Spacer(Modifier.height(18.dp))
                         QrCard(
                             content = session?.qrUrl.orEmpty(),
                             loading = loading,
