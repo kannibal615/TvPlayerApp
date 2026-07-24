@@ -760,7 +760,7 @@ private fun PremiumLicenseDialog(
                             )
                         }
                     }
-                    Spacer(Modifier.height(12.dp))
+                    
                     PremiumDialogButton(
                         text = if (submittingLicense) strings.premiumActivating else strings.premiumActivateCode,
                         onClick = onSubmitLicenseCode,
@@ -774,7 +774,7 @@ private fun PremiumLicenseDialog(
                             .fillMaxWidth()
                             .height(44.dp),
                     )
-                    Spacer(Modifier.height(8.dp))
+                    
                     Spacer(Modifier.weight(1f))
                     PremiumDialogButton(
                         text = strings.close,
