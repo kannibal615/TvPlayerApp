@@ -19,6 +19,15 @@ class WebPlaylistTargetPolicyTest {
         assertEquals("Salon", uniqueProfileName("Salon", listOf("Admin"), "PlaylistWeb"))
     }
 
+    @Test
+    fun `reserved PlaylistWeb delivery reuses the existing local profile`() {
+        val existing = profile("web", ProfileType.NORMAL).copy(name = "PlaylistWeb")
+
+        assertTrue(shouldReuseReservedWebProfile("playlistweb", existing))
+        assertFalse(shouldReuseReservedWebProfile("Salon", existing))
+        assertFalse(shouldReuseReservedWebProfile("PlaylistWeb", null))
+    }
+
     private fun profile(id: String, type: ProfileType) = PlaylistProfile(
         id = id,
         name = id,

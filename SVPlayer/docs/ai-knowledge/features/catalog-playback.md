@@ -33,6 +33,8 @@ Depuis le 2026-07-17, l'EPG XMLTV est cache par URL afin d'isoler les profils. L
 
 `SyncStatus.SyncSectionProgress` publie maintenant le message d'etape, le total connu et la phase `FILTERING` pour les profils Kids. Les cartes Home affichent profil Kids, duree ecoulee, compteurs et etape reelle; un appel reseau au total inconnu conserve son libelle au lieu de simuler une progression lineaire.
 
+Depuis le 2026-07-24, la validation d'un profil dans Who's Watching programme explicitement la synchronisation Home si son empreinte catalogue est obsolete ou si Room ne contient aucun catalogue valide, meme lorsque ce profil etait deja actif. Pendant la synchronisation sequentielle, Home relit les compteurs Room a chaque passage d'une section en `COMPLETED`: Live TV, Films puis Series affichent donc leur total des que leur propre import est termine, sans attendre la fin des trois sections.
+
 ## Catalogue Kids
 
 - `KidsContentFilter` separe les regles categorie, chaine Live et contenu VOD. Il centralise normalisation Unicode, dictionnaires multilingues, alias complets de chaines, score explicable et exclusions adultes prioritaires; `RuleVersion = 2` invalide les anciennes decisions.

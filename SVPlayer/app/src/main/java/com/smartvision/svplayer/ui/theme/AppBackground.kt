@@ -36,11 +36,6 @@ fun AppBackgroundSurface(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFF010714).copy(alpha = 0.32f)),
-            )
         }
     }
 }

@@ -3300,6 +3300,7 @@ private fun PremiumQrOnlyDialog(
                                 text = strings.close,
                                 onClick = onDismiss,
                                 primary = false,
+                                leadingIcon = Icons.Default.Close,
                                 focusRequester = closeFocusRequester,
                                 previousFocusRequester = if (actionLabel != null && onAction != null) actionFocusRequester else null,
                                 modifier = Modifier
@@ -3352,6 +3353,7 @@ private fun PremiumLicenseDialog(
     var editing by remember { mutableStateOf(false) }
     var fieldFocused by remember { mutableStateOf(false) }
     val focusStyle = LocalTvFocusStyle.current
+    val canSubmitLicense = !submittingLicense && licenseCode.isNotBlank()
 
     LaunchedEffect(Unit) {
         delay(ProfileFocusRequestDelayMillis)
@@ -3434,7 +3436,9 @@ private fun PremiumLicenseDialog(
                             .fillMaxWidth()
                             .height(44.dp)
                             .focusRequester(fieldFocusRequester)
-                            .focusProperties { down = activateFocusRequester }
+                            .focusProperties {
+                                down = if (canSubmitLicense) activateFocusRequester else closeFocusRequester
+                            }
                             .onFocusChanged { fieldFocused = it.isFocused }
                             .onPreviewKeyEvent { event ->
                                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -3446,7 +3450,10 @@ private fun PremiumLicenseDialog(
                                     Key.DirectionDown -> {
                                         editing = false
                                         keyboardController?.hide()
-                                        runCatching { activateFocusRequester.requestFocus() }
+                                        runCatching {
+                                            if (canSubmitLicense) activateFocusRequester.requestFocus()
+                                            else closeFocusRequester.requestFocus()
+                                        }
                                         true
                                     }
                                     Key.Back -> {
@@ -3531,9 +3538,9 @@ private fun PremiumLicenseDialog(
                     PremiumDialogButton(
                         text = if (submittingLicense) strings.premiumActivating else strings.premiumActivateCode,
                         onClick = onSubmitLicenseCode,
-                        enabled = !submittingLicense && licenseCode.isNotBlank(),
+                        enabled = canSubmitLicense,
                         primary = true,
-                        trailingIcon = Icons.Default.ArrowForward,
+                        leadingIcon = Icons.Default.Key,
                         focusRequester = activateFocusRequester,
                         previousFocusRequester = fieldFocusRequester,
                         nextFocusRequester = closeFocusRequester,
@@ -3547,7 +3554,8 @@ private fun PremiumLicenseDialog(
                         onClick = onDismiss,
                         primary = false,
                         focusRequester = closeFocusRequester,
-                        previousFocusRequester = activateFocusRequester,
+                        previousFocusRequester = if (canSubmitLicense) activateFocusRequester else fieldFocusRequester,
+                        leadingIcon = Icons.Default.Close,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(44.dp),
@@ -3671,6 +3679,7 @@ private fun PremiumDialogButton(
     focusRequester: FocusRequester? = null,
     previousFocusRequester: FocusRequester? = null,
     nextFocusRequester: FocusRequester? = null,
+    leadingIcon: ImageVector? = null,
     trailingIcon: ImageVector? = null,
 ) {
     val focusState = rememberTvFocusState()
@@ -3679,7 +3688,7 @@ private fun PremiumDialogButton(
     val focusStyle = LocalTvFocusStyle.current
     val borderColor = when {
         focusState.isFocused -> focusStyle.accent
-        primary -> SmartVisionColors.CyanAccent
+        primary -> Color(0xFF2B83FF)
         else -> Color(0xFF344761)
     }
 
@@ -3696,14 +3705,31 @@ private fun PremiumDialogButton(
                 if (previousFocusRequester != null) up = previousFocusRequester
                 if (nextFocusRequester != null) down = nextFocusRequester
             }
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.DirectionUp -> {
+                        previousFocusRequester?.let { runCatching { it.requestFocus() } }
+                        previousFocusRequester != null
+                    }
+                    Key.DirectionDown -> {
+                        nextFocusRequester?.let { runCatching { it.requestFocus() } }
+                        nextFocusRequester != null
+                    }
+                    Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                        if (enabled) onClick()
+                        true
+                    }
+                    else -> false
+                }
+            }
             .clip(shape)
             .background(
                 if (primary) {
                     Brush.horizontalGradient(
                         listOf(
-                            Color(0xFF0EBEFF),
-                            Color(0xFF0876FF),
-                            Color(0xFF153DFF),
+                            if (enabled) Color(0xFF2C8CFF) else Color(0xFF31547C),
+                            if (enabled) Color(0xFF1766F2) else Color(0xFF243B5B),
                         ),
                     )
                 } else {
@@ -3722,6 +3748,15 @@ private fun PremiumDialogButton(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
+        if (leadingIcon != null) {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                tint = if (enabled) Color.White else Color.White.copy(alpha = 0.42f),
+                modifier = Modifier.size(21.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+        }
         Text(
             text = text,
             color = if (enabled) Color.White else Color.White.copy(alpha = 0.42f),
@@ -3729,7 +3764,7 @@ private fun PremiumDialogButton(
             fontWeight = FontWeight.SemiBold,
         )
         if (trailingIcon != null) {
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(10.dp))
             Icon(
                 imageVector = trailingIcon,
                 contentDescription = null,

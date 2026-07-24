@@ -400,27 +400,44 @@ class XtreamAccountManager(context: Context) : XtreamCredentialsProvider {
 
         val requestedNewName = delivery.newProfileName.trim()
         if (requestedNewName.isNotBlank() && (xtreamProvided || m3uProvided)) {
-            val uniqueName = uniqueWebProfileName(requestedNewName)
             val source = if (m3uProvided && !xtreamProvided) PlaylistSource.M3u else PlaylistSource.Xtream
-            appliedIds += upsertProfile(
-                PlaylistProfile(
-                    id = "",
-                    name = uniqueName,
-                    source = source,
-                    type = ProfileType.NORMAL,
-                    credentialsMode = CredentialsMode.CUSTOM,
-                    avatarId = defaultProfileAvatarId(ProfileType.NORMAL, uniqueName),
-                    avatarColorHex = avatarColorForName(uniqueName),
+            val existingWebProfile = _profiles.value.firstOrNull {
+                it.name.equals(WebPlaylistProfileName, ignoreCase = true) &&
+                    isEligibleWebPlaylistTarget(it)
+            }
+            val reuseExistingWebProfile = shouldReuseReservedWebProfile(requestedNewName, existingWebProfile)
+            if (reuseExistingWebProfile && existingWebProfile?.id !in appliedIds) {
+                upsertWebPlaylistProfile(
+                    sourceHint = source,
                     xtreamHost = delivery.xtreamHost,
                     xtreamUsername = delivery.xtreamUsername,
                     xtreamPassword = delivery.xtreamPassword,
                     m3uUrl = delivery.m3uUrl,
-                    epgUrl = if (epgProvided) delivery.epgUrl else "",
-                    lastSyncAt = null,
-                ),
-            )
+                    epgUrl = delivery.epgUrl,
+                    epgProvided = epgProvided,
+                )?.let(appliedIds::add)
+            } else if (!reuseExistingWebProfile) {
+                val uniqueName = uniqueWebProfileName(requestedNewName)
+                appliedIds += upsertProfile(
+                    PlaylistProfile(
+                        id = "",
+                        name = uniqueName,
+                        source = source,
+                        type = ProfileType.NORMAL,
+                        credentialsMode = CredentialsMode.CUSTOM,
+                        avatarId = defaultProfileAvatarId(ProfileType.NORMAL, uniqueName),
+                        avatarColorHex = avatarColorForName(uniqueName),
+                        xtreamHost = delivery.xtreamHost,
+                        xtreamUsername = delivery.xtreamUsername,
+                        xtreamPassword = delivery.xtreamPassword,
+                        m3uUrl = delivery.m3uUrl,
+                        epgUrl = if (epgProvided) delivery.epgUrl else "",
+                        lastSyncAt = null,
+                    ),
+                )
+            }
         }
-        return appliedIds
+        return appliedIds.distinct()
     }
 
     private fun uniqueWebProfileName(requestedName: String): String {
@@ -794,7 +811,16 @@ data class WebPlaylistDelivery(
     val epgUrl: String,
 )
 
+internal const val ReservedWebPlaylistProfileName = "PlaylistWeb"
+
 internal fun isEligibleWebPlaylistTarget(profile: PlaylistProfile): Boolean = profile.type != ProfileType.KIDS
+
+internal fun shouldReuseReservedWebProfile(
+    requestedName: String,
+    existingProfile: PlaylistProfile?,
+): Boolean =
+    existingProfile != null &&
+        requestedName.trim().equals(ReservedWebPlaylistProfileName, ignoreCase = true)
 
 internal fun uniqueProfileName(requestedName: String, existingNames: List<String>, fallback: String): String {
     val base = requestedName.trim().ifBlank { fallback }

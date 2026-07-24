@@ -608,6 +608,25 @@ fun HomeScreen(
         }
     }
 
+    LaunchedEffect(
+        activeProfileId,
+        catalogWorkUiState.kind,
+        catalogWorkUiState.live.phase,
+        catalogWorkUiState.movies.phase,
+        catalogWorkUiState.series.phase,
+    ) {
+        if (
+            catalogWorkUiState.kind == StartupCatalogWorkKind.Synchronize &&
+            listOf(
+                catalogWorkUiState.live.phase,
+                catalogWorkUiState.movies.phase,
+                catalogWorkUiState.series.phase,
+            ).any { it == SyncStatus.SyncSectionPhase.COMPLETED }
+        ) {
+            viewModel.refreshCatalogCounts(preserveReadyState = true)
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()

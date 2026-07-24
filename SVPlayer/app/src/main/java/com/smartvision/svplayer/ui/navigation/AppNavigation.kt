@@ -596,6 +596,17 @@ fun AppNavigation(
                 // work is evaluated and launched by Home after the picker is gone.
                 container.catalogRepository.clearCatalogForProfileSwitch()
             }
+            val selectedProfile = container.accountManager.activeProfile()
+            val catalogMissing = !container.catalogRepository.hasLocalCatalogForActiveProfile()
+            if (
+                selectedProfile?.isConfigured == true &&
+                (
+                    catalogMissing ||
+                        !container.accountManager.isCatalogCurrent(selectedProfile)
+                    )
+            ) {
+                container.requestStartupCatalogWork(StartupCatalogWorkKind.Synchronize)
+            }
         }.also { profileSwitchActivationJob = it }
     }
     val requestProfileSelection: (String) -> Unit = requestProfileSelection@{ profileId ->
