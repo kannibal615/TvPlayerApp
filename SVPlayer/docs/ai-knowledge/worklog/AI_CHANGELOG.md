@@ -3296,3 +3296,8 @@ Fichiers code concernes:
 - Central navigation cards now use the same `38 dp` visual height as the global header action buttons and wrap their icon plus label instead of using a fixed width.
 - Central icons match the unfocused global-action gray and YouTube retains its original red artwork; the active-route blue underline was removed.
 - The global action order is Notifications, Settings, Profile, with the existing shared focus behavior preserved.
+## 2026-07-24 - Alignement visuel Activation / Xtream
+
+- Ancrage des logos Activation et Xtream dans une colonne gauche de hauteur fixe.
+- Uniformisation du voile splash et de l opacite de la carte Xtream avec l activation.
+- Ajout d une icone vectorielle d entree au bouton principal Xtream sans modifier son focus ni ses dimensions.

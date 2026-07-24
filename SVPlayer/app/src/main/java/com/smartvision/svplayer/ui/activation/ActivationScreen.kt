@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
@@ -180,10 +181,12 @@ private fun UnifiedActivationPanel(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
         ) {
             SmartVisionLogo()
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(20.dp))
             Text(
                 text = strings.activationTitle,
                 color = SmartVisionColors.TextPrimary,
@@ -200,7 +203,7 @@ private fun UnifiedActivationPanel(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
             ActivationOfferButton(
                 text = when {
                     blocked -> strings.activationDeviceBlocked
@@ -258,7 +261,7 @@ private fun UnifiedActivationPanel(
                 next = activateFocus,
                 enabled = !state.activationBusy && !blocked,
             )
-            Spacer(Modifier.height(7.dp))
+            Spacer(Modifier.height(10.dp))
             ActivationPrimaryButton(
                 text = if (licenseBusy) strings.activationActivatingLicense else strings.activationActivateLicense,
                 enabled = !state.activationBusy && !blocked,
@@ -326,13 +329,13 @@ private fun UnifiedActivationPanel(
                 description = strings.activationQrDescription,
                 size = 174,
             )
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(20.dp))
             Text(
                 text = strings.activationTvCode,
-                color = SmartVisionColors.TextSecondary,
-                style = SmartVisionType.Caption,
+                color = SmartVisionColors.TextPrimary,
+                style = SmartVisionType.Label,
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(10.dp))
             Text(
                 text = state.publicDeviceCode.ifBlank { "------" },
                 color = SmartVisionColors.TextPrimary,
@@ -622,14 +625,16 @@ private fun ActivationPrimaryButton(
 }
 
 @Composable
-private fun SmartVisionLogo() {
+private fun SmartVisionLogo(
+    modifier: Modifier = Modifier
+        .width(200.dp)
+        .height(62.dp),
+) {
     Image(
         painter = painterResource(R.drawable.smartvision_logo_1),
-        contentDescription = "SmartVision",
+        contentDescription = "SmartVision IPTV Player",
         contentScale = ContentScale.Fit,
-        modifier = Modifier
-            .width(180.dp)
-            .height(40.dp),
+        modifier = modifier,
     )
 }
 
@@ -644,7 +649,7 @@ private fun QrCard(
             .size(size.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(Color.White)
-            .border(BorderStroke(1.dp, Color(0xFF8EBEFF)), RoundedCornerShape(14.dp))
+            .border(BorderStroke(1.dp, Color.White), RoundedCornerShape(14.dp))
             .padding(10.dp),
         contentAlignment = Alignment.Center,
     ) {

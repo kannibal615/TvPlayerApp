@@ -95,6 +95,8 @@ Regles visuelles a reutiliser:
 
 Depuis le 2026-07-24, `ActivationScreen` est la deuxieme implementation de reference: meme gabarit `680 x 410 dp`, QR `174 dp`, panneau droit `220 dp`, fond splash et focus bleu/blanc. Elle valide aussi le contrat de fusion: une seule surface Compose pour plusieurs etats metier, avec contenu stable et action primaire variable.
 
+Depuis le 2026-07-24, les surfaces Activation et Xtream utilisent aussi le meme voile bleu-noir, la meme opacite de carte et une colonne gauche de hauteur fixe. Le logo reste ainsi ancre en haut a la meme position, independamment de la hauteur du formulaire ou des erreurs.
+
 ## Priorite de revue recommandee
 
 - P1: Premium/QR/licence, consentement, PIN et Xtream, car ils bloquent activation/acces.

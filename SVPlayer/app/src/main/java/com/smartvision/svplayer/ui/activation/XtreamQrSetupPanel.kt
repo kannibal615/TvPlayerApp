@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -182,7 +184,14 @@ fun XtreamQrSetupPanel(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF010612).copy(alpha = 0.28f)),
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFF020A18).copy(alpha = 0.30f),
+                            Color(0xFF021127).copy(alpha = 0.58f),
+                        ),
+                    ),
+                ),
         )
         Box(
             modifier = Modifier
@@ -199,19 +208,21 @@ fun XtreamQrSetupPanel(
                         .background(
                             Brush.verticalGradient(
                                 listOf(
-                                    Color(0xFF0A1A31).copy(alpha = 0.96f),
-                                    Color(0xFF030D1C).copy(alpha = 0.98f),
+                                    Color(0xFF0A1A31).copy(alpha = 0.98f),
+                                    Color(0xFF030D1C).copy(alpha = 0.99f),
                                 ),
                             ),
                         )
                         .border(BorderStroke(1.dp, Color(0xFF2C568C)), RoundedCornerShape(18.dp))
-                        .padding(horizontal = 26.dp, vertical = 12.dp)
+                        .padding(horizontal = 26.dp, vertical = 18.dp)
                         .imePadding(),
                     horizontalArrangement = Arrangement.spacedBy(24.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
                     ) {
                         SmartVisionLogo()
                         Spacer(Modifier.height(20.dp))
@@ -319,7 +330,7 @@ fun XtreamQrSetupPanel(
                             loading = loading,
                             size = 174,
                         )
-                        Spacer(Modifier.height(30.dp))
+                        Spacer(Modifier.height(20.dp))
                         Text(
                                 text = "${strings.xtreamTvCode} ",
                                 color = SmartVisionColors.TextPrimary,
@@ -568,12 +579,24 @@ private fun XtreamPrimaryButton(
             contentAlignment = Alignment.Center,
         ) {
             if (enabled) {
-                Text(
-                    text = text,
-                    color = Color.White,
-                    style = SmartVisionType.Body,
-                    fontWeight = FontWeight.Medium,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Login,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = text,
+                        color = Color.White,
+                        style = SmartVisionType.Body,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(
