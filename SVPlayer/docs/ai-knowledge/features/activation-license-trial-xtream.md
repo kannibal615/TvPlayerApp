@@ -4,6 +4,8 @@ Depuis le 2026-07-24, la TV publie un inventaire v2 authentifie par `device_id` 
 
 La page publique Playlist peut cibler plusieurs profils existants Admin/Normal et creer en meme temps un profil Normal. Les livraisons portent un `config_id` idempotent, conservent le profil actif et rendent autonome un profil qui partageait les identifiants Admin avant de lui appliquer une configuration ciblee. Une soumission Xtream enregistre aussi l'EPG visible et modifiable, genere par defaut depuis host/username/password tant que l'utilisateur ne l'a pas surcharge.
 
+Tout profil configure mais encore jamais synchronise, notamment un nouveau profil cree par PlaylistWeb, est detecte dans `AppNavigation` puis synchronise par son `profileId`, meme s il n est pas le profil actif. Les profils deja a jour conservent leur catalogue et la synchro de selection Home reste le filet de securite.
+
 Derniere mise a jour: 2026-07-24.
 
 ## Surface unifiee Activation / Fin d essai - 2026-07-24
@@ -17,12 +19,12 @@ Derniere mise a jour: 2026-07-24.
 - le QR Premium et le libelle utilisent exclusivement le `publicDeviceCode` persiste. Aucun `shortCode` de session et aucun fallback `device_id` ne sont affiches ou injectes dans ce QR.
 - le contrat backend, l unicite de l essai et le demarrage du compteur apres validation Xtream restent inchanges.
 
-## Ecran Licence Settings - 2026-07-22
+## Ecran Licence Settings - 2026-07-24
 
 - `Parametres > Licence SmartVision` reutilise `LicensePanel` en mode embarque.
-- Le bouton secondaire `Saisir une licence` est supprime: l action principale Premium/Remove ads reste l unique entree actionnable vers achat/saisie de code.
-- Le panneau affiche statut, expiration, type, code TV, identifiant appareil, etat publicitaire et conseil de renouvellement.
-- Le QR Premium et le code TV sont visibles directement a droite du panneau; le dialogue Premium existant reste utilise quand l utilisateur valide l action principale.
+- Le rendu embarque adopte une carte Premium compacte en deux colonnes, sans besoin de scroll: benefices et CTA a gauche, QR et code TV a droite; statut et expiration restent visibles dans l en-tete.
+- La liste visible reprend uniquement des capacites reelles de l application: sans publicites, Recorder Live TV, Media Center/gestion de fichiers, transfert telephone-TV, multi-profils et controle parental.
+- `Activer` est l unique action du panneau et ouvre le dialogue Premium existant; les boutons `Saisir une licence` et `Actualiser` ne sont pas affiches dans ce menu.
 - Le dialogue Premium conserve l ecran applicatif ouvert en arriere-plan sous un scrim noir a 72 %, au lieu de substituer le fond cinema.
 - Sa carte centree reste au gabarit `680 x 410 dp`: logo, titre, saisie licence et boutons a gauche; separateur, QR et code TV a droite. Le bouton X est supprime et Back assure la fermeture.
 

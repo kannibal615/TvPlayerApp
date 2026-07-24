@@ -803,21 +803,12 @@ internal fun LicensePanel(
     }
     val content: @Composable ColumnScope.() -> Unit = {
         if (embedded) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(modifier = Modifier.weight(1f)) { details() }
-                PremiumPreviewQr(
-                    purchaseUrl = premiumPurchaseUrl,
-                    tvCode = state.tvCode,
-                    title = strings.premiumPurchaseTitle,
-                    subtitle = strings.premiumPreviewSubtitle,
-                    codeLabel = "TV CODE :",
-                    modifier = Modifier.width(310.dp),
-                )
-            }
+            EmbeddedPremiumLicenseCard(
+                state = state,
+                strings = strings,
+                purchaseUrl = premiumPurchaseUrl,
+                onActivate = onShowLicenseQr,
+            )
         } else {
             details()
         }
@@ -833,6 +824,130 @@ internal fun LicensePanel(
                 StatusPill(state.usageMode.label, state.usageMode.color)
             },
             content = content,
+        )
+    }
+}
+
+@Composable
+private fun EmbeddedPremiumLicenseCard(
+    state: ProfileUiState,
+    strings: SmartVisionStrings,
+    purchaseUrl: String,
+    onActivate: () -> Unit,
+) {
+    val gold = Color(0xFFFFD36A)
+    val benefits = remember(strings) {
+        listOf(
+            strings.premiumBenefitNoAds,
+            strings.premiumBenefitRecorder,
+            strings.premiumBenefitMediaCenter,
+            strings.premiumBenefitPhoneTransfer,
+            strings.premiumBenefitMultiProfile,
+            strings.premiumBenefitParentalControl,
+        )
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF10243B),
+                        Color(0xFF071426),
+                        Color(0xFF030A15),
+                    ),
+                    center = Offset(760f, 20f),
+                    radius = 1050f,
+                ),
+            )
+            .border(
+                BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.92f)),
+                RoundedCornerShape(10.dp),
+            )
+            .padding(horizontal = 22.dp, vertical = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Verified,
+                    contentDescription = null,
+                    tint = gold,
+                    modifier = Modifier.size(31.dp),
+                )
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = strings.premiumPurchaseTitle,
+                        color = SmartVisionColors.TextPrimary,
+                        style = SmartVisionType.TitleS,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                    Text(
+                        text = strings.premiumBenefitsSubtitle,
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Caption,
+                        maxLines = 1,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(13.dp))
+            benefits.forEach { benefit ->
+                PremiumBenefitRow(text = benefit)
+            }
+            Spacer(Modifier.height(13.dp))
+
+            TvButton(
+                text = strings.premiumActivate,
+                onClick = onActivate,
+                leadingIcon = Icons.Default.Key,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp),
+            )
+        }
+
+        PremiumPreviewQr(
+            purchaseUrl = purchaseUrl,
+            tvCode = state.tvCode,
+            title = strings.premiumPurchaseTitle,
+            subtitle = strings.premiumPreviewSubtitle,
+            codeLabel = "TV CODE :",
+            modifier = Modifier.width(270.dp),
+        )
+    }
+}
+
+@Composable
+private fun PremiumBenefitRow(text: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(29.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Default.CheckCircle,
+            contentDescription = null,
+            tint = SmartVisionColors.Success,
+            modifier = Modifier.size(19.dp),
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = text,
+            color = SmartVisionColors.TextPrimary,
+            style = SmartVisionType.Body,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

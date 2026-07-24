@@ -105,6 +105,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.smartvision.svplayer.core.ui.viewModelFactory
 import com.smartvision.svplayer.ui.profile.ProfileViewModel
 import com.smartvision.svplayer.ui.profile.LicensePanel
+import com.smartvision.svplayer.ui.profile.ProfileUiState
 import com.smartvision.svplayer.ui.profile.SmartVisionQrDialog
 
 @Composable
@@ -369,6 +370,16 @@ private fun SettingsMenuLayout(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
+            trailing = if (selectedSection == SettingsSection.License) {
+                {
+                    LicenseHeaderStatus(
+                        state = licenseState,
+                        strings = strings,
+                    )
+                }
+            } else {
+                null
+            },
         ) {
             when (selectedSection) {
                 SettingsSection.License -> {
@@ -662,6 +673,59 @@ private fun SettingsSection.label(strings: SmartVisionStrings): String = when (t
     SettingsSection.Personalization -> strings.personalization
     SettingsSection.Updates -> strings.updates
     SettingsSection.Data -> strings.localData
+}
+
+@Composable
+private fun LicenseHeaderStatus(
+    state: ProfileUiState,
+    strings: SmartVisionStrings,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        LicenseHeaderMetric(
+            label = strings.licenseStatusLabel,
+            value = state.activationStatusLabel,
+            valueColor = state.usageMode.color,
+        )
+        LicenseHeaderMetric(
+            label = strings.licenseExpirationLabel,
+            value = state.licenseExpiresAt.ifBlank { "-" },
+        )
+    }
+}
+
+@Composable
+private fun LicenseHeaderMetric(
+    label: String,
+    value: String,
+    valueColor: Color = SmartVisionColors.TextPrimary,
+) {
+    Column(
+        modifier = Modifier
+            .width(176.dp)
+            .height(44.dp)
+            .clip(RoundedCornerShape(7.dp))
+            .background(Color(0xB7081424))
+            .border(
+                BorderStroke(1.dp, SmartVisionColors.Border.copy(alpha = 0.78f)),
+                RoundedCornerShape(7.dp),
+            )
+            .padding(horizontal = 11.dp, vertical = 5.dp),
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = label,
+            color = SmartVisionColors.TextSecondary,
+            style = SmartVisionType.Caption,
+            maxLines = 1,
+        )
+        Text(
+            text = value,
+            color = valueColor,
+            style = SmartVisionType.Caption,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+    }
 }
 
 private data class SettingsOption(

@@ -166,8 +166,19 @@ private fun RemoteTrendingConfig.toDomain(): TrendingConfig {
 private fun RemoteAppearanceConfig.toDomain(): AppAppearanceConfig =
     AppAppearanceConfig(
         managed = managed == true,
-        backgroundImageUrl = backgroundImageUrl?.trim().orEmpty(),
+        backgroundImageUrl = backgroundImageUrl
+            ?.trim()
+            .orEmpty()
+            .toAbsoluteSmartVisionUrl(),
     )
+
+private fun String.toAbsoluteSmartVisionUrl(): String = when {
+    isBlank() -> ""
+    startsWith("http://", ignoreCase = true) || startsWith("https://", ignoreCase = true) -> this
+    else -> BuildConfig.ACTIVATION_BASE_URL
+        .ifBlank { "https://smartvisions.net/" }
+        .trimEnd('/') + "/" + trimStart('/')
+}
 
 private fun defaultRuntimeConfig(): AppRuntimeConfig =
     AppRuntimeConfig(

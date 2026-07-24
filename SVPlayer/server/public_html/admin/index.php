@@ -774,14 +774,13 @@ function admin_clear_device_playlist(PDO $pdo): void
     $pdo->beginTransaction();
     $pdo->prepare('DELETE FROM device_playlist_configs WHERE device_id = :device_id')
         ->execute(['device_id' => $deviceId]);
-    $pdo->prepare("UPDATE devices SET xtream_status = :xtream_status, updated_at = NOW() WHERE device_id = :device_id")
-        ->execute([
-            'xtream_status' => device_has_synced_xtream_profiles($pdo, $deviceId) ? 'configured' : 'missing',
-            'device_id' => $deviceId,
-        ]);
+    $pdo->prepare('DELETE FROM device_playlist_profiles WHERE device_id = :device_id')
+        ->execute(['device_id' => $deviceId]);
+    $pdo->prepare("UPDATE devices SET xtream_status = 'missing', updated_at = NOW() WHERE device_id = :device_id")
+        ->execute(['device_id' => $deviceId]);
     audit_admin_action($pdo, 'device_playlist_cleared', 'device', $deviceId);
     $pdo->commit();
-    set_admin_flash('success', 'Configuration Xtream appareil supprimee.');
+    set_admin_flash('success', 'Configuration et inventaire Xtream appareil supprimes.');
 }
 
 function admin_delete_device(PDO $pdo): void

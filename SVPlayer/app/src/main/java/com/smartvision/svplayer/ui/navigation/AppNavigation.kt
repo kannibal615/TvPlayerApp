@@ -235,6 +235,30 @@ fun AppNavigation(
         delay(750)
         runCatching { container.activationRepository.publishProfileInventory(playlistProfiles) }
     }
+    val pendingProfileSyncIds = remember(playlistProfiles) {
+        playlistProfiles
+            .filter { profile ->
+                profile.isConfigured &&
+                    profile.lastSyncAt == null &&
+                    !container.accountManager.isCatalogCurrent(profile)
+            }
+            .map { it.id }
+    }
+    LaunchedEffect(activationState.activated, pendingProfileSyncIds) {
+        if (!activationState.activated || pendingProfileSyncIds.isEmpty()) return@LaunchedEffect
+        delay(500)
+        pendingProfileSyncIds.forEach { profileId ->
+            val profile = container.accountManager.profiles.value.firstOrNull { it.id == profileId }
+                ?: return@forEach
+            if (
+                profile.isConfigured &&
+                profile.lastSyncAt == null &&
+                !container.accountManager.isCatalogCurrent(profile)
+            ) {
+                runCatching { container.synchronizeCatalog(profileId).getOrThrow() }
+            }
+        }
+    }
     val configuredPickerProfiles = remember(playlistProfiles) {
         playlistProfiles.filter { it.isConfigured }
     }
@@ -789,7 +813,10 @@ fun AppNavigation(
     )
     val notificationBadgeState by notificationBadgeViewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(appInForeground) {
-        if (appInForeground) notificationBadgeViewModel.refresh()
+        if (appInForeground) {
+            appConfigViewModel.refresh()
+            notificationBadgeViewModel.refresh()
+        }
     }
     val hasNewNotifications = notificationBadgeState.hasUnread
     val notificationBadgeCount = notificationBadgeState.unreadCount
