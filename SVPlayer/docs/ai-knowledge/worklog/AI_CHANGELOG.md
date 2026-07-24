@@ -1,5 +1,7 @@
 # AI Changelog
 
+- 2026-07-24: modularisation sans changement fonctionnel de l ecran Profil: `ProfileScreen.kt` passe d environ 4000 a 742 lignes et conserve uniquement route/orchestration. Licence et dialogue Premium, synchronisation, editeur de profil, panneaux playlist et utilitaires partages sont extraits dans cinq fichiers dedies; signatures externes, rendu et navigation D-pad conserves. `:app:compileReleaseKotlin` reussit.
+
 - 2026-07-24: correction du triptyque Admin/PlaylistWeb/background: `Reset Xtream` efface aussi l inventaire v2 et force le statut manquant; les profils configures jamais synchronises sont synchronises automatiquement par `profileId`, meme inactifs; les chemins relatifs des fonds importes par l admin sont convertis en URL SmartVision absolue avant chargement Coil et la config est relue au retour au premier plan.
 
 - 2026-07-24: refonte ciblee de `Parametres > Licence SmartVision` d apres le modele TV: statut/expiration en en-tete, carte Premium compacte sans scroll, QR/code TV a droite et liste des capacites Premium reelles (sans pubs, Recorder, Media Center, transfert telephone-TV, multi-profils, controle parental). `Activer` devient l unique bouton du panneau et ouvre le dialogue Premium existant; `Actualiser` est retire. Copies EN/FR centralisees dans `SmartVisionStrings`.
