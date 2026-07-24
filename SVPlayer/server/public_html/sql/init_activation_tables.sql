@@ -231,11 +231,23 @@ CREATE TABLE IF NOT EXISTS device_playlist_profiles (
     device_id VARCHAR(100) NOT NULL,
     profile_id VARCHAR(100) NOT NULL,
     profile_name VARCHAR(60) NOT NULL,
-    profile_type ENUM('admin', 'normal') NOT NULL,
+    profile_type ENUM('admin', 'normal', 'kids') NOT NULL,
+    source ENUM('xtream', 'm3u') NULL,
+    credentials_mode ENUM('custom', 'shared_with_admin') NULL,
+    credentials_payload LONGTEXT NULL,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (device_id, profile_id),
     INDEX idx_device_playlist_profiles_type (device_id, profile_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE device_playlist_profiles
+    MODIFY profile_type ENUM('admin', 'normal', 'kids') NOT NULL;
+ALTER TABLE device_playlist_profiles
+    ADD COLUMN IF NOT EXISTS source ENUM('xtream', 'm3u') NULL AFTER profile_type;
+ALTER TABLE device_playlist_profiles
+    ADD COLUMN IF NOT EXISTS credentials_mode ENUM('custom', 'shared_with_admin') NULL AFTER source;
+ALTER TABLE device_playlist_profiles
+    ADD COLUMN IF NOT EXISTS credentials_payload LONGTEXT NULL AFTER credentials_mode;
 
 CREATE TABLE IF NOT EXISTS playlist_lookup_attempts (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -668,8 +680,39 @@ INSERT INTO app_settings (setting_key, setting_value) VALUES
 ('gammal_webhook_public_key_cached_at', '0')
 ON DUPLICATE KEY UPDATE setting_key = VALUES(setting_key);
 
-INSERT INTO home_slider_ads (sort_order, title, subtitle, button_label, button_route, image_url, status) VALUES
-(10, 'Bienvenue sur SmartVision', 'Une experience IPTV fluide, premium et pensee pour Android TV.', 'En savoir plus', 'live_tv', '/assets/images/app-live-tv.png', 'active'),
-(20, 'Live TV instantanee', 'Retrouvez vos chaines en direct avec une navigation simple a la telecommande.', 'Voir Live TV', 'live_tv', '/assets/images/app-live-tv.png', 'active'),
-(30, 'Films et series', 'Explorez vos catalogues Xtream avec affiches, details et reprise de lecture.', 'Explorer', 'movies', '/assets/images/app-movies.png', 'active')
-ON DUPLICATE KEY UPDATE title = VALUES(title);
+INSERT IGNORE INTO app_settings (setting_key, setting_value)
+VALUES ('migration_20260724_hero_image_only', 'pending');
+
+UPDATE home_slider_ads
+SET title = '',
+    subtitle = '',
+    button_label = ''
+WHERE EXISTS (
+    SELECT 1
+    FROM app_settings
+    WHERE setting_key = 'migration_20260724_hero_image_only'
+      AND setting_value = 'pending'
+);
+
+UPDATE app_settings
+SET setting_value = 'done'
+WHERE setting_key = 'migration_20260724_hero_image_only'
+  AND setting_value = 'pending';
+
+INSERT IGNORE INTO app_settings (setting_key, setting_value)
+VALUES ('migration_20260724_remove_seeded_hero_slides', 'pending');
+
+DELETE FROM home_slider_ads
+WHERE sort_order IN (20, 30)
+  AND image_url IN ('/assets/images/app-live-tv.png', '/assets/images/app-movies.png')
+  AND EXISTS (
+      SELECT 1
+      FROM app_settings
+      WHERE setting_key = 'migration_20260724_remove_seeded_hero_slides'
+        AND setting_value = 'pending'
+  );
+
+UPDATE app_settings
+SET setting_value = 'done'
+WHERE setting_key = 'migration_20260724_remove_seeded_hero_slides'
+  AND setting_value = 'pending';

@@ -65,6 +65,7 @@ fun HomeHeroBanner(
     }
     var slideIndex by remember(profileKey, kidsMode) { mutableIntStateOf(0) }
     val slide = slides[slideIndex.coerceIn(slides.indices)]
+    val hasCopy = slide.title.isNotBlank() || slide.subtitle.isNotBlank()
 
     LaunchedEffect(profileKey, kidsMode, slides.size) {
         if (slideIndex !in slides.indices) slideIndex = 0
@@ -92,38 +93,46 @@ fun HomeHeroBanner(
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color(0xFF051020).copy(alpha = 0.88f),
-                            Color(0xFF051020).copy(alpha = 0.46f),
-                            Color.Transparent,
+        if (hasCopy) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color(0xFF051020).copy(alpha = 0.88f),
+                                Color(0xFF051020).copy(alpha = 0.46f),
+                                Color.Transparent,
+                            ),
                         ),
                     ),
-                ),
-        )
-        Column(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 24.dp, end = 430.dp),
-        ) {
-            Text(
-                text = slide.title,
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.HomeHeroTitle,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
             )
-            Spacer(Modifier.height(7.dp))
-            Text(
-                text = slide.subtitle,
-                color = SmartVisionColors.TextSecondary,
-                style = SmartVisionType.Label,
-                maxLines = 2,
-            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 24.dp, end = 430.dp),
+            ) {
+                if (slide.title.isNotBlank()) {
+                    Text(
+                        text = slide.title,
+                        color = SmartVisionColors.TextPrimary,
+                        style = SmartVisionType.HomeHeroTitle,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                }
+                if (slide.title.isNotBlank() && slide.subtitle.isNotBlank()) {
+                    Spacer(Modifier.height(7.dp))
+                }
+                if (slide.subtitle.isNotBlank()) {
+                    Text(
+                        text = slide.subtitle,
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Label,
+                        maxLines = 2,
+                    )
+                }
+            }
         }
 
         androidx.compose.foundation.layout.Row(
@@ -160,11 +169,9 @@ private data class HomeHeroSlide(
 private fun HomeSlide.toHeroSlide(localizedFallback: HomeHeroSlide): HomeHeroSlide = HomeHeroSlide(
     imageRes = localizedFallback.imageRes,
     imageUrl = imageUrl.toAbsoluteAssetUrl(),
-    // The backend currently has no locale metadata. Keep its image/route, but
-    // render the existing SmartVisionStrings copy so Home never mixes languages.
-    title = localizedFallback.title,
-    subtitle = localizedFallback.subtitle,
-    buttonLabel = localizedFallback.buttonLabel,
+    title = title.trim(),
+    subtitle = subtitle.trim(),
+    buttonLabel = buttonLabel.trim(),
     route = buttonRoute.ifBlank { localizedFallback.route },
 )
 

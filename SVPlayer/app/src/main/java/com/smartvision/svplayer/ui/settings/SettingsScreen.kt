@@ -237,8 +237,9 @@ fun SettingsScreen(
 
     licenseState.qrDialog?.let { qr ->
         SmartVisionQrDialog(
-            title = qr.title,
-            subtitle = qr.subtitle,
+            strings = strings,
+            title = if (qr.allowsLicenseEntry) strings.premiumPurchaseTitle else qr.title,
+            subtitle = if (qr.allowsLicenseEntry) strings.premiumPurchaseSubtitle else qr.subtitle,
             qrUrl = qr.url,
             tvCode = licenseState.tvCode,
             code = qr.code,

@@ -418,8 +418,8 @@ private fun ActivationOfferButton(
             Text(
                 text = text,
                 color = Color.White,
-                style = SmartVisionType.Label,
-                fontWeight = FontWeight.SemiBold,
+                style = SmartVisionType.Body,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -615,8 +615,8 @@ private fun ActivationPrimaryButton(
             Text(
                 text = text,
                 color = Color.White,
-                style = SmartVisionType.Label,
-                fontWeight = FontWeight.SemiBold,
+                style = SmartVisionType.Body,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

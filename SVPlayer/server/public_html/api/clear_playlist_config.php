@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/device_profile_sync_policy.php';
 require_once __DIR__ . '/device_state.php';
 
 apply_api_headers();
@@ -63,8 +64,11 @@ try {
     $pdo->beginTransaction();
     $pdo->prepare('DELETE FROM device_playlist_configs WHERE device_id = :device_id')
         ->execute(['device_id' => $deviceId]);
-    $pdo->prepare("UPDATE devices SET xtream_status = 'missing', updated_at = NOW() WHERE device_id = :device_id")
-        ->execute(['device_id' => $deviceId]);
+    $pdo->prepare("UPDATE devices SET xtream_status = :xtream_status, updated_at = NOW() WHERE device_id = :device_id")
+        ->execute([
+            'xtream_status' => device_has_synced_xtream_profiles($pdo, $deviceId) ? 'configured' : 'missing',
+            'device_id' => $deviceId,
+        ]);
     $pdo->commit();
 
     json_response([

@@ -16,14 +16,31 @@
     const newName = document.getElementById('playlist-new-profile-name');
     const configType = document.getElementById('playlist-config-type');
     const submit = document.getElementById('playlist-submit');
+    const hostInput = document.getElementById('playlist-host');
+    const usernameInput = document.getElementById('playlist-username');
+    const passwordInput = document.getElementById('playlist-password');
+    const xtreamEpgInput = document.getElementById('playlist-xtream-epg');
     const selectedTargetIds = new Set(JSON.parse(form.dataset.selectedTargets || '[]'));
     const restoreCreateNew = form.dataset.createNew === '1';
     let eligibleProfiles = [];
     let codeReady = false;
     let validationRequest = null;
+    let xtreamEpgManuallyEdited = false;
 
     const normalizedCode = (value) => value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
     const activeType = () => document.querySelector('[data-config-tab]:checked')?.value || 'xtream';
+    const generatedXtreamEpg = () => {
+        const host = (hostInput?.value || '').trim().replace(/\/+$/, '');
+        const username = (usernameInput?.value || '').trim();
+        const password = passwordInput?.value || '';
+        if (!host || !username || !password) return '';
+        return `${host}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+    };
+
+    function updateXtreamEpg() {
+        if (!xtreamEpgInput || xtreamEpgManuallyEdited) return;
+        xtreamEpgInput.value = generatedXtreamEpg();
+    }
 
     function setCodeStatus(message, state = '') {
         codeStatus.textContent = message;
@@ -59,7 +76,7 @@
             const active = panel.dataset.configPanel === type;
             panel.querySelectorAll('input').forEach((input) => {
                 input.disabled = !active;
-                if (input.id === 'playlist-host' || input.id === 'playlist-username' || input.id === 'playlist-password' || input.id === 'playlist-m3u') {
+                if (input.id === 'playlist-host' || input.id === 'playlist-username' || input.id === 'playlist-password' || input.id === 'playlist-m3u' || input.id === 'playlist-xtream-epg') {
                     input.required = active;
                 }
             });
@@ -154,6 +171,15 @@
         updateSubmitState();
     });
     form.querySelector('input[name="clear_epg"]')?.addEventListener('change', updatePanels);
+    [hostInput, usernameInput, passwordInput].forEach((input) => input?.addEventListener('input', updateXtreamEpg));
+    if (xtreamEpgInput) {
+        const initialGenerated = generatedXtreamEpg();
+        xtreamEpgManuallyEdited = xtreamEpgInput.value.trim() !== '' && xtreamEpgInput.value.trim() !== initialGenerated;
+        xtreamEpgInput.addEventListener('input', () => {
+            xtreamEpgManuallyEdited = xtreamEpgInput.value.trim() !== generatedXtreamEpg();
+        });
+        updateXtreamEpg();
+    }
     form.addEventListener('submit', (event) => {
         updateSubmitState();
         if (submit.disabled || !form.checkValidity()) {
@@ -167,5 +193,26 @@
 
     updatePanels();
     if (normalizedCode(codeInput.value).length === 6) validateCode();
-})();
 
+    const successModal = document.querySelector('[data-success-modal]');
+    if (successModal) {
+        const closeSuccess = () => {
+            successModal.remove();
+            document.body.classList.remove('playlist-modal-open');
+        };
+        document.body.classList.add('playlist-modal-open');
+        successModal.querySelectorAll('[data-success-close]').forEach((element) => {
+            element.addEventListener('click', closeSuccess);
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && document.body.contains(successModal)) {
+                event.preventDefault();
+                closeSuccess();
+            } else if (event.key === 'Tab' && document.body.contains(successModal)) {
+                event.preventDefault();
+                successModal.querySelector('[data-success-focus]')?.focus();
+            }
+        });
+        requestAnimationFrame(() => successModal.querySelector('[data-success-focus]')?.focus());
+    }
+})();

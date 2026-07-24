@@ -156,7 +156,7 @@ data class PlaylistConfigResponse(
 data class DeviceProfilesRequest(
     @SerializedName("device_id") val deviceId: String,
     @SerializedName("device_token") val deviceToken: String,
-    @SerializedName("capability_version") val capabilityVersion: Int = 1,
+    @SerializedName("capability_version") val capabilityVersion: Int = 2,
     @SerializedName("profiles") val profiles: List<DeviceProfileSummary>,
 )
 
@@ -164,6 +164,13 @@ data class DeviceProfileSummary(
     @SerializedName("profile_id") val profileId: String,
     @SerializedName("name") val name: String,
     @SerializedName("type") val type: String,
+    @SerializedName("source") val source: String,
+    @SerializedName("credentials_mode") val credentialsMode: String,
+    @SerializedName("host") val host: String = "",
+    @SerializedName("username") val username: String = "",
+    @SerializedName("password") val password: String = "",
+    @SerializedName("epg_url") val epgUrl: String = "",
+    @SerializedName("m3u_url") val m3uUrl: String = "",
 )
 
 data class DeviceProfilesResponse(

@@ -134,6 +134,7 @@ import com.smartvision.svplayer.ui.components.NumericPinDialog
 import com.smartvision.svplayer.ui.components.PremiumPreviewQr
 import com.smartvision.svplayer.ui.components.TvConfirmationDialog
 import com.smartvision.svplayer.ui.components.TvDialogSurface
+import com.smartvision.svplayer.ui.activation.ScaledActivationLayout
 import com.smartvision.svplayer.ui.focus.LocalTvFocusStyle
 import com.smartvision.svplayer.ui.focus.rememberTvFocusState
 import com.smartvision.svplayer.ui.focus.tvFocusTarget
@@ -706,8 +707,9 @@ private fun ProfileScreen(
 
     state.qrDialog?.let { qr ->
         SmartVisionQrDialog(
-            title = qr.title,
-            subtitle = qr.subtitle,
+            strings = strings,
+            title = if (qr.allowsLicenseEntry) strings.premiumPurchaseTitle else qr.title,
+            subtitle = if (qr.allowsLicenseEntry) strings.premiumPurchaseSubtitle else qr.subtitle,
             qrUrl = qr.url,
             tvCode = state.tvCode,
             code = qr.code,
@@ -3140,6 +3142,7 @@ private fun ExpirationPill(label: String) {
 
 @Composable
 fun SmartVisionQrDialog(
+    strings: SmartVisionStrings,
     title: String,
     subtitle: String,
     qrUrl: String,
@@ -3158,6 +3161,9 @@ fun SmartVisionQrDialog(
 ) {
     if (onLicenseCodeChange != null && onSubmitLicenseCode != null) {
         PremiumLicenseDialog(
+            strings = strings,
+            title = title,
+            subtitle = subtitle,
             qrUrl = qrUrl,
             tvCode = tvCode,
             loading = loading,
@@ -3172,6 +3178,7 @@ fun SmartVisionQrDialog(
     }
 
     PremiumQrOnlyDialog(
+        strings = strings,
         title = title,
         subtitle = subtitle,
         qrUrl = qrUrl,
@@ -3188,6 +3195,7 @@ fun SmartVisionQrDialog(
 
 @Composable
 private fun PremiumQrOnlyDialog(
+    strings: SmartVisionStrings,
     title: String,
     subtitle: String,
     qrUrl: String,
@@ -3200,11 +3208,15 @@ private fun PremiumQrOnlyDialog(
     onAction: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
+    val actionFocusRequester = remember { FocusRequester() }
     val closeFocusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(actionLabel, onAction) {
         delay(ProfileFocusRequestDelayMillis)
-        runCatching { closeFocusRequester.requestFocus() }
+        runCatching {
+            if (actionLabel != null && onAction != null) actionFocusRequester.requestFocus()
+            else closeFocusRequester.requestFocus()
+        }
     }
 
     Dialog(
@@ -3214,103 +3226,104 @@ private fun PremiumQrOnlyDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xCC010711))
-                .padding(horizontal = 40.dp, vertical = 28.dp),
+                .background(Color.Black.copy(alpha = 0.72f)),
             contentAlignment = Alignment.Center,
         ) {
             Box(
                 modifier = Modifier
-                    .width(width)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                Color(0xFF102542),
-                                Color(0xFF071426),
-                                Color(0xFF030A15),
-                            ),
-                            radius = 1100f,
-                        ),
-                    )
-                    .border(
-                        BorderStroke(1.dp, Color(0xFF2A67A7).copy(alpha = 0.86f)),
-                        RoundedCornerShape(20.dp),
-                    )
-                    .padding(horizontal = 22.dp, vertical = 20.dp),
+                    .fillMaxSize()
+                    .padding(horizontal = 64.dp, vertical = 40.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    PremiumQrCard(
-                        qrUrl = qrUrl,
-                        tvCode = tvCode,
-                        loading = loading,
+                ScaledActivationLayout {
+                    Row(
                         modifier = Modifier
-                            .width(336.dp)
-                            .height(318.dp),
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(308.dp)
-                            .background(Color(0xFF1D3553).copy(alpha = 0.72f)),
-                    )
-
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(top = 14.dp, end = 12.dp),
+                            .width(680.dp)
+                            .height(410.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color(0xFF0A1A31).copy(alpha = 0.98f),
+                                        Color(0xFF030D1C).copy(alpha = 0.99f),
+                                    ),
+                                ),
+                            )
+                            .border(BorderStroke(1.dp, Color(0xFF2C568C)), RoundedCornerShape(18.dp))
+                            .padding(horizontal = 26.dp, vertical = 18.dp),
+                        horizontalArrangement = Arrangement.spacedBy(24.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = title,
-                            color = SmartVisionColors.TextPrimary,
-                            style = SmartVisionType.TitleM,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        Text(
-                            text = subtitle,
-                            color = SmartVisionColors.TextSecondary,
-                            style = SmartVisionType.Body,
-                            maxLines = 6,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (error != null) {
-                            Spacer(Modifier.height(12.dp))
-                            Text(error, color = SmartVisionColors.Error, style = SmartVisionType.Label)
-                        }
-                        Spacer(Modifier.height(22.dp))
-                        if (actionLabel != null && onAction != null) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                        ) {
+                            PremiumDialogLogo()
+                            Spacer(Modifier.height(20.dp))
+                            Text(
+                                text = title,
+                                color = SmartVisionColors.TextPrimary,
+                                style = SmartVisionType.TitleM,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = subtitle,
+                                color = SmartVisionColors.TextSecondary,
+                                style = SmartVisionType.Caption,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            if (error != null) {
+                                Spacer(Modifier.height(10.dp))
+                                Text(error, color = SmartVisionColors.Error, style = SmartVisionType.Caption)
+                            }
+                            Spacer(Modifier.weight(1f))
+                            if (actionLabel != null && onAction != null) {
+                                PremiumDialogButton(
+                                    text = actionLabel,
+                                    onClick = onAction,
+                                    primary = true,
+                                    trailingIcon = Icons.Default.ArrowForward,
+                                    focusRequester = actionFocusRequester,
+                                    nextFocusRequester = closeFocusRequester,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(48.dp),
+                                )
+                                Spacer(Modifier.height(8.dp))
+                            }
                             PremiumDialogButton(
-                                text = actionLabel,
-                                onClick = onAction,
-                                primary = true,
-                                trailingIcon = Icons.Default.ArrowForward,
+                                text = strings.close,
+                                onClick = onDismiss,
+                                primary = false,
+                                focusRequester = closeFocusRequester,
+                                previousFocusRequester = if (actionLabel != null && onAction != null) actionFocusRequester else null,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(46.dp),
+                                    .height(48.dp),
                             )
-                            Spacer(Modifier.height(10.dp))
                         }
-                        PremiumDialogButton(
-                            text = "Fermer",
-                            onClick = onDismiss,
-                            primary = false,
-                            focusRequester = closeFocusRequester,
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(46.dp),
+                                .width(1.dp)
+                                .height(340.dp)
+                                .background(Color(0xFF31547C).copy(alpha = 0.72f)),
+                        )
+                        PremiumQrCard(
+                            strings = strings,
+                            qrUrl = qrUrl,
+                            tvCode = tvCode,
+                            loading = loading,
+                            modifier = Modifier
+                                .width(220.dp)
+                                .height(340.dp),
                         )
                     }
                 }
-
-                PremiumCloseButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.TopEnd),
-                )
             }
         }
     }
@@ -3318,6 +3331,9 @@ private fun PremiumQrOnlyDialog(
 
 @Composable
 private fun PremiumLicenseDialog(
+    strings: SmartVisionStrings,
+    title: String,
+    subtitle: String,
     qrUrl: String,
     tvCode: String,
     loading: Boolean,
@@ -3330,6 +3346,8 @@ private fun PremiumLicenseDialog(
 ) {
     val fieldFocusRequester = remember { FocusRequester() }
     val inputFocusRequester = remember { FocusRequester() }
+    val activateFocusRequester = remember { FocusRequester() }
+    val closeFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
     var editing by remember { mutableStateOf(false) }
     var fieldFocused by remember { mutableStateOf(false) }
@@ -3355,204 +3373,204 @@ private fun PremiumLicenseDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xCC010711))
-                .padding(horizontal = 40.dp, vertical = 28.dp),
+                .background(Color.Black.copy(alpha = 0.72f)),
             contentAlignment = Alignment.Center,
         ) {
-            Box(
+            ScaledActivationLayout {
+            Row(
                 modifier = Modifier
-                    .width(760.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .width(680.dp)
+                    .height(410.dp)
+                    .clip(RoundedCornerShape(18.dp))
                     .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                Color(0xFF102542),
-                                Color(0xFF071426),
-                                Color(0xFF030A15),
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0xFF0A1A31).copy(alpha = 0.98f),
+                                Color(0xFF030D1C).copy(alpha = 0.99f),
                             ),
-                            radius = 1100f,
                         ),
                     )
                     .border(
-                        BorderStroke(1.dp, Color(0xFF2A67A7).copy(alpha = 0.86f)),
-                        RoundedCornerShape(20.dp),
+                        BorderStroke(1.dp, Color(0xFF2C568C)),
+                        RoundedCornerShape(18.dp),
                     )
-                    .padding(horizontal = 22.dp, vertical = 20.dp),
+                    .padding(horizontal = 26.dp, vertical = 18.dp),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
                 ) {
-                    PremiumQrCard(
-                        qrUrl = qrUrl,
-                        tvCode = tvCode,
-                        loading = loading,
-                        modifier = Modifier
-                            .width(336.dp)
-                            .height(318.dp),
+                    PremiumDialogLogo()
+                    Spacer(Modifier.height(20.dp))
+                    Text(
+                        text = title,
+                        color = SmartVisionColors.TextPrimary,
+                        style = SmartVisionType.TitleM,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
-
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(308.dp)
-                            .background(Color(0xFF1D3553).copy(alpha = 0.72f)),
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = subtitle,
+                        color = SmartVisionColors.TextSecondary,
+                        style = SmartVisionType.Caption,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
-
-                    Column(
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = strings.premiumLicenseLabel,
+                        color = SmartVisionColors.TextPrimary,
+                        style = SmartVisionType.Caption,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(5.dp))
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .padding(top = 16.dp, end = 12.dp),
-                    ) {
-                        Text(
-                            text = "Passer à",
-                            color = SmartVisionColors.TextPrimary,
-                            style = SmartVisionType.TitleM,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            text = "SmartVision Premium",
-                            color = Color(0xFF1687FF),
-                            style = SmartVisionType.TitleM,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            text = "Débloquez toutes les fonctionnalités premium\net profitez d’une expérience IPTV sans limites.",
-                            color = SmartVisionColors.TextSecondary,
-                            style = SmartVisionType.Label,
-                        )
-                        Spacer(Modifier.height(20.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Security,
-                                contentDescription = null,
-                                tint = Color(0xFF1687FF),
-                                modifier = Modifier.size(20.dp),
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = "Code licence SmartVision",
-                                color = Color(0xFF1687FF),
-                                style = SmartVisionType.Label,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-                        Spacer(Modifier.height(10.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(54.dp)
-                                .focusRequester(fieldFocusRequester)
-                                .onFocusChanged { fieldFocused = it.isFocused }
-                                .onPreviewKeyEvent { event ->
-                                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                                    when (event.key) {
-                                        Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
-                                            editing = true
-                                            true
-                                        }
-                                        Key.Back -> {
-                                            if (editing) {
-                                                editing = false
-                                                keyboardController?.hide()
-                                                true
-                                            } else {
-                                                false
-                                            }
-                                        }
-                                        else -> false
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .focusRequester(fieldFocusRequester)
+                            .focusProperties { down = activateFocusRequester }
+                            .onFocusChanged { fieldFocused = it.isFocused }
+                            .onPreviewKeyEvent { event ->
+                                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                when (event.key) {
+                                    Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                                        editing = true
+                                        true
                                     }
-                                }
-                                .focusable(enabled = !editing)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(
-                                    if (fieldFocused || editing) {
-                                        focusStyle.background
-                                    } else {
-                                        Color(0xFF030B18).copy(alpha = 0.92f)
-                                    },
-                                )
-                                .border(
-                                    BorderStroke(
-                                        if (fieldFocused || editing) focusStyle.borderWidth else 1.dp,
-                                        if (fieldFocused || editing) {
-                                            focusStyle.accent
-                                        } else {
-                                            SmartVisionColors.Primary
-                                        },
-                                    ),
-                                    RoundedCornerShape(10.dp),
-                                )
-                                .padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            BasicTextField(
-                                value = licenseCode,
-                                onValueChange = { onLicenseCodeChange(it.uppercase().take(24)) },
-                                enabled = editing,
-                                singleLine = true,
-                                textStyle = SmartVisionType.Body.copy(
-                                    color = SmartVisionColors.TextPrimary,
-                                    fontWeight = FontWeight.SemiBold,
-                                ),
-                                cursorBrush = SolidColor(focusStyle.accent),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .focusRequester(inputFocusRequester)
-                                    .onFocusChanged { focusState ->
-                                        if (!focusState.isFocused && editing) {
+                                    Key.DirectionDown -> {
+                                        editing = false
+                                        keyboardController?.hide()
+                                        runCatching { activateFocusRequester.requestFocus() }
+                                        true
+                                    }
+                                    Key.Back -> {
+                                        if (editing) {
                                             editing = false
+                                            keyboardController?.hide()
+                                            true
+                                        } else {
+                                            false
                                         }
-                                    },
-                                decorationBox = { inner ->
-                                    if (licenseCode.isBlank()) {
-                                        Text(
-                                            text = "Saisir le code",
-                                            color = SmartVisionColors.TextSecondary.copy(alpha = 0.62f),
-                                            style = SmartVisionType.Body,
-                                        )
                                     }
-                                    inner()
+                                    else -> false
+                                }
+                            }
+                            .focusable(enabled = !editing)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (fieldFocused || editing) {
+                                    focusStyle.background
+                                } else {
+                                    Color(0xFF030B18).copy(alpha = 0.92f)
                                 },
                             )
-                        }
+                            .border(
+                                BorderStroke(
+                                    if (fieldFocused || editing) focusStyle.borderWidth else 1.dp,
+                                    if (fieldFocused || editing) focusStyle.accent else Color(0xFF31547C),
+                                ),
+                                RoundedCornerShape(8.dp),
+                            )
+                            .padding(horizontal = 13.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        BasicTextField(
+                            value = licenseCode,
+                            onValueChange = { onLicenseCodeChange(it.uppercase().take(24)) },
+                            enabled = editing,
+                            singleLine = true,
+                            textStyle = SmartVisionType.Body.copy(
+                                color = SmartVisionColors.TextPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                            cursorBrush = SolidColor(focusStyle.accent),
+                            modifier = Modifier
+                                .weight(1f)
+                                .focusRequester(inputFocusRequester)
+                                .onFocusChanged { focusState ->
+                                    if (!focusState.isFocused && editing) {
+                                        editing = false
+                                    }
+                                }
+                            ,
+                            decorationBox = { inner ->
+                                if (licenseCode.isBlank()) {
+                                    Text(
+                                        text = strings.premiumLicenseHint,
+                                        color = SmartVisionColors.TextSecondary.copy(alpha = 0.62f),
+                                        style = SmartVisionType.Body,
+                                    )
+                                }
+                                inner()
+                            },
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(32.dp)
+                            .padding(top = 5.dp),
+                    ) {
                         if (!error.isNullOrBlank()) {
-                            Spacer(Modifier.height(10.dp))
                             Text(
                                 text = error,
                                 color = SmartVisionColors.Error,
-                                style = SmartVisionType.Label,
+                                style = SmartVisionType.Caption,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        Spacer(Modifier.height(14.dp))
-                        PremiumDialogButton(
-                            text = if (submittingLicense) "Activation..." else "Activer ce code",
-                            onClick = onSubmitLicenseCode,
-                            enabled = !submittingLicense && licenseCode.isNotBlank(),
-                            primary = true,
-                            trailingIcon = Icons.Default.ArrowForward,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(46.dp),
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        PremiumDialogButton(
-                            text = "Fermer",
-                            onClick = onDismiss,
-                            primary = false,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(46.dp),
-                        )
                     }
+                    Spacer(Modifier.weight(1f))
+                    PremiumDialogButton(
+                        text = if (submittingLicense) strings.premiumActivating else strings.premiumActivateCode,
+                        onClick = onSubmitLicenseCode,
+                        enabled = !submittingLicense && licenseCode.isNotBlank(),
+                        primary = true,
+                        trailingIcon = Icons.Default.ArrowForward,
+                        focusRequester = activateFocusRequester,
+                        previousFocusRequester = fieldFocusRequester,
+                        nextFocusRequester = closeFocusRequester,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    PremiumDialogButton(
+                        text = strings.close,
+                        onClick = onDismiss,
+                        primary = false,
+                        focusRequester = closeFocusRequester,
+                        previousFocusRequester = activateFocusRequester,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                    )
                 }
 
-                PremiumCloseButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.TopEnd),
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(340.dp)
+                        .background(Color(0xFF31547C).copy(alpha = 0.72f)),
                 )
+
+                PremiumQrCard(
+                    strings = strings,
+                    qrUrl = qrUrl,
+                    tvCode = tvCode,
+                    loading = loading,
+                    modifier = Modifier
+                        .width(220.dp)
+                        .height(340.dp),
+                )
+                    }
             }
         }
     }
@@ -3560,27 +3578,37 @@ private fun PremiumLicenseDialog(
 
 @Composable
 private fun PremiumQrCard(
+    strings: SmartVisionStrings,
     qrUrl: String,
     tvCode: String,
     loading: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.padding(vertical = 8.dp),
+        modifier = modifier.padding(horizontal = 10.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Image(
-            painter = painterResource(R.drawable.smartvision_logo_1),
-            contentDescription = "SmartVision IPTV Player",
-            modifier = Modifier
-                .width(214.dp)
-                .height(52.dp),
+        Text(
+            text = strings.activationBuyNow,
+            color = Color(0xFF2F82FF),
+            style = SmartVisionType.TitleS,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
         )
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = strings.activationScanToBuy,
+            color = SmartVisionColors.TextSecondary,
+            style = SmartVisionType.Caption,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
+        Spacer(Modifier.height(18.dp))
         Box(
             modifier = Modifier
-                .size(208.dp)
+                .size(174.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .background(Color.White)
                 .padding(12.dp),
@@ -3604,27 +3632,33 @@ private fun PremiumQrCard(
                 }
             }
         }
-        Spacer(Modifier.height(14.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.QrCode2,
-                contentDescription = null,
-                tint = Color(0xFF1687FF),
-                modifier = Modifier.size(22.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = "CODE TV : ${tvCode.ifBlank { "GENERATION" }}",
-                color = SmartVisionColors.TextPrimary,
-                style = SmartVisionType.Label,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Start,
-            )
-        }
+        Spacer(Modifier.height(20.dp))
+        Text(
+            text = strings.activationTvCode,
+            color = SmartVisionColors.TextPrimary,
+            style = SmartVisionType.Label,
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = tvCode.ifBlank { "------" },
+            color = SmartVisionColors.TextPrimary,
+            style = SmartVisionType.TitleM,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
+}
+
+@Composable
+private fun PremiumDialogLogo() {
+    Image(
+        painter = painterResource(R.drawable.smartvision_logo_1),
+        contentDescription = "SmartVision IPTV Player",
+        modifier = Modifier
+            .width(176.dp)
+            .height(43.dp),
+    )
 }
 
 @Composable
@@ -3635,6 +3669,8 @@ private fun PremiumDialogButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     focusRequester: FocusRequester? = null,
+    previousFocusRequester: FocusRequester? = null,
+    nextFocusRequester: FocusRequester? = null,
     trailingIcon: ImageVector? = null,
 ) {
     val focusState = rememberTvFocusState()
@@ -3656,6 +3692,10 @@ private fun PremiumDialogButton(
                 glowColor = focusStyle.accent,
                 cornerRadius = 10.dp,
             )
+            .focusProperties {
+                if (previousFocusRequester != null) up = previousFocusRequester
+                if (nextFocusRequester != null) down = nextFocusRequester
+            }
             .clip(shape)
             .background(
                 if (primary) {
@@ -3697,50 +3737,6 @@ private fun PremiumDialogButton(
                 modifier = Modifier.size(22.dp),
             )
         }
-    }
-}
-
-@Composable
-private fun PremiumCloseButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val focusState = rememberTvFocusState()
-    val interactionSource = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(12.dp)
-    val focusStyle = LocalTvFocusStyle.current
-
-    Box(
-        modifier = modifier
-            .size(42.dp)
-            .tvFocusTarget(
-                state = focusState,
-                glowColor = focusStyle.accent,
-                cornerRadius = 12.dp,
-            )
-            .clip(shape)
-            .background(Color(0xFF0B1728))
-            .border(
-                BorderStroke(
-                    if (focusState.isFocused) focusStyle.borderWidth else 1.dp,
-                    if (focusState.isFocused) focusStyle.accent else Color(0xFF263B56),
-                ),
-                shape,
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-            )
-            .focusable(interactionSource = interactionSource),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Default.Close,
-            contentDescription = "Fermer",
-            tint = SmartVisionColors.TextSecondary,
-            modifier = Modifier.size(24.dp),
-        )
     }
 }
 

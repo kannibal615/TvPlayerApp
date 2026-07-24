@@ -1,6 +1,8 @@
 # Activation, Licence, Essai et Xtream
 
-Depuis le 2026-07-17, la page publique Playlist peut cibler plusieurs profils existants Admin/Normal et creer en meme temps un profil Normal. La TV publie uniquement l'inventaire non sensible id/nom/type avec son `device_token`; Kids est exclu cote app et serveur. Les livraisons portent un `config_id` idempotent, conservent le profil actif et rendent autonome un profil qui partageait les identifiants Admin avant de lui appliquer une configuration ciblee.
+Depuis le 2026-07-24, la TV publie un inventaire v2 authentifie par `device_id` et `device_token`: tous les profils locaux, y compris Kids, leur source, leur mode d'identifiants et leurs donnees Xtream/M3U resolues. Le transport reste HTTPS et le backend chiffre chaque payload par profil. Kids est visible uniquement dans l'inventaire admin et reste exclu des cibles publiques PlaylistWeb. Le payload v1 id/nom/type reste accepte sans effacer les identifiants v2 deja synchronises.
+
+La page publique Playlist peut cibler plusieurs profils existants Admin/Normal et creer en meme temps un profil Normal. Les livraisons portent un `config_id` idempotent, conservent le profil actif et rendent autonome un profil qui partageait les identifiants Admin avant de lui appliquer une configuration ciblee. Une soumission Xtream enregistre aussi l'EPG visible et modifiable, genere par defaut depuis host/username/password tant que l'utilisateur ne l'a pas surcharge.
 
 Derniere mise a jour: 2026-07-24.
 
@@ -21,6 +23,8 @@ Derniere mise a jour: 2026-07-24.
 - Le bouton secondaire `Saisir une licence` est supprime: l action principale Premium/Remove ads reste l unique entree actionnable vers achat/saisie de code.
 - Le panneau affiche statut, expiration, type, code TV, identifiant appareil, etat publicitaire et conseil de renouvellement.
 - Le QR Premium et le code TV sont visibles directement a droite du panneau; le dialogue Premium existant reste utilise quand l utilisateur valide l action principale.
+- Le dialogue Premium conserve l ecran applicatif ouvert en arriere-plan sous un scrim noir a 72 %, au lieu de substituer le fond cinema.
+- Sa carte centree reste au gabarit `680 x 410 dp`: logo, titre, saisie licence et boutons a gauche; separateur, QR et code TV a droite. Le bouton X est supprime et Back assure la fermeture.
 
 ## Dialogue Identifiants Xtream - 2026-07-22
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/api/helpers.php';
 require_once dirname(__DIR__) . '/api/config.php';
 require_once dirname(__DIR__) . '/api/playlist_profile_policy.php';
+require_once dirname(__DIR__) . '/api/device_profile_sync_policy.php';
 require_once dirname(__DIR__) . '/_includes/site_layout.php';
 
 sv_send_site_headers("'self'");
@@ -38,7 +39,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $host = $hasXtreamInput ? normalize_xtream_host($hostInput) : null;
     $username = $hasXtreamInput ? clean_optional_text($usernameInput, 180) : null;
     $password = $hasXtreamInput ? clean_optional_text($passwordInput, 255) : null;
-    $epgUrl = $postedConfigType === 'epg' && !$clearEpg ? normalize_epg_url($_POST['epg_url'] ?? null) : null;
+    $epgUrl = ($postedConfigType === 'epg' || $hasXtreamInput) && !$clearEpg
+        ? normalize_epg_url($_POST['epg_url'] ?? null)
+        : null;
     $m3uUrl = $postedConfigType === 'm3u' ? normalize_playlist_url($_POST['m3u_url'] ?? null) : null;
 
     $postedDevice = $publicDeviceCode;
@@ -53,8 +56,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     } elseif ($hasXtreamInput && ($host === null || $host === '' || $username === null || $password === null)) {
         $message = 'Renseignez host, utilisateur et mot de passe Xtream.';
         $messageType = 'error';
-    } elseif ($epgUrl === '') {
-        $message = 'URL EPG invalide.';
+    } elseif ($hasXtreamInput && ($epgUrl === null || $epgUrl === '')) {
+        $message = 'Le lien EPG Xtream est invalide.';
         $messageType = 'error';
     } elseif ($m3uUrl === '') {
         $message = 'URL M3U invalide.';
@@ -148,7 +151,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                         $config['m3u_url'] = $m3uUrl;
                         $config['source'] = 'm3u';
                     }
-                    $config['provided_fields'] = [$postedConfigType];
+                    $config['provided_fields'] = $hasXtreamInput ? ['xtream', 'epg'] : [$postedConfigType];
                     $config['config_id'] = generate_uuid_v4();
                     $config['target_profile_ids'] = $postedTargetIds;
                     $config['new_profile_name'] = $postedCreateNew ? $postedNewProfileName : null;
@@ -168,21 +171,26 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     }
                     mark_latest_pending_device_session_validated($pdo, $deviceId);
                     $pdo->prepare("UPDATE devices SET xtream_status = :xtream_status, updated_at = NOW() WHERE device_id = :device_id")
-                        ->execute(['xtream_status' => $hasXtreamConfig ? 'configured' : 'missing', 'device_id' => $deviceId]);
+                        ->execute([
+                            'xtream_status' => ($hasXtreamConfig || device_has_synced_xtream_profiles($pdo, $deviceId))
+                                ? 'configured'
+                                : 'missing',
+                            'device_id' => $deviceId,
+                        ]);
                     $notification = create_playlist_push_notification(
                         $pdo,
                         $deviceId,
                         $publicDeviceCode,
                         $hasXtreamInput,
                         $m3uUrl !== null,
-                        $postedConfigType === 'epg',
+                        $postedConfigType === 'epg' || $hasXtreamInput,
                         'playlist_page',
                         [
                             'xtream_host' => $hasXtreamInput ? $host : null,
                             'xtream_username' => $hasXtreamInput ? $username : null,
                             'xtream_password' => $hasXtreamInput ? $password : null,
                             'm3u_url' => $m3uUrl,
-                            'epg_url' => $postedConfigType === 'epg' ? $epgUrl : null,
+                            'epg_url' => ($postedConfigType === 'epg' || $hasXtreamInput) ? $epgUrl : null,
                         ]
                     );
                     $pdo->commit();
@@ -218,7 +226,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Playlist TV | SmartVision</title>
-    <link rel="stylesheet" href="/assets/site.css?v=7">
+    <link rel="stylesheet" href="/assets/site.css?v=8">
 </head>
 <body class="activation-page">
 <?php sv_render_site_header(); ?>
@@ -226,7 +234,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     <section class="activation-card playlist-card">
         <p class="eyebrow">Playlist</p>
         <h1>Envoyer une configuration a la TV</h1>
-        <p class="lead">Saisissez le code TV, choisissez un ou plusieurs profils, puis envoyez votre configuration chiffree.</p>
 
         <form id="playlist-form" method="post" action="/playlist/"
               data-selected-targets="<?= sv_h(json_encode($postedTargetIds, JSON_UNESCAPED_SLASHES) ?: '[]') ?>"
@@ -244,7 +251,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 </div>
                 <div id="playlist-targets" class="playlist-targets" hidden>
                     <div class="playlist-target-heading">
-                        <div><strong>Profils destinataires</strong><span>Vous pouvez choisir plusieurs profils.</span></div>
+                        <div><strong>Profils destinataires</strong><span>Sélectionnez un ou plusieurs profils existants, ou créez un nouveau profil.</span></div>
                     </div>
                     <div id="playlist-profile-options" class="playlist-profile-options"></div>
                     <label id="playlist-new-profile-option" class="playlist-profile-option playlist-new-profile-option">
@@ -267,9 +274,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 <input id="playlist-tab-m3u" name="playlist-tabs" type="radio" value="m3u" data-config-tab <?= $postedConfigType === 'm3u' ? 'checked' : '' ?>>
                 <input id="playlist-tab-epg" name="playlist-tabs" type="radio" value="epg" data-config-tab <?= $postedConfigType === 'epg' ? 'checked' : '' ?>>
                 <div class="playlist-tab-list" role="tablist" aria-label="Type de configuration">
-                    <label for="playlist-tab-xtream">Code Xtream</label>
-                    <label for="playlist-tab-m3u">Lien M3U</label>
-                    <label for="playlist-tab-epg">Lien EPG</label>
+                    <label for="playlist-tab-xtream">Xtream</label>
+                    <label for="playlist-tab-m3u">M3U</label>
+                    <label for="playlist-tab-epg">EPG</label>
                 </div>
                 <section class="playlist-tab-panel playlist-panel-xtream" data-config-panel="xtream">
                     <div class="field"><label for="playlist-host">Host / URL serveur Xtream</label><input id="playlist-host" name="host" type="url" value="<?= sv_h($postedHost) ?>" placeholder="https://serveur.example" autocomplete="url"></div>
@@ -277,6 +284,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                         <div class="field"><label for="playlist-username">Nom d'utilisateur Xtream</label><input id="playlist-username" name="username" type="text" value="<?= sv_h($postedUsername) ?>" autocomplete="username"></div>
                         <div class="field"><label for="playlist-password">Mot de passe Xtream</label><input id="playlist-password" name="password" type="password" autocomplete="off"></div>
                     </div>
+                    <div class="field"><label for="playlist-xtream-epg">Lien EPG Xtream</label><input id="playlist-xtream-epg" name="epg_url" type="url" value="<?= sv_h($postedEpg) ?>" placeholder="https://serveur.example/xmltv.php?username=...&amp;password=..." autocomplete="url"><small>Genere automatiquement; vous pouvez le modifier si votre fournisseur utilise une autre adresse.</small></div>
                 </section>
                 <section class="playlist-tab-panel playlist-panel-m3u" data-config-panel="m3u">
                     <div class="field"><label for="playlist-m3u">Lien M3U</label><input id="playlist-m3u" name="m3u_url" type="url" value="<?= sv_h($postedM3u) ?>" placeholder="https://serveur.example/playlist.m3u" autocomplete="url"></div>
@@ -288,10 +296,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             </div>
             <button id="playlist-submit" class="button button-primary playlist-submit" type="submit" disabled>Envoyer la configuration</button>
         </form>
-        <?php if ($message !== ''): ?><p class="message <?= $messageType === 'success' ? 'success-message' : '' ?>" role="alert"><?= sv_h($message) ?></p><?php endif; ?>
+        <?php if ($message !== '' && $messageType !== 'success'): ?><p class="message" role="alert"><?= sv_h($message) ?></p><?php endif; ?>
     </section>
 </main>
+<?php if ($message !== '' && $messageType === 'success'): ?>
+<div class="playlist-success-modal" role="dialog" aria-modal="true" aria-labelledby="playlist-success-title" aria-describedby="playlist-success-message" data-success-modal>
+    <div class="playlist-success-backdrop" data-success-close></div>
+    <section class="playlist-success-card">
+        <div class="playlist-success-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 12.5 9.2 17 19 7"/></svg></div>
+        <h2 id="playlist-success-title">Configuration envoyee</h2>
+        <p id="playlist-success-message"><?= sv_h($message) ?></p>
+        <button class="button button-primary" type="button" data-success-close data-success-focus>Fermer</button>
+    </section>
+</div>
+<?php endif; ?>
 <?php sv_render_site_footer(); ?>
-<script src="/assets/playlist.js?v=1" defer></script>
+<script src="/assets/playlist.js?v=2" defer></script>
 </body>
 </html>

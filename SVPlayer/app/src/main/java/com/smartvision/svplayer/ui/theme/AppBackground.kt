@@ -39,7 +39,7 @@ fun AppBackgroundSurface(
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(Color(0xFF010714).copy(alpha = 0.66f)),
+                    .background(Color(0xFF010714).copy(alpha = 0.32f)),
             )
         }
     }

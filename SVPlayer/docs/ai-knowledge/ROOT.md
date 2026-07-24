@@ -350,6 +350,7 @@ Fichiers detailles:
 - `docs/ai-knowledge/decisions/2026-07-03-home-trending-preview-cache.md`
 - `docs/ai-knowledge/decisions/2026-07-05-premium-feature-gate-recorder-media.md`
 - `docs/ai-knowledge/decisions/2026-07-22-dialog-visual-standard-v1.md`
+- `docs/ai-knowledge/decisions/2026-07-24-admin-xtream-credential-visibility.md`
 
 Dependances:
 - tous les domaines

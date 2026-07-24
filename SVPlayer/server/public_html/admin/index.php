@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/api/commerce.php';
 require_once dirname(__DIR__) . '/api/mail_service.php';
 require_once dirname(__DIR__) . '/api/ads_service.php';
 require_once dirname(__DIR__) . '/api/anomaly_service.php';
+require_once dirname(__DIR__) . '/api/device_profile_sync_policy.php';
 $behaviorService = dirname(__DIR__) . '/api/behavior_service.php';
 if (is_file($behaviorService)) {
     require_once $behaviorService;
@@ -39,6 +40,9 @@ if (!is_admin_authenticated()) {
     render_admin_login($loginError);
     exit;
 }
+
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 
 $pdo = db();
 sv_mail_ensure_schema($pdo);
@@ -219,6 +223,7 @@ function handle_admin_action(PDO $pdo, string $action): void
         case 'set_device_status': admin_set_device_status($pdo); break;
         case 'expire_device': admin_expire_device($pdo); break;
         case 'clear_device_playlist': admin_clear_device_playlist($pdo); break;
+        case 'delete_device': admin_delete_device($pdo); break;
         case 'extend_activation': admin_extend_activation($pdo); break;
         case 'cancel_order': admin_cancel_order($pdo); break;
         default: throw new InvalidArgumentException('Action admin inconnue.');
@@ -769,11 +774,165 @@ function admin_clear_device_playlist(PDO $pdo): void
     $pdo->beginTransaction();
     $pdo->prepare('DELETE FROM device_playlist_configs WHERE device_id = :device_id')
         ->execute(['device_id' => $deviceId]);
-    $pdo->prepare("UPDATE devices SET xtream_status = 'missing', updated_at = NOW() WHERE device_id = :device_id")
-        ->execute(['device_id' => $deviceId]);
+    $pdo->prepare("UPDATE devices SET xtream_status = :xtream_status, updated_at = NOW() WHERE device_id = :device_id")
+        ->execute([
+            'xtream_status' => device_has_synced_xtream_profiles($pdo, $deviceId) ? 'configured' : 'missing',
+            'device_id' => $deviceId,
+        ]);
     audit_admin_action($pdo, 'device_playlist_cleared', 'device', $deviceId);
     $pdo->commit();
     set_admin_flash('success', 'Configuration Xtream appareil supprimee.');
+}
+
+function admin_delete_device(PDO $pdo): void
+{
+    $deviceId = clean_device_id((string) ($_POST['device_id'] ?? ''));
+    if ($deviceId === '') {
+        throw new InvalidArgumentException('Appareil invalide.');
+    }
+
+    $deviceQuery = $pdo->prepare(
+        'SELECT public_device_code FROM devices WHERE device_id = :device_id LIMIT 1 FOR UPDATE'
+    );
+    $pdo->beginTransaction();
+    $deviceQuery->execute(['device_id' => $deviceId]);
+    $publicDeviceCode = $deviceQuery->fetchColumn();
+    if ($publicDeviceCode === false) {
+        throw new InvalidArgumentException('Appareil introuvable.');
+    }
+
+    $activationCodes = $pdo->prepare(
+        'SELECT DISTINCT activation_code_id FROM device_activations
+         WHERE device_id = :device_id AND activation_code_id IS NOT NULL'
+    );
+    $activationCodes->execute(['device_id' => $deviceId]);
+    $activationCodeIds = array_map('intval', $activationCodes->fetchAll(PDO::FETCH_COLUMN));
+    $deviceHash = hash('sha256', $deviceId);
+
+    $deleteByDevice = [
+        'app_notification_receipts',
+        'app_consent_receipts',
+        'app_device_diagnostics',
+        'device_playlist_configs',
+        'device_playlist_profiles',
+        'device_profile_registry',
+        'activation_session_tokens',
+        'activation_sessions',
+        'device_activations',
+    ];
+    foreach ($deleteByDevice as $table) {
+        $pdo->prepare("DELETE FROM {$table} WHERE device_id = :device_id")
+            ->execute(['device_id' => $deviceId]);
+    }
+    foreach (['ads_events', 'app_behavior_events', 'user_behavior_daily', 'user_segments'] as $table) {
+        $pdo->prepare("DELETE FROM {$table} WHERE device_id_hash = :device_hash")
+            ->execute(['device_hash' => $deviceHash]);
+    }
+    $pdo->prepare(
+        'DELETE FROM app_anomaly_events
+         WHERE device_id_hash = :device_hash OR public_device_code = :public_device_code'
+    )->execute([
+        'device_hash' => $deviceHash,
+        'public_device_code' => (string) $publicDeviceCode,
+    ]);
+
+    foreach ($activationCodeIds as $codeId) {
+        $pdo->prepare(
+            'UPDATE activation_codes SET used_devices = GREATEST(used_devices - 1, 0), updated_at = NOW()
+             WHERE id = :code_id'
+        )->execute(['code_id' => $codeId]);
+        $pdo->prepare(
+            'UPDATE activation_code_metadata
+             SET assigned_device_id = NULL, assigned_public_device_code = NULL
+             WHERE code_id = :code_id AND assigned_device_id = :device_id'
+        )->execute(['code_id' => $codeId, 'device_id' => $deviceId]);
+    }
+
+    $pdo->prepare('DELETE FROM devices WHERE device_id = :device_id')
+        ->execute(['device_id' => $deviceId]);
+    audit_admin_action($pdo, 'device_deleted', 'device', $deviceId, [
+        'public_device_code' => (string) $publicDeviceCode,
+        'released_activation_codes' => count($activationCodeIds),
+    ]);
+    $pdo->commit();
+    set_admin_flash('success', 'Appareil et donnees associees supprimes.');
+}
+
+function admin_personalization_upload(string $fieldName): ?string
+{
+    $upload = $_FILES[$fieldName] ?? null;
+    if (!is_array($upload) || (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        return null;
+    }
+    if ((int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        throw new InvalidArgumentException('Echec de l upload de l image.');
+    }
+    $temporaryPath = (string) ($upload['tmp_name'] ?? '');
+    $size = (int) ($upload['size'] ?? 0);
+    if ($temporaryPath === '' || $size < 1 || $size > 8 * 1024 * 1024) {
+        throw new InvalidArgumentException('Image invalide ou superieure a 8 Mo.');
+    }
+    $imageInfo = @getimagesize($temporaryPath);
+    if (!is_array($imageInfo) || (int) ($imageInfo[0] ?? 0) < 1 || (int) ($imageInfo[1] ?? 0) < 1) {
+        throw new InvalidArgumentException('Le fichier envoye n est pas une image valide.');
+    }
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($temporaryPath);
+    $extensions = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+    ];
+    if (!is_string($mime) || !isset($extensions[$mime])) {
+        throw new InvalidArgumentException('Format non accepte. Utilisez JPEG, PNG ou WebP.');
+    }
+    $relativeDirectory = '/assets/uploads/personalization';
+    $documentRoot = rtrim((string) ($_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__)), '/\\');
+    $targetDirectory = $documentRoot . str_replace('/', DIRECTORY_SEPARATOR, $relativeDirectory);
+    if (!is_dir($targetDirectory) && !mkdir($targetDirectory, 0755, true) && !is_dir($targetDirectory)) {
+        throw new RuntimeException('Repertoire d upload indisponible.');
+    }
+    $fileName = gmdate('YmdHis') . '-' . bin2hex(random_bytes(8)) . '.' . $extensions[$mime];
+    $targetPath = $targetDirectory . DIRECTORY_SEPARATOR . $fileName;
+    if (!move_uploaded_file($temporaryPath, $targetPath)) {
+        throw new RuntimeException('Impossible d enregistrer l image.');
+    }
+    return $relativeDirectory . '/' . $fileName;
+}
+
+function admin_delete_personalization_upload(?string $imageUrl): void
+{
+    $prefix = '/assets/uploads/personalization/';
+    $path = trim((string) $imageUrl);
+    if (!str_starts_with($path, $prefix)) {
+        return;
+    }
+    $fileName = basename($path);
+    if ($fileName === '' || $fileName === '.' || $fileName === '..') {
+        return;
+    }
+    $documentRoot = rtrim((string) ($_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__)), '/\\');
+    $targetPath = $documentRoot . str_replace('/', DIRECTORY_SEPARATOR, $prefix) . $fileName;
+    if (is_file($targetPath)) {
+        @unlink($targetPath);
+    }
+}
+
+function admin_personalization_image_value(mixed $url, ?string $uploadedUrl): string
+{
+    if ($uploadedUrl !== null) {
+        return $uploadedUrl;
+    }
+    $imageUrl = smartvision_text_substr(trim((string) $url), 0, 500);
+    if ($imageUrl === '') {
+        return '';
+    }
+    if (str_starts_with($imageUrl, '/assets/uploads/personalization/')) {
+        return $imageUrl;
+    }
+    if (filter_var($imageUrl, FILTER_VALIDATE_URL) === false || !preg_match('/^https?:\/\//i', $imageUrl)) {
+        throw new InvalidArgumentException('Utilisez une URL http(s) complete ou importez une image.');
+    }
+    return $imageUrl;
 }
 
 function admin_cancel_order(PDO $pdo): void
@@ -837,22 +996,31 @@ function admin_save_slide(PDO $pdo): void
     $subtitle = clean_optional_text($_POST['subtitle'] ?? null, 255);
     $buttonLabel = clean_optional_text($_POST['button_label'] ?? null, 60);
     $buttonRoute = clean_optional_text($_POST['button_route'] ?? null, 120);
-    $imageUrl = clean_optional_text($_POST['image_url'] ?? null, 500);
+    $uploadedImageUrl = admin_personalization_upload('image_file');
+    $imageUrl = admin_personalization_image_value($_POST['image_url'] ?? null, $uploadedImageUrl);
+    if ($imageUrl === '') {
+        if ($uploadedImageUrl !== null) {
+            admin_delete_personalization_upload($uploadedImageUrl);
+        }
+        throw new InvalidArgumentException('Ajoutez une URL ou importez une image Hero.');
+    }
     $status = (string) ($_POST['status'] ?? 'active');
     if (!in_array($status, ['active', 'disabled'], true)) {
         $status = 'disabled';
     }
 
+    $oldImageUrl = null;
     $pdo->beginTransaction();
     try {
         if ($slideId > 0) {
-            $currentStatement = $pdo->prepare('SELECT sort_order FROM home_slider_ads WHERE id = :id FOR UPDATE');
+            $currentStatement = $pdo->prepare('SELECT sort_order, image_url FROM home_slider_ads WHERE id = :id FOR UPDATE');
             $currentStatement->execute(['id' => $slideId]);
-            $oldOrder = $currentStatement->fetchColumn();
-            if ($oldOrder === false) {
+            $currentSlide = $currentStatement->fetch();
+            if (!is_array($currentSlide)) {
                 throw new InvalidArgumentException('Slide introuvable.');
             }
-            $oldOrder = (int) $oldOrder;
+            $oldOrder = (int) $currentSlide['sort_order'];
+            $oldImageUrl = (string) ($currentSlide['image_url'] ?? '');
             if ($oldOrder !== (int) $sortOrder) {
                 $pdo->prepare('UPDATE home_slider_ads SET sort_order = -id WHERE id = :id')->execute(['id' => $slideId]);
                 if ((int) $sortOrder < $oldOrder) {
@@ -881,7 +1049,13 @@ function admin_save_slide(PDO $pdo): void
         $pdo->commit();
     } catch (Throwable $exception) {
         if ($pdo->inTransaction()) $pdo->rollBack();
+        if ($uploadedImageUrl !== null) {
+            admin_delete_personalization_upload($uploadedImageUrl);
+        }
         throw $exception;
+    }
+    if ($oldImageUrl !== null && $oldImageUrl !== $imageUrl) {
+        admin_delete_personalization_upload($oldImageUrl);
     }
     audit_admin_action($pdo, 'home_slide_saved', 'home_slider_ads', (string) $slideId);
     set_admin_flash('success', 'Slide Home enregistre.');
@@ -892,17 +1066,20 @@ function admin_delete_slide(PDO $pdo): void
     $slideId = admin_positive_int($_POST['slide_id'] ?? null);
     $pdo->beginTransaction();
     try {
-        $statement = $pdo->prepare('SELECT sort_order FROM home_slider_ads WHERE id = :id FOR UPDATE');
+        $statement = $pdo->prepare('SELECT sort_order, image_url FROM home_slider_ads WHERE id = :id FOR UPDATE');
         $statement->execute(['id' => $slideId]);
-        $sortOrder = $statement->fetchColumn();
-        if ($sortOrder === false) throw new InvalidArgumentException('Slide introuvable.');
+        $slide = $statement->fetch();
+        if (!is_array($slide)) throw new InvalidArgumentException('Slide introuvable.');
+        $sortOrder = (int) $slide['sort_order'];
+        $imageUrl = (string) ($slide['image_url'] ?? '');
         $pdo->prepare('DELETE FROM home_slider_ads WHERE id = :id')->execute(['id' => $slideId]);
-        $pdo->prepare('UPDATE home_slider_ads SET sort_order = sort_order - 1 WHERE sort_order > :sort_order ORDER BY sort_order ASC')->execute(['sort_order' => (int) $sortOrder]);
+        $pdo->prepare('UPDATE home_slider_ads SET sort_order = sort_order - 1 WHERE sort_order > :sort_order ORDER BY sort_order ASC')->execute(['sort_order' => $sortOrder]);
         $pdo->commit();
     } catch (Throwable $exception) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $exception;
     }
+    admin_delete_personalization_upload($imageUrl);
     audit_admin_action($pdo, 'home_slide_deleted', 'home_slider_ads', (string) $slideId);
     set_admin_flash('success', 'Slide Home supprime.');
 }
@@ -910,20 +1087,36 @@ function admin_delete_slide(PDO $pdo): void
 function admin_save_personalization(PDO $pdo): void
 {
     $backgroundEnabled = (string) ($_POST['background_enabled'] ?? '0') === '1';
-    $backgroundImageUrl = smartvision_text_substr(trim((string) ($_POST['background_image_url'] ?? '')), 0, 500);
-    if ($backgroundEnabled && ($backgroundImageUrl === '' || filter_var($backgroundImageUrl, FILTER_VALIDATE_URL) === false)) {
-        throw new InvalidArgumentException('URL de fond invalide. Utilisez une URL http ou https complete.');
-    }
-    if ($backgroundImageUrl !== '' && !preg_match('/^https?:\/\//i', $backgroundImageUrl)) {
-        throw new InvalidArgumentException('L image de fond doit utiliser http ou https.');
+    $uploadedImageUrl = admin_personalization_upload('background_image_file');
+    $backgroundImageUrl = admin_personalization_image_value(
+        $_POST['background_image_url'] ?? null,
+        $uploadedImageUrl,
+    );
+    if ($backgroundEnabled && $backgroundImageUrl === '') {
+        if ($uploadedImageUrl !== null) {
+            admin_delete_personalization_upload($uploadedImageUrl);
+        }
+        throw new InvalidArgumentException('Ajoutez une URL ou importez une image de fond.');
     }
 
-    admin_save_app_settings($pdo, [
-        'app_personalization' => json_encode([
-            'background_enabled' => $backgroundEnabled,
-            'background_image_url' => $backgroundImageUrl,
-        ], JSON_UNESCAPED_SLASHES),
-    ]);
+    $previous = admin_load_personalization($pdo);
+    try {
+        admin_save_app_settings($pdo, [
+            'app_personalization' => json_encode([
+                'background_enabled' => $backgroundEnabled,
+                'background_image_url' => $backgroundImageUrl,
+            ], JSON_UNESCAPED_SLASHES),
+        ]);
+    } catch (Throwable $exception) {
+        if ($uploadedImageUrl !== null) {
+            admin_delete_personalization_upload($uploadedImageUrl);
+        }
+        throw $exception;
+    }
+    $previousUrl = (string) ($previous['background_image_url'] ?? '');
+    if ($previousUrl !== $backgroundImageUrl) {
+        admin_delete_personalization_upload($previousUrl);
+    }
     audit_admin_action($pdo, 'app_personalization_saved', 'app_settings', 'app_personalization');
     set_admin_flash('success', 'Personnalisation de l application enregistree.');
 }
@@ -1607,6 +1800,42 @@ function admin_load_device_history(PDO $pdo, string $deviceId): array
     return $history->fetchAll();
 }
 
+function admin_load_device_xtream_profiles(PDO $pdo, string $deviceId): array
+{
+    $statement = $pdo->prepare(
+        "SELECT profile_id, profile_name, profile_type, source, credentials_mode, credentials_payload, updated_at
+         FROM device_playlist_profiles
+         WHERE device_id = :device_id AND source = 'xtream' AND credentials_payload IS NOT NULL
+         ORDER BY CASE profile_type WHEN 'admin' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END, profile_name ASC"
+    );
+    $statement->execute(['device_id' => $deviceId]);
+    $profiles = [];
+    foreach ($statement->fetchAll() as $row) {
+        $payload = decrypt_playlist_config((string) ($row['credentials_payload'] ?? ''));
+        if (!is_array($payload)) {
+            continue;
+        }
+        $host = trim((string) ($payload['host'] ?? ''));
+        $username = trim((string) ($payload['username'] ?? ''));
+        $password = trim((string) ($payload['password'] ?? ''));
+        if ($host === '' || $username === '' || $password === '') {
+            continue;
+        }
+        $profiles[] = [
+            'profile_id' => (string) $row['profile_id'],
+            'profile_name' => (string) $row['profile_name'],
+            'profile_type' => (string) $row['profile_type'],
+            'credentials_mode' => (string) ($row['credentials_mode'] ?? 'custom'),
+            'host' => $host,
+            'username' => $username,
+            'password' => $password,
+            'epg_url' => trim((string) ($payload['epg_url'] ?? '')),
+            'updated_at' => (string) ($row['updated_at'] ?? ''),
+        ];
+    }
+    return $profiles;
+}
+
 function admin_load_devices(PDO $pdo, string $query, int $page = 1): array
 {
     $perPage = 25;
@@ -1614,8 +1843,13 @@ function admin_load_devices(PDO $pdo, string $query, int $page = 1): array
     $params = [];
     $whereParts = [];
     if ($query !== '') {
-        $whereParts[] = '(d.device_id LIKE :q OR d.public_device_code LIKE :q OR d.device_name LIKE :q OR d.app_version LIKE :q OR d.country_code LIKE :q)';
-        $params['q'] = admin_search_pattern($query);
+        $whereParts[] = '(d.device_id LIKE :q_device_id OR d.public_device_code LIKE :q_public_code OR d.device_name LIKE :q_device_name OR d.app_version LIKE :q_app_version OR d.country_code LIKE :q_country)';
+        $pattern = admin_search_pattern($query);
+        $params['q_device_id'] = $pattern;
+        $params['q_public_code'] = $pattern;
+        $params['q_device_name'] = $pattern;
+        $params['q_app_version'] = $pattern;
+        $params['q_country'] = $pattern;
     }
     $deviceStatus = (string) ($_GET['device_status'] ?? '');
     if (in_array($deviceStatus, ['pending', 'active', 'expired', 'blocked'], true)) {
@@ -1638,7 +1872,12 @@ function admin_load_devices(PDO $pdo, string $query, int $page = 1): array
                    d.created_at, d.last_seen_at, d.first_seen_at, d.activated_at, d.expires_at,
                    a.activation_type, a.activation_code_id, a.starts_at AS activation_starts_at,
                    c.license_type, c.duration_days, m.code_hint, m.code_ciphertext,
-                   CASE WHEN p.device_id IS NULL THEN 0 ELSE 1 END AS playlist_configured,
+                   CASE WHEN EXISTS (
+                       SELECT 1 FROM device_playlist_configs pc WHERE pc.device_id = d.device_id
+                   ) OR EXISTS (
+                       SELECT 1 FROM device_playlist_profiles pp
+                       WHERE pp.device_id = d.device_id AND pp.credentials_payload IS NOT NULL
+                   ) THEN 1 ELSE 0 END AS playlist_configured,
                    COALESCE(ad_stats.ad_views, 0) AS ad_views,
                    ad_stats.last_ad_view_at
             FROM devices d
@@ -1647,7 +1886,6 @@ function admin_load_devices(PDO $pdo, string $query, int $page = 1): array
             )
             LEFT JOIN activation_codes c ON c.id = a.activation_code_id
             LEFT JOIN activation_code_metadata m ON m.code_id = c.id
-            LEFT JOIN device_playlist_configs p ON p.device_id = d.device_id
             LEFT JOIN (
                 SELECT device_id_hash, COUNT(*) AS ad_views, MAX(created_at) AS last_ad_view_at
                 FROM ads_events
@@ -1670,6 +1908,7 @@ function admin_load_devices(PDO $pdo, string $query, int $page = 1): array
     foreach ($rows as &$row) {
         $row['activation_code'] = decrypt_private_value($row['code_ciphertext'] ?? null) ?: ($row['code_hint'] ?? null);
         $row['history'] = admin_load_device_history($pdo, (string) $row['device_id']);
+        $row['xtream_profiles'] = admin_load_device_xtream_profiles($pdo, (string) $row['device_id']);
         $row['diagnostics'] = admin_load_device_diagnostics(
             $pdo,
             (string) $row['device_id'],
@@ -2199,7 +2438,7 @@ function render_admin_login(?string $error): void
 {
     $configured = admin_auth_is_configured();
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=9"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=10"></head>
 <body class="admin-login-body"><main class="admin-login-panel">
     <a class="admin-brand" href="/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
     <h1>Administration</h1><p>Commandes, licences et appareils SmartVision.</p>
@@ -2260,7 +2499,7 @@ function render_admin_dashboard(
     ];
     $heading = $pages[$page] ?? $pages['overview'];
     ?><!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=9"></head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration | SmartVision</title><link rel="stylesheet" href="/assets/admin.css?v=3"><link rel="stylesheet" href="/assets/admin-overrides.css?v=10"></head>
 <body class="admin-body">
 <aside class="admin-sidebar">
     <a class="admin-brand" href="/admin/"><img class="admin-logo-wide" src="/assets/images/smartvision-logo-wide.png?v=3" alt="SmartVision IPTV Player"></a>
@@ -2707,12 +2946,12 @@ function render_admin_dashboard(
 
         <?php if ($page === 'personalization'): ?>
         <section class="admin-panel" id="app-background"><div class="admin-panel-heading"><div><h2>Fond global de l application</h2><p>Cette image est la source centrale utilisee derriere les ecrans TV. Desactivez-la pour conserver le fond sombre natif sans image.</p></div></div>
-        <form method="post" class="slide-card"><input type="hidden" name="redirect_page" value="personalization"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="save_app_personalization"><label>Affichage<select name="background_enabled"><option value="1"<?= !empty($personalization['background_enabled']) ? ' selected' : '' ?>>Image active</option><option value="0"<?= empty($personalization['background_enabled']) ? ' selected' : '' ?>>Aucune image</option></select></label><label>Image de fond URL<input name="background_image_url" maxlength="500" type="url" placeholder="https://..." value="<?= admin_escape((string) ($personalization['background_image_url'] ?? '')) ?>"></label><button class="admin-button primary" type="submit">Enregistrer le fond</button></form>
+        <form method="post" enctype="multipart/form-data" class="slide-card"><input type="hidden" name="redirect_page" value="personalization"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="save_app_personalization"><label>Affichage<select name="background_enabled"><option value="1"<?= !empty($personalization['background_enabled']) ? ' selected' : '' ?>>Image active</option><option value="0"<?= empty($personalization['background_enabled']) ? ' selected' : '' ?>>Aucune image</option></select></label><label>Image de fond URL<input name="background_image_url" maxlength="500" type="url" placeholder="https://..." value="<?= admin_escape((string) ($personalization['background_image_url'] ?? '')) ?>"></label><div class="admin-upload-separator"><span>ou</span></div><label>Importer depuis l ordinateur<input name="background_image_file" type="file" accept="image/jpeg,image/png,image/webp"><small>JPEG, PNG ou WebP - 8 Mo maximum. Le fichier importe est prioritaire sur l URL.</small></label><button class="admin-button primary" type="submit">Enregistrer le fond</button></form>
         </section>
         <section class="admin-panel" id="slides"><div class="admin-panel-heading"><div><h2>Images Hero Home</h2><p>Ajoutez une ou plusieurs images et gerez leur ordre. Si aucune image n est active, l emplacement Hero reste vide dans l application.</p></div></div><div class="slide-admin-grid">
-        <form method="post" class="slide-card"><input type="hidden" name="redirect_page" value="personalization"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="save_slide"><input type="hidden" name="slide_id" value="0"><label>Ordre<input name="sort_order" type="number" min="0" max="9999" value="<?= count($slides) ?>"></label><label>Titre optionnel<input name="title" maxlength="120"></label><label>Sous-titre<textarea name="subtitle" maxlength="255"></textarea></label><label>Bouton<input name="button_label" maxlength="60"></label><label>Route bouton<input name="button_route" maxlength="120" value="home"></label><label>Image URL<input name="image_url" maxlength="500" type="url" required></label><label>Etat<select name="status"><option value="active">Actif</option><option value="disabled">Desactive</option></select></label><button class="admin-button primary" type="submit">Ajouter l image Hero</button></form>
+        <form method="post" enctype="multipart/form-data" class="slide-card"><input type="hidden" name="redirect_page" value="personalization"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="action" value="save_slide"><input type="hidden" name="slide_id" value="0"><label>Ordre<input name="sort_order" type="number" min="0" max="9999" value="<?= count($slides) ?>"></label><label>Titre optionnel<input name="title" maxlength="120"></label><label>Sous-titre<textarea name="subtitle" maxlength="255"></textarea></label><label>Bouton<input name="button_label" maxlength="60"></label><label>Route bouton<input name="button_route" maxlength="120" value="home"></label><label>Image URL<input name="image_url" maxlength="500" type="url"></label><div class="admin-upload-separator"><span>ou</span></div><label>Importer depuis l ordinateur<input name="image_file" type="file" accept="image/jpeg,image/png,image/webp"><small>JPEG, PNG ou WebP - 8 Mo maximum.</small></label><label>Etat<select name="status"><option value="active">Actif</option><option value="disabled">Desactive</option></select></label><button class="admin-button primary" type="submit">Ajouter l image Hero</button></form>
         <?php if ($slides === []): ?><p class="admin-empty">Aucune image Hero configuree : l emplacement restera vide.</p><?php endif; ?>
-        <?php foreach ($slides as $slide): ?><form method="post" class="slide-card"><input type="hidden" name="redirect_page" value="personalization"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="slide_id" value="<?= (int) $slide['id'] ?>"><label>Ordre<input name="sort_order" type="number" min="0" max="9999" value="<?= (int) $slide['sort_order'] ?>"></label><label>Titre optionnel<input name="title" maxlength="120" value="<?= admin_escape($slide['title'] ?: '') ?>"></label><label>Sous-titre<textarea name="subtitle" maxlength="255"><?= admin_escape($slide['subtitle'] ?: '') ?></textarea></label><label>Bouton<input name="button_label" maxlength="60" value="<?= admin_escape($slide['button_label'] ?: '') ?>"></label><label>Route bouton<input name="button_route" maxlength="120" value="<?= admin_escape($slide['button_route'] ?: '') ?>"></label><label>Image URL<input name="image_url" maxlength="500" type="url" value="<?= admin_escape($slide['image_url'] ?: '') ?>"></label><label>Etat<select name="status"><option value="active"<?= $slide['status'] === 'active' ? ' selected' : '' ?>>Actif</option><option value="disabled"<?= $slide['status'] === 'disabled' ? ' selected' : '' ?>>Desactive</option></select></label><button name="action" value="save_slide" class="admin-button primary" type="submit">Enregistrer</button><button name="action" value="delete_slide" class="admin-button danger" type="submit" onclick="return confirm('Supprimer cette image Hero ?')">Supprimer</button><small class="muted">MAJ <?= admin_escape($slide['updated_at'] ?: '-') ?></small></form><?php endforeach; ?>
+        <?php foreach ($slides as $slide): ?><form method="post" enctype="multipart/form-data" class="slide-card"><input type="hidden" name="redirect_page" value="personalization"><input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>"><input type="hidden" name="slide_id" value="<?= (int) $slide['id'] ?>"><label>Ordre<input name="sort_order" type="number" min="0" max="9999" value="<?= (int) $slide['sort_order'] ?>"></label><label>Titre optionnel<input name="title" maxlength="120" value="<?= admin_escape($slide['title'] ?: '') ?>"></label><label>Sous-titre<textarea name="subtitle" maxlength="255"><?= admin_escape($slide['subtitle'] ?: '') ?></textarea></label><label>Bouton<input name="button_label" maxlength="60" value="<?= admin_escape($slide['button_label'] ?: '') ?>"></label><label>Route bouton<input name="button_route" maxlength="120" value="<?= admin_escape($slide['button_route'] ?: '') ?>"></label><label>Image URL<input name="image_url" maxlength="500" type="url" value="<?= admin_escape($slide['image_url'] ?: '') ?>"></label><div class="admin-upload-separator"><span>ou remplacer par</span></div><label>Importer depuis l ordinateur<input name="image_file" type="file" accept="image/jpeg,image/png,image/webp"><small>JPEG, PNG ou WebP - 8 Mo maximum.</small></label><label>Etat<select name="status"><option value="active"<?= $slide['status'] === 'active' ? ' selected' : '' ?>>Actif</option><option value="disabled"<?= $slide['status'] === 'disabled' ? ' selected' : '' ?>>Desactive</option></select></label><button name="action" value="save_slide" class="admin-button primary" type="submit">Enregistrer</button><button name="action" value="delete_slide" class="admin-button danger" type="submit" onclick="return confirm('Supprimer cette image Hero ?')">Supprimer</button><small class="muted">MAJ <?= admin_escape($slide['updated_at'] ?: '-') ?></small></form><?php endforeach; ?>
         </div></section>
         <?php endif; ?>
 
@@ -3414,6 +3653,13 @@ function admin_render_device_row(array $device): void
                 <input type="hidden" name="device_id" value="<?= admin_escape($deviceId) ?>">
                 <button class="admin-button compact secondary" type="submit">Reset Xtream</button>
             </form>
+            <form method="post" data-confirm="Supprimer completement cet appareil et toutes ses donnees associees ? Cette action est irreversible.">
+                <input type="hidden" name="redirect_page" value="devices">
+                <input type="hidden" name="csrf_token" value="<?= admin_escape(csrf_token()) ?>">
+                <input type="hidden" name="action" value="delete_device">
+                <input type="hidden" name="device_id" value="<?= admin_escape($deviceId) ?>">
+                <button class="admin-button compact danger" type="submit">Supprimer</button>
+            </form>
         </td>
     </tr><?php
 }
@@ -3456,6 +3702,7 @@ function admin_render_device_modal(array $device): void
     $countryBreakdown = is_array($behavior['country_breakdown'] ?? null) ? $behavior['country_breakdown'] : [];
     $regionBreakdown = is_array($behavior['region_breakdown'] ?? null) ? $behavior['region_breakdown'] : [];
     $interestBreakdown = is_array($behavior['interest_breakdown'] ?? null) ? $behavior['interest_breakdown'] : [];
+    $xtreamProfiles = is_array($device['xtream_profiles'] ?? null) ? $device['xtream_profiles'] : [];
     ?><div class="admin-modal" id="<?= admin_escape($modalId) ?>" role="dialog" aria-modal="true" aria-labelledby="<?= admin_escape($modalId) ?>-title" hidden>
         <div class="admin-modal-backdrop" data-modal-close></div>
         <section class="admin-modal-card">
@@ -3468,6 +3715,7 @@ function admin_render_device_modal(array $device): void
                 <button type="button" data-tab-target="<?= admin_escape($modalId) ?>-tracking">Tracking</button>
                 <button type="button" data-tab-target="<?= admin_escape($modalId) ?>-analysis">Analyse</button>
                 <button type="button" data-tab-target="<?= admin_escape($modalId) ?>-diagnostics">Diagnostics</button>
+                <button type="button" data-tab-target="<?= admin_escape($modalId) ?>-xtream">Xtream</button>
                 <button type="button" data-tab-target="<?= admin_escape($modalId) ?>-history">Historique</button>
             </nav>
             <div class="admin-tab-panel active" id="<?= admin_escape($modalId) ?>-summary">
@@ -3527,6 +3775,29 @@ function admin_render_device_modal(array $device): void
             </div>
             <div class="admin-tab-panel" id="<?= admin_escape($modalId) ?>-diagnostics">
                 <div class="admin-modal-columns single-row"><?= admin_render_device_diagnostics((array) ($device['diagnostics'] ?? []), $device) ?></div>
+            </div>
+            <div class="admin-tab-panel" id="<?= admin_escape($modalId) ?>-xtream">
+                <section class="admin-xtream-panel">
+                    <div class="admin-secret-warning">Identifiants affiches en clair pour l administration. Ne les copiez pas dans les logs ou tickets support.</div>
+                    <?php if ($xtreamProfiles === []): ?><p class="muted">Aucun compte Xtream synchronise par cette TV.</p><?php endif; ?>
+                    <div class="admin-xtream-grid">
+                    <?php foreach ($xtreamProfiles as $profile): ?>
+                        <article class="admin-xtream-card">
+                            <header>
+                                <div><strong><?= admin_escape($profile['profile_name']) ?></strong><small><?= admin_escape($profile['profile_type']) ?> - <?= admin_escape($profile['credentials_mode']) ?></small></div>
+                                <span class="admin-state active">Xtream</span>
+                            </header>
+                            <dl>
+                                <div><dt>Host</dt><dd class="mono"><?= admin_escape($profile['host']) ?></dd></div>
+                                <div><dt>Utilisateur</dt><dd class="mono"><?= admin_escape($profile['username']) ?></dd></div>
+                                <div><dt>Mot de passe</dt><dd class="mono"><?= admin_escape($profile['password']) ?></dd></div>
+                                <div><dt>EPG</dt><dd class="mono"><?= admin_escape($profile['epg_url'] ?: '-') ?></dd></div>
+                            </dl>
+                            <small>Synchronise <?= admin_escape($profile['updated_at'] ?: '-') ?></small>
+                        </article>
+                    <?php endforeach; ?>
+                    </div>
+                </section>
             </div>
             <div class="admin-tab-panel" id="<?= admin_escape($modalId) ?>-history">
                 <div class="admin-modal-columns single-row">

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/device_profile_sync_policy.php';
 
 apply_api_headers();
 header('Cache-Control: no-store');
@@ -146,7 +147,9 @@ try {
 
     $pdo->prepare("UPDATE devices SET xtream_status = :xtream_status, updated_at = NOW() WHERE device_id = :device_id")
         ->execute([
-            'xtream_status' => $hasXtreamConfig ? 'configured' : 'missing',
+            'xtream_status' => ($hasXtreamConfig || device_has_synced_xtream_profiles($pdo, $deviceId))
+                ? 'configured'
+                : 'missing',
             'device_id' => $deviceId,
         ]);
 

@@ -738,6 +738,85 @@ footer>div {
 	margin-top: 20px
 }
 
+.playlist-tab-panel .field small {
+	display: block;
+	margin-top: 7px;
+	color: #8194ac;
+	font-size: 12px;
+	line-height: 1.45
+}
+
+.playlist-modal-open {
+	overflow: hidden
+}
+
+.playlist-success-modal {
+	position: fixed;
+	z-index: 50;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	padding: 20px
+}
+
+.playlist-success-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(1, 7, 17, .78);
+	backdrop-filter: blur(5px)
+}
+
+.playlist-success-card {
+	position: relative;
+	z-index: 1;
+	width: min(440px, 100%);
+	padding: 30px;
+	border: 1px solid #2b5f94;
+	border-radius: 16px;
+	background: linear-gradient(160deg, #0a1a31, #030d1c);
+	box-shadow: 0 26px 70px rgba(0, 0, 0, .48);
+	text-align: center
+}
+
+.playlist-success-icon {
+	display: grid;
+	width: 58px;
+	height: 58px;
+	place-items: center;
+	margin: 0 auto 18px;
+	border: 1px solid rgba(75, 222, 139, .7);
+	border-radius: 50%;
+	background: rgba(75, 222, 139, .14);
+	color: var(--green)
+}
+
+.playlist-success-icon svg {
+	width: 30px;
+	height: 30px;
+	fill: none;
+	stroke: currentColor;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-width: 2.4
+}
+
+.playlist-success-card h2 {
+	margin: 0;
+	color: #fff;
+	font-size: clamp(24px, 5vw, 31px)
+}
+
+.playlist-success-card p {
+	margin: 12px 0 24px;
+	color: #b7c6d9;
+	line-height: 1.6
+}
+
+.playlist-success-card .button {
+	width: 100%;
+	min-height: 48px
+}
+
 .playlist-target-card {
 	margin-top: 24px;
 	padding: 18px;
@@ -1142,14 +1221,15 @@ footer>div {
 	}
 
 	.playlist-tab-list {
-		grid-template-columns: 1fr;
-		gap: 5px
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 4px
 	}
 
 	.playlist-tab-list label {
 		min-height: 44px;
-		justify-content: flex-start;
-		padding-inline: 14px
+		justify-content: center;
+		padding-inline: 6px;
+		font-size: 13px
 	}
 
 	.playlist-profile-options,

@@ -26,10 +26,6 @@ class SVPlayerApplication : Application() {
         Handler(Looper.getMainLooper()).postDelayed({
             startupScope.launch {
                 val container = appContainer
-                container.anomalyReporter.installCrashHandler()
-                container.anomalyReporter.flushPendingAsync()
-                container.anomalyReporter.reportPreviousProcessExitAsync()
-                container.deviceDiagnosticsReporter.syncLatestAsync()
                 startupScope.launch {
                     container.accountManager.profiles
                         .collectLatest { profiles ->
@@ -37,6 +33,10 @@ class SVPlayerApplication : Application() {
                             runCatching { container.activationRepository.publishProfileInventory(profiles) }
                         }
                 }
+                container.anomalyReporter.installCrashHandler()
+                container.anomalyReporter.flushPendingAsync()
+                container.anomalyReporter.reportPreviousProcessExitAsync()
+                container.deviceDiagnosticsReporter.syncLatestAsync()
                 BackgroundSyncScheduler.applyPeriodicSync(
                     this@SVPlayerApplication,
                     StartupStateStore(this@SVPlayerApplication).isBackgroundSyncEnabled(),

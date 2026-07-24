@@ -231,6 +231,10 @@ fun AppNavigation(
     var homeProfileAvatarBounds by remember { mutableStateOf<Rect?>(null) }
     val activePlaylistSource by container.accountManager.activePlaylistSource.collectAsStateWithLifecycle()
     val playlistProfiles by container.accountManager.profiles.collectAsStateWithLifecycle()
+    LaunchedEffect(playlistProfiles) {
+        delay(750)
+        runCatching { container.activationRepository.publishProfileInventory(playlistProfiles) }
+    }
     val configuredPickerProfiles = remember(playlistProfiles) {
         playlistProfiles.filter { it.isConfigured }
     }
@@ -1426,6 +1430,7 @@ fun AppNavigation(
             .plus(deviceQuery)
             .plus("&plan=year_1")
         SmartVisionQrDialog(
+            strings = strings,
             title = strings.premiumPurchaseTitle,
             subtitle = strings.premiumPurchaseSubtitle,
             qrUrl = purchaseUrl,

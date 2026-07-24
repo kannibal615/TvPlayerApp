@@ -6,6 +6,7 @@ Derniere mise a jour: 2026-07-20.
 
 - L ancien menu `Slides Home` est regroupe dans `Admin > Personnalisation`.
 - Ce menu gere les images Hero multiples (`home_slider_ads`) et le fond global (`app_settings.app_personalization`).
+- Fond global et images Hero acceptent une URL ou un fichier JPEG/PNG/WebP de 8 Mo maximum. Le fichier est valide par MIME et dimensions, stocke sous `assets/uploads/personalization/` avec un nom aleatoire et prioritaire sur l'URL. Seuls les anciens fichiers geres par cet uploader sont supprimes lors d'un remplacement.
 - `api/home_slides.php` reste la source des images Hero actives et retourne une liste vide si aucune image n est active.
 - `api/app_config.php` expose `appearance.managed` et `appearance.background_image_url`; Android applique cette source admin au-dessus de l ancienne preference locale.
 - Desactiver le fond ou laisser son URL vide impose le fond sombre natif, sans image.
@@ -26,7 +27,9 @@ Le script de deploiement upload les fichiers explicitement. Tout nouveau fichier
 - Site public: decouverte, telechargement, achat/activation.
 - Account: achat/prolongation, configuration Xtream, verification email.
 - Activate/Xtream: parcours QR depuis TV.
-- Playlist: page publique `/playlist/` pour valider le code au sixieme caractere, lire l'inventaire non sensible Admin/Normal, cibler plusieurs profils et/ou creer un profil Normal. `api/device_profiles.php` remplace l'inventaire avec un `device_token`; `api/playlist_targets.php` expose seulement id/nom/type et limite les recherches par hash IP. Chaque envoi cree une notification `playlist_added`; le payload chiffre contient `config_id`, cibles et configuration, puis n'est dechiffre que pour la TV ciblee.
+- Playlist: page publique `/playlist/` pour valider le code au sixieme caractere, lire l'inventaire public Admin/Normal, cibler plusieurs profils et/ou creer un profil Normal. `api/device_profiles.php` accepte l'inventaire v1 non sensible et l'inventaire v2 complet authentifie; v2 chiffre les sources resolues de tous les profils, dont Kids, dans `device_playlist_profiles`. `api/playlist_targets.php` n'expose toujours que id/nom/type Admin/Normal et limite les recherches par hash IP. Chaque envoi cree une notification `playlist_added`; le payload chiffre contient `config_id`, cibles et configuration, puis n'est dechiffre que pour la TV ciblee.
+- Admin Appareils: le statut Xtream est recalcule depuis la configuration PlaylistWeb ou les comptes locaux synchronises. L'onglet Xtream du detail dechiffre host/username/password/EPG uniquement pendant une session admin authentifiee et repond avec `no-store`; aucun endpoint public ne renvoie ces secrets.
+- La suppression d'un appareil est transactionnelle: donnees appareil, sessions/tokens, activations, playlists, profils, notifications, consentements et diagnostics sont supprimes, puis la place de licence est liberee sans supprimer la commande ni le code licence. La TV doit se reenregistrer et etre reactivee.
 - Admin: gestion fonctionnalites, consentement, pubs, codes, notifications, diagnostics.
 - Admin Diagnostics centralise maintenant Synthese, AutoSync, Anomalies App, Info Serveur et Journal dans `server/public_html/admin/index.php`.
 - Depuis le 2026-07-20, l'ancien menu admin Bibliotheque privee et les endpoints Media prives sont retires; ne pas les reintegrer dans les deploys ni dans `app_feature_access`.

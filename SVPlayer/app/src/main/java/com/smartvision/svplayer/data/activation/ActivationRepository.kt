@@ -10,7 +10,6 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.smartvision.svplayer.BuildConfig
 import com.smartvision.svplayer.core.config.PlaylistProfile
 import com.smartvision.svplayer.core.config.PlaylistSource
-import com.smartvision.svplayer.core.config.ProfileType
 import com.smartvision.svplayer.core.config.WebPlaylistDelivery
 import com.smartvision.svplayer.core.config.XtreamAccountManager
 import com.smartvision.svplayer.data.playlist.EpgRepository
@@ -123,10 +122,24 @@ class ActivationRepository(
             } else {
                 preferences[FREE_WITH_ADS_STATUS] = response.freeWithAdsStatus
             }
-            if (preferences[DEVICE_TOKEN].isNullOrBlank()) {
-                response.deviceToken?.takeIf { it.isNotBlank() }?.let { preferences[DEVICE_TOKEN] = it }
+            response.deviceToken?.takeIf { it.isNotBlank() }?.let { freshToken ->
+                preferences[PROFILE_SYNC_DEVICE_TOKEN] = freshToken
+                if (preferences[DEVICE_TOKEN].isNullOrBlank()) {
+                    preferences[DEVICE_TOKEN] = freshToken
+                }
             }
         }
+        response.deviceToken
+            ?.takeIf { it.isNotBlank() }
+            ?.let { freshToken ->
+                runCatching {
+                    syncProfileInventory(
+                        deviceId = serverDeviceId,
+                        deviceToken = freshToken,
+                        profiles = accountManager.profiles.value,
+                    )
+                }
+            }
 
         return RemoteActivationStatus(
             status = ActivationStatus.fromValue(response.activationStatus),
@@ -170,7 +183,10 @@ class ActivationRepository(
             preferences[ACTIVATED] = false
             preferences[EXPIRES_AT] = expiresAt
             preferences.remove(ACTIVATION_TYPE)
-            response.deviceToken?.takeIf { it.isNotBlank() }?.let { preferences[DEVICE_TOKEN] = it }
+            response.deviceToken?.takeIf { it.isNotBlank() }?.let { freshToken ->
+                preferences[DEVICE_TOKEN] = freshToken
+                preferences[PROFILE_SYNC_DEVICE_TOKEN] = freshToken
+            }
         }
 
         return ActivationSession(
@@ -344,21 +360,45 @@ class ActivationRepository(
     }
 
     suspend fun publishProfileInventory(profiles: List<PlaylistProfile>) {
-        val preferences = dataStore.data.first()
+        var preferences = dataStore.data.first()
+        if (
+            preferences[DEVICE_ID].isNullOrBlank() ||
+            (preferences[PROFILE_SYNC_DEVICE_TOKEN].isNullOrBlank() && preferences[DEVICE_TOKEN].isNullOrBlank())
+        ) {
+            runCatching { registerDevice() }.getOrNull() ?: return
+            preferences = dataStore.data.first()
+        }
         val deviceId = preferences[DEVICE_ID].orEmpty()
-        val deviceToken = preferences[DEVICE_TOKEN].orEmpty()
+        val deviceToken = preferences[PROFILE_SYNC_DEVICE_TOKEN]
+            ?.takeIf { it.isNotBlank() }
+            ?: preferences[DEVICE_TOKEN].orEmpty()
         if (deviceId.isBlank() || deviceToken.isBlank()) return
+        syncProfileInventory(deviceId, deviceToken, profiles)
+    }
+
+    private suspend fun syncProfileInventory(
+        deviceId: String,
+        deviceToken: String,
+        profiles: List<PlaylistProfile>,
+    ) {
         val response = api.syncDeviceProfiles(
             DeviceProfilesRequest(
                 deviceId = deviceId,
                 deviceToken = deviceToken,
                 profiles = profiles
-                    .filter { it.type != ProfileType.KIDS }
                     .map { profile ->
+                        val resolved = accountManager.resolvedProfile(profile)
                         DeviceProfileSummary(
                             profileId = profile.id,
                             name = profile.name,
                             type = profile.type.storageValue,
+                            source = resolved.source.storageValue,
+                            credentialsMode = profile.credentialsMode.storageValue,
+                            host = resolved.xtreamHost,
+                            username = resolved.xtreamUsername,
+                            password = resolved.xtreamPassword,
+                            epgUrl = resolved.epgUrl,
+                            m3uUrl = resolved.m3uUrl,
                         )
                     },
             ),
@@ -452,6 +492,7 @@ class ActivationRepository(
         val LICENSE_STATUS = stringPreferencesKey("activation_license_status")
         val TRIAL_STATUS = stringPreferencesKey("activation_trial_status")
         val DEVICE_TOKEN = stringPreferencesKey("activation_device_token")
+        val PROFILE_SYNC_DEVICE_TOKEN = stringPreferencesKey("profile_sync_device_token")
         val PUBLIC_DEVICE_CODE = stringPreferencesKey("activation_public_device_code")
         val FREE_WITH_ADS_STATUS = stringPreferencesKey("activation_free_with_ads_status")
         val PLAYLIST_CONFIGURED = booleanPreferencesKey("activation_playlist_configured")
